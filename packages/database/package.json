@@ -1,0 +1,33 @@
+{
+  "name": "@plume/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./keys": "./src/keys.ts"
+  },
+  "scripts": {
+    "with-env": "dotenv -e ../../.env --",
+    "generate": "prisma generate",
+    "migrate:dev": "pnpm with-env prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "push": "pnpm with-env prisma db push",
+    "studio": "pnpm with-env prisma studio",
+    "clean": "git clean -xdf .cache .turbo dist node_modules src/generated",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "6.19.3",
+    "@prisma/client": "6.19.3",
+    "@t3-oss/env-core": "^0.13.11",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "dotenv-cli": "^11.0.0",
+    "prisma": "6.19.3",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,200 @@
+name: plume
+
+# Full self-hosted Plume stack. Quick start:
+#   cp .env.example .env   # (optional — sensible defaults below)
+#   docker compose up -d --build
+# Then open http://localhost:4310  (demo@plume.dev / plumedemo123)
+#
+# For production: set strong POSTGRES_PASSWORD / STORAGE_SECRET_KEY /
+# BETTER_AUTH_SECRET and put the apps behind a TLS reverse proxy.
+# Cache = Dragonfly (Redis-compatible); object storage = maxio (S3-compatible).
+
+x-build: &build
+  context: .
+  dockerfile: Dockerfile
+  target: runner
+
+x-service-env: &service-env
+  NODE_ENV: production
+  POSTGRES_URL: postgresql://plume:${POSTGRES_PASSWORD:-plume}@postgres:5432/plume
+  REDIS_HOST: dragonfly
+  REDIS_PORT: "6379"
+  STORAGE_PROVIDER: maxio
+  STORAGE_ENDPOINT: http://maxio:9000
+  STORAGE_PUBLIC_ENDPOINT: ${PUBLIC_STORAGE_ENDPOINT:-http://localhost:9300}
+  STORAGE_REGION: auto
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY:-plumeadmin}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_KEY:-plumeadmin123}
+  STORAGE_BUCKET: plume
+  STORAGE_FORCE_PATH_STYLE: "true"
+  STORAGE_PUBLIC_URL: ${PUBLIC_STORAGE_URL:-http://localhost:9300/plume}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310}
+  STORAGE_AUTO_CORS: "true"
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
+  BETTER_AUTH_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
+  TRUSTED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310},${PUBLIC_WWW_URL:-http://localhost:4313}
+  CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310},${PUBLIC_WWW_URL:-http://localhost:4313}
+  API_PORT: "4311"
+  API_URL: ${PUBLIC_API_URL:-http://localhost:4311}
+  APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
+  WORKER_PORT: "4312"
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: plume
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-plume}
+      POSTGRES_DB: plume
+    volumes:
+      - plume-pg:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5442}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U plume -d plume"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Dragonfly — a Redis-compatible cache/queue backend for BullMQ. Single-node:
+  # BullMQ's multi-key Lua scripts require non-clustered Redis semantics.
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    restart: unless-stopped
+    command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
+    ulimits:
+      memlock: -1
+    volumes:
+      - plume-dragonfly:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # maxio — S3-compatible object storage. Auto-creates the bucket
+  # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
+  # so published doc assets load by their public URL. Console at /ui/.
+  maxio:
+    image: ghcr.io/coollabsio/maxio:latest
+    restart: unless-stopped
+    environment:
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-plumeadmin}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_KEY:-plumeadmin123}
+      MAXIO_REGION: auto
+      MAXIO_DEFAULT_BUCKETS: plume
+      MAXIO_PUBLIC_BUCKETS: plume
+      MAXIO_ALLOW_INSECURE_DEV: "true"
+    volumes:
+      - plume-maxio:/data
+    ports:
+      - "${MAXIO_PORT:-9300}:9000"
+    healthcheck:
+      test: ["CMD", "maxio", "healthcheck", "--url", "http://127.0.0.1:9000/healthz", "--timeout-ms", "2000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  migrate:
+    image: plume:latest
+    command: ["migrate"]
+    environment: *service-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build: *build
+    image: plume:latest
+    command: ["server"]
+    init: true
+    environment: *service-env
+    ports:
+      - "${API_PORT:-4311}:4311"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      maxio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4311/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  worker:
+    image: plume:latest
+    command: ["worker"]
+    init: true
+    environment: *service-env
+    ports:
+      - "${WORKER_PORT:-4312}:4312"
+    depends_on:
+      dragonfly:
+        condition: service_healthy
+      maxio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4312/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  app:
+    image: plume:latest
+    command: ["app"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4310"
+    ports:
+      - "${APP_PORT:-4310}:4310"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4310/sign-in"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  www:
+    image: plume:latest
+    command: ["www"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4313"
+    ports:
+      - "${WWW_PORT:-4313}:4313"
+    restart: unless-stopped
+
+  docs:
+    image: plume:latest
+    command: ["docs"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4314"
+    ports:
+      - "${DOCS_PORT:-4314}:4314"
+    restart: unless-stopped
+
+volumes:
+  plume-pg:
+  plume-dragonfly:
+  plume-maxio:

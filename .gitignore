@@ -1,0 +1,40 @@
+# dependencies
+node_modules
+.pnpm-store
+
+# build output
+dist
+.output
+.nitro
+.turbo
+.cache
+.tanstack
+**/src/generated
+
+# env
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+logs
+
+# os / editor
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+
+# docker volumes
+.docker-data
+
+# design reference (kept locally, not part of the repo)
+_ui_zip
+Open source documentation platform.zip
+
+# test artifacts
+coverage
+playwright-report
+test-results

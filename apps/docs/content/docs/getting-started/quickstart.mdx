@@ -1,0 +1,123 @@
+---
+title: Quickstart
+description: Get a local Plume instance running and publish your first page.
+icon: Zap
+---
+
+This guide gets the full Plume stack running on your machine and walks you through
+publishing your first documentation page.
+
+## Prerequisites
+
+<Cards>
+  <Card title="Node.js 22+">
+    Plume targets Node 22.13 or newer.
+  </Card>
+  <Card title="pnpm 10+">
+    The monorepo uses pnpm workspaces.
+  </Card>
+  <Card title="Docker">
+    For Postgres, Redis, and MinIO during local development.
+  </Card>
+</Cards>
+
+## Run it locally
+
+<Steps>
+  <Step>
+    ### Clone and install
+
+    ```bash
+    git clone https://github.com/your-org/plume.git
+    cd plume
+    pnpm install
+    ```
+  </Step>
+  <Step>
+    ### Start the backing services
+
+    Postgres, Redis, and MinIO come up via Compose:
+
+    ```bash
+    docker compose -f docker-compose.dev.yml up -d
+    ```
+  </Step>
+  <Step>
+    ### Configure your environment
+
+    Copy the example file and adjust as needed:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    See [configuration](/docs/self-hosting/configuration) for the full list of
+    variables.
+  </Step>
+  <Step>
+    ### Prepare the database
+
+    Generate the Prisma client and apply migrations:
+
+    ```bash
+    pnpm db:generate
+    pnpm db:migrate
+    ```
+  </Step>
+  <Step>
+    ### Start the dev servers
+
+    This runs the API, worker, and dashboard together via Turbo:
+
+    ```bash
+    pnpm dev
+    ```
+  </Step>
+</Steps>
+
+<Callout type="info">
+  Once everything is up, the services listen on these ports:
+
+  - Dashboard — [http://localhost:4310](http://localhost:4310)
+  - API — `http://localhost:4311`
+  - Worker — internal, port 4312
+  - Marketing site — [http://localhost:4313](http://localhost:4313)
+  - Docs (this site) — [http://localhost:4314](http://localhost:4314)
+</Callout>
+
+## Publish your first page
+
+<Steps>
+  <Step>
+    Open the dashboard at [http://localhost:4310](http://localhost:4310) and
+    create an account.
+  </Step>
+  <Step>
+    Create a **project** — this becomes your documentation site.
+  </Step>
+  <Step>
+    Add a page, write some Markdown, and watch the live preview update.
+  </Step>
+  <Step>
+    Hit **Publish**. The worker builds the version and indexes it for search.
+  </Step>
+  <Step>
+    Visit the published site to see your page live, complete with search.
+  </Step>
+</Steps>
+
+<Callout type="warn">
+  Local publishing serves over the development MinIO bucket. For real domains and
+  TLS, see [self-hosting](/docs/self-hosting/docker).
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card title="Writing pages" href="/docs/writing/pages">
+    Learn the Markdown and MDX authoring features.
+  </Card>
+  <Card title="Self-hosting" href="/docs/self-hosting/docker">
+    Deploy Plume to your own infrastructure.
+  </Card>
+</Cards>

@@ -1,0 +1,27 @@
+{
+  "name": "@plume/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./constants": "./src/constants.ts",
+    "./rbac": "./src/rbac.ts",
+    "./ids": "./src/ids.ts",
+    "./crypto": "./src/crypto.ts",
+    "./site": "./src/site.ts",
+    "./utils": "./src/utils.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.14"
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.2"
+  }
+}

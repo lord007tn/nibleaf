@@ -1,0 +1,134 @@
+---
+title: Deploy with Docker
+description: Run the entire Plume stack on your own infrastructure with Docker Compose.
+icon: Container
+---
+
+Plume ships with a Docker Compose setup that brings up every service plus its
+backing infrastructure. This is the recommended way to self-host.
+
+## What Compose runs
+
+<Cards>
+  <Card title="app (4310)">
+    The TanStack Start dashboard — the authoring UI.
+  </Card>
+  <Card title="server (4311)">
+    The Hono API handling auth, content, and publishing.
+  </Card>
+  <Card title="worker (4312)">
+    The BullMQ worker that builds versions and indexes search.
+  </Card>
+  <Card title="www (4313)">
+    The public marketing site.
+  </Card>
+  <Card title="postgres">
+    The primary database, accessed via Prisma.
+  </Card>
+  <Card title="redis">
+    Backing store for the BullMQ job queue.
+  </Card>
+  <Card title="minio">
+    S3-compatible object storage for assets and built sites.
+  </Card>
+</Cards>
+
+## Bring up the stack
+
+<Steps>
+  <Step>
+    ### Configure the environment
+
+    Copy the example file and fill in secrets and connection details:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    See [configuration](/docs/self-hosting/configuration) for every variable.
+  </Step>
+  <Step>
+    ### Start everything
+
+    ```bash
+    docker compose up -d
+    ```
+
+    Compose builds the images (if needed), starts Postgres, Redis, and MinIO,
+    runs database migrations on startup, then launches the app, API, and worker.
+  </Step>
+  <Step>
+    ### Verify
+
+    Check that the containers are healthy:
+
+    ```bash
+    docker compose ps
+    ```
+
+    Then open the dashboard at [http://localhost:4310](http://localhost:4310).
+  </Step>
+</Steps>
+
+<Callout type="info">
+  Database migrations are applied automatically when the API container starts, so
+  the schema is always up to date with the image you deployed.
+</Callout>
+
+## Operating the stack
+
+<Tabs items={['Logs', 'Restart', 'Stop', 'Update']}>
+  <Tab value="Logs">
+
+```bash
+docker compose logs -f server worker
+```
+
+  </Tab>
+  <Tab value="Restart">
+
+```bash
+docker compose restart server worker
+```
+
+  </Tab>
+  <Tab value="Stop">
+
+```bash
+docker compose down
+```
+
+  </Tab>
+  <Tab value="Update">
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+  </Tab>
+</Tabs>
+
+## Persistence
+
+The Postgres and MinIO data live in named Docker volumes, so your content and
+built sites survive container restarts and rebuilds.
+
+<Callout type="warn">
+  Running <code>docker compose down -v</code> removes the volumes and permanently
+  deletes your database and stored objects. Omit <code>-v</code> unless you
+  intend to wipe everything.
+</Callout>
+
+## Production notes
+
+<Steps>
+  <Step>Put a TLS-terminating reverse proxy (Caddy, nginx, Traefik) in front of the app and API.</Step>
+  <Step>Point your custom domains at the proxy and forward to the relevant service ports.</Step>
+  <Step>Use managed Postgres, Redis, and S3 in production rather than the bundled containers if you can.</Step>
+  <Step>Set strong secrets and back up the database and object storage regularly.</Step>
+</Steps>
+
+## Next steps
+
+Fine-tune your deployment in [configuration](/docs/self-hosting/configuration).

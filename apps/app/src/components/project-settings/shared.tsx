@@ -1,0 +1,155 @@
+import type { ProjectConfig } from '@plume/validators';
+import type { ReactNode } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
+
+type ConfigMutation = {
+  mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
+};
+
+/**
+ * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
+ * Form `onSubmit` can `await` it. The server deep-merges section-level config,
+ * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
+ */
+export function saveConfigSection(update: ConfigMutation, config: ProjectConfig) {
+  return new Promise<void>((resolve) => {
+    update.mutate(
+      { config },
+      {
+        onSuccess: () => {
+          toast.success('Saved');
+          resolve();
+        },
+        onError: (error) => {
+          toast.error(error instanceof Error ? error.message : 'Could not save');
+          resolve();
+        },
+      },
+    );
+  });
+}
+
+/**
+ * Shared building blocks for the Site-configurations sections. Each section file
+ * composes these to stay consistent with the design (section header rule, a
+ * label + helper-text field wrapper, segmented controls and toggle rows).
+ */
+
+/** The header at the top of every section pane: a muted glyph + the title. */
+export function SectionHeader({ icon, title }: { icon: ReactNode; title: string }) {
+  return (
+    <div className="mb-6 flex items-center gap-2.5 border-border border-b pb-3">
+      <span className="text-base text-muted-foreground">{icon}</span>
+      <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
+    </div>
+  );
+}
+
+/** A labelled form row: bold label, muted helper text, then the control. */
+export function Field({
+  label,
+  hint,
+  htmlFor,
+  children,
+  className,
+}: {
+  label: string;
+  hint?: string;
+  htmlFor?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn('mb-6', className)}>
+      <label className="block font-semibold text-[13px]" htmlFor={htmlFor}>
+        {label}
+      </label>
+      {hint ? <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p> : <div className="mb-2.5" />}
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A standalone bold group label (e.g. "Navbar links", "Primary color") that
+ * heads a control group rather than labelling a single input. Rendered as a
+ * non-`<label>` element so it isn't expected to associate with one control.
+ */
+export function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn('font-semibold text-[13px]', className)}>{children}</div>;
+}
+
+/** A pill segmented control matching the chip-background design tokens. */
+export function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: Array<{ value: T; label: ReactNode }>;
+  className?: string;
+}) {
+  return (
+    <div className={cn('inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5', className)}>
+      {options.map((option) => {
+        const active = option.value === value;
+        return (
+          <button
+            className={cn(
+              'h-8 flex-1 cursor-pointer rounded-md px-3 font-medium text-[13px] transition-colors',
+              active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A bordered toggle row: title + helper text on the left, a Switch on the right. */
+export function ToggleRow({
+  title,
+  hint,
+  checked,
+  onCheckedChange,
+}: {
+  title: string;
+  hint?: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-4 border-border border-t py-3.5">
+      <div className="flex-1 leading-snug">
+        <div className="font-medium text-[13.5px]">{title}</div>
+        {hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+    </div>
+  );
+}
+
+/** The right-aligned Save button row used at the bottom of each form section. */
+export function SaveBar({ isSubmitting }: { isSubmitting: boolean }) {
+  return (
+    <div className="mt-2 flex justify-end">
+      <Button disabled={isSubmitting} type="submit">
+        {isSubmitting ? 'Saving…' : 'Save changes'}
+      </Button>
+    </div>
+  );
+}
+
+/** Shared input styling for the larger 42px-tall fields used across sections. */
+export const FIELD_INPUT = 'h-[42px] rounded-[10px] text-sm';
+export const FIELD_MONO = 'h-[42px] rounded-[10px] font-mono text-[13.5px]';

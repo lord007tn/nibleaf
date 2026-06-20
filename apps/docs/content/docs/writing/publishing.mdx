@@ -1,0 +1,102 @@
+---
+title: Publishing
+description: From draft to deployed — how Plume builds, versions, and serves your docs.
+icon: Send
+---
+
+Publishing in Plume is a deliberate, versioned step. Drafts stay private until you
+publish, and every publish produces an immutable version you can roll back to.
+
+## The publish flow
+
+<Steps>
+  <Step>
+    ### Draft
+
+    As you write, the dashboard autosaves your content to the API. Drafts are
+    private to your project and never served to readers.
+  </Step>
+  <Step>
+    ### Publish
+
+    When you hit **Publish**, the API freezes the current content into a new
+    **version** and enqueues a build job on BullMQ.
+  </Step>
+  <Step>
+    ### Build
+
+    The worker (`@plume/worker`) picks up the job, renders every page, and
+    generates the Orama search index for the version.
+  </Step>
+  <Step>
+    ### Deploy
+
+    The built output is written to object storage (MinIO/S3) and a **deployment**
+    record maps the version to your project's domain.
+  </Step>
+  <Step>
+    ### Live
+
+    Readers hit the deployment on its domain and get the freshly built site with
+    search ready to use.
+  </Step>
+</Steps>
+
+## Versioning
+
+Each publish creates an immutable snapshot:
+
+<Cards>
+  <Card title="Immutable">
+    A published version never changes. Editing creates a new draft, not a mutation
+    of the live version.
+  </Card>
+  <Card title="Addressable">
+    Every version has a stable identifier you can reference and inspect.
+  </Card>
+  <Card title="Rollback">
+    Promote any prior version back to live with one action — useful if a release
+    introduces a problem.
+  </Card>
+</Cards>
+
+<Callout type="info">
+  Because builds run on the worker queue, a large publish never blocks the editor.
+  You can keep writing while a previous version builds.
+</Callout>
+
+## Custom domains
+
+Map a project to your own domain so readers see your docs at, for example,
+`docs.yourcompany.com`.
+
+<Steps>
+  <Step>Add the domain to your project in the dashboard.</Step>
+  <Step>Create the DNS record pointing at your Plume deployment.</Step>
+  <Step>Plume serves the live deployment on that domain, with TLS.</Step>
+</Steps>
+
+<Callout type="warn">
+  DNS changes can take time to propagate. Until they do, your docs remain
+  reachable on the default deployment URL.
+</Callout>
+
+## Analytics
+
+Each deployment records basic analytics — page views and popular pages — so you
+can see what readers actually use. View them per project in the dashboard.
+
+## Rolling back
+
+If a release goes wrong:
+
+<Steps>
+  <Step>Open the project's version history.</Step>
+  <Step>Select a known-good earlier version.</Step>
+  <Step>Promote it — the deployment switches over without a rebuild.</Step>
+</Steps>
+
+## Next steps
+
+Ready to run Plume on your own servers? See
+[self-hosting with Docker](/docs/self-hosting/docker).

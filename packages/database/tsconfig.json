@@ -1,0 +1,5 @@
+{
+  "extends": "@plume/tsconfig/hono.json",
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "src/generated"]
+}

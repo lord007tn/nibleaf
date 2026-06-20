@@ -1,0 +1,11 @@
+{
+  "extends": "@plume/tsconfig/hono.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "tsdown.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

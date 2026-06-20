@@ -1,0 +1,63 @@
+name: plume-dev
+
+# Local development infrastructure only (Postgres, Dragonfly, maxio). Run the
+# apps with `pnpm dev`. For a full self-hosted stack see docker-compose.yml.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: plume
+      POSTGRES_PASSWORD: plume
+      POSTGRES_DB: plume
+    ports:
+      - '5442:5432'
+    volumes:
+      - plume-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U plume -d plume']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Dragonfly — Redis-compatible backend for BullMQ. Single-node flag so BullMQ's
+  # multi-key Lua scripts work (queue names are not hash-tagged by default).
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    restart: unless-stopped
+    command: ['dragonfly', '--default_lua_flags=allow-undeclared-keys']
+    ulimits:
+      memlock: -1
+    ports:
+      - '6381:6379'
+    volumes:
+      - plume-dragonfly:/data
+
+  # maxio — S3-compatible object storage. Auto-creates the `plume` bucket and
+  # serves it with anonymous read so doc assets load by their public URL.
+  # Console: http://localhost:9300/ui/
+  maxio:
+    image: ghcr.io/coollabsio/maxio:latest
+    restart: unless-stopped
+    environment:
+      MAXIO_ACCESS_KEY: plumeadmin
+      MAXIO_SECRET_KEY: plumeadmin123
+      MAXIO_REGION: auto
+      MAXIO_DEFAULT_BUCKETS: plume
+      MAXIO_PUBLIC_BUCKETS: plume
+      MAXIO_ALLOW_INSECURE_DEV: 'true'
+    ports:
+      - '9300:9000'
+    volumes:
+      - plume-maxio:/data
+    healthcheck:
+      test: ['CMD', 'maxio', 'healthcheck', '--url', 'http://127.0.0.1:9000/healthz', '--timeout-ms', '2000']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  plume-pg:
+  plume-dragonfly:
+  plume-maxio:

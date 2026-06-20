@@ -1,0 +1,36 @@
+{
+  "name": "@plume/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts",
+    "./keys.server": "./src/keys.server.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@plume/bullmq": "workspace:*",
+    "@plume/database": "workspace:*",
+    "@plume/shared": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
+    "better-auth": "^1.6.19",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/react": "^19.2.0",
+    "react": "^19.2.0",
+    "typescript": "^5.9.2"
+  }
+}

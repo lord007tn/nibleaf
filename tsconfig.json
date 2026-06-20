@@ -1,0 +1,6 @@
+{
+  "extends": "@plume/tsconfig/base.json",
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
+}

@@ -1,0 +1,145 @@
+---
+title: Configuration
+description: Environment variables for database, storage, queues, and search.
+icon: Settings
+---
+
+Plume is configured entirely through environment variables. Copy `.env.example`
+to `.env` and set the values for your deployment. This page documents the
+variables grouped by concern.
+
+## Core
+
+<TypeTable
+  type={{
+    NODE_ENV: { description: 'Runtime mode.', type: '"development" | "production"', default: 'development' },
+    APP_NAME: { description: 'Display name used across the UI and emails.', type: 'string', default: 'Plume' },
+    APP_URL: { description: 'Public URL of the dashboard (port 4310).', type: 'string' },
+    API_URL: { description: 'Public URL of the API (port 4311).', type: 'string' },
+    API_PORT: { description: 'Port the Hono API listens on.', type: 'number', default: '4311' },
+    WORKER_PORT: { description: 'Port the worker health server listens on.', type: 'number', default: '4312' },
+    WWW_URL: { description: 'Public URL of the marketing site (port 4313).', type: 'string' },
+    DOCS_PUBLIC_URL: { description: 'Public URL of this docs site (port 4314).', type: 'string' },
+  }}
+/>
+
+## Database
+
+Plume uses PostgreSQL through Prisma.
+
+<TypeTable
+  type={{
+    POSTGRES_URL: { description: 'Postgres connection string.', type: 'string', required: true },
+  }}
+/>
+
+```bash
+POSTGRES_URL="postgresql://plume:plume@localhost:5432/plume"
+```
+
+<Callout type="info">
+  Migrations run automatically on API startup. To run them manually use
+  <code>pnpm db:migrate</code> (development) or <code>pnpm db:deploy</code>
+  (production).
+</Callout>
+
+## Queues (Redis / BullMQ)
+
+The worker processes build, search-indexing, email, and analytics jobs off a
+BullMQ queue backed by Redis.
+
+<TypeTable
+  type={{
+    REDIS_HOST: { description: 'Redis hostname.', type: 'string', default: 'localhost' },
+    REDIS_PORT: { description: 'Redis port.', type: 'number', default: '6379' },
+    REDIS_PASSWORD: { description: 'Redis password, if required.', type: 'string' },
+    REDIS_DB: { description: 'Redis database index.', type: 'number', default: '0' },
+    WORKER_QUEUES: { description: 'Comma-separated list of queues this worker should process.', type: 'string' },
+    PUBLISH_CONCURRENCY: { description: 'Concurrent publish/build jobs.', type: 'number' },
+    SEARCH_CONCURRENCY: { description: 'Concurrent search-indexing jobs.', type: 'number' },
+    EMAIL_CONCURRENCY: { description: 'Concurrent email jobs.', type: 'number' },
+    ANALYTICS_CONCURRENCY: { description: 'Concurrent analytics jobs.', type: 'number' },
+  }}
+/>
+
+## Storage (MinIO / S3)
+
+Built sites and uploaded assets are stored in an S3-compatible object store.
+MinIO is used in development; any S3 provider works in production.
+
+<TypeTable
+  type={{
+    STORAGE_PROVIDER: { description: 'Storage backend, e.g. minio or s3.', type: 'string', default: 'minio' },
+    STORAGE_ENDPOINT: { description: 'Storage endpoint URL.', type: 'string' },
+    STORAGE_REGION: { description: 'Bucket region.', type: 'string' },
+    STORAGE_BUCKET: { description: 'Bucket name for assets and built sites.', type: 'string', required: true },
+    STORAGE_ACCESS_KEY_ID: { description: 'Access key.', type: 'string', required: true },
+    STORAGE_SECRET_ACCESS_KEY: { description: 'Secret key.', type: 'string', required: true },
+    STORAGE_FORCE_PATH_STYLE: { description: 'Use path-style URLs (required for MinIO).', type: 'boolean', default: 'true' },
+    STORAGE_PUBLIC_URL: { description: 'Public base URL objects are served from.', type: 'string' },
+    CDN_URL: { description: 'Optional CDN in front of storage.', type: 'string' },
+  }}
+/>
+
+<Callout type="warn">
+  When using MinIO, set <code>STORAGE_FORCE_PATH_STYLE=true</code>. Real AWS S3
+  typically uses virtual-hosted style and can leave it unset.
+</Callout>
+
+## Search
+
+Search is powered by Orama. The index is built per version by the worker on
+publish; these settings tune query behavior.
+
+<TypeTable
+  type={{
+    SEARCH_FUZZY_TOLERANCE: { description: 'Edit distance allowed for fuzzy matches.', type: 'number' },
+  }}
+/>
+
+## Authentication
+
+Auth is handled by Better Auth.
+
+<TypeTable
+  type={{
+    BETTER_AUTH_SECRET: { description: 'Secret used to sign sessions. Use a long random value.', type: 'string', required: true },
+    BETTER_AUTH_URL: { description: 'Base URL Better Auth runs under.', type: 'string', required: true },
+    TRUSTED_ORIGINS: { description: 'Comma-separated origins trusted for auth callbacks.', type: 'string' },
+    CORS_ALLOWED_ORIGINS: { description: 'Comma-separated origins allowed by the API CORS policy.', type: 'string' },
+  }}
+/>
+
+## Email
+
+Transactional email (invites, notifications) is sent via SMTP.
+
+<TypeTable
+  type={{
+    SMTP_URL: { description: 'SMTP connection string.', type: 'string' },
+    EMAIL_FROM: { description: 'Default From address.', type: 'string' },
+  }}
+/>
+
+## Frontend (Vite)
+
+Variables prefixed `VITE_` are exposed to the dashboard client at build time.
+
+<TypeTable
+  type={{
+    VITE_API_URL: { description: 'API URL the client calls.', type: 'string' },
+    VITE_APP_URL: { description: 'Dashboard URL.', type: 'string' },
+    VITE_WWW_URL: { description: 'Marketing site URL.', type: 'string' },
+    VITE_GITHUB_URL: { description: 'Link to the project repository.', type: 'string' },
+  }}
+/>
+
+<Callout type="info">
+  After changing any <code>VITE_</code> variable you must rebuild the dashboard —
+  these are inlined at build time, not read at runtime.
+</Callout>
+
+## Next steps
+
+With your configuration in place, bring the stack up with
+[Docker](/docs/self-hosting/docker).

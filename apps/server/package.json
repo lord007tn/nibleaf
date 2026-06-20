@@ -1,0 +1,47 @@
+{
+  "name": "@plume/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./rpc": {
+      "types": "./dist/rpc.d.mts",
+      "default": "./dist/rpc.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "pnpm run with-env tsx watch --clear-screen=false src/index.ts",
+    "build": "tsdown",
+    "start": "node ./dist/index.mjs",
+    "with-env": "dotenv -e ../../.env --",
+    "seed": "pnpm with-env tsx ./src/database/seed/index.ts",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.4",
+    "@hono/standard-validator": "^0.2.2",
+    "@plume/auth": "workspace:*",
+    "@plume/bullmq": "workspace:*",
+    "@plume/database": "workspace:*",
+    "@plume/logger": "workspace:*",
+    "@plume/search": "workspace:*",
+    "@plume/shared": "workspace:*",
+    "@plume/storage": "workspace:*",
+    "@plume/validators": "workspace:*",
+    "@scalar/hono-api-reference": "^0.10.19",
+    "@t3-oss/env-core": "^0.13.11",
+    "hono": "^4.12.23",
+    "hono-openapi": "1.3.0",
+    "nanoid": "^5.1.14",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "dotenv-cli": "^11.0.0",
+    "tsdown": "^0.22.3",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.2"
+  }
+}

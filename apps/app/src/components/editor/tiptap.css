@@ -1,0 +1,306 @@
+/* TipTap WYSIWYG styles — scoped to .ProseMirror, matching the Plume design.
+   Uses the app's Tailwind color tokens (var(--color-*)) so it follows light/dark. */
+
+.pl-editor {
+  width: 100%;
+}
+
+.pl-editor .ProseMirror {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 140px;
+  outline: none;
+  color: var(--color-foreground);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pl-editor .ProseMirror > * + * {
+  margin-top: 0.6em;
+}
+
+/* Headings */
+.pl-editor .ProseMirror h1 {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 0.6em 0 0.2em;
+}
+.pl-editor .ProseMirror h2 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.3;
+  margin: 0.9em 0 0.15em;
+}
+.pl-editor .ProseMirror h3 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.8em 0 0.1em;
+}
+
+/* Paragraphs */
+.pl-editor .ProseMirror p {
+  font-size: 16px;
+  line-height: 1.7;
+  margin: 0.2em 0;
+}
+
+/* Lists */
+.pl-editor .ProseMirror ul,
+.pl-editor .ProseMirror ol {
+  padding-inline-start: 1.4em;
+  margin: 0.4em 0;
+}
+.pl-editor .ProseMirror ul {
+  list-style: disc;
+}
+.pl-editor .ProseMirror ol {
+  list-style: decimal;
+}
+.pl-editor .ProseMirror li {
+  margin: 0.2em 0;
+}
+.pl-editor .ProseMirror li::marker {
+  color: var(--color-primary);
+}
+
+/* Task lists */
+.pl-editor .ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-inline-start: 0.2em;
+}
+.pl-editor .ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+}
+.pl-editor .ProseMirror ul[data-type='taskList'] li > label {
+  margin-top: 0.32em;
+  user-select: none;
+}
+.pl-editor .ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pl-editor .ProseMirror ul[data-type='taskList'] input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* Blockquote */
+.pl-editor .ProseMirror blockquote {
+  border-inline-start: 3px solid color-mix(in oklch, var(--color-border), var(--color-foreground) 20%);
+  padding-inline-start: 16px;
+  margin: 0.6em 0;
+  color: var(--color-muted-foreground);
+  font-style: italic;
+}
+
+/* Horizontal rule / divider */
+.pl-editor .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.2em 0;
+}
+.pl-editor .ProseMirror hr.ProseMirror-selectednode {
+  border-top-color: var(--color-primary);
+}
+
+/* Inline code */
+.pl-editor .ProseMirror code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85em;
+  background: var(--color-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+
+/* Mark / highlight */
+.pl-editor .ProseMirror mark {
+  background: color-mix(in oklch, var(--color-primary) 22%, transparent);
+  border-radius: 3px;
+  padding: 0.05em 0.15em;
+}
+
+/* Links */
+.pl-editor .ProseMirror a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* Code block — dark chrome with a language label bar.
+   The label is driven by the node's data-language attribute via ::before. */
+.pl-editor .ProseMirror pre {
+  position: relative;
+  direction: ltr;
+  background: #0f0f14;
+  border-radius: 12px;
+  margin: 0.8em 0;
+  padding: 42px 16px 16px;
+  overflow-x: auto;
+  color: #d6d6e2;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.pl-editor .ProseMirror pre::before {
+  content: attr(data-language);
+  position: absolute;
+  top: 0;
+  inset-inline: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid #232330;
+  color: #8a8a98;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  text-transform: lowercase;
+}
+.pl-editor .ProseMirror pre:not([data-language])::before,
+.pl-editor .ProseMirror pre[data-language='null']::before {
+  content: 'code';
+}
+.pl-editor .ProseMirror pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* lowlight / highlight.js token colors (dark theme) */
+.pl-editor .ProseMirror pre .hljs-comment,
+.pl-editor .ProseMirror pre .hljs-quote {
+  color: #6a6a78;
+  font-style: italic;
+}
+.pl-editor .ProseMirror pre .hljs-keyword,
+.pl-editor .ProseMirror pre .hljs-selector-tag,
+.pl-editor .ProseMirror pre .hljs-literal,
+.pl-editor .ProseMirror pre .hljs-type {
+  color: #c792ea;
+}
+.pl-editor .ProseMirror pre .hljs-string,
+.pl-editor .ProseMirror pre .hljs-title,
+.pl-editor .ProseMirror pre .hljs-name,
+.pl-editor .ProseMirror pre .hljs-attr {
+  color: #c3e88d;
+}
+.pl-editor .ProseMirror pre .hljs-number,
+.pl-editor .ProseMirror pre .hljs-symbol,
+.pl-editor .ProseMirror pre .hljs-bullet {
+  color: #f78c6c;
+}
+.pl-editor .ProseMirror pre .hljs-function,
+.pl-editor .ProseMirror pre .hljs-built_in,
+.pl-editor .ProseMirror pre .hljs-attribute {
+  color: #82aaff;
+}
+.pl-editor .ProseMirror pre .hljs-tag,
+.pl-editor .ProseMirror pre .hljs-meta {
+  color: #89ddff;
+}
+
+/* Callout — colored wrapper with an icon column. */
+.pl-editor .ProseMirror .pl-callout {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  margin: 0.7em 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-accent);
+}
+.pl-editor .ProseMirror .pl-callout .pl-callout-icon {
+  font-size: 16px;
+  line-height: 1.5;
+  user-select: none;
+}
+.pl-editor .ProseMirror .pl-callout .pl-callout-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pl-editor .ProseMirror .pl-callout .pl-callout-body > * {
+  margin: 0;
+}
+.pl-editor .ProseMirror .pl-callout[data-variant='warning'] {
+  border-color: color-mix(in oklch, #d9730d 35%, var(--color-border));
+  background: color-mix(in oklch, #d9730d 10%, var(--color-card));
+}
+.pl-editor .ProseMirror .pl-callout[data-variant='danger'] {
+  border-color: color-mix(in oklch, #dc2626 35%, var(--color-border));
+  background: color-mix(in oklch, #dc2626 10%, var(--color-card));
+}
+.pl-editor .ProseMirror .pl-callout[data-variant='tip'] {
+  border-color: color-mix(in oklch, #16a34a 35%, var(--color-border));
+  background: color-mix(in oklch, #16a34a 10%, var(--color-card));
+}
+
+/* Tables */
+.pl-editor .ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.pl-editor .ProseMirror th,
+.pl-editor .ProseMirror td {
+  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  text-align: start;
+  vertical-align: top;
+}
+.pl-editor .ProseMirror th {
+  background: var(--color-muted);
+  font-weight: 600;
+}
+.pl-editor .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+  pointer-events: none;
+}
+.pl-editor .ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+
+/* Images */
+.pl-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  margin: 0.6em 0;
+}
+.pl-editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary);
+}
+
+/* Placeholder — shown on empty nodes via data-placeholder. */
+.pl-editor .ProseMirror .is-empty::before,
+.pl-editor .ProseMirror .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  color: var(--color-muted-foreground);
+  pointer-events: none;
+}
+
+/* Gapcursor */
+.pl-editor .ProseMirror .ProseMirror-gapcursor:after {
+  border-top-color: var(--color-foreground);
+}

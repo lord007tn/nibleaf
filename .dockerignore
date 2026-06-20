@@ -1,0 +1,22 @@
+**/node_modules
+**/.output
+**/.nitro
+**/.turbo
+**/.cache
+**/.tanstack
+**/dist
+**/src/generated
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+_ui_zip
+Open source documentation platform.zip
+**/.DS_Store
+/docs
+dogfood-output
+coverage
+playwright-report
+test-results

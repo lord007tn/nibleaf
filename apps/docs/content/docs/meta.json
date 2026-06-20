@@ -1,0 +1,5 @@
+{
+  "title": "Plume",
+  "root": true,
+  "pages": ["index", "getting-started", "writing", "self-hosting"]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@plume/bullmq",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./keys": "./src/keys.ts",
+    "./queues": "./src/queues/index.ts",
+    "./workers": "./src/workers/index.ts",
+    "./jobs/*": "./src/jobs/*.ts"
+  },
+  "scripts": {
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@plume/logger": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
+    "bullmq": "^5.77.6",
+    "ioredis": "^5.11.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "typescript": "^5.9.2"
+  }
+}

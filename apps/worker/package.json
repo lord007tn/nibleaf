@@ -1,0 +1,36 @@
+{
+  "name": "@plume/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run with-env tsx watch --clear-screen=false src/index.ts",
+    "build": "tsdown",
+    "start": "node ./dist/index.mjs",
+    "with-env": "dotenv -e ../../.env --",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@getworkbench/hono": "^0.9.1",
+    "@hono/node-server": "^2.0.4",
+    "@plume/bullmq": "workspace:*",
+    "@plume/database": "workspace:*",
+    "@plume/logger": "workspace:*",
+    "@plume/shared": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
+    "bullmq": "^5.77.6",
+    "hono": "^4.12.23",
+    "nodemailer": "^6.9.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@plume/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "@types/nodemailer": "^6.4.0",
+    "dotenv-cli": "^11.0.0",
+    "tsdown": "^0.22.3",
+    "tsx": "^4.22.3",
+    "typescript": "^5.9.2"
+  }
+}

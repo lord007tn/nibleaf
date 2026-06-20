@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #fbfbfc;
+  --foreground: #0b0b0f;
+  --card: #ffffff;
+  --muted: #f4f4f6;
+  --muted-foreground: #71717a;
+  --border: #ececef;
+  --primary: #5546e8;
+  --primary-foreground: #ffffff;
+}
+
+.dark {
+  --background: #0c0c11;
+  --foreground: #f1f1f5;
+  --card: #14141a;
+  --muted: #1c1c23;
+  --muted-foreground: #8d8d99;
+  --border: #23232b;
+  --primary: #a99bff;
+  --primary-foreground: #0c0c11;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  button:not(:disabled),
+  [role="button"],
+  a[href],
+  summary {
+    cursor: pointer;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 25%, transparent);
+  }
+}

@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+nodeLinker: hoisted
+
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - prisma
+  - '@prisma/client'
+  - esbuild
+  - sharp

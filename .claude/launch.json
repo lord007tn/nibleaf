@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "plume-app",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@plume/app", "dev"],
+      "port": 4310
+    },
+    {
+      "name": "plume-www",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@plume/www", "dev"],
+      "port": 4313
+    }
+  ]
+}
