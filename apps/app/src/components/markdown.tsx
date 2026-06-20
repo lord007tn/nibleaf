@@ -15,6 +15,9 @@ import { cn } from '@/lib/utils';
 function Pre(props: ComponentProps<'pre'>) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
+  // Language is on the child <code class="language-xxx"> (set from the fence info).
+  const child = props.children as { props?: { className?: string } } | null | undefined;
+  const lang = /language-([\w+#-]+)/.exec(child?.props?.className ?? '')?.[1];
   const copy = () => {
     const text = ref.current?.innerText ?? '';
     navigator.clipboard
@@ -26,7 +29,10 @@ function Pre(props: ComponentProps<'pre'>) {
       .catch(() => undefined);
   };
   return (
-    <div className="group relative my-5">
+    <div className="group relative my-5 overflow-hidden rounded-xl border border-border bg-[#0d1117]">
+      {lang ? (
+        <span className="absolute start-3 top-2.5 z-10 font-mono text-[11px] text-white/40 uppercase tracking-wide [direction:ltr]">{lang}</span>
+      ) : null}
       <button
         type="button"
         onClick={copy}
@@ -35,11 +41,7 @@ function Pre(props: ComponentProps<'pre'>) {
       >
         {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       </button>
-      <pre
-        ref={ref}
-        className="overflow-x-auto rounded-xl border border-border bg-[#0d1117] p-4 text-sm leading-relaxed [direction:ltr]"
-        {...props}
-      />
+      <pre ref={ref} className={cn('overflow-x-auto p-4 text-sm leading-relaxed [direction:ltr]', lang && 'pt-9')} {...props} />
     </div>
   );
 }

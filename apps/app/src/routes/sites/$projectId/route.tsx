@@ -57,11 +57,7 @@ function SiteChrome() {
   // Resolve the active language: URL param → server-reported active → default → first.
   const activeLanguage = useMemo(() => {
     const code = lang ?? site?.activeLanguage;
-    return (
-      languages.find((language) => language.code === code) ??
-      languages.find((language) => language.isDefault) ??
-      languages[0]
-    );
+    return languages.find((language) => language.code === code) ?? languages.find((language) => language.isDefault) ?? languages[0];
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
 
@@ -73,6 +69,21 @@ function SiteChrome() {
       setTheme(configTheme);
     }
   }, [configTheme, setTheme]);
+
+  // Apply the project's favicon on the published site.
+  const faviconUrl = site?.project.faviconUrl;
+  useEffect(() => {
+    if (typeof document === 'undefined' || !faviconUrl) {
+      return;
+    }
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = faviconUrl;
+  }, [faviconUrl]);
 
   // Site-level SEO fallback for routes without a SitePageView (e.g. changelog).
   // On doc pages, SitePageView owns the title and merges config itself, so we
@@ -101,7 +112,9 @@ function SiteChrome() {
         <div>
           <BookOpen className="mx-auto size-8 text-muted-foreground" />
           <h1 className="mt-4 font-semibold text-2xl tracking-tight">Not published yet</h1>
-          <p className="mt-2 max-w-sm text-muted-foreground text-sm">This documentation site hasn't been published. Publish it from the editor to see it live.</p>
+          <p className="mt-2 max-w-sm text-muted-foreground text-sm">
+            This documentation site hasn't been published. Publish it from the editor to see it live.
+          </p>
         </div>
       </div>
     );
@@ -130,7 +143,11 @@ function SiteChrome() {
       <header className="sticky top-0 z-30 border-border border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-6">
           <Link to="/sites/$projectId" params={{ projectId }} search={{ lang }} className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">{site?.project.name?.[0] ?? 'D'}</span>
+            {site?.project.logoUrl ? (
+              <img src={site.project.logoUrl} alt={site.project.name ?? 'Logo'} className="h-7 w-auto object-contain" />
+            ) : (
+              <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">{site?.project.name?.[0] ?? 'D'}</span>
+            )}
             {site?.project.name ?? 'Documentation'}
           </Link>
           <nav className="ms-4 hidden items-center gap-5 text-muted-foreground text-sm sm:flex">
@@ -173,7 +190,12 @@ function SiteChrome() {
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">⌘K</kbd>
           </button>
           <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
-          <button className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted" onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')} type="button" aria-label="Toggle theme">
+          <button
+            className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted"
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            type="button"
+            aria-label="Toggle theme"
+          >
             {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
           {ctaLabel && ctaUrl ? (
@@ -192,7 +214,11 @@ function SiteChrome() {
       <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-[260px_1fr]">
         <aside className="hidden border-border border-e lg:block">
           <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4">
-            {isPending ? <div className="py-6 text-muted-foreground text-sm">Loading…</div> : <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} lang={lang} />}
+            {isPending ? (
+              <div className="py-6 text-muted-foreground text-sm">Loading…</div>
+            ) : (
+              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} lang={lang} />
+            )}
           </div>
         </aside>
         <main className="min-w-0">
@@ -206,17 +232,35 @@ function SiteChrome() {
             <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${site?.project.name ?? ''}`.trim()}</span>
             <div className="flex items-center gap-3">
               {footer.github ? (
-                <a href={footer.github} target="_blank" rel="noreferrer" aria-label="GitHub" className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground">
+                <a
+                  href={footer.github}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="GitHub"
+                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                >
                   <GithubIcon className="size-4" />
                 </a>
               ) : null}
               {footer.x ? (
-                <a href={footer.x} target="_blank" rel="noreferrer" aria-label="X" className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground">
+                <a
+                  href={footer.x}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="X"
+                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                >
                   <XIcon className="size-4" />
                 </a>
               ) : null}
               {footer.linkedin ? (
-                <a href={footer.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground">
+                <a
+                  href={footer.linkedin}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="LinkedIn"
+                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                >
                   <LinkedinIcon className="size-4" />
                 </a>
               ) : null}

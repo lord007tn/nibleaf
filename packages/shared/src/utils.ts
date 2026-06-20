@@ -15,9 +15,11 @@ export const joinPath = (parentPath: string | null | undefined, slug: string): s
 /** First non-empty line of markdown, stripped of common markup — used for excerpts. */
 export const excerpt = (markdown: string, max = 160): string => {
   const text = markdown
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/[#>*_`~\-]+/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/```[\s\S]*?```/g, ' ') // fenced code
+    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // HTML / MDX component tags (<Note>, <Card …>)
+    .replace(/\[!\w+\]/gi, ' ') // admonition markers ([!NOTE])
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → their text
+    .replace(/[#>*_`~-]+/g, ' ') // markdown punctuation
     .replace(/\s+/g, ' ')
     .trim();
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
