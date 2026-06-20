@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { DragHandle } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -13,6 +14,7 @@ import TaskList from '@tiptap/extension-task-list';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
+import { GripVertical, Plus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,52 @@ const CodeBlock = CodeBlockLowlight.extend({
     return ['pre', { ...HTMLAttributes, 'data-language': language ?? 'code' }, ['code', { class: language ? `language-${language}` : undefined }, 0]];
   },
 });
+
+/** Notion-style block handle: a grip to drag-reorder blocks and a + to insert a
+ *  new block. Floats in the left gutter of whichever block the cursor hovers. */
+function BlockHandle({ editor }: { editor: Editor }) {
+  const posRef = useRef<number | null>(null);
+  const insertBelow = () => {
+    const pos = posRef.current;
+    if (pos === null) {
+      return;
+    }
+    const node = editor.state.doc.nodeAt(pos);
+    const end = node ? pos + node.nodeSize : editor.state.doc.content.size;
+    // Insert an empty block and a '/' to pop the slash menu, Notion-style.
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(end, { type: 'paragraph', content: [{ type: 'text', text: '/' }] })
+      .run();
+  };
+  return (
+    <DragHandle
+      editor={editor}
+      onNodeChange={({ pos }) => {
+        posRef.current = pos;
+      }}
+    >
+      <div className="flex items-center gap-0.5 pe-1 text-muted-foreground">
+        <button
+          type="button"
+          title="Insert block"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={insertBelow}
+          className="grid size-6 cursor-pointer place-items-center rounded hover:bg-muted hover:text-foreground"
+        >
+          <Plus className="size-4" />
+        </button>
+        <span
+          title="Drag to move"
+          className="grid size-6 cursor-grab place-items-center rounded hover:bg-muted hover:text-foreground active:cursor-grabbing"
+        >
+          <GripVertical className="size-4" />
+        </span>
+      </div>
+    </DragHandle>
+  );
+}
 
 interface TiptapEditorProps {
   /** Markdown source — the single source of truth. */
@@ -172,6 +220,7 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
   return (
     <div className={cn('pl-editor', className)} dir={dir}>
       {editor ? <EditorBubbleMenu editor={editor} /> : null}
+      {editor ? <BlockHandle editor={editor} /> : null}
       <EditorContent editor={editor} />
     </div>
   );

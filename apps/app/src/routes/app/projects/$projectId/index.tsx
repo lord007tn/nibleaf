@@ -295,8 +295,16 @@ function EditorPage() {
               <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
             </div>
           ) : (
-            <div className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto p-8">
-              <Markdown content={content} />
+            // Preview mode: render the draft exactly as it will appear on the
+            // published website (same renderer, site typography, title + description).
+            <div className="min-h-0 flex-1 overflow-y-auto bg-background">
+              <article className="mx-auto w-full max-w-3xl px-8 py-12" dir={activeLangDir}>
+                <h1 className="font-semibold text-4xl tracking-tight">{title || 'Untitled'}</h1>
+                {page.description ? <p className="mt-2 text-lg text-muted-foreground">{page.description}</p> : null}
+                <div className="mt-6">
+                  <Markdown content={content} />
+                </div>
+              </article>
             </div>
           )}
         </section>
