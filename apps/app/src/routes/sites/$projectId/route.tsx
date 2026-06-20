@@ -192,7 +192,7 @@ function SiteChrome() {
       <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-[260px_1fr]">
         <aside className="hidden border-border border-e lg:block">
           <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4">
-            {isPending ? <div className="py-6 text-muted-foreground text-sm">Loading…</div> : <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} />}
+            {isPending ? <div className="py-6 text-muted-foreground text-sm">Loading…</div> : <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} lang={lang} />}
           </div>
         </aside>
         <main className="min-w-0">

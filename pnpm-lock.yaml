@@ -651,6 +651,9 @@ importers:
 
   packages/shared:
     dependencies:
+      github-slugger:
+        specifier: ^2.0.0
+        version: 2.0.0
       nanoid:
         specifier: ^5.1.14
         version: 5.1.14

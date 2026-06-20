@@ -1,3 +1,4 @@
+import GithubSlugger from 'github-slugger';
 import { excerpt } from './utils';
 
 export interface SnapshotPage {
@@ -91,9 +92,13 @@ export interface Heading {
   id: string;
 }
 
-/** Extract markdown headings (h1–h4) with slug ids — powers search + the TOC. */
+/** Extract markdown headings (h1–h4) with slug ids — powers search + the TOC.
+ *  Ids are produced with github-slugger, the same slugger rehype-slug uses to
+ *  set DOM ids, so TOC anchors resolve for Unicode (e.g. Arabic) headings and
+ *  duplicate headings get matching -1/-2 suffixes on both sides. */
 export const extractHeadings = (markdown: string): Heading[] => {
   const headings: Heading[] = [];
+  const slugger = new GithubSlugger();
   let inFence = false;
   for (const line of markdown.split('\n')) {
     if (line.trimStart().startsWith('```')) {
@@ -109,10 +114,7 @@ export const extractHeadings = (markdown: string): Heading[] => {
       headings.push({
         depth: match[1]?.length ?? 1,
         text,
-        id: text
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, ''),
+        id: slugger.slug(text),
       });
     }
   }

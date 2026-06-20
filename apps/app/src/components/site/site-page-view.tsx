@@ -83,7 +83,7 @@ export function SitePageView({ projectId, path, lang }: { projectId: string; pat
               className="flex flex-col items-start rounded-xl border border-border p-4 hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                <ChevronLeft className="size-3" /> Previous
+                <ChevronLeft className="size-3 rtl:-scale-x-100" /> Previous
               </span>
               <span className="mt-1 font-medium">{prev.title}</span>
             </Link>
@@ -98,7 +98,7 @@ export function SitePageView({ projectId, path, lang }: { projectId: string; pat
               className="flex flex-col items-end rounded-xl border border-border p-4 text-end hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                Next <ChevronRight className="size-3" />
+                Next <ChevronRight className="size-3 rtl:-scale-x-100" />
               </span>
               <span className="mt-1 font-medium">{next.title}</span>
             </Link>

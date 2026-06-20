@@ -1,4 +1,4 @@
-import { createDocIndex, type DocIndex, type SearchDoc } from '@plume/search';
+import { createDocIndex, type DocIndex, oramaLanguageForCode, type SearchDoc } from '@plume/search';
 import { extractHeadings, type SnapshotPage } from '@plume/shared/site';
 
 interface Entry {
@@ -37,7 +37,7 @@ export const getCachedIndex = async (projectId: string, key: string, lang: strin
     return existing.index;
   }
   const scoped = pages.filter((page) => (page.languageCode || lang) === lang);
-  const index = await createDocIndex(docsFromPages(scoped));
+  const index = await createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
   cache.set(mapKey, { key, index });
   return index;
 };

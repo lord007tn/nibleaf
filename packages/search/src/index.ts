@@ -1,6 +1,56 @@
 import { create, insertMultiple, search, type Orama } from '@orama/orama';
 import { keys } from './keys';
 
+// Orama ships a built-in tokenizer (word splitter + optional stemmer) per
+// language. We map a project language CODE (BCP-47 primary subtag) to the Orama
+// language so non-Latin scripts — Arabic above all — are tokenized correctly.
+// Without this, Orama defaults to English, whose splitter drops every Arabic
+// codepoint, so Arabic queries silently return ZERO hits.
+export type OramaLanguage =
+  | 'english'
+  | 'arabic'
+  | 'french'
+  | 'german'
+  | 'spanish'
+  | 'italian'
+  | 'portuguese'
+  | 'dutch'
+  | 'russian'
+  | 'swedish'
+  | 'norwegian'
+  | 'danish'
+  | 'finnish'
+  | 'turkish'
+  | 'greek';
+
+const CODE_TO_ORAMA: Record<string, OramaLanguage> = {
+  ar: 'arabic',
+  en: 'english',
+  fr: 'french',
+  de: 'german',
+  es: 'spanish',
+  it: 'italian',
+  pt: 'portuguese',
+  nl: 'dutch',
+  ru: 'russian',
+  sv: 'swedish',
+  no: 'norwegian',
+  da: 'danish',
+  fi: 'finnish',
+  tr: 'turkish',
+  el: 'greek',
+};
+
+/** Map a language code (e.g. 'ar', 'ar-SA', 'en-US') to an Orama tokenizer
+ *  language, defaulting to English for codes Orama doesn't tokenize. */
+export const oramaLanguageForCode = (code?: string): OramaLanguage => {
+  if (!code) {
+    return 'english';
+  }
+  const primary = code.toLowerCase().split('-')[0] ?? '';
+  return CODE_TO_ORAMA[primary] ?? 'english';
+};
+
 /** A single searchable documentation page. */
 export interface SearchDoc {
   id: string;
@@ -33,9 +83,18 @@ const docSchema = {
 
 export type DocIndex = Orama<typeof docSchema>;
 
-/** Build an in-memory Orama index from a set of documentation pages. */
-export const createDocIndex = async (docs: SearchDoc[]): Promise<DocIndex> => {
-  const db = (await create({ schema: docSchema })) as DocIndex;
+/** Build an in-memory Orama index from a set of documentation pages, tokenized
+ *  for the given language (defaults to English). */
+export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage = 'english'): Promise<DocIndex> => {
+  const db = (await create({
+    schema: docSchema,
+    components: {
+      // Stemming would need the optional @orama/stemmers package; the
+      // language-specific word splitter alone is what makes Arabic (and other
+      // non-English scripts) searchable, so we keep stemming off.
+      tokenizer: { language, stemming: false },
+    },
+  })) as DocIndex;
   if (docs.length > 0) {
     await insertMultiple(
       db,
