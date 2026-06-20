@@ -62,12 +62,18 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
       getData<Page>(await api.api.app.projects[':projectId'].pages[':id'].$get({ param: { projectId: projectId!, id: pageId! } }), 'page'),
   });
 
+// Publishing is async (worker builds the snapshot). Poll while a deployment is
+// in flight so the dashboard transitions PENDING/BUILDING → READY/FAILED on its
+// own instead of appearing stuck until a manual refresh.
+const isInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
+
 export const useDeployments = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.deployments.all(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<Deployment[]>(await api.api.app.projects[':projectId'].deployments.$get({ param: { projectId: projectId! } }), 'deployments'),
+    refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? 2500 : false),
   });
 
 export const useLatestDeployment = (projectId: string | undefined) =>
@@ -76,6 +82,7 @@ export const useLatestDeployment = (projectId: string | undefined) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<Deployment | null>(await api.api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }), 'deployment'),
+    refetchInterval: (query) => (isInFlight(query.state.data?.status) ? 2500 : false),
   });
 
 export const useDomains = (projectId: string | undefined) =>
