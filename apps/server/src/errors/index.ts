@@ -66,3 +66,5 @@ export const notFound = (entityType: string, details?: Record<string, unknown>) 
 export const conflict = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'database:conflict', message, details });
 
 export const badRequest = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'http:bad_request', message, details });
+
+export const forbidden = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'auth:insufficient_role', message, details });

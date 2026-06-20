@@ -1,8 +1,11 @@
+import { auth } from '@plume/auth/server';
 import { prisma } from '@plume/database';
 import { searchDocs } from '@plume/search';
 import { buildNavTree, defaultLanguage, type NavNode, extractHeadings, pageDescription, type SiteSnapshot, type SnapshotPage } from '@plume/shared/site';
 import type { TrackEventBody } from '@plume/validators';
+import { getContext } from 'hono/context-storage';
 import { notFound } from '@/errors';
+import type { HonoEnv } from '@/lib/hono/context';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 
@@ -25,13 +28,35 @@ interface PublishedSite {
   deploymentId: string;
 }
 
+/** Enforce per-project visibility. A `private` site is only viewable by a
+ *  signed-in member of the owning organization. The session is resolved lazily
+ *  straight from the request — and only when the site is private — so public
+ *  sites pay nothing. We throw notFound (not forbidden) so a private site's
+ *  existence is never leaked to anonymous visitors. */
+const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promise<void> => {
+  const visibility = (snapshot.project.config as { visibility?: string } | null)?.visibility;
+  if (visibility !== 'private') {
+    return;
+  }
+  const headers = getContext<HonoEnv>().req.raw.headers;
+  const result = await auth.api.getSession({ headers }).catch(() => null);
+  const userId = result?.user?.id;
+  const project = userId ? await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }) : null;
+  const member = project ? await prisma.member.findUnique({ where: { organizationId_userId: { organizationId: project.organizationId, userId: userId as string } } }) : null;
+  if (!member) {
+    throw notFound('site', { identifier: projectId, reason: 'private' });
+  }
+};
+
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const projectId = await resolveProjectId(identifier);
   const deployment = await prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
   if (!deployment?.snapshot) {
     throw notFound('site', { identifier, reason: 'not_published' });
   }
-  return { snapshot: deployment.snapshot as unknown as SiteSnapshot, version: deployment.version, deploymentId: deployment.id };
+  const snapshot = deployment.snapshot as unknown as SiteSnapshot;
+  await assertViewable(projectId, snapshot);
+  return { snapshot, version: deployment.version, deploymentId: deployment.id };
 };
 
 /** Resolve the active language code: the requested `lang` if it exists in the
@@ -141,7 +166,10 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
 
 /** Public changelog for a site, derived from its READY deployments (newest first). */
 export const getSiteChangelog = async (identifier: string) => {
-  const projectId = await resolveProjectId(identifier);
+  // Load (and visibility-gate) the published site first so a private site's
+  // release history isn't exposed to anonymous visitors.
+  const { snapshot } = await getPublished(identifier);
+  const projectId = snapshot.project.id;
   const deployments = await prisma.deployment.findMany({
     where: { projectId, status: 'READY' },
     orderBy: { version: 'desc' },

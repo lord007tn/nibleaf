@@ -237,6 +237,15 @@ export const useRemoveMember = () => {
   });
 };
 
+export const useCancelInvitation = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<{ id: string }>(await api.api.app.members.invitations[':id'].$delete({ param: { id } }), 'Could not revoke the invitation.'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
+  });
+};
+
 // ─── Comments ─────────────────────────────────────────────────────────────—
 
 export const useCreateComment = (projectId: string, pageId?: string) => {

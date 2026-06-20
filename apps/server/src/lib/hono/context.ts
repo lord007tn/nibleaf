@@ -44,6 +44,14 @@ export const getContextOrganizationIdOrThrow = (): string => {
 
 export const getContextMembership = () => getContext<HonoEnv>().var.membership;
 
+export const getContextMembershipOrThrow = (): MembershipContext => {
+  const membership = getContext<HonoEnv>().var.membership;
+  if (!membership) {
+    throw new AppError({ code: 'auth:insufficient_role', message: 'Not a member of this workspace.' });
+  }
+  return membership;
+};
+
 export const getContextProject = () => getContext<HonoEnv>().var.project;
 
 export const getContextProjectOrThrow = (): ProjectContext => {

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
+import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import type { Invitation, Member } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
 import { GradientAvatar, SettingsSection } from './section';
@@ -164,7 +164,7 @@ function MemberRow({ member }: { member: Member }) {
 }
 
 function PendingRow({ invitation }: { invitation: Invitation }) {
-  const remove = useRemoveMember();
+  const cancel = useCancelInvitation();
   const initial = (invitation.email[0] ?? '?').toUpperCase();
 
   return (
@@ -180,7 +180,7 @@ function PendingRow({ invitation }: { invitation: Invitation }) {
         size="sm"
         variant="outline"
         onClick={() =>
-          remove.mutate(invitation.id, {
+          cancel.mutate(invitation.id, {
             onSuccess: () => toast.success('Invitation revoked'),
             onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not revoke the invitation'),
           })

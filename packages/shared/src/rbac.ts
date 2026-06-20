@@ -17,3 +17,13 @@ export const canEdit = (role: string): boolean => roleAtLeast(role, MemberRole.M
 
 /** Roles allowed to manage members, billing, domains, and danger-zone actions. */
 export const canAdminister = (role: string): boolean => roleAtLeast(role, MemberRole.ADMIN);
+
+/** Whether an actor may GRANT `targetRole` to someone. You can never grant a
+ *  role more privileged than your own — so an admin cannot mint or promote to
+ *  owner, and only an owner can assign the owner role. */
+export const canAssignRole = (actorRole: string, targetRole: string): boolean => rankOf(actorRole) >= rankOf(targetRole);
+
+/** Whether an actor may manage (change role of / remove) a member who currently
+ *  holds `memberRole`. You cannot act on someone ranked above you; managing an
+ *  owner therefore requires being an owner. */
+export const canManageMember = (actorRole: string, memberRole: string): boolean => rankOf(actorRole) >= rankOf(memberRole);
