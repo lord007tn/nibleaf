@@ -8,7 +8,7 @@ import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
 import { Accordion, AccordionGroup, Callout, Card, CardGroup, Frame, Step, Steps, Tab, Tabs, Tooltip } from '@/components/site/mdx-components';
-import { remarkCallouts, sanitizeSchema } from '@/components/site/mdx-config';
+import { normalizeMdxBlocks, remarkCallouts, sanitizeSchema } from '@/components/site/mdx-config';
 import { cn } from '@/lib/utils';
 
 /** A code block with a one-click copy button (Mintlify-style). */
@@ -111,7 +111,7 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
   accordiongroup: ({ children }) => <AccordionGroup>{children}</AccordionGroup>,
   steps: ({ children }) => <Steps>{children}</Steps>,
   step: ({ title, children }) => <Step title={str(title)}>{children}</Step>,
-  frame: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
+  mdxframe: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
   tooltip: ({ tip, children }) => <Tooltip tip={str(tip)}>{children}</Tooltip>,
 };
 
@@ -127,7 +127,7 @@ export function Markdown({ content, className }: { content: string; className?: 
         remarkPlugins={[remarkGfm, remarkCallouts]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'wrap' }], rehypeHighlight]}
       >
-        {content}
+        {normalizeMdxBlocks(content)}
       </ReactMarkdown>
     </div>
   );

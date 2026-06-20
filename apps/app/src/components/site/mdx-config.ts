@@ -30,9 +30,48 @@ export const COMPONENT_TAGS = [
   'accordiongroup',
   'steps',
   'step',
-  'frame',
+  // `<Frame>` is renamed to `mdxframe` before parsing because `frame` is a real
+  // (deprecated) HTML element that the HTML5 parser drops outside a frameset.
+  'mdxframe',
   'tooltip',
 ] as const;
+
+// Block-level component tags whose inner content should be parsed as Markdown.
+const BLOCK_TAGS = 'Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame';
+// Matches an opening block tag on its own line — with or without attributes —
+// but not a self-closing tag (`<Frame />`).
+const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
+const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
+
+/** Ensure block component tags are separated from their inner content by a blank
+ *  line, so CommonMark parses the children as Markdown. Without this, content
+ *  directly after `<Note>` is captured as a raw HTML block and inline Markdown
+ *  (**bold**, [links]) renders literally. Idempotent. */
+export function normalizeMdxBlocks(src: string): string {
+  const lines = src.split('\n');
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    if (OPEN_TAG.test(line)) {
+      out.push(line);
+      const next = lines[i + 1];
+      if (next !== undefined && next.trim() !== '') {
+        out.push('');
+      }
+    } else if (CLOSE_TAG.test(line)) {
+      const prev = out[out.length - 1];
+      if (prev !== undefined && prev.trim() !== '') {
+        out.push('');
+      }
+      out.push(line);
+    } else {
+      out.push(line);
+    }
+  }
+  // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
+  // the HTML5 parser drops outside a frameset.
+  return out.join('\n').replace(/<(\/?)Frame\b/gi, '$1mdxframe');
+}
 
 /** Sanitize schema: the GitHub-safe default, extended to permit our component
  *  tags and their props, plus className/id passthrough for headings & code
@@ -50,7 +89,7 @@ export const sanitizeSchema = {
     tab: ['title'],
     accordion: ['title', 'defaultOpen', 'defaultopen'],
     step: ['title'],
-    frame: ['caption'],
+    mdxframe: ['caption'],
     tooltip: ['tip'],
     code: [...(defaultSchema.attributes?.code ?? []), 'className'],
   },
