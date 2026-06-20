@@ -35,11 +35,7 @@ function getMarkdown(editor: Editor): string {
 const CodeBlock = CodeBlockLowlight.extend({
   renderHTML({ node, HTMLAttributes }) {
     const language = node.attrs.language || null;
-    return [
-      'pre',
-      { ...HTMLAttributes, 'data-language': language ?? 'code' },
-      ['code', { class: language ? `language-${language}` : undefined }, 0],
-    ];
+    return ['pre', { ...HTMLAttributes, 'data-language': language ?? 'code' }, ['code', { class: language ? `language-${language}` : undefined }, 0]];
   },
 });
 
@@ -48,6 +44,8 @@ interface TiptapEditorProps {
   value: string;
   /** Called with updated Markdown on every editor change. */
   onChange: (markdown: string) => void;
+  /** Upload a pasted/dropped/picked image, returning its hosted URL (or null). */
+  onUpload?: (file: File) => Promise<string | null>;
   dir?: 'ltr' | 'rtl';
   editable?: boolean;
   className?: string;
@@ -62,10 +60,29 @@ interface TiptapEditorProps {
  * changes (e.g. the AI assistant rewriting the doc) re-seed the editor, while the
  * user's own keystrokes don't cause a feedback loop / cursor reset.
  */
-export function TiptapEditor({ value, onChange, dir = 'ltr', editable = true, className }: TiptapEditorProps) {
+export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable = true, className }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onUploadRef = useRef(onUpload);
+  onUploadRef.current = onUpload;
+  const editorRef = useRef<Editor | null>(null);
+
+  // Upload an image file and insert it at the current selection.
+  const insertUploadedImage = (file: File) => {
+    const upload = onUploadRef.current;
+    const ed = editorRef.current;
+    if (!upload || !ed || !file.type.startsWith('image/')) {
+      return;
+    }
+    upload(file)
+      .then((url) => {
+        if (url) {
+          ed.chain().focus().setImage({ src: url }).run();
+        }
+      })
+      .catch(() => undefined);
+  };
 
   const editor = useEditor({
     editable,
@@ -77,8 +94,7 @@ export function TiptapEditor({ value, onChange, dir = 'ltr', editable = true, cl
       }),
       Markdown.configure({ html: false, transformCopiedText: true, transformPastedText: true }),
       Placeholder.configure({
-        placeholder: ({ node }) =>
-          node.type.name === 'heading' ? 'Heading' : "Write something, or press '/' for commands",
+        placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : "Write something, or press '/' for commands"),
       }),
       CodeBlock.configure({ lowlight }),
       Highlight.configure({ multicolor: false }),
@@ -91,10 +107,11 @@ export function TiptapEditor({ value, onChange, dir = 'ltr', editable = true, cl
       TableCell,
       CharacterCount,
       Callout,
-      SlashCommand,
+      SlashCommand.configure({ onUpload: (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null) }),
     ],
     content: value,
     onCreate: ({ editor }) => {
+      editorRef.current = editor;
       // Seed once with the markdown source (StarterKit treats string content as HTML;
       // tiptap-markdown's setContent parses markdown).
       editor.commands.setContent(value);
@@ -108,6 +125,29 @@ export function TiptapEditor({ value, onChange, dir = 'ltr', editable = true, cl
     editorProps: {
       attributes: {
         class: 'focus:outline-none',
+      },
+      // Paste or drop an image file → upload and insert the hosted URL.
+      handlePaste: (_view, event) => {
+        const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+        if (files.length === 0 || !onUploadRef.current) {
+          return false;
+        }
+        event.preventDefault();
+        for (const file of files) {
+          insertUploadedImage(file);
+        }
+        return true;
+      },
+      handleDrop: (_view, event) => {
+        const files = Array.from((event as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+        if (files.length === 0 || !onUploadRef.current) {
+          return false;
+        }
+        event.preventDefault();
+        for (const file of files) {
+          insertUploadedImage(file);
+        }
+        return true;
       },
     },
   });

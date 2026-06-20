@@ -1,7 +1,7 @@
+import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
-import type { Editor, Range } from '@tiptap/core';
 import {
   Code2,
   Heading1,
@@ -17,8 +17,8 @@ import {
   Table as TableIcon,
   Type,
 } from 'lucide-react';
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import type { ComponentType } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface SlashItem {
@@ -31,7 +31,39 @@ interface SlashItem {
   command: (props: { editor: Editor; range: Range }) => void;
 }
 
-const ITEMS: SlashItem[] = [
+/** Uploads a picked image and returns its hosted URL (or null on failure). */
+type UploadFn = (file: File) => Promise<string | null>;
+
+/** Open a native file picker, upload the chosen image, and insert it. Falls back
+ *  to a URL prompt when no uploader is wired. */
+function insertImage(editor: Editor, onUpload?: UploadFn) {
+  if (!onUpload) {
+    const url = window.prompt('Image URL');
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+    onUpload(file)
+      .then((url) => {
+        if (url) {
+          editor.chain().focus().setImage({ src: url }).run();
+        }
+      })
+      .catch(() => undefined);
+  };
+  input.click();
+}
+
+const createItems = (onUpload?: UploadFn): SlashItem[] => [
   {
     title: 'Text',
     description: 'Plain paragraph text.',
@@ -122,18 +154,13 @@ const ITEMS: SlashItem[] = [
   },
   {
     title: 'Image',
-    description: 'Embed an image by URL.',
+    description: 'Upload or embed an image.',
     icon: ImageIcon,
     glyph: '🖼',
-    keywords: ['picture', 'photo', 'img'],
+    keywords: ['picture', 'photo', 'img', 'upload'],
     command: ({ editor, range }) => {
-      const url = window.prompt('Image URL');
-      const chain = editor.chain().focus().deleteRange(range);
-      if (url) {
-        chain.setImage({ src: url }).run();
-      } else {
-        chain.run();
-      }
+      editor.chain().focus().deleteRange(range).run();
+      insertImage(editor, onUpload);
     },
   },
   {
@@ -142,8 +169,7 @@ const ITEMS: SlashItem[] = [
     icon: TableIcon,
     glyph: '⊞',
     keywords: ['grid', 'rows', 'columns'],
-    command: ({ editor, range }) =>
-      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
 ];
 
@@ -160,6 +186,8 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
   const [selected, setSelected] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Reset the highlight to the first item whenever the filtered list changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional reset-on-items-change
   useEffect(() => {
     setSelected(0);
   }, [items]);
@@ -192,10 +220,7 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
   }));
 
   return (
-    <div
-      ref={containerRef}
-      className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl"
-    >
+    <div ref={containerRef} className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
       <div className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground uppercase tracking-wide">Basic blocks</div>
       {items.length === 0 ? (
         <div className="px-3 py-3 text-muted-foreground text-sm">No blocks found</div>
@@ -240,77 +265,83 @@ function positionPopup(el: HTMLElement, rect: DOMRect | null | undefined) {
   el.style.left = `${window.scrollX + rect.left}px`;
 }
 
-const suggestion: Omit<SuggestionOptions<SlashItem>, 'editor'> = {
-  char: '/',
-  startOfLine: false,
-  items: ({ query }) => {
-    const q = query.toLowerCase().trim();
-    if (!q) {
-      return ITEMS;
-    }
-    return ITEMS.filter((item) => {
-      const haystack = [item.title, item.description, ...(item.keywords ?? [])].join(' ').toLowerCase();
-      return haystack.includes(q);
-    });
-  },
-  command: ({ editor, range, props }) => {
-    props.command({ editor, range });
-  },
-  render: () => {
-    let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
-    let wrapper: HTMLDivElement | null = null;
+const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
+  const items = createItems(onUpload);
+  return {
+    char: '/',
+    startOfLine: false,
+    items: ({ query }) => {
+      const q = query.toLowerCase().trim();
+      if (!q) {
+        return items;
+      }
+      return items.filter((item) => {
+        const haystack = [item.title, item.description, ...(item.keywords ?? [])].join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+    },
+    command: ({ editor, range, props }) => {
+      props.command({ editor, range });
+    },
+    render: () => {
+      let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
+      let wrapper: HTMLDivElement | null = null;
 
-    return {
-      onStart: (props) => {
-        component = new ReactRenderer(SlashList, {
-          editor: props.editor,
-          props: {
+      return {
+        onStart: (props) => {
+          component = new ReactRenderer(SlashList, {
+            editor: props.editor,
+            props: {
+              items: props.items,
+              command: (item: SlashItem) => props.command(item),
+            },
+          });
+          wrapper = document.createElement('div');
+          wrapper.style.position = 'absolute';
+          wrapper.style.zIndex = '50';
+          wrapper.appendChild(component.element);
+          document.body.appendChild(wrapper);
+          positionPopup(wrapper, props.clientRect?.());
+        },
+        onUpdate: (props) => {
+          component?.updateProps({
             items: props.items,
             command: (item: SlashItem) => props.command(item),
-          },
-        });
-        wrapper = document.createElement('div');
-        wrapper.style.position = 'absolute';
-        wrapper.style.zIndex = '50';
-        wrapper.appendChild(component.element);
-        document.body.appendChild(wrapper);
-        positionPopup(wrapper, props.clientRect?.());
-      },
-      onUpdate: (props) => {
-        component?.updateProps({
-          items: props.items,
-          command: (item: SlashItem) => props.command(item),
-        });
-        if (wrapper) {
-          positionPopup(wrapper, props.clientRect?.());
-        }
-      },
-      onKeyDown: (props) => {
-        if (props.event.key === 'Escape') {
+          });
+          if (wrapper) {
+            positionPopup(wrapper, props.clientRect?.());
+          }
+        },
+        onKeyDown: (props) => {
+          if (props.event.key === 'Escape') {
+            wrapper?.remove();
+            wrapper = null;
+            return true;
+          }
+          return component?.ref?.onKeyDown(props.event) ?? false;
+        },
+        onExit: () => {
           wrapper?.remove();
           wrapper = null;
-          return true;
-        }
-        return component?.ref?.onKeyDown(props.event) ?? false;
-      },
-      onExit: () => {
-        wrapper?.remove();
-        wrapper = null;
-        component?.destroy();
-        component = null;
-      },
-    };
-  },
+          component?.destroy();
+          component = null;
+        },
+      };
+    },
+  };
 };
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. */
-export const SlashCommand = Extension.create({
+export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
   name: 'slashCommand',
+  addOptions() {
+    return { onUpload: undefined };
+  },
   addProseMirrorPlugins() {
     return [
       Suggestion({
         editor: this.editor,
-        ...suggestion,
+        ...createSuggestion(this.options.onUpload),
       }),
     ];
   },

@@ -11,8 +11,8 @@ import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage } from '@/hooks/api';
 import type { Language, PageNode } from '@/hooks/api';
+import { useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage, useUploadAsset } from '@/hooks/api';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
@@ -51,10 +51,7 @@ function EditorPage() {
     }
   }, [languages, activeLanguageId]);
 
-  const activeLanguage = useMemo<Language | undefined>(
-    () => languages?.find((l) => l.id === activeLanguageId),
-    [languages, activeLanguageId],
-  );
+  const activeLanguage = useMemo<Language | undefined>(() => languages?.find((l) => l.id === activeLanguageId), [languages, activeLanguageId]);
   const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
 
   // ─── Pages (scoped to the active language) ──────────────────────────────────
@@ -62,6 +59,17 @@ function EditorPage() {
   const createPage = useCreatePage(projectId);
   const deletePage = useDeletePage(projectId);
   const updatePage = useUpdatePage(projectId);
+  const uploadAsset = useUploadAsset(projectId);
+
+  // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
+  const onUploadImage = async (file: File): Promise<string | null> => {
+    try {
+      return (await uploadAsset.mutateAsync(file)).url;
+    } catch {
+      toast.error('Image upload failed.');
+      return null;
+    }
+  };
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const firstPageId = useMemo(() => (pages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [pages]);
@@ -88,10 +96,7 @@ function EditorPage() {
   // Debounced autosave: fire ~700ms after the user stops typing the title/content.
   const saveDraft = useDebouncedCallback(
     (pageId: string, draft: { title: string; content: string }) => {
-      updatePage.mutate(
-        { pageId, body: draft },
-        { onSuccess: () => setStatus('saved'), onError: () => setStatus('idle') },
-      );
+      updatePage.mutate({ pageId, body: draft }, { onSuccess: () => setStatus('saved'), onError: () => setStatus('idle') });
     },
     { wait: 700 },
   );
@@ -156,12 +161,7 @@ function EditorPage() {
   }, [page, pages]);
 
   return (
-    <div
-      className={cn(
-        'grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]',
-        showRail && 'xl:grid-cols-[260px_1fr_300px]',
-      )}
-    >
+    <div className={cn('grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]', showRail && 'xl:grid-cols-[260px_1fr_300px]')}>
       {/* Page tree */}
       <aside className="flex flex-col border-border border-e bg-sidebar/40">
         <div className="flex items-center justify-between px-3 py-3">
@@ -292,7 +292,7 @@ function EditorPage() {
 
           {mode === 'edit' ? (
             <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
-              <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} />
+              <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
             </div>
           ) : (
             <div className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto p-8">
