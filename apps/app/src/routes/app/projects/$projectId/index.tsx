@@ -1,11 +1,12 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, FileText, FolderPlus, GitBranch, Loader2, PanelRight, Plus, Trash2 } from 'lucide-react';
+import { Check, FileText, FolderPlus, GitBranch, Languages, Loader2, PanelRight, Plus, Settings2, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { CommentsPanel } from '@/components/editor/comments-panel';
-import { LanguageTabs } from '@/components/editor/language-tabs';
+import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
@@ -36,26 +37,9 @@ function buildTree(pages: PageNode[]): { roots: PageNode[]; childrenOf: Map<stri
 function EditorPage() {
   const { projectId } = Route.useParams();
 
-  // ─── Languages ─────────────────────────────────────────────────────────────
+  // ─── Data: all languages + all pages (every language at once) ───────────────
   const { data: languages } = useLanguages(projectId);
-  const [activeLanguageId, setActiveLanguageId] = useState<string | null>(null);
-
-  // Default to the project's default language (fallback: first) once languages load.
-  useEffect(() => {
-    if (!languages || languages.length === 0 || activeLanguageId) {
-      return;
-    }
-    const fallback = languages.find((l) => l.isDefault) ?? languages[0];
-    if (fallback) {
-      setActiveLanguageId(fallback.id);
-    }
-  }, [languages, activeLanguageId]);
-
-  const activeLanguage = useMemo<Language | undefined>(() => languages?.find((l) => l.id === activeLanguageId), [languages, activeLanguageId]);
-  const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
-
-  // ─── Pages (scoped to the active language) ──────────────────────────────────
-  const { data: pages, isPending } = usePages(projectId, activeLanguageId ?? undefined);
+  const { data: allPages, isPending } = usePages(projectId);
   const createPage = useCreatePage(projectId);
   const deletePage = useDeletePage(projectId);
   const updatePage = useUpdatePage(projectId);
@@ -71,8 +55,24 @@ function EditorPage() {
     }
   };
 
+  // Languages ordered default-first, then by position; pages grouped per language.
+  const orderedLanguages = useMemo<Language[]>(
+    () => [...(languages ?? [])].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || a.position - b.position),
+    [languages],
+  );
+  const pagesByLanguage = useMemo(() => {
+    const map = new Map<string, PageNode[]>();
+    for (const page of allPages ?? []) {
+      const list = map.get(page.languageId) ?? [];
+      list.push(page);
+      map.set(page.languageId, list);
+    }
+    return map;
+  }, [allPages]);
+  const defaultLanguageId = orderedLanguages[0]?.id ?? null;
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const firstPageId = useMemo(() => (pages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [pages]);
+  const firstPageId = useMemo(() => (allPages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [allPages]);
   const activeId = selectedId ?? firstPageId;
 
   const { data: page } = usePage(projectId, activeId ?? undefined);
@@ -81,7 +81,13 @@ function EditorPage() {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit');
   const [railOpen, setRailOpen] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [addLangOpen, setAddLangOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const loadedFor = useRef<string | null>(null);
+
+  // The active page's language drives the editor/preview text direction.
+  const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
+  const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
 
   // Load the selected page into the local draft.
   useEffect(() => {
@@ -112,29 +118,13 @@ function EditorPage() {
     saveDraft(page.id, { title, content });
   }, [title, content, page, saveDraft]);
 
-  const { roots, childrenOf } = useMemo(() => buildTree(pages ?? []), [pages]);
-
-  // Switch language: reset the selected page so the tree re-points at the new language.
-  const switchLanguage = (languageId: string) => {
-    setActiveLanguageId(languageId);
-    setSelectedId(null);
-    loadedFor.current = null;
-  };
-
-  const onLanguageCreated = (language: Language) => {
-    switchLanguage(language.id);
-  };
-
-  const addPage = (parentId: string | null) =>
+  const addPage = (parentId: string | null, languageId: string) =>
     createPage.mutate(
-      { title: 'Untitled', parentId, ...(activeLanguageId ? { languageId: activeLanguageId } : {}) },
+      { title: 'Untitled', parentId, languageId },
       { onSuccess: (created) => setSelectedId(created.id), onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
     );
-  const addGroup = () =>
-    createPage.mutate(
-      { title: 'New group', kind: 'GROUP', ...(activeLanguageId ? { languageId: activeLanguageId } : {}) },
-      { onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
-    );
+  const addGroup = (languageId: string) =>
+    createPage.mutate({ title: 'New group', kind: 'GROUP', languageId }, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') });
 
   const renderItem = (node: PageNode) => (
     <button
@@ -156,59 +146,84 @@ function EditorPage() {
     if (!page) {
       return null;
     }
-    const parent = page.parentId ? (pages ?? []).find((p) => p.id === page.parentId) : null;
+    const parent = page.parentId ? (allPages ?? []).find((p) => p.id === page.parentId) : null;
     return parent?.title ?? null;
-  }, [page, pages]);
+  }, [page, allPages]);
 
   return (
     <div className={cn('grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]', showRail && 'xl:grid-cols-[260px_1fr_300px]')}>
-      {/* Page tree */}
+      {/* Page tree — every language, each with its own pages */}
       <aside className="flex flex-col border-border border-e bg-sidebar/40">
         <div className="flex items-center justify-between px-3 py-3">
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">Pages</span>
-          <div className="flex gap-0.5">
-            <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={addGroup} title="New group">
-              <FolderPlus className="size-3.5" />
-            </Button>
-            <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(null)} title="New page">
-              <Plus className="size-3.5" />
-            </Button>
-          </div>
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">Navigation</span>
         </div>
 
-        {/* Active-language header */}
-        {activeLanguage ? (
-          <div className="flex items-center gap-2 px-4 pb-2">
-            <span className="font-semibold text-[13px] text-foreground">
-              {activeLanguage.label} <span className="font-mono text-[11px] text-muted-foreground">({activeLanguage.code})</span>
-            </span>
-            {activeLanguage.isDefault ? (
-              <span className="rounded-md bg-accent px-1.5 py-0.5 font-medium text-[10px] text-accent-foreground">Default</span>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="flex-1 space-y-0.5 overflow-y-auto px-2 pb-4">
+        <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">
           {isPending ? (
             <p className="px-2 text-muted-foreground text-sm">Loading…</p>
           ) : (
-            roots.map((node) =>
-              node.kind === 'GROUP' ? (
-                <div key={node.id} className="mt-3">
-                  <div className="flex items-center justify-between px-2 py-1">
-                    <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">{node.title}</span>
-                    <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(node.id)}>
-                      <Plus className="size-3" />
-                    </Button>
+            orderedLanguages.map((lang) => {
+              const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
+              const { roots, childrenOf } = buildTree(pagesByLanguage.get(lang.id) ?? []);
+              return (
+                <div key={lang.id} className="mb-2">
+                  {/* Language section header */}
+                  <div className="group flex items-center justify-between px-2 py-1.5">
+                    <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
+                      <Languages className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{lang.label}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
+                      {lang.isDefault ? (
+                        <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">Default</span>
+                      ) : null}
+                    </span>
+                    <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addGroup(lang.id)} title="New group">
+                        <FolderPlus className="size-3" />
+                      </Button>
+                      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(null, lang.id)} title="New page">
+                        <Plus className="size-3" />
+                      </Button>
+                    </div>
                   </div>
-                  {(childrenOf.get(node.id) ?? []).map(renderItem)}
+
+                  {/* This language's page tree */}
+                  <div className="space-y-0.5" dir={dir}>
+                    {roots.length === 0 ? (
+                      <p className="px-2 py-1 text-[12px] text-muted-foreground/70">No pages yet</p>
+                    ) : (
+                      roots.map((node) =>
+                        node.kind === 'GROUP' ? (
+                          <div key={node.id} className="mt-2">
+                            <div className="flex items-center justify-between px-2 py-1">
+                              <span className="truncate font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">{node.title}</span>
+                              <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(node.id, lang.id)}>
+                                <Plus className="size-3" />
+                              </Button>
+                            </div>
+                            {(childrenOf.get(node.id) ?? []).map(renderItem)}
+                          </div>
+                        ) : (
+                          renderItem(node)
+                        ),
+                      )
+                    )}
+                  </div>
                 </div>
-              ) : (
-                renderItem(node)
-              ),
-            )
+              );
+            })
           )}
+
+          {/* Add a language */}
+          <button
+            type="button"
+            onClick={() => setAddLangOpen(true)}
+            className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+          >
+            <Plus className="size-3.5" /> Add language
+          </button>
         </div>
+        <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
       </aside>
 
       {/* Editor + preview */}
@@ -238,6 +253,9 @@ function EditorPage() {
                 <TabsTrigger value="preview">Preview</TabsTrigger>
               </TabsList>
             </Tabs>
+            <Button size="icon-sm" variant="ghost" className="cursor-pointer" onClick={() => setSettingsOpen(true)} title="Page settings">
+              <Settings2 className="size-4" />
+            </Button>
             <Button
               size="icon-sm"
               variant="ghost"
@@ -250,6 +268,7 @@ function EditorPage() {
             >
               <Trash2 className="size-4" />
             </Button>
+            <PageSettingsDialog projectId={projectId} page={page} open={settingsOpen} onOpenChange={setSettingsOpen} />
             <Button
               aria-pressed={railOpen}
               className="hidden cursor-pointer xl:inline-flex"
@@ -262,7 +281,7 @@ function EditorPage() {
             </Button>
           </div>
 
-          {/* Editor sub-toolbar: static branch chip + breadcrumb + language controls */}
+          {/* Editor sub-toolbar: branch chip + language-aware breadcrumb */}
           <div className="flex h-12 items-center gap-3 border-border border-b px-5">
             <span
               className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 font-medium text-[12.5px] text-muted-foreground"
@@ -272,21 +291,18 @@ function EditorPage() {
             </span>
             <span className="h-5 w-px bg-border" />
             <div className="min-w-0 truncate text-[13px] text-muted-foreground">
+              {activeLanguage ? (
+                <>
+                  {activeLanguage.label} <span className="font-mono text-[11px] opacity-70">({activeLanguage.code})</span>
+                  <span className="mx-1.5 text-muted-foreground/60">/</span>
+                </>
+              ) : null}
               {crumbSection ? (
                 <>
                   {crumbSection} <span className="mx-1.5 text-muted-foreground/60">/</span>
                 </>
               ) : null}
               <span className="font-medium text-foreground">{page.title}</span>
-            </div>
-            <div className="ms-auto">
-              <LanguageTabs
-                projectId={projectId}
-                languages={languages ?? []}
-                activeLanguageId={activeLanguageId}
-                onSelect={switchLanguage}
-                onCreated={onLanguageCreated}
-              />
             </div>
           </div>
 
@@ -313,10 +329,12 @@ function EditorPage() {
           <div>
             <FileText className="mx-auto size-7 text-muted-foreground" />
             <p className="mt-3 font-medium">No page selected</p>
-            <p className="mt-1 text-muted-foreground text-sm">Pick a page from the tree, or create one.</p>
-            <Button className="mt-4 cursor-pointer" onClick={() => addPage(null)}>
-              <Plus className="size-4" /> New page
-            </Button>
+            <p className="mt-1 text-muted-foreground text-sm">Pick a page from the navigation, or create one.</p>
+            {defaultLanguageId ? (
+              <Button className="mt-4 cursor-pointer" onClick={() => addPage(null, defaultLanguageId)}>
+                <Plus className="size-4" /> New page
+              </Button>
+            ) : null}
           </div>
         </section>
       )}

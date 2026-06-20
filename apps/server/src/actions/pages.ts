@@ -8,6 +8,7 @@ import { assertProjectInOrg } from './projects';
 const pageListSelect = {
   id: true,
   parentId: true,
+  languageId: true,
   kind: true,
   title: true,
   slug: true,

@@ -37,6 +37,7 @@ export type PageKind = 'PAGE' | 'GROUP';
 export interface PageNode {
   id: string;
   parentId: string | null;
+  languageId: string;
   kind: PageKind;
   title: string;
   slug: string;
