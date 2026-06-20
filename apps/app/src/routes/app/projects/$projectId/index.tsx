@@ -8,7 +8,6 @@ import { AiAssist } from '@/components/editor/ai-assist';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
-import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,7 +77,7 @@ function EditorPage() {
   const { data: page } = usePage(projectId, activeId ?? undefined);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [mode, setMode] = useState<'edit' | 'preview'>('edit');
+  const [railTab, setRailTab] = useState<'comments' | 'ai'>('comments');
   const [railOpen, setRailOpen] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
@@ -247,12 +246,6 @@ function EditorPage() {
                 </>
               ) : null}
             </span>
-            <Tabs onValueChange={(v) => setMode(v as 'edit' | 'preview')} value={mode}>
-              <TabsList>
-                <TabsTrigger value="edit">Edit</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-            </Tabs>
             <Button size="icon-sm" variant="ghost" className="cursor-pointer" onClick={() => setSettingsOpen(true)} title="Page settings">
               <Settings2 className="size-4" />
             </Button>
@@ -306,23 +299,9 @@ function EditorPage() {
             </div>
           </div>
 
-          {mode === 'edit' ? (
-            <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
-              <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
-            </div>
-          ) : (
-            // Preview mode: render the draft exactly as it will appear on the
-            // published website (same renderer, site typography, title + description).
-            <div className="min-h-0 flex-1 overflow-y-auto bg-background">
-              <article className="mx-auto w-full max-w-3xl px-8 py-12" dir={activeLangDir}>
-                <h1 className="font-semibold text-4xl tracking-tight">{title || 'Untitled'}</h1>
-                {page.description ? <p className="mt-2 text-lg text-muted-foreground">{page.description}</p> : null}
-                <div className="mt-6">
-                  <Markdown content={content} />
-                </div>
-              </article>
-            </div>
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
+            <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
+          </div>
         </section>
       ) : (
         <section className="grid place-items-center text-center">
@@ -339,11 +318,22 @@ function EditorPage() {
         </section>
       )}
 
-      {/* Right rail: AI assist + comments */}
+      {/* Right rail: Figma-style tabbed panel — Comments / AI */}
       {showRail && activeId ? (
-        <aside className="hidden min-h-0 flex-col gap-5 overflow-y-auto border-border border-s bg-sidebar/40 p-4 xl:flex">
-          <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
-          <CommentsPanel pageId={activeId} projectId={projectId} />
+        <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
+          <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
+            <TabsList className="m-2 self-start">
+              <TabsTrigger value="comments">Comments</TabsTrigger>
+              <TabsTrigger value="ai">AI</TabsTrigger>
+            </TabsList>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
+              {railTab === 'comments' ? (
+                <CommentsPanel pageId={activeId} projectId={projectId} />
+              ) : (
+                <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
+              )}
+            </div>
+          </Tabs>
         </aside>
       ) : null}
     </div>

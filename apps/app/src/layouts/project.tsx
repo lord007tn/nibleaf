@@ -1,23 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Check, ChevronsUpDown, ExternalLink, Rocket } from 'lucide-react';
+import { Check, ChevronsUpDown, Eye, Rocket } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useProject, useProjects } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, Project } from '@/hooks/api/types';
-import { useProject, useProjects } from '@/hooks/api';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-const TABS = (id: string) => [
+const TABS = [
   { label: 'Editor', to: '/app/projects/$projectId', exact: true },
   { label: 'Analytics', to: '/app/projects/$projectId/analytics', exact: false },
   { label: 'Settings', to: '/app/projects/$projectId/settings', exact: false },
-];
+] as const;
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow. */
 function PublishControl({ project }: { project: Project }) {
@@ -26,7 +26,8 @@ function PublishControl({ project }: { project: Project }) {
 
   const deployments = useQuery({
     queryKey: queryKeys.deployments.all(project.id),
-    queryFn: async () => getData<Deployment[]>(await api.api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
+    queryFn: async () =>
+      getData<Deployment[]>(await api.api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
     refetchInterval: (query) => {
       const latest = query.state.data?.[0];
       return latest && (latest.status === 'PENDING' || latest.status === 'BUILDING') ? 1500 : false;
@@ -37,21 +38,9 @@ function PublishControl({ project }: { project: Project }) {
 
   return (
     <div className="flex items-center gap-2">
-      {latest ? (
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 font-mono text-[11px]',
-            latest.status === 'READY' && 'bg-primary/10 text-primary',
-            building && 'bg-amber-500/10 text-amber-600',
-            latest.status === 'FAILED' && 'bg-destructive/10 text-destructive',
-          )}
-        >
-          v{latest.version} · {latest.status.toLowerCase()}
-        </span>
-      ) : null}
       <Button size="sm" disabled={building} onClick={() => setPublishOpen(true)}>
         <Rocket className="size-3.5" />
-        Publish
+        {building ? 'Publishing…' : 'Publish'}
       </Button>
 
       <PublishModal project={project} open={publishOpen} onOpenChange={setPublishOpen} onPublished={() => setDeployOpen(true)} />
@@ -95,14 +84,19 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
         </DropdownMenu>
 
         <nav className="ms-2 flex items-center gap-1">
-          {TABS(projectId).map((tab) => {
-            const active = tab.exact ? pathname === `/app/projects/${projectId}` : pathname.startsWith(`/app/projects/${projectId}${tab.to.replace('/app/projects/$projectId', '')}`);
+          {TABS.map((tab) => {
+            const active = tab.exact
+              ? pathname === `/app/projects/${projectId}`
+              : pathname.startsWith(`/app/projects/${projectId}${tab.to.replace('/app/projects/$projectId', '')}`);
             return (
               <Link
                 key={tab.label}
                 to={tab.to}
                 params={{ projectId }}
-                className={cn('rounded-md px-3 py-1.5 font-medium text-sm transition-colors', active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'rounded-md px-3 py-1.5 font-medium text-sm transition-colors',
+                  active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 {tab.label}
               </Link>
@@ -111,8 +105,15 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
-          <Button size="sm" variant="outline" render={<a href={`/sites/${projectId}`} target="_blank" rel="noreferrer" />}>
-            <ExternalLink className="size-3.5" /> View site
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
+              <a href={`/sites/${projectId}`} target="_blank" rel="noreferrer" aria-label="Preview the live website" />
+            }
+          >
+            <Eye className="size-3.5" /> Preview
           </Button>
           {project ? <PublishControl project={project} /> : null}
         </div>
