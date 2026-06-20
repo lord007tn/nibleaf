@@ -1,8 +1,8 @@
 import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@plume/validators';
 import { Hono } from 'hono';
 import { validator } from 'hono-openapi';
-import { assertProjectInOrg } from '@/actions/projects';
 import { createPage, deletePage, getPage, listPages, reorderPages, updatePage } from '@/actions/pages';
+import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import pagesRoutes from './routes';
 
@@ -16,8 +16,8 @@ const projectScope = async (ctx: { req: { param: (k: string) => string } }) => {
 const app = new Hono<HonoEnv>()
   .get('/', ...pagesRoutes.list, validator('query', listPagesQuery), async (ctx) => {
     const projectId = await projectScope(ctx);
-    const { languageId } = ctx.req.valid('query');
-    return ctx.json({ data: await listPages(projectId, languageId) }, 200);
+    const { languageId, branchId } = ctx.req.valid('query');
+    return ctx.json({ data: await listPages(projectId, languageId, branchId) }, 200);
   })
   .post('/', ...pagesRoutes.create, validator('json', createPageBody), async (ctx) => {
     const projectId = await projectScope(ctx);

@@ -11,9 +11,7 @@ export const paginationQuery = z.object({
 });
 export type PaginationQuery = z.infer<typeof paginationQuery>;
 
-const hexColor = z
-  .string()
-  .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Must be a hex color like #5546e8');
+const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Must be a hex color like #5546e8');
 
 // Bounded, strict theme schema. Rejects unknown keys (prevents prototype-pollution
 // and unbounded input) while still serializing cleanly to Prisma JSON.
@@ -181,6 +179,7 @@ export const pageKindEnum = z.enum(['PAGE', 'GROUP']);
 export const createPageBody = z.object({
   parentId: z.string().nullable().optional(),
   languageId: z.string().optional(),
+  branchId: z.string().optional(),
   kind: pageKindEnum.optional(),
   title: z.string().min(1).max(200),
   slug: z.string().max(200).optional(),
@@ -191,8 +190,20 @@ export const createPageBody = z.object({
 });
 export type CreatePageBody = z.infer<typeof createPageBody>;
 
-export const listPagesQuery = z.object({ languageId: z.string().optional() });
+export const listPagesQuery = z.object({ languageId: z.string().optional(), branchId: z.string().optional() });
 export type ListPagesQuery = z.infer<typeof listPagesQuery>;
+
+// ─── Branch ──────────────────────────────────────────────────────────────────
+
+export const createBranchBody = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(60)
+    .regex(/^[A-Za-z0-9._/-]+$/, 'Use letters, numbers, and . _ / -'),
+  fromBranchId: z.string().optional(),
+});
+export type CreateBranchBody = z.infer<typeof createBranchBody>;
 
 export const updatePageBody = z.object({
   parentId: z.string().nullable().optional(),
@@ -254,7 +265,11 @@ export type CreateApiKeyBody = z.infer<typeof createApiKeyBody>;
 export const presignAssetBody = z.object({
   filename: z.string().min(1).max(255),
   contentType: z.string().min(1).max(150),
-  size: z.number().int().min(1).max(50 * 1024 * 1024),
+  size: z
+    .number()
+    .int()
+    .min(1)
+    .max(50 * 1024 * 1024),
 });
 export type PresignAssetBody = z.infer<typeof presignAssetBody>;
 

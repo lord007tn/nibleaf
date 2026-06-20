@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type {
   AddDomainBody,
   AiDraftBody,
   CreateApiKeyBody,
+  CreateBranchBody,
   CreateCommentBody,
   CreateLanguageBody,
   CreatePageBody,
@@ -16,15 +16,17 @@ import type {
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
 } from '@plume/validators';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { AiDraftResult, ApiKey, Asset, Comment, Deployment, Domain, Language, Page, Project, WorkspaceSettings } from './types';
+import type { AiDraftResult, ApiKey, Asset, Branch, Comment, Deployment, Domain, Language, Page, Project, WorkspaceSettings } from './types';
 
 export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.api.app.projects.$post({ json: body }), 'Could not create the site.'),
+    mutationFn: async (body: CreateProjectBody) =>
+      mutateData<Project>(await api.api.app.projects.$post({ json: body }), 'Could not create the site.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
   });
 };
@@ -83,7 +85,10 @@ export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
-      mutateData<Page>(await api.api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }), 'Could not save the page.'),
+      mutateData<Page>(
+        await api.api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }),
+        'Could not save the page.',
+      ),
     onSuccess: (_data, { pageId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
@@ -95,7 +100,10 @@ export const useDeletePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (pageId: string) =>
-      mutateData<{ id: string }>(await api.api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }), 'Could not delete the page.'),
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }),
+        'Could not delete the page.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
   });
 };
@@ -104,7 +112,10 @@ export const useReorderPages = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: ReorderPagesBody) =>
-      mutateData<unknown>(await api.api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }), 'Could not reorder pages.'),
+      mutateData<unknown>(
+        await api.api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }),
+        'Could not reorder pages.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
   });
 };
@@ -161,7 +172,10 @@ export const useDeleteDomain = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(await api.api.app.projects[':projectId'].domains[':id'].$delete({ param: { projectId, id } }), 'Could not remove the domain.'),
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].domains[':id'].$delete({ param: { projectId, id } }),
+        'Could not remove the domain.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
   });
 };
@@ -170,7 +184,10 @@ export const useCreateApiKey = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateApiKeyBody) =>
-      mutateData<ApiKey>(await api.api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }), 'Could not create the key.'),
+      mutateData<ApiKey>(
+        await api.api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
+        'Could not create the key.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
   });
 };
@@ -179,7 +196,10 @@ export const useRevokeApiKey = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<ApiKey>(await api.api.app.projects[':projectId']['api-keys'][':id'].$delete({ param: { projectId, id } }), 'Could not revoke the key.'),
+      mutateData<ApiKey>(
+        await api.api.app.projects[':projectId']['api-keys'][':id'].$delete({ param: { projectId, id } }),
+        'Could not revoke the key.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
   });
 };
@@ -215,7 +235,8 @@ export const useUploadAsset = (projectId: string) => {
 export const useInviteMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: InviteMemberBody) => mutateData<unknown>(await api.api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
+    mutationFn: async (body: InviteMemberBody) =>
+      mutateData<unknown>(await api.api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -232,7 +253,8 @@ export const useUpdateMemberRole = () => {
 export const useRemoveMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => mutateData<{ id: string }>(await api.api.app.members[':id'].$delete({ param: { id } }), 'Could not remove the member.'),
+    mutationFn: async (id: string) =>
+      mutateData<{ id: string }>(await api.api.app.members[':id'].$delete({ param: { id } }), 'Could not remove the member.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -252,7 +274,10 @@ export const useCreateComment = (projectId: string, pageId?: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateCommentBody) =>
-      mutateData<Comment>(await api.api.app.projects[':projectId'].comments.$post({ param: { projectId }, json: body }), 'Could not post the comment.'),
+      mutateData<Comment>(
+        await api.api.app.projects[':projectId'].comments.$post({ param: { projectId }, json: body }),
+        'Could not post the comment.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.comments.all(projectId, pageId) }),
   });
 };
@@ -273,7 +298,10 @@ export const useDeleteComment = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(await api.api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }), 'Could not delete the comment.'),
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }),
+        'Could not delete the comment.',
+      ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
   });
 };
@@ -292,7 +320,10 @@ export const useCreateLanguage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateLanguageBody) =>
-      mutateData<Language>(await api.api.app.projects[':projectId'].languages.$post({ param: { projectId }, json: body }), 'Could not add the language.'),
+      mutateData<Language>(
+        await api.api.app.projects[':projectId'].languages.$post({ param: { projectId }, json: body }),
+        'Could not add the language.',
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.languages.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -316,11 +347,43 @@ export const useDeleteLanguage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(await api.api.app.projects[':projectId'].languages[':id'].$delete({ param: { projectId, id } }), 'Could not delete the language.'),
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].languages[':id'].$delete({ param: { projectId, id } }),
+        'Could not delete the language.',
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.languages.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    },
+  });
+};
+
+// ─── Branches ────────────────────────────────────────────────────────────────
+
+export const useCreateBranch = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: CreateBranchBody) =>
+      mutateData<Branch>(
+        await api.api.app.projects[':projectId'].branches.$post({ param: { projectId }, json: body }),
+        'Could not create the branch.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) }),
+  });
+};
+
+export const useDeleteBranch = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].branches[':id'].$delete({ param: { projectId, id } }),
+        'Could not delete the branch.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
   });
 };

@@ -6,19 +6,20 @@ import type {
   AnalyticsOverview,
   ApiKey,
   Asset,
+  Branch,
   ChangelogEntry,
   Comment,
   Deployment,
   Domain,
+  Invitation,
   Language,
   Member,
-  Invitation,
   Page,
   PageNode,
   Project,
   SearchHit,
-  SiteShell,
   SitePage,
+  SiteShell,
   WorkspaceAnalytics,
   WorkspaceSettings,
 } from './types';
@@ -36,13 +37,16 @@ export const useProject = (projectId: string | undefined) =>
     queryFn: async () => getData<Project>(await api.api.app.projects[':id'].$get({ param: { id: projectId! } }), 'project'),
   });
 
-export const usePages = (projectId: string | undefined, languageId?: string) =>
+export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
   useQuery({
-    queryKey: queryKeys.pages.all(projectId ?? '', languageId),
+    queryKey: queryKeys.pages.all(projectId ?? '', languageId, branchId),
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<PageNode[]>(
-        await api.api.app.projects[':projectId'].pages.$get({ param: { projectId: projectId! }, query: languageId ? { languageId } : {} }),
+        await api.api.app.projects[':projectId'].pages.$get({
+          param: { projectId: projectId! },
+          query: { ...(languageId ? { languageId } : {}), ...(branchId ? { branchId } : {}) },
+        }),
         'pages',
       ),
   });
@@ -51,7 +55,15 @@ export const useLanguages = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.languages.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<Language[]>(await api.api.app.projects[':projectId'].languages.$get({ param: { projectId: projectId! } }), 'languages'),
+    queryFn: async () =>
+      getData<Language[]>(await api.api.app.projects[':projectId'].languages.$get({ param: { projectId: projectId! } }), 'languages'),
+  });
+
+export const useBranches = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.branches.all(projectId ?? ''),
+    enabled: Boolean(projectId),
+    queryFn: async () => getData<Branch[]>(await api.api.app.projects[':projectId'].branches.$get({ param: { projectId: projectId! } }), 'branches'),
   });
 
 export const usePage = (projectId: string | undefined, pageId: string | undefined) =>
@@ -81,7 +93,10 @@ export const useLatestDeployment = (projectId: string | undefined) =>
     queryKey: queryKeys.deployments.latest(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
-      getData<Deployment | null>(await api.api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }), 'deployment'),
+      getData<Deployment | null>(
+        await api.api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }),
+        'deployment',
+      ),
     refetchInterval: (query) => (isInFlight(query.state.data?.status) ? 2500 : false),
   });
 
@@ -96,7 +111,8 @@ export const useApiKeys = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.apiKeys.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<ApiKey[]>(await api.api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: projectId! } }), 'API keys'),
+    queryFn: async () =>
+      getData<ApiKey[]>(await api.api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: projectId! } }), 'API keys'),
   });
 
 export const useAssets = (projectId: string | undefined) =>
@@ -112,7 +128,10 @@ export const useAnalytics = (projectId: string | undefined, range: string) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<AnalyticsOverview>(
-        await api.api.app.projects[':projectId'].analytics.$get({ param: { projectId: projectId! }, query: { range: range as '24h' | '7d' | '30d' | '90d' } }),
+        await api.api.app.projects[':projectId'].analytics.$get({
+          param: { projectId: projectId! },
+          query: { range: range as '24h' | '7d' | '30d' | '90d' },
+        }),
         'analytics',
       ),
   });

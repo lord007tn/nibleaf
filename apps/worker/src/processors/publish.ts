@@ -24,8 +24,11 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (!project) {
       throw new Error(`project ${projectId} not found`);
     }
+    // The published site is built from the default ('main') branch only; other
+    // branches are isolated drafts. (Fallback to all pages for legacy projects.)
+    const defaultBranch = await prisma.branch.findFirst({ where: { projectId, isDefault: true }, select: { id: true } });
     const pages = await prisma.page.findMany({
-      where: { projectId },
+      where: { projectId, ...(defaultBranch ? { branchId: defaultBranch.id } : {}) },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       include: { language: { select: { code: true } } },
     });

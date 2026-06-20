@@ -1,10 +1,11 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, FileText, FolderPlus, GitBranch, Languages, Loader2, PanelRight, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Check, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
+import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
-import { useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage, useUploadAsset } from '@/hooks/api';
+import { useBranches, useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage, useUploadAsset } from '@/hooks/api';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
@@ -36,9 +37,22 @@ function buildTree(pages: PageNode[]): { roots: PageNode[]; childrenOf: Map<stri
 function EditorPage() {
   const { projectId } = Route.useParams();
 
-  // ─── Data: all languages + all pages (every language at once) ───────────────
+  // ─── Branches: the editor works on one branch at a time (default 'main') ─────
+  const { data: branches } = useBranches(projectId);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!branches || branches.length === 0 || activeBranchId) {
+      return;
+    }
+    const fallback = branches.find((b) => b.isDefault) ?? branches[0];
+    if (fallback) {
+      setActiveBranchId(fallback.id);
+    }
+  }, [branches, activeBranchId]);
+
+  // ─── Data: all languages + all pages on the active branch (every language) ───
   const { data: languages } = useLanguages(projectId);
-  const { data: allPages, isPending } = usePages(projectId);
+  const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
   const deletePage = useDeletePage(projectId);
   const updatePage = useUpdatePage(projectId);
@@ -117,13 +131,17 @@ function EditorPage() {
     saveDraft(page.id, { title, content });
   }, [title, content, page, saveDraft]);
 
+  const branchScope = activeBranchId ? { branchId: activeBranchId } : {};
   const addPage = (parentId: string | null, languageId: string) =>
     createPage.mutate(
-      { title: 'Untitled', parentId, languageId },
+      { title: 'Untitled', parentId, languageId, ...branchScope },
       { onSuccess: (created) => setSelectedId(created.id), onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
     );
   const addGroup = (languageId: string) =>
-    createPage.mutate({ title: 'New group', kind: 'GROUP', languageId }, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') });
+    createPage.mutate(
+      { title: 'New group', kind: 'GROUP', languageId, ...branchScope },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
+    );
 
   const renderItem = (node: PageNode) => (
     <button
@@ -274,14 +292,18 @@ function EditorPage() {
             </Button>
           </div>
 
-          {/* Editor sub-toolbar: branch chip + language-aware breadcrumb */}
+          {/* Editor sub-toolbar: branch switcher + language-aware breadcrumb */}
           <div className="flex h-12 items-center gap-3 border-border border-b px-5">
-            <span
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 font-medium text-[12.5px] text-muted-foreground"
-              title="Branch (read-only)"
-            >
-              <GitBranch className="size-3.5" /> main
-            </span>
+            <BranchSwitcher
+              projectId={projectId}
+              branches={branches ?? []}
+              activeBranchId={activeBranchId}
+              onSwitch={(id) => {
+                setActiveBranchId(id);
+                setSelectedId(null);
+                loadedFor.current = null;
+              }}
+            />
             <span className="h-5 w-px bg-border" />
             <div className="min-w-0 truncate text-[13px] text-muted-foreground">
               {activeLanguage ? (

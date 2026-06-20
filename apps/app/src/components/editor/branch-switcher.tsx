@@ -1,0 +1,109 @@
+import { Check, GitBranch, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { Branch } from '@/hooks/api';
+import { useCreateBranch } from '@/hooks/api';
+
+/** Git-style branch switcher for the editor: switch branches, or fork a new one
+ *  from the current branch. The published site is always built from `main`. */
+export function BranchSwitcher({
+  projectId,
+  branches,
+  activeBranchId,
+  onSwitch,
+}: {
+  projectId: string;
+  branches: Branch[];
+  activeBranchId: string | null;
+  onSwitch: (id: string) => void;
+}) {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
+  const create = useCreateBranch(projectId);
+  const active = branches.find((b) => b.id === activeBranchId) ?? branches.find((b) => b.isDefault) ?? branches[0];
+
+  const submit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    create.mutate(
+      { name: trimmed, fromBranchId: active?.id },
+      {
+        onSuccess: (branch) => {
+          toast.success(`Created branch “${branch.name}”`);
+          setCreateOpen(false);
+          setName('');
+          onSwitch(branch.id);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not create the branch'),
+      },
+    );
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5">
+              <GitBranch className="size-3.5" />
+              <span className="font-medium text-[12.5px]">{active?.name ?? 'main'}</span>
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="start" className="w-56">
+          {branches.map((b) => (
+            <DropdownMenuItem key={b.id} onClick={() => onSwitch(b.id)}>
+              <GitBranch className="size-3.5 text-muted-foreground" />
+              <span className="flex-1 truncate">{b.name}</span>
+              {b.isDefault ? <span className="text-[10px] text-muted-foreground">default</span> : null}
+              {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setCreateOpen(true)}>
+            <Plus className="size-3.5" /> New branch
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New branch</DialogTitle>
+            <DialogDescription>
+              Forks the current branch ({active?.name ?? 'main'}). Edit and preview in isolation; the live site stays on main until you merge.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="branch-name">Branch name</Label>
+            <Input
+              id="branch-name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="feature/new-guides"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  submit();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <Button type="button" onClick={submit} disabled={create.isPending}>
+              {create.isPending ? 'Creating…' : 'Create branch'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

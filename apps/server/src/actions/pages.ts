@@ -2,6 +2,7 @@ import { prisma } from '@plume/database';
 import { joinPath, slugify } from '@plume/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@plume/validators';
 import { notFound } from '@/errors';
+import { ensureDefaultBranch } from './branches';
 import { ensureDefaultLanguage } from './languages';
 import { assertProjectInOrg } from './projects';
 
@@ -20,14 +21,17 @@ const pageListSelect = {
   updatedAt: true,
 } as const;
 
-/** Flat list of every page in a project, ordered for tree assembly on the client.
- *  Scoped to a single language when `languageId` is given. */
-export const listPages = (projectId: string, languageId?: string) =>
-  prisma.page.findMany({
-    where: { projectId, ...(languageId ? { languageId } : {}) },
+/** Flat list of a project's pages on one branch (the default branch when none is
+ *  given), ordered for tree assembly on the client. Scoped to a single language
+ *  when `languageId` is given. */
+export const listPages = async (projectId: string, languageId?: string, branchId?: string) => {
+  const resolvedBranchId = branchId ?? (await ensureDefaultBranch(projectId)).id;
+  return prisma.page.findMany({
+    where: { projectId, branchId: resolvedBranchId, ...(languageId ? { languageId } : {}) },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     select: pageListSelect,
   });
+};
 
 export const getPage = async (projectId: string, id: string) => {
   const page = await prisma.page.findFirst({ where: { id, projectId } });
@@ -43,6 +47,7 @@ export const getPage = async (projectId: string, id: string) => {
 const uniqueSiblingSlug = async (
   projectId: string,
   languageId: string | null,
+  branchId: string | null,
   parentId: string | null,
   desired: string,
   excludeId?: string,
@@ -52,7 +57,7 @@ const uniqueSiblingSlug = async (
   let suffix = 1;
   for (;;) {
     const clash = await prisma.page.findFirst({
-      where: { projectId, languageId, parentId, slug, ...(excludeId ? { id: { not: excludeId } } : {}) },
+      where: { projectId, languageId, branchId, parentId, slug, ...(excludeId ? { id: { not: excludeId } } : {}) },
       select: { id: true },
     });
     if (!clash) {
@@ -63,16 +68,20 @@ const uniqueSiblingSlug = async (
   }
 };
 
-/** Resolve a parent's path and language. A child inherits its parent's language. */
-const parentInfo = async (projectId: string, parentId: string | null): Promise<{ path: string | null; languageId: string | null }> => {
+/** Resolve a parent's path, language, and branch. A child inherits both its
+ *  parent's language and branch. */
+const parentInfo = async (
+  projectId: string,
+  parentId: string | null,
+): Promise<{ path: string | null; languageId: string | null; branchId: string | null }> => {
   if (!parentId) {
-    return { path: null, languageId: null };
+    return { path: null, languageId: null, branchId: null };
   }
-  const parent = await prisma.page.findFirst({ where: { id: parentId, projectId }, select: { path: true, languageId: true } });
+  const parent = await prisma.page.findFirst({ where: { id: parentId, projectId }, select: { path: true, languageId: true, branchId: true } });
   if (!parent) {
     throw notFound('page', { id: parentId });
   }
-  return { path: parent.path, languageId: parent.languageId };
+  return { path: parent.path, languageId: parent.languageId, branchId: parent.branchId };
 };
 
 /** Recompute the materialized `path` of every page in a project from the tree. */
@@ -90,23 +99,23 @@ const recomputeProjectPaths = async (projectId: string): Promise<void> => {
     }
     return node.parentId ? joinPath(pathOf(node.parentId, seen), node.slug) : node.slug;
   };
-  const updates = pages
-    .map((p) => ({ id: p.id, path: pathOf(p.id), old: p.path }))
-    .filter((u) => u.path !== u.old);
+  const updates = pages.map((p) => ({ id: p.id, path: pathOf(p.id), old: p.path })).filter((u) => u.path !== u.old);
   await prisma.$transaction(updates.map((u) => prisma.page.update({ where: { id: u.id }, data: { path: u.path } })));
 };
 
 export const createPage = async (projectId: string, body: CreatePageBody) => {
   const parentId = body.parentId ?? null;
   const parent = await parentInfo(projectId, parentId);
-  // A child inherits its parent's language; otherwise use the requested language,
-  // falling back to the project's default (creating one if the project has none).
+  // A child inherits its parent's branch + language; otherwise use the requested
+  // ones, falling back to the project's defaults (creating them if absent).
+  const branchId = parent.branchId ?? body.branchId ?? (await ensureDefaultBranch(projectId)).id;
   const languageId = parent.languageId ?? body.languageId ?? (await ensureDefaultLanguage(projectId)).id;
-  const slug = await uniqueSiblingSlug(projectId, languageId, parentId, body.slug || body.title);
-  const maxPosition = await prisma.page.aggregate({ where: { projectId, languageId, parentId }, _max: { position: true } });
+  const slug = await uniqueSiblingSlug(projectId, languageId, branchId, parentId, body.slug || body.title);
+  const maxPosition = await prisma.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
   return prisma.page.create({
     data: {
       projectId,
+      branchId,
       languageId,
       parentId,
       kind: body.kind ?? 'PAGE',
@@ -130,7 +139,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   const nextParentId = body.parentId === undefined ? page.parentId : body.parentId;
   let nextSlug = page.slug;
   if (body.slug !== undefined || body.title !== undefined || body.parentId !== undefined) {
-    nextSlug = await uniqueSiblingSlug(projectId, page.languageId, nextParentId, body.slug || body.title || page.slug, id);
+    nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, body.slug || body.title || page.slug, id);
   }
   const updated = await prisma.page.update({
     where: { id },
@@ -162,7 +171,9 @@ export const deletePage = async (projectId: string, id: string) => {
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
   await prisma.$transaction(
-    body.items.map((item) => prisma.page.updateMany({ where: { id: item.id, projectId }, data: { parentId: item.parentId, position: item.position } })),
+    body.items.map((item) =>
+      prisma.page.updateMany({ where: { id: item.id, projectId }, data: { parentId: item.parentId, position: item.position } }),
+    ),
   );
   await recomputeProjectPaths(projectId);
   return listPages(projectId);

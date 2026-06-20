@@ -55,6 +55,15 @@ export interface Page extends PageNode {
   createdAt: string;
 }
 
+export interface Branch {
+  id: string;
+  projectId: string;
+  name: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';
 
 export interface Deployment {
