@@ -268,6 +268,56 @@ export const useCancelInvitation = () => {
   });
 };
 
+// ─── Per-site members (each site owns its own people/roles) ──────────────────
+
+export const useInviteProjectMember = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: InviteMemberBody) =>
+      mutateData<unknown>(
+        await api.api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }),
+        'Could not send the invite.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+  });
+};
+
+export const useUpdateProjectMemberRole = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: UpdateMemberRoleBody }) =>
+      mutateData<unknown>(
+        await api.api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
+        'Could not update the role.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+  });
+};
+
+export const useRemoveProjectMember = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].members[':id'].$delete({ param: { projectId, id } }),
+        'Could not remove the member.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+  });
+};
+
+export const useCancelProjectInvitation = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<{ id: string }>(
+        await api.api.app.projects[':projectId'].members.invitations[':id'].$delete({ param: { projectId, id } }),
+        'Could not revoke the invitation.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+  });
+};
+
 // ─── Comments ─────────────────────────────────────────────────────────────—
 
 export const useCreateComment = (projectId: string, pageId?: string) => {

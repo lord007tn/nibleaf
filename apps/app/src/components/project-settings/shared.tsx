@@ -38,12 +38,16 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfig)
  * label + helper-text field wrapper, segmented controls and toggle rows).
  */
 
-/** The header at the top of every section pane: a muted glyph + the title. */
-export function SectionHeader({ icon, title }: { icon: ReactNode; title: string }) {
+/** The header at the top of every section pane: a muted glyph + the title, with
+ *  an optional one-line description under it. */
+export function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return (
-    <div className="mb-6 flex items-center gap-2.5 border-border border-b pb-3">
-      <span className="text-base text-muted-foreground">{icon}</span>
-      <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
+    <div className="mb-6 border-border border-b pb-3">
+      <div className="flex items-center gap-2.5">
+        <span className="text-base text-muted-foreground">{icon}</span>
+        <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
+      </div>
+      {description ? <p className="mt-1.5 text-[13px] text-muted-foreground leading-snug">{description}</p> : null}
     </div>
   );
 }

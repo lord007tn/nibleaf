@@ -107,7 +107,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     analytics: <AnalyticsSection key={`analytics-${project.id}`} project={project} />,
     redirects: <RedirectsSection key={`redirects-${project.id}`} project={project} />,
     variables: <VariablesSection key={`variables-${project.id}`} project={project} />,
-    members: <MembersSection />,
+    members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     danger: <DangerSection project={project} />,
   };

@@ -151,7 +151,9 @@ enum TextDirection {
 /// A documentation site.
 model Project {
   id             String       @id @default(cuid())
-  organizationId String
+  // Each site owns its own Organization (1:1) — that org IS the site's member
+  // boundary, so members/roles/invitations are per-site. See provisionSiteOrg.
+  organizationId String       @unique
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
   slug           String
@@ -180,7 +182,6 @@ model Project {
   analyticsEvents AnalyticsEvent[]
 
   @@unique([organizationId, slug])
-  @@index([organizationId])
   @@map("project")
 }
 

@@ -1,11 +1,11 @@
 import { MemberRole } from '@plume/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
-import { isAuthenticated, requireRole } from '@/middlewares/guard';
+import { isAuthenticated, requireProjectRole } from '@/middlewares/guard';
 
 const aiRoutes = {
   draft: createRouteConfig({
-    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],
     tags: ['ai'],
     description: 'Draft documentation content with the AI assistant.',
     responses: { 200: { description: 'ok' }, ...errorResponses },

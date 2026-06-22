@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router';
-import { BarChart3, BookText, Plus, Settings, Users } from 'lucide-react';
+import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useProjects } from '@/hooks/api';
@@ -31,7 +31,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Projects">
           {(projects ?? []).map((project) => (
-            <CommandItem key={project.id} value={`project ${project.name}`} onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}>
+            <CommandItem
+              key={project.id}
+              value={`project ${project.name}`}
+              onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
+            >
               <BookText className="size-4" />
               {project.name}
             </CommandItem>
@@ -44,11 +48,8 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           <CommandItem value="analytics" onSelect={() => go('/app/analytics')}>
             <BarChart3 className="size-4" /> Analytics
           </CommandItem>
-          <CommandItem value="members" onSelect={() => go('/app/members')}>
-            <Users className="size-4" /> Members
-          </CommandItem>
           <CommandItem value="settings" onSelect={() => go('/app/settings')}>
-            <Settings className="size-4" /> Workspace settings
+            <Settings className="size-4" /> Account settings
           </CommandItem>
         </CommandGroup>
       </CommandList>

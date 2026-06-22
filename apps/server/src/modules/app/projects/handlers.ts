@@ -1,18 +1,18 @@
 import { createProjectBody, updateProjectBody } from '@plume/validators';
 import { Hono } from 'hono';
 import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
-import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import projectsRoutes from './routes';
 
 const app = new Hono<HonoEnv>()
   .get('/', ...projectsRoutes.list, async (ctx) => {
-    const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await listProjects(organizationId) }, 200);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await listProjects(user.id) }, 200);
   })
   .post('/', ...projectsRoutes.create, validator('json', createProjectBody), async (ctx) => {
-    const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await createProject(organizationId, ctx.req.valid('json')) }, 201);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await createProject(user.id, ctx.req.valid('json')) }, 201);
   })
   .get('/:id', ...projectsRoutes.get, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

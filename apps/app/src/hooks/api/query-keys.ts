@@ -41,6 +41,8 @@ export const queryKeys = {
   },
   members: {
     all: () => ['members'] as const,
+    /** Per-site members + invitations (each site owns its own member list). */
+    forProject: (projectId: string) => ['members', projectId] as const,
   },
   site: {
     shell: (id: string, lang?: string) => ['site', id, lang ?? null] as const,

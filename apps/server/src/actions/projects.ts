@@ -1,19 +1,8 @@
 import { Prisma, prisma } from '@plume/database';
+import { MemberRole } from '@plume/shared/constants';
 import { slugify } from '@plume/shared/utils';
 import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@plume/validators';
 import { notFound } from '@/errors';
-
-/** Find a slug unique within the organization, appending -2, -3, … on collision. */
-const uniqueSlug = async (organizationId: string, name: string): Promise<string> => {
-  const base = slugify(name) || 'docs';
-  let slug = base;
-  let suffix = 1;
-  while (await prisma.project.findFirst({ where: { organizationId, slug }, select: { id: true } })) {
-    suffix += 1;
-    slug = `${base}-${suffix}`;
-  }
-  return slug;
-};
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */
 export const assertProjectInOrg = async (organizationId: string, projectId: string) => {
@@ -24,29 +13,61 @@ export const assertProjectInOrg = async (organizationId: string, projectId: stri
   return project;
 };
 
-export const listProjects = (organizationId: string) =>
-  prisma.project.findMany({
-    where: { organizationId },
+/**
+ * Resolve a project's own organization and the user's role in it. Because each
+ * site owns its org (1:1), this IS the per-site access check: membership in the
+ * project's org = access to the site. Throws notFound (not forbidden) for
+ * non-members so we never leak that a site exists.
+ */
+export const assertProjectAccess = async (userId: string, projectId: string) => {
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  if (!project) {
+    throw notFound('project', { id: projectId });
+  }
+  const member = await prisma.member.findUnique({
+    where: { organizationId_userId: { organizationId: project.organizationId, userId } },
+    select: { role: true },
+  });
+  if (!member) {
+    throw notFound('project', { id: projectId });
+  }
+  return { project, organizationId: project.organizationId, role: member.role as MemberRole };
+};
+
+/** List every site the user can reach — i.e. across all the orgs they belong to. */
+export const listProjects = async (userId: string) => {
+  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
+  const organizationIds = memberships.map((m) => m.organizationId);
+  return prisma.project.findMany({
+    where: { organizationId: { in: organizationIds } },
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { pages: true, deployments: true } } },
   });
+};
 
-export const createProject = async (organizationId: string, body: CreateProjectBody) => {
-  const slug = await uniqueSlug(organizationId, body.name);
-  const project = await prisma.project.create({
-    data: {
-      organizationId,
-      name: body.name,
-      slug,
-      ...(body.description ? { description: body.description } : {}),
-      ...(body.color ? { color: body.color } : {}),
-    },
+export const createProject = async (userId: string, body: CreateProjectBody) => {
+  const slug = slugify(body.name) || 'docs';
+  return prisma.$transaction(async (tx) => {
+    // Each site is its own workspace: mint a dedicated organization and make the
+    // creator its owner. That org is the site's member boundary (per-site
+    // members/roles). Slug is left null to avoid the global org-slug unique.
+    const org = await tx.organization.create({ data: { name: body.name } });
+    await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER } });
+    const project = await tx.project.create({
+      data: {
+        organizationId: org.id,
+        name: body.name,
+        slug,
+        ...(body.description ? { description: body.description } : {}),
+        ...(body.color ? { color: body.color } : {}),
+      },
+    });
+    // Every project starts with a single default language that owns its page tree.
+    await tx.language.create({
+      data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
+    });
+    return project;
   });
-  // Every project starts with a single default language that owns its page tree.
-  await prisma.language.create({
-    data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
-  });
-  return project;
 };
 
 export const getProject = async (organizationId: string, id: string) => {
@@ -111,6 +132,8 @@ export const updateProject = async (organizationId: string, id: string, body: Up
 
 export const deleteProject = async (organizationId: string, id: string) => {
   await assertProjectInOrg(organizationId, id);
-  await prisma.project.delete({ where: { id } });
+  // Each site owns its organization (1:1), so deleting the site deletes its org —
+  // which cascades the project itself plus its members and pending invitations.
+  await prisma.organization.delete({ where: { id: organizationId } });
   return { id };
 };

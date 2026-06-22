@@ -2,7 +2,8 @@ import { prisma } from '@plume/database';
 import type { MemberRole } from '@plume/shared/constants';
 import { hashApiKeySecret } from '@plume/shared/crypto';
 import { roleAtLeast } from '@plume/shared/rbac';
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
+import { assertProjectAccess } from '@/actions/projects';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
@@ -22,7 +23,8 @@ export const hasOrganization: MiddlewareHandler<HonoEnv> = async (ctx, next) => 
   await next();
 };
 
-/** Require the user's role in the active org to be at least `required`. */
+/** Require the user's role in the active (session) org to be at least `required`.
+ *  Used by genuinely org-level routes (workspace settings, account members). */
 export const requireRole =
   (required: MemberRole): MiddlewareHandler<HonoEnv> =>
   async (ctx, next) => {
@@ -42,6 +44,46 @@ export const requireRole =
       throw new AppError({ code: 'auth:insufficient_role' });
     }
     ctx.set('membership', { organizationId, role });
+    await next();
+  };
+
+/**
+ * Resolve a project's OWN organization (from its `:projectId` / `:id` path param)
+ * and the caller's role in it, then pin both onto the request context. This makes
+ * access = membership in the site's own org, so every downstream handler that
+ * reads `organizationId` is scoped to the project, not the session's active org.
+ */
+const resolveProjectOrg = async (ctx: Context<HonoEnv>, paramKey: string): Promise<MemberRole> => {
+  const user = ctx.get('user');
+  if (!user) {
+    throw new AppError({ code: 'auth:no_user', message: 'Authentication required.' });
+  }
+  const projectId = ctx.req.param(paramKey);
+  if (!projectId) {
+    throw new AppError({ code: 'http:bad_request', message: 'Missing project id.' });
+  }
+  const { organizationId, role } = await assertProjectAccess(user.id, projectId);
+  ctx.set('organizationId', organizationId);
+  ctx.set('membership', { organizationId, role });
+  return role;
+};
+
+/** Require the caller to be a member of the project's org (any role). */
+export const requireProjectMember =
+  (paramKey = 'projectId'): MiddlewareHandler<HonoEnv> =>
+  async (ctx, next) => {
+    await resolveProjectOrg(ctx, paramKey);
+    await next();
+  };
+
+/** Require the caller's role in the project's org to be at least `required`. */
+export const requireProjectRole =
+  (required: MemberRole, paramKey = 'projectId'): MiddlewareHandler<HonoEnv> =>
+  async (ctx, next) => {
+    const role = await resolveProjectOrg(ctx, paramKey);
+    if (!roleAtLeast(role, required)) {
+      throw new AppError({ code: 'auth:insufficient_role' });
+    }
     await next();
   };
 

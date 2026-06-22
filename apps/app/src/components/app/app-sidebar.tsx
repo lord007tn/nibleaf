@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookText, ChevronsUpDown, LogOut, Moon, Settings, Sun, Users } from 'lucide-react';
+import { BarChart3, BookText, ChevronsUpDown, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useDirection } from '@/components/direction-provider';
 import {
@@ -23,10 +23,11 @@ import {
 } from '@/components/ui/sidebar';
 import { authClient } from '@/lib/auth-client';
 
+// Account-level nav. Members live per-site now (each site's Settings → Members),
+// so they're not here; Analytics stays as the cross-site global view.
 const NAV = [
-  { to: '/app', label: 'Projects', icon: BookText, exact: true },
+  { to: '/app', label: 'Sites', icon: BookText, exact: true },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3, exact: false },
-  { to: '/app/members', label: 'Members', icon: Users, exact: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, exact: false },
 ] as const;
 

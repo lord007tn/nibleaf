@@ -169,6 +169,18 @@ export const useMembers = () =>
     queryFn: async () => getData<{ members: Member[]; invitations: Invitation[] }>(await api.api.app.members.$get(), 'members'),
   });
 
+/** Members + pending invitations for a single site (its own organization). */
+export const useProjectMembers = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.members.forProject(projectId ?? ''),
+    enabled: Boolean(projectId),
+    queryFn: async () =>
+      getData<{ members: Member[]; invitations: Invitation[] }>(
+        await api.api.app.projects[':projectId'].members.$get({ param: { projectId: projectId! } }),
+        'members',
+      ),
+  });
+
 // ─── Public site (live preview) ─────────────────────────────────────────────
 
 export const useSite = (id: string | undefined, lang?: string) =>
