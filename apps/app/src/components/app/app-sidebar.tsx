@@ -21,7 +21,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useActiveWorkspace } from '@/hooks/use-active-workspace';
 import { authClient } from '@/lib/auth-client';
 
 const NAV = [
@@ -33,7 +32,6 @@ const NAV = [
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const workspace = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { setTheme, resolvedTheme } = useTheme();
   const { direction, toggleDirection } = useDirection();
@@ -79,16 +77,22 @@ export function AppSidebar() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
-                    <span className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
+                  // A plain host <button> — Base UI's Menu.Trigger can't compose a
+                  // nested useRender component (SidebarMenuButton) as its render
+                  // target (throws Base UI #31).
+                  <button
+                    type="button"
+                    className="flex h-12 w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md p-2 text-start text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[popup-open]:bg-sidebar-accent [&_svg]:size-4 [&_svg]:shrink-0"
+                  >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
                       {initials}
                     </span>
                     <div className="grid flex-1 text-start leading-tight">
-                      <span className="truncate font-medium text-sm">{workspace?.name ?? 'Workspace'}</span>
+                      <span className="truncate font-medium text-sm">{session?.user?.name ?? 'Account'}</span>
                       <span className="truncate text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
                     </div>
                     <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
-                  </SidebarMenuButton>
+                  </button>
                 }
               />
               <DropdownMenuContent align="end" className="w-56" side="top">
