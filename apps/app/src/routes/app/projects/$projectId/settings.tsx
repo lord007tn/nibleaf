@@ -9,6 +9,7 @@ import { FooterSection } from '@/components/project-settings/footer-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { MembersSection } from '@/components/project-settings/members-section';
 import { NavbarSection } from '@/components/project-settings/navbar-section';
+import { PlanSection } from '@/components/project-settings/plan-section';
 import { RedirectsSection } from '@/components/project-settings/redirects-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import { SeoSection } from '@/components/project-settings/seo-section';
@@ -35,6 +36,7 @@ const SECTIONS = [
   { id: 'redirects', label: 'Redirects', icon: '⤳' },
   { id: 'variables', label: 'Variables', icon: '{}' },
   { id: 'members', label: 'Members', icon: '⧉' },
+  { id: 'plan', label: 'Plan', icon: '◇' },
   { id: 'danger', label: 'Danger zone', icon: '⚠' },
 ] as const;
 
@@ -106,6 +108,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     redirects: <RedirectsSection key={`redirects-${project.id}`} project={project} />,
     variables: <VariablesSection key={`variables-${project.id}`} project={project} />,
     members: <MembersSection />,
+    plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     danger: <DangerSection project={project} />,
   };
   return sections[section];

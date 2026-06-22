@@ -46,7 +46,13 @@ function NewProjectDialog() {
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger render={<Button><Plus className="size-4" /> New project</Button>} />
+      <DialogTrigger
+        render={
+          <Button>
+            <Plus className="size-4" /> New project
+          </Button>
+        }
+      />
       <DialogContent>
         <form
           onSubmit={(event) => {
@@ -101,8 +107,8 @@ function ProjectsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-3xl tracking-tight">Your docs</h1>
-          <p className="mt-1 text-muted-foreground text-sm">Documentation sites in this workspace.</p>
+          <h1 className="font-semibold text-3xl tracking-tight">Your sites</h1>
+          <p className="mt-1 text-muted-foreground text-sm">All your documentation sites — each with its own settings, members, and plan.</p>
         </div>
         <NewProjectDialog />
       </div>
@@ -141,12 +147,17 @@ function ProjectsPage() {
                 params={{ projectId: project.id }}
                 className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-sm"
               >
-                <span className="grid size-11 place-items-center rounded-xl text-lg" style={{ backgroundColor: `${project.color}1a`, color: project.color }}>
+                <span
+                  className="grid size-11 place-items-center rounded-xl text-lg"
+                  style={{ backgroundColor: `${project.color}1a`, color: project.color }}
+                >
                   ✎
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{project.name}</div>
-                  <div className="truncate text-muted-foreground text-sm">{project.description ?? `${project._count?.pages ?? 0} pages · /${project.slug}`}</div>
+                  <div className="truncate text-muted-foreground text-sm">
+                    {project.description ?? `${project._count?.pages ?? 0} pages · /${project.slug}`}
+                  </div>
                 </div>
                 <span className="font-mono text-muted-foreground text-xs">{project._count?.pages ?? 0} pages</span>
               </Link>
