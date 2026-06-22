@@ -1,9 +1,9 @@
 import { createDeploymentBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { createDeployment, getDeployment, getLatestReadyDeployment, listDeployments, rollbackDeployment } from '@/actions/deployments';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import deploymentsRoutes from './routes';
 
 const scope = async (ctx: { req: { param: (k: string) => string } }) => {

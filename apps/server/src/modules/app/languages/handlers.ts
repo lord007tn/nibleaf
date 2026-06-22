@@ -1,9 +1,9 @@
 import { createLanguageBody, updateLanguageBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { createLanguage, deleteLanguage, listLanguages, updateLanguage } from '@/actions/languages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import languagesRoutes from './routes';
 
 const projectScope = async (ctx: { req: { param: (k: string) => string } }) => {

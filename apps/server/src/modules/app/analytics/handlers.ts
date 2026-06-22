@@ -1,8 +1,8 @@
 import { analyticsQuery } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { getAnalyticsOverview } from '@/actions/analytics';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import analyticsRoutes from './routes';
 
 const app = new Hono<HonoEnv>().get('/', ...analyticsRoutes.overview, validator('query', analyticsQuery), async (ctx) => {

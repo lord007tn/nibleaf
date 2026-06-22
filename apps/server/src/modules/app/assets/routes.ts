@@ -9,7 +9,12 @@ const editor = [isAuthenticated, requireRole(MemberRole.MEMBER)] as const;
 const assetsRoutes = {
   list: createRouteConfig({ guard: isAuthenticated, tags: ['assets'], description: 'List uploaded assets.', responses: ok }),
   presign: createRouteConfig({ guard: [...editor], tags: ['assets'], description: 'Presign a direct upload URL.', responses: ok }),
-  confirm: createRouteConfig({ guard: [...editor], tags: ['assets'], description: 'Record an uploaded asset.', responses: { 201: { description: 'created' }, ...errorResponses } }),
+  confirm: createRouteConfig({
+    guard: [...editor],
+    tags: ['assets'],
+    description: 'Record an uploaded asset.',
+    responses: { 201: { description: 'created' }, ...errorResponses },
+  }),
 };
 
 export default assetsRoutes;

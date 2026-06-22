@@ -1,9 +1,9 @@
 import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { createPage, deletePage, getPage, listPages, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import pagesRoutes from './routes';
 
 const projectScope = async (ctx: { req: { param: (k: string) => string } }) => {

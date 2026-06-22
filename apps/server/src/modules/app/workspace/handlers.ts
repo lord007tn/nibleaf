@@ -1,9 +1,9 @@
 import { analyticsQuery, updateWorkspaceSettingsBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { getWorkspaceAnalytics } from '@/actions/analytics';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import workspaceRoutes from './routes';
 
 const app = new Hono<HonoEnv>()

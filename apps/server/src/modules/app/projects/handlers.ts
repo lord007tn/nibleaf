@@ -1,8 +1,8 @@
 import { createProjectBody, updateProjectBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import projectsRoutes from './routes';
 
 const app = new Hono<HonoEnv>()

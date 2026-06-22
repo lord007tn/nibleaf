@@ -1,9 +1,9 @@
 import { searchQuery, trackEventBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { z } from 'zod';
 import { getSite, getSiteChangelog, getSitePage, recordSiteEvent, searchSite } from '@/actions/sites';
 import type { HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import sitesRoutes from './routes';
 
 const siteQuery = z.object({ lang: z.string().optional() });

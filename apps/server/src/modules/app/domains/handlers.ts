@@ -1,9 +1,9 @@
 import { addDomainBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { addDomain, deleteDomain, listDomains, setPrimaryDomain, verifyDomain } from '@/actions/domains';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import domainsRoutes from './routes';
 
 const scope = async (ctx: { req: { param: (k: string) => string } }) => {

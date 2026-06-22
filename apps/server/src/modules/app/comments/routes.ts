@@ -13,8 +13,18 @@ const commentsRoutes = {
     description: 'Create a comment.',
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
-  resolve: createRouteConfig({ guard: [isAuthenticated, requireRole(MemberRole.MEMBER)], tags: ['comments'], description: 'Resolve or reopen a comment.', responses: ok }),
-  remove: createRouteConfig({ guard: [isAuthenticated, requireRole(MemberRole.MEMBER)], tags: ['comments'], description: 'Delete a comment.', responses: ok }),
+  resolve: createRouteConfig({
+    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    tags: ['comments'],
+    description: 'Resolve or reopen a comment.',
+    responses: ok,
+  }),
+  remove: createRouteConfig({
+    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    tags: ['comments'],
+    description: 'Delete a comment.',
+    responses: ok,
+  }),
 };
 
 export default commentsRoutes;

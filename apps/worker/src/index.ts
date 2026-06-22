@@ -2,8 +2,9 @@ import { serve } from '@hono/node-server';
 import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@plume/bullmq/workers';
 import { logger } from '@plume/logger';
 import { env } from './env';
-import { processors } from './processors';
 import systemApp from './modules/system/handlers';
+import { processors } from './processors';
+import { startDeploymentReaper } from './reaper';
 
 process.on('unhandledRejection', (reason) => {
   logger.error({ reason }, 'unhandled rejection');
@@ -15,6 +16,7 @@ process.on('uncaughtException', (error) => {
 });
 
 let server: ReturnType<typeof serve> | null = null;
+let reaperTimer: NodeJS.Timeout | null = null;
 
 async function main() {
   server = serve({ port: env.WORKER_PORT, fetch: systemApp.fetch }, (info) => {
@@ -24,10 +26,15 @@ async function main() {
   });
 
   await bootWorkers(processors);
+  // Sweep deployments stranded by a crash mid-build back to FAILED.
+  reaperTimer = startDeploymentReaper();
   logger.info('Queue workers started');
 }
 
 async function cleanup() {
+  if (reaperTimer) {
+    clearInterval(reaperTimer);
+  }
   await Promise.allSettled([closeWorkers(), closeQueueEvents(), closeQueues()]);
   server?.close();
 }

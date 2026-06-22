@@ -1,8 +1,8 @@
 import { inviteMemberBody, updateMemberRoleBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { validator } from 'hono-openapi';
 import { cancelInvitation, inviteMember, listMembers, removeMember, updateMemberRole } from '@/actions/members';
 import { getContextMembershipOrThrow, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { validator } from '@/lib/hono/validate';
 import membersRoutes from './routes';
 
 const app = new Hono<HonoEnv>()
