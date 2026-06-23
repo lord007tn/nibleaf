@@ -1,5 +1,6 @@
 import { createJob, QueueNames } from '@plume/bullmq';
 import { prisma } from '@plume/database';
+import { createLogger } from '@plume/logger';
 import { joinPath, slugify } from '@plume/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
@@ -7,6 +8,33 @@ import { organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
 
 const env = keys();
+const log = createLogger({ module: 'auth' });
+
+/** Queue a transactional email; delivery is best-effort (logged without SMTP). */
+const sendMail = (to: string, subject: string, html: string) =>
+  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, subject, html } }).catch(() => undefined);
+
+/**
+ * Before a user is deleted, never orphan an organization: if they are the sole
+ * member, delete the org (cascades its projects/pages); if they are the last
+ * owner but others remain, promote the earliest remaining member to owner.
+ */
+async function reassignOrDeleteOrgs(userId: string): Promise<void> {
+  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true, role: true } });
+  for (const membership of memberships) {
+    const members = await prisma.member.findMany({
+      where: { organizationId: membership.organizationId },
+      select: { id: true, userId: true, role: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    const others = members.filter((m) => m.userId !== userId);
+    if (others.length === 0) {
+      await prisma.organization.delete({ where: { id: membership.organizationId } }).catch(() => undefined);
+    } else if (membership.role === 'owner' && !others.some((m) => m.role === 'owner') && others[0]) {
+      await prisma.member.update({ where: { id: others[0].id }, data: { role: 'owner' } }).catch(() => undefined);
+    }
+  }
+}
 
 const WELCOME_CONTENT = `# Welcome to your docs
 
@@ -102,8 +130,10 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
     });
     await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
     await createStarterProject(org.id);
-  } catch {
+  } catch (error) {
     // Never block sign-up on provisioning; the user can create a workspace later.
+    // Log it so the failure is diagnosable instead of silently swallowed.
+    log.error({ error, userId: user.id }, 'workspace provisioning failed during sign-up');
   }
 }
 
@@ -125,21 +155,38 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    // Off by default (private self-host without SMTP); set REQUIRE_EMAIL_VERIFICATION=true
+    // for public instances. The verify-email UI + resend then work via the queue below.
+    requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     sendResetPassword: async ({ user, url }) => {
-      await createJob(QueueNames.EMAIL, {
-        name: 'send-email',
-        data: {
-          to: user.email,
-          subject: 'Reset your Plume password',
-          html: `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`,
-        },
-      }).catch(() => undefined);
+      await sendMail(user.email, 'Reset your Plume password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
+    },
+  },
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      await sendMail(
+        user.email,
+        'Verify your Plume email',
+        `<p>Confirm your email to finish setting up your account:</p><p><a href="${url}">${url}</a></p>`,
+      );
     },
   },
   user: {
+    changeEmail: {
+      enabled: true,
+      sendChangeEmailVerification: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
+        await sendMail(
+          user.email,
+          'Confirm your new Plume email',
+          `<p>Confirm changing your email to <strong>${newEmail}</strong>:</p><p><a href="${url}">${url}</a></p>`,
+        );
+      },
+    },
     deleteUser: {
       enabled: true,
+      beforeDelete: async (user) => {
+        await reassignOrDeleteOrgs(user.id);
+      },
     },
   },
   plugins: [

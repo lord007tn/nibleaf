@@ -535,6 +535,9 @@ importers:
       '@plume/database':
         specifier: workspace:*
         version: link:../database
+      '@plume/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@plume/shared':
         specifier: workspace:*
         version: link:../shared
