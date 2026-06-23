@@ -2,7 +2,7 @@
 
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
 
-export type { LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
+export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
 
 export interface Language {
   id: string;

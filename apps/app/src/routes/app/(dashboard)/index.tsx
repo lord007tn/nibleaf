@@ -1,18 +1,21 @@
 import { useForm } from '@tanstack/react-form';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { BarChart3, BookText, FileText, Plus, Rocket } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { TrafficPanel } from '@/components/analytics/traffic-panel';
+import { SectionCard } from '@/components/analytics/section-card';
+import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { FieldError } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import type { AnalyticsRange } from '@/hooks/api';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { required } from '@/lib/form';
-import { useFormatters } from '@/lib/format';
+import { useFormatters, viewsTrend } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
@@ -102,12 +105,15 @@ function NewProjectDialog() {
 
 function ProjectsPage() {
   const { data: projects, isPending } = useProjects();
-  const { data: analytics } = useWorkspaceAnalytics('30d');
+  const [range, setRange] = useState<AnalyticsRange>('30d');
+  const { data: analytics, isPending: analyticsPending } = useWorkspaceAnalytics(range);
   const t = useT();
   const navigate = useNavigate();
   const { number } = useFormatters();
+
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
-  const totalDeploys = (projects ?? []).reduce((sum, p) => sum + (p._count?.deployments ?? 0), 0);
+  const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
+  const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
 
   // Single-site accounts skip the global view and land straight in their site;
   // the global dashboard is only meaningful for members of more than one site.
@@ -119,68 +125,103 @@ function ProjectsPage() {
   }, [soleProjectId, navigate]);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-3xl tracking-tight">{t('dashboard.title')}</h1>
+          <h1 className="font-semibold text-2xl tracking-tight">{t('dashboard.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('dashboard.subtitle')}</p>
         </div>
         <NewProjectDialog />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: t('dashboard.stats.projects'), value: projects?.length ?? 0, icon: BookText },
-          { label: t('dashboard.stats.pages'), value: totalPages, icon: FileText },
-          { label: t('dashboard.stats.deploys'), value: totalDeploys, icon: Rocket },
-          { label: t('dashboard.stats.pageViews'), value: analytics?.totalViews ?? 0, icon: BarChart3 },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <stat.icon className="size-4" /> {stat.label}
-            </div>
-            <div className="mt-2 font-semibold text-3xl tracking-tight tabular-nums">{number(stat.value)}</div>
-          </div>
-        ))}
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <SectionCard label={t('dashboard.stats.projects')} value={projects?.length ?? 0} icon={<BookText className="size-4" />} loading={isPending} />
+        <SectionCard label={t('dashboard.stats.pages')} value={totalPages} icon={<FileText className="size-4" />} loading={isPending} />
+        <SectionCard
+          label={t('dashboard.stats.pageViews')}
+          value={analytics?.totalViews ?? 0}
+          icon={<BarChart3 className="size-4" />}
+          trend={trend}
+          hint={trend ? t('analytics.vsPrevious') : undefined}
+          loading={analyticsPending}
+        />
+        <SectionCard
+          label={t('dashboard.stats.visitors')}
+          value={analytics?.uniqueVisitors ?? 0}
+          icon={<Users className="size-4" />}
+          trend={trend}
+          hint={trend ? t('analytics.vsPrevious') : undefined}
+          loading={analyticsPending}
+        />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="flex flex-col gap-3">
-          {isPending ? (
-            [0, 1, 2].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)
-          ) : (projects ?? []).length === 0 ? (
-            <div className="grid place-items-center rounded-xl border border-border border-dashed py-16 text-center">
-              <BookText className="size-7 text-muted-foreground" />
-              <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
-              <p className="mt-1 max-w-sm text-muted-foreground text-sm">{t('dashboard.empty.body')}</p>
-            </div>
-          ) : (
-            (projects ?? []).map((project) => (
-              <Link
-                key={project.id}
-                to="/app/projects/$projectId"
-                params={{ projectId: project.id }}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card p-5 transition-shadow hover:shadow-sm"
-              >
-                <span
-                  className="grid size-11 place-items-center rounded-xl text-lg"
-                  style={{ backgroundColor: `${project.color}1a`, color: project.color }}
-                >
-                  ✎
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{project.name}</div>
-                  <div className="truncate text-muted-foreground text-sm">
-                    {project.description ?? `${t('dashboard.pages', { count: project._count?.pages ?? 0 })} · /${project.slug}`}
-                  </div>
-                </div>
-                <span className="font-mono text-muted-foreground text-xs">{t('dashboard.pages', { count: project._count?.pages ?? 0 })}</span>
-              </Link>
-            ))
-          )}
-        </div>
+      {/* Interactive views chart */}
+      <ViewsAreaChart
+        title={t('dashboard.viewsTitle')}
+        description={t('dashboard.viewsDesc')}
+        data={analytics?.timeseries ?? []}
+        range={range}
+        onRangeChange={setRange}
+        loading={analyticsPending}
+      />
 
-        <TrafficPanel />
+      {/* Sites table */}
+      <div className="rounded-xl border border-border bg-card">
+        <div className="flex items-center justify-between border-border border-b px-5 py-3.5">
+          <h2 className="font-semibold text-sm">{t('dashboard.sitesTable')}</h2>
+        </div>
+        {isPending ? (
+          <div className="space-y-2 p-5">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : (projects ?? []).length === 0 ? (
+          <div className="grid place-items-center py-16 text-center">
+            <BookText className="size-7 text-muted-foreground" />
+            <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
+            <p className="mt-1 max-w-sm text-muted-foreground text-sm">{t('dashboard.empty.body')}</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>{t('dashboard.col.site')}</TableHead>
+                <TableHead className="text-end">{t('dashboard.col.pages')}</TableHead>
+                <TableHead className="text-end">{t('dashboard.col.deploys')}</TableHead>
+                <TableHead className="text-end">{t('dashboard.col.views')}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(projects ?? []).map((project) => (
+                <TableRow
+                  key={project.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: project.id } })}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="grid size-8 shrink-0 place-items-center rounded-lg text-sm"
+                        style={{ backgroundColor: `${project.color}1a`, color: project.color }}
+                      >
+                        ✎
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">{project.name}</div>
+                        <div className="truncate font-mono text-muted-foreground text-xs">/{project.slug}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-end tabular-nums">{number(project._count?.pages ?? 0)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{number(project._count?.deployments ?? 0)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{number(viewsByProject.get(project.id) ?? 0)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );
