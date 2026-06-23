@@ -1,4 +1,4 @@
-import { create, insertMultiple, search, type Orama } from '@orama/orama';
+import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { keys } from './keys';
 
 // Orama ships a built-in tokenizer (word splitter + optional stemmer) per

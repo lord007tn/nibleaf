@@ -23,12 +23,14 @@ const serverLoader = createServerFn({ method: 'GET' })
 
 const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
+    // biome-ignore lint/correctness/useHookAtTopLevel: this is a fumadocs client-loader render component; biome doesn't recognize it as a React component.
+    const components = useMDXComponents();
     return (
       <DocsPage toc={toc}>
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <DocsBody>
-          <MDX components={useMDXComponents()} />
+          <MDX components={components} />
         </DocsBody>
       </DocsPage>
     );

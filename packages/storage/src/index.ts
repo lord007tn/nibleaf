@@ -2,13 +2,13 @@ import { Readable } from 'node:stream';
 import {
   CreateBucketCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   type HeadObjectCommandOutput,
   ListObjectsV2Command,
   type ObjectIdentifier,
-  DeleteObjectsCommand,
   PutBucketCorsCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';

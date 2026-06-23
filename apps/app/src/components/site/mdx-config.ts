@@ -69,8 +69,9 @@ export function normalizeMdxBlocks(src: string): string {
     }
   }
   // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
-  // the HTML5 parser drops outside a frameset.
-  return out.join('\n').replace(/<(\/?)Frame\b/gi, '$1mdxframe');
+  // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
+  // group 1 is only the optional closing slash) so the tag stays well-formed.
+  return out.join('\n').replace(/<(\/?)Frame\b/gi, '<$1mdxframe');
 }
 
 /** Sanitize schema: the GitHub-safe default, extended to permit our component

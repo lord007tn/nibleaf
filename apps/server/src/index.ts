@@ -1,10 +1,10 @@
 import './lib/serialize-bigint';
 
 import { serve } from '@hono/node-server';
-import { Scalar } from '@scalar/hono-api-reference';
 import { scheduleAnalyticsRollup } from '@plume/bullmq';
 import { logger } from '@plume/logger';
 import { configureUploadCors, ensureBucket } from '@plume/storage';
+import { Scalar } from '@scalar/hono-api-reference';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { env } from './env';
 import app from './routes';

@@ -1,7 +1,7 @@
 import { auth } from '@plume/auth/server';
 import { prisma } from '@plume/database';
-import { buildSnapshot } from '@plume/shared/site';
 import { logger } from '@plume/logger';
+import { buildSnapshot } from '@plume/shared/site';
 
 const DEMO = { email: 'demo@plume.dev', password: 'plumedemo123', name: 'Ada Lovelace' };
 

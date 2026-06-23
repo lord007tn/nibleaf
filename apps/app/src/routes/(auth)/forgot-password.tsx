@@ -25,7 +25,7 @@ function ForgotPasswordPage() {
       setError(null);
       const { error: resetError } = await authClient.requestPasswordReset({
         email: value.email,
-        redirectTo: window.location.origin + '/reset-password',
+        redirectTo: `${window.location.origin}/reset-password`,
       });
       if (resetError) {
         setError(resetError.message ?? t('auth.forgot.error'));

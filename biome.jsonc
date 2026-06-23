@@ -18,7 +18,7 @@
       "!**/routeTree.gen.ts",
       "!**/src/generated",
       "!_ui_zip",
-      "!**/components/ui/**"
+      "!**/components/ui"
     ]
   },
   "linter": {

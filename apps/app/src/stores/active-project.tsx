@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { useProjects } from '@/hooks/api';
 import type { Project } from '@/hooks/api';
+import { useProjects } from '@/hooks/api';
 
 const STORAGE_KEY = 'plume.activeProjectId';
 

@@ -28,6 +28,7 @@ export function ListCard({
       {loading ? (
         <div className="space-y-2.5">
           {Array.from({ length: rows }, (_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders have no stable id
             <Skeleton key={i} className="h-5 w-full" />
           ))}
         </div>
