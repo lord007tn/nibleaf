@@ -42,13 +42,9 @@ export function TypographySection({ project }: { project: Project }) {
       codeFont: typography.codeFont ?? 'Geist Mono',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize },
-        },
-        t,
-      );
+      await saveConfigSection(update, {
+        typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize },
+      });
     },
   });
 

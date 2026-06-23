@@ -71,18 +71,14 @@ export function BrandingSection({ project }: { project: Project }) {
       logoHref: branding.logoHref ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          branding: {
-            logoLight: value.logoLight.trim() || null,
-            logoDark: value.logoDark.trim() || null,
-            favicon: value.favicon.trim() || null,
-            logoHref: value.logoHref.trim() || null,
-          },
+      await saveConfigSection(update, {
+        branding: {
+          logoLight: value.logoLight.trim() || null,
+          logoDark: value.logoDark.trim() || null,
+          favicon: value.favicon.trim() || null,
+          logoHref: value.logoHref.trim() || null,
         },
-        t,
-      );
+      });
     },
   });
 

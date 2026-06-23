@@ -4,6 +4,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAnalytics } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/app/projects/$projectId/analytics')({
   component: AnalyticsPage,
@@ -74,19 +75,21 @@ function AnalyticsPage() {
 }
 
 function StatCard({ label, value, loading }: { label: string; value: number; loading: boolean }) {
+  const { number } = useFormatters();
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="text-muted-foreground text-sm">{label}</div>
       {loading ? (
         <Skeleton className="mt-2 h-9 w-20" />
       ) : (
-        <div className="mt-2 font-semibold text-3xl tabular-nums tracking-tight">{value.toLocaleString()}</div>
+        <div className="mt-2 font-semibold text-3xl tabular-nums tracking-tight">{number(value)}</div>
       )}
     </div>
   );
 }
 
 function ListCard({ title, items, empty }: { title: string; items: Array<{ label: string; value: number }>; empty: string }) {
+  const { number } = useFormatters();
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="mb-3 font-medium text-sm">{title}</div>
@@ -97,7 +100,7 @@ function ListCard({ title, items, empty }: { title: string; items: Array<{ label
           {items.map((item) => (
             <li key={item.label} className="flex items-center justify-between gap-3 text-sm">
               <span className="truncate text-foreground/80">{item.label}</span>
-              <span className="font-mono text-muted-foreground tabular-nums">{item.value}</span>
+              <span className="font-mono text-muted-foreground tabular-nums">{number(item.value)}</span>
             </li>
           ))}
         </ul>

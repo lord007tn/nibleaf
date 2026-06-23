@@ -18,18 +18,14 @@ export function FooterSection({ project }: { project: Project }) {
       linkedin: footer.linkedin ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          footer: {
-            copyright: value.copyright.trim() || undefined,
-            github: value.github.trim() || undefined,
-            x: value.x.trim() || undefined,
-            linkedin: value.linkedin.trim() || undefined,
-          },
+      await saveConfigSection(update, {
+        footer: {
+          copyright: value.copyright.trim() || undefined,
+          github: value.github.trim() || undefined,
+          x: value.x.trim() || undefined,
+          linkedin: value.linkedin.trim() || undefined,
         },
-        t,
-      );
+      });
     },
   });
 

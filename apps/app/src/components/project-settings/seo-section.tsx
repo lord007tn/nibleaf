@@ -26,18 +26,14 @@ export function SeoSection({ project }: { project: Project }) {
       socialImage: seo.socialImage ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          seo: {
-            metaTitle: value.metaTitle.trim() || undefined,
-            metaDescription: value.metaDescription.trim() || undefined,
-            socialImage: value.socialImage.trim() || undefined,
-            allowIndex,
-          },
+      await saveConfigSection(update, {
+        seo: {
+          metaTitle: value.metaTitle.trim() || undefined,
+          metaDescription: value.metaDescription.trim() || undefined,
+          socialImage: value.socialImage.trim() || undefined,
+          allowIndex,
         },
-        t,
-      );
+      });
     },
   });
 

@@ -19,18 +19,14 @@ export function BannerSection({ project }: { project: Project }) {
       linkLabel: banner.linkLabel ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          banner: {
-            enabled,
-            dismissible,
-            message: value.message.trim() || undefined,
-            linkLabel: value.linkLabel.trim() || undefined,
-          },
+      await saveConfigSection(update, {
+        banner: {
+          enabled,
+          dismissible,
+          message: value.message.trim() || undefined,
+          linkLabel: value.linkLabel.trim() || undefined,
         },
-        t,
-      );
+      });
     },
   });
 

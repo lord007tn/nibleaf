@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { required } from '@/lib/form';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
@@ -103,6 +104,7 @@ function ProjectsPage() {
   const { data: projects, isPending } = useProjects();
   const { data: analytics } = useWorkspaceAnalytics('30d');
   const t = useT();
+  const { number } = useFormatters();
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
   const totalDeploys = (projects ?? []).reduce((sum, p) => sum + (p._count?.deployments ?? 0), 0);
 
@@ -127,7 +129,7 @@ function ProjectsPage() {
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <stat.icon className="size-4" /> {stat.label}
             </div>
-            <div className="mt-2 font-semibold text-3xl tracking-tight tabular-nums">{stat.value.toLocaleString()}</div>
+            <div className="mt-2 font-semibold text-3xl tracking-tight tabular-nums">{number(stat.value)}</div>
           </div>
         ))}
       </div>

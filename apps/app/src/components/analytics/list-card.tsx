@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFormatters } from '@/lib/format';
 
 export interface ListItem {
   key: string;
@@ -22,6 +23,7 @@ export function ListCard({
   loading?: boolean;
   rows?: number;
 }) {
+  const { number } = useFormatters();
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="mb-3 font-medium text-sm">{title}</div>
@@ -40,7 +42,7 @@ export function ListCard({
             <li key={item.key} className="flex items-center justify-between gap-3 text-sm">
               <span className="flex min-w-0 flex-1 items-center gap-2 truncate text-foreground/80">{item.label}</span>
               {item.meta ? <span className="shrink-0 text-muted-foreground text-xs">{item.meta}</span> : null}
-              <span className="shrink-0 font-mono text-muted-foreground tabular-nums">{item.value.toLocaleString()}</span>
+              <span className="shrink-0 font-mono text-muted-foreground tabular-nums">{number(item.value)}</span>
             </li>
           ))}
         </ul>

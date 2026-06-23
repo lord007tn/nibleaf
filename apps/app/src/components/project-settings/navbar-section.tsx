@@ -20,18 +20,14 @@ export function NavbarSection({ project }: { project: Project }) {
       links: (navbar.links ?? []).map((link) => ({ label: link.label, href: link.href })),
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(
-        update,
-        {
-          navbar: {
-            ctaLabel: value.ctaLabel.trim() || undefined,
-            ctaUrl: value.ctaUrl.trim() || undefined,
-            links: value.links.filter((link) => link.label.trim() || link.href.trim()),
-            showSearch,
-          },
+      await saveConfigSection(update, {
+        navbar: {
+          ctaLabel: value.ctaLabel.trim() || undefined,
+          ctaUrl: value.ctaUrl.trim() || undefined,
+          links: value.links.filter((link) => link.label.trim() || link.href.trim()),
+          showSearch,
         },
-        t,
-      );
+      });
     },
   });
 

@@ -2,11 +2,13 @@ import { Link } from '@tanstack/react-router';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspaceAnalytics } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 /** Compact workspace-traffic sidebar: headline total, bar chart, top pages. */
 export function TrafficPanel() {
   const t = useT();
+  const { number } = useFormatters();
   const { data, isPending } = useWorkspaceAnalytics('30d');
   const series = (data?.timeseries ?? []).slice(-14);
   const topPages = (data?.topPages ?? []).slice(0, 5);
@@ -23,7 +25,7 @@ export function TrafficPanel() {
       {isPending ? (
         <Skeleton className="mt-4 h-7 w-24" />
       ) : (
-        <div className="mt-3 font-semibold text-2xl tabular-nums tracking-tight">{(data?.totalViews ?? 0).toLocaleString()}</div>
+        <div className="mt-3 font-semibold text-2xl tabular-nums tracking-tight">{number(data?.totalViews ?? 0)}</div>
       )}
       <div className="text-muted-foreground text-xs">{t('analytics.traffic.pageviewsAllDocs')}</div>
 

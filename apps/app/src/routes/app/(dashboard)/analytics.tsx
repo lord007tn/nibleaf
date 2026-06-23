@@ -8,6 +8,7 @@ import { StatCard } from '@/components/analytics/stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useWorkspaceAnalytics } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/analytics')({
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/app/(dashboard)/analytics')({
 
 function WorkspaceAnalyticsPage() {
   const t = useT();
+  const { number } = useFormatters();
   const EMPTY = t('analytics.empty.traffic');
   const navigate = useNavigate();
   const [range, setRange] = useState('30d');
@@ -115,7 +117,7 @@ function WorkspaceAnalyticsPage() {
                   leading={<span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: p.color }} />}
                   label={p.name}
                   fraction={p.views / maxProjectViews}
-                  value={p.views.toLocaleString()}
+                  value={number(p.views)}
                   color={p.color}
                   onClick={() => navigate({ to: '/app/projects/$projectId/analytics', params: { projectId: p.projectId } })}
                 />
@@ -165,7 +167,7 @@ function WorkspaceAnalyticsPage() {
                   key={d.device}
                   label={<span className="capitalize">{d.device}</span>}
                   fraction={d.count / totalDevices}
-                  value={d.count.toLocaleString()}
+                  value={number(d.count)}
                 />
               ))}
             </div>

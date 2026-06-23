@@ -4,33 +4,44 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
+import { type MessageKey, messages } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
 };
 
-type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
+// saveConfigSection is a plain helper (not a hook), so it resolves the toast
+// message from the persisted locale directly — keeping every caller's save toast
+// localized without threading a translator through each section.
+const localized = (key: MessageKey): string => {
+  let locale: 'en' | 'ar' = 'en';
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('plume.locale') === 'ar') {
+      locale = 'ar';
+    }
+  } catch {
+    // ignore storage failures
+  }
+  return messages[locale][key] ?? messages.en[key];
+};
 
 /**
  * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
  * Form `onSubmit` can `await` it. The server deep-merges section-level config,
  * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
- *
- * Pass the section's `t` translator (from `useT()`) so the toast is localized.
  */
-export function saveConfigSection(update: ConfigMutation, config: ProjectConfig, t?: Translator) {
+export function saveConfigSection(update: ConfigMutation, config: ProjectConfig) {
   return new Promise<void>((resolve) => {
     update.mutate(
       { config },
       {
         onSuccess: () => {
-          toast.success(t ? t('common.saved') : 'Saved');
+          toast.success(localized('common.saved'));
           resolve();
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : t ? t('settings.saveError') : 'Could not save');
+          toast.error(error instanceof Error ? error.message : localized('settings.saveError'));
           resolve();
         },
       },

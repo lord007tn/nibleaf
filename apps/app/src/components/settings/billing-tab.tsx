@@ -4,17 +4,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useWorkspaceSettings } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
 
 function UsageMeter({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const { number } = useFormatters();
   const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="text-muted-foreground text-sm">{label}</span>
         <span className="font-medium text-sm tabular-nums">
-          {used.toLocaleString()} / {limit.toLocaleString()}
+          {number(used)} / {number(limit)}
         </span>
       </div>
       <Progress value={pct} />
