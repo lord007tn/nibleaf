@@ -48,16 +48,51 @@ async function resolveHost(host: string): Promise<string | null> {
   }
 }
 
+/** Serve robots.txt / sitemap.xml at a custom domain's ROOT, with loc URLs
+ *  rebased from the internal /sites/:id/* form to the domain root. */
+async function serveDomainSeo(pathname: string, projectId: string, origin: string): Promise<Response | null> {
+  if (pathname === '/robots.txt') {
+    return new Response(`User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`, {
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  }
+  if (pathname === '/sitemap.xml') {
+    try {
+      const res = await fetch(`${SELF}/api/public/sites/${projectId}/sitemap.xml`);
+      const xml = (await res.text()).replace(new RegExp(`https?://[^/]+/sites/${projectId}`, 'g'), origin);
+      return new Response(xml, { headers: { 'content-type': 'application/xml; charset=utf-8' } });
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   const url = new URL(request.url);
   const host = (request.headers.get('host') || url.host).toLowerCase();
   const bare = host.split(':')[0] ?? '';
+  const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
 
-  if (!SKIP.test(url.pathname) && host && !ownHosts.has(host) && !ownHosts.has(bare)) {
-    const projectId = await resolveHost(bare);
-    if (projectId) {
-      url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;
-      return startHandler(new Request(url, request), ...rest);
+  if (isCustomDomain) {
+    // robots.txt / sitemap.xml are served at the domain root (they are not in
+    // SKIP, so they'd otherwise be rewritten to a nonexistent /sites/:id route).
+    if (url.pathname === '/robots.txt' || url.pathname === '/sitemap.xml') {
+      const projectId = await resolveHost(bare);
+      if (projectId) {
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        const seo = await serveDomainSeo(url.pathname, projectId, `${proto}://${host}`);
+        if (seo) {
+          return seo;
+        }
+      }
+    }
+    if (!SKIP.test(url.pathname)) {
+      const projectId = await resolveHost(bare);
+      if (projectId) {
+        url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;
+        return startHandler(new Request(url, request), ...rest);
+      }
     }
   }
 
