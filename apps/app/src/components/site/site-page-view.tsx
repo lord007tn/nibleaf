@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { Markdown } from '@/components/markdown';
 import { useSitePage } from '@/hooks/api';
-import type { ProjectConfig } from '@/hooks/api/types';
+import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 
 const sessionId = (): string => {
@@ -19,35 +19,21 @@ const sessionId = (): string => {
   return id;
 };
 
-export function SitePageView({ projectId, path, lang }: { projectId: string; path: string; lang?: string }) {
-  const { data, isPending, isError } = useSitePage(projectId, path, lang);
+export function SitePageView({ projectId, path, lang, initialData }: { projectId: string; path: string; lang?: string; initialData?: SitePage }) {
+  const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData);
 
-  // Record a pageview whenever the resolved page changes.
+  // Record a pageview whenever the resolved page changes. (The document title +
+  // meta description are owned by the route's head() so they render server-side.)
   useEffect(() => {
     if (data?.page.path) {
       api.api.public.sites[':id'].events
-        .$post({ param: { id: projectId }, json: { type: 'pageview', path: data.page.path, sessionId: sessionId(), referrer: document.referrer || undefined } })
+        .$post({
+          param: { id: projectId },
+          json: { type: 'pageview', path: data.page.path, sessionId: sessionId(), referrer: document.referrer || undefined },
+        })
         .catch(() => undefined);
     }
   }, [data?.page.path, projectId]);
-
-  // Set the document title + meta description from the loaded page (client-side
-  // SEO). The per-page title wins; config SEO + project metadata are fallbacks.
-  useEffect(() => {
-    if (typeof document === 'undefined' || !data) {
-      return;
-    }
-    const seo = ((data.project.config ?? null) as unknown as ProjectConfig | null)?.seo;
-    document.title = `${data.page.title} — ${seo?.metaTitle || data.project.name}`;
-    const description = data.page.description || seo?.metaDescription || data.project.description || '';
-    let tag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-    if (!tag) {
-      tag = document.createElement('meta');
-      tag.name = 'description';
-      document.head.appendChild(tag);
-    }
-    tag.content = description;
-  }, [data]);
 
   if (isPending) {
     return <div className="px-10 py-12 text-muted-foreground text-sm">Loading…</div>;

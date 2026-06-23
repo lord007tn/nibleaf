@@ -7,7 +7,10 @@ import { SiteBanner } from '@/components/site/site-banner';
 import { SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { useSite } from '@/hooks/api';
-import type { ProjectConfig } from '@/hooks/api/types';
+import { getData } from '@/hooks/api/client-helpers';
+import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
+import { api } from '@/lib/api';
+import { siteHead } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteChrome,
@@ -15,6 +18,21 @@ export const Route = createFileRoute('/sites/$projectId')({
   validateSearch: (search: Record<string, unknown>): { lang?: string } => ({
     lang: typeof search.lang === 'string' && search.lang ? search.lang : undefined,
   }),
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  // Fetch the site shell on the server so the chrome (nav, branding) is in the
+  // initial HTML; the result also feeds site-level SEO tags via head().
+  loader: async ({ params, deps }) => {
+    try {
+      const site = await getData<SiteShell>(
+        await api.api.public.sites[':id'].$get({ param: { id: params.projectId }, query: deps.lang ? { lang: deps.lang } : {} }),
+        'site',
+      );
+      return { site };
+    } catch {
+      return { site: null };
+    }
+  },
+  head: ({ loaderData }) => siteHead(loaderData?.site ?? null),
 });
 
 // Brand glyphs as inline SVG — lucide-react no longer ships GitHub/X/LinkedIn icons.
@@ -43,8 +61,10 @@ function LinkedinIcon({ className }: { className?: string }) {
 function SiteChrome() {
   const { projectId } = Route.useParams();
   const { lang } = Route.useSearch();
+  const { site: initialSite } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { data: site, isPending, isError } = useSite(projectId, lang);
+  // Seed from the server loader so the nav + branding render in the initial HTML.
+  const { data: site, isPending, isError } = useSite(projectId, lang, initialSite ?? undefined);
   const { setTheme, resolvedTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });

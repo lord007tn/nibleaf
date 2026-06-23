@@ -1,7 +1,7 @@
 import { searchQuery, trackEventBody } from '@plume/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { getSite, getSiteChangelog, getSitePage, recordSiteEvent, searchSite } from '@/actions/sites';
+import { getSite, getSiteChangelog, getSitePage, getSiteRobots, getSiteSitemap, recordSiteEvent, searchSite } from '@/actions/sites';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import sitesRoutes from './routes';
@@ -26,6 +26,12 @@ const app = new Hono<HonoEnv>()
   .post('/:id/events', ...sitesRoutes.track, validator('json', trackEventBody), async (ctx) => {
     return ctx.json({ data: await recordSiteEvent(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
   })
-  .get('/:id/changelog', ...sitesRoutes.changelog, async (ctx) => ctx.json({ data: await getSiteChangelog(ctx.req.param('id')) }, 200));
+  .get('/:id/changelog', ...sitesRoutes.changelog, async (ctx) => ctx.json({ data: await getSiteChangelog(ctx.req.param('id')) }, 200))
+  .get('/:id/sitemap.xml', ...sitesRoutes.sitemap, async (ctx) =>
+    ctx.body(await getSiteSitemap(ctx.req.param('id')), 200, { 'Content-Type': 'application/xml; charset=utf-8' }),
+  )
+  .get('/:id/robots.txt', ...sitesRoutes.robots, async (ctx) =>
+    ctx.body(await getSiteRobots(ctx.req.param('id')), 200, { 'Content-Type': 'text/plain; charset=utf-8' }),
+  );
 
 export default app;

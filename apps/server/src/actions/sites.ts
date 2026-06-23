@@ -1,9 +1,18 @@
 import { auth } from '@plume/auth/server';
 import { prisma } from '@plume/database';
 import { searchDocs } from '@plume/search';
-import { buildNavTree, defaultLanguage, type NavNode, extractHeadings, pageDescription, type SiteSnapshot, type SnapshotPage } from '@plume/shared/site';
+import {
+  buildNavTree,
+  defaultLanguage,
+  extractHeadings,
+  type NavNode,
+  pageDescription,
+  type SiteSnapshot,
+  type SnapshotPage,
+} from '@plume/shared/site';
 import type { TrackEventBody } from '@plume/validators';
 import { getContext } from 'hono/context-storage';
+import { env } from '@/env';
 import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { getCachedIndex } from '@/lib/search-cache';
@@ -42,7 +51,9 @@ const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promis
   const result = await auth.api.getSession({ headers }).catch(() => null);
   const userId = result?.user?.id;
   const project = userId ? await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }) : null;
-  const member = project ? await prisma.member.findUnique({ where: { organizationId_userId: { organizationId: project.organizationId, userId: userId as string } } }) : null;
+  const member = project
+    ? await prisma.member.findUnique({ where: { organizationId_userId: { organizationId: project.organizationId, userId: userId as string } } })
+    : null;
   if (!member) {
     throw notFound('site', { identifier: projectId, reason: 'private' });
   }
@@ -70,8 +81,7 @@ const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
 
 /** Only the pages belonging to a given language (legacy pages without a code
  *  fall under whichever language is requested). */
-const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] =>
-  pages.filter((p) => (p.languageCode || lang) === lang);
+const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => (p.languageCode || lang) === lang);
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string) => {
@@ -88,7 +98,8 @@ export const getSite = async (identifier: string, lang?: string) => {
 };
 
 /** Depth-first order of renderable pages — for prev/next links. */
-const flattenNav = (nav: NavNode[]): NavNode[] => nav.flatMap((node) => (node.kind === 'PAGE' ? [node, ...flattenNav(node.children)] : flattenNav(node.children)));
+const flattenNav = (nav: NavNode[]): NavNode[] =>
+  nav.flatMap((node) => (node.kind === 'PAGE' ? [node, ...flattenNav(node.children)] : flattenNav(node.children)));
 
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
@@ -99,7 +110,9 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
 
   const findIn = (langCode: string) => {
     const langPages = pagesForLanguage(snapshot.pages, langCode);
-    const found = langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ?? (normalized === '' ? firstPage(langPages, langCode) : undefined);
+    const found =
+      langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
+      (normalized === '' ? firstPage(langPages, langCode) : undefined);
     return found ? { page: found, pages: langPages } : undefined;
   };
 
@@ -188,4 +201,32 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
   const projectId = await resolveProjectId(identifier);
   await trackEvent(projectId, body).catch(() => undefined);
   return { ok: true };
+};
+
+const escapeXml = (value: string): string =>
+  value.replace(/[<>&'"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char] ?? char);
+
+/** XML sitemap of every public (non-hidden) page across all languages of a site.
+ *  Private/unpublished sites throw notFound (so they stay out of sitemaps). */
+export const getSiteSitemap = async (identifier: string): Promise<string> => {
+  const { snapshot } = await getPublished(identifier);
+  const base = `${env.APP_URL}/sites/${snapshot.project.id}`;
+  const lastmod = snapshot.generatedAt;
+  const urls = snapshot.pages
+    .filter((page) => page.kind === 'PAGE' && !page.hidden)
+    .map((page) => {
+      const langQuery = page.languageCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
+      const loc = `${base}${page.path ? `/${page.path}` : ''}${langQuery}`;
+      const lastmodTag = lastmod ? `<lastmod>${escapeXml(new Date(lastmod).toISOString())}</lastmod>` : '';
+      return `  <url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;
+    });
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
+};
+
+/** robots.txt for a published site, pointing crawlers at its sitemap. The
+ *  sitemap is reachable at the app origin through the same-origin /api proxy
+ *  (until per-site custom domains serve it from the domain root). */
+export const getSiteRobots = async (identifier: string): Promise<string> => {
+  const projectId = await resolveProjectId(identifier);
+  return `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`;
 };

@@ -183,19 +183,21 @@ export const useProjectMembers = (projectId: string | undefined) =>
 
 // ─── Public site (live preview) ─────────────────────────────────────────────
 
-export const useSite = (id: string | undefined, lang?: string) =>
+export const useSite = (id: string | undefined, lang?: string, initialData?: SiteShell) =>
   useQuery({
     queryKey: queryKeys.site.shell(id ?? '', lang),
     enabled: Boolean(id),
     retry: false,
+    initialData,
     queryFn: async () => getData<SiteShell>(await api.api.public.sites[':id'].$get({ param: { id: id! }, query: lang ? { lang } : {} }), 'site'),
   });
 
-export const useSitePage = (id: string | undefined, path: string, lang?: string) =>
+export const useSitePage = (id: string | undefined, path: string, lang?: string, initialData?: SitePage) =>
   useQuery({
     queryKey: queryKeys.site.page(id ?? '', path, lang),
     enabled: Boolean(id),
     retry: false,
+    initialData,
     queryFn: async () =>
       getData<SitePage>(await api.api.public.sites[':id'].page.$get({ param: { id: id! }, query: lang ? { path, lang } : { path } }), 'page'),
   });
