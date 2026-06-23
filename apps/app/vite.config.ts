@@ -14,6 +14,7 @@ export default defineConfig({
     tailwindcss(),
     // Same-origin /api proxy: the browser only talks to the dashboard origin, so
     // better-auth session cookies stay first-party. All /api/** → the Plume API.
+    // Custom-domain serving is handled in src/server.ts (request URL rewrite).
     nitro({
       routeRules: {
         '/api/**': { proxy: `${API_TARGET}/api/**` },

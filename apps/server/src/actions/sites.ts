@@ -230,3 +230,15 @@ export const getSiteRobots = async (identifier: string): Promise<string> => {
   const projectId = await resolveProjectId(identifier);
   return `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`;
 };
+
+/** Resolve a request Host (a connected, verified custom domain) to its project
+ *  id — used by the app edge to serve custom domains at their own root. Returns
+ *  null for unknown / unverified hosts. */
+export const resolveDomainHost = async (host: string): Promise<string | null> => {
+  const clean = (host ?? '').toLowerCase().split(':')[0]?.trim();
+  if (!clean) {
+    return null;
+  }
+  const domain = await prisma.domain.findFirst({ where: { domain: clean, verified: true }, select: { projectId: true } });
+  return domain?.projectId ?? null;
+};
