@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from './section';
 
@@ -31,21 +32,22 @@ const DEFAULTS: GitConfig = {
 const PROVIDERS = [
   {
     id: 'github' as const,
-    name: 'Connect to GitHub',
-    description: 'Connect an org and host content on GitHub',
+    nameKey: 'settings.git.provider.github.name' as const,
+    descriptionKey: 'settings.git.provider.github.description' as const,
     icon: GithubIcon,
     tint: 'bg-foreground/10 text-foreground',
   },
   {
     id: 'gitlab' as const,
-    name: 'Connect to GitLab',
-    description: 'Configure your GitLab repository',
+    nameKey: 'settings.git.provider.gitlab.name' as const,
+    descriptionKey: 'settings.git.provider.gitlab.description' as const,
     icon: GitlabIcon,
     tint: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
   },
 ];
 
 export function GitTab() {
+  const t = useT();
   const { data } = useWorkspaceSettings();
   const update = useUpdateWorkspaceSettings();
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as Partial<GitConfig>) };
@@ -59,21 +61,18 @@ export function GitTab() {
             toast.success(message);
           }
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not save Git settings'),
+        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.saveError')),
       },
     );
 
   const form = useForm({
     defaultValues: { repo: git.repo, branch: git.branch, path: git.path },
-    onSubmit: async ({ value }) => save({ ...value, connected: true }, 'Repository saved'),
+    onSubmit: async ({ value }) => save({ ...value, connected: true }, t('settings.git.repoSaved')),
   });
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsSection
-        title="Git access"
-        description="Manage your docs as files in a Git repository. Edits sync both ways between Plume and your provider."
-      >
+      <SettingsSection title={t('settings.git.access.title')} description={t('settings.git.access.description')}>
         <div className="flex flex-col gap-3">
           {PROVIDERS.map((provider) => {
             const selected = git.provider === provider.id;
@@ -85,15 +84,20 @@ export function GitTab() {
                   'flex w-full items-center gap-4 rounded-lg border p-4 text-start transition-colors',
                   selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40',
                 )}
-                onClick={() => save({ provider: provider.id, connected: true }, `Connected to ${provider.id === 'github' ? 'GitHub' : 'GitLab'}`)}
+                onClick={() =>
+                  save(
+                    { provider: provider.id, connected: true },
+                    t('settings.git.connectedToast', { provider: provider.id === 'github' ? 'GitHub' : 'GitLab' }),
+                  )
+                }
                 type="button"
               >
                 <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${provider.tint}`}>
                   <Icon className="size-5" />
                 </span>
                 <span className="min-w-0 flex-1 leading-snug">
-                  <span className="block font-medium text-sm">{provider.name}</span>
-                  <span className="block text-muted-foreground text-sm">{provider.description}</span>
+                  <span className="block font-medium text-sm">{t(provider.nameKey)}</span>
+                  <span className="block text-muted-foreground text-sm">{t(provider.descriptionKey)}</span>
                 </span>
                 <span className={cn('size-4 shrink-0 rounded-full border', selected ? 'border-[5px] border-primary' : 'border-input')} aria-hidden />
               </button>
@@ -103,7 +107,10 @@ export function GitTab() {
       </SettingsSection>
 
       {git.connected ? (
-        <SettingsSection title="Repository" action={<Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Connected</Badge>}>
+        <SettingsSection
+          title={t('settings.git.repository.title')}
+          action={<Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">{t('settings.git.connected')}</Badge>}
+        >
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -113,7 +120,7 @@ export function GitTab() {
             <form.Field name="repo">
               {(field) => (
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="git-repo">Repository URL</Label>
+                  <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
                   <Input
                     className="font-mono"
                     id="git-repo"
@@ -128,7 +135,7 @@ export function GitTab() {
               <form.Field name="branch">
                 {(field) => (
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="git-branch">Production branch</Label>
+                    <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
                     <Input className="font-mono" id="git-branch" onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
                   </div>
                 )}
@@ -136,7 +143,7 @@ export function GitTab() {
               <form.Field name="path">
                 {(field) => (
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="git-path">Content path</Label>
+                    <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
                     <Input className="font-mono" id="git-path" onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
                   </div>
                 )}
@@ -144,19 +151,19 @@ export function GitTab() {
             </div>
             <div className="mt-5 flex items-center gap-4 border-border border-t pt-5">
               <div className="min-w-0 flex-1 leading-snug">
-                <div className="font-medium text-sm">Two-way auto-sync</div>
-                <p className="mt-0.5 text-muted-foreground text-sm">Pushes to the branch publish automatically.</p>
+                <div className="font-medium text-sm">{t('settings.git.twoWaySync.title')}</div>
+                <p className="mt-0.5 text-muted-foreground text-sm">{t('settings.git.twoWaySync.description')}</p>
               </div>
               <Switch checked={git.twoWaySync} disabled={update.isPending} onCheckedChange={(checked) => save({ twoWaySync: checked })} />
             </div>
             <div className="mt-5 flex justify-between">
-              <Button type="button" variant="destructive" onClick={() => save({ connected: false }, 'Disconnected')}>
-                Disconnect
+              <Button type="button" variant="destructive" onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}>
+                {t('settings.git.disconnect')}
               </Button>
               <form.Subscribe selector={(state) => state.isSubmitting}>
                 {(isSubmitting) => (
                   <Button disabled={isSubmitting} type="submit">
-                    {isSubmitting ? 'Saving…' : 'Save'}
+                    {isSubmitting ? t('common.saving') : t('settings.git.save')}
                   </Button>
                 )}
               </form.Subscribe>

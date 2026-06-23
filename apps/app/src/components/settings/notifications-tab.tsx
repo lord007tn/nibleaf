@@ -2,47 +2,86 @@ import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { SettingsSection } from './section';
 
 interface NotifItem {
   id: string;
-  label: string;
-  description: string;
+  labelKey: MessageKey;
+  descriptionKey: MessageKey;
 }
 
-const GROUPS: Array<{ title: string; items: NotifItem[] }> = [
+const GROUPS: Array<{ titleKey: MessageKey; items: NotifItem[] }> = [
   {
-    title: 'Workspace',
+    titleKey: 'settings.notifications.group.workspace',
     items: [
-      { id: 'workspace_weekly', label: 'Weekly summary', description: 'A digest of activity across your workspace.' },
-      { id: 'workspace_plan', label: 'Plan & billing', description: 'Renewals, receipts, and plan changes.' },
+      {
+        id: 'workspace_weekly',
+        labelKey: 'settings.notifications.workspaceWeekly.label',
+        descriptionKey: 'settings.notifications.workspaceWeekly.description',
+      },
+      {
+        id: 'workspace_plan',
+        labelKey: 'settings.notifications.workspacePlan.label',
+        descriptionKey: 'settings.notifications.workspacePlan.description',
+      },
     ],
   },
   {
-    title: 'Projects',
+    titleKey: 'settings.notifications.group.projects',
     items: [
-      { id: 'project_new', label: 'New projects', description: 'When a project is created in the workspace.' },
-      { id: 'project_deploy', label: 'Deployment completed', description: 'When a site finishes publishing.' },
-      { id: 'project_deploy_failed', label: 'Deployment failed', description: 'When a publish run errors out.' },
+      {
+        id: 'project_new',
+        labelKey: 'settings.notifications.projectNew.label',
+        descriptionKey: 'settings.notifications.projectNew.description',
+      },
+      {
+        id: 'project_deploy',
+        labelKey: 'settings.notifications.projectDeploy.label',
+        descriptionKey: 'settings.notifications.projectDeploy.description',
+      },
+      {
+        id: 'project_deploy_failed',
+        labelKey: 'settings.notifications.projectDeployFailed.label',
+        descriptionKey: 'settings.notifications.projectDeployFailed.description',
+      },
     ],
   },
   {
-    title: 'Members',
+    titleKey: 'settings.notifications.group.members',
     items: [
-      { id: 'member_invited', label: 'Member invited', description: 'When someone is invited to the workspace.' },
-      { id: 'member_joined', label: 'Member joined', description: 'When an invite is accepted.' },
+      {
+        id: 'member_invited',
+        labelKey: 'settings.notifications.memberInvited.label',
+        descriptionKey: 'settings.notifications.memberInvited.description',
+      },
+      {
+        id: 'member_joined',
+        labelKey: 'settings.notifications.memberJoined.label',
+        descriptionKey: 'settings.notifications.memberJoined.description',
+      },
     ],
   },
   {
-    title: 'Security',
+    titleKey: 'settings.notifications.group.security',
     items: [
-      { id: 'security_login', label: 'Login from new device', description: 'When a new sign-in is detected.' },
-      { id: 'security_password', label: 'Password changed', description: 'When your password is updated.' },
+      {
+        id: 'security_login',
+        labelKey: 'settings.notifications.securityLogin.label',
+        descriptionKey: 'settings.notifications.securityLogin.description',
+      },
+      {
+        id: 'security_password',
+        labelKey: 'settings.notifications.securityPassword.label',
+        descriptionKey: 'settings.notifications.securityPassword.description',
+      },
     ],
   },
 ];
 
 export function NotificationsTab() {
+  const t = useT();
   const { data } = useWorkspaceSettings();
   const update = useUpdateWorkspaceSettings();
   const { data: session } = useSession();
@@ -55,7 +94,7 @@ export function NotificationsTab() {
     update.mutate(
       { notifications: next },
       {
-        onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update notifications'),
+        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.notifications.toast.updateError')),
       },
     );
   };
@@ -63,16 +102,18 @@ export function NotificationsTab() {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm">
-        Choose which emails Plume sends to <span className="font-medium text-foreground">{session?.user?.email ?? 'you'}</span>.
+        {t('settings.notifications.introBefore')}{' '}
+        <span className="font-medium text-foreground">{session?.user?.email ?? t('settings.notifications.youFallback')}</span>
+        {t('settings.notifications.introAfter')}
       </p>
       {GROUPS.map((group) => (
-        <SettingsSection key={group.title} title={group.title}>
+        <SettingsSection key={group.titleKey} title={t(group.titleKey)}>
           <div className="-mt-2 flex flex-col divide-y divide-border">
             {group.items.map((item) => (
               <div key={item.id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
                 <div className="min-w-0 flex-1 leading-snug">
-                  <div className="font-medium text-sm">{item.label}</div>
-                  <p className="mt-0.5 text-muted-foreground text-sm">{item.description}</p>
+                  <div className="font-medium text-sm">{t(item.labelKey)}</div>
+                  <p className="mt-0.5 text-muted-foreground text-sm">{t(item.descriptionKey)}</p>
                 </div>
                 <Switch checked={isOn(item.id)} disabled={update.isPending} onCheckedChange={() => toggle(item.id)} />
               </div>

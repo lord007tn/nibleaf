@@ -21,20 +21,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Invitation, Member } from '@/hooks/api';
 import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { GradientAvatar, SettingsSection } from './section';
 
 type Role = 'owner' | 'admin' | 'member';
 
-const ROLE_OPTIONS: Array<{ value: Role; label: string }> = [
-  { value: 'member', label: 'Editor' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'owner', label: 'Owner' },
+const ROLE_OPTIONS: Array<{ value: Role; labelKey: MessageKey }> = [
+  { value: 'member', labelKey: 'settings.members.role.member' },
+  { value: 'admin', labelKey: 'settings.members.role.admin' },
+  { value: 'owner', labelKey: 'settings.members.role.owner' },
 ];
 
-const roleLabel = (role: string) => ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role;
+const roleLabelKey = (role: string): MessageKey => ROLE_OPTIONS.find((r) => r.value === role)?.labelKey ?? 'settings.members.role.member';
 
 function InviteDialog() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const invite = useInviteMember();
 
@@ -47,13 +50,13 @@ function InviteDialog() {
           { email: invited, role: value.role },
           {
             onSuccess: () => {
-              toast.success(`Invited ${invited}`);
+              toast.success(t('settings.members.toast.invited', { email: invited }));
               form.reset();
               setOpen(false);
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : 'Could not invite');
+              toast.error(error instanceof Error ? error.message : t('settings.members.toast.inviteError'));
               resolve();
             },
           },
@@ -65,12 +68,12 @@ function InviteDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button size="sm" />}>
-        <Plus className="size-4" /> Invite
+        <Plus className="size-4" /> {t('settings.members.invite')}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite a member</DialogTitle>
-          <DialogDescription>Send an invitation to collaborate on this workspace.</DialogDescription>
+          <DialogTitle>{t('settings.members.inviteTitle')}</DialogTitle>
+          <DialogDescription>{t('settings.members.inviteDescription')}</DialogDescription>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -82,13 +85,13 @@ function InviteDialog() {
           <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
             {(field) => (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="invite-email">Email</Label>
+                <Label htmlFor="invite-email">{t('settings.members.emailLabel')}</Label>
                 <Input
                   autoFocus
                   id="invite-email"
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="teammate@company.com"
+                  placeholder={t('settings.members.emailPlaceholder')}
                   type="email"
                   value={field.state.value}
                 />
@@ -99,7 +102,7 @@ function InviteDialog() {
           <form.Field name="role">
             {(field) => (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="invite-role">Role</Label>
+                <Label htmlFor="invite-role">{t('settings.members.roleLabel')}</Label>
                 <Select onValueChange={(v) => field.handleChange((v ?? 'member') as Role)} value={field.state.value}>
                   <SelectTrigger className="w-full" id="invite-role">
                     <SelectValue />
@@ -107,7 +110,7 @@ function InviteDialog() {
                   <SelectContent>
                     {ROLE_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {t(option.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -116,11 +119,11 @@ function InviteDialog() {
             )}
           </form.Field>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
             <form.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
                 <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? 'Sending…' : 'Send invite'}
+                  {isSubmitting ? t('settings.members.sending') : t('settings.members.sendInvite')}
                 </Button>
               )}
             </form.Subscribe>
@@ -132,6 +135,7 @@ function InviteDialog() {
 }
 
 function MemberRow({ member }: { member: Member }) {
+  const t = useT();
   const updateRole = useUpdateMemberRole();
   const isOwner = member.role === 'owner';
 
@@ -143,7 +147,7 @@ function MemberRow({ member }: { member: Member }) {
         <div className="truncate text-muted-foreground text-xs">{member.user.email}</div>
       </div>
       {isOwner ? (
-        <span className="rounded-md border border-border px-2.5 py-1 text-muted-foreground text-xs">{roleLabel(member.role)}</span>
+        <span className="rounded-md border border-border px-2.5 py-1 text-muted-foreground text-xs">{t(roleLabelKey(member.role))}</span>
       ) : (
         <Select
           value={member.role}
@@ -151,8 +155,8 @@ function MemberRow({ member }: { member: Member }) {
             updateRole.mutate(
               { id: member.id, body: { role: (v ?? 'member') as Role } },
               {
-                onSuccess: () => toast.success('Role updated'),
-                onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update the role'),
+                onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
+                onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.roleError')),
               },
             )
           }
@@ -163,7 +167,7 @@ function MemberRow({ member }: { member: Member }) {
           <SelectContent>
             {ROLE_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {option.label}
+                {t(option.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -174,6 +178,7 @@ function MemberRow({ member }: { member: Member }) {
 }
 
 function PendingRow({ invitation }: { invitation: Invitation }) {
+  const t = useT();
   const cancel = useCancelInvitation();
   const initial = (invitation.email[0] ?? '?').toUpperCase();
   const [copied, setCopied] = useState(false);
@@ -182,10 +187,10 @@ function PendingRow({ invitation }: { invitation: Invitation }) {
     const ok = await copyToClipboard(inviteAcceptUrl(invitation.id));
     if (ok) {
       setCopied(true);
-      toast.success('Invite link copied to clipboard');
+      toast.success(t('settings.members.linkCopied'));
       setTimeout(() => setCopied(false), 1500);
     } else {
-      toast.error('Could not copy the link');
+      toast.error(t('settings.members.copyFailed'));
     }
   };
 
@@ -194,11 +199,13 @@ function PendingRow({ invitation }: { invitation: Invitation }) {
       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-muted font-semibold text-muted-foreground text-xs">{initial}</span>
       <div className="min-w-0 flex-1 leading-tight">
         <div className="truncate font-medium text-sm">{invitation.email}</div>
-        <div className="truncate text-amber-600 text-xs dark:text-amber-400">Invited · awaiting response</div>
+        <div className="truncate text-amber-600 text-xs dark:text-amber-400">{t('settings.members.awaitingResponse')}</div>
       </div>
-      <span className="rounded-md border border-border px-2.5 py-1 text-muted-foreground text-xs">{roleLabel(invitation.role ?? 'member')}</span>
+      <span className="rounded-md border border-border px-2.5 py-1 text-muted-foreground text-xs">
+        {t(roleLabelKey(invitation.role ?? 'member'))}
+      </span>
       <Button onClick={copyLink} size="sm" variant="outline">
-        {copied ? <Check className="size-4" /> : <Link2 className="size-4" />} Copy link
+        {copied ? <Check className="size-4" /> : <Link2 className="size-4" />} {t('settings.members.copyLink')}
       </Button>
       <Button
         className="text-destructive hover:text-destructive"
@@ -206,18 +213,19 @@ function PendingRow({ invitation }: { invitation: Invitation }) {
         variant="outline"
         onClick={() =>
           cancel.mutate(invitation.id, {
-            onSuccess: () => toast.success('Invitation revoked'),
-            onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not revoke the invitation'),
+            onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
+            onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
           })
         }
       >
-        Revoke
+        {t('settings.members.revoke')}
       </Button>
     </div>
   );
 }
 
 export function MembersTab() {
+  const t = useT();
   const { data, isPending } = useMembers();
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
@@ -228,7 +236,7 @@ export function MembersTab() {
         action={<InviteDialog />}
         title={
           <span className="flex items-center gap-2">
-            Members
+            {t('settings.members.title')}
             <span className="font-mono font-normal text-muted-foreground text-sm">{members.length}</span>
           </span>
         }
@@ -236,7 +244,7 @@ export function MembersTab() {
         {isPending ? (
           <Skeleton className="h-12 w-full" />
         ) : members.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No members yet.</p>
+          <p className="text-muted-foreground text-sm">{t('settings.members.empty')}</p>
         ) : (
           <div className="flex flex-col">
             {members.map((member) => (
@@ -250,7 +258,7 @@ export function MembersTab() {
         <SettingsSection
           title={
             <span className="flex items-center gap-2">
-              Pending invites
+              {t('settings.members.pendingInvitations')}
               <span className="font-mono font-normal text-muted-foreground text-sm">{invitations.length}</span>
             </span>
           }

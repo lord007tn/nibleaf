@@ -11,18 +11,20 @@ import { useWorkspaceSettings } from '@/hooks/api';
 import type { ActiveWorkspace } from '@/hooks/use-active-workspace';
 import { authClient } from '@/lib/auth-client';
 import { required } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
 
 function WorkspaceNameForm({ workspaceId, initialName }: { workspaceId: string; initialName: string }) {
+  const t = useT();
   const form = useForm({
     defaultValues: { name: initialName },
     onSubmit: async ({ value }) => {
       const { error } = await authClient.organization.update({ data: { name: value.name }, organizationId: workspaceId });
       if (error) {
-        toast.error(error.message ?? 'Could not save');
+        toast.error(error.message ?? t('settings.workspace.toast.saveError'));
         return;
       }
-      toast.success('Workspace updated');
+      toast.success(t('settings.workspace.toast.updated'));
     },
   });
 
@@ -33,10 +35,10 @@ function WorkspaceNameForm({ workspaceId, initialName }: { workspaceId: string; 
         form.handleSubmit();
       }}
     >
-      <form.Field name="name" validators={{ onChange: ({ value }) => required('Workspace name')(value) }}>
+      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.workspace.name'))(value) }}>
         {(field) => (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ws-name">Workspace name</Label>
+            <Label htmlFor="ws-name">{t('settings.workspace.name')}</Label>
             <Input id="ws-name" onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
             <FieldError errors={field.state.meta.errors} />
           </div>
@@ -46,7 +48,7 @@ function WorkspaceNameForm({ workspaceId, initialName }: { workspaceId: string; 
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Saving…' : 'Save'}
+              {isSubmitting ? t('common.saving') : t('settings.workspace.save')}
             </Button>
           )}
         </form.Subscribe>
@@ -57,6 +59,7 @@ function WorkspaceNameForm({ workspaceId, initialName }: { workspaceId: string; 
 
 /** Subtle bordered plan summary shown inline within the Workspace card. */
 function PlanInline() {
+  const t = useT();
   const { data } = useWorkspaceSettings();
   const plan = data?.plan ?? 'Free';
   const projectCount = data?.projectCount ?? 0;
@@ -66,31 +69,35 @@ function PlanInline() {
     <div className="mt-5 flex items-center gap-4 rounded-lg border border-border bg-muted/40 p-4">
       <div className="flex-1 leading-snug">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{plan} plan</span>
+          <span className="font-semibold text-sm">{t('settings.workspace.planName', { plan })}</span>
           <Badge variant="secondary">{plan}</Badge>
         </div>
         <p className="mt-1 text-muted-foreground text-sm">
-          {projectCount} {projectCount === 1 ? 'project' : 'projects'} · {memberCount} {memberCount === 1 ? 'member' : 'members'} · unlimited
-          pageviews · custom domains
+          {projectCount === 1
+            ? t('settings.workspace.projectCount.one', { count: projectCount })
+            : t('settings.workspace.projectCount.other', { count: projectCount })}{' '}
+          · {memberCount === 1 ? t('settings.members.count.one', { count: memberCount }) : t('settings.members.count.other', { count: memberCount })}{' '}
+          · {t('settings.workspace.planFeatures')}
         </p>
       </div>
-      <Button variant="outline" onClick={() => toast.info('Billing portal coming soon')}>
-        Manage plan
+      <Button variant="outline" onClick={() => toast.info(t('settings.workspace.billingComingSoon'))}>
+        {t('settings.workspace.managePlan')}
       </Button>
     </div>
   );
 }
 
 function DangerZone({ workspace }: { workspace: ActiveWorkspace | null }) {
+  const t = useT();
   const confirm = useConfirm();
   const deleteWorkspace = async () => {
     if (!workspace) {
       return;
     }
     const ok = await confirm({
-      title: 'Delete workspace',
-      description: 'Delete this workspace and all of its sites? This cannot be undone.',
-      confirmLabel: 'Delete workspace',
+      title: t('settings.workspace.delete.title'),
+      description: t('settings.workspace.delete.description'),
+      confirmLabel: t('settings.workspace.delete.confirm'),
       destructive: true,
     });
     if (!ok) {
@@ -98,22 +105,20 @@ function DangerZone({ workspace }: { workspace: ActiveWorkspace | null }) {
     }
     const { error } = await authClient.organization.delete({ organizationId: workspace.id });
     if (error) {
-      toast.error(error.message ?? 'Could not delete the workspace');
+      toast.error(error.message ?? t('settings.workspace.toast.deleteError'));
       return;
     }
-    toast.success('Workspace deleted');
+    toast.success(t('settings.workspace.toast.deleted'));
     window.location.assign('/app');
   };
 
   return (
     <section className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
-      <h2 className="font-medium text-destructive">Danger zone</h2>
+      <h2 className="font-medium text-destructive">{t('settings.workspace.dangerZone')}</h2>
       <div className="mt-1 flex items-center gap-4">
-        <p className="flex-1 text-muted-foreground text-sm leading-relaxed">
-          Deleting your workspace removes all projects, docs, and analytics for everyone. This cannot be undone.
-        </p>
+        <p className="flex-1 text-muted-foreground text-sm leading-relaxed">{t('settings.workspace.dangerDescription')}</p>
         <Button disabled={!workspace} variant="destructive" onClick={deleteWorkspace}>
-          <Trash2 className="size-4" /> Delete workspace
+          <Trash2 className="size-4" /> {t('settings.workspace.delete.button')}
         </Button>
       </div>
     </section>
@@ -121,14 +126,15 @@ function DangerZone({ workspace }: { workspace: ActiveWorkspace | null }) {
 }
 
 export function WorkspaceTab({ workspace }: { workspace: ActiveWorkspace | null }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-6">
-      <SettingsSection title="Workspace" description="Settings that apply to everyone in this workspace.">
+      <SettingsSection title={t('settings.workspace.title')} description={t('settings.workspace.description')}>
         {workspace ? (
           <WorkspaceNameForm key={workspace.id} initialName={workspace.name ?? ''} workspaceId={workspace.id} />
         ) : (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="ws-name">Workspace name</Label>
+            <Label htmlFor="ws-name">{t('settings.workspace.name')}</Label>
             <Input disabled id="ws-name" value="" />
           </div>
         )}

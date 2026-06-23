@@ -7,19 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from './section';
 
 interface ProviderField {
   key: string;
-  label: string;
+  /** i18n key for the field label, resolved through `t` at render time. */
+  labelKey: MessageKey;
   placeholder: string;
 }
 
 interface Provider {
   id: string;
   name: string;
-  description: string;
+  /** i18n key for the provider description, resolved through `t` at render time. */
+  descriptionKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   tint: string;
   fields: ProviderField[];
@@ -29,48 +33,48 @@ const PROVIDERS: Provider[] = [
   {
     id: 'github',
     name: 'GitHub',
-    description: 'Sync docs from a repository and trigger deploys on push.',
+    descriptionKey: 'settings.integrations.github.description',
     icon: GithubIcon,
     tint: 'bg-foreground/10 text-foreground',
     fields: [
-      { key: 'org', label: 'Organization', placeholder: 'acme-inc' },
-      { key: 'repo', label: 'Repository', placeholder: 'acme-inc/docs' },
+      { key: 'org', labelKey: 'settings.integrations.github.org', placeholder: 'acme-inc' },
+      { key: 'repo', labelKey: 'settings.integrations.github.repo', placeholder: 'acme-inc/docs' },
     ],
   },
   {
     id: 'gitlab',
     name: 'GitLab',
-    description: 'Connect a GitLab project to host content as files.',
+    descriptionKey: 'settings.integrations.gitlab.description',
     icon: GitlabIcon,
     tint: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
     fields: [
-      { key: 'project', label: 'Project path', placeholder: 'group/docs' },
-      { key: 'instance', label: 'Instance URL', placeholder: 'https://gitlab.com' },
+      { key: 'project', labelKey: 'settings.integrations.gitlab.project', placeholder: 'group/docs' },
+      { key: 'instance', labelKey: 'settings.integrations.gitlab.instance', placeholder: 'https://gitlab.com' },
     ],
   },
   {
     id: 'slack',
     name: 'Slack',
-    description: 'Get deploy and comment notifications in a channel.',
+    descriptionKey: 'settings.integrations.slack.description',
     icon: SlackIcon,
     tint: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
-    fields: [{ key: 'channel', label: 'Channel', placeholder: '#docs' }],
+    fields: [{ key: 'channel', labelKey: 'settings.integrations.slack.channel', placeholder: '#docs' }],
   },
   {
     id: 'discord',
     name: 'Discord',
-    description: 'Post workspace activity to a Discord webhook.',
+    descriptionKey: 'settings.integrations.discord.description',
     icon: MessageSquare,
     tint: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
-    fields: [{ key: 'webhook', label: 'Webhook URL', placeholder: 'https://discord.com/api/webhooks/…' }],
+    fields: [{ key: 'webhook', labelKey: 'settings.integrations.discord.webhook', placeholder: 'https://discord.com/api/webhooks/…' }],
   },
   {
     id: 'zapier',
     name: 'Zapier',
-    description: 'Automate workflows with thousands of apps.',
+    descriptionKey: 'settings.integrations.zapier.description',
     icon: Zap,
     tint: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-    fields: [{ key: 'apiKey', label: 'API key', placeholder: 'zap_••••••••' }],
+    fields: [{ key: 'apiKey', labelKey: 'settings.integrations.zapier.apiKey', placeholder: 'zap_••••••••' }],
   },
 ];
 
@@ -95,22 +99,25 @@ function readState(raw: unknown): IntegrationState {
 }
 
 function ConnectedPill() {
+  const t = useT();
   return (
     <span className="inline-flex items-center gap-1.5 rounded-4xl bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-600 text-xs dark:text-emerald-400">
-      <span className="size-1.5 rounded-full bg-emerald-500" /> Connected
+      <span className="size-1.5 rounded-full bg-emerald-500" /> {t('settings.integrations.connected')}
     </span>
   );
 }
 
 function NotConnectedPill() {
+  const t = useT();
   return (
     <span className="inline-flex items-center gap-1.5 rounded-4xl border border-border px-2.5 py-1 font-medium text-muted-foreground text-xs">
-      <span className="size-1.5 rounded-full bg-muted-foreground/40" /> Not connected
+      <span className="size-1.5 rounded-full bg-muted-foreground/40" /> {t('settings.integrations.notConnected')}
     </span>
   );
 }
 
 function IntegrationDetail({ provider, integrations, onBack }: { provider: Provider; integrations: Record<string, unknown>; onBack: () => void }) {
+  const t = useT();
   const update = useUpdateWorkspaceSettings();
   const persisted = readState(integrations[provider.id]);
   const [connected, setConnected] = useState(persisted.connected);
@@ -132,15 +139,19 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
     const next = !connected;
     setConnected(next);
     persist({ connected: next, config });
-    toast.success(next ? `${provider.name} connected` : `${provider.name} disconnected`);
+    toast.success(
+      next
+        ? t('settings.integrations.connectedToast', { name: provider.name })
+        : t('settings.integrations.disconnectedToast', { name: provider.name }),
+    );
   };
 
   const saveChanges = () =>
     update.mutate(
       { integrations: { ...integrations, [provider.id]: { connected, config } } },
       {
-        onSuccess: () => toast.success('Changes saved'),
-        onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not save changes'),
+        onSuccess: () => toast.success(t('settings.integrations.changesSaved')),
+        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.saveError')),
       },
     );
 
@@ -151,7 +162,7 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
         onClick={onBack}
         type="button"
       >
-        <ArrowLeft className="size-4" /> All integrations
+        <ArrowLeft className="size-4" /> {t('settings.integrations.allIntegrations')}
       </button>
 
       <section className="rounded-xl border border-border bg-card p-5">
@@ -161,18 +172,18 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
           </span>
           <div className="min-w-0 flex-1 leading-snug">
             <div className="font-semibold text-lg tracking-tight">{provider.name}</div>
-            <p className="mt-0.5 text-muted-foreground text-sm">{provider.description}</p>
+            <p className="mt-0.5 text-muted-foreground text-sm">{t(provider.descriptionKey)}</p>
           </div>
           {connected ? <ConnectedPill /> : <NotConnectedPill />}
         </div>
       </section>
 
-      <SettingsSection title="Configuration">
+      <SettingsSection title={t('settings.integrations.configuration')}>
         <div className="flex flex-col gap-4">
           {provider.fields.map((field) => (
             <div key={field.key} className="flex flex-col gap-1.5">
               <Label className="text-muted-foreground" htmlFor={`${provider.id}-${field.key}`}>
-                {field.label}
+                {t(field.labelKey)}
               </Label>
               <Input
                 className="font-mono"
@@ -186,10 +197,10 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
         </div>
         <div className="mt-5 flex items-center gap-2.5">
           <Button disabled={update.isPending} variant={connected ? 'outline' : 'default'} onClick={toggleConnection}>
-            {connected ? 'Disconnect' : 'Connect'}
+            {connected ? t('settings.integrations.disconnect') : t('settings.integrations.connect')}
           </Button>
           <Button disabled={update.isPending} variant="outline" onClick={saveChanges}>
-            Save changes
+            {t('common.save')}
           </Button>
         </div>
       </SettingsSection>
@@ -198,6 +209,7 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
 }
 
 export function IntegrationsTab() {
+  const t = useT();
   const { data } = useWorkspaceSettings();
   const integrations = useMemo(() => (data?.integrations ?? {}) as Record<string, unknown>, [data?.integrations]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -209,7 +221,7 @@ export function IntegrationsTab() {
   }
 
   return (
-    <SettingsSection title="Integrations" description="Connect Plume to the tools your team already uses.">
+    <SettingsSection title={t('settings.integrations.title')} description={t('settings.integrations.subtitle')}>
       <div className="flex flex-col">
         {PROVIDERS.map((provider) => {
           const connected = readState(integrations[provider.id]).connected;
@@ -229,9 +241,11 @@ export function IntegrationsTab() {
                   <span className="font-medium text-sm">{provider.name}</span>
                   {connected ? <ConnectedPill /> : <NotConnectedPill />}
                 </div>
-                <p className="mt-0.5 text-muted-foreground text-sm">{provider.description}</p>
+                <p className="mt-0.5 text-muted-foreground text-sm">{t(provider.descriptionKey)}</p>
               </div>
-              <span className="text-muted-foreground text-sm">{connected ? 'Manage' : 'Connect'}</span>
+              <span className="text-muted-foreground text-sm">
+                {connected ? t('settings.integrations.manage') : t('settings.integrations.connect')}
+              </span>
             </button>
           );
         })}

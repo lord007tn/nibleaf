@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient, useSession } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 import { GradientAvatar, SettingsSection } from './section';
 
 // better-auth's email-change verification methods are plugin/proxy-generated and
@@ -20,18 +21,19 @@ type ChangeEmailClient = {
 };
 
 function NameForm({ initialName }: { initialName: string }) {
+  const t = useT();
   const form = useForm({
     defaultValues: { name: initialName },
     onSubmit: async ({ value }) => {
       try {
         const res = await authClient.updateUser({ name: value.name.trim() });
         if (res?.error) {
-          toast.error(res.error.message ?? 'Could not save your name');
+          toast.error(res.error.message ?? t('settings.account.name.error'));
           return;
         }
-        toast.success('Profile updated');
+        toast.success(t('settings.account.profileUpdated'));
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not save your name');
+        toast.error(err instanceof Error ? err.message : t('settings.account.name.error'));
       }
     },
   });
@@ -43,10 +45,10 @@ function NameForm({ initialName }: { initialName: string }) {
         form.handleSubmit();
       }}
     >
-      <form.Field name="name" validators={{ onChange: ({ value }) => required('Name')(value) }}>
+      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.account.name.label'))(value) }}>
         {(field) => (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="acct-name">Name</Label>
+            <Label htmlFor="acct-name">{t('settings.account.name.label')}</Label>
             <Input id="acct-name" onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
             <FieldError errors={field.state.meta.errors} />
           </div>
@@ -56,7 +58,7 @@ function NameForm({ initialName }: { initialName: string }) {
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Saving…' : 'Save'}
+              {isSubmitting ? t('common.saving') : t('common.save')}
             </Button>
           )}
         </form.Subscribe>
@@ -89,6 +91,7 @@ function useResendTimer(active: boolean) {
 }
 
 function EmailRow({ email, verified }: { email: string; verified: boolean }) {
+  const t = useT();
   const [stage, setStage] = useState<Stage>('idle');
   const [newEmail, setNewEmail] = useState('');
   const [code, setCode] = useState('');
@@ -109,16 +112,16 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         const client = authClient as unknown as ChangeEmailClient;
         const res = await client.changeEmail?.({ newEmail: next });
         if (res?.error) {
-          toast.error(res.error.message ?? 'Could not send the verification code');
+          toast.error(res.error.message ?? t('settings.account.email.sendError'));
           return;
         }
-        toast.success(`We sent a 6-digit code to ${next}`);
+        toast.success(t('settings.account.email.codeSent', { email: next }));
         setNewEmail(next);
         setCode('');
         setStage('code');
         resend.start();
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not send the verification code');
+        toast.error(err instanceof Error ? err.message : t('settings.account.email.sendError'));
       }
     },
   });
@@ -133,13 +136,13 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         ? await client.verifyChangeEmail({ otp: code, newEmail })
         : await client.emailOtp?.verifyEmail?.({ email: newEmail, otp: code });
       if (res?.error) {
-        toast.error(res.error.message ?? 'That code did not match. Try again.');
+        toast.error(res.error.message ?? t('settings.account.email.codeMismatch'));
         return;
       }
-      toast.success(`Email updated to ${newEmail}`);
+      toast.success(t('settings.account.email.updated', { email: newEmail }));
       setStage('done');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'That code did not match. Try again.');
+      toast.error(err instanceof Error ? err.message : t('settings.account.email.codeMismatch'));
     } finally {
       setBusy(false);
     }
@@ -152,29 +155,29 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     try {
       const client = authClient as unknown as ChangeEmailClient;
       await client.changeEmail?.({ newEmail });
-      toast.success(`We sent a new code to ${newEmail}`);
+      toast.success(t('settings.account.email.codeResent', { email: newEmail }));
       resend.start();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not resend the code');
+      toast.error(err instanceof Error ? err.message : t('settings.account.email.resendError'));
     }
   };
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor="acct-email">Email</Label>
+      <Label htmlFor="acct-email">{t('settings.account.email.label')}</Label>
 
       {stage === 'idle' ? (
         <div className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2">
           <span className="font-medium text-sm">{email}</span>
           {verified ? (
-            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">✓ Verified</Badge>
+            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">✓ {t('settings.account.email.verified')}</Badge>
           ) : (
             <Badge variant="outline" className="text-muted-foreground">
-              Unverified
+              {t('settings.account.email.unverified')}
             </Badge>
           )}
           <Button className="ms-auto" size="sm" type="button" variant="outline" onClick={() => setStage('editing')}>
-            Change
+            {t('settings.account.email.change')}
           </Button>
         </div>
       ) : null}
@@ -187,9 +190,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             editForm.handleSubmit();
           }}
         >
-          <p className="mb-3 text-muted-foreground text-sm leading-relaxed">
-            Enter a new email address. We'll send a 6-digit code there to confirm it's yours before switching.
-          </p>
+          <p className="mb-3 text-muted-foreground text-sm leading-relaxed">{t('settings.account.email.changeIntro')}</p>
           <editForm.Field name="newEmail" validators={{ onChange: ({ value }) => validateEmail(value) }}>
             {(field) => (
               <div className="flex flex-col gap-1.5">
@@ -198,7 +199,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
                   id="acct-email"
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="new@company.com"
+                  placeholder={t('settings.account.email.placeholder')}
                   type="email"
                   value={field.state.value}
                 />
@@ -210,12 +211,12 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <editForm.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
                 <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? 'Sending…' : 'Send verification code'}
+                  {isSubmitting ? t('settings.account.email.sending') : t('settings.account.email.sendCode')}
                 </Button>
               )}
             </editForm.Subscribe>
             <Button type="button" variant="outline" onClick={reset}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </form>
@@ -228,7 +229,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
               <Mail className="size-4" />
             </span>
             <p className="text-muted-foreground text-sm leading-snug">
-              We sent a code to <span className="font-medium text-foreground">{newEmail}</span>. Enter it below.
+              {t('settings.account.email.sentToPrefix')} <span className="font-medium text-foreground">{newEmail}</span>
+              {t('settings.account.email.sentToSuffix')}
             </p>
           </div>
           <Input
@@ -243,10 +245,10 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
           />
           <div className="mt-3 flex items-center gap-2">
             <Button disabled={busy || code.length < 6} type="button" onClick={verify}>
-              {busy ? 'Verifying…' : 'Verify & update'}
+              {busy ? t('settings.account.email.verifying') : t('settings.account.email.verifyUpdate')}
             </Button>
             <Button type="button" variant="outline" onClick={reset}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <button
               className="ms-auto text-muted-foreground text-sm enabled:cursor-pointer enabled:hover:text-foreground disabled:opacity-100"
@@ -254,7 +256,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
               onClick={resendCode}
               type="button"
             >
-              {resend.seconds > 0 ? `Resend in ${resend.label}` : 'Resend code'}
+              {resend.seconds > 0 ? t('settings.account.email.resendIn', { time: resend.label }) : t('settings.account.email.resendCode')}
             </button>
           </div>
         </div>
@@ -263,7 +265,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       {stage === 'done' ? (
         <div className="flex items-center gap-2.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-600 dark:text-emerald-400">
           <span className="text-base">✓</span>
-          <span className="font-medium text-sm">Email updated to {newEmail}</span>
+          <span className="font-medium text-sm">{t('settings.account.email.updated', { email: newEmail })}</span>
         </div>
       ) : null}
     </div>
@@ -271,6 +273,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
 }
 
 export function AccountTab() {
+  const t = useT();
   const { data: session } = useSession();
   const user = session?.user;
   const name = user?.name ?? '';
@@ -278,11 +281,11 @@ export function AccountTab() {
   const verified = Boolean(user?.emailVerified);
 
   return (
-    <SettingsSection title="Account" description="Your personal profile across every workspace.">
+    <SettingsSection title={t('settings.account.title')} description={t('settings.account.description')}>
       <div className="mb-5 flex items-center gap-4">
         <GradientAvatar className="size-12 text-base" name={name} />
         <Button disabled size="sm" variant="outline">
-          Change avatar
+          {t('settings.account.changeAvatar')}
         </Button>
       </div>
       <NameForm key={email} initialName={name} />

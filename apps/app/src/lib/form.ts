@@ -7,22 +7,45 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Validators run client-side, so localize the message to the user's chosen locale
+// (the same `plume.locale` key the i18n provider persists). Arabic messages are
+// generic (no English field label injected) to read naturally in RTL.
+const isArabic = (): boolean => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('plume.locale') === 'ar';
+  } catch {
+    return false;
+  }
+};
+
 export const required =
   (label = 'This field') =>
-  (value: string) =>
-    value.trim().length === 0 ? `${label} is required` : undefined;
+  (value: string) => {
+    if (value.trim().length > 0) {
+      return undefined;
+    }
+    return isArabic() ? 'هذا الحقل مطلوب' : `${label} is required`;
+  };
 
 export const email = (value: string) => {
+  const ar = isArabic();
   if (value.trim().length === 0) {
-    return 'Email is required';
+    return ar ? 'البريد الإلكتروني مطلوب' : 'Email is required';
   }
-  return EMAIL_RE.test(value.trim()) ? undefined : 'Enter a valid email address';
+  if (EMAIL_RE.test(value.trim())) {
+    return undefined;
+  }
+  return ar ? 'أدخل بريدًا إلكترونيًا صالحًا' : 'Enter a valid email address';
 };
 
 export const minLength =
   (min: number, label = 'Password') =>
-  (value: string) =>
-    value.length < min ? `${label} must be at least ${min} characters` : undefined;
+  (value: string) => {
+    if (value.length >= min) {
+      return undefined;
+    }
+    return isArabic() ? `يجب ألا يقل عن ${min} أحرف` : `${label} must be at least ${min} characters`;
+  };
 
 /** Normalise a TanStack Form field's `meta.errors` into clean strings to render. */
 export const fieldErrors = (errors: unknown[]): string[] => errors.filter((error): error is string => typeof error === 'string' && error.length > 0);

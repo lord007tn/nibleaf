@@ -24,11 +24,13 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n';
+import { type MessageKey, messages } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 interface SlashItem {
-  title: string;
-  description: string;
+  titleKey: MessageKey;
+  descKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   /** Short mono glyph shown in the 32px tile (matches the design's monospace tiles). */
   glyph: string;
@@ -70,88 +72,88 @@ function insertImage(editor: Editor, onUpload?: UploadFn) {
 
 const createItems = (onUpload?: UploadFn): SlashItem[] => [
   {
-    title: 'Text',
-    description: 'Plain paragraph text.',
+    titleKey: 'editor.slash.text.title',
+    descKey: 'editor.slash.text.desc',
     icon: Type,
     glyph: '¶',
     keywords: ['paragraph', 'p'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run(),
   },
   {
-    title: 'Heading 1',
-    description: 'Large section heading.',
+    titleKey: 'editor.slash.h1.title',
+    descKey: 'editor.slash.h1.desc',
     icon: Heading1,
     glyph: 'H1',
     keywords: ['h1', 'title'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run(),
   },
   {
-    title: 'Heading 2',
-    description: 'Medium section heading.',
+    titleKey: 'editor.slash.h2.title',
+    descKey: 'editor.slash.h2.desc',
     icon: Heading2,
     glyph: 'H2',
     keywords: ['h2', 'subtitle'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run(),
   },
   {
-    title: 'Heading 3',
-    description: 'Small section heading.',
+    titleKey: 'editor.slash.h3.title',
+    descKey: 'editor.slash.h3.desc',
     icon: Heading3,
     glyph: 'H3',
     keywords: ['h3'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run(),
   },
   {
-    title: 'Bullet list',
-    description: 'A simple bulleted list.',
+    titleKey: 'editor.slash.bulletList.title',
+    descKey: 'editor.slash.bulletList.desc',
     icon: List,
     glyph: '•',
     keywords: ['unordered', 'ul', 'bullet'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run(),
   },
   {
-    title: 'Numbered list',
-    description: 'An ordered, numbered list.',
+    titleKey: 'editor.slash.numberedList.title',
+    descKey: 'editor.slash.numberedList.desc',
     icon: ListOrdered,
     glyph: '1.',
     keywords: ['ordered', 'ol', 'number'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run(),
   },
   {
-    title: 'To-do list',
-    description: 'Track tasks with checkboxes.',
+    titleKey: 'editor.slash.todo.title',
+    descKey: 'editor.slash.todo.desc',
     icon: ListTodo,
     glyph: '☐',
     keywords: ['task', 'todo', 'checkbox'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run(),
   },
   {
-    title: 'Quote',
-    description: 'Capture a quotation.',
+    titleKey: 'editor.slash.quote.title',
+    descKey: 'editor.slash.quote.desc',
     icon: Quote,
     glyph: '"',
     keywords: ['blockquote'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBlockquote().run(),
   },
   {
-    title: 'Code block',
-    description: 'Syntax-highlighted code.',
+    titleKey: 'editor.slash.codeBlock.title',
+    descKey: 'editor.slash.codeBlock.desc',
     icon: Code2,
     glyph: '<>',
     keywords: ['snippet', 'pre'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
   },
   {
-    title: 'Callout',
-    description: 'A colored note or warning.',
+    titleKey: 'editor.slash.callout.title',
+    descKey: 'editor.slash.callout.desc',
     icon: Lightbulb,
     glyph: '!',
     keywords: ['note', 'admonition', 'warning', 'info'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
   },
   {
-    title: 'Steps',
-    description: 'A numbered step-by-step guide.',
+    titleKey: 'editor.slash.steps.title',
+    descKey: 'editor.slash.steps.desc',
     icon: ListChecks,
     glyph: '№',
     keywords: ['steps', 'guide', 'procedure', 'tutorial', 'how-to'],
@@ -170,8 +172,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    title: 'Card group',
-    description: 'A grid of linkable cards.',
+    titleKey: 'editor.slash.cardGroup.title',
+    descKey: 'editor.slash.cardGroup.desc',
     icon: LayoutGrid,
     glyph: '▦',
     keywords: ['card', 'cards', 'grid', 'tiles'],
@@ -191,8 +193,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    title: 'Tabs',
-    description: 'Tabbed content panes.',
+    titleKey: 'editor.slash.tabs.title',
+    descKey: 'editor.slash.tabs.desc',
     icon: AppWindow,
     glyph: '⊟',
     keywords: ['tab', 'tabs', 'panes'],
@@ -211,8 +213,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    title: 'Accordion',
-    description: 'Collapsible sections.',
+    titleKey: 'editor.slash.accordion.title',
+    descKey: 'editor.slash.accordion.desc',
     icon: ListCollapse,
     glyph: '▾',
     keywords: ['accordion', 'collapse', 'expand', 'faq', 'toggle'],
@@ -231,8 +233,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    title: 'Frame',
-    description: 'A framed image with a caption.',
+    titleKey: 'editor.slash.frame.title',
+    descKey: 'editor.slash.frame.desc',
     icon: FrameIcon,
     glyph: '▣',
     keywords: ['frame', 'figure', 'screenshot', 'caption'],
@@ -245,16 +247,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    title: 'Divider',
-    description: 'A horizontal rule.',
+    titleKey: 'editor.slash.divider.title',
+    descKey: 'editor.slash.divider.desc',
     icon: Minus,
     glyph: '—',
     keywords: ['hr', 'separator', 'rule'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run(),
   },
   {
-    title: 'Image',
-    description: 'Upload or embed an image.',
+    titleKey: 'editor.slash.image.title',
+    descKey: 'editor.slash.image.desc',
     icon: ImageIcon,
     glyph: '🖼',
     keywords: ['picture', 'photo', 'img', 'upload'],
@@ -264,14 +266,21 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     },
   },
   {
-    title: 'Table',
-    description: 'Insert a 3×3 table.',
+    titleKey: 'editor.slash.table.title',
+    descKey: 'editor.slash.table.desc',
     icon: TableIcon,
     glyph: '⊞',
     keywords: ['grid', 'rows', 'columns'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
 ];
+
+/** Search haystack across BOTH locales (+ keywords) so filtering works whatever
+ *  language the menu is displayed in. */
+const haystackOf = (item: SlashItem): string =>
+  [messages.en[item.titleKey], messages.ar[item.titleKey], messages.en[item.descKey], messages.ar[item.descKey], ...(item.keywords ?? [])]
+    .join(' ')
+    .toLowerCase();
 
 interface SlashListHandle {
   onKeyDown: (event: KeyboardEvent) => boolean;
@@ -283,6 +292,7 @@ interface SlashListProps {
 }
 
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
+  const t = useT();
   const [selected, setSelected] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -321,16 +331,16 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
 
   return (
     <div ref={containerRef} className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
-      <div className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground uppercase tracking-wide">Basic blocks</div>
+      <div className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground uppercase tracking-wide">{t('editor.slash.basicBlocks')}</div>
       {items.length === 0 ? (
-        <div className="px-3 py-3 text-muted-foreground text-sm">No blocks found</div>
+        <div className="px-3 py-3 text-muted-foreground text-sm">{t('editor.slash.empty')}</div>
       ) : (
         items.map((item, index) => {
           const Icon = item.icon;
           return (
             <button
               type="button"
-              key={item.title}
+              key={item.titleKey}
               data-index={index}
               onMouseEnter={() => setSelected(index)}
               onClick={() => command(item)}
@@ -343,8 +353,8 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
                 <Icon className="size-4 text-foreground/80" />
               </span>
               <span className="min-w-0">
-                <span className="block font-medium text-[13.5px] text-foreground">{item.title}</span>
-                <span className="block truncate text-muted-foreground text-xs">{item.description}</span>
+                <span className="block font-medium text-[13.5px] text-foreground">{t(item.titleKey)}</span>
+                <span className="block truncate text-muted-foreground text-xs">{t(item.descKey)}</span>
               </span>
             </button>
           );
@@ -375,10 +385,7 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
       if (!q) {
         return items;
       }
-      return items.filter((item) => {
-        const haystack = [item.title, item.description, ...(item.keywords ?? [])].join(' ').toLowerCase();
-        return haystack.includes(q);
-      });
+      return items.filter((item) => haystackOf(item).includes(q));
     },
     command: ({ editor, range, props }) => {
       props.command({ editor, range });
