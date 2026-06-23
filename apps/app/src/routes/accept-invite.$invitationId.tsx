@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
+import { clearPendingInvitation, fetchInvitationInfo, type InvitationInfo, setPendingInvitation } from '@/lib/invitations';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   component: AcceptInvitePage,
@@ -18,6 +19,28 @@ function AcceptInvitePage() {
   const navigate = useNavigate();
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<InvitationInfo | null>(null);
+  const [infoLoaded, setInfoLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchInvitationInfo(invitationId).then((result) => {
+      if (active) {
+        setInfo(result);
+        setInfoLoaded(true);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [invitationId]);
+
+  // Stash the invitation so sign-in/up can route back here afterwards.
+  useEffect(() => {
+    if (!isPending && !session) {
+      setPendingInvitation(invitationId);
+    }
+  }, [isPending, session, invitationId]);
 
   const accept = async () => {
     setError(null);
@@ -25,37 +48,65 @@ function AcceptInvitePage() {
     const { error: acceptError } = await authClient.organization.acceptInvitation({ invitationId });
     setAccepting(false);
     if (acceptError) {
-      setError(acceptError.message ?? t('auth.invite.error'));
+      const blob = `${acceptError.code ?? ''} ${acceptError.message ?? ''}`.toUpperCase();
+      if (blob.includes('RECIPIENT') && info) {
+        setError(t('auth.invite.wrongAccount', { email: info.email }));
+      } else if (blob.includes('EXPIRED')) {
+        setError(t('auth.invite.expiredError'));
+      } else {
+        setError(acceptError.message ?? t('auth.invite.error'));
+      }
       return;
     }
+    clearPendingInvitation();
     toast.success(t('auth.invite.acceptedToast'));
     navigate({ to: '/app' });
   };
 
-  if (isPending) {
+  const subtitle = info?.organizationName ? t('auth.invite.joinPrompt', { org: info.organizationName }) : t('auth.invite.subtitle');
+
+  if (isPending || !infoLoaded) {
     return (
-      <AuthLayout subtitle={t('auth.invite.subtitle')}>
+      <AuthLayout subtitle={subtitle}>
         <p className="text-center text-muted-foreground text-sm">{t('common.loading')}</p>
       </AuthLayout>
     );
   }
 
-  if (!session) {
-    // Stash the invitation so it can be picked up after the user signs in/up.
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('plume.pendingInvitation', invitationId);
-    }
+  if (!info) {
     return (
-      <AuthLayout subtitle={t('auth.invite.subtitle')}>
+      <AuthLayout subtitle={subtitle}>
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
+          {t('auth.invite.notFound')}
+        </p>
+      </AuthLayout>
+    );
+  }
+
+  if (info.expired) {
+    return (
+      <AuthLayout subtitle={subtitle}>
+        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
+          {t('auth.invite.expiredError')}
+        </p>
+      </AuthLayout>
+    );
+  }
+
+  if (!session) {
+    const search = { invite: invitationId, email: info.email };
+    return (
+      <AuthLayout subtitle={subtitle}>
         <div className="flex flex-col gap-4">
+          <p className="text-center text-muted-foreground text-sm">{t('auth.invite.invitedAs', { email: info.email })}</p>
           <p className="text-center text-muted-foreground text-sm">{t('auth.invite.signInPrompt')}</p>
-          <Button className="w-full" render={<Link to="/sign-up" />}>
-            {t('auth.invite.createAccount')}
+          <Button className="w-full" render={<Link search={search} to="/sign-up" />}>
+            {t('auth.invite.createAccountToJoin')}
           </Button>
           <p className="text-center text-muted-foreground text-sm">
             {t('auth.signUp.haveAccount')}{' '}
-            <Link className="text-primary hover:underline" to="/sign-in">
-              {t('auth.signIn.submit')}
+            <Link className="text-primary hover:underline" search={search} to="/sign-in">
+              {t('auth.invite.signInToJoin')}
             </Link>
           </p>
         </div>
@@ -63,12 +114,22 @@ function AcceptInvitePage() {
     );
   }
 
+  // Signed in, but with a different address than the invite was sent to.
+  const mismatch = session.user.email.toLowerCase() !== info.email.toLowerCase();
+
   return (
-    <AuthLayout subtitle={t('auth.invite.subtitle')}>
+    <AuthLayout subtitle={subtitle}>
       <div className="flex flex-col gap-4">
-        <p className="text-center text-muted-foreground text-sm">{t('auth.invite.acceptPrompt')}</p>
+        <p className="text-center text-muted-foreground text-sm">{t('auth.invite.invitedAs', { email: info.email })}</p>
+        {mismatch ? (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+            {t('auth.invite.wrongAccount', { email: info.email })}
+          </p>
+        ) : (
+          <p className="text-center text-muted-foreground text-sm">{t('auth.invite.acceptPrompt')}</p>
+        )}
         {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
-        <Button className="w-full" disabled={accepting} onClick={accept} type="button">
+        <Button className="w-full" disabled={accepting || mismatch} onClick={accept} type="button">
           {accepting ? t('auth.invite.accepting') : t('auth.invite.accept')}
         </Button>
         <Link className="text-center text-muted-foreground text-sm hover:underline" to="/app">

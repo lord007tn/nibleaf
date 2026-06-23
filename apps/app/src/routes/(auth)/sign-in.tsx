@@ -9,23 +9,39 @@ import { AuthLayout } from '@/layouts/auth';
 import { signIn } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
+import { readPendingInvitation } from '@/lib/invitations';
+
+interface AuthSearch {
+  invite?: string;
+  email?: string;
+}
 
 export const Route = createFileRoute('/(auth)/sign-in')({
+  validateSearch: (search: Record<string, unknown>): AuthSearch => ({
+    invite: typeof search.invite === 'string' ? search.invite : undefined,
+    email: typeof search.email === 'string' ? search.email : undefined,
+  }),
   component: SignInPage,
 });
 
 function SignInPage() {
   const t = useT();
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: search.email ?? '', password: '' },
     onSubmit: async ({ value }) => {
       setError(null);
       const { error: signInError } = await signIn.email({ email: value.email, password: value.password });
       if (signInError) {
         setError(signInError.message ?? t('auth.signIn.error'));
+        return;
+      }
+      const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+      if (inviteId) {
+        navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
         return;
       }
       navigate({ to: '/app' });

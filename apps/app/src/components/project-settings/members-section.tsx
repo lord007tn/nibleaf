@@ -1,5 +1,6 @@
 import { useForm } from '@tanstack/react-form';
-import { Mail, Trash2 } from 'lucide-react';
+import { Check, Copy, Link2, Mail, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { GradientAvatar } from '@/components/settings/section';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,34 @@ import {
 import { email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
+import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { SectionHeader } from './shared';
+
+/** A small button that copies an invite link to the clipboard with feedback. */
+function CopyLinkButton({ link, label }: { link: string; label: string }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      size="icon-sm"
+      variant="ghost"
+      title={label}
+      aria-label={label}
+      onClick={async () => {
+        const ok = await copyToClipboard(link);
+        if (ok) {
+          setCopied(true);
+          toast.success(t('settings.members.linkCopied'));
+          setTimeout(() => setCopied(false), 1500);
+        } else {
+          toast.error(t('settings.members.copyFailed'));
+        }
+      }}
+    >
+      {copied ? <Check className="size-4" /> : <Link2 className="size-4" />}
+    </Button>
+  );
+}
 
 type Role = 'owner' | 'admin' | 'member';
 const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
@@ -36,6 +64,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
 
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
+  const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
 
   const form = useForm({
     defaultValues: { email: '', role: 'member' as Role },
@@ -45,8 +74,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
         invite.mutate(
           { email: invited, role: value.role },
           {
-            onSuccess: () => {
-              toast.success(t('settings.members.toast.invited', { email: invited }));
+            onSuccess: (created) => {
+              setLastInvite({ email: invited, link: inviteAcceptUrl(created.id) });
+              toast.success(t('settings.members.inviteCreated', { email: invited }));
               form.reset();
               resolve();
             },
@@ -108,6 +138,30 @@ export function MembersSection({ projectId }: { projectId: string }) {
           )}
         </form.Subscribe>
       </form>
+
+      {lastInvite ? (
+        <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="font-medium text-[13px]">{t('settings.members.inviteCreated', { email: lastInvite.email })}</span>
+            <Button onClick={() => setLastInvite(null)} size="sm" variant="ghost">
+              {t('settings.members.dismiss')}
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input className="flex-1 font-mono text-[12px]" onFocus={(event) => event.currentTarget.select()} readOnly value={lastInvite.link} />
+            <Button
+              onClick={async () => {
+                const ok = await copyToClipboard(lastInvite.link);
+                toast[ok ? 'success' : 'error'](t(ok ? 'settings.members.linkCopied' : 'settings.members.copyFailed'));
+              }}
+              type="button"
+            >
+              <Copy className="size-4" /> {t('settings.members.copyLink')}
+            </Button>
+          </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">{t('settings.members.inviteLinkHint')}</p>
+        </div>
+      ) : null}
 
       <div className="mb-3 font-mono text-[12px] text-muted-foreground">
         {members.length === 1
@@ -189,19 +243,21 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       })}
                     </div>
                   </div>
-                  <Button
-                    className="ms-auto"
-                    size="icon-sm"
-                    variant="ghost"
-                    onClick={() =>
-                      cancelInvite.mutate(inv.id, {
-                        onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
-                        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
-                      })
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  <div className="ms-auto flex items-center gap-1">
+                    <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
+                    <Button
+                      onClick={() =>
+                        cancelInvite.mutate(inv.id, {
+                          onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
+                          onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
+                        })
+                      }
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </>

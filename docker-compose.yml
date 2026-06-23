@@ -38,6 +38,10 @@ x-service-env: &service-env
   API_URL: ${PUBLIC_API_URL:-http://localhost:4311}
   APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
   WORKER_PORT: "4312"
+  # Email delivery (optional). Without SMTP_URL the worker logs mail instead of
+  # sending it — invite/reset links still work via the copy-able link in the UI.
+  EMAIL_FROM: ${EMAIL_FROM:-plume@localhost}
+  SMTP_URL: ${SMTP_URL:-}
 
 services:
   postgres:

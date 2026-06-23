@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form';
-import { Plus } from 'lucide-react';
+import { Check, Link2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { Invitation, Member } from '@/hooks/api';
 import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
+import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { GradientAvatar, SettingsSection } from './section';
 
 type Role = 'owner' | 'admin' | 'member';
@@ -175,6 +176,18 @@ function MemberRow({ member }: { member: Member }) {
 function PendingRow({ invitation }: { invitation: Invitation }) {
   const cancel = useCancelInvitation();
   const initial = (invitation.email[0] ?? '?').toUpperCase();
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    const ok = await copyToClipboard(inviteAcceptUrl(invitation.id));
+    if (ok) {
+      setCopied(true);
+      toast.success('Invite link copied to clipboard');
+      setTimeout(() => setCopied(false), 1500);
+    } else {
+      toast.error('Could not copy the link');
+    }
+  };
 
   return (
     <div className="flex items-center gap-3 border-border border-t py-2.5 first:border-t-0">
@@ -184,6 +197,9 @@ function PendingRow({ invitation }: { invitation: Invitation }) {
         <div className="truncate text-amber-600 text-xs dark:text-amber-400">Invited · awaiting response</div>
       </div>
       <span className="rounded-md border border-border px-2.5 py-1 text-muted-foreground text-xs">{roleLabel(invitation.role ?? 'member')}</span>
+      <Button onClick={copyLink} size="sm" variant="outline">
+        {copied ? <Check className="size-4" /> : <Link2 className="size-4" />} Copy link
+      </Button>
       <Button
         className="text-destructive hover:text-destructive"
         size="sm"

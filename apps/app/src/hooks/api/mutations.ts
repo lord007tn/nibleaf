@@ -236,7 +236,7 @@ export const useInviteMember = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: InviteMemberBody) =>
-      mutateData<unknown>(await api.api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
+      mutateData<{ id: string; email: string }>(await api.api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -274,7 +274,7 @@ export const useInviteProjectMember = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: InviteMemberBody) =>
-      mutateData<unknown>(
+      mutateData<{ id: string; email: string }>(
         await api.api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }),
         'Could not send the invite.',
       ),

@@ -9,23 +9,41 @@ import { AuthLayout } from '@/layouts/auth';
 import { signUp } from '@/lib/auth-client';
 import { minLength, required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
+import { readPendingInvitation } from '@/lib/invitations';
+
+interface AuthSearch {
+  invite?: string;
+  email?: string;
+}
 
 export const Route = createFileRoute('/(auth)/sign-up')({
+  validateSearch: (search: Record<string, unknown>): AuthSearch => ({
+    invite: typeof search.invite === 'string' ? search.invite : undefined,
+    email: typeof search.email === 'string' ? search.email : undefined,
+  }),
   component: SignUpPage,
 });
 
 function SignUpPage() {
   const t = useT();
   const navigate = useNavigate();
+  const search = Route.useSearch();
+  const lockedEmail = Boolean(search.email);
   const [error, setError] = useState<string | null>(null);
 
   const form = useForm({
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: search.email ?? '', password: '' },
     onSubmit: async ({ value }) => {
       setError(null);
       const { error: signUpError } = await signUp.email({ name: value.name, email: value.email, password: value.password });
       if (signUpError) {
         setError(signUpError.message ?? t('auth.signUp.error'));
+        return;
+      }
+      // If they arrived from an invite, send them to the accept page to join.
+      const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+      if (inviteId) {
+        navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
         return;
       }
       navigate({ to: '/app' });
@@ -68,10 +86,15 @@ function SignUpPage() {
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="you@company.com"
+                readOnly={lockedEmail}
                 type="email"
                 value={field.state.value}
               />
-              <FieldError errors={field.state.meta.errors} />
+              {lockedEmail ? (
+                <p className="text-muted-foreground text-xs">{t('auth.invite.invitedAs', { email: search.email ?? '' })}</p>
+              ) : (
+                <FieldError errors={field.state.meta.errors} />
+              )}
             </div>
           )}
         </form.Field>

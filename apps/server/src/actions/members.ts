@@ -8,6 +8,29 @@ import { conflict, forbidden, notFound } from '@/errors';
 
 const INVITE_TTL_DAYS = 7;
 
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
+
+/** Public-safe metadata for an invitation, used by the accept page and sign-up prefill. */
+export const getInvitationInfo = async (invitationId: string) => {
+  const invitation = await prisma.invitation.findUnique({
+    where: { id: invitationId },
+    select: { id: true, email: true, role: true, status: true, expiresAt: true, organizationId: true },
+  });
+  if (!invitation) {
+    throw notFound('invitation', { id: invitationId });
+  }
+  const org = await prisma.organization.findUnique({ where: { id: invitation.organizationId }, select: { name: true } });
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: invitation.role,
+    status: invitation.status,
+    organizationName: org?.name ?? null,
+    expired: invitation.expiresAt ? new Date(invitation.expiresAt).getTime() < Date.now() : false,
+  };
+};
+
 export const listMembers = async (organizationId: string) => {
   const [members, invitations] = await Promise.all([
     prisma.member.findMany({
@@ -26,24 +49,51 @@ export const inviteMember = async (organizationId: string, inviterId: string, ac
   if (!canAssignRole(actorRole, body.role)) {
     throw forbidden('You cannot invite a member with a role higher than your own.', { role: body.role });
   }
+  // Normalize casing to match better-auth's case-insensitive acceptance check and
+  // keep the invitations table free of near-duplicate addresses.
+  const email = body.email.trim().toLowerCase();
   const existing = await prisma.member.findFirst({
-    where: { organizationId, user: { email: body.email } },
+    where: { organizationId, user: { email } },
     select: { id: true },
   });
   if (existing) {
-    throw conflict('That person is already a member of this workspace.', { email: body.email });
+    throw conflict('That person is already a member of this workspace.', { email });
   }
   const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 24 * 60 * 60 * 1000);
   const invitation = await prisma.invitation.create({
-    data: { organizationId, email: body.email, role: body.role, status: 'pending', expiresAt, inviterId },
+    data: { organizationId, email, role: body.role, status: 'pending', expiresAt, inviterId },
   });
+
+  // Send a descriptive email naming the site, inviter and role. Delivery is
+  // best-effort: the invite also works as a copy-able link (returned to the UI),
+  // so a stock self-host without SMTP still has a working invite path.
+  const [org, inviter] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
+    prisma.user.findUnique({ where: { id: inviterId }, select: { name: true, email: true } }),
+  ]);
+  const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;
+  const siteName = org?.name ?? 'a Plume workspace';
+  const inviterName = inviter?.name || inviter?.email || 'A teammate';
+  const subject = `${inviterName} invited you to ${siteName} on Plume`;
+  const text = [
+    `${inviterName} invited you to join ${siteName} as ${body.role} on Plume.`,
+    '',
+    'Accept your invitation:',
+    acceptUrl,
+    '',
+    `This invitation expires in ${INVITE_TTL_DAYS} days.`,
+  ].join('\n');
+  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0f172a">
+  <h2 style="font-size:18px;margin:0 0 12px">You're invited to ${escapeHtml(siteName)}</h2>
+  <p style="margin:0 0 16px;color:#475569;line-height:1.6"><strong>${escapeHtml(inviterName)}</strong> invited you to collaborate on documentation in <strong>${escapeHtml(siteName)}</strong> as <strong>${escapeHtml(body.role)}</strong> on Plume.</p>
+  <p style="margin:0 0 24px"><a href="${acceptUrl}" style="display:inline-block;background:#5546e8;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Accept invitation</a></p>
+  <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">Or paste this link into your browser:</p>
+  <p style="margin:0 0 16px;font-size:13px"><a href="${acceptUrl}" style="color:#5546e8">${acceptUrl}</a></p>
+  <p style="margin:0;color:#94a3b8;font-size:12px">This invitation expires in ${INVITE_TTL_DAYS} days.</p>
+</div>`;
   await createJob(QueueNames.EMAIL, {
     name: 'send-email',
-    data: {
-      to: body.email,
-      subject: 'You have been invited to a Plume workspace',
-      html: `<p>You have been invited to collaborate on documentation in Plume.</p><p><a href="${env.APP_URL}/accept-invite/${invitation.id}">Accept the invitation</a></p>`,
-    },
+    data: { to: email, subject, html, text },
   }).catch(() => undefined);
   return invitation;
 };
