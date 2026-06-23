@@ -1,13 +1,15 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, Trash2 } from 'lucide-react';
+import { Check, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
+import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
+import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
@@ -21,6 +23,7 @@ import {
   useLanguages,
   usePage,
   usePages,
+  useProject,
   useReorderPages,
   useUpdatePage,
   useUploadAsset,
@@ -49,6 +52,11 @@ function buildTree(pages: PageNode[]): { roots: PageNode[]; childrenOf: Map<stri
 function EditorPage() {
   const t = useT();
   const { projectId } = Route.useParams();
+  const { data: project } = useProject(projectId);
+
+  // Top-level editor view: writing content vs. configuring the whole site.
+  const [view, setView] = useState<'content' | 'config'>('content');
+  const [configSection, setConfigSection] = useState<ConfigSectionId>('branding');
 
   // ─── Branches: the editor works on one branch at a time (default 'main') ─────
   const { data: branches } = useBranches(projectId);
@@ -139,6 +147,7 @@ function EditorPage() {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [langSettings, setLangSettings] = useState<Language | null>(null);
   const loadedFor = useRef<string | null>(null);
 
   // The active page's language drives the editor/preview text direction.
@@ -223,11 +232,11 @@ function EditorPage() {
       )}
     >
       <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">{node.title}</span>
+      <span className="truncate">{node.config?.sidebarTitle?.trim() || node.title}</span>
     </button>
   );
 
-  const showRail = railOpen && Boolean(activeId && page);
+  const showRail = view === 'content' && railOpen && Boolean(activeId && page);
   const crumbSection = useMemo(() => {
     if (!page) {
       return null;
@@ -238,94 +247,130 @@ function EditorPage() {
 
   return (
     <div className={cn('grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]', showRail && 'xl:grid-cols-[260px_1fr_300px]')}>
-      {/* Page tree — every language, each with its own pages */}
-      <aside className="flex flex-col border-border border-e bg-sidebar/40">
-        <div className="flex items-center justify-between px-3 py-3">
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('editor.navigation')}</span>
+      {/* Left rail: Content (page tree) or Configuration (site config sections) */}
+      <aside className="flex min-h-0 flex-col border-border border-e bg-sidebar/40">
+        <div className="px-2 pt-3 pb-2">
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            <SegButton active={view === 'content'} onClick={() => setView('content')} icon={<FileText className="size-3.5" />}>
+              {t('editor.mode.content')}
+            </SegButton>
+            <SegButton active={view === 'config'} onClick={() => setView('config')} icon={<SlidersHorizontal className="size-3.5" />}>
+              {t('editor.mode.configuration')}
+            </SegButton>
+          </div>
         </div>
 
-        <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">
-          {isPending ? (
+        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-4">
+          {view === 'config' ? (
+            <ConfigSectionList active={configSection} onSelect={setConfigSection} />
+          ) : isPending ? (
             <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
           ) : (
-            orderedLanguages.map((lang) => {
-              const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
-              const { roots, childrenOf } = buildTree(pagesByLanguage.get(lang.id) ?? []);
-              return (
-                <div key={lang.id} className="mb-2">
-                  {/* Language section header */}
-                  <div className="group flex items-center justify-between px-2 py-1.5">
-                    <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
-                      <Languages className="size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{lang.label}</span>
-                      <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
-                      {lang.isDefault ? (
-                        <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">{t('editor.default')}</span>
-                      ) : null}
-                    </span>
-                    <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        className="cursor-pointer"
-                        onClick={() => addGroup(lang.id)}
-                        title={t('editor.newGroup')}
-                      >
-                        <FolderPlus className="size-3" />
-                      </Button>
-                      <Button
-                        size="icon-xs"
-                        variant="ghost"
-                        className="cursor-pointer"
-                        onClick={() => addPage(null, lang.id)}
-                        title={t('editor.newPage')}
-                      >
-                        <Plus className="size-3" />
-                      </Button>
+            <>
+              {orderedLanguages.map((lang) => {
+                const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
+                const { roots, childrenOf } = buildTree(pagesByLanguage.get(lang.id) ?? []);
+                return (
+                  <div key={lang.id} className="mb-2">
+                    {/* Language section header */}
+                    <div className="group flex items-center justify-between px-2 py-1.5">
+                      <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
+                        <Languages className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{lang.label}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
+                        {lang.isDefault ? (
+                          <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">{t('editor.default')}</span>
+                        ) : null}
+                      </span>
+                      <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          className="cursor-pointer"
+                          onClick={() => setLangSettings(lang)}
+                          title={t('editor.langSettings.settings')}
+                        >
+                          <Settings2 className="size-3" />
+                        </Button>
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          className="cursor-pointer"
+                          onClick={() => addGroup(lang.id)}
+                          title={t('editor.newGroup')}
+                        >
+                          <FolderPlus className="size-3" />
+                        </Button>
+                        <Button
+                          size="icon-xs"
+                          variant="ghost"
+                          className="cursor-pointer"
+                          onClick={() => addPage(null, lang.id)}
+                          title={t('editor.newPage')}
+                        >
+                          <Plus className="size-3" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* This language's page tree */}
+                    <div className="space-y-0.5" dir={dir}>
+                      {roots.length === 0 ? (
+                        <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
+                      ) : (
+                        roots.map((node) =>
+                          node.kind === 'GROUP' ? (
+                            <div key={node.id} className="mt-2">
+                              <div className="flex items-center justify-between px-2 py-1">
+                                <span className="truncate font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">{node.title}</span>
+                                <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(node.id, lang.id)}>
+                                  <Plus className="size-3" />
+                                </Button>
+                              </div>
+                              {(childrenOf.get(node.id) ?? []).map(renderItem)}
+                            </div>
+                          ) : (
+                            renderItem(node)
+                          ),
+                        )
+                      )}
                     </div>
                   </div>
+                );
+              })}
 
-                  {/* This language's page tree */}
-                  <div className="space-y-0.5" dir={dir}>
-                    {roots.length === 0 ? (
-                      <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
-                    ) : (
-                      roots.map((node) =>
-                        node.kind === 'GROUP' ? (
-                          <div key={node.id} className="mt-2">
-                            <div className="flex items-center justify-between px-2 py-1">
-                              <span className="truncate font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">{node.title}</span>
-                              <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(node.id, lang.id)}>
-                                <Plus className="size-3" />
-                              </Button>
-                            </div>
-                            {(childrenOf.get(node.id) ?? []).map(renderItem)}
-                          </div>
-                        ) : (
-                          renderItem(node)
-                        ),
-                      )
-                    )}
-                  </div>
-                </div>
-              );
-            })
+              {/* Add a language */}
+              <button
+                type="button"
+                onClick={() => setAddLangOpen(true)}
+                className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+              >
+                <Plus className="size-3.5" /> {t('editor.addLanguage')}
+              </button>
+            </>
           )}
-
-          {/* Add a language */}
-          <button
-            type="button"
-            onClick={() => setAddLangOpen(true)}
-            className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
-          >
-            <Plus className="size-3.5" /> {t('editor.addLanguage')}
-          </button>
         </div>
         <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
+        {langSettings ? (
+          <LanguageSettingsDialog
+            projectId={projectId}
+            language={langSettings}
+            open={Boolean(langSettings)}
+            onOpenChange={(o) => !o && setLangSettings(null)}
+          />
+        ) : null}
       </aside>
 
-      {/* Editor + preview */}
-      {activeId && page ? (
+      {/* Main area: site configuration */}
+      {view === 'config' ? (
+        <section className="min-w-0 overflow-y-auto">
+          <div className="border-border border-b px-6 py-4">
+            <h1 className="font-semibold text-lg tracking-tight">{t('editor.config.heading')}</h1>
+          </div>
+          <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">{project ? <ConfigSection project={project} section={configSection} /> : null}</div>
+        </section>
+      ) : activeId && page ? (
+        /* Main area: page editor */
         <section className="flex min-w-0 flex-col">
           <div className="flex items-center gap-3 border-border border-b px-5 py-3">
             <Input
@@ -453,5 +498,22 @@ function EditorPage() {
         </aside>
       ) : null}
     </div>
+  );
+}
+
+/** A segmented-control button used for the Content / Configuration toggle. */
+function SegButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-[13px] transition-colors',
+        active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }

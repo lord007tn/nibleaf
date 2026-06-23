@@ -55,7 +55,17 @@ describe('pageHead SEO cascade', () => {
     const head = pageHead(
       base({
         languageConfig: { seo: { metaTitle: 'Acme AR', socialImage: 'https://cdn/lang-og.png' } },
-        page: { ...base().page, config: { seo: { metaTitle: 'Custom Title', metaDescription: 'Custom desc', ogImage: 'https://cdn/page-og.png', canonicalUrl: 'https://example.com/canonical' } } },
+        page: {
+          ...base().page,
+          config: {
+            seo: {
+              metaTitle: 'Custom Title',
+              metaDescription: 'Custom desc',
+              ogImage: 'https://cdn/page-og.png',
+              canonicalUrl: 'https://example.com/canonical',
+            },
+          },
+        },
       }),
       'p1',
     );
