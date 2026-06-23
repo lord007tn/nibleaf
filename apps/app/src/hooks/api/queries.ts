@@ -157,10 +157,15 @@ export const useWorkspaceAnalytics = (range: string) =>
       ),
   });
 
-export const useWorkspaceSettings = () =>
+/** Workspace/site operational settings. Pass a projectId to read the SITE's own
+ *  org settings (each site is its own workspace); omit it for the account view. */
+export const useWorkspaceSettings = (projectId?: string) =>
   useQuery({
-    queryKey: queryKeys.workspace.settings(),
-    queryFn: async () => getData<WorkspaceSettings>(await api.api.app.workspace.$get(), 'workspace settings'),
+    queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings(),
+    queryFn: async () =>
+      projectId
+        ? getData<WorkspaceSettings>(await api.api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
+        : getData<WorkspaceSettings>(await api.api.app.workspace.$get(), 'workspace settings'),
   });
 
 export const useMembers = () =>

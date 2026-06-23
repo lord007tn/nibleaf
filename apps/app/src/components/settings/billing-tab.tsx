@@ -24,9 +24,9 @@ function UsageMeter({ label, used, limit }: { label: string; used: number; limit
   );
 }
 
-export function BillingTab() {
+export function BillingTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings();
+  const { data } = useWorkspaceSettings(projectId);
   const plan = data?.plan ?? 'Free';
   const projectCount = data?.projectCount ?? 0;
 

@@ -46,10 +46,10 @@ const PROVIDERS = [
   },
 ];
 
-export function GitTab() {
+export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings();
-  const update = useUpdateWorkspaceSettings();
+  const { data } = useWorkspaceSettings(projectId);
+  const update = useUpdateWorkspaceSettings(projectId);
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as Partial<GitConfig>) };
 
   const save = (patch: Partial<GitConfig>, message?: string) =>

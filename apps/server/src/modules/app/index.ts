@@ -12,6 +12,7 @@ import languages from './languages/handlers';
 import members from './members/handlers';
 import pages from './pages/handlers';
 import projectMembers from './project-members/handlers';
+import projectSettings from './project-settings/handlers';
 import projects from './projects/handlers';
 import workspace from './workspace/handlers';
 
@@ -28,6 +29,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/analytics', analytics)
   .route('/projects/:projectId/comments', comments)
   .route('/projects/:projectId/members', projectMembers)
+  .route('/projects/:projectId/settings', projectSettings)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)
   .route('/members', members);

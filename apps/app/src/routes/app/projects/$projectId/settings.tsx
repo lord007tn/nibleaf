@@ -16,6 +16,10 @@ import { SeoSection } from '@/components/project-settings/seo-section';
 import { StylingSection } from '@/components/project-settings/styling-section';
 import { TypographySection } from '@/components/project-settings/typography-section';
 import { VariablesSection } from '@/components/project-settings/variables-section';
+import { BillingTab } from '@/components/settings/billing-tab';
+import { GitTab } from '@/components/settings/git-tab';
+import { IntegrationsTab } from '@/components/settings/integrations-tab';
+import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Project } from '@/hooks/api';
 import { useProject } from '@/hooks/api';
@@ -39,6 +43,10 @@ const SECTIONS = [
   { id: 'variables', label: 'Variables', icon: '{}' },
   { id: 'members', label: 'Members', icon: '⧉' },
   { id: 'plan', label: 'Plan', icon: '◇' },
+  { id: 'billing', label: 'Billing', icon: '◫' },
+  { id: 'integrations', label: 'Integrations', icon: '⚙' },
+  { id: 'notifications', label: 'Notifications', icon: '✉' },
+  { id: 'git', label: 'Git', icon: '⎇' },
   { id: 'danger', label: 'Danger zone', icon: '⚠' },
 ] as const;
 
@@ -112,6 +120,10 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     variables: <VariablesSection key={`variables-${project.id}`} project={project} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
+    billing: <BillingTab key={`billing-${projectId}`} projectId={projectId} />,
+    integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} />,
+    notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
+    git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,
   };
   return sections[section];

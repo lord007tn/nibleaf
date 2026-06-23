@@ -1,7 +1,7 @@
 import { useForm } from '@tanstack/react-form';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, FileText, Plus, Rocket } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { TrafficPanel } from '@/components/analytics/traffic-panel';
 import { Button } from '@/components/ui/button';
@@ -104,9 +104,19 @@ function ProjectsPage() {
   const { data: projects, isPending } = useProjects();
   const { data: analytics } = useWorkspaceAnalytics('30d');
   const t = useT();
+  const navigate = useNavigate();
   const { number } = useFormatters();
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
   const totalDeploys = (projects ?? []).reduce((sum, p) => sum + (p._count?.deployments ?? 0), 0);
+
+  // Single-site accounts skip the global view and land straight in their site;
+  // the global dashboard is only meaningful for members of more than one site.
+  const soleProjectId = !isPending && projects?.length === 1 ? projects[0]?.id : undefined;
+  useEffect(() => {
+    if (soleProjectId) {
+      navigate({ to: '/app/projects/$projectId', params: { projectId: soleProjectId }, replace: true });
+    }
+  }, [soleProjectId, navigate]);
 
   return (
     <div className="flex flex-col gap-8">

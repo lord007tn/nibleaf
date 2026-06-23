@@ -80,10 +80,10 @@ const GROUPS: Array<{ titleKey: MessageKey; items: NotifItem[] }> = [
   },
 ];
 
-export function NotificationsTab() {
+export function NotificationsTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings();
-  const update = useUpdateWorkspaceSettings();
+  const { data } = useWorkspaceSettings(projectId);
+  const update = useUpdateWorkspaceSettings(projectId);
   const { data: session } = useSession();
   const stored = (data?.notifications ?? {}) as Record<string, boolean>;
 

@@ -38,6 +38,7 @@ export const queryKeys = {
   workspace: {
     analytics: (range: string) => ['workspace', 'analytics', range] as const,
     settings: () => ['workspace', 'settings'] as const,
+    projectSettings: (projectId: string) => ['workspace', 'settings', projectId] as const,
   },
   members: {
     all: () => ['members'] as const,

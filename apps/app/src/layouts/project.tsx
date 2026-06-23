@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Check, ChevronsUpDown, Eye, Rocket } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
+import { AccountMenu } from '@/components/app/account-menu';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,8 @@ import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 const TABS = [
-  { labelKey: 'project.editor', to: '/app/projects/$projectId', exact: true },
+  { labelKey: 'project.overview', to: '/app/projects/$projectId', exact: true },
+  { labelKey: 'project.editor', to: '/app/projects/$projectId/editor', exact: false },
   { labelKey: 'project.analytics', to: '/app/projects/$projectId/analytics', exact: false },
   { labelKey: 'project.settings', to: '/app/projects/$projectId/settings', exact: false },
 ] as const satisfies ReadonlyArray<{ labelKey: MessageKey; to: string; exact: boolean }>;
@@ -109,6 +111,11 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
         </nav>
 
         <div className="ms-auto flex items-center gap-2">
+          {(projects?.length ?? 0) > 1 ? (
+            <Link className="rounded-md px-2.5 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground" to="/app">
+              {t('project.allSites')}
+            </Link>
+          ) : null}
           <Button
             size="sm"
             variant="outline"
@@ -120,6 +127,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             <Eye className="size-3.5" /> {t('project.preview')}
           </Button>
           {project ? <PublishControl project={project} /> : null}
+          <AccountMenu />
         </div>
       </header>
       <div className="flex-1">{children}</div>

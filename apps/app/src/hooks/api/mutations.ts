@@ -455,11 +455,18 @@ export const useMergeBranch = (projectId: string) => {
 
 // ─── Workspace settings ──────────────────────────────────────────────────────
 
-export const useUpdateWorkspaceSettings = () => {
+/** Update workspace/site settings. Pass a projectId to write the SITE's own org
+ *  settings (per-site workspace); omit it for the account view. */
+export const useUpdateWorkspaceSettings = (projectId?: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: UpdateWorkspaceSettingsBody) =>
-      mutateData<WorkspaceSettings>(await api.api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.workspace.settings() }),
+      projectId
+        ? mutateData<WorkspaceSettings>(
+            await api.api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: body }),
+            'Could not update settings.',
+          )
+        : mutateData<WorkspaceSettings>(await api.api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
+    onSuccess: () => qc.invalidateQueries({ queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings() }),
   });
 };

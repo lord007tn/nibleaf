@@ -116,9 +116,19 @@ function NotConnectedPill() {
   );
 }
 
-function IntegrationDetail({ provider, integrations, onBack }: { provider: Provider; integrations: Record<string, unknown>; onBack: () => void }) {
+function IntegrationDetail({
+  provider,
+  integrations,
+  onBack,
+  projectId,
+}: {
+  provider: Provider;
+  integrations: Record<string, unknown>;
+  onBack: () => void;
+  projectId?: string;
+}) {
   const t = useT();
-  const update = useUpdateWorkspaceSettings();
+  const update = useUpdateWorkspaceSettings(projectId);
   const persisted = readState(integrations[provider.id]);
   const [connected, setConnected] = useState(persisted.connected);
   const [config, setConfig] = useState<Record<string, string>>(persisted.config);
@@ -208,16 +218,18 @@ function IntegrationDetail({ provider, integrations, onBack }: { provider: Provi
   );
 }
 
-export function IntegrationsTab() {
+export function IntegrationsTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings();
+  const { data } = useWorkspaceSettings(projectId);
   const integrations = useMemo(() => (data?.integrations ?? {}) as Record<string, unknown>, [data?.integrations]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = PROVIDERS.find((p) => p.id === selectedId) ?? null;
 
   if (selected) {
-    return <IntegrationDetail key={selected.id} integrations={integrations} onBack={() => setSelectedId(null)} provider={selected} />;
+    return (
+      <IntegrationDetail key={selected.id} integrations={integrations} onBack={() => setSelectedId(null)} projectId={projectId} provider={selected} />
+    );
   }
 
   return (
