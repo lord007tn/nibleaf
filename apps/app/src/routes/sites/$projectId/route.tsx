@@ -10,6 +10,7 @@ import { useSite } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { siteT } from '@/lib/site-i18n';
 import { siteHead } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId')({
@@ -80,6 +81,8 @@ function SiteChrome() {
     return languages.find((language) => language.code === code) ?? languages.find((language) => language.isDefault) ?? languages[0];
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
+  // Chrome strings follow the active language so an Arabic site reads Arabic.
+  const t = siteT(activeLanguage?.code);
 
   // Seed the theme from config the first time a site with a theme preference loads.
   // Skipped for 'system' so next-themes keeps following the OS.
@@ -131,10 +134,8 @@ function SiteChrome() {
       <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
         <div>
           <BookOpen className="mx-auto size-8 text-muted-foreground" />
-          <h1 className="mt-4 font-semibold text-2xl tracking-tight">Not published yet</h1>
-          <p className="mt-2 max-w-sm text-muted-foreground text-sm">
-            This documentation site hasn't been published. Publish it from the editor to see it live.
-          </p>
+          <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('notPublishedTitle')}</h1>
+          <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t('notPublishedBody')}</p>
         </div>
       </div>
     );
@@ -177,7 +178,7 @@ function SiteChrome() {
               search={{ lang }}
               className={`transition-colors hover:text-foreground ${isChangelog ? '' : 'font-medium text-foreground'}`}
             >
-              Docs
+              {t('docs')}
             </Link>
             <Link
               to="/sites/$projectId/changelog"
@@ -185,7 +186,7 @@ function SiteChrome() {
               search={{ lang }}
               className={`transition-colors hover:text-foreground ${isChangelog ? 'font-medium text-foreground' : ''}`}
             >
-              Changelog
+              {t('changelog')}
             </Link>
             {navLinks.map((link) => (
               <a
@@ -206,7 +207,7 @@ function SiteChrome() {
             type="button"
           >
             <Search className="size-3.5" />
-            <span className="flex-1 text-start">{config?.search?.placeholder ?? 'Search…'}</span>
+            <span className="flex-1 text-start">{config?.search?.placeholder ?? t('search')}</span>
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">⌘K</kbd>
           </button>
           <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
@@ -235,7 +236,7 @@ function SiteChrome() {
         <aside className="hidden border-border border-e lg:block">
           <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4">
             {isPending ? (
-              <div className="py-6 text-muted-foreground text-sm">Loading…</div>
+              <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
             ) : (
               <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} lang={lang} />
             )}

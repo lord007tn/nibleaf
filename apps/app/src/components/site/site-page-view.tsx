@@ -5,6 +5,7 @@ import { Markdown } from '@/components/markdown';
 import { useSitePage } from '@/hooks/api';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { siteT } from '@/lib/site-i18n';
 
 const sessionId = (): string => {
   if (typeof window === 'undefined') {
@@ -20,6 +21,7 @@ const sessionId = (): string => {
 };
 
 export function SitePageView({ projectId, path, lang, initialData }: { projectId: string; path: string; lang?: string; initialData?: SitePage }) {
+  const t = siteT(lang);
   const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData);
 
   // Record a pageview whenever the resolved page changes. (The document title +
@@ -36,10 +38,10 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
   }, [data?.page.path, projectId]);
 
   if (isPending) {
-    return <div className="px-10 py-12 text-muted-foreground text-sm">Loading…</div>;
+    return <div className="px-10 py-12 text-muted-foreground text-sm">{t('loading')}</div>;
   }
   if (isError || !data) {
-    return <div className="px-10 py-12 text-muted-foreground text-sm">This page is not available.</div>;
+    return <div className="px-10 py-12 text-muted-foreground text-sm">{t('pageUnavailable')}</div>;
   }
 
   const { page, breadcrumbs, prev, next } = data;
@@ -69,7 +71,7 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
               className="flex flex-col items-start rounded-xl border border-border p-4 hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                <ChevronLeft className="size-3 rtl:-scale-x-100" /> Previous
+                <ChevronLeft className="size-3 rtl:-scale-x-100" /> {t('previous')}
               </span>
               <span className="mt-1 font-medium">{prev.title}</span>
             </Link>
@@ -84,7 +86,7 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
               className="flex flex-col items-end rounded-xl border border-border p-4 text-end hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                Next <ChevronRight className="size-3 rtl:-scale-x-100" />
+                {t('next')} <ChevronRight className="size-3 rtl:-scale-x-100" />
               </span>
               <span className="mt-1 font-medium">{next.title}</span>
             </Link>
@@ -98,7 +100,7 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
       <aside className="hidden xl:block">
         {page.headings.length > 0 ? (
           <div className="sticky top-20">
-            <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">On this page</div>
+            <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('onThisPage')}</div>
             <ul className="space-y-1.5 border-border border-s ps-3 text-sm">
               {page.headings
                 .filter((h) => h.depth <= 3)

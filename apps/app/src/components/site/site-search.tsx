@@ -5,8 +5,20 @@ import { useEffect, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSiteSearch } from '@/hooks/api';
+import { siteT } from '@/lib/site-i18n';
 
-export function SiteSearch({ projectId, open, onOpenChange, lang }: { projectId: string; open: boolean; onOpenChange: (open: boolean) => void; lang?: string }) {
+export function SiteSearch({
+  projectId,
+  open,
+  onOpenChange,
+  lang,
+}: {
+  projectId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  lang?: string;
+}) {
+  const t = siteT(lang);
   const [query, setQuery] = useState('');
   // Debounce the typed query before it feeds the search hook, so we don't fire a
   // request per keystroke.
@@ -28,13 +40,13 @@ export function SiteSearch({ projectId, open, onOpenChange, lang }: { projectId:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
-        <DialogTitle className="sr-only">Search documentation</DialogTitle>
-        <DialogDescription className="sr-only">Full-text and fuzzy search across this site.</DialogDescription>
+        <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
+        <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search documentation…" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={t('searchPlaceholder')} value={query} onValueChange={setQuery} />
           <CommandList>
-            <CommandEmpty>{query.trim() ? 'No results.' : 'Type to search…'}</CommandEmpty>
-            <CommandGroup heading="Results">
+            <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
+            <CommandGroup heading={t('results')}>
               {(hits ?? []).map((hit) => (
                 <CommandItem
                   key={hit.id}
