@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Project } from '@/hooks/api';
 import { useDeleteProject } from '@/hooks/api';
@@ -11,6 +12,7 @@ export function DangerSection({ project }: { project: Project }) {
   const t = useT();
   const del = useDeleteProject();
   const navigate = useNavigate();
+  const confirm = useConfirm();
 
   return (
     <div>
@@ -44,8 +46,14 @@ export function DangerSection({ project }: { project: Project }) {
         </p>
         <Button
           className="cursor-pointer"
-          onClick={() => {
-            if (confirm(t('settings.danger.delete.confirm', { name: project.name }))) {
+          onClick={async () => {
+            const ok = await confirm({
+              title: t('settings.danger.delete.title'),
+              description: t('settings.danger.delete.confirm', { name: project.name }),
+              confirmLabel: t('settings.danger.delete.button'),
+              destructive: true,
+            });
+            if (ok) {
               del.mutate(project.id, {
                 onSuccess: () => {
                   toast.success(t('settings.danger.delete.toast.deleted'));

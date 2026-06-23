@@ -10,6 +10,7 @@ import { CommentsPanel } from '@/components/editor/comments-panel';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
@@ -70,6 +71,7 @@ function EditorPage() {
   const updatePage = useUpdatePage(projectId);
   const uploadAsset = useUploadAsset(projectId);
   const reorderPages = useReorderPages(projectId);
+  const confirm = useConfirm();
 
   // ─── Drag-to-reorder pages within a language's tree ──────────────────────────
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -357,8 +359,14 @@ function EditorPage() {
               variant="ghost"
               className="cursor-pointer"
               title={t('editor.deletePage')}
-              onClick={() => {
-                if (confirm(t('editor.deletePageConfirm'))) {
+              onClick={async () => {
+                const ok = await confirm({
+                  title: t('editor.deletePage'),
+                  description: t('editor.deletePageConfirm'),
+                  confirmLabel: t('editor.deletePage'),
+                  destructive: true,
+                });
+                if (ok) {
                   deletePage.mutate(page.id, { onSuccess: () => setSelectedId(null) });
                 }
               }}

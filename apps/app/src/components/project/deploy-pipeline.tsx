@@ -3,6 +3,7 @@ import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-r
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useRollback } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
@@ -48,6 +49,7 @@ type StepState = 'done' | 'active' | 'failed' | 'pending';
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
 export function DeployPipeline({ project, open, onOpenChange }: DeployPipelineProps) {
   const rollback = useRollback(project.id);
+  const confirm = useConfirm();
 
   const deployments = useQuery({
     queryKey: queryKeys.deployments.all(project.id),
@@ -90,12 +92,20 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
 
   const viewSite = () => window.open(siteHref(project.id), '_blank', 'noopener,noreferrer');
 
-  const doRollback = () => {
+  const doRollback = async () => {
     if (!previousReady) {
       toast.error('No previous deployment to roll back to.');
       return;
     }
-    if (!window.confirm(`Roll back to v${previousReady.version}? Your live site will revert to that version.`)) return;
+    const ok = await confirm({
+      title: 'Roll back',
+      description: `Roll back to v${previousReady.version}? Your live site will revert to that version.`,
+      confirmLabel: 'Roll back',
+      destructive: true,
+    });
+    if (!ok) {
+      return;
+    }
     rollback.mutate(previousReady.id, {
       onSuccess: () => {
         toast.success(`Rolled back to v${previousReady.version}`);

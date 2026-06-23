@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { FieldError } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,11 +82,18 @@ function PlanInline() {
 }
 
 function DangerZone({ workspace }: { workspace: ActiveWorkspace | null }) {
+  const confirm = useConfirm();
   const deleteWorkspace = async () => {
     if (!workspace) {
       return;
     }
-    if (!confirm('Delete this workspace and all of its sites? This cannot be undone.')) {
+    const ok = await confirm({
+      title: 'Delete workspace',
+      description: 'Delete this workspace and all of its sites? This cannot be undone.',
+      confirmLabel: 'Delete workspace',
+      destructive: true,
+    });
+    if (!ok) {
       return;
     }
     const { error } = await authClient.organization.delete({ organizationId: workspace.id });

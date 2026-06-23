@@ -3,6 +3,7 @@ import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanst
 import type { ReactNode } from 'react';
 import { DirectionProvider } from '@/components/direction-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ConfirmProvider } from '@/components/ui/confirm';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { LocaleProvider } from '@/lib/i18n';
@@ -42,8 +43,10 @@ function RootDocument({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <DirectionProvider>
             <LocaleProvider>
-              <TooltipProvider>{children}</TooltipProvider>
-              <Toaster position="bottom-right" richColors />
+              <ConfirmProvider>
+                <TooltipProvider>{children}</TooltipProvider>
+                <Toaster position="bottom-right" richColors />
+              </ConfirmProvider>
             </LocaleProvider>
           </DirectionProvider>
         </ThemeProvider>
