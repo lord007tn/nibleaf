@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
+import { LocaleProvider } from '@/lib/i18n';
 import { WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
@@ -66,7 +67,9 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <LocaleProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </LocaleProvider>
         <Scripts />
       </body>
     </html>
