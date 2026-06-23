@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Plume — the open-source documentation platform">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#5546e8" stop-opacity="0.35" />
+      <stop offset="100%" stop-color="#0b0a12" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#0b0a12" />
+  <rect width="1200" height="630" fill="url(#glow)" />
+  <g transform="translate(96, 120)">
+    <rect width="76" height="76" rx="18" fill="#5546e8" />
+    <text x="38" y="54" font-family="system-ui, Segoe UI, Roboto, sans-serif" font-size="46" font-weight="700" fill="#ffffff" text-anchor="middle">P</text>
+    <text x="100" y="52" font-family="system-ui, Segoe UI, Roboto, sans-serif" font-size="40" font-weight="600" fill="#ffffff">Plume</text>
+  </g>
+  <text x="96" y="320" font-family="system-ui, Segoe UI, Roboto, sans-serif" font-size="68" font-weight="700" fill="#ffffff">Beautiful docs, on your</text>
+  <text x="96" y="400" font-family="system-ui, Segoe UI, Roboto, sans-serif" font-size="68" font-weight="700" fill="#a78bfa">own infrastructure.</text>
+  <text x="96" y="480" font-family="system-ui, Segoe UI, Roboto, sans-serif" font-size="32" fill="#94a3b8">The open-source, self-hostable alternative to Mintlify.</text>
+  <text x="96" y="556" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="26" fill="#5546e8">AGPL-3.0 · self-hostable · docker compose up -d</text>
+</svg>

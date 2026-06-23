@@ -1,8 +1,12 @@
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useEffect, useState } from 'react';
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  // Avoid a wrong-icon flash: the resolved theme is only known after hydration.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   return (
     <button
       aria-label="Toggle theme"
@@ -10,7 +14,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
       type="button"
     >
-      {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+      {mounted && resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
     </button>
   );
 }

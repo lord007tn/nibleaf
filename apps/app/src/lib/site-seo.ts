@@ -64,6 +64,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (description) {
     meta.push({ name: 'description', content: description });
   }
+  // Respect the owner's index preference: a private site or seo.allowIndex:false
+  // must not be indexed. (allowIndex defaults to indexable when unset.)
+  const noindex = config?.visibility === 'private' || config?.seo?.allowIndex === false;
+  if (noindex) {
+    meta.push({ name: 'robots', content: 'noindex,nofollow' });
+  }
   meta.push(
     { property: 'og:title', content: data.page.title },
     { property: 'og:type', content: 'article' },
@@ -74,8 +80,24 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (description) {
     meta.push({ property: 'og:description', content: description }, { name: 'twitter:description', content: description });
   }
-  if (data.project.logoUrl) {
-    meta.push({ property: 'og:image', content: data.project.logoUrl });
+  // Prefer the configured 1200×630 social card; fall back to the project logo.
+  const ogImage = config?.seo?.socialImage || data.project.logoUrl;
+  if (ogImage) {
+    meta.push({ property: 'og:image', content: ogImage }, { name: 'twitter:image', content: ogImage });
   }
-  return { meta, links: [{ rel: 'canonical', href: url }] };
+
+  const links: Tag[] = [{ rel: 'canonical', href: url }];
+  // hreflang alternates so search engines associate the per-language versions
+  // (and don't treat them as duplicate content). Only when the site is multilingual.
+  const languages = data.languages ?? [];
+  if (languages.length > 1) {
+    for (const language of languages) {
+      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, data.page.path, language.code) });
+    }
+    const fallback = languages.find((language) => language.isDefault) ?? languages[0];
+    if (fallback) {
+      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, data.page.path, fallback.code) });
+    }
+  }
+  return { meta, links };
 }

@@ -140,6 +140,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       content: page.content,
       headings: extractHeadings(page.content),
     },
+    // Surfaced for hreflang alternates in per-page SEO.
+    languages: snapshot.project.languages.map((l) => ({ code: l.code, isDefault: l.isDefault })),
     breadcrumbs,
     prev: index > 0 ? neighbour(order[index - 1]) : null,
     next: index >= 0 && index < order.length - 1 ? neighbour(order[index + 1]) : null,

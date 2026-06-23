@@ -221,6 +221,7 @@ export interface Heading {
 export interface SitePage {
   project: SiteShell['project'];
   page: { id: string; title: string; description: string; icon: string | null; path: string; content: string; headings: Heading[] };
+  languages?: Array<{ code: string; isDefault: boolean }>;
   breadcrumbs: Array<{ title: string; path: string }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;
