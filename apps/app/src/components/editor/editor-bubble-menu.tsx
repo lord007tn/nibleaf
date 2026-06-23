@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Code, Highlighter, Italic, Link as LinkIcon, Strikethrough } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { usePrompt } from '@/components/ui/confirm';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,7 @@ interface MarkButton {
  */
 export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
   const t = useT();
+  const prompt = usePrompt();
   const buttons: MarkButton[] = [
     { labelKey: 'editor.format.bold', icon: Bold, isActive: () => editor.isActive('bold'), run: () => editor.chain().focus().toggleBold().run() },
     {
@@ -46,21 +48,22 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     },
   ];
 
-  const toggleLink = () => {
+  const toggleLink = async () => {
     if (editor.isActive('link')) {
       editor.chain().focus().unsetLink().run();
       return;
     }
     const previous = (editor.getAttributes('link').href as string) ?? '';
-    const url = window.prompt(t('editor.format.linkPrompt'), previous);
-    if (url === null) {
+    const url = await prompt({
+      title: t('editor.format.link'),
+      label: t('editor.format.linkPrompt'),
+      placeholder: 'https://example.com',
+      initialValue: previous,
+    });
+    if (!url) {
       return;
     }
-    if (url.trim() === '') {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
   return (
