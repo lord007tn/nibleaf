@@ -25,5 +25,4 @@ export const minLength =
     value.length < min ? `${label} must be at least ${min} characters` : undefined;
 
 /** Normalise a TanStack Form field's `meta.errors` into clean strings to render. */
-export const fieldErrors = (errors: unknown[]): string[] =>
-  errors.filter((error): error is string => typeof error === 'string' && error.length > 0);
+export const fieldErrors = (errors: unknown[]): string[] => errors.filter((error): error is string => typeof error === 'string' && error.length > 0);

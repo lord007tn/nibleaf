@@ -140,4 +140,10 @@ default — generate one with `openssl rand -hex 32`.
 
 ## License
 
-MIT.
+Plume is free software, licensed under the **GNU Affero General Public License
+v3.0** (AGPL-3.0) — see [LICENSE](LICENSE) for the full text.
+
+Because the AGPL includes the "network use" clause, if you run a modified version
+of Plume as a network service you must make your modified source available to its
+users. Contributions are accepted under the same license — see
+[CONTRIBUTING.md](CONTRIBUTING.md).

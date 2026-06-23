@@ -15,7 +15,8 @@ const publicSelect = {
   revokedAt: true,
 } as const;
 
-export const listApiKeys = (projectId: string) => prisma.apiKey.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, select: publicSelect });
+export const listApiKeys = (projectId: string) =>
+  prisma.apiKey.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, select: publicSelect });
 
 /** Create a key and return the full secret ONCE (only its hash is stored). */
 export const createApiKey = async (organizationId: string, projectId: string, body: CreateApiKeyBody) => {

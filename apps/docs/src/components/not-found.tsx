@@ -7,9 +7,7 @@ export function NotFound() {
     <HomeLayout {...baseOptions()}>
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
         <h1 className="mb-2 text-6xl font-bold tracking-tight">404</h1>
-        <p className="mb-8 text-fd-muted-foreground">
-          We couldn&apos;t find the page you were looking for.
-        </p>
+        <p className="mb-8 text-fd-muted-foreground">We couldn&apos;t find the page you were looking for.</p>
         <Link
           to="/docs/$"
           params={{ _splat: '' }}

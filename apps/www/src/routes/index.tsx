@@ -44,18 +44,37 @@ function SiteNav() {
           Plume
         </a>
         <nav className="ms-8 hidden items-center gap-6 text-muted-foreground text-sm md:flex">
-          <a className="transition-colors hover:text-foreground" href="#features">Features</a>
-          <a className="transition-colors hover:text-foreground" href="#compare">vs Mintlify</a>
-          <a className="transition-colors hover:text-foreground" href="#self-host">Self-host</a>
-          <a className="transition-colors hover:text-foreground" href="#pricing">Pricing</a>
+          <a className="transition-colors hover:text-foreground" href="#features">
+            Features
+          </a>
+          <a className="transition-colors hover:text-foreground" href="#compare">
+            vs Mintlify
+          </a>
+          <a className="transition-colors hover:text-foreground" href="#self-host">
+            Self-host
+          </a>
+          <a className="transition-colors hover:text-foreground" href="#pricing">
+            Pricing
+          </a>
         </nav>
         <div className="ms-auto flex items-center gap-2">
-          <a className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground sm:block" href={GITHUB_URL} rel="noreferrer" target="_blank" aria-label="GitHub">
+          <a
+            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground sm:block"
+            href={GITHUB_URL}
+            rel="noreferrer"
+            target="_blank"
+            aria-label="GitHub"
+          >
             <Github className="size-4" />
           </a>
           <ThemeToggle />
-          <a className="rounded-lg px-3 py-2 font-medium text-sm transition-colors hover:bg-muted" href={appHref()}>Sign in</a>
-          <a className="rounded-lg bg-primary px-3.5 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90" href={appHref('/sign-up')}>
+          <a className="rounded-lg px-3 py-2 font-medium text-sm transition-colors hover:bg-muted" href={appHref()}>
+            Sign in
+          </a>
+          <a
+            className="rounded-lg bg-primary px-3.5 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+            href={appHref('/sign-up')}
+          >
             Get started
           </a>
         </div>
@@ -69,20 +88,34 @@ function Hero() {
     <section className="relative overflow-hidden">
       <div className="-z-10 pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,color-mix(in_oklab,var(--primary)_18%,transparent),transparent)]" />
       <div className="mx-auto max-w-4xl px-6 pt-24 pb-16 text-center">
-        <a className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs" href={GITHUB_URL} rel="noreferrer" target="_blank">
-          <Sparkles className="size-3.5 text-primary" /> Open source · self-hostable · MIT
+        <a
+          className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs"
+          href={GITHUB_URL}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <Sparkles className="size-3.5 text-primary" /> Open source · self-hostable · AGPL-3.0
         </a>
         <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">
           Beautiful docs, <span className="text-primary">on your own infrastructure.</span>
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-          Plume is the open-source documentation platform. Write in Markdown, get a fast, searchable site with versioned publishing, custom domains, and analytics — self-hosted with one Docker command.
+          Plume is the open-source documentation platform. Write in Markdown, get a fast, searchable site with versioned publishing, custom domains,
+          and analytics — self-hosted with one Docker command.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <a className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90" href={appHref('/sign-up')}>
+          <a
+            className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            href={appHref('/sign-up')}
+          >
             Start writing — free
           </a>
-          <a className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-medium transition-colors hover:bg-muted" href={GITHUB_URL} rel="noreferrer" target="_blank">
+          <a
+            className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-medium transition-colors hover:bg-muted"
+            href={GITHUB_URL}
+            rel="noreferrer"
+            target="_blank"
+          >
             <Github className="size-4" /> Star on GitHub
           </a>
         </div>
@@ -93,13 +126,15 @@ function Hero() {
 }
 
 function TrustStrip() {
-  const items = ['Postgres', 'Hono', 'TanStack Start', 'BullMQ', 'Orama search', 'MinIO / S3'];
+  const items = ['Postgres', 'Hono', 'TanStack Start', 'BullMQ', 'Orama search', 'S3 storage'];
   return (
     <div className="border-border border-y bg-card/40">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-6 text-muted-foreground text-sm">
         <span className="font-medium text-foreground/70">Built on a stack you control:</span>
         {items.map((item) => (
-          <span key={item} className="font-mono text-xs">{item}</span>
+          <span key={item} className="font-mono text-xs">
+            {item}
+          </span>
         ))}
       </div>
     </div>
@@ -107,12 +142,24 @@ function TrustStrip() {
 }
 
 const FEATURES = [
-  { icon: Zap, title: 'Markdown editor', body: 'A focused editor with live preview, page tree, groups, and drag-to-reorder. Write fast, ship faster.' },
+  {
+    icon: Zap,
+    title: 'Markdown editor',
+    body: 'A focused editor with live preview, page tree, groups, and drag-to-reorder. Write fast, ship faster.',
+  },
   { icon: Search, title: 'Hybrid search', body: 'Full-text + fuzzy search powered by Orama, built into every published site. Instant ⌘K results.' },
-  { icon: Workflow, title: 'Versioned publishing', body: 'Every publish snapshots your docs. Roll forward safely; your live site never serves a half-written page.' },
+  {
+    icon: Workflow,
+    title: 'Versioned publishing',
+    body: 'Every publish snapshots your docs. Roll forward safely; your live site never serves a half-written page.',
+  },
   { icon: Boxes, title: 'Custom domains', body: 'Bring your own domain with guided DNS records and one-click verification.' },
   { icon: BarChart3, title: 'Analytics', body: 'See page views, unique visitors, top pages, and what people search for — no third-party tracker.' },
-  { icon: Server, title: 'Self-host first', body: 'Postgres, Redis, and S3-compatible storage. Runs anywhere Docker does. Your data stays yours.' },
+  {
+    icon: Server,
+    title: 'Self-host first',
+    body: 'Postgres, a Redis-compatible cache, and S3-compatible storage. Runs anywhere Docker does. Your data stays yours.',
+  },
 ];
 
 function Features() {
@@ -162,8 +209,12 @@ function Comparison() {
           {COMPARE.map((row) => (
             <div key={row.label} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
               <span>{row.label}</span>
-              <span className="flex w-20 justify-center">{row.plume ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}</span>
-              <span className="flex w-20 justify-center">{row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}</span>
+              <span className="flex w-20 justify-center">
+                {row.plume ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
+              </span>
+              <span className="flex w-20 justify-center">
+                {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}
+              </span>
             </div>
           ))}
         </div>
@@ -179,10 +230,16 @@ function SelfHost() {
         <div>
           <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">Self-host in 90 seconds</h2>
           <p className="mt-3 text-lg text-muted-foreground leading-relaxed">
-            Clone the repo, copy the env file, and bring the whole stack up with Docker Compose — app, API, worker, Postgres, Redis, and object storage.
+            Clone the repo, copy the env file, and bring the whole stack up with Docker Compose — app, API, worker, Postgres, cache, and object
+            storage.
           </p>
           <ul className="mt-6 space-y-3 text-sm">
-            {['Postgres + Prisma migrations run automatically', 'BullMQ worker builds & indexes your published docs', 'MinIO (or any S3) for uploaded assets', 'One demo account seeded so you can log in immediately'].map((item) => (
+            {[
+              'Postgres + Prisma migrations run automatically',
+              'BullMQ worker builds & indexes your published docs',
+              'Any S3-compatible storage (maxio, R2, S3, B2) for assets',
+              'Create your account on first run — no demo credentials in production',
+            ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {item}
               </li>
@@ -213,8 +270,23 @@ docker compose up -d
 }
 
 const PLANS = [
-  { name: 'Self-hosted', price: 'Free', tagline: 'Forever, on your own servers.', features: ['Unlimited sites & pages', 'Unlimited members', 'Search, analytics, custom domains', 'Community support'], cta: 'Get the source', href: GITHUB_URL },
-  { name: 'Cloud', price: '$0', tagline: 'Hosted by us — coming soon.', features: ['Everything in self-hosted', 'Managed Postgres & storage', 'Automatic upgrades', 'Priority support'], cta: 'Join the waitlist', href: appHref('/sign-up'), featured: true },
+  {
+    name: 'Self-hosted',
+    price: 'Free',
+    tagline: 'Forever, on your own servers.',
+    features: ['Unlimited sites & pages', 'Unlimited members', 'Search, analytics, custom domains', 'Community support'],
+    cta: 'Get the source',
+    href: GITHUB_URL,
+  },
+  {
+    name: 'Cloud',
+    price: '$0',
+    tagline: 'Hosted by us — coming soon.',
+    features: ['Everything in self-hosted', 'Managed Postgres & storage', 'Automatic upgrades', 'Priority support'],
+    cta: 'Join the waitlist',
+    href: appHref('/sign-up'),
+    featured: true,
+  },
 ];
 
 function Pricing() {
@@ -239,7 +311,10 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a className={`mt-6 block rounded-xl py-2.5 text-center font-medium transition-opacity hover:opacity-90 ${plan.featured ? 'bg-primary text-primary-foreground' : 'border border-border'}`} href={plan.href}>
+              <a
+                className={`mt-6 block rounded-xl py-2.5 text-center font-medium transition-opacity hover:opacity-90 ${plan.featured ? 'bg-primary text-primary-foreground' : 'border border-border'}`}
+                href={plan.href}
+              >
                 {plan.cta}
               </a>
             </div>
@@ -252,9 +327,18 @@ function Pricing() {
 
 const FAQS = [
   { q: 'Is Plume really free?', a: 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.' },
-  { q: 'What do I need to self-host?', a: 'Docker and Docker Compose. The stack includes Postgres, Redis, and MinIO (S3-compatible) — all wired up for you.' },
-  { q: 'Can I use my own object storage?', a: 'Absolutely. Plume speaks the S3 API, so it works with MinIO, Cloudflare R2, AWS S3, or Backblaze B2.' },
-  { q: 'How does search work?', a: 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.' },
+  {
+    q: 'What do I need to self-host?',
+    a: 'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
+  },
+  {
+    q: 'Can I use my own object storage?',
+    a: 'Absolutely. Plume speaks the S3 API, so it works with MinIO, Cloudflare R2, AWS S3, or Backblaze B2.',
+  },
+  {
+    q: 'How does search work?',
+    a: 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.',
+  },
 ];
 
 function Faq() {
@@ -283,8 +367,20 @@ function CallToAction() {
         <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">Ship docs your users will love</h2>
         <p className="mx-auto mt-3 max-w-xl text-primary-foreground/85">Start in the cloud or self-host today. Either way, you own your content.</p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <a className="rounded-xl bg-primary-foreground px-5 py-3 font-medium text-primary transition-opacity hover:opacity-90" href={appHref('/sign-up')}>Get started free</a>
-          <a className="rounded-xl border border-primary-foreground/30 px-5 py-3 font-medium transition-colors hover:bg-primary-foreground/10" href={GITHUB_URL} rel="noreferrer" target="_blank">View on GitHub</a>
+          <a
+            className="rounded-xl bg-primary-foreground px-5 py-3 font-medium text-primary transition-opacity hover:opacity-90"
+            href={appHref('/sign-up')}
+          >
+            Get started free
+          </a>
+          <a
+            className="rounded-xl border border-primary-foreground/30 px-5 py-3 font-medium transition-colors hover:bg-primary-foreground/10"
+            href={GITHUB_URL}
+            rel="noreferrer"
+            target="_blank"
+          >
+            View on GitHub
+          </a>
         </div>
       </div>
     </section>
@@ -301,11 +397,26 @@ function SiteFooter() {
           <span>— open-source docs</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-5">
-          <a className="transition-colors hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">GitHub</a>
-          <a className="transition-colors hover:text-foreground" href={appHref()}>Dashboard</a>
-          <a className="transition-colors hover:text-foreground" href="/terms">Terms</a>
-          <a className="transition-colors hover:text-foreground" href="/privacy">Privacy</a>
-          <span className="font-mono text-xs">MIT licensed</span>
+          <a className="transition-colors hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">
+            GitHub
+          </a>
+          <a className="transition-colors hover:text-foreground" href={appHref()}>
+            Dashboard
+          </a>
+          <a className="transition-colors hover:text-foreground" href="/terms">
+            Terms
+          </a>
+          <a className="transition-colors hover:text-foreground" href="/privacy">
+            Privacy
+          </a>
+          <a
+            className="font-mono text-xs transition-colors hover:text-foreground"
+            href={`${GITHUB_URL}/blob/main/LICENSE`}
+            rel="noreferrer"
+            target="_blank"
+          >
+            AGPL-3.0 licensed
+          </a>
         </div>
       </div>
     </footer>

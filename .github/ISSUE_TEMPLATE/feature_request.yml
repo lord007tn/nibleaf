@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an idea or improvement for Plume
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the use case or pain point. "I'm always frustrated when…"
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Does this relate to a Mintlify capability?
+      options:
+        - label: This brings Plume closer to parity with a Mintlify feature.

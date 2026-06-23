@@ -1,0 +1,24 @@
+Plume — open-source, self-hostable documentation platform
+Copyright (C) 2026 The Plume authors
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License along
+with this program. If not, see <https://www.gnu.org/licenses/>.
+
+The full license text is in the LICENSE file at the root of this repository.
+
+----------------------------------------------------------------------------
+
+This product bundles third-party open-source software. Their licenses are
+permissive (MIT, Apache-2.0, BSD, ISC, MPL-2.0) and compatible with the AGPL-3.0.
+Notable dependencies include: React, Hono, TanStack Start/Query/Form, better-auth,
+Prisma, BullMQ, Orama, and TipTap. See each package's entry in the dependency
+tree for its individual license.

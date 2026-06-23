@@ -7,11 +7,5 @@ import viteTsConfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
   server: { port: 4313 },
-  plugins: [
-    viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
-    tailwindcss(),
-    nitro(),
-    tanstackStart(),
-    viteReact(),
-  ],
+  plugins: [viteTsConfigPaths({ projects: ['./tsconfig.json'] }), tailwindcss(), nitro(), tanstackStart(), viteReact()],
 });

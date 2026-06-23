@@ -4,8 +4,7 @@ import type { CreateDeploymentBody } from '@plume/validators';
 import { badRequest, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
-export const listDeployments = (projectId: string) =>
-  prisma.deployment.findMany({ where: { projectId }, orderBy: { version: 'desc' }, take: 50 });
+export const listDeployments = (projectId: string) => prisma.deployment.findMany({ where: { projectId }, orderBy: { version: 'desc' }, take: 50 });
 
 export const getDeployment = async (projectId: string, id: string) => {
   const deployment = await prisma.deployment.findFirst({ where: { id, projectId } });

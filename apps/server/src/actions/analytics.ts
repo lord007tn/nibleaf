@@ -86,7 +86,10 @@ export const getWorkspaceAnalytics = async (organizationId: string, range: Analy
 
   const [totalViews, sessionGroups, projectGroups, pageGroups, referrerGroups, deviceGroups, searchTotal, searchGroups, events] = await Promise.all([
     prisma.analyticsEvent.count({ where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } } }),
-    prisma.analyticsEvent.groupBy({ by: ['sessionId'], where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, sessionId: { not: null } } }),
+    prisma.analyticsEvent.groupBy({
+      by: ['sessionId'],
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, sessionId: { not: null } },
+    }),
     prisma.analyticsEvent.groupBy({
       by: ['projectId'],
       where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } },
@@ -121,7 +124,10 @@ export const getWorkspaceAnalytics = async (organizationId: string, range: Analy
       orderBy: { _count: { query: 'desc' } },
       take: 10,
     }),
-    prisma.analyticsEvent.findMany({ where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.analyticsEvent.findMany({
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } },
+      select: { createdAt: true },
+    }),
   ]);
 
   const buckets = buildEmptyBuckets(range);

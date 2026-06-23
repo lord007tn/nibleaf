@@ -1,6 +1,11 @@
 {
   "name": "@plume/tsconfig",
+  "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
-  "files": ["base.json", "hono.json", "react.json"]
+  "files": [
+    "base.json",
+    "hono.json",
+    "react.json"
+  ]
 }

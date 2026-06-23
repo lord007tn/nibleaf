@@ -59,5 +59,10 @@
     "parser": {
       "allowComments": true
     }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

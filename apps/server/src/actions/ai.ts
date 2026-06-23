@@ -76,7 +76,9 @@ const fallback = ({ mode, content, instruction }: AiDraftBody): string => {
         .map((line) => line.trim())
         .filter(Boolean)
         .slice(0, 5);
-      const bullets = lines.length ? lines.map((line) => `- ${line.replace(/^#+\s*/, '').slice(0, 120)}`).join('\n') : '- No content to summarize yet.';
+      const bullets = lines.length
+        ? lines.map((line) => `- ${line.replace(/^#+\s*/, '').slice(0, 120)}`).join('\n')
+        : '- No content to summarize yet.';
       return `**Summary**${hint}\n\n${bullets}`;
     }
     default:

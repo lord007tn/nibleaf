@@ -38,3 +38,6 @@ Open source documentation platform.zip
 coverage
 playwright-report
 test-results
+
+# dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
+dogfood-output
