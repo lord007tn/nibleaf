@@ -13,7 +13,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
-import { useBranches, useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage, useUploadAsset } from '@/hooks/api';
+import {
+  useBranches,
+  useCreatePage,
+  useDeletePage,
+  useLanguages,
+  usePage,
+  usePages,
+  useReorderPages,
+  useUpdatePage,
+  useUploadAsset,
+} from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +69,35 @@ function EditorPage() {
   const deletePage = useDeletePage(projectId);
   const updatePage = useUpdatePage(projectId);
   const uploadAsset = useUploadAsset(projectId);
+  const reorderPages = useReorderPages(projectId);
+
+  // ─── Drag-to-reorder pages within a language's tree ──────────────────────────
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  /** Drop page `draggedId` just before `targetId` — joining the target's parent.
+   *  Only reorders PAGES within the same language; renumbers the new sibling run. */
+  const movePage = (draggedId: string, targetId: string) => {
+    if (draggedId === targetId) {
+      return;
+    }
+    const pages = allPages ?? [];
+    const dragged = pages.find((p) => p.id === draggedId);
+    const target = pages.find((p) => p.id === targetId);
+    if (!dragged || !target || dragged.kind !== 'PAGE' || dragged.languageId !== target.languageId) {
+      return;
+    }
+    const newParent = target.parentId ?? null;
+    const siblings = pages
+      .filter((p) => p.languageId === target.languageId && (p.parentId ?? null) === newParent && p.id !== draggedId)
+      .sort((a, b) => a.position - b.position);
+    const idx = siblings.findIndex((p) => p.id === targetId);
+    if (idx < 0) {
+      return;
+    }
+    siblings.splice(idx, 0, dragged);
+    reorderPages.mutate({ items: siblings.map((p, i) => ({ id: p.id, parentId: newParent, position: i })) });
+  };
 
   // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
   const onUploadImage = async (file: File): Promise<string | null> => {
@@ -149,10 +188,36 @@ function EditorPage() {
     <button
       key={node.id}
       type="button"
+      draggable
       onClick={() => setSelectedId(node.id)}
+      onDragStart={(event) => {
+        setDraggingId(node.id);
+        event.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragEnd={() => {
+        setDraggingId(null);
+        setDragOverId(null);
+      }}
+      onDragOver={(event) => {
+        if (draggingId && draggingId !== node.id) {
+          event.preventDefault();
+          setDragOverId(node.id);
+        }
+      }}
+      onDragLeave={() => setDragOverId((cur) => (cur === node.id ? null : cur))}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (draggingId) {
+          movePage(draggingId, node.id);
+        }
+        setDraggingId(null);
+        setDragOverId(null);
+      }}
       className={cn(
-        'flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm',
+        'flex w-full cursor-grab items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm active:cursor-grabbing',
         activeId === node.id ? 'bg-accent text-accent-foreground' : 'text-foreground/80 hover:bg-muted',
+        draggingId === node.id && 'opacity-40',
+        dragOverId === node.id && 'border-primary border-t-2',
       )}
     >
       <FileText className="size-3.5 shrink-0 text-muted-foreground" />
