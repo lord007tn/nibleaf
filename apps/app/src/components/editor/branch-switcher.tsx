@@ -1,13 +1,14 @@
-import { Check, GitBranch, Plus } from 'lucide-react';
+import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { useConfirm } from '@/components/ui/confirm';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Branch } from '@/hooks/api';
-import { useCreateBranch } from '@/hooks/api';
+import { useCreateBranch, useMergeBranch } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 
 /** Git-style branch switcher for the editor: switch branches, or fork a new one
@@ -24,10 +25,37 @@ export function BranchSwitcher({
   onSwitch: (id: string) => void;
 }) {
   const t = useT();
+  const confirm = useConfirm();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const create = useCreateBranch(projectId);
+  const merge = useMergeBranch(projectId);
   const active = branches.find((b) => b.id === activeBranchId) ?? branches.find((b) => b.isDefault) ?? branches[0];
+
+  const mergeActive = async () => {
+    if (!active || active.isDefault) {
+      return;
+    }
+    const main = branches.find((b) => b.isDefault);
+    const ok = await confirm({
+      title: t('editor.branch.merge'),
+      description: t('editor.branch.mergeConfirm', { name: active.name }),
+      confirmLabel: t('editor.branch.merge'),
+      destructive: true,
+    });
+    if (!ok) {
+      return;
+    }
+    merge.mutate(active.id, {
+      onSuccess: () => {
+        toast.success(t('editor.branch.merged', { name: active.name }));
+        if (main) {
+          onSwitch(main.id);
+        }
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.branch.mergeError')),
+    });
+  };
 
   const submit = () => {
     const trimmed = name.trim();
@@ -69,6 +97,11 @@ export function BranchSwitcher({
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
+          {active && !active.isDefault ? (
+            <DropdownMenuItem onClick={mergeActive}>
+              <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem onClick={() => setCreateOpen(true)}>
             <Plus className="size-3.5" /> {t('editor.branch.new')}
           </DropdownMenuItem>

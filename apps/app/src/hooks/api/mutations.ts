@@ -438,6 +438,21 @@ export const useDeleteBranch = (projectId: string) => {
   });
 };
 
+export const useMergeBranch = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<Branch>(
+        await api.api.app.projects[':projectId'].branches[':id'].merge.$post({ param: { projectId, id } }),
+        'Could not merge the branch.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
+  });
+};
+
 // ─── Workspace settings ──────────────────────────────────────────────────────
 
 export const useUpdateWorkspaceSettings = () => {

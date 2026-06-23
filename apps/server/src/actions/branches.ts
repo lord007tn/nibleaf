@@ -73,6 +73,26 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   });
 };
 
+/** Merge a branch into the default branch ('main'): main adopts this branch's
+ *  (edited) pages, then the now-consumed branch is removed. This is a squash /
+ *  promote — main's prior pages are replaced, so concurrent edits made directly
+ *  on main since the fork are overwritten. */
+export const mergeBranch = async (projectId: string, id: string) => {
+  const branch = await assertBranchInProject(projectId, id);
+  if (branch.isDefault) {
+    throw conflict('The default branch cannot be merged into itself.');
+  }
+  const main = await ensureDefaultBranch(projectId);
+  await prisma.$transaction(async (tx) => {
+    // Replace main's pages with this branch's pages (which keep their ids + paths
+    // + remapped parent links), then drop the emptied branch.
+    await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
+    await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+    await tx.branch.delete({ where: { id: branch.id } });
+  });
+  return main;
+};
+
 /** Delete a non-default branch (its pages cascade away). */
 export const deleteBranch = async (projectId: string, id: string) => {
   const branch = await assertBranchInProject(projectId, id);
