@@ -80,8 +80,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // Respect the index preference at every level: a private site, the page's own
   // noindex, or allowIndex:false on the language/project all force noindex.
   // (allowIndex defaults to indexable when unset.)
-  const noindex =
-    pageSeo?.noindex === true || config?.visibility === 'private' || langSeo?.allowIndex === false || config?.seo?.allowIndex === false;
+  const noindex = pageSeo?.noindex === true || config?.visibility === 'private' || langSeo?.allowIndex === false || config?.seo?.allowIndex === false;
   if (noindex) {
     meta.push({ name: 'robots', content: 'noindex,nofollow' });
   }
