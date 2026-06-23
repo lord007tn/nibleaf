@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import type { Comment } from '@/hooks/api';
+import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
 import { cn } from '@/lib/utils';
 
@@ -114,13 +114,7 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
             <p className="px-1 py-6 text-center text-muted-foreground text-sm">No comments yet.</p>
           ) : (
             list.map((comment) => (
-              <div
-                className={cn(
-                  'rounded-xl border border-border bg-card p-3',
-                  comment.resolved && 'opacity-60',
-                )}
-                key={comment.id}
-              >
+              <div className={cn('rounded-xl border border-border bg-card p-3', comment.resolved && 'opacity-60')} key={comment.id}>
                 <div className="flex items-center gap-2">
                   <span
                     className={cn(
@@ -151,7 +145,9 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
                     <Button
                       className="ms-auto size-6 text-muted-foreground hover:text-destructive"
                       disabled={deleteComment.isPending}
-                      onClick={() => deleteComment.mutate(comment.id, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not delete.') })}
+                      onClick={() =>
+                        deleteComment.mutate(comment.id, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not delete.') })
+                      }
                       size="icon-xs"
                       variant="ghost"
                     >

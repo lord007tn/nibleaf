@@ -3,13 +3,18 @@ import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
 import {
+  AppWindow,
   Code2,
+  Frame as FrameIcon,
   Heading1,
   Heading2,
   Heading3,
   Image as ImageIcon,
+  LayoutGrid,
   Lightbulb,
   List,
+  ListChecks,
+  ListCollapse,
   ListOrdered,
   ListTodo,
   Minus,
@@ -143,6 +148,101 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     glyph: '!',
     keywords: ['note', 'admonition', 'warning', 'info'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
+  },
+  {
+    title: 'Steps',
+    description: 'A numbered step-by-step guide.',
+    icon: ListChecks,
+    glyph: '№',
+    keywords: ['steps', 'guide', 'procedure', 'tutorial', 'how-to'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxSteps',
+          content: [
+            { type: 'mdxStep', attrs: { title: 'First step' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxStep', attrs: { title: 'Second step' }, content: [{ type: 'paragraph' }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    title: 'Card group',
+    description: 'A grid of linkable cards.',
+    icon: LayoutGrid,
+    glyph: '▦',
+    keywords: ['card', 'cards', 'grid', 'tiles'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxCardGroup',
+          attrs: { cols: '2' },
+          content: [
+            { type: 'mdxCard', attrs: { title: 'First card' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxCard', attrs: { title: 'Second card' }, content: [{ type: 'paragraph' }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    title: 'Tabs',
+    description: 'Tabbed content panes.',
+    icon: AppWindow,
+    glyph: '⊟',
+    keywords: ['tab', 'tabs', 'panes'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxTabs',
+          content: [
+            { type: 'mdxTab', attrs: { title: 'First tab' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxTab', attrs: { title: 'Second tab' }, content: [{ type: 'paragraph' }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    title: 'Accordion',
+    description: 'Collapsible sections.',
+    icon: ListCollapse,
+    glyph: '▾',
+    keywords: ['accordion', 'collapse', 'expand', 'faq', 'toggle'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxAccordionGroup',
+          content: [
+            { type: 'mdxAccordion', attrs: { title: 'First section' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxAccordion', attrs: { title: 'Second section' }, content: [{ type: 'paragraph' }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    title: 'Frame',
+    description: 'A framed image with a caption.',
+    icon: FrameIcon,
+    glyph: '▣',
+    keywords: ['frame', 'figure', 'screenshot', 'caption'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxFrame', attrs: { caption: '' }, content: [{ type: 'paragraph' }] })
+        .run(),
   },
   {
     title: 'Divider',

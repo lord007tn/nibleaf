@@ -69,24 +69,24 @@
 }
 
 /* Task lists */
-.pl-editor .ProseMirror ul[data-type='taskList'] {
+.pl-editor .ProseMirror ul[data-type="taskList"] {
   list-style: none;
   padding-inline-start: 0.2em;
 }
-.pl-editor .ProseMirror ul[data-type='taskList'] li {
+.pl-editor .ProseMirror ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   gap: 0.6em;
 }
-.pl-editor .ProseMirror ul[data-type='taskList'] li > label {
+.pl-editor .ProseMirror ul[data-type="taskList"] li > label {
   margin-top: 0.32em;
   user-select: none;
 }
-.pl-editor .ProseMirror ul[data-type='taskList'] li > div {
+.pl-editor .ProseMirror ul[data-type="taskList"] li > div {
   flex: 1 1 auto;
   min-width: 0;
 }
-.pl-editor .ProseMirror ul[data-type='taskList'] input[type='checkbox'] {
+.pl-editor .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
   width: 15px;
   height: 15px;
   accent-color: var(--color-primary);
@@ -168,8 +168,8 @@
   text-transform: lowercase;
 }
 .pl-editor .ProseMirror pre:not([data-language])::before,
-.pl-editor .ProseMirror pre[data-language='null']::before {
-  content: 'code';
+.pl-editor .ProseMirror pre[data-language="null"]::before {
+  content: "code";
 }
 .pl-editor .ProseMirror pre code {
   background: none;
@@ -235,15 +235,15 @@
 .pl-editor .ProseMirror .pl-callout .pl-callout-body > * {
   margin: 0;
 }
-.pl-editor .ProseMirror .pl-callout[data-variant='warning'] {
+.pl-editor .ProseMirror .pl-callout[data-variant="warning"] {
   border-color: color-mix(in oklch, #d9730d 35%, var(--color-border));
   background: color-mix(in oklch, #d9730d 10%, var(--color-card));
 }
-.pl-editor .ProseMirror .pl-callout[data-variant='danger'] {
+.pl-editor .ProseMirror .pl-callout[data-variant="danger"] {
   border-color: color-mix(in oklch, #dc2626 35%, var(--color-border));
   background: color-mix(in oklch, #dc2626 10%, var(--color-card));
 }
-.pl-editor .ProseMirror .pl-callout[data-variant='tip'] {
+.pl-editor .ProseMirror .pl-callout[data-variant="tip"] {
   border-color: color-mix(in oklch, #16a34a 35%, var(--color-border));
   background: color-mix(in oklch, #16a34a 10%, var(--color-card));
 }
@@ -268,7 +268,7 @@
   font-weight: 600;
 }
 .pl-editor .ProseMirror .selectedCell::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: 0;
   background: color-mix(in oklch, var(--color-primary) 12%, transparent);
@@ -303,4 +303,131 @@
 /* Gapcursor */
 .pl-editor .ProseMirror .ProseMirror-gapcursor:after {
   border-top-color: var(--color-foreground);
+}
+
+/* ── MDX components (editor view) ─────────────────────────────────────────── */
+
+/* Steps: a vertical guide line with auto-numbered step markers. */
+.pl-editor .pl-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin: 1.25rem 0;
+  padding-inline-start: 1.75rem;
+  border-inline-start: 1px solid var(--color-border);
+  counter-reset: pl-step;
+}
+.pl-editor .pl-step {
+  position: relative;
+  counter-increment: pl-step;
+}
+.pl-editor .pl-step::before {
+  content: counter(pl-step);
+  position: absolute;
+  inset-inline-start: -2.62rem;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+/* Shared: the editable title/caption input on title-bearing component blocks. */
+.pl-editor [class$="-title-input"] {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-foreground);
+  outline: none;
+}
+.pl-editor [class$="-title-input"]::placeholder {
+  color: var(--color-muted-foreground);
+  font-weight: 500;
+}
+.pl-editor [class$="-body"] > :first-child {
+  margin-top: 0;
+}
+.pl-editor [class$="-body"] > :last-child {
+  margin-bottom: 0;
+}
+.pl-editor .pl-step-body {
+  margin-top: 0.15rem;
+}
+
+/* Card group: a responsive grid of bordered cards. */
+.pl-editor .pl-cardgroup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+.pl-editor .pl-card {
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-card);
+  padding: 1rem;
+}
+.pl-editor .pl-card-body {
+  margin-top: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.9rem;
+}
+
+/* Tabs: stacked panes in the editor (the live site switches between them). */
+.pl-editor .pl-tabs {
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.pl-editor .pl-tab {
+  padding: 0.75rem 1rem;
+}
+.pl-editor .pl-tab:not(:first-child) {
+  border-top: 1px solid var(--color-border);
+}
+.pl-editor .pl-tab-title-input {
+  color: var(--color-primary);
+}
+
+/* Accordions: collapsible-looking sections (always expanded while editing). */
+.pl-editor .pl-accordiongroup {
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.pl-editor .pl-accordion {
+  padding: 0.75rem 1rem;
+}
+.pl-editor .pl-accordion:not(:first-child) {
+  border-top: 1px solid var(--color-border);
+}
+
+/* Frame: a framed figure with a caption below. */
+.pl-editor .pl-frame {
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--color-muted) 30%, transparent);
+  padding: 0.75rem;
+}
+.pl-editor .pl-frame-body {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.pl-editor .pl-frame-title-input {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-weight: 400;
+  font-size: 0.8rem;
+  color: var(--color-muted-foreground);
 }

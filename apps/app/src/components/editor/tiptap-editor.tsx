@@ -20,6 +20,7 @@ import { Markdown } from 'tiptap-markdown';
 import { cn } from '@/lib/utils';
 import { EditorBubbleMenu } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
+import { mdxNodes } from './extensions/mdx-nodes';
 import { SlashCommand } from './extensions/slash-command';
 import './tiptap.css';
 
@@ -140,7 +141,9 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
         codeBlock: false,
         link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
       }),
-      Markdown.configure({ html: false, transformCopiedText: true, transformPastedText: true }),
+      // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
+      // Markdown round-trip and our custom nodes can rebuild them on parse.
+      Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
       Placeholder.configure({
         placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : "Write something, or press '/' for commands"),
       }),
@@ -155,6 +158,7 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
       TableCell,
       CharacterCount,
       Callout,
+      ...mdxNodes,
       SlashCommand.configure({ onUpload: (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null) }),
     ],
     content: value,
