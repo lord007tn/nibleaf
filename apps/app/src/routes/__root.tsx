@@ -5,6 +5,7 @@ import { DirectionProvider } from '@/components/direction-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { LocaleProvider } from '@/lib/i18n';
 import appCss from '@/styles.css?url';
 
 export interface RouterContext {
@@ -40,8 +41,10 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <ThemeProvider>
           <DirectionProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-            <Toaster position="bottom-right" richColors />
+            <LocaleProvider>
+              <TooltipProvider>{children}</TooltipProvider>
+              <Toaster position="bottom-right" richColors />
+            </LocaleProvider>
           </DirectionProvider>
         </ThemeProvider>
         <Scripts />

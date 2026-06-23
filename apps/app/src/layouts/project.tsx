@@ -11,18 +11,21 @@ import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, Project } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 const TABS = [
-  { label: 'Editor', to: '/app/projects/$projectId', exact: true },
-  { label: 'Analytics', to: '/app/projects/$projectId/analytics', exact: false },
-  { label: 'Settings', to: '/app/projects/$projectId/settings', exact: false },
-] as const;
+  { labelKey: 'project.editor', to: '/app/projects/$projectId', exact: true },
+  { labelKey: 'project.analytics', to: '/app/projects/$projectId/analytics', exact: false },
+  { labelKey: 'project.settings', to: '/app/projects/$projectId/settings', exact: false },
+] as const satisfies ReadonlyArray<{ labelKey: MessageKey; to: string; exact: boolean }>;
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow. */
 function PublishControl({ project }: { project: Project }) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
+  const t = useT();
 
   const deployments = useQuery({
     queryKey: queryKeys.deployments.all(project.id),
@@ -40,7 +43,7 @@ function PublishControl({ project }: { project: Project }) {
     <div className="flex items-center gap-2">
       <Button size="sm" disabled={building} onClick={() => setPublishOpen(true)}>
         <Rocket className="size-3.5" />
-        {building ? 'Publishing…' : 'Publish'}
+        {building ? t('project.publishing') : t('project.publish')}
       </Button>
 
       <PublishModal project={project} open={publishOpen} onOpenChange={setPublishOpen} onPublished={() => setDeployOpen(true)} />
@@ -55,6 +58,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   const { data: project } = useProject(projectId);
   const { data: projects } = useProjects();
   const navigate = useNavigate();
+  const t = useT();
   const [switcherOpen, setSwitcherOpen] = useState(false);
 
   return (
@@ -90,7 +94,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               : pathname.startsWith(`/app/projects/${projectId}${tab.to.replace('/app/projects/$projectId', '')}`);
             return (
               <Link
-                key={tab.label}
+                key={tab.labelKey}
                 to={tab.to}
                 params={{ projectId }}
                 className={cn(
@@ -98,7 +102,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
                   active ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </Link>
             );
           })}
@@ -113,7 +117,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               <a href={`/sites/${projectId}`} target="_blank" rel="noreferrer" aria-label="Preview the live website" />
             }
           >
-            <Eye className="size-3.5" /> Preview
+            <Eye className="size-3.5" /> {t('project.preview')}
           </Button>
           {project ? <PublishControl project={project} /> : null}
         </div>

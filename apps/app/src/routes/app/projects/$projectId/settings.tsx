@@ -19,6 +19,8 @@ import { VariablesSection } from '@/components/project-settings/variables-sectio
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Project } from '@/hooks/api';
 import { useProject } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 const SECTIONS = [
@@ -56,11 +58,12 @@ function ProjectSettingsPage() {
   const { section } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: project, isLoading } = useProject(projectId);
+  const t = useT();
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
       <aside className="w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5">
-        <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">Site configurations</div>
+        <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
         <nav className="flex flex-col gap-0.5">
           {SECTIONS.map((item) => {
             const active = item.id === section;
@@ -75,7 +78,7 @@ function ProjectSettingsPage() {
                 type="button"
               >
                 <span className="inline-flex w-[18px] justify-center text-[13px]">{item.icon}</span>
-                {item.label}
+                {t(`settings.${item.id}` as MessageKey)}
               </button>
             );
           })}

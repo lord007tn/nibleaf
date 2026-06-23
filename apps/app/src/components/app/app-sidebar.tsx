@@ -1,7 +1,6 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookText, ChevronsUpDown, LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { BarChart3, BookText, ChevronsUpDown, Languages, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
-import { useDirection } from '@/components/direction-provider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,20 +21,22 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { authClient } from '@/lib/auth-client';
+import { useLocale } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 
 // Account-level nav. Members live per-site now (each site's Settings → Members),
 // so they're not here; Analytics stays as the cross-site global view.
 const NAV = [
-  { to: '/app', label: 'Sites', icon: BookText, exact: true },
-  { to: '/app/analytics', label: 'Analytics', icon: BarChart3, exact: false },
-  { to: '/app/settings', label: 'Settings', icon: Settings, exact: false },
-] as const;
+  { to: '/app', labelKey: 'nav.sites', icon: BookText, exact: true },
+  { to: '/app/analytics', labelKey: 'nav.analytics', icon: BarChart3, exact: false },
+  { to: '/app/settings', labelKey: 'nav.settings', icon: Settings, exact: false },
+] as const satisfies ReadonlyArray<{ to: string; labelKey: MessageKey; icon: typeof BookText; exact: boolean }>;
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { data: session } = authClient.useSession();
   const { setTheme, resolvedTheme } = useTheme();
-  const { direction, toggleDirection } = useDirection();
+  const { locale, setLocale, t } = useLocale();
   const navigate = useNavigate();
 
   const initials = (session?.user?.name ?? 'U')
@@ -51,20 +52,21 @@ export function AppSidebar() {
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <span className="grid size-7 place-items-center rounded-lg bg-foreground text-background">✎</span>
           <span className="font-semibold tracking-tight">Plume</span>
-          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">OSS</span>
+          <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{t('brand.oss')}</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupLabel>{t('nav.account')}</SidebarGroupLabel>
           <SidebarMenu>
             {NAV.map((item) => {
               const active = item.exact ? pathname === item.to : pathname.startsWith(item.to);
+              const label = t(item.labelKey);
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton isActive={active} tooltip={item.label} render={<Link to={item.to} />}>
+                  <SidebarMenuButton isActive={active} tooltip={label} render={<Link to={item.to} />}>
                     <item.icon className="size-4" />
-                    <span>{item.label}</span>
+                    <span>{label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );
@@ -101,11 +103,11 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
                   {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                  {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  {resolvedTheme === 'dark' ? t('account.lightMode') : t('account.darkMode')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={toggleDirection}>
-                  <span className="grid size-4 place-items-center font-mono text-xs">{direction === 'rtl' ? '⇤' : '⇥'}</span>
-                  {direction === 'rtl' ? 'Left-to-right' : 'Right-to-left'}
+                <DropdownMenuItem onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}>
+                  <Languages className="size-4" />
+                  {t('account.language')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -115,7 +117,7 @@ export function AppSidebar() {
                     navigate({ to: '/sign-in' });
                   }}
                 >
-                  <LogOut className="size-4" /> Sign out
+                  <LogOut className="size-4" /> {t('account.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

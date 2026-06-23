@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { required } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
   component: ProjectsPage,
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/app/(dashboard)/')({
 function NewProjectDialog() {
   const [open, setOpen] = useState(false);
   const create = useCreateProject();
+  const t = useT();
 
   const form = useForm({
     defaultValues: { name: '' },
@@ -29,13 +31,13 @@ function NewProjectDialog() {
           { name: value.name.trim() },
           {
             onSuccess: () => {
-              toast.success('Project created');
+              toast.success(t('newSite.created'));
               form.reset();
               setOpen(false);
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : 'Could not create project');
+              toast.error(error instanceof Error ? error.message : t('newSite.error'));
               resolve();
             },
           },
@@ -49,7 +51,7 @@ function NewProjectDialog() {
       <DialogTrigger
         render={
           <Button>
-            <Plus className="size-4" /> New project
+            <Plus className="size-4" /> {t('dashboard.newProject')}
           </Button>
         }
       />
@@ -61,14 +63,14 @@ function NewProjectDialog() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>New documentation site</DialogTitle>
-            <DialogDescription>Give your docs a name. You can change everything later.</DialogDescription>
+            <DialogTitle>{t('newSite.title')}</DialogTitle>
+            <DialogDescription>{t('newSite.desc')}</DialogDescription>
           </DialogHeader>
           <div className="my-4 flex flex-col gap-1.5">
             <form.Field name="name" validators={{ onChange: ({ value }) => required('Name')(value) }}>
               {(field) => (
                 <>
-                  <Label htmlFor="project-name">Name</Label>
+                  <Label htmlFor="project-name">{t('newSite.name')}</Label>
                   <Input
                     autoFocus
                     id="project-name"
@@ -86,7 +88,7 @@ function NewProjectDialog() {
             <form.Subscribe selector={(state) => [state.isSubmitting, state.values.name] as const}>
               {([isSubmitting, name]) => (
                 <Button disabled={isSubmitting || !name.trim()} type="submit">
-                  {isSubmitting ? 'Creating…' : 'Create project'}
+                  {isSubmitting ? t('newSite.creating') : t('newSite.create')}
                 </Button>
               )}
             </form.Subscribe>
@@ -100,6 +102,7 @@ function NewProjectDialog() {
 function ProjectsPage() {
   const { data: projects, isPending } = useProjects();
   const { data: analytics } = useWorkspaceAnalytics('30d');
+  const t = useT();
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
   const totalDeploys = (projects ?? []).reduce((sum, p) => sum + (p._count?.deployments ?? 0), 0);
 
@@ -107,18 +110,18 @@ function ProjectsPage() {
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-3xl tracking-tight">Your sites</h1>
-          <p className="mt-1 text-muted-foreground text-sm">All your documentation sites — each with its own settings, members, and plan.</p>
+          <h1 className="font-semibold text-3xl tracking-tight">{t('dashboard.title')}</h1>
+          <p className="mt-1 text-muted-foreground text-sm">{t('dashboard.subtitle')}</p>
         </div>
         <NewProjectDialog />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: 'Projects', value: projects?.length ?? 0, icon: BookText },
-          { label: 'Pages', value: totalPages, icon: FileText },
-          { label: 'Deploys', value: totalDeploys, icon: Rocket },
-          { label: 'Page views', value: analytics?.totalViews ?? 0, icon: BarChart3 },
+          { label: t('dashboard.stats.projects'), value: projects?.length ?? 0, icon: BookText },
+          { label: t('dashboard.stats.pages'), value: totalPages, icon: FileText },
+          { label: t('dashboard.stats.deploys'), value: totalDeploys, icon: Rocket },
+          { label: t('dashboard.stats.pageViews'), value: analytics?.totalViews ?? 0, icon: BarChart3 },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-card p-5">
             <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -136,8 +139,8 @@ function ProjectsPage() {
           ) : (projects ?? []).length === 0 ? (
             <div className="grid place-items-center rounded-xl border border-border border-dashed py-16 text-center">
               <BookText className="size-7 text-muted-foreground" />
-              <p className="mt-3 font-medium">No projects yet</p>
-              <p className="mt-1 max-w-sm text-muted-foreground text-sm">Create your first documentation site to get started.</p>
+              <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
+              <p className="mt-1 max-w-sm text-muted-foreground text-sm">{t('dashboard.empty.body')}</p>
             </div>
           ) : (
             (projects ?? []).map((project) => (
@@ -156,10 +159,10 @@ function ProjectsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{project.name}</div>
                   <div className="truncate text-muted-foreground text-sm">
-                    {project.description ?? `${project._count?.pages ?? 0} pages · /${project.slug}`}
+                    {project.description ?? `${t('dashboard.pages', { count: project._count?.pages ?? 0 })} · /${project.slug}`}
                   </div>
                 </div>
-                <span className="font-mono text-muted-foreground text-xs">{project._count?.pages ?? 0} pages</span>
+                <span className="font-mono text-muted-foreground text-xs">{t('dashboard.pages', { count: project._count?.pages ?? 0 })}</span>
               </Link>
             ))
           )}
