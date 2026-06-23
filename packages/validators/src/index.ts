@@ -125,6 +125,53 @@ export const projectConfigSchema = z
   .strict();
 export type ProjectConfig = z.infer<typeof projectConfigSchema>;
 
+// ─── Per-language config (SEO + behaviour overrides) ─────────────────────────
+
+/** SEO defaults that apply to every page in one language, overriding the
+ *  project-level SEO and overridden in turn by a page's own SEO. */
+export const languageConfigSchema = z
+  .object({
+    seo: z
+      .object({
+        metaTitle: z.string().max(160).optional(),
+        metaDescription: z.string().max(320).optional(),
+        socialImage: url.optional(),
+        allowIndex: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type LanguageConfig = z.infer<typeof languageConfigSchema>;
+
+// ─── Per-page config (SEO override + behaviour) ──────────────────────────────
+
+export const pageModeEnum = z.enum(['default', 'wide', 'center']);
+export type PageMode = z.infer<typeof pageModeEnum>;
+
+/** A single page's overrides: SEO (highest precedence) + layout behaviour. */
+export const pageConfigSchema = z
+  .object({
+    seo: z
+      .object({
+        metaTitle: z.string().max(160).optional(),
+        metaDescription: z.string().max(320).optional(),
+        ogImage: url.optional(),
+        canonicalUrl: url.optional(),
+        noindex: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    /** Short label shown in the sidebar nav instead of the full title. */
+    sidebarTitle: z.string().max(120).optional(),
+    /** Content width on the live site. */
+    mode: pageModeEnum.optional(),
+    /** Hide the right-hand "On this page" table of contents. */
+    hideToc: z.boolean().optional(),
+  })
+  .strict();
+export type PageConfig = z.infer<typeof pageConfigSchema>;
+
 // ─── Project ──────────────────────────────────────────────────────────────—
 
 export const createProjectBody = z.object({
@@ -169,6 +216,7 @@ export const updateLanguageBody = z.object({
   direction: textDirectionEnum.optional(),
   isDefault: z.boolean().optional(),
   position: z.number().int().optional(),
+  config: languageConfigSchema.nullable().optional(),
 });
 export type UpdateLanguageBody = z.infer<typeof updateLanguageBody>;
 
@@ -186,6 +234,7 @@ export const createPageBody = z.object({
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
   content: z.string().optional(),
+  config: pageConfigSchema.nullable().optional(),
   position: z.number().int().optional(),
 });
 export type CreatePageBody = z.infer<typeof createPageBody>;
@@ -212,6 +261,7 @@ export const updatePageBody = z.object({
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
   content: z.string().optional(),
+  config: pageConfigSchema.nullable().optional(),
   hidden: z.boolean().optional(),
 });
 export type UpdatePageBody = z.infer<typeof updatePageBody>;

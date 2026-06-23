@@ -42,6 +42,7 @@ const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotP
   icon: null,
   description: null,
   content: '',
+  config: null,
   position: 0,
   hidden: false,
   ...over,
@@ -60,6 +61,13 @@ describe('buildNavTree', () => {
   it('omits hidden pages', () => {
     const tree = buildNavTree([page({ id: 'shown' }), page({ id: 'secret', hidden: true })]);
     expect(tree.map((n) => n.id)).toEqual(['shown']);
+  });
+  it('uses config.sidebarTitle as the nav label, falling back to the page title', () => {
+    const tree = buildNavTree([
+      page({ id: 'a', title: 'A Long Page Title', config: { sidebarTitle: 'Short' } }),
+      page({ id: 'b', title: 'Plain', position: 1 }),
+    ]);
+    expect(tree.map((n) => n.title)).toEqual(['Short', 'Plain']);
   });
   it('filters by language, treating legacy (no languageCode) pages as the requested language', () => {
     const tree = buildNavTree(
@@ -108,7 +116,7 @@ describe('buildSnapshot', () => {
   });
   it('synthesizes an English language when none are provided', () => {
     const snap = buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01');
-    expect(snap.project.languages).toEqual([{ code: 'en', label: 'English', direction: 'LTR', isDefault: true }]);
+    expect(snap.project.languages).toEqual([{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }]);
   });
 });
 
@@ -120,7 +128,7 @@ describe('pageDescription and defaultLanguage', () => {
     expect(pageDescription({ description: null, content: '# Title\n\nBody text.' })).toContain('Body text');
   });
   it('returns the default language, falling back to first then English', () => {
-    expect(defaultLanguage(proj([{ code: 'ar', label: 'ع', direction: 'RTL', isDefault: true }])).code).toBe('ar');
+    expect(defaultLanguage(proj([{ code: 'ar', label: 'ع', direction: 'RTL', isDefault: true, config: null }])).code).toBe('ar');
     expect(defaultLanguage(proj([])).code).toBe('en');
   });
 });

@@ -1,6 +1,20 @@
 import GithubSlugger from 'github-slugger';
 import { excerpt } from './utils';
 
+/** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
+ *  `pageConfigSchema` in @plume/validators (kept inline to avoid a dep). */
+export interface SnapshotPageConfig {
+  seo?: { metaTitle?: string; metaDescription?: string; ogImage?: string; canonicalUrl?: string; noindex?: boolean };
+  sidebarTitle?: string;
+  mode?: 'default' | 'wide' | 'center';
+  hideToc?: boolean;
+}
+
+/** Per-language SEO overrides baked into the snapshot. */
+export interface SnapshotLanguageConfig {
+  seo?: { metaTitle?: string; metaDescription?: string; socialImage?: string; allowIndex?: boolean };
+}
+
 export interface SnapshotPage {
   id: string;
   parentId: string | null;
@@ -12,6 +26,7 @@ export interface SnapshotPage {
   icon: string | null;
   description: string | null;
   content: string;
+  config: SnapshotPageConfig | null;
   position: number;
   hidden: boolean;
 }
@@ -21,6 +36,7 @@ export interface SnapshotLanguage {
   label: string;
   direction: 'LTR' | 'RTL';
   isDefault: boolean;
+  config: SnapshotLanguageConfig | null;
 }
 
 export interface SnapshotProject {
@@ -46,7 +62,8 @@ export interface SiteSnapshot {
 /** The default language of a snapshot (or a synthesized English fallback for
  *  legacy snapshots captured before languages existed). */
 export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage =>
-  project.languages.find((l) => l.isDefault) ?? project.languages[0] ?? { code: 'en', label: 'English', direction: 'LTR', isDefault: true };
+  project.languages.find((l) => l.isDefault) ??
+  project.languages[0] ?? { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null };
 
 /** A node in the rendered navigation tree (groups contain children). */
 export interface NavNode {
@@ -76,7 +93,8 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
       .map((page) => ({
         id: page.id,
         kind: page.kind,
-        title: page.title,
+        // Mintlify-style: a short sidebar label overrides the full page title in nav.
+        title: page.config?.sidebarTitle?.trim() || page.title,
         path: page.path,
         icon: page.icon,
         children: build(page.id),
@@ -124,7 +142,7 @@ export const extractHeadings = (markdown: string): Heading[] => {
 /** Build a one-line description for a page (its own, or derived from content). */
 export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'>): string => page.description?.trim() || excerpt(page.content);
 
-type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean };
+type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean; config?: unknown };
 type ProjectRow = {
   id: string;
   name: string;
@@ -138,7 +156,7 @@ type ProjectRow = {
   config?: unknown;
   languages?: LanguageRow[];
 };
-type PageRow = Omit<SnapshotPage, 'kind' | 'languageCode'> & { kind: string; languageCode?: string };
+type PageRow = Omit<SnapshotPage, 'kind' | 'languageCode' | 'config'> & { kind: string; languageCode?: string; config?: unknown };
 
 /** Compose an immutable site snapshot from a project + its pages (publish time). */
 export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt: string): SiteSnapshot => {
@@ -147,6 +165,7 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
     label: l.label,
     direction: l.direction === 'RTL' ? 'RTL' : 'LTR',
     isDefault: l.isDefault,
+    config: (l.config as SnapshotLanguageConfig | null) ?? null,
   }));
   const fallbackCode = languages.find((l) => l.isDefault)?.code ?? languages[0]?.code ?? 'en';
   return {
@@ -161,9 +180,14 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
       faviconUrl: project.faviconUrl,
       theme: (project.theme as Record<string, unknown> | null) ?? null,
       config: (project.config as Record<string, unknown> | null) ?? null,
-      languages: languages.length ? languages : [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true }],
+      languages: languages.length ? languages : [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }],
     },
-    pages: pages.map((page) => ({ ...page, kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE', languageCode: page.languageCode || fallbackCode })),
+    pages: pages.map((page) => ({
+      ...page,
+      kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE',
+      languageCode: page.languageCode || fallbackCode,
+      config: (page.config as SnapshotPageConfig | null) ?? null,
+    })),
     generatedAt,
   };
 };

@@ -129,6 +129,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const index = order.findIndex((node) => node.path === page.path);
   const breadcrumbs = breadcrumbTrail(pages, page);
 
+  const pageLanguage = snapshot.project.languages.find((l) => l.code === navLanguage);
   return {
     project: snapshot.project,
     page: {
@@ -139,7 +140,11 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       path: page.path,
       content: page.content,
       headings: extractHeadings(page.content),
+      // Per-page SEO + layout behaviour overrides (highest precedence in head()).
+      config: page.config ?? null,
     },
+    // SEO defaults of this page's language — layered under the page's own SEO.
+    languageConfig: pageLanguage?.config ?? null,
     // Surfaced for hreflang alternates in per-page SEO.
     languages: snapshot.project.languages.map((l) => ({ code: l.code, isDefault: l.isDefault })),
     breadcrumbs,

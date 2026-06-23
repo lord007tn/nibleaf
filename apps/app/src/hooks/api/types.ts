@@ -1,13 +1,14 @@
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
-import type { ProjectConfig } from '@plume/validators';
+import type { LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
 
-export type { ProjectConfig } from '@plume/validators';
+export type { LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
 
 export interface Language {
   id: string;
   projectId: string;
   code: string;
+  config?: LanguageConfig | null;
   label: string;
   direction: 'LTR' | 'RTL';
   isDefault: boolean;
@@ -44,6 +45,7 @@ export interface PageNode {
   path: string;
   icon: string | null;
   description: string | null;
+  config?: PageConfig | null;
   position: number;
   hidden: boolean;
   updatedAt: string;
@@ -220,7 +222,18 @@ export interface Heading {
 
 export interface SitePage {
   project: SiteShell['project'];
-  page: { id: string; title: string; description: string; icon: string | null; path: string; content: string; headings: Heading[] };
+  page: {
+    id: string;
+    title: string;
+    description: string;
+    icon: string | null;
+    path: string;
+    content: string;
+    headings: Heading[];
+    config: PageConfig | null;
+  };
+  /** SEO defaults of the page's language (layered under the page's own SEO). */
+  languageConfig: LanguageConfig | null;
   languages?: Array<{ code: string; isDefault: boolean }>;
   breadcrumbs: Array<{ title: string; path: string }>;
   prev: { title: string; path: string } | null;

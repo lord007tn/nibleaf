@@ -46,8 +46,21 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
 
   const { page, breadcrumbs, prev, next } = data;
 
+  // Per-page layout behaviour (Mintlify-style `mode`/`hideToc`): `wide` drops the
+  // TOC and fills the width, `center` narrows + centers the column.
+  const mode = page.config?.mode ?? 'default';
+  const showToc = mode === 'default' && !page.config?.hideToc && page.headings.length > 0;
+
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-10 px-8 py-10 xl:grid-cols-[1fr_200px]">
+    <div
+      className={
+        showToc
+          ? 'grid min-w-0 grid-cols-1 gap-10 px-8 py-10 xl:grid-cols-[1fr_200px]'
+          : mode === 'center'
+            ? 'mx-auto min-w-0 max-w-3xl px-8 py-10'
+            : 'min-w-0 px-8 py-10'
+      }
+    >
       <article className="min-w-0">
         {breadcrumbs.length > 1 ? (
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
@@ -96,9 +109,9 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
         </div>
       </article>
 
-      {/* Table of contents */}
+      {/* Table of contents — hidden in wide/center mode or when hideToc is set */}
       <aside className="hidden xl:block">
-        {page.headings.length > 0 ? (
+        {showToc ? (
           <div className="sticky top-20">
             <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('onThisPage')}</div>
             <ul className="space-y-1.5 border-border border-s ps-3 text-sm">

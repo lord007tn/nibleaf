@@ -215,6 +215,10 @@ model Language {
   direction TextDirection @default(LTR)
   isDefault Boolean       @default(false)
   position  Int           @default(0)
+  /// Per-language SEO + behaviour overrides: { seo: { metaTitle, metaDescription,
+  /// socialImage, allowIndex }, behaviour: {...} }. Layered between project.config
+  /// and page.config when rendering the live site.
+  config    Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
@@ -246,6 +250,10 @@ model Page {
   icon        String?
   description String?
   content     String    @default("")
+  /// Per-page overrides: { seo: { metaTitle, metaDescription, ogImage,
+  /// canonicalUrl, noindex }, sidebarTitle, mode: 'default'|'wide'|'center',
+  /// hideToc }. Layered over language.config + project.config on the live site.
+  config      Json?
   position    Int       @default(0)
   hidden      Boolean   @default(false)
   createdAt   DateTime  @default(now())

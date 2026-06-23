@@ -1,4 +1,4 @@
-import { prisma } from '@plume/database';
+import { Prisma, prisma } from '@plume/database';
 import { joinPath, slugify } from '@plume/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@plume/validators';
 import { notFound } from '@/errors';
@@ -16,6 +16,7 @@ const pageListSelect = {
   path: true,
   icon: true,
   description: true,
+  config: true,
   position: true,
   hidden: true,
   updatedAt: true,
@@ -125,9 +126,25 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
       icon: body.icon ?? null,
       description: body.description ?? null,
       content: body.content ?? '',
+      config: body.config ?? undefined,
       position: body.position ?? (maxPosition._max.position ?? -1) + 1,
     },
   });
+};
+
+/** Deep-merge a page-config patch over the stored config: the `seo` object is
+ *  merged key-by-key; scalar keys (sidebarTitle/mode/hideToc) replace. Passing
+ *  `null` clears the whole config. Mirrors updateProject's section-level merge. */
+const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): object | null | undefined => {
+  if (patch === undefined) {
+    return undefined; // not touched
+  }
+  if (patch === null) {
+    return null; // explicit clear
+  }
+  const base = (existing ?? {}) as Record<string, unknown>;
+  const baseSeo = (base.seo ?? {}) as Record<string, unknown>;
+  return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
 };
 
 export const updatePage = async (projectId: string, id: string, body: UpdatePageBody) => {
@@ -141,6 +158,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   if (body.slug !== undefined || body.title !== undefined || body.parentId !== undefined) {
     nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, body.slug || body.title || page.slug, id);
   }
+  const nextConfig = mergePageConfig(page.config, body.config);
   const updated = await prisma.page.update({
     where: { id },
     data: {
@@ -151,6 +169,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
       ...(body.description === undefined ? {} : { description: body.description }),
       ...(body.content === undefined ? {} : { content: body.content }),
       ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
+      ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
     },
   });
   if (structural) {

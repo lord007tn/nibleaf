@@ -53,8 +53,22 @@ export const createLanguage = async (projectId: string, body: CreateLanguageBody
   }
 };
 
+/** Deep-merge a language-config patch: `seo` merges key-by-key; `null` clears. */
+const mergeLanguageConfig = (existing: unknown, patch: UpdateLanguageBody['config']): object | null | undefined => {
+  if (patch === undefined) {
+    return undefined;
+  }
+  if (patch === null) {
+    return null;
+  }
+  const base = (existing ?? {}) as Record<string, unknown>;
+  const baseSeo = (base.seo ?? {}) as Record<string, unknown>;
+  return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
+};
+
 export const updateLanguage = async (projectId: string, id: string, body: UpdateLanguageBody) => {
-  await assertLanguageInProject(projectId, id);
+  const language = await assertLanguageInProject(projectId, id);
+  const nextConfig = mergeLanguageConfig(language.config, body.config);
   return prisma.$transaction(async (tx) => {
     if (body.isDefault === true) {
       await tx.language.updateMany({ where: { projectId, isDefault: true }, data: { isDefault: false } });
@@ -66,6 +80,7 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
         ...(body.direction === undefined ? {} : { direction: body.direction }),
         ...(body.position === undefined ? {} : { position: body.position }),
         ...(body.isDefault === undefined ? {} : { isDefault: body.isDefault }),
+        ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
       },
     });
   });
