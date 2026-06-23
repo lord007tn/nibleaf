@@ -15,12 +15,19 @@ import {
   useUpdateProjectMemberRole,
 } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { SectionHeader } from './shared';
 
 type Role = 'owner' | 'admin' | 'member';
-const ROLE_LABELS: Record<string, string> = { owner: 'Owner', admin: 'Admin', member: 'Editor' };
+const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
+  owner: 'settings.members.role.owner',
+  admin: 'settings.members.role.admin',
+  member: 'settings.members.role.member',
+};
 
 export function MembersSection({ projectId }: { projectId: string }) {
+  const t = useT();
   const { data, isPending } = useProjectMembers(projectId);
   const invite = useInviteProjectMember(projectId);
   const remove = useRemoveProjectMember(projectId);
@@ -39,12 +46,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
           { email: invited, role: value.role },
           {
             onSuccess: () => {
-              toast.success(`Invited ${invited}`);
+              toast.success(t('settings.members.toast.invited', { email: invited }));
               form.reset();
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : 'Could not invite');
+              toast.error(error instanceof Error ? error.message : t('settings.members.toast.inviteError'));
               resolve();
             },
           },
@@ -55,7 +62,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <SectionHeader icon="⧉" title="Members" description="People who can access and edit this site. Each site has its own members and roles." />
+      <SectionHeader icon="⧉" title={t('settings.members.title')} description={t('settings.members.description')} />
 
       <form
         className="mb-5 flex items-end gap-2.5 rounded-xl border border-border bg-card p-3.5"
@@ -67,7 +74,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
         <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
           {(field) => (
             <div className="flex flex-1 flex-col gap-1.5">
-              <span className="font-medium text-[13px]">Invite by email</span>
+              <span className="font-medium text-[13px]">{t('settings.members.inviteByEmail')}</span>
               <Input
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -86,9 +93,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="member">Editor</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
+                <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                <SelectItem value="owner">{t('settings.members.role.owner')}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -96,14 +103,16 @@ export function MembersSection({ projectId }: { projectId: string }) {
         <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
           {([isSubmitting, emailValue]) => (
             <Button disabled={isSubmitting || !emailValue.trim()} type="submit">
-              <Mail className="size-4" /> Invite
+              <Mail className="size-4" /> {t('settings.members.invite')}
             </Button>
           )}
         </form.Subscribe>
       </form>
 
       <div className="mb-3 font-mono text-[12px] text-muted-foreground">
-        {members.length} {members.length === 1 ? 'member' : 'members'}
+        {members.length === 1
+          ? t('settings.members.count.one', { count: members.length })
+          : t('settings.members.count.other', { count: members.length })}
       </div>
 
       {isPending ? (
@@ -119,7 +128,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
               </div>
               <div className="ms-auto flex items-center gap-1.5">
                 {member.role === 'owner' ? (
-                  <span className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground">Owner</span>
+                  <span className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground">
+                    {t('settings.members.role.owner')}
+                  </span>
                 ) : (
                   <>
                     <Select
@@ -128,8 +139,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         updateRole.mutate(
                           { id: member.id, body: { role: (v ?? 'member') as Role } },
                           {
-                            onSuccess: () => toast.success('Role updated'),
-                            onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update the role'),
+                            onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
+                            onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.roleError')),
                           },
                         )
                       }
@@ -138,9 +149,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="member">Editor</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="owner">Owner</SelectItem>
+                        <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
+                        <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                        <SelectItem value="owner">{t('settings.members.role.owner')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button
@@ -148,8 +159,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       variant="ghost"
                       onClick={() =>
                         remove.mutate(member.id, {
-                          onSuccess: () => toast.success('Member removed'),
-                          onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not remove the member'),
+                          onSuccess: () => toast.success(t('settings.members.toast.removed')),
+                          onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.removeError')),
                         })
                       }
                     >
@@ -160,11 +171,11 @@ export function MembersSection({ projectId }: { projectId: string }) {
               </div>
             </div>
           ))}
-          {members.length === 0 ? <p className="border-border border-t py-3 text-muted-foreground text-sm">No members yet.</p> : null}
+          {members.length === 0 ? <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.empty')}</p> : null}
 
           {invitations.length > 0 ? (
             <>
-              <div className="mt-6 mb-1 font-mono text-[12px] text-muted-foreground">Pending invitations</div>
+              <div className="mt-6 mb-1 font-mono text-[12px] text-muted-foreground">{t('settings.members.pendingInvitations')}</div>
               {invitations.map((inv) => (
                 <div className="flex items-center gap-3 border-border border-t py-3" key={inv.id}>
                   <div className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground">
@@ -172,7 +183,11 @@ export function MembersSection({ projectId }: { projectId: string }) {
                   </div>
                   <div className="min-w-0 leading-tight">
                     <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
-                    <div className="text-[12px] text-muted-foreground">Invited as {ROLE_LABELS[inv.role ?? 'member'] ?? inv.role}</div>
+                    <div className="text-[12px] text-muted-foreground">
+                      {t('settings.members.invitedAs', {
+                        role: t(ROLE_LABEL_KEYS[inv.role ?? 'member'] ?? 'settings.members.role.member'),
+                      })}
+                    </div>
                   </div>
                   <Button
                     className="ms-auto"
@@ -180,8 +195,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     variant="ghost"
                     onClick={() =>
                       cancelInvite.mutate(inv.id, {
-                        onSuccess: () => toast.success('Invitation revoked'),
-                        onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not revoke the invitation'),
+                        onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
+                        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
                       })
                     }
                   >

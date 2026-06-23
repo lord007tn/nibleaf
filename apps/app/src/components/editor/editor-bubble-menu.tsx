@@ -2,6 +2,8 @@ import type { Editor } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Code, Highlighter, Italic, Link as LinkIcon, Strikethrough } from 'lucide-react';
 import type { ComponentType } from 'react';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 interface EditorBubbleMenuProps {
@@ -9,7 +11,7 @@ interface EditorBubbleMenuProps {
 }
 
 interface MarkButton {
-  label: string;
+  labelKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   isActive: () => boolean;
   run: () => void;
@@ -20,18 +22,24 @@ interface MarkButton {
  * bold / italic / strike / code / highlight / link.
  */
 export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
+  const t = useT();
   const buttons: MarkButton[] = [
-    { label: 'Bold', icon: Bold, isActive: () => editor.isActive('bold'), run: () => editor.chain().focus().toggleBold().run() },
-    { label: 'Italic', icon: Italic, isActive: () => editor.isActive('italic'), run: () => editor.chain().focus().toggleItalic().run() },
+    { labelKey: 'editor.format.bold', icon: Bold, isActive: () => editor.isActive('bold'), run: () => editor.chain().focus().toggleBold().run() },
     {
-      label: 'Strikethrough',
+      labelKey: 'editor.format.italic',
+      icon: Italic,
+      isActive: () => editor.isActive('italic'),
+      run: () => editor.chain().focus().toggleItalic().run(),
+    },
+    {
+      labelKey: 'editor.format.strikethrough',
       icon: Strikethrough,
       isActive: () => editor.isActive('strike'),
       run: () => editor.chain().focus().toggleStrike().run(),
     },
-    { label: 'Code', icon: Code, isActive: () => editor.isActive('code'), run: () => editor.chain().focus().toggleCode().run() },
+    { labelKey: 'editor.format.code', icon: Code, isActive: () => editor.isActive('code'), run: () => editor.chain().focus().toggleCode().run() },
     {
-      label: 'Highlight',
+      labelKey: 'editor.format.highlight',
       icon: Highlighter,
       isActive: () => editor.isActive('highlight'),
       run: () => editor.chain().focus().toggleHighlight().run(),
@@ -44,7 +52,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
       return;
     }
     const previous = (editor.getAttributes('link').href as string) ?? '';
-    const url = window.prompt('Link URL', previous);
+    const url = window.prompt(t('editor.format.linkPrompt'), previous);
     if (url === null) {
       return;
     }
@@ -63,11 +71,12 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     >
       {buttons.map((button) => {
         const Icon = button.icon;
+        const label = t(button.labelKey);
         return (
           <button
             type="button"
-            key={button.label}
-            title={button.label}
+            key={button.labelKey}
+            title={label}
             aria-pressed={button.isActive()}
             onClick={button.run}
             className={cn(
@@ -82,7 +91,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
       <span className="mx-0.5 h-5 w-px bg-border" />
       <button
         type="button"
-        title="Link"
+        title={t('editor.format.link')}
         aria-pressed={editor.isActive('link')}
         onClick={toggleLink}
         className={cn(

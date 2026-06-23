@@ -3,8 +3,10 @@ import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useProjects } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const t = useT();
   const navigate = useNavigate();
   const { data: projects } = useProjects();
 
@@ -26,10 +28,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search projects and actions…" />
+      <CommandInput placeholder={t('command.searchPlaceholder')} />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
-        <CommandGroup heading="Projects">
+        <CommandEmpty>{t('command.noResults')}</CommandEmpty>
+        <CommandGroup heading={t('command.group.projects')}>
           {(projects ?? []).map((project) => (
             <CommandItem
               key={project.id}
@@ -41,15 +43,15 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             </CommandItem>
           ))}
         </CommandGroup>
-        <CommandGroup heading="Go to">
+        <CommandGroup heading={t('command.group.goTo')}>
           <CommandItem value="projects" onSelect={() => go('/app')}>
-            <Plus className="size-4" /> All projects
+            <Plus className="size-4" /> {t('command.allProjects')}
           </CommandItem>
           <CommandItem value="analytics" onSelect={() => go('/app/analytics')}>
-            <BarChart3 className="size-4" /> Analytics
+            <BarChart3 className="size-4" /> {t('command.analytics')}
           </CommandItem>
           <CommandItem value="settings" onSelect={() => go('/app/settings')}>
-            <Settings className="size-4" /> Account settings
+            <Settings className="size-4" /> {t('command.accountSettings')}
           </CommandItem>
         </CommandGroup>
       </CommandList>

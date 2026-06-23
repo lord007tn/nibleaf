@@ -2,9 +2,11 @@ import { Link } from '@tanstack/react-router';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspaceAnalytics } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 
 /** Compact workspace-traffic sidebar: headline total, bar chart, top pages. */
 export function TrafficPanel() {
+  const t = useT();
   const { data, isPending } = useWorkspaceAnalytics('30d');
   const series = (data?.timeseries ?? []).slice(-14);
   const topPages = (data?.topPages ?? []).slice(0, 5);
@@ -14,8 +16,8 @@ export function TrafficPanel() {
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-sm">Traffic</h2>
-        <span className="font-mono text-muted-foreground text-xs">last 14 days</span>
+        <h2 className="font-semibold text-sm">{t('analytics.traffic.title')}</h2>
+        <span className="font-mono text-muted-foreground text-xs">{t('analytics.traffic.last14Days')}</span>
       </div>
 
       {isPending ? (
@@ -23,7 +25,7 @@ export function TrafficPanel() {
       ) : (
         <div className="mt-3 font-semibold text-2xl tabular-nums tracking-tight">{(data?.totalViews ?? 0).toLocaleString()}</div>
       )}
-      <div className="text-muted-foreground text-xs">pageviews across all docs</div>
+      <div className="text-muted-foreground text-xs">{t('analytics.traffic.pageviewsAllDocs')}</div>
 
       <div className="mt-4 h-[90px]">
         {isPending ? (
@@ -41,12 +43,12 @@ export function TrafficPanel() {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <div className="grid h-full place-items-center text-center text-muted-foreground text-xs">No traffic yet.</div>
+          <div className="grid h-full place-items-center text-center text-muted-foreground text-xs">{t('analytics.traffic.noTrafficShort')}</div>
         )}
       </div>
 
       <div className="mt-4 border-border border-t pt-4">
-        <div className="mb-3 font-medium text-sm">Top pages</div>
+        <div className="mb-3 font-medium text-sm">{t('analytics.section.topPages')}</div>
         {isPending ? (
           <div className="space-y-2.5">
             {[0, 1, 2, 3].map((i) => (
@@ -54,14 +56,17 @@ export function TrafficPanel() {
             ))}
           </div>
         ) : topPages.length === 0 ? (
-          <p className="text-muted-foreground text-xs">No traffic yet — publish a site and share it.</p>
+          <p className="text-muted-foreground text-xs">{t('analytics.empty.traffic')}</p>
         ) : (
           <ul className="space-y-2.5">
             {topPages.map((page) => (
               <li key={`${page.project}-${page.path}`} className="flex items-center gap-2.5 text-sm">
                 <span className="min-w-0 flex-1 truncate text-foreground/80 text-xs">/{page.path}</span>
                 <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
-                  <span className="block h-full rounded-full bg-[var(--chart-1)]" style={{ width: `${Math.max(4, Math.round((page.views / maxViews) * 100))}%` }} />
+                  <span
+                    className="block h-full rounded-full bg-[var(--chart-1)]"
+                    style={{ width: `${Math.max(4, Math.round((page.views / maxViews) * 100))}%` }}
+                  />
                 </span>
                 <span className="w-10 shrink-0 text-end font-mono text-muted-foreground text-xs tabular-nums">{page.views}</span>
               </li>
@@ -69,7 +74,7 @@ export function TrafficPanel() {
           </ul>
         )}
         <Link to="/app/analytics" className="mt-4 block text-[var(--chart-1)] text-xs hover:underline">
-          View all analytics →
+          {t('analytics.traffic.viewAll')} →
         </Link>
       </div>
     </div>

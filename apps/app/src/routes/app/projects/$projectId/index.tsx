@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
 import { useBranches, useCreatePage, useDeletePage, useLanguages, usePage, usePages, useUpdatePage, useUploadAsset } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
@@ -35,6 +36,7 @@ function buildTree(pages: PageNode[]): { roots: PageNode[]; childrenOf: Map<stri
 }
 
 function EditorPage() {
+  const t = useT();
   const { projectId } = Route.useParams();
 
   // ─── Branches: the editor works on one branch at a time (default 'main') ─────
@@ -63,7 +65,7 @@ function EditorPage() {
     try {
       return (await uploadAsset.mutateAsync(file)).url;
     } catch {
-      toast.error('Image upload failed.');
+      toast.error(t('editor.imageUploadFailed'));
       return null;
     }
   };
@@ -135,12 +137,12 @@ function EditorPage() {
   const addPage = (parentId: string | null, languageId: string) =>
     createPage.mutate(
       { title: 'Untitled', parentId, languageId, ...branchScope },
-      { onSuccess: (created) => setSelectedId(created.id), onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
+      { onSuccess: (created) => setSelectedId(created.id), onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')) },
     );
   const addGroup = (languageId: string) =>
     createPage.mutate(
       { title: 'New group', kind: 'GROUP', languageId, ...branchScope },
-      { onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed') },
+      { onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')) },
     );
 
   const renderItem = (node: PageNode) => (
@@ -172,12 +174,12 @@ function EditorPage() {
       {/* Page tree — every language, each with its own pages */}
       <aside className="flex flex-col border-border border-e bg-sidebar/40">
         <div className="flex items-center justify-between px-3 py-3">
-          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">Navigation</span>
+          <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('editor.navigation')}</span>
         </div>
 
         <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-4">
           {isPending ? (
-            <p className="px-2 text-muted-foreground text-sm">Loading…</p>
+            <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
           ) : (
             orderedLanguages.map((lang) => {
               const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
@@ -191,14 +193,26 @@ function EditorPage() {
                       <span className="truncate">{lang.label}</span>
                       <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
                       {lang.isDefault ? (
-                        <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">Default</span>
+                        <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">{t('editor.default')}</span>
                       ) : null}
                     </span>
                     <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addGroup(lang.id)} title="New group">
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        className="cursor-pointer"
+                        onClick={() => addGroup(lang.id)}
+                        title={t('editor.newGroup')}
+                      >
                         <FolderPlus className="size-3" />
                       </Button>
-                      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(null, lang.id)} title="New page">
+                      <Button
+                        size="icon-xs"
+                        variant="ghost"
+                        className="cursor-pointer"
+                        onClick={() => addPage(null, lang.id)}
+                        title={t('editor.newPage')}
+                      >
                         <Plus className="size-3" />
                       </Button>
                     </div>
@@ -207,7 +221,7 @@ function EditorPage() {
                   {/* This language's page tree */}
                   <div className="space-y-0.5" dir={dir}>
                     {roots.length === 0 ? (
-                      <p className="px-2 py-1 text-[12px] text-muted-foreground/70">No pages yet</p>
+                      <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
                     ) : (
                       roots.map((node) =>
                         node.kind === 'GROUP' ? (
@@ -237,7 +251,7 @@ function EditorPage() {
             onClick={() => setAddLangOpen(true)}
             className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
           >
-            <Plus className="size-3.5" /> Add language
+            <Plus className="size-3.5" /> {t('editor.addLanguage')}
           </button>
         </div>
         <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
@@ -250,29 +264,36 @@ function EditorPage() {
             <Input
               className="h-9 border-0 bg-transparent px-0 font-semibold text-lg shadow-none focus-visible:ring-0"
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Page title"
+              placeholder={t('editor.pageTitlePlaceholder')}
               value={title}
             />
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
               {status === 'saving' ? (
                 <>
-                  <Loader2 className="size-3 animate-spin" /> Saving
+                  <Loader2 className="size-3 animate-spin" /> {t('editor.savingShort')}
                 </>
               ) : status === 'saved' ? (
                 <>
-                  <Check className="size-3 text-primary" /> Saved
+                  <Check className="size-3 text-primary" /> {t('editor.savedShort')}
                 </>
               ) : null}
             </span>
-            <Button size="icon-sm" variant="ghost" className="cursor-pointer" onClick={() => setSettingsOpen(true)} title="Page settings">
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={() => setSettingsOpen(true)}
+              title={t('editor.pageSettings.title')}
+            >
               <Settings2 className="size-4" />
             </Button>
             <Button
               size="icon-sm"
               variant="ghost"
               className="cursor-pointer"
+              title={t('editor.deletePage')}
               onClick={() => {
-                if (confirm('Delete this page?')) {
+                if (confirm(t('editor.deletePageConfirm'))) {
                   deletePage.mutate(page.id, { onSuccess: () => setSelectedId(null) });
                 }
               }}
@@ -285,7 +306,7 @@ function EditorPage() {
               className="hidden cursor-pointer xl:inline-flex"
               onClick={() => setRailOpen((v) => !v)}
               size="icon-sm"
-              title={railOpen ? 'Hide AI & comments' : 'Show AI & comments'}
+              title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
               variant={railOpen ? 'secondary' : 'ghost'}
             >
               <PanelRight className="size-4" />
@@ -329,11 +350,11 @@ function EditorPage() {
         <section className="grid place-items-center text-center">
           <div>
             <FileText className="mx-auto size-7 text-muted-foreground" />
-            <p className="mt-3 font-medium">No page selected</p>
-            <p className="mt-1 text-muted-foreground text-sm">Pick a page from the navigation, or create one.</p>
+            <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
+            <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
             {defaultLanguageId ? (
               <Button className="mt-4 cursor-pointer" onClick={() => addPage(null, defaultLanguageId)}>
-                <Plus className="size-4" /> New page
+                <Plus className="size-4" /> {t('editor.newPage')}
               </Button>
             ) : null}
           </div>
@@ -345,8 +366,8 @@ function EditorPage() {
         <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
           <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
             <TabsList className="m-2 self-start">
-              <TabsTrigger value="comments">Comments</TabsTrigger>
-              <TabsTrigger value="ai">AI</TabsTrigger>
+              <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
+              <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
             </TabsList>
             <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
               {railTab === 'comments' ? (

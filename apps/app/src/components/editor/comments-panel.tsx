@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Comment } from '@/hooks/api';
 import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface CommentsPanelProps {
@@ -30,14 +31,14 @@ function initials(name: string): string {
 }
 
 /** Compact relative time, e.g. "now", "5m", "3h", "2d". */
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, nowLabel: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) {
     return '';
   }
   const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
   if (secs < 60) {
-    return 'now';
+    return nowLabel;
   }
   const mins = Math.round(secs / 60);
   if (mins < 60) {
@@ -72,6 +73,7 @@ function gradientFor(id: string): string {
 }
 
 export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
+  const t = useT();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const { data: comments, isPending } = useComments(projectId, pageId ?? undefined);
@@ -92,7 +94,7 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
       { body, pageId: pageId ?? null },
       {
         onSuccess: () => setDraft(''),
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not post the comment.'),
+        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.comments.postError')),
       },
     );
   };
@@ -102,16 +104,16 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
   return (
     <div className="flex min-h-0 flex-col">
       <div className="flex items-center gap-2 px-1 pb-3">
-        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">Comments</span>
+        <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wide">{t('editor.comments')}</span>
         <span className="ms-auto font-mono text-muted-foreground text-xs">{list.length}</span>
       </div>
 
       <ScrollArea className="-mx-1 min-h-0 flex-1">
         <div className="space-y-2.5 px-1">
           {isPending ? (
-            <p className="px-1 text-muted-foreground text-sm">Loading…</p>
+            <p className="px-1 text-muted-foreground text-sm">{t('common.loading')}</p>
           ) : list.length === 0 ? (
-            <p className="px-1 py-6 text-center text-muted-foreground text-sm">No comments yet.</p>
+            <p className="px-1 py-6 text-center text-muted-foreground text-sm">{t('editor.noComments')}</p>
           ) : (
             list.map((comment) => (
               <div className={cn('rounded-xl border border-border bg-card p-3', comment.resolved && 'opacity-60')} key={comment.id}>
@@ -125,7 +127,7 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
                     {initials(comment.user.name)}
                   </span>
                   <span className="font-semibold text-sm">{comment.user.name}</span>
-                  <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt)}</span>
+                  <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt, t('editor.comments.now'))}</span>
                 </div>
                 <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
                   {comment.body}
@@ -139,14 +141,17 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
                     variant="ghost"
                   >
                     <Check className="size-3" />
-                    {comment.resolved ? 'Resolved' : 'Resolve'}
+                    {comment.resolved ? t('editor.comments.resolved') : t('editor.comments.resolve')}
                   </Button>
                   {canDelete(comment) ? (
                     <Button
+                      aria-label={t('editor.comments.deleteAria')}
                       className="ms-auto size-6 text-muted-foreground hover:text-destructive"
                       disabled={deleteComment.isPending}
                       onClick={() =>
-                        deleteComment.mutate(comment.id, { onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not delete.') })
+                        deleteComment.mutate(comment.id, {
+                          onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.comments.deleteError')),
+                        })
                       }
                       size="icon-xs"
                       variant="ghost"
@@ -171,12 +176,12 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
               submit();
             }
           }}
-          placeholder="Leave a comment…"
+          placeholder={t('editor.leaveComment')}
           value={draft}
         />
         <Button className="w-full" disabled={!draft.trim() || createComment.isPending} onClick={submit} size="sm">
           {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Comment
+          {t('editor.comment')}
         </Button>
       </div>
     </div>

@@ -29,8 +29,20 @@ const DEFAULTS: GitConfig = {
 };
 
 const PROVIDERS = [
-  { id: 'github' as const, name: 'Connect to GitHub', description: 'Connect an org and host content on GitHub', icon: GithubIcon, tint: 'bg-foreground/10 text-foreground' },
-  { id: 'gitlab' as const, name: 'Connect to GitLab', description: 'Configure your GitLab repository', icon: GitlabIcon, tint: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+  {
+    id: 'github' as const,
+    name: 'Connect to GitHub',
+    description: 'Connect an org and host content on GitHub',
+    icon: GithubIcon,
+    tint: 'bg-foreground/10 text-foreground',
+  },
+  {
+    id: 'gitlab' as const,
+    name: 'Connect to GitLab',
+    description: 'Configure your GitLab repository',
+    icon: GitlabIcon,
+    tint: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+  },
 ];
 
 export function GitTab() {
@@ -58,7 +70,10 @@ export function GitTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsSection title="Git access" description="Manage your docs as files in a Git repository. Edits sync both ways between Plume and your provider.">
+      <SettingsSection
+        title="Git access"
+        description="Manage your docs as files in a Git repository. Edits sync both ways between Plume and your provider."
+      >
         <div className="flex flex-col gap-3">
           {PROVIDERS.map((provider) => {
             const selected = git.provider === provider.id;
@@ -80,10 +95,7 @@ export function GitTab() {
                   <span className="block font-medium text-sm">{provider.name}</span>
                   <span className="block text-muted-foreground text-sm">{provider.description}</span>
                 </span>
-                <span
-                  className={cn('size-4 shrink-0 rounded-full border', selected ? 'border-[5px] border-primary' : 'border-input')}
-                  aria-hidden
-                />
+                <span className={cn('size-4 shrink-0 rounded-full border', selected ? 'border-[5px] border-primary' : 'border-input')} aria-hidden />
               </button>
             );
           })}
@@ -91,10 +103,7 @@ export function GitTab() {
       </SettingsSection>
 
       {git.connected ? (
-        <SettingsSection
-          title="Repository"
-          action={<Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Connected</Badge>}
-        >
+        <SettingsSection title="Repository" action={<Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">Connected</Badge>}>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -141,11 +150,7 @@ export function GitTab() {
               <Switch checked={git.twoWaySync} disabled={update.isPending} onCheckedChange={(checked) => save({ twoWaySync: checked })} />
             </div>
             <div className="mt-5 flex justify-between">
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => save({ connected: false }, 'Disconnected')}
-              >
+              <Button type="button" variant="destructive" onClick={() => save({ connected: false }, 'Disconnected')}>
                 Disconnect
               </Button>
               <form.Subscribe selector={(state) => state.isSubmitting}>

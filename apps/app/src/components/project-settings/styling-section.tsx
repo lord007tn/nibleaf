@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import type { Project } from '@/hooks/api';
 import { useUpdateProject, useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
 
@@ -69,6 +70,7 @@ function hslToHex({ h, s, l }: Hsl): string {
 }
 
 export function StylingSection({ project }: { project: Project }) {
+  const t = useT();
   const updateProject = useUpdateProject(project.id);
   const updateConfig = useUpdateProjectConfig(project.id);
   const styling = project.config?.styling ?? {};
@@ -99,7 +101,7 @@ export function StylingSection({ project }: { project: Project }) {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
-      toast.error('Enter a valid hex colour like #5546E8');
+      toast.error(t('settings.styling.invalidHex'));
       return;
     }
     setSaving(true);
@@ -110,9 +112,9 @@ export function StylingSection({ project }: { project: Project }) {
       if (pending === 0) {
         setSaving(false);
         if (failed) {
-          toast.error('Could not save');
+          toast.error(t('settings.saveError'));
         } else {
-          toast.success('Saved');
+          toast.success(t('common.saved'));
         }
       }
     };
@@ -144,12 +146,10 @@ export function StylingSection({ project }: { project: Project }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <SectionHeader icon="◐" title="Styling" />
+      <SectionHeader icon="◐" title={t('settings.styling.title')} />
 
-      <GroupLabel>Primary color</GroupLabel>
-      <p className="mt-1 mb-3 text-[12.5px] text-muted-foreground leading-snug">
-        The accent used for links, active states, and buttons across your docs.
-      </p>
+      <GroupLabel>{t('settings.styling.primaryColor.label')}</GroupLabel>
+      <p className="mt-1 mb-3 text-[12.5px] text-muted-foreground leading-snug">{t('settings.styling.primaryColor.hint')}</p>
 
       <div className="mb-4 flex items-center gap-3.5">
         <span className="size-11 shrink-0 rounded-xl" style={{ background: hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />
@@ -159,12 +159,12 @@ export function StylingSection({ project }: { project: Project }) {
           onChange={(e) => applyHex(e.target.value)}
           value={hex}
         />
-        <span className="text-[12px] text-muted-foreground">Pick any color</span>
+        <span className="text-[12px] text-muted-foreground">{t('settings.styling.pickColor')}</span>
       </div>
 
       <div className="mb-4 flex flex-col gap-3.5">
         <Slider
-          aria-label="Hue"
+          aria-label={t('settings.styling.hue')}
           max={360}
           min={0}
           onChange={(e) => applyHsl({ ...hsl, h: clamp(Number(e.target.value), 0, 360) })}
@@ -172,7 +172,7 @@ export function StylingSection({ project }: { project: Project }) {
           value={hsl.h}
         />
         <Slider
-          aria-label="Saturation"
+          aria-label={t('settings.styling.saturation')}
           max={100}
           min={0}
           onChange={(e) => applyHsl({ ...hsl, s: clamp(Number(e.target.value), 0, 100) })}
@@ -180,7 +180,7 @@ export function StylingSection({ project }: { project: Project }) {
           value={hsl.s}
         />
         <Slider
-          aria-label="Lightness"
+          aria-label={t('settings.styling.lightness')}
           max={100}
           min={0}
           onChange={(e) => applyHsl({ ...hsl, l: clamp(Number(e.target.value), 0, 100) })}
@@ -205,27 +205,27 @@ export function StylingSection({ project }: { project: Project }) {
         ))}
       </div>
 
-      <Field hint="The theme readers see on first visit. They can switch any time." label="Default theme">
+      <Field hint={t('settings.styling.theme.hint')} label={t('settings.styling.theme.label')}>
         <Segmented
           className="max-w-[340px]"
           onChange={setTheme}
           options={[
-            { value: 'light', label: 'Light' },
-            { value: 'dark', label: 'Dark' },
-            { value: 'system', label: 'System' },
+            { value: 'light', label: t('settings.styling.theme.light') },
+            { value: 'dark', label: t('settings.styling.theme.dark') },
+            { value: 'system', label: t('settings.styling.theme.system') },
           ]}
           value={theme}
         />
       </Field>
 
-      <Field hint="Roundness of cards, inputs, and code blocks on your site." label="Corner radius">
+      <Field hint={t('settings.styling.radius.hint')} label={t('settings.styling.radius.label')}>
         <Segmented
           className="max-w-[280px]"
           onChange={setRadius}
           options={[
-            { value: 'sharp', label: 'Sharp' },
-            { value: 'rounded', label: 'Rounded' },
-            { value: 'pill', label: 'Pill' },
+            { value: 'sharp', label: t('settings.styling.radius.sharp') },
+            { value: 'rounded', label: t('settings.styling.radius.rounded') },
+            { value: 'pill', label: t('settings.styling.radius.pill') },
           ]}
           value={radius}
         />

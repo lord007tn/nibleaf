@@ -88,7 +88,7 @@ function readState(raw: unknown): IntegrationState {
     const obj = raw as { connected?: unknown; config?: unknown };
     return {
       connected: Boolean(obj.connected),
-      config: (obj.config && typeof obj.config === 'object' ? (obj.config as Record<string, string>) : {}),
+      config: obj.config && typeof obj.config === 'object' ? (obj.config as Record<string, string>) : {},
     };
   }
   return { connected: false, config: {} };
@@ -110,29 +110,17 @@ function NotConnectedPill() {
   );
 }
 
-function IntegrationDetail({
-  provider,
-  integrations,
-  onBack,
-}: {
-  provider: Provider;
-  integrations: Record<string, unknown>;
-  onBack: () => void;
-}) {
+function IntegrationDetail({ provider, integrations, onBack }: { provider: Provider; integrations: Record<string, unknown>; onBack: () => void }) {
   const update = useUpdateWorkspaceSettings();
   const persisted = readState(integrations[provider.id]);
   const [connected, setConnected] = useState(persisted.connected);
   const [config, setConfig] = useState<Record<string, string>>(persisted.config);
   const Icon = provider.icon;
 
-  const persist = (next: IntegrationState) =>
-    update.mutate({ integrations: { ...integrations, [provider.id]: next } });
+  const persist = (next: IntegrationState) => update.mutate({ integrations: { ...integrations, [provider.id]: next } });
 
   // Debounced autosave for field edits so we don't fire a request per keystroke.
-  const saveConfig = useDebouncedCallback(
-    (nextConfig: Record<string, string>) => persist({ connected, config: nextConfig }),
-    { wait: 700 },
-  );
+  const saveConfig = useDebouncedCallback((nextConfig: Record<string, string>) => persist({ connected, config: nextConfig }), { wait: 700 });
 
   const onFieldChange = (key: string, value: string) => {
     const next = { ...config, [key]: value };
@@ -217,14 +205,7 @@ export function IntegrationsTab() {
   const selected = PROVIDERS.find((p) => p.id === selectedId) ?? null;
 
   if (selected) {
-    return (
-      <IntegrationDetail
-        key={selected.id}
-        integrations={integrations}
-        onBack={() => setSelectedId(null)}
-        provider={selected}
-      />
-    );
+    return <IntegrationDetail key={selected.id} integrations={integrations} onBack={() => setSelectedId(null)} provider={selected} />;
   }
 
   return (

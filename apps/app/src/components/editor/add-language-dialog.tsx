@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Language } from '@/hooks/api';
 import { useCreateLanguage } from '@/hooks/api';
-import { required } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 const CODE_RE = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/;
@@ -23,6 +23,7 @@ interface AddLanguageDialogProps {
 
 /** Dialog with a TanStack Form for adding a project language (code / label / direction). */
 export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: AddLanguageDialogProps) {
+  const t = useT();
   const createLanguage = useCreateLanguage(projectId);
   const [direction, setDirection] = useState<'LTR' | 'RTL'>('LTR');
 
@@ -35,13 +36,13 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
           label: value.label.trim(),
           direction,
         });
-        toast.success(`Added ${language.label}.`);
+        toast.success(t('editor.addLanguage.added', { label: language.label }));
         onCreated(language);
         onOpenChange(false);
         form.reset();
         setDirection('LTR');
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Could not add the language.');
+        toast.error(error instanceof Error ? error.message : t('editor.addLanguage.error'));
       }
     },
   });
@@ -50,8 +51,8 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add a language</DialogTitle>
-          <DialogDescription>Create a new localized version of this site's pages.</DialogDescription>
+          <DialogTitle>{t('editor.addLanguage.title')}</DialogTitle>
+          <DialogDescription>{t('editor.addLanguage.desc')}</DialogDescription>
         </DialogHeader>
 
         <form
@@ -66,15 +67,15 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
             validators={{
               onChange: ({ value }) => {
                 if (value.trim().length === 0) {
-                  return 'Code is required';
+                  return t('editor.addLanguage.codeRequired');
                 }
-                return CODE_RE.test(value.trim()) ? undefined : 'Use a BCP-47 code like "en" or "pt-BR"';
+                return CODE_RE.test(value.trim()) ? undefined : t('editor.addLanguage.codeInvalid');
               },
             }}
           >
             {(field) => (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lang-code">Code</Label>
+                <Label htmlFor="lang-code">{t('editor.addLanguage.codeField')}</Label>
                 <Input
                   id="lang-code"
                   className="font-mono"
@@ -88,10 +89,13 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
             )}
           </form.Field>
 
-          <form.Field name="label" validators={{ onChange: ({ value }) => required('Label')(value) }}>
+          <form.Field
+            name="label"
+            validators={{ onChange: ({ value }) => (value.trim().length === 0 ? t('editor.addLanguage.labelRequired') : undefined) }}
+          >
             {(field) => (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lang-label">Label</Label>
+                <Label htmlFor="lang-label">{t('editor.addLanguage.labelField')}</Label>
                 <Input
                   id="lang-label"
                   placeholder="العربية"
@@ -105,7 +109,7 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
           </form.Field>
 
           <div className="flex flex-col gap-1.5">
-            <Label>Direction</Label>
+            <Label>{t('editor.addLanguage.direction')}</Label>
             <div className="flex gap-2">
               {(['LTR', 'RTL'] as const).map((dir) => (
                 <button
@@ -119,7 +123,7 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
                       : 'border-border bg-card text-muted-foreground hover:bg-muted',
                   )}
                 >
-                  {dir === 'LTR' ? 'Left to right' : 'Right to left'}
+                  {dir === 'LTR' ? t('editor.addLanguage.ltr') : t('editor.addLanguage.rtl')}
                   <span className="ms-1.5 font-mono text-xs opacity-70">{dir}</span>
                 </button>
               ))}
@@ -128,12 +132,12 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <form.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Adding…' : 'Add language'}
+                  {isSubmitting ? t('editor.addLanguage.adding') : t('editor.addLanguage')}
                 </Button>
               )}
             </form.Subscribe>

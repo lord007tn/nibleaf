@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AuthLayout } from '@/layouts/auth';
 import { Button } from '@/components/ui/button';
+import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
+import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   component: AcceptInvitePage,
@@ -11,6 +12,7 @@ export const Route = createFileRoute('/accept-invite/$invitationId')({
 
 /** Top-level so it resolves whether or not the user is authenticated. */
 function AcceptInvitePage() {
+  const t = useT();
   const { invitationId } = Route.useParams();
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
@@ -23,17 +25,17 @@ function AcceptInvitePage() {
     const { error: acceptError } = await authClient.organization.acceptInvitation({ invitationId });
     setAccepting(false);
     if (acceptError) {
-      setError(acceptError.message ?? 'Could not accept this invitation. It may have expired.');
+      setError(acceptError.message ?? t('auth.invite.error'));
       return;
     }
-    toast.success('Invitation accepted');
+    toast.success(t('auth.invite.acceptedToast'));
     navigate({ to: '/app' });
   };
 
   if (isPending) {
     return (
-      <AuthLayout subtitle="You've been invited to a workspace">
-        <p className="text-center text-muted-foreground text-sm">Loading…</p>
+      <AuthLayout subtitle={t('auth.invite.subtitle')}>
+        <p className="text-center text-muted-foreground text-sm">{t('common.loading')}</p>
       </AuthLayout>
     );
   }
@@ -44,16 +46,16 @@ function AcceptInvitePage() {
       window.localStorage.setItem('plume.pendingInvitation', invitationId);
     }
     return (
-      <AuthLayout subtitle="You've been invited to a workspace">
+      <AuthLayout subtitle={t('auth.invite.subtitle')}>
         <div className="flex flex-col gap-4">
-          <p className="text-center text-muted-foreground text-sm">Sign in or create an account to accept this invitation.</p>
+          <p className="text-center text-muted-foreground text-sm">{t('auth.invite.signInPrompt')}</p>
           <Button className="w-full" render={<Link to="/sign-up" />}>
-            Create an account
+            {t('auth.invite.createAccount')}
           </Button>
           <p className="text-center text-muted-foreground text-sm">
-            Already have an account?{' '}
+            {t('auth.signUp.haveAccount')}{' '}
             <Link className="text-primary hover:underline" to="/sign-in">
-              Sign in
+              {t('auth.signIn.submit')}
             </Link>
           </p>
         </div>
@@ -62,15 +64,15 @@ function AcceptInvitePage() {
   }
 
   return (
-    <AuthLayout subtitle="You've been invited to a workspace">
+    <AuthLayout subtitle={t('auth.invite.subtitle')}>
       <div className="flex flex-col gap-4">
-        <p className="text-center text-muted-foreground text-sm">Accept the invitation to join the workspace.</p>
+        <p className="text-center text-muted-foreground text-sm">{t('auth.invite.acceptPrompt')}</p>
         {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
         <Button className="w-full" disabled={accepting} onClick={accept} type="button">
-          {accepting ? 'Accepting…' : 'Accept invitation'}
+          {accepting ? t('auth.invite.accepting') : t('auth.invite.accept')}
         </Button>
         <Link className="text-center text-muted-foreground text-sm hover:underline" to="/app">
-          Skip for now
+          {t('auth.invite.skip')}
         </Link>
       </div>
     </AuthLayout>

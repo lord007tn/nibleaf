@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAiDraft } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 type AiMode = 'continue' | 'rephrase' | 'outline' | 'summarize';
@@ -25,6 +26,7 @@ const APPEND_MODES = new Set<AiMode>(['continue', 'outline']);
  * for rephrase/summarize the result lands in a preview box with Replace / Insert actions.
  */
 export function AiAssist({ projectId, content, onContentChange }: AiAssistProps) {
+  const t = useT();
   const ai = useAiDraft(projectId);
   const [instruction, setInstruction] = useState('');
   const [activeMode, setActiveMode] = useState<AiMode | null>(null);
@@ -45,17 +47,17 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
       {
         onSuccess: (result) => {
           if (!result.text?.trim()) {
-            toast.message('The assistant returned nothing to add.');
+            toast.message(t('editor.ai.empty'));
             return;
           }
           if (APPEND_MODES.has(mode)) {
             appendToDoc(result.text);
-            toast.success(mode === 'outline' ? 'Outline added.' : 'Section drafted.');
+            toast.success(mode === 'outline' ? t('editor.ai.outlineAdded') : t('editor.ai.sectionDrafted'));
           } else {
             setPreview({ mode, text: result.text });
           }
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not draft content.'),
+        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.ai.draftError')),
         onSettled: () => setActiveMode(null),
       },
     );
@@ -69,39 +71,37 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
         <span className="flex size-6 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/60 text-primary-foreground">
           <Sparkles className="size-3.5" />
         </span>
-        <span className="font-semibold text-sm">AI assist</span>
+        <span className="font-semibold text-sm">{t('editor.ai.title')}</span>
       </div>
 
       <div className="space-y-3 p-4">
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Continue writing, rephrase for clarity, or generate from a prompt — grounded in this doc.
-        </p>
+        <p className="text-muted-foreground text-sm leading-relaxed">{t('editor.ai.intro')}</p>
 
         {pending ? (
           <div className="flex items-center gap-2.5 rounded-lg bg-accent px-3 py-2.5 font-medium text-accent-foreground text-sm">
             <Loader2 className="size-3.5 animate-spin" />
             {activeMode === 'rephrase'
-              ? 'Rephrasing…'
+              ? t('editor.ai.rephrasing')
               : activeMode === 'summarize'
-                ? 'Summarizing…'
+                ? t('editor.ai.summarizing')
                 : activeMode === 'outline'
-                  ? 'Building an outline…'
-                  : 'Drafting a section…'}
+                  ? t('editor.ai.outlining')
+                  : t('editor.ai.drafting')}
           </div>
         ) : (
           <div className="space-y-2">
             <Button className="w-full justify-start" disabled={pending} onClick={() => run('continue')}>
-              <Sparkles className="size-4" /> Continue writing
+              <Sparkles className="size-4" /> {t('editor.ai.continue')}
             </Button>
             <div className="grid grid-cols-3 gap-2">
               <Button disabled={pending} onClick={() => run('rephrase')} size="sm" variant="outline">
-                Rephrase
+                {t('editor.ai.rephrase')}
               </Button>
               <Button disabled={pending} onClick={() => run('outline')} size="sm" variant="outline">
-                Outline
+                {t('editor.ai.outline')}
               </Button>
               <Button disabled={pending} onClick={() => run('summarize')} size="sm" variant="outline">
-                Summarize
+                {t('editor.ai.summarize')}
               </Button>
             </div>
           </div>
@@ -111,7 +111,7 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
           <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
             <div className="flex items-center gap-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
               <Wand2 className="size-3" />
-              {preview.mode === 'summarize' ? 'Summary' : 'Suggestion'}
+              {preview.mode === 'summarize' ? t('editor.ai.summaryLabel') : t('editor.ai.suggestionLabel')}
             </div>
             <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed">{preview.text}</p>
             <div className="flex gap-2">
@@ -120,23 +120,23 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
                 onClick={() => {
                   onContentChange(preview.text.trim());
                   setPreview(null);
-                  toast.success('Document replaced.');
+                  toast.success(t('editor.ai.replaced'));
                 }}
                 size="sm"
               >
-                <Replace className="size-3.5" /> Replace
+                <Replace className="size-3.5" /> {t('editor.ai.replace')}
               </Button>
               <Button
                 className="flex-1"
                 onClick={() => {
                   appendToDoc(preview.text);
                   setPreview(null);
-                  toast.success('Inserted.');
+                  toast.success(t('editor.ai.inserted'));
                 }}
                 size="sm"
                 variant="outline"
               >
-                <ArrowDownToLine className="size-3.5" /> Insert
+                <ArrowDownToLine className="size-3.5" /> {t('editor.ai.insert')}
               </Button>
             </div>
           </div>
@@ -147,7 +147,7 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
             className="min-h-[64px] resize-none text-sm"
             disabled={pending}
             onChange={(e) => setInstruction(e.target.value)}
-            placeholder="Ask the assistant to write something specific…"
+            placeholder={t('editor.ai.instructionPlaceholder')}
             value={instruction}
           />
           <Button
@@ -157,7 +157,7 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
             variant="secondary"
           >
             {pending && activeMode === 'continue' ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
-            Generate
+            {t('editor.ai.generate')}
           </Button>
         </div>
       </div>

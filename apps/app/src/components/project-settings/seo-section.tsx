@@ -7,9 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig, useUploadAsset } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function SeoSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const upload = useUploadAsset(project.id);
   const seo = project.config?.seo ?? {};
@@ -24,14 +26,18 @@ export function SeoSection({ project }: { project: Project }) {
       socialImage: seo.socialImage ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        seo: {
-          metaTitle: value.metaTitle.trim() || undefined,
-          metaDescription: value.metaDescription.trim() || undefined,
-          socialImage: value.socialImage.trim() || undefined,
-          allowIndex,
+      await saveConfigSection(
+        update,
+        {
+          seo: {
+            metaTitle: value.metaTitle.trim() || undefined,
+            metaDescription: value.metaDescription.trim() || undefined,
+            socialImage: value.socialImage.trim() || undefined,
+            allowIndex,
+          },
         },
-      });
+        t,
+      );
     },
   });
 
@@ -42,11 +48,11 @@ export function SeoSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="◎" title="SEO" />
+      <SectionHeader icon="◎" title={t('settings.seo.title')} />
 
       <form.Field name="metaTitle">
         {(field) => (
-          <Field hint="Title used in search results and social previews." label="Meta title">
+          <Field hint={t('settings.seo.metaTitle.hint')} label={t('settings.seo.metaTitle.label')}>
             <Input className={FIELD_INPUT} onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
           </Field>
         )}
@@ -54,7 +60,7 @@ export function SeoSection({ project }: { project: Project }) {
 
       <form.Field name="metaDescription">
         {(field) => (
-          <Field hint="The snippet shown under the title in search results." label="Meta description">
+          <Field hint={t('settings.seo.metaDescription.hint')} label={t('settings.seo.metaDescription.label')}>
             <Textarea
               className="min-h-[84px] rounded-[10px] text-sm"
               onChange={(e) => field.handleChange(e.target.value)}
@@ -66,7 +72,7 @@ export function SeoSection({ project }: { project: Project }) {
 
       <form.Field name="socialImage">
         {(field) => (
-          <Field hint="Shown when your docs are shared. 1200×630 recommended." label="Social image">
+          <Field hint={t('settings.seo.socialImage.hint')} label={t('settings.seo.socialImage.label')}>
             <div className="flex gap-2.5">
               <Input
                 className={`${FIELD_MONO} flex-1`}
@@ -85,11 +91,11 @@ export function SeoSection({ project }: { project: Project }) {
                       onSuccess: (asset) => {
                         field.handleChange(asset.url);
                         setUploading(false);
-                        toast.success('Uploaded');
+                        toast.success(t('settings.seo.uploaded'));
                       },
                       onError: (error) => {
                         setUploading(false);
-                        toast.error(error instanceof Error ? error.message : 'Upload failed');
+                        toast.error(error instanceof Error ? error.message : t('settings.seo.uploadError'));
                       },
                     });
                   }
@@ -105,7 +111,7 @@ export function SeoSection({ project }: { project: Project }) {
                 type="button"
                 variant="outline"
               >
-                <Upload className="size-4" /> Upload
+                <Upload className="size-4" /> {t('settings.seo.upload')}
               </Button>
             </div>
           </Field>
@@ -114,9 +120,9 @@ export function SeoSection({ project }: { project: Project }) {
 
       <ToggleRow
         checked={allowIndex}
-        hint="When off, a noindex tag is added to every page."
+        hint={t('settings.seo.allowIndex.hint')}
         onCheckedChange={setAllowIndex}
-        title="Allow search engines"
+        title={t('settings.seo.allowIndex.title')}
       />
 
       <div className="mt-4">

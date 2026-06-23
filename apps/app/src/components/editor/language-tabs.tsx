@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { Language } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { AddLanguageDialog } from './add-language-dialog';
 
@@ -20,6 +21,7 @@ interface LanguageTabsProps {
  * that opens the add-language dialog.
  */
 export function LanguageTabs({ projectId, languages, activeLanguageId, onSelect, onCreated }: LanguageTabsProps) {
+  const t = useT();
   const [dialogOpen, setDialogOpen] = useState(false);
   const active = languages.find((l) => l.id === activeLanguageId) ?? languages[0];
 
@@ -50,7 +52,7 @@ export function LanguageTabs({ projectId, languages, activeLanguageId, onSelect,
         </div>
       ) : null}
 
-      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => setDialogOpen(true)} title="Add language">
+      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => setDialogOpen(true)} title={t('editor.addLanguage')}>
         <Plus className="size-3.5" />
       </Button>
 

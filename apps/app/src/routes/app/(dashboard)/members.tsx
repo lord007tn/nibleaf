@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 
 export const Route = createFileRoute('/app/(dashboard)/members')({
   component: MembersPage,
@@ -16,7 +18,19 @@ export const Route = createFileRoute('/app/(dashboard)/members')({
 
 type Role = 'owner' | 'admin' | 'member';
 
+/** Map a role value to its localized label key (editor = member). */
+const roleLabelKey = (role: string | null | undefined): MessageKey => {
+  if (role === 'owner') {
+    return 'members.role.owner';
+  }
+  if (role === 'admin') {
+    return 'members.role.admin';
+  }
+  return 'members.role.editor';
+};
+
 function MembersPage() {
+  const t = useT();
   const { data, isPending } = useMembers();
   const invite = useInviteMember();
   const remove = useRemoveMember();
@@ -31,12 +45,12 @@ function MembersPage() {
           { email: invited, role: value.role },
           {
             onSuccess: () => {
-              toast.success(`Invited ${invited}`);
+              toast.success(t('members.toast.invited', { email: invited }));
               form.reset();
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : 'Could not invite');
+              toast.error(error instanceof Error ? error.message : t('members.toast.inviteError'));
               resolve();
             },
           },
@@ -48,8 +62,8 @@ function MembersPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-semibold text-3xl tracking-tight">Members</h1>
-        <p className="mt-1 text-muted-foreground text-sm">Invite teammates to collaborate on documentation.</p>
+        <h1 className="font-semibold text-3xl tracking-tight">{t('members.title')}</h1>
+        <p className="mt-1 text-muted-foreground text-sm">{t('members.subtitle')}</p>
       </div>
 
       <form
@@ -62,7 +76,7 @@ function MembersPage() {
         <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
           {(field) => (
             <div className="flex flex-1 flex-col gap-1.5">
-              <span className="font-medium text-sm">Invite by email</span>
+              <span className="font-medium text-sm">{t('members.inviteByEmail')}</span>
               <Input
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -81,9 +95,9 @@ function MembersPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="member">Editor</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="owner">Owner</SelectItem>
+                <SelectItem value="member">{t('members.role.editor')}</SelectItem>
+                <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
+                <SelectItem value="owner">{t('members.role.owner')}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -91,7 +105,7 @@ function MembersPage() {
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button disabled={isSubmitting} type="submit">
-              <Mail className="size-4" /> Invite
+              <Mail className="size-4" /> {t('members.invite')}
             </Button>
           )}
         </form.Subscribe>
@@ -106,8 +120,8 @@ function MembersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-border border-b bg-muted/50 text-muted-foreground">
-                <th className="px-4 py-2.5 text-start font-medium">Member</th>
-                <th className="px-4 py-2.5 text-start font-medium">Role</th>
+                <th className="px-4 py-2.5 text-start font-medium">{t('members.col.member')}</th>
+                <th className="px-4 py-2.5 text-start font-medium">{t('members.col.role')}</th>
                 <th className="px-4 py-2.5" />
               </tr>
             </thead>
@@ -120,7 +134,7 @@ function MembersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {member.role === 'owner' ? (
-                      <span className="capitalize">{member.role}</span>
+                      <span>{t('members.role.owner')}</span>
                     ) : (
                       <Select
                         value={member.role}
@@ -128,8 +142,8 @@ function MembersPage() {
                           updateRole.mutate(
                             { id: member.id, body: { role: (v ?? 'member') as Role } },
                             {
-                              onSuccess: () => toast.success('Role updated'),
-                              onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not update the role'),
+                              onSuccess: () => toast.success(t('members.toast.roleUpdated')),
+                              onError: (error) => toast.error(error instanceof Error ? error.message : t('members.toast.roleUpdateError')),
                             },
                           )
                         }
@@ -138,9 +152,9 @@ function MembersPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="member">Editor</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="owner">Owner</SelectItem>
+                          <SelectItem value="member">{t('members.role.editor')}</SelectItem>
+                          <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
+                          <SelectItem value="owner">{t('members.role.owner')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -150,7 +164,7 @@ function MembersPage() {
                       <Button
                         size="icon-sm"
                         variant="ghost"
-                        onClick={() => remove.mutate(member.id, { onSuccess: () => toast.success('Member removed') })}
+                        onClick={() => remove.mutate(member.id, { onSuccess: () => toast.success(t('members.toast.removed')) })}
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -162,10 +176,10 @@ function MembersPage() {
                 <tr key={inv.id} className="border-border border-b bg-muted/20 last:border-0">
                   <td className="px-4 py-3">
                     <div className="font-medium">{inv.email}</div>
-                    <div className="text-muted-foreground text-xs">Invitation pending</div>
+                    <div className="text-muted-foreground text-xs">{t('members.invitationPending')}</div>
                   </td>
-                  <td className="px-4 py-3 capitalize">{inv.role ?? 'member'}</td>
-                  <td className="px-4 py-3 text-end font-mono text-muted-foreground text-xs">pending</td>
+                  <td className="px-4 py-3">{t(roleLabelKey(inv.role))}</td>
+                  <td className="px-4 py-3 text-end font-mono text-muted-foreground text-xs">{t('members.pending')}</td>
                 </tr>
               ))}
             </tbody>

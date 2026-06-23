@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig, useUploadAsset } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 type BrandingField = 'logoLight' | 'logoDark' | 'favicon' | 'logoHref';
@@ -24,6 +25,7 @@ function UploadField({
   uploading: boolean;
   placeholder?: string;
 }) {
+  const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex gap-2.5">
@@ -48,13 +50,14 @@ function UploadField({
         type="button"
         variant="outline"
       >
-        <Upload className="size-4" /> Upload
+        <Upload className="size-4" /> {t('settings.branding.upload')}
       </Button>
     </div>
   );
 }
 
 export function BrandingSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const upload = useUploadAsset(project.id);
   const [uploadingField, setUploadingField] = useState<BrandingField | null>(null);
@@ -68,14 +71,18 @@ export function BrandingSection({ project }: { project: Project }) {
       logoHref: branding.logoHref ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        branding: {
-          logoLight: value.logoLight.trim() || null,
-          logoDark: value.logoDark.trim() || null,
-          favicon: value.favicon.trim() || null,
-          logoHref: value.logoHref.trim() || null,
+      await saveConfigSection(
+        update,
+        {
+          branding: {
+            logoLight: value.logoLight.trim() || null,
+            logoDark: value.logoDark.trim() || null,
+            favicon: value.favicon.trim() || null,
+            logoHref: value.logoHref.trim() || null,
+          },
         },
-      });
+        t,
+      );
     },
   });
 
@@ -85,11 +92,11 @@ export function BrandingSection({ project }: { project: Project }) {
       onSuccess: (asset) => {
         form.setFieldValue(field, asset.url);
         setUploadingField(null);
-        toast.success('Uploaded');
+        toast.success(t('settings.branding.uploaded'));
       },
       onError: (error) => {
         setUploadingField(null);
-        toast.error(error instanceof Error ? error.message : 'Upload failed');
+        toast.error(error instanceof Error ? error.message : t('settings.branding.uploadError'));
       },
     });
   };
@@ -101,11 +108,11 @@ export function BrandingSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="▣" title="Branding" />
+      <SectionHeader icon="▣" title={t('settings.branding.title')} />
 
       <form.Field name="logoLight">
         {(field) => (
-          <Field hint="The light version of the logo, used in dark mode. Include the file extension." label="Logo light">
+          <Field hint={t('settings.branding.logoLight.hint')} label={t('settings.branding.logoLight.label')}>
             <UploadField
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('logoLight', file)}
@@ -119,7 +126,7 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="logoDark">
         {(field) => (
-          <Field hint="The dark version of the logo, used in light mode. Include the file extension." label="Logo dark">
+          <Field hint={t('settings.branding.logoDark.hint')} label={t('settings.branding.logoDark.label')}>
             <UploadField
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('logoDark', file)}
@@ -133,7 +140,7 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="favicon">
         {(field) => (
-          <Field hint="Shown in the browser tab. A 48×48 PNG or SVG works best." label="Favicon">
+          <Field hint={t('settings.branding.favicon.hint')} label={t('settings.branding.favicon.label')}>
             <UploadField
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('favicon', file)}
@@ -147,7 +154,7 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="logoHref">
         {(field) => (
-          <Field hint="The URL to open when the logo is clicked. Defaults to the homepage." label="Logo destination">
+          <Field hint={t('settings.branding.logoHref.hint')} label={t('settings.branding.logoHref.label')}>
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}

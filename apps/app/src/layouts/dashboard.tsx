@@ -5,22 +5,25 @@ import { AppSidebar } from '@/components/app/app-sidebar';
 import { CommandPalette } from '@/components/app/command-palette';
 import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 
-/** Derive the header title from the current dashboard route. */
-function titleFromPathname(pathname: string): string {
+/** Derive the header title key from the current dashboard route. */
+function titleKeyFromPathname(pathname: string): MessageKey {
   if (pathname.startsWith('/app/members')) {
-    return 'Members';
+    return 'dashboard.header.members';
   }
   if (pathname.startsWith('/app/settings')) {
-    return 'Settings';
+    return 'dashboard.header.settings';
   }
-  return 'Projects';
+  return 'dashboard.header.projects';
 }
 
 /** The signed-in workspace shell: sidebar + top bar + command palette. */
 export function DashboardLayout({ children }: { children: ReactNode }) {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = titleFromPathname(pathname);
+  const title = t(titleKeyFromPathname(pathname));
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   return (
@@ -37,7 +40,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             type="button"
           >
             <Search className="size-3.5" />
-            <span className="flex-1 text-start">Search…</span>
+            <span className="flex-1 text-start">{t('dashboard.search.placeholder')}</span>
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">⌘K</kbd>
           </button>
         </header>

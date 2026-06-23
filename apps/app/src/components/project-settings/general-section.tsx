@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/hooks/api';
 import { useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { FIELD_INPUT, Field, SaveBar, SectionHeader, Segmented } from './shared';
 
@@ -14,6 +15,7 @@ import { FIELD_INPUT, Field, SaveBar, SectionHeader, Segmented } from './shared'
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
 
 export function GeneralSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProject(project.id);
   const [icon, setIcon] = useState<string>(project.icon ?? '📘');
   const [iconOpen, setIconOpen] = useState(false);
@@ -32,11 +34,11 @@ export function GeneralSection({ project }: { project: Project }) {
           },
           {
             onSuccess: () => {
-              toast.success('Saved');
+              toast.success(t('common.saved'));
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : 'Could not save');
+              toast.error(error instanceof Error ? error.message : t('settings.saveError'));
               resolve();
             },
           },
@@ -54,7 +56,7 @@ export function GeneralSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="⊕" title="General" />
+      <SectionHeader icon="⊕" title={t('settings.general.title')} />
 
       <div className="mb-3.5 flex items-center gap-3.5">
         <span className="grid size-[46px] place-items-center rounded-xl bg-primary/10 text-2xl text-primary">{icon}</span>
@@ -63,7 +65,7 @@ export function GeneralSection({ project }: { project: Project }) {
           onClick={() => setIconOpen((open) => !open)}
           type="button"
         >
-          Change icon
+          {t('settings.general.changeIcon')}
         </button>
       </div>
       {iconOpen ? (
@@ -92,7 +94,7 @@ export function GeneralSection({ project }: { project: Project }) {
 
       <form.Field name="name" validators={{ onChange: ({ value }) => required('Name')(value) }}>
         {(field) => (
-          <Field hint="The name of the project, shown in the navbar and browser tab." htmlFor="set-name" label="Name">
+          <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
             <Input
               className={FIELD_INPUT}
               id="set-name"
@@ -105,7 +107,7 @@ export function GeneralSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <Field hint="Your free Plume subdomain. Add a custom domain below to override it." label="Plume URL">
+      <Field hint={t('settings.general.url.hint')} label={t('settings.general.url.label')}>
         <div className="flex h-[42px] items-center rounded-[10px] border border-border bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
           {subdomain}
         </div>
@@ -113,7 +115,7 @@ export function GeneralSection({ project }: { project: Project }) {
 
       <form.Field name="description">
         {(field) => (
-          <Field hint="Brief overview of the project. Used for SEO and AEO." htmlFor="set-desc" label="Description">
+          <Field hint={t('settings.general.description.hint')} htmlFor="set-desc" label={t('settings.general.description.label')}>
             <Textarea
               className="min-h-[84px] rounded-[10px] text-sm"
               id="set-desc"
@@ -125,13 +127,13 @@ export function GeneralSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <Field hint="Public sites are indexable. Private sites require a login." label="Visibility">
+      <Field hint={t('settings.general.visibility.hint')} label={t('settings.general.visibility.label')}>
         <Segmented
           className="max-w-[280px]"
           onChange={setVisibility}
           options={[
-            { value: 'public', label: 'Public' },
-            { value: 'private', label: 'Private' },
+            { value: 'public', label: t('settings.general.visibility.public') },
+            { value: 'private', label: t('settings.general.visibility.private') },
           ]}
           value={visibility}
         />

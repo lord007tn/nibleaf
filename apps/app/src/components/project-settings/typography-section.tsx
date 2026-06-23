@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { Field, SaveBar, SectionHeader, Segmented, saveConfigSection } from './shared';
 
 const HEADING_FONTS: [string, ...string[]] = ['Geist', 'Inter', 'Söhne', 'IBM Plex Sans', 'System UI'];
@@ -29,6 +30,7 @@ function FontSelect({ value, onChange, options }: { value: string; onChange: (va
 }
 
 export function TypographySection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const typography = project.config?.typography ?? {};
   const [baseSize, setBaseSize] = useState<BaseSize>((typography.baseSize as BaseSize) ?? '16');
@@ -40,9 +42,13 @@ export function TypographySection({ project }: { project: Project }) {
       codeFont: typography.codeFont ?? 'Geist Mono',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize },
-      });
+      await saveConfigSection(
+        update,
+        {
+          typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize },
+        },
+        t,
+      );
     },
   });
 
@@ -53,11 +59,11 @@ export function TypographySection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="T" title="Typography" />
+      <SectionHeader icon="T" title={t('settings.typography.title')} />
 
       <form.Field name="headingFont">
         {(field) => (
-          <Field hint="Used for page titles and section headings." label="Heading font">
+          <Field hint={t('settings.typography.headingFont.hint')} label={t('settings.typography.headingFont.label')}>
             <FontSelect onChange={field.handleChange} options={HEADING_FONTS} value={field.state.value} />
           </Field>
         )}
@@ -65,7 +71,7 @@ export function TypographySection({ project }: { project: Project }) {
 
       <form.Field name="bodyFont">
         {(field) => (
-          <Field hint="Used for paragraphs, lists, and most reading text." label="Body font">
+          <Field hint={t('settings.typography.bodyFont.hint')} label={t('settings.typography.bodyFont.label')}>
             <FontSelect onChange={field.handleChange} options={BODY_FONTS} value={field.state.value} />
           </Field>
         )}
@@ -73,13 +79,13 @@ export function TypographySection({ project }: { project: Project }) {
 
       <form.Field name="codeFont">
         {(field) => (
-          <Field hint="Used in code blocks and inline code." label="Code font">
+          <Field hint={t('settings.typography.codeFont.hint')} label={t('settings.typography.codeFont.label')}>
             <FontSelect onChange={field.handleChange} options={CODE_FONTS} value={field.state.value} />
           </Field>
         )}
       </form.Field>
 
-      <Field hint="Reading size for body text on your published site." label="Base size">
+      <Field hint={t('settings.typography.baseSize.hint')} label={t('settings.typography.baseSize.label')}>
         <Segmented
           className="max-w-[240px]"
           onChange={setBaseSize}

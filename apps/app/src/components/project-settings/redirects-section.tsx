@@ -3,9 +3,11 @@ import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 export function RedirectsSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
 
   const form = useForm({
@@ -26,8 +28,8 @@ export function RedirectsSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="⤳" title="Redirects" />
-      <p className="mb-5 text-[13.5px] text-muted-foreground leading-relaxed">Forward old paths to new ones so saved links keep working.</p>
+      <SectionHeader icon="⤳" title={t('settings.redirects.title')} />
+      <p className="mb-5 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.redirects.description')}</p>
 
       <form.Field mode="array" name="redirects">
         {(field) => (
@@ -59,7 +61,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                       )}
                     </form.Field>
                     <button
-                      aria-label="Remove redirect"
+                      aria-label={t('settings.redirects.remove')}
                       className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
                       onClick={() => field.removeValue(index)}
                       type="button"
@@ -75,7 +77,7 @@ export function RedirectsSection({ project }: { project: Project }) {
               onClick={() => field.pushValue({ from: '', to: '' })}
               type="button"
             >
-              <Plus className="size-3.5" /> Add redirect
+              <Plus className="size-3.5" /> {t('settings.redirects.add')}
             </button>
           </>
         )}

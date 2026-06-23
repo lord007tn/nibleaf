@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function AnalyticsSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const analytics = project.config?.analytics ?? {};
   const [cookieConsent, setCookieConsent] = useState<boolean>(analytics.cookieConsent ?? false);
@@ -33,11 +35,11 @@ export function AnalyticsSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="◴" title="Analytics" />
+      <SectionHeader icon="◴" title={t('settings.analytics.title')} />
 
       <form.Field name="ga4">
         {(field) => (
-          <Field hint="Send reader pageviews to a GA4 measurement ID." label="Google Analytics 4">
+          <Field hint={t('settings.analytics.ga4.hint')} label={t('settings.analytics.ga4.label')}>
             <Input className={FIELD_MONO} onChange={(e) => field.handleChange(e.target.value)} placeholder="G-XXXXXXXXXX" value={field.state.value} />
           </Field>
         )}
@@ -45,7 +47,7 @@ export function AnalyticsSection({ project }: { project: Project }) {
 
       <form.Field name="plausible">
         {(field) => (
-          <Field hint="Privacy-friendly analytics. Leave blank to disable." label="Plausible domain">
+          <Field hint={t('settings.analytics.plausible.hint')} label={t('settings.analytics.plausible.label')}>
             <Input
               className={FIELD_MONO}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -58,9 +60,9 @@ export function AnalyticsSection({ project }: { project: Project }) {
 
       <ToggleRow
         checked={cookieConsent}
-        hint="Ask EU visitors for consent before loading analytics."
+        hint={t('settings.analytics.cookieConsent.hint')}
         onCheckedChange={setCookieConsent}
-        title="Cookie consent banner"
+        title={t('settings.analytics.cookieConsent.title')}
       />
 
       <div className="mt-4">

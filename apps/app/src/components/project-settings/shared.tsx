@@ -3,28 +3,34 @@ import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { cn } from '@/lib/utils';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
 };
 
+type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
+
 /**
  * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
  * Form `onSubmit` can `await` it. The server deep-merges section-level config,
  * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
+ *
+ * Pass the section's `t` translator (from `useT()`) so the toast is localized.
  */
-export function saveConfigSection(update: ConfigMutation, config: ProjectConfig) {
+export function saveConfigSection(update: ConfigMutation, config: ProjectConfig, t?: Translator) {
   return new Promise<void>((resolve) => {
     update.mutate(
       { config },
       {
         onSuccess: () => {
-          toast.success('Saved');
+          toast.success(t ? t('common.saved') : 'Saved');
           resolve();
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : 'Could not save');
+          toast.error(error instanceof Error ? error.message : t ? t('settings.saveError') : 'Could not save');
           resolve();
         },
       },
@@ -145,10 +151,11 @@ export function ToggleRow({
 
 /** The right-aligned Save button row used at the bottom of each form section. */
 export function SaveBar({ isSubmitting }: { isSubmitting: boolean }) {
+  const t = useT();
   return (
     <div className="mt-2 flex justify-end">
       <Button disabled={isSubmitting} type="submit">
-        {isSubmitting ? 'Saving…' : 'Save changes'}
+        {isSubmitting ? t('common.saving') : t('common.save')}
       </Button>
     </div>
   );

@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, Field, GroupLabel, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function NavbarSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const navbar = project.config?.navbar ?? {};
   const [showSearch, setShowSearch] = useState<boolean>(navbar.showSearch ?? true);
@@ -18,14 +20,18 @@ export function NavbarSection({ project }: { project: Project }) {
       links: (navbar.links ?? []).map((link) => ({ label: link.label, href: link.href })),
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        navbar: {
-          ctaLabel: value.ctaLabel.trim() || undefined,
-          ctaUrl: value.ctaUrl.trim() || undefined,
-          links: value.links.filter((link) => link.label.trim() || link.href.trim()),
-          showSearch,
+      await saveConfigSection(
+        update,
+        {
+          navbar: {
+            ctaLabel: value.ctaLabel.trim() || undefined,
+            ctaUrl: value.ctaUrl.trim() || undefined,
+            links: value.links.filter((link) => link.label.trim() || link.href.trim()),
+            showSearch,
+          },
         },
-      });
+        t,
+      );
     },
   });
 
@@ -36,19 +42,24 @@ export function NavbarSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="☰" title="Navbar" />
+      <SectionHeader icon="☰" title={t('settings.navbar.title')} />
 
       <form.Field name="ctaLabel">
         {(field) => (
-          <Field hint="The highlighted button on the right of the navbar." label="Primary CTA label">
-            <Input className={FIELD_INPUT} onChange={(e) => field.handleChange(e.target.value)} placeholder="Book a demo" value={field.state.value} />
+          <Field hint={t('settings.navbar.ctaLabel.hint')} label={t('settings.navbar.ctaLabel.label')}>
+            <Input
+              className={FIELD_INPUT}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder={t('settings.navbar.ctaLabel.placeholder')}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
 
       <form.Field name="ctaUrl">
         {(field) => (
-          <Field hint="Where the CTA button links to." label="Primary CTA URL">
+          <Field hint={t('settings.navbar.ctaUrl.hint')} label={t('settings.navbar.ctaUrl.label')}>
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -59,7 +70,7 @@ export function NavbarSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <GroupLabel className="mb-2.5">Navbar links</GroupLabel>
+      <GroupLabel className="mb-2.5">{t('settings.navbar.links.label')}</GroupLabel>
       <form.Field mode="array" name="links">
         {(field) => (
           <>
@@ -73,7 +84,7 @@ export function NavbarSection({ project }: { project: Project }) {
                         <Input
                           className="h-[34px] flex-1 rounded-lg text-[13px]"
                           onChange={(e) => sub.handleChange(e.target.value)}
-                          placeholder="Documentation"
+                          placeholder={t('settings.navbar.links.labelPlaceholder')}
                           value={sub.state.value}
                         />
                       )}
@@ -89,7 +100,7 @@ export function NavbarSection({ project }: { project: Project }) {
                       )}
                     </form.Field>
                     <button
-                      aria-label="Remove link"
+                      aria-label={t('settings.navbar.links.remove')}
                       className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
                       onClick={() => field.removeValue(index)}
                       type="button"
@@ -105,7 +116,7 @@ export function NavbarSection({ project }: { project: Project }) {
               onClick={() => field.pushValue({ label: '', href: '' })}
               type="button"
             >
-              <Plus className="size-3.5" /> Add link
+              <Plus className="size-3.5" /> {t('settings.navbar.links.add')}
             </button>
           </>
         )}
@@ -113,9 +124,9 @@ export function NavbarSection({ project }: { project: Project }) {
 
       <ToggleRow
         checked={showSearch}
-        hint="Display the ⌘K search field in the top bar."
+        hint={t('settings.navbar.showSearch.hint')}
         onCheckedChange={setShowSearch}
-        title="Show search in navbar"
+        title={t('settings.navbar.showSearch.title')}
       />
 
       <div className="mt-4">

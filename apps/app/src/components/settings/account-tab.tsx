@@ -8,7 +8,7 @@ import { FieldError } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { authClient, useSession } from '@/lib/auth-client';
-import { email as validateEmail, required } from '@/lib/form';
+import { required, email as validateEmail } from '@/lib/form';
 import { GradientAvatar, SettingsSection } from './section';
 
 // better-auth's email-change verification methods are plugin/proxy-generated and

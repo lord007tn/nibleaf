@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { Branch } from '@/hooks/api';
 import { useCreateBranch } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 
 /** Git-style branch switcher for the editor: switch branches, or fork a new one
  *  from the current branch. The published site is always built from `main`. */
@@ -22,6 +23,7 @@ export function BranchSwitcher({
   activeBranchId: string | null;
   onSwitch: (id: string) => void;
 }) {
+  const t = useT();
   const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState('');
   const create = useCreateBranch(projectId);
@@ -36,12 +38,12 @@ export function BranchSwitcher({
       { name: trimmed, fromBranchId: active?.id },
       {
         onSuccess: (branch) => {
-          toast.success(`Created branch “${branch.name}”`);
+          toast.success(t('editor.branch.created', { name: branch.name }));
           setCreateOpen(false);
           setName('');
           onSwitch(branch.id);
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Could not create the branch'),
+        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.branch.createError')),
       },
     );
   };
@@ -62,13 +64,13 @@ export function BranchSwitcher({
             <DropdownMenuItem key={b.id} onClick={() => onSwitch(b.id)}>
               <GitBranch className="size-3.5 text-muted-foreground" />
               <span className="flex-1 truncate">{b.name}</span>
-              {b.isDefault ? <span className="text-[10px] text-muted-foreground">default</span> : null}
+              {b.isDefault ? <span className="text-[10px] text-muted-foreground">{t('editor.branch.default')}</span> : null}
               {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-            <Plus className="size-3.5" /> New branch
+            <Plus className="size-3.5" /> {t('editor.branch.new')}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -76,13 +78,11 @@ export function BranchSwitcher({
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New branch</DialogTitle>
-            <DialogDescription>
-              Forks the current branch ({active?.name ?? 'main'}). Edit and preview in isolation; the live site stays on main until you merge.
-            </DialogDescription>
+            <DialogTitle>{t('editor.branch.new')}</DialogTitle>
+            <DialogDescription>{t('editor.branch.dialogDesc', { name: active?.name ?? 'main' })}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="branch-name">Branch name</Label>
+            <Label htmlFor="branch-name">{t('editor.branch.nameLabel')}</Label>
             <Input
               id="branch-name"
               autoFocus
@@ -97,9 +97,9 @@ export function BranchSwitcher({
             />
           </div>
           <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+            <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
             <Button type="button" onClick={submit} disabled={create.isPending}>
-              {create.isPending ? 'Creating…' : 'Create branch'}
+              {create.isPending ? t('editor.branch.creating') : t('editor.branch.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

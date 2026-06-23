@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function BannerSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const banner = project.config?.banner ?? {};
   const [enabled, setEnabled] = useState<boolean>(banner.enabled ?? false);
@@ -17,14 +19,18 @@ export function BannerSection({ project }: { project: Project }) {
       linkLabel: banner.linkLabel ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        banner: {
-          enabled,
-          dismissible,
-          message: value.message.trim() || undefined,
-          linkLabel: value.linkLabel.trim() || undefined,
+      await saveConfigSection(
+        update,
+        {
+          banner: {
+            enabled,
+            dismissible,
+            message: value.message.trim() || undefined,
+            linkLabel: value.linkLabel.trim() || undefined,
+          },
         },
-      });
+        t,
+      );
     },
   });
 
@@ -35,21 +41,19 @@ export function BannerSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="⚑" title="Banner" />
-      <p className="mb-1 text-[13.5px] text-muted-foreground leading-relaxed">
-        A dismissible strip shown above the navbar — great for announcements.
-      </p>
+      <SectionHeader icon="⚑" title={t('settings.banner.title')} />
+      <p className="mb-1 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
 
-      <ToggleRow checked={enabled} hint="Show the announcement banner on every page." onCheckedChange={setEnabled} title="Enable banner" />
+      <ToggleRow checked={enabled} hint={t('settings.banner.enable.hint')} onCheckedChange={setEnabled} title={t('settings.banner.enable.title')} />
 
       <div className="mt-5">
         <form.Field name="message">
           {(field) => (
-            <Field hint="Supports a single line of text and one inline link." label="Message">
+            <Field hint={t('settings.banner.message.hint')} label={t('settings.banner.message.label')}>
               <Input
                 className={FIELD_INPUT}
                 onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="🎉 v3 is here — faster and better."
+                placeholder={t('settings.banner.message.placeholder')}
                 value={field.state.value}
               />
             </Field>
@@ -58,11 +62,11 @@ export function BannerSection({ project }: { project: Project }) {
 
         <form.Field name="linkLabel">
           {(field) => (
-            <Field hint="Optional call-to-action shown at the end of the banner." label="Link label">
+            <Field hint={t('settings.banner.linkLabel.hint')} label={t('settings.banner.linkLabel.label')}>
               <Input
                 className={FIELD_INPUT}
                 onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="Read the changelog →"
+                placeholder={t('settings.banner.linkLabel.placeholder')}
                 value={field.state.value}
               />
             </Field>
@@ -72,9 +76,9 @@ export function BannerSection({ project }: { project: Project }) {
 
       <ToggleRow
         checked={dismissible}
-        hint="Let readers close the banner and remember their choice."
+        hint={t('settings.banner.dismissible.hint')}
         onCheckedChange={setDismissible}
-        title="Dismissible"
+        title={t('settings.banner.dismissible.title')}
       />
 
       <div className="mt-4">

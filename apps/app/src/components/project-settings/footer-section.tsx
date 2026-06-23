@@ -2,9 +2,11 @@ import { useForm } from '@tanstack/react-form';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 export function FooterSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const footer = project.config?.footer ?? {};
 
@@ -16,14 +18,18 @@ export function FooterSection({ project }: { project: Project }) {
       linkedin: footer.linkedin ?? '',
     },
     onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        footer: {
-          copyright: value.copyright.trim() || undefined,
-          github: value.github.trim() || undefined,
-          x: value.x.trim() || undefined,
-          linkedin: value.linkedin.trim() || undefined,
+      await saveConfigSection(
+        update,
+        {
+          footer: {
+            copyright: value.copyright.trim() || undefined,
+            github: value.github.trim() || undefined,
+            x: value.x.trim() || undefined,
+            linkedin: value.linkedin.trim() || undefined,
+          },
         },
-      });
+        t,
+      );
     },
   });
 
@@ -34,15 +40,15 @@ export function FooterSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="▭" title="Footer" />
+      <SectionHeader icon="▭" title={t('settings.footer.title')} />
 
       <form.Field name="copyright">
         {(field) => (
-          <Field hint="Shown at the bottom of every page." label="Copyright">
+          <Field hint={t('settings.footer.copyright.hint')} label={t('settings.footer.copyright.label')}>
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}
-              placeholder="© 2026 Acme. All rights reserved."
+              placeholder={t('settings.footer.copyright.placeholder')}
               value={field.state.value}
             />
           </Field>
@@ -51,7 +57,7 @@ export function FooterSection({ project }: { project: Project }) {
 
       <form.Field name="github">
         {(field) => (
-          <Field hint="Link to your organisation or repository." label="GitHub">
+          <Field hint={t('settings.footer.github.hint')} label={t('settings.footer.github.label')}>
             <Input
               className={FIELD_MONO}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -64,7 +70,7 @@ export function FooterSection({ project }: { project: Project }) {
 
       <form.Field name="x">
         {(field) => (
-          <Field hint="Link to your profile." label="X (Twitter)">
+          <Field hint={t('settings.footer.x.hint')} label={t('settings.footer.x.label')}>
             <Input
               className={FIELD_MONO}
               onChange={(e) => field.handleChange(e.target.value)}
@@ -77,7 +83,7 @@ export function FooterSection({ project }: { project: Project }) {
 
       <form.Field name="linkedin">
         {(field) => (
-          <Field hint="Link to your company page." label="LinkedIn">
+          <Field hint={t('settings.footer.linkedin.hint')} label={t('settings.footer.linkedin.label')}>
             <Input
               className={FIELD_MONO}
               onChange={(e) => field.handleChange(e.target.value)}

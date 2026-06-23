@@ -3,14 +3,23 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { FieldError } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import type { Invitation, Member } from '@/hooks/api';
+import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
 import { GradientAvatar, SettingsSection } from './section';
 

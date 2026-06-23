@@ -2,13 +2,14 @@ import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { AuthLayout } from '@/layouts/auth';
 import { Button } from '@/components/ui/button';
 import { FieldError } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { minLength } from '@/lib/form';
+import { AuthLayout } from '@/layouts/auth';
 import { authClient } from '@/lib/auth-client';
+import { minLength } from '@/lib/form';
+import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   component: ResetPasswordPage,
@@ -16,6 +17,7 @@ export const Route = createFileRoute('/(auth)/reset-password')({
 });
 
 function ResetPasswordPage() {
+  const t = useT();
   const navigate = useNavigate();
   const { token } = Route.useSearch();
   const [error, setError] = useState<string | null>(null);
@@ -26,23 +28,23 @@ function ResetPasswordPage() {
       setError(null);
       const { error: resetError } = await authClient.resetPassword({ newPassword: value.password, token });
       if (resetError) {
-        setError(resetError.message ?? 'Could not reset your password');
+        setError(resetError.message ?? t('auth.reset.error'));
         return;
       }
-      toast.success('Password updated — sign in with your new password');
+      toast.success(t('auth.reset.success'));
       navigate({ to: '/sign-in' });
     },
   });
 
   if (!token) {
     return (
-      <AuthLayout subtitle="Reset your password">
+      <AuthLayout subtitle={t('auth.forgot.subtitle')}>
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
-          This reset link is invalid or has expired.
+          {t('auth.reset.invalidLink')}
         </p>
         <p className="mt-5 text-center text-muted-foreground text-sm">
           <Link className="text-primary hover:underline" to="/forgot-password">
-            Request a new link
+            {t('auth.reset.requestNew')}
           </Link>
         </p>
       </AuthLayout>
@@ -50,7 +52,7 @@ function ResetPasswordPage() {
   }
 
   return (
-    <AuthLayout subtitle="Choose a new password">
+    <AuthLayout subtitle={t('auth.reset.subtitle')}>
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
@@ -61,7 +63,7 @@ function ResetPasswordPage() {
         <form.Field name="password" validators={{ onChange: ({ value }) => minLength(8)(value) }}>
           {(field) => (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">New password</Label>
+              <Label htmlFor="password">{t('auth.reset.newPassword')}</Label>
               <Input
                 autoComplete="new-password"
                 autoFocus
@@ -69,7 +71,7 @@ function ResetPasswordPage() {
                 minLength={8}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="At least 8 characters"
+                placeholder={t('auth.field.passwordMinPlaceholder')}
                 type="password"
                 value={field.state.value}
               />
@@ -81,14 +83,14 @@ function ResetPasswordPage() {
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
             <Button className="mt-1 w-full" disabled={isSubmitting} type="submit">
-              {isSubmitting ? 'Updating…' : 'Update password'}
+              {isSubmitting ? t('auth.reset.submitting') : t('auth.reset.submit')}
             </Button>
           )}
         </form.Subscribe>
       </form>
       <p className="mt-5 text-center text-muted-foreground text-sm">
         <Link className="text-primary hover:underline" to="/sign-in">
-          Back to sign in
+          {t('auth.backToSignIn')}
         </Link>
       </p>
     </AuthLayout>

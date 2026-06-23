@@ -3,9 +3,11 @@ import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 import { SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 export function VariablesSection({ project }: { project: Project }) {
+  const t = useT();
   const update = useUpdateProjectConfig(project.id);
 
   const form = useForm({
@@ -26,10 +28,10 @@ export function VariablesSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon={<span className="font-mono">{'{}'}</span>} title="Variables" />
+      <SectionHeader icon={<span className="font-mono">{'{}'}</span>} title={t('settings.variables.title')} />
       <p className="mb-5 text-[13.5px] text-muted-foreground leading-relaxed">
-        Reusable values you can reference in any page with{' '}
-        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px]">{'{{ var.name }}'}</span>.
+        {t('settings.variables.descriptionBefore')} <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px]">{'{{ var.name }}'}</span>
+        {t('settings.variables.descriptionAfter')}
       </p>
 
       <form.Field mode="array" name="variables">
@@ -61,7 +63,7 @@ export function VariablesSection({ project }: { project: Project }) {
                       )}
                     </form.Field>
                     <button
-                      aria-label="Remove variable"
+                      aria-label={t('settings.variables.remove')}
                       className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
                       onClick={() => field.removeValue(index)}
                       type="button"
@@ -77,7 +79,7 @@ export function VariablesSection({ project }: { project: Project }) {
               onClick={() => field.pushValue({ key: '', value: '' })}
               type="button"
             >
-              <Plus className="size-3.5" /> Add variable
+              <Plus className="size-3.5" /> {t('settings.variables.add')}
             </button>
           </>
         )}

@@ -26,10 +26,7 @@ export function BarRow({
       {leading}
       <span className="w-32 shrink-0 truncate font-medium text-sm">{label}</span>
       <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-        <span
-          className="block h-full rounded-full"
-          style={{ width: `${Math.max(2, Math.round(fraction * 100))}%`, backgroundColor: color }}
-        />
+        <span className="block h-full rounded-full" style={{ width: `${Math.max(2, Math.round(fraction * 100))}%`, backgroundColor: color }} />
       </span>
       <span className="w-12 shrink-0 text-end font-mono text-muted-foreground text-xs tabular-nums">{value}</span>
       {onClick ? <span className="shrink-0 text-muted-foreground text-sm">→</span> : null}

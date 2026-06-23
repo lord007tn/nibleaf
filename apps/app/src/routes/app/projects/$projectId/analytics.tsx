@@ -49,7 +49,14 @@ function AnalyticsPage() {
                   <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" fontSize={11} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} tickFormatter={(d: string) => d.slice(5)} />
+              <XAxis
+                dataKey="date"
+                fontSize={11}
+                stroke="var(--muted-foreground)"
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(d: string) => d.slice(5)}
+              />
               <YAxis allowDecimals={false} fontSize={11} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={28} />
               <Tooltip contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
               <Area dataKey="views" fill="url(#views)" stroke="var(--chart-1)" strokeWidth={2} type="monotone" />
@@ -70,7 +77,11 @@ function StatCard({ label, value, loading }: { label: string; value: number; loa
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="text-muted-foreground text-sm">{label}</div>
-      {loading ? <Skeleton className="mt-2 h-9 w-20" /> : <div className="mt-2 font-semibold text-3xl tabular-nums tracking-tight">{value.toLocaleString()}</div>}
+      {loading ? (
+        <Skeleton className="mt-2 h-9 w-20" />
+      ) : (
+        <div className="mt-2 font-semibold text-3xl tabular-nums tracking-tight">{value.toLocaleString()}</div>
+      )}
     </div>
   );
 }
