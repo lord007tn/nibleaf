@@ -62,7 +62,8 @@ function AnalyticsPage() {
               />
               <YAxis allowDecimals={false} fontSize={11} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={28} />
               <Tooltip contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
-              <Area dataKey="views" fill="url(#views)" stroke="var(--chart-1)" strokeWidth={2} type="monotone" />
+              {/* Show a dot for tiny series (e.g. 24h = 1 point) so it isn't invisible. */}
+              <Area dataKey="views" fill="url(#views)" stroke="var(--chart-1)" strokeWidth={2} type="monotone" dot={(data?.timeseries?.length ?? 0) <= 2} />
             </AreaChart>
           </ResponsiveContainer>
         )}
