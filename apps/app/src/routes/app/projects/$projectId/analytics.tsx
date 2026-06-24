@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAnalytics } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/projects/$projectId/analytics')({
   component: AnalyticsPage,
@@ -12,6 +13,7 @@ export const Route = createFileRoute('/app/projects/$projectId/analytics')({
 
 function AnalyticsPage() {
   const { projectId } = Route.useParams();
+  const t = useT();
   const [range, setRange] = useState('7d');
   const { data, isPending } = useAnalytics(projectId, range);
 
@@ -19,8 +21,8 @@ function AnalyticsPage() {
     <div className="mx-auto w-full max-w-[1100px] px-6 py-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-semibold text-2xl tracking-tight">Analytics</h1>
-          <p className="mt-1 text-muted-foreground text-sm">Traffic and search activity on your published site.</p>
+          <h1 className="font-semibold text-2xl tracking-tight">{t('analytics.title')}</h1>
+          <p className="mt-1 text-muted-foreground text-sm">{t('analytics.subtitleSite')}</p>
         </div>
         <Tabs onValueChange={setRange} value={range}>
           <TabsList>
@@ -33,12 +35,12 @@ function AnalyticsPage() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4">
-        <StatCard label="Page views" value={data?.totalViews ?? 0} loading={isPending} />
-        <StatCard label="Unique visitors" value={data?.uniqueVisitors ?? 0} loading={isPending} />
+        <StatCard label={t('analytics.kpi.pageViews')} value={data?.totalViews ?? 0} loading={isPending} />
+        <StatCard label={t('analytics.kpi.uniqueVisitors')} value={data?.uniqueVisitors ?? 0} loading={isPending} />
       </div>
 
       <div className="mt-4 rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 font-medium text-sm">Page views over time</div>
+        <div className="mb-4 font-medium text-sm">{t('analytics.chart.pageviewsOverTime')}</div>
         {isPending ? (
           <Skeleton className="h-64 w-full" />
         ) : (
@@ -67,8 +69,16 @@ function AnalyticsPage() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ListCard title="Top pages" empty="No page views yet." items={(data?.topPages ?? []).map((p) => ({ label: `/${p.path}`, value: p.views }))} />
-        <ListCard title="Top searches" empty="No searches yet." items={(data?.topSearches ?? []).map((s) => ({ label: s.query, value: s.count }))} />
+        <ListCard
+          title={t('analytics.section.topPages')}
+          empty={t('analytics.empty.pageviews')}
+          items={(data?.topPages ?? []).map((p) => ({ label: `/${p.path}`, value: p.views }))}
+        />
+        <ListCard
+          title={t('analytics.section.topSearches')}
+          empty={t('analytics.empty.searches')}
+          items={(data?.topSearches ?? []).map((s) => ({ label: s.query, value: s.count }))}
+        />
       </div>
     </div>
   );

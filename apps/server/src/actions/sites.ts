@@ -221,10 +221,29 @@ export const getSiteChangelog = async (identifier: string) => {
   }));
 };
 
-/** Record a public pageview for a published site. */
+/** Classify a User-Agent into a coarse device bucket for the analytics breakdown. */
+const deviceFromUserAgent = (ua: string | null): string => {
+  if (!ua) {
+    return 'unknown';
+  }
+  if (/tablet|ipad|playbook|silk|android(?!.*mobile)/i.test(ua)) {
+    return 'tablet';
+  }
+  if (/mobi|iphone|ipod|android.*mobile|blackberry|iemobile|opera mini/i.test(ua)) {
+    return 'mobile';
+  }
+  return 'desktop';
+};
+
+/** Record a public pageview for a published site. Derives the device class from
+ *  the User-Agent (and country from a CDN geo header, when present) so the
+ *  analytics breakdowns are populated. */
 export const recordSiteEvent = async (identifier: string, body: TrackEventBody) => {
   const projectId = await resolveProjectId(identifier);
-  await trackEvent(projectId, body).catch(() => undefined);
+  const headers = getContext<HonoEnv>().req.raw.headers;
+  const device = deviceFromUserAgent(headers.get('user-agent'));
+  const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
+  await trackEvent(projectId, body, { device, country }).catch(() => undefined);
   return { ok: true };
 };
 

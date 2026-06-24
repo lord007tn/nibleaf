@@ -165,8 +165,10 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
   return buckets;
 };
 
-/** Record a public analytics event (pageview or search) for a project. */
-export const trackEvent = (projectId: string, body: TrackEventBody, country?: string) =>
+/** Record a public analytics event (pageview or search) for a project. The
+ *  optional `meta` carries request-derived dimensions (device class, country)
+ *  so the analytics breakdowns aren't permanently empty. */
+export const trackEvent = (projectId: string, body: TrackEventBody, meta?: { country?: string; device?: string }) =>
   prisma.analyticsEvent.create({
     data: {
       projectId,
@@ -175,6 +177,7 @@ export const trackEvent = (projectId: string, body: TrackEventBody, country?: st
       referrer: body.referrer ?? null,
       query: body.query ?? null,
       sessionId: body.sessionId ?? null,
-      country: country ?? null,
+      country: meta?.country ?? null,
+      device: meta?.device ?? null,
     },
   });

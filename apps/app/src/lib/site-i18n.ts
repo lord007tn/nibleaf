@@ -23,6 +23,11 @@ const MESSAGES = {
     notPublishedTitle: 'Not published yet',
     notPublishedBody: "This documentation site hasn't been published. Publish it from the editor to see it live.",
     pageUnavailable: 'This page is not available.',
+    changelogSubtitle: 'Every update shipped to these docs.',
+    changelogEmpty: 'No releases yet.',
+    changelogRelease: 'Release',
+    changelogPage: 'page',
+    changelogPages: 'pages',
   },
   ar: {
     docs: 'الوثائق',
@@ -41,6 +46,11 @@ const MESSAGES = {
     notPublishedTitle: 'لم يُنشر بعد',
     notPublishedBody: 'لم يتم نشر موقع الوثائق هذا. انشره من المحرر لرؤيته مباشرةً.',
     pageUnavailable: 'هذه الصفحة غير متاحة.',
+    changelogSubtitle: 'كل تحديث صدر لهذه الوثائق.',
+    changelogEmpty: 'لا توجد إصدارات بعد.',
+    changelogRelease: 'إصدار',
+    changelogPage: 'صفحة',
+    changelogPages: 'صفحات',
   },
 } as const;
 
