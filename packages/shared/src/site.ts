@@ -61,9 +61,11 @@ export interface SiteSnapshot {
 
 /** The default language of a snapshot (or a synthesized English fallback for
  *  legacy snapshots captured before languages existed). */
-export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage =>
-  project.languages.find((l) => l.isDefault) ??
-  project.languages[0] ?? { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null };
+export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
+  // Tolerate legacy snapshots whose project has no `languages` array at all.
+  const languages = project.languages ?? [];
+  return languages.find((l) => l.isDefault) ?? languages[0] ?? { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null };
+};
 
 /** A node in the rendered navigation tree (groups contain children). */
 export interface NavNode {

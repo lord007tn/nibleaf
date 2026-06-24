@@ -1,5 +1,17 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { BarChart3, CreditCard, Eye, FileText, type LucideIcon, PenLine, Plug, Rocket, Settings as SettingsIcon, Users } from 'lucide-react';
+import {
+  ArrowRight,
+  BarChart3,
+  CreditCard,
+  Eye,
+  FileText,
+  type LucideIcon,
+  PenLine,
+  Plug,
+  Rocket,
+  Settings as SettingsIcon,
+  Users,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
@@ -97,8 +109,12 @@ function SiteOverviewPage() {
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-border border-b px-5 py-3.5">
             <h2 className="font-semibold text-sm">{t('overview.recentPages')}</h2>
-            <Link className="text-primary text-xs hover:underline" params={{ projectId }} to="/app/projects/$projectId/editor">
-              {t('overview.openEditor')} →
+            <Link
+              className="flex items-center gap-1 text-primary text-xs hover:underline"
+              params={{ projectId }}
+              to="/app/projects/$projectId/editor"
+            >
+              {t('overview.openEditor')} <ArrowRight className="size-3 rtl:-scale-x-100" />
             </Link>
           </div>
           {recentPages.length === 0 ? (

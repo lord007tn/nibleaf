@@ -68,7 +68,9 @@ export function PageSettingsDialog({
 
   const save = () => {
     // A complete config object so the server merge replaces every managed key
-    // (empty strings/false read as "no override" via the SEO fallback chain).
+    // (empty strings/false read as "no override" via the SEO fallback chain, and
+    // blanking a field clears it). When nothing is overridden, send null so the
+    // page's config stays null instead of bloating with an empty object.
     const config: PageConfig = {
       sidebarTitle: sidebarTitle.trim(),
       mode,
@@ -81,10 +83,16 @@ export function PageSettingsDialog({
         noindex,
       },
     };
+    const hasOverride =
+      sidebarTitle.trim() !== '' ||
+      mode !== 'default' ||
+      hideToc ||
+      [metaTitle, metaDescription, ogImage, canonicalUrl].some((v) => v.trim() !== '') ||
+      noindex;
     update.mutate(
       {
         pageId: page.id,
-        body: { slug: slug.trim(), icon: icon.trim() || null, description: description.trim() || null, hidden, config },
+        body: { slug: slug.trim(), icon: icon.trim() || null, description: description.trim() || null, hidden, config: hasOverride ? config : null },
       },
       {
         onSuccess: () => {

@@ -232,9 +232,13 @@ export interface SitePage {
     headings: Heading[];
     config: PageConfig | null;
   };
+  /** The language the page actually resolved in (drives canonical/og/hreflang). */
+  activeLanguage?: string;
   /** SEO defaults of the page's language (layered under the page's own SEO). */
   languageConfig: LanguageConfig | null;
-  languages?: Array<{ code: string; isDefault: boolean }>;
+  /** hreflang alternates: `path` is the page's URL in that language, or null
+   *  when that language has no corresponding page (then it's omitted). */
+  languages?: Array<{ code: string; isDefault: boolean; path?: string | null }>;
   breadcrumbs: Array<{ title: string; path: string }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;

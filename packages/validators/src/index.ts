@@ -27,7 +27,14 @@ const themeSchema = z
   })
   .strict();
 
-const url = z.string().max(500);
+// Reject dangerous URL schemes so config URLs that render as clickable links
+// (navbar/footer/banner/CTA) can't carry a javascript:/data:/vbscript: payload.
+// A blocklist (not an allowlist) keeps http(s)/relative/mailto/tel values valid
+// and existing configs from failing validation on their next save.
+const url = z
+  .string()
+  .max(500)
+  .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
 const redirectPair = z.object({ from: z.string().max(300), to: z.string().max(300) }).strict();
 const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) }).strict();
@@ -377,12 +384,17 @@ export type AiDraftBody = z.infer<typeof aiDraftBody>;
 
 // ─── Workspace settings ────────────────────────────────────────────────────—
 
+// Bounded records (key length + count) so the metadata blob stays small even
+// though values are free-form. ADMIN-gated, but defense-in-depth all the same.
+const boundedRecord = <V extends z.ZodTypeAny>(value: V) =>
+  z.record(z.string().max(64), value).refine((r) => Object.keys(r).length <= 50, { message: 'Too many keys.' });
+
 export const updateWorkspaceSettingsBody = z
   .object({
-    notifications: z.record(z.string(), z.boolean()).optional(),
-    integrations: z.record(z.string(), z.unknown()).optional(),
-    git: z.record(z.string(), z.unknown()).optional(),
-    plan: z.string().optional(),
+    notifications: boundedRecord(z.boolean()).optional(),
+    integrations: boundedRecord(z.unknown()).optional(),
+    git: boundedRecord(z.unknown()).optional(),
+    plan: z.string().max(40).optional(),
   })
   .strict();
 export type UpdateWorkspaceSettingsBody = z.infer<typeof updateWorkspaceSettingsBody>;

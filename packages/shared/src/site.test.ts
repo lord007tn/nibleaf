@@ -131,4 +131,8 @@ describe('pageDescription and defaultLanguage', () => {
     expect(defaultLanguage(proj([{ code: 'ar', label: 'ع', direction: 'RTL', isDefault: true, config: null }])).code).toBe('ar');
     expect(defaultLanguage(proj([])).code).toBe('en');
   });
+  it('tolerates legacy snapshots with no languages array (no crash, English fallback)', () => {
+    // Snapshots captured before the languages feature have no `languages` key.
+    expect(defaultLanguage({} as unknown as SnapshotProject).code).toBe('en');
+  });
 });

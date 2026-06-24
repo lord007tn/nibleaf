@@ -66,6 +66,12 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
     throw notFound('site', { identifier, reason: 'not_published' });
   }
   const snapshot = deployment.snapshot as unknown as SiteSnapshot;
+  // Legacy snapshots (captured before the languages feature) have no `languages`
+  // array; normalize it here so every downstream consumer (activeLanguageCode,
+  // defaultLanguage, getSite/getSitePage/searchSite) is safe rather than 500ing.
+  if (snapshot.project && !Array.isArray(snapshot.project.languages)) {
+    snapshot.project.languages = [];
+  }
   await assertViewable(projectId, snapshot);
   return { snapshot, version: deployment.version, deploymentId: deployment.id };
 };
@@ -130,8 +136,20 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const breadcrumbs = breadcrumbTrail(pages, page);
 
   const pageLanguage = snapshot.project.languages.find((l) => l.code === navLanguage);
+  // hreflang alternates: a page "corresponds" across languages only when another
+  // language has a page at the SAME path (the one deterministic cross-language
+  // link, since per-language slugs are independent). Languages without a matching
+  // page get path:null and are omitted from hreflang — so we never point a
+  // crawler at a missing or wrong-language URL.
+  const alternates = snapshot.project.languages.map((l) => {
+    const has = snapshot.pages.some((p) => p.languageCode === l.code && p.path === page.path && p.kind === 'PAGE' && !p.hidden);
+    return { code: l.code, isDefault: l.isDefault, path: has ? page.path : null };
+  });
   return {
     project: snapshot.project,
+    // The language the page actually resolved in (may differ from the requested
+    // ?lang when it fell back) — canonical/og/hreflang are built from this.
+    activeLanguage: navLanguage,
     page: {
       id: page.id,
       title: page.title,
@@ -145,8 +163,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     },
     // SEO defaults of this page's language — layered under the page's own SEO.
     languageConfig: pageLanguage?.config ?? null,
-    // Surfaced for hreflang alternates in per-page SEO.
-    languages: snapshot.project.languages.map((l) => ({ code: l.code, isDefault: l.isDefault })),
+    // Surfaced for hreflang alternates in per-page SEO (path null = no such page).
+    languages: alternates,
     breadcrumbs,
     prev: index > 0 ? neighbour(order[index - 1]) : null,
     next: index >= 0 && index < order.length - 1 ? neighbour(order[index + 1]) : null,
@@ -213,16 +231,28 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
 const escapeXml = (value: string): string =>
   value.replace(/[<>&'"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char] ?? char);
 
-/** XML sitemap of every public (non-hidden) page across all languages of a site.
- *  Private/unpublished sites throw notFound (so they stay out of sitemaps). */
+/** XML sitemap of every indexable (non-hidden, non-noindex) page across all
+ *  languages of a site. Private/unpublished sites throw notFound (so they stay
+ *  out of sitemaps); pages/languages marked noindex are excluded so the sitemap
+ *  never contradicts the per-page `<meta robots noindex>` we serve. The default
+ *  language emits clean (param-less) URLs to match the page's own canonical. */
 export const getSiteSitemap = async (identifier: string): Promise<string> => {
   const { snapshot } = await getPublished(identifier);
   const base = `${env.APP_URL}/sites/${snapshot.project.id}`;
   const lastmod = snapshot.generatedAt;
+  const config = snapshot.project.config as { visibility?: string; seo?: { allowIndex?: boolean } } | null;
+  // A private or index-disabled site has an empty sitemap.
+  if (config?.visibility === 'private' || config?.seo?.allowIndex === false) {
+    return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+  }
+  const defaultCode = defaultLanguage(snapshot.project).code;
+  // Languages whose own SEO disallows indexing are excluded entirely.
+  const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
   const urls = snapshot.pages
-    .filter((page) => page.kind === 'PAGE' && !page.hidden)
+    .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode))
     .map((page) => {
-      const langQuery = page.languageCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
+      // Default-language pages use the clean URL (no ?lang) — their canonical.
+      const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
       const loc = `${base}${page.path ? `/${page.path}` : ''}${langQuery}`;
       const lastmodTag = lastmod ? `<lastmod>${escapeXml(new Date(lastmod).toISOString())}</lastmod>` : '';
       return `  <url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;

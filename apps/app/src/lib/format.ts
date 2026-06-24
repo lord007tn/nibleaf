@@ -12,9 +12,11 @@ export function useFormatters() {
   return {
     number: (value: number) => new Intl.NumberFormat(tag).format(value),
     date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),
-    /** A signed percentage like “+12.5%” / “−4%” for trend badges. */
+    /** A signed percentage like “+12.5%” / “−4%” for trend badges. `value` is
+     *  already in percent units (e.g. 12.5 → “+12.5%”). `style:'percent'` lets
+     *  Intl supply the locale percent sign + digits (Arabic-Indic ٪). */
     percent: (value: number) =>
-      new Intl.NumberFormat(tag, { signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(value / 100) + (tag === 'ar' ? '٪' : '%'),
+      new Intl.NumberFormat(tag, { style: 'percent', signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(value / 100),
     /** A short axis label (e.g. “Jun 23”) for time-series charts. */
     shortDate: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric' }).format(new Date(value)),
   };

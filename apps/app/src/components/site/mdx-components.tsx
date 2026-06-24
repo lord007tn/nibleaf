@@ -1,6 +1,7 @@
 import { AlertTriangle, Check, ChevronDown, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
 import { Children, isValidElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
+import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { cn } from '@/lib/utils';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────
@@ -37,8 +38,8 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
   const inner = (
     <>
       {icon ? (
-        <span className="mb-2 inline-block size-5 rounded bg-primary/15 text-center font-mono text-[10px] text-primary leading-5" aria-hidden>
-          {icon[0]?.toUpperCase()}
+        <span className="mb-2 grid size-7 place-items-center rounded-lg bg-primary/15 text-primary" aria-hidden>
+          {hasIcon(icon) ? <PageIcon name={icon} className="size-4" /> : <span className="font-mono text-[11px]">{icon[0]?.toUpperCase()}</span>}
         </span>
       ) : null}
       {title ? <div className="font-semibold">{title}</div> : null}

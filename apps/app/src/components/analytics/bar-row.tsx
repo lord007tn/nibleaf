@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 /** A single label + horizontal progress bar + value row. Optionally clickable. */
@@ -29,7 +30,7 @@ export function BarRow({
         <span className="block h-full rounded-full" style={{ width: `${Math.max(2, Math.round(fraction * 100))}%`, backgroundColor: color }} />
       </span>
       <span className="w-12 shrink-0 text-end font-mono text-muted-foreground text-xs tabular-nums">{value}</span>
-      {onClick ? <span className="shrink-0 text-muted-foreground text-sm">→</span> : null}
+      {onClick ? <ChevronRight className="size-4 shrink-0 text-muted-foreground rtl:-scale-x-100" /> : null}
     </Tag>
   );
 }

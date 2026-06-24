@@ -7,6 +7,8 @@ const meta = (head: ReturnType<typeof pageHead>, key: string): string | undefine
   head.meta?.find((m) => m.name === key || m.property === key)?.content;
 const title = (head: ReturnType<typeof pageHead>): string | undefined => head.meta?.find((m) => 'title' in m)?.title;
 const canonical = (head: ReturnType<typeof pageHead>): string | undefined => head.links?.find((l) => l.rel === 'canonical')?.href;
+const hreflangs = (head: ReturnType<typeof pageHead>): Record<string, string> =>
+  Object.fromEntries((head.links ?? []).filter((l) => l.rel === 'alternate').map((l) => [l.hreflang, l.href]));
 
 const base = (over: Partial<SitePage> = {}): SitePage => ({
   project: {
@@ -19,6 +21,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
     faviconUrl: null,
     config: { seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
   },
+  activeLanguage: 'en',
   page: {
     id: 'pg',
     title: 'Quickstart',
@@ -30,7 +33,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
     config: null,
   },
   languageConfig: null,
-  languages: [{ code: 'en', isDefault: true }],
+  languages: [{ code: 'en', isDefault: true, path: 'quickstart' }],
   breadcrumbs: [],
   prev: null,
   next: null,
@@ -38,16 +41,26 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('pageHead SEO cascade', () => {
-  it('falls back to the site SEO when neither page nor language override', () => {
+  it('uses the explicit site SEO title/description/image when nothing overrides', () => {
     const head = pageHead(base(), 'p1');
     expect(title(head)).toBe('Quickstart — Acme');
-    expect(meta(head, 'description')).toBe('Page own description');
+    // Explicit project SEO description wins over the auto-derived body excerpt.
+    expect(meta(head, 'description')).toBe('Site SEO desc');
     expect(meta(head, 'og:image')).toBe('https://cdn/site-og.png');
   });
 
-  it('lets the language override the site name and social image', () => {
-    const head = pageHead(base({ languageConfig: { seo: { metaTitle: 'Acme Docs AR', socialImage: 'https://cdn/lang-og.png' } } }), 'p1');
+  it('falls back to the page body description only when no SEO override exists', () => {
+    const head = pageHead(base({ project: { ...base().project, config: { seo: { metaTitle: 'Acme' } } } }), 'p1');
+    expect(meta(head, 'description')).toBe('Page own description');
+  });
+
+  it('lets the language override the site name, social image, and description', () => {
+    const head = pageHead(
+      base({ languageConfig: { seo: { metaTitle: 'Acme Docs AR', metaDescription: 'Lang desc', socialImage: 'https://cdn/lang-og.png' } } }),
+      'p1',
+    );
     expect(title(head)).toBe('Quickstart — Acme Docs AR');
+    expect(meta(head, 'description')).toBe('Lang desc');
     expect(meta(head, 'og:image')).toBe('https://cdn/lang-og.png');
   });
 
@@ -84,5 +97,53 @@ describe('pageHead SEO cascade', () => {
   it('emits noindex when the language disallows indexing', () => {
     const head = pageHead(base({ languageConfig: { seo: { allowIndex: false } } }), 'p1');
     expect(meta(head, 'robots')).toBe('noindex,nofollow');
+  });
+});
+
+describe('pageHead canonical + hreflang', () => {
+  it('canonicalizes the default language to a clean (param-less) URL', () => {
+    const head = pageHead(base({ activeLanguage: 'en' }), 'p1', 'en');
+    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');
+  });
+
+  it('uses the resolved language for canonical even when the request fell back', () => {
+    // Requested ?lang=ar but the page only exists in the default (en) → resolved en.
+    const head = pageHead(base({ activeLanguage: 'en' }), 'p1', 'ar');
+    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');
+  });
+
+  it('emits hreflang only for languages that actually have the page, default param-less', () => {
+    const head = pageHead(
+      base({
+        activeLanguage: 'ar',
+        languages: [
+          { code: 'en', isDefault: true, path: 'quickstart' },
+          { code: 'ar', isDefault: false, path: 'quickstart' },
+          { code: 'fr', isDefault: false, path: null }, // no French page → omitted
+        ],
+      }),
+      'p1',
+      'ar',
+    );
+    const alts = hreflangs(head);
+    expect(alts.en).toBe('http://localhost:4310/sites/p1/quickstart');
+    expect(alts.ar).toBe('http://localhost:4310/sites/p1/quickstart?lang=ar');
+    expect(alts['x-default']).toBe('http://localhost:4310/sites/p1/quickstart');
+    expect(alts.fr).toBeUndefined();
+    // Non-default active language canonicalizes WITH its ?lang param.
+    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart?lang=ar');
+  });
+
+  it('omits hreflang entirely when only one language has the page', () => {
+    const head = pageHead(
+      base({
+        languages: [
+          { code: 'en', isDefault: true, path: 'quickstart' },
+          { code: 'ar', isDefault: false, path: null },
+        ],
+      }),
+      'p1',
+    );
+    expect(Object.keys(hreflangs(head))).toHaveLength(0);
   });
 });

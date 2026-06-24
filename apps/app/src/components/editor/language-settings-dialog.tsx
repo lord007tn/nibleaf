@@ -56,8 +56,14 @@ export function LanguageSettingsDialog({
     const config: LanguageConfig = {
       seo: { metaTitle: metaTitle.trim(), metaDescription: metaDescription.trim(), socialImage: socialImage.trim(), allowIndex },
     };
+    // Only persist a config when something is actually overridden (allowIndex
+    // defaults to true), otherwise clear it so the language stays config-null.
+    const hasOverride = [metaTitle, metaDescription, socialImage].some((v) => v.trim() !== '') || allowIndex === false;
     update.mutate(
-      { id: language.id, body: { label: label.trim() || language.label, direction, ...(isDefault ? { isDefault: true } : {}), config } },
+      {
+        id: language.id,
+        body: { label: label.trim() || language.label, direction, ...(isDefault ? { isDefault: true } : {}), config: hasOverride ? config : null },
+      },
       {
         onSuccess: () => {
           toast.success(t('editor.langSettings.saved'));

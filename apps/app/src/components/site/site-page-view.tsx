@@ -56,9 +56,11 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
       className={
         showToc
           ? 'grid min-w-0 grid-cols-1 gap-10 px-8 py-10 xl:grid-cols-[1fr_200px]'
-          : mode === 'center'
-            ? 'mx-auto min-w-0 max-w-3xl px-8 py-10'
-            : 'min-w-0 px-8 py-10'
+          : mode === 'wide'
+            ? 'min-w-0 px-8 py-10' // full-bleed, reserved for explicit wide mode
+            : mode === 'center'
+              ? 'mx-auto min-w-0 max-w-3xl px-8 py-10'
+              : 'mx-auto min-w-0 max-w-4xl px-8 py-10' // default but no TOC → keep a constrained reading column
       }
     >
       <article className="min-w-0">

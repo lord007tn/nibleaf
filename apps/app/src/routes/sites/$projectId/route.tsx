@@ -108,6 +108,29 @@ function SiteChrome() {
     link.href = faviconUrl;
   }, [faviconUrl]);
 
+  // Reflect the active language on <html lang/dir> so crawlers and screen readers
+  // see the right language/direction on the public site. (The dashboard's
+  // DirectionProvider governs the app shell, not published sites — without this
+  // an Arabic site would announce lang="en" dir="ltr" at the document level.)
+  useEffect(() => {
+    if (typeof document === 'undefined' || !activeLanguage) {
+      return;
+    }
+    const el = document.documentElement;
+    const prevLang = el.lang;
+    const prevDir = el.getAttribute('dir');
+    el.lang = activeLanguage.code;
+    el.dir = isRtl ? 'rtl' : 'ltr';
+    return () => {
+      el.lang = prevLang;
+      if (prevDir) {
+        el.dir = prevDir;
+      } else {
+        el.removeAttribute('dir');
+      }
+    };
+  }, [activeLanguage, isRtl]);
+
   // Site-level SEO fallback for routes without a SitePageView (e.g. changelog).
   // On doc pages, SitePageView owns the title and merges config itself, so we
   // skip here to avoid stomping the per-page title.

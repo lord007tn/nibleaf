@@ -20,9 +20,9 @@ export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
       title: page.title,
       path: page.path,
       description: page.description ?? '',
-      headings: extractHeadings(page.content)
-        .map((heading) => heading.text)
-        .join(' '),
+      // Include the sidebar label (if it differs from the title) so a search for
+      // the short nav label still finds the page.
+      headings: [page.config?.sidebarTitle?.trim(), ...extractHeadings(page.content).map((heading) => heading.text)].filter(Boolean).join(' '),
       content: page.content,
       icon: page.icon ?? undefined,
     }));

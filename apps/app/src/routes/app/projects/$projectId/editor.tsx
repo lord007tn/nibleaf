@@ -1,6 +1,6 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Check, ExternalLink, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
@@ -165,11 +165,13 @@ function EditorPage() {
   }, [page]);
 
   // Debounced autosave: fire ~700ms after the user stops typing the title/content.
+  // `onUnmount` flushes any pending save when the editor unmounts (route change /
+  // tab close) so a keystroke made <700ms before leaving isn't dropped.
   const saveDraft = useDebouncedCallback(
     (pageId: string, draft: { title: string; content: string }) => {
       updatePage.mutate({ pageId, body: draft }, { onSuccess: () => setStatus('saved'), onError: () => setStatus('idle') });
     },
-    { wait: 700 },
+    { wait: 700, onUnmount: (d) => d.flush() },
   );
 
   useEffect(() => {
@@ -364,10 +366,22 @@ function EditorPage() {
       {/* Main area: site configuration */}
       {view === 'config' ? (
         <section className="min-w-0 overflow-y-auto">
-          <div className="border-border border-b px-6 py-4">
-            <h1 className="font-semibold text-lg tracking-tight">{t('editor.config.heading')}</h1>
+          {/* A muted overline so it reads as "Site configuration › <section>"
+              rather than competing with each section's own heading. */}
+          <div className="border-border border-b px-6 py-3">
+            <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
           </div>
-          <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">{project ? <ConfigSection project={project} section={configSection} /> : null}</div>
+          <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">
+            {project ? (
+              <ConfigSection project={project} section={configSection} />
+            ) : (
+              <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+            )}
+          </div>
+        </section>
+      ) : activeId && !page ? (
+        <section className="grid place-items-center text-center">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
         </section>
       ) : activeId && page ? (
         /* Main area: page editor */
@@ -390,6 +404,23 @@ function EditorPage() {
                 </>
               ) : null}
             </span>
+            <Button
+              render={
+                // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
+                <a
+                  aria-label={t('editor.viewOnSite')}
+                  href={`/sites/${projectId}/${page.path}${activeLanguage && !activeLanguage.isDefault ? `?lang=${activeLanguage.code}` : ''}`}
+                  rel="noreferrer"
+                  target="_blank"
+                />
+              }
+              size="icon-sm"
+              variant="ghost"
+              className="cursor-pointer"
+              title={t('editor.viewOnSite')}
+            >
+              <ExternalLink className="size-4" />
+            </Button>
             <Button
               size="icon-sm"
               variant="ghost"

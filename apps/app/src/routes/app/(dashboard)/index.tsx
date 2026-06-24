@@ -146,12 +146,12 @@ function ProjectsPage() {
           hint={trend ? t('analytics.vsPrevious') : undefined}
           loading={analyticsPending}
         />
+        {/* No visitor-specific timeseries exists yet, so no trend badge here —
+            the page-views trend would be misleading on a visitors metric. */}
         <SectionCard
           label={t('dashboard.stats.visitors')}
           value={analytics?.uniqueVisitors ?? 0}
           icon={<Users className="size-4" />}
-          trend={trend}
-          hint={trend ? t('analytics.vsPrevious') : undefined}
           loading={analyticsPending}
         />
       </div>

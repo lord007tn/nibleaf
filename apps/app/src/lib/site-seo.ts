@@ -63,15 +63,24 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   const config = seoConfig(data.project.config);
   const langSeo = data.languageConfig?.seo;
   const pageSeo = data.page.config?.seo;
+  const languages = data.languages ?? [];
+  const defaultCode = languages.find((l) => l.isDefault)?.code;
+  // The language the page actually resolved in (not the requested ?lang, which
+  // may have fallen back). The default language uses clean, param-less URLs so a
+  // page has exactly one canonical (no /path vs /path?lang=en duplication).
+  const activeLang = data.activeLanguage ?? lang;
+  const canonicalLang = activeLang && activeLang !== defaultCode ? activeLang : undefined;
 
   // Site name for the "<page> — <site>" title pattern (language can rename it).
   const siteName = langSeo?.metaTitle || config?.seo?.metaTitle || data.project.name;
   // A page may override its full document title outright (Mintlify `title`/metaTitle).
   const title = pageSeo?.metaTitle?.trim() || `${data.page.title} — ${siteName}`;
   const ogTitle = pageSeo?.metaTitle?.trim() || data.page.title;
+  // Explicit SEO overrides (page › language › project) win over the auto-derived
+  // body description; the page body excerpt is the final fallback.
   const description =
-    pageSeo?.metaDescription || data.page.description || langSeo?.metaDescription || config?.seo?.metaDescription || data.project.description || '';
-  const url = sitePageUrl(projectId, data.page.path, lang);
+    pageSeo?.metaDescription || langSeo?.metaDescription || config?.seo?.metaDescription || data.page.description || data.project.description || '';
+  const url = sitePageUrl(projectId, data.page.path, canonicalLang);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -102,16 +111,19 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
 
   // A page may pin its own canonical URL (e.g. when content is syndicated).
   const links: Tag[] = [{ rel: 'canonical', href: pageSeo?.canonicalUrl?.trim() || url }];
-  // hreflang alternates so search engines associate the per-language versions
-  // (and don't treat them as duplicate content). Only when the site is multilingual.
-  const languages = data.languages ?? [];
-  if (languages.length > 1) {
-    for (const language of languages) {
-      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, data.page.path, language.code) });
+  // hreflang alternates so search engines associate the per-language versions.
+  // Only emit alternates for languages that actually have this page (path set),
+  // using the clean URL for the default language. Skip when there's only the one
+  // real version (nothing to relate).
+  const realAlternates = languages.filter((l) => l.path != null);
+  if (realAlternates.length > 1) {
+    for (const language of realAlternates) {
+      const altLang = language.isDefault ? undefined : language.code;
+      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, language.path as string, altLang) });
     }
-    const fallback = languages.find((language) => language.isDefault) ?? languages[0];
+    const fallback = realAlternates.find((language) => language.isDefault) ?? realAlternates[0];
     if (fallback) {
-      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, data.page.path, fallback.code) });
+      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, fallback.path as string, undefined) });
     }
   }
   return { meta, links };

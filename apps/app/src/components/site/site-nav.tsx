@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import { PageIcon } from '@/components/site/page-icon';
 import type { NavNode } from '@/hooks/api';
 import { cn } from '@/lib/utils';
 
@@ -32,13 +33,14 @@ function NavItems({
               params={{ projectId, _splat: node.path }}
               search={{ lang }}
               className={cn(
-                'block rounded-md px-2 py-1.5 text-sm transition-colors',
+                'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
                 currentPath === node.path
                   ? 'bg-accent font-medium text-accent-foreground'
                   : 'text-foreground/75 hover:bg-muted hover:text-foreground',
               )}
             >
-              {node.title}
+              <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="truncate">{node.title}</span>
             </Link>
             {node.children.length > 0 ? (
               <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} />

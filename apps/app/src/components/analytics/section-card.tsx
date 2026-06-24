@@ -1,9 +1,10 @@
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatters } from '@/lib/format';
+import { cn } from '@/lib/utils';
 
 export type Trend = { pct: number; direction: 'up' | 'down' | 'flat' } | null;
 
@@ -30,7 +31,9 @@ export function SectionCard({
   loading?: boolean;
 }) {
   const { number, percent } = useFormatters();
-  const TrendIcon = trend?.direction === 'down' ? TrendingDown : TrendingUp;
+  // Icon + colour by direction: up = green-ish (default), down = destructive,
+  // flat = neutral Minus — so a downtrend is visually distinct, not just an arrow.
+  const TrendIcon = trend?.direction === 'down' ? TrendingDown : trend?.direction === 'flat' ? Minus : TrendingUp;
 
   return (
     <Card className="@container/card">
@@ -46,7 +49,10 @@ export function SectionCard({
         )}
         {trend ? (
           <CardAction>
-            <Badge variant="outline" className="gap-1">
+            <Badge
+              variant={trend.direction === 'down' ? 'destructive' : 'outline'}
+              className={cn('gap-1', trend.direction === 'up' && 'text-emerald-600 dark:text-emerald-400')}
+            >
               <TrendIcon className="size-3.5" />
               {percent(trend.pct)}
             </Badge>

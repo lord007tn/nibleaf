@@ -152,11 +152,17 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   if (!page) {
     throw notFound('page', { id });
   }
-  const structural = body.parentId !== undefined || body.slug !== undefined || body.title !== undefined;
+  // The slug/URL is decoupled from the title (Mintlify-style): it only changes
+  // when the slug is set explicitly or the page is re-parented (which needs a
+  // uniqueness re-check among the new siblings). A title-only edit — e.g. every
+  // editor autosave keystroke — must NOT silently rewrite the slug/path.
   const nextParentId = body.parentId === undefined ? page.parentId : body.parentId;
+  const slugChanged = body.slug !== undefined;
+  const reparented = body.parentId !== undefined && nextParentId !== page.parentId;
+  const structural = slugChanged || reparented;
   let nextSlug = page.slug;
-  if (body.slug !== undefined || body.title !== undefined || body.parentId !== undefined) {
-    nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, body.slug || body.title || page.slug, id);
+  if (structural) {
+    nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, body.slug || page.slug, id);
   }
   const nextConfig = mergePageConfig(page.config, body.config);
   const updated = await prisma.page.update({
