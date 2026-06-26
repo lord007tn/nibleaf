@@ -196,7 +196,9 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const index = await getCachedIndex(snapshot.project.id, deploymentId, activeLanguage, snapshot.pages);
   const hits = await searchDocs(index, query, { limit });
-  if (query.trim()) {
+  // Only track queries of a meaningful length so the search-terms analytics
+  // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
+  if (query.trim().length >= 3) {
     await trackEvent(snapshot.project.id, { type: 'search', query: query.trim() } as TrackEventBody).catch(() => undefined);
   }
   return { hits };

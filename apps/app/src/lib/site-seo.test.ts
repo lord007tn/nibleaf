@@ -146,4 +146,63 @@ describe('pageHead canonical + hreflang', () => {
     );
     expect(Object.keys(hreflangs(head))).toHaveLength(0);
   });
+
+  it('does not append ?lang=en for a legacy snapshot with no Language rows', () => {
+    // P1-style: the snapshot predates the languages feature → languages: [] →
+    // the default is unknown, so the canonical must stay param-less (matching the
+    // sitemap) instead of emitting a duplicate ?lang=en URL.
+    const head = pageHead(base({ languages: [], activeLanguage: 'en' }), 'p1', 'en');
+    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');
+  });
+});
+
+describe('pageHead og:locale', () => {
+  it('advertises the active language as og:locale', () => {
+    expect(meta(pageHead(base(), 'p1'), 'og:locale')).toBe('en_US');
+  });
+
+  it('lists the other real translations as og:locale:alternate', () => {
+    const head = pageHead(
+      base({
+        activeLanguage: 'ar',
+        languages: [
+          { code: 'ar', isDefault: false, path: 'quickstart' },
+          { code: 'en', isDefault: true, path: 'quickstart' },
+        ],
+      }),
+      'p1',
+      'ar',
+    );
+    expect(meta(head, 'og:locale')).toBe('ar_AR');
+    expect(head.meta?.some((m) => m.property === 'og:locale:alternate' && m.content === 'en_US')).toBe(true);
+  });
+});
+
+describe('pageHead JSON-LD', () => {
+  const ld = (head: ReturnType<typeof pageHead>): Array<Record<string, unknown>> =>
+    (head.scripts ?? []).filter((s) => s.type === 'application/ld+json').map((s) => JSON.parse(s.children) as Record<string, unknown>);
+
+  it('emits a TechArticle for the page', () => {
+    const article = ld(pageHead(base(), 'p1')).find((block) => block['@type'] === 'TechArticle');
+    expect(article).toBeDefined();
+    expect(article?.headline).toBe('Quickstart');
+    expect(article?.url).toBe('http://localhost:4310/sites/p1/quickstart');
+  });
+
+  it('emits a BreadcrumbList when breadcrumbs exist, and omits it otherwise', () => {
+    const withCrumbs = pageHead(
+      base({
+        breadcrumbs: [
+          { title: 'Guides', path: 'guides' },
+          { title: 'Quickstart', path: 'quickstart' },
+        ],
+      }),
+      'p1',
+    );
+    const list = ld(withCrumbs).find((block) => block['@type'] === 'BreadcrumbList');
+    expect(list).toBeDefined();
+    expect((list?.itemListElement as unknown[]).length).toBe(2);
+
+    expect(ld(pageHead(base(), 'p1')).some((block) => block['@type'] === 'BreadcrumbList')).toBe(false);
+  });
 });

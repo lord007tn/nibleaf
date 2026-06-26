@@ -14,9 +14,40 @@ export function publicOrigin(): string {
 }
 
 type Tag = Record<string, string>;
+interface Script {
+  type: string;
+  children: string;
+}
 interface Head {
   meta?: Tag[];
   links?: Tag[];
+  scripts?: Script[];
+}
+
+/** BCP-47 language code → Open Graph locale (`og:locale`). Falls back to a
+ *  `xx_XX` shape so unlisted languages still advertise something sensible. */
+const OG_LOCALE: Record<string, string> = {
+  en: 'en_US',
+  ar: 'ar_AR',
+  fr: 'fr_FR',
+  es: 'es_ES',
+  de: 'de_DE',
+  pt: 'pt_BR',
+  it: 'it_IT',
+  ja: 'ja_JP',
+  zh: 'zh_CN',
+  ru: 'ru_RU',
+  ko: 'ko_KR',
+  hi: 'hi_IN',
+  tr: 'tr_TR',
+  nl: 'nl_NL',
+};
+function ogLocale(code?: string): string | undefined {
+  if (!code) {
+    return undefined;
+  }
+  const base = code.split('-')[0] ?? code;
+  return OG_LOCALE[code] ?? OG_LOCALE[base] ?? code.replace('-', '_');
 }
 
 /** Absolute URL of a page within a published site (used for canonical/OG/hreflang). */
@@ -42,10 +73,9 @@ export function siteHead(site: SiteShell | null | undefined): Head {
   if (themeColor) {
     meta.push({ name: 'theme-color', content: themeColor });
   }
-  const links: Tag[] = [];
-  if (site.project.faviconUrl) {
-    links.push({ rel: 'icon', href: site.project.faviconUrl });
-  }
+  // Always advertise a favicon: the project's own, or a built-in fallback so the
+  // browser tab and link previews are never icon-less.
+  const links: Tag[] = [{ rel: 'icon', href: site.project.faviconUrl || '/favicon.svg' }];
   return { meta, links };
 }
 
@@ -69,7 +99,10 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // may have fallen back). The default language uses clean, param-less URLs so a
   // page has exactly one canonical (no /path vs /path?lang=en duplication).
   const activeLang = data.activeLanguage ?? lang;
-  const canonicalLang = activeLang && activeLang !== defaultCode ? activeLang : undefined;
+  // Append ?lang only for a known non-default language. When the default is
+  // unknown (legacy snapshots with no Language rows), treat the active language
+  // AS the default so the canonical stays param-less and matches the sitemap.
+  const canonicalLang = activeLang && defaultCode && activeLang !== defaultCode ? activeLang : undefined;
 
   // Site name for the "<page> — <site>" title pattern (language can rename it).
   const siteName = langSeo?.metaTitle || config?.seo?.metaTitle || data.project.name;
@@ -108,6 +141,17 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (ogImage) {
     meta.push({ property: 'og:image', content: ogImage }, { name: 'twitter:image', content: ogImage });
   }
+  // Advertise the page's locale + the other translations' locales (og:locale).
+  const locale = ogLocale(activeLang);
+  if (locale) {
+    meta.push({ property: 'og:locale', content: locale });
+    for (const language of languages) {
+      const alt = ogLocale(language.code);
+      if (language.path != null && language.code !== activeLang && alt) {
+        meta.push({ property: 'og:locale:alternate', content: alt });
+      }
+    }
+  }
 
   // A page may pin its own canonical URL (e.g. when content is syndicated).
   const links: Tag[] = [{ rel: 'canonical', href: pageSeo?.canonicalUrl?.trim() || url }];
@@ -126,5 +170,40 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, fallback.path as string, undefined) });
     }
   }
-  return { meta, links };
+
+  // Structured data: a TechArticle for the page + a BreadcrumbList for its trail,
+  // so search engines/AI can read the doc title, description and hierarchy.
+  const scripts: Script[] = [
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'TechArticle',
+        headline: data.page.title,
+        ...(description ? { description } : {}),
+        url,
+        ...(ogImage ? { image: ogImage } : {}),
+        inLanguage: activeLang,
+        isPartOf: { '@type': 'WebSite', name: data.project.name, url: `${publicOrigin()}/sites/${projectId}` },
+      }),
+    },
+  ];
+  const breadcrumbs = data.breadcrumbs ?? [];
+  if (breadcrumbs.length > 0) {
+    scripts.push({
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: breadcrumbs.map((crumb, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: crumb.title,
+          item: sitePageUrl(projectId, crumb.path, canonicalLang),
+        })),
+      }),
+    });
+  }
+
+  return { meta, links, scripts };
 }

@@ -148,9 +148,30 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
 
 const SNIPPET_RADIUS = 90;
 
+/** Strip common Markdown/MDX syntax so a search snippet reads as clean prose
+ *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. */
+export function stripMarkdown(src: string): string {
+  return src
+    .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
+    .replace(/~~~[\s\S]*?~~~/g, ' ')
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
+    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // html / MDX component tags
+    .replace(/\[!\w+\]/g, ' ') // admonition markers ([!NOTE])
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '') // ATX headings
+    .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers
+    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '') // list bullets / ordered markers
+    .replace(/^\s*([-=*_]\s*){3,}$/gm, ' ') // hr / setext underlines
+    .replace(/[*_~]{1,3}/g, '') // emphasis markers
+    .replace(/\|/g, ' ') // table pipes
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Build a short snippet centered on the first occurrence of the query. */
 function makeSnippet(content: string, query: string): string {
-  const haystack = content.replace(/\s+/g, ' ').trim();
+  const haystack = stripMarkdown(content);
   const idx = haystack.toLowerCase().indexOf(query.toLowerCase().split(' ')[0] ?? '');
   if (idx === -1) {
     return haystack.slice(0, SNIPPET_RADIUS * 2);

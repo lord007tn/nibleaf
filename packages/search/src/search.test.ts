@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { createDocIndex, oramaLanguageForCode, type SearchDoc, searchDocs } from './index';
+import { createDocIndex, oramaLanguageForCode, type SearchDoc, searchDocs, stripMarkdown } from './index';
+
+describe('stripMarkdown (search snippets read as clean prose)', () => {
+  it('removes headings, emphasis, inline + fenced code, links and component tags', () => {
+    const md =
+      '# Quickstart\n\nInstall with `npm i` then run:\n\n```bash\nnpm run dev\n```\n\nSee the **bold** [docs](https://x.dev) and <Note>tips</Note>.';
+    const out = stripMarkdown(md);
+    expect(out).not.toMatch(/[#`*]|```|<Note>|\]\(/);
+    expect(out).toContain('Quickstart');
+    expect(out).toContain('docs');
+    expect(out).toContain('tips');
+    expect(out).not.toContain('npm run dev'); // fenced code dropped
+  });
+});
+
+describe('searchDocs snippets', () => {
+  it('produces a snippet free of raw Markdown markers', async () => {
+    const docs: SearchDoc[] = [
+      {
+        id: '1',
+        title: 'Quickstart',
+        path: 'quickstart',
+        description: '',
+        headings: '',
+        content: '# Quickstart\n\nRun `pnpm dev` to **start** the local server quickly.',
+      },
+    ];
+    const index = await createDocIndex(docs, 'english');
+    const hits = await searchDocs(index, 'server');
+    expect(hits[0]?.snippet).toBeDefined();
+    expect(hits[0]?.snippet).not.toMatch(/[#`*]/);
+    expect(hits[0]?.snippet).toContain('server');
+  });
+});
 
 const arabicDocs: SearchDoc[] = [
   {
