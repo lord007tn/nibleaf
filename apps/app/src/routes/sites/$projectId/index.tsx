@@ -3,6 +3,7 @@ import { SitePageView } from '@/components/site/site-page-view';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { pageHead } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/')({
@@ -18,12 +19,12 @@ export const Route = createFileRoute('/sites/$projectId/')({
         }),
         'page',
       );
-      return { page, lang: deps.lang };
+      return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch {
-      return { page: null, lang: deps.lang };
+      return { page: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
     }
   },
-  head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang),
+  head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang, loaderData?.siteOrigin),
 });
 
 function SiteHome() {

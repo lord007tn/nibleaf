@@ -50,10 +50,15 @@ function ogLocale(code?: string): string | undefined {
   return OG_LOCALE[code] ?? OG_LOCALE[base] ?? code.replace('-', '_');
 }
 
-/** Absolute URL of a page within a published site (used for canonical/OG/hreflang). */
-export function sitePageUrl(projectId: string, path: string, lang?: string): string {
+/** Absolute URL of a page within a published site (used for canonical/OG/hreflang).
+ *  On a custom domain (origin given) the docs are served at the domain ROOT, so
+ *  the internal /sites/:id prefix is dropped and the real origin is used. */
+export function sitePageUrl(projectId: string, path: string, lang?: string, origin?: string): string {
   const clean = path ? `/${path.replace(/^\/+/, '')}` : '';
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+  if (origin) {
+    return `${origin}${clean}${query}`;
+  }
   return `${publicOrigin()}/sites/${projectId}${clean}${query}`;
 }
 
@@ -86,7 +91,7 @@ export function siteHead(site: SiteShell | null | undefined): Head {
  * the project: `page.config.seo` › `languageConfig.seo` › `project.config.seo`.
  * This mirrors Mintlify, where page frontmatter overrides the site defaults.
  */
-export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string): Head {
+export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
   if (!data) {
     return {};
   }
@@ -113,7 +118,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // body description; the page body excerpt is the final fallback.
   const description =
     pageSeo?.metaDescription || langSeo?.metaDescription || config?.seo?.metaDescription || data.page.description || data.project.description || '';
-  const url = sitePageUrl(projectId, data.page.path, canonicalLang);
+  const url = sitePageUrl(projectId, data.page.path, canonicalLang, origin);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -163,11 +168,11 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (realAlternates.length > 1) {
     for (const language of realAlternates) {
       const altLang = language.isDefault ? undefined : language.code;
-      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, language.path as string, altLang) });
+      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, language.path as string, altLang, origin) });
     }
     const fallback = realAlternates.find((language) => language.isDefault) ?? realAlternates[0];
     if (fallback) {
-      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, fallback.path as string, undefined) });
+      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, fallback.path as string, undefined, origin) });
     }
   }
 
@@ -184,7 +189,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
         url,
         ...(ogImage ? { image: ogImage } : {}),
         inLanguage: activeLang,
-        isPartOf: { '@type': 'WebSite', name: data.project.name, url: `${publicOrigin()}/sites/${projectId}` },
+        isPartOf: { '@type': 'WebSite', name: data.project.name, url: origin ?? `${publicOrigin()}/sites/${projectId}` },
       }),
     },
   ];
@@ -199,7 +204,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.title,
-          item: sitePageUrl(projectId, crumb.path, canonicalLang),
+          item: sitePageUrl(projectId, crumb.path, canonicalLang, origin),
         })),
       }),
     });

@@ -91,7 +91,12 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
       const projectId = await resolveHost(bare);
       if (projectId) {
         url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;
-        return startHandler(new Request(url, request), ...rest);
+        // Stamp the real domain origin so the SSR head builds canonical/og/hreflang
+        // against the custom domain root, not the internal /sites/:id origin.
+        const rewritten = new Request(url, request);
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        rewritten.headers.set('x-plume-site-origin', `${proto}://${host}`);
+        return startHandler(rewritten, ...rest);
       }
     }
   }

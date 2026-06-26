@@ -12,7 +12,7 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
   await assertProjectInOrg(organizationId, projectId);
   const since = rangeStart(range);
 
-  const [totalViews, sessionGroups, topPages, topSearches, referrerGroups, events] = await Promise.all([
+  const [totalViews, sessionGroups, topPages, topSearches, referrerGroups, languageGroups, events] = await Promise.all([
     prisma.analyticsEvent.count({ where: { projectId, type: 'pageview', createdAt: { gte: since } } }),
     prisma.analyticsEvent.groupBy({ by: ['sessionId'], where: { projectId, type: 'pageview', createdAt: { gte: since }, sessionId: { not: null } } }),
     prisma.analyticsEvent.groupBy({
@@ -35,6 +35,13 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
       _count: { _all: true },
       orderBy: { _count: { referrer: 'desc' } },
       take: 8,
+    }),
+    prisma.analyticsEvent.groupBy({
+      by: ['language'],
+      where: { projectId, type: 'pageview', createdAt: { gte: since }, language: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { language: 'desc' } },
+      take: 12,
     }),
     prisma.analyticsEvent.findMany({ where: { projectId, type: 'pageview', createdAt: { gte: since } }, select: { createdAt: true } }),
   ]);
@@ -59,6 +66,7 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
     topPages: topPages.map((p) => ({ path: p.path ?? '', views: p._count._all })),
     topSearches: topSearches.map((s) => ({ query: s.query ?? '', count: s._count._all })),
     referrers: referrerGroups.map((r) => ({ referrer: r.referrer ?? '', views: r._count._all })),
+    languages: languageGroups.map((l) => ({ language: l.language ?? 'unknown', views: l._count._all })),
   };
 };
 
@@ -179,5 +187,6 @@ export const trackEvent = (projectId: string, body: TrackEventBody, meta?: { cou
       sessionId: body.sessionId ?? null,
       country: meta?.country ?? null,
       device: meta?.device ?? null,
+      language: body.language ?? null,
     },
   });

@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MobileNav } from '@/components/site/mobile-nav';
+import { PageIcon } from '@/components/site/page-icon';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
@@ -13,6 +14,7 @@ import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { siteHead } from '@/lib/site-seo';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteChrome,
@@ -150,6 +152,8 @@ function SiteChrome() {
 
   const accent = config?.styling?.primaryColor ?? site?.project.color ?? '#5546e8';
   const navLinks = config?.navbar?.links ?? [];
+  const navTabs = config?.navbar?.tabs ?? [];
+  const navAnchors = config?.navbar?.anchors ?? [];
   const ctaLabel = config?.navbar?.ctaLabel;
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
@@ -240,9 +244,51 @@ function SiteChrome() {
         </div>
       </header>
 
+      {navTabs.length > 0 ? (
+        <div className="border-border border-b bg-background">
+          <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-1 overflow-x-auto px-6">
+            {navTabs.map((tab) => {
+              const prefix = tab.href.replace(/^\/+/, '').replace(/\/+$/, '');
+              const active = !tab.external && prefix !== '' && (effectiveCurrentPath === prefix || effectiveCurrentPath.startsWith(`${prefix}/`));
+              return (
+                <a
+                  key={`${tab.label}-${tab.href}`}
+                  href={tab.href}
+                  target={tab.external ? '_blank' : undefined}
+                  rel={tab.external ? 'noreferrer' : undefined}
+                  className={cn(
+                    'inline-flex h-full shrink-0 items-center border-b-2 px-3 text-sm transition-colors',
+                    active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {tab.label}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-[260px_1fr]">
         <aside className="hidden border-border border-e lg:block">
           <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4">
+            {navAnchors.length > 0 ? (
+              <ul className="space-y-0.5 border-border border-b py-4">
+                {navAnchors.map((anchor) => (
+                  <li key={`${anchor.label}-${anchor.href}`}>
+                    <a
+                      href={anchor.href}
+                      target={anchor.external ? '_blank' : undefined}
+                      rel={anchor.external ? 'noreferrer' : undefined}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-foreground/75 text-sm transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <PageIcon name={anchor.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="truncate">{anchor.label}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {isPending ? (
               <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
             ) : (

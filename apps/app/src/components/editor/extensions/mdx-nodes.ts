@@ -71,6 +71,9 @@ const boolAttr = (name: string): Attributes => ({
   },
 });
 
+/** Merge several string attributes by name. */
+const stringAttrs = (...names: string[]): Attributes => Object.assign({}, ...names.map(stringAttr));
+
 /** A simple wrapper node (no title) holding `content`, e.g. Steps / Tabs / CardGroup. */
 const containerNode = (config: { name: string; tag: string; content: string; className: string; attrs?: Attributes; attrKeys?: string[] }) =>
   Node.create({
@@ -148,5 +151,65 @@ export const Accordion = titledNode({
 // ─── Frame ──────────────────────────────────────────────────────────────────
 export const Frame = titledNode({ name: 'mdxFrame', tag: 'Frame', className: 'pl-frame', attrs: stringAttr('caption'), attrKeys: ['caption'] });
 
-/** All MDX component nodes, for the editor's extension list. */
-export const mdxNodes = [Steps, Step, CardGroup, Card, Tabs, Tab, AccordionGroup, Accordion, Frame];
+// ─── Expandable (collapsible disclosure) ──────────────────────────────────────
+export const Expandable = titledNode({
+  name: 'mdxExpandable',
+  tag: 'Expandable',
+  className: 'pl-expandable',
+  attrs: { ...stringAttr('title'), ...boolAttr('defaultOpen') },
+  attrKeys: ['title', 'defaultOpen'],
+});
+
+// ─── Update (changelog entry) ─────────────────────────────────────────────────
+export const Update = containerNode({
+  name: 'mdxUpdate',
+  tag: 'Update',
+  content: 'block+',
+  className: 'pl-update',
+  attrs: { ...stringAttr('label'), ...stringAttr('description') },
+  attrKeys: ['label', 'description'],
+});
+
+// ─── API reference: ParamField / ResponseField ────────────────────────────────
+// Modeled as block components so they round-trip losslessly (their attributes are
+// preserved through serialize/parse). Inline attribute editing is a follow-up; the
+// body (description) is fully editable.
+export const ParamField = containerNode({
+  name: 'mdxParamField',
+  tag: 'ParamField',
+  content: 'block+',
+  className: 'pl-paramfield',
+  attrs: stringAttrs('path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'),
+  attrKeys: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
+});
+export const ResponseField = containerNode({
+  name: 'mdxResponseField',
+  tag: 'ResponseField',
+  content: 'block+',
+  className: 'pl-responsefield',
+  attrs: stringAttrs('name', 'type', 'required', 'default', 'deprecated'),
+  attrKeys: ['name', 'type', 'required', 'default', 'deprecated'],
+});
+
+// ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
+export const CodeGroup = containerNode({ name: 'mdxCodeGroup', tag: 'CodeGroup', content: 'block+', className: 'pl-codegroup' });
+
+/** All MDX component nodes, for the editor's extension list. Modeling every
+ *  renderer-supported component here is what keeps the editor↔live-site round-trip
+ *  lossless — an unmodeled tag would be silently dropped on the next save. */
+export const mdxNodes = [
+  Steps,
+  Step,
+  CardGroup,
+  Card,
+  Tabs,
+  Tab,
+  AccordionGroup,
+  Accordion,
+  Frame,
+  Expandable,
+  Update,
+  ParamField,
+  ResponseField,
+  CodeGroup,
+];

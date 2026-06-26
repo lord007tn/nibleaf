@@ -247,6 +247,76 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
+    titleKey: 'editor.slash.expandable.title',
+    descKey: 'editor.slash.expandable.desc',
+    icon: ListCollapse,
+    glyph: '⊕',
+    keywords: ['expandable', 'collapse', 'disclosure', 'details'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxExpandable', attrs: { title: 'Show details' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.update.title',
+    descKey: 'editor.slash.update.desc',
+    icon: ListChecks,
+    glyph: '✚',
+    keywords: ['update', 'changelog', 'release', 'version'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxUpdate', attrs: { label: 'v1.0.0' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.paramField.title',
+    descKey: 'editor.slash.paramField.desc',
+    icon: Code2,
+    glyph: '𝑝',
+    keywords: ['param', 'parameter', 'api', 'field', 'request'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxParamField', attrs: { name: 'id', type: 'string' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.responseField.title',
+    descKey: 'editor.slash.responseField.desc',
+    icon: Code2,
+    glyph: '𝑟',
+    keywords: ['response', 'api', 'field', 'return'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxResponseField', attrs: { name: 'id', type: 'string' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.codeGroup.title',
+    descKey: 'editor.slash.codeGroup.desc',
+    icon: Code2,
+    glyph: '❐',
+    keywords: ['code', 'group', 'tabs', 'languages'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxCodeGroup', content: [{ type: 'codeBlock', attrs: { language: 'bash' } }] })
+        .run(),
+  },
+  {
     titleKey: 'editor.slash.divider.title',
     descKey: 'editor.slash.divider.desc',
     icon: Minus,

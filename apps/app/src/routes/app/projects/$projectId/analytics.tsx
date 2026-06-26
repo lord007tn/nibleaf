@@ -63,7 +63,14 @@ function AnalyticsPage() {
               <YAxis allowDecimals={false} fontSize={11} stroke="var(--muted-foreground)" tickLine={false} axisLine={false} width={28} />
               <Tooltip contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 12 }} />
               {/* Show a dot for tiny series (e.g. 24h = 1 point) so it isn't invisible. */}
-              <Area dataKey="views" fill="url(#views)" stroke="var(--chart-1)" strokeWidth={2} type="monotone" dot={(data?.timeseries?.length ?? 0) <= 2} />
+              <Area
+                dataKey="views"
+                fill="url(#views)"
+                stroke="var(--chart-1)"
+                strokeWidth={2}
+                type="monotone"
+                dot={(data?.timeseries?.length ?? 0) <= 2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -80,9 +87,26 @@ function AnalyticsPage() {
           empty={t('analytics.empty.searches')}
           items={(data?.topSearches ?? []).map((s) => ({ label: s.query, value: s.count }))}
         />
+        <ListCard
+          title={t('analytics.section.languages')}
+          empty={t('analytics.empty.pageviews')}
+          items={(data?.languages ?? []).map((l) => ({ label: languageName(l.language), value: l.views }))}
+        />
       </div>
     </div>
   );
+}
+
+/** A language code's endonym (e.g. "ar" → "العربية"), falling back to the code. */
+function languageName(code: string): string {
+  if (code === 'unknown') {
+    return code;
+  }
+  try {
+    return new Intl.DisplayNames([code], { type: 'language' }).of(code) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
 }
 
 function StatCard({ label, value, loading }: { label: string; value: number; loading: boolean }) {

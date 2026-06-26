@@ -43,6 +43,7 @@ export function PageSettingsDialog({
   const [ogImage, setOgImage] = useState(page.config?.seo?.ogImage ?? '');
   const [canonicalUrl, setCanonicalUrl] = useState(page.config?.seo?.canonicalUrl ?? '');
   const [noindex, setNoindex] = useState(page.config?.seo?.noindex ?? false);
+  const [translationKey, setTranslationKey] = useState(page.translationKey ?? '');
   // Behaviour
   const [mode, setMode] = useState<PageMode>(page.config?.mode ?? 'default');
   const [hideToc, setHideToc] = useState(page.config?.hideToc ?? false);
@@ -62,6 +63,7 @@ export function PageSettingsDialog({
     setOgImage(page.config?.seo?.ogImage ?? '');
     setCanonicalUrl(page.config?.seo?.canonicalUrl ?? '');
     setNoindex(page.config?.seo?.noindex ?? false);
+    setTranslationKey(page.translationKey ?? '');
     setMode(page.config?.mode ?? 'default');
     setHideToc(page.config?.hideToc ?? false);
   }, [open, page]);
@@ -92,7 +94,14 @@ export function PageSettingsDialog({
     update.mutate(
       {
         pageId: page.id,
-        body: { slug: slug.trim(), icon: icon.trim() || null, description: description.trim() || null, hidden, config: hasOverride ? config : null },
+        body: {
+          slug: slug.trim(),
+          icon: icon.trim() || null,
+          description: description.trim() || null,
+          hidden,
+          translationKey: translationKey.trim() || null,
+          config: hasOverride ? config : null,
+        },
       },
       {
         onSuccess: () => {
@@ -169,6 +178,14 @@ export function PageSettingsDialog({
               checked={noindex}
               onCheckedChange={setNoindex}
             />
+            <Field label={t('editor.pageSettings.translationKey')} hint={t('editor.pageSettings.translationKeyHint')} htmlFor="page-translation-key">
+              <Input
+                id="page-translation-key"
+                value={translationKey}
+                onChange={(e) => setTranslationKey(e.target.value)}
+                placeholder="getting-started"
+              />
+            </Field>
           </TabsContent>
 
           {/* Behaviour */}

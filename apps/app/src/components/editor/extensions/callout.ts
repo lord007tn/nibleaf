@@ -4,7 +4,8 @@ import type { MarkdownNodeSpec } from 'tiptap-markdown';
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
 export const CALLOUT_VARIANTS = {
   note: { icon: '💡', keyword: 'NOTE', label: 'Note' },
-  tip: { icon: '✅', keyword: 'TIP', label: 'Tip' },
+  tip: { icon: '💡', keyword: 'TIP', label: 'Tip' },
+  check: { icon: '✅', keyword: 'CHECK', label: 'Check' },
   warning: { icon: '⚠️', keyword: 'WARNING', label: 'Warning' },
   danger: { icon: '🚫', keyword: 'CAUTION', label: 'Caution' },
   info: { icon: 'ℹ️', keyword: 'IMPORTANT', label: 'Info' },

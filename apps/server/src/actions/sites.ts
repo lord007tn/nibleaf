@@ -136,14 +136,21 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const breadcrumbs = breadcrumbTrail(pages, page);
 
   const pageLanguage = snapshot.project.languages.find((l) => l.code === navLanguage);
-  // hreflang alternates: a page "corresponds" across languages only when another
-  // language has a page at the SAME path (the one deterministic cross-language
-  // link, since per-language slugs are independent). Languages without a matching
-  // page get path:null and are omitted from hreflang — so we never point a
-  // crawler at a missing or wrong-language URL.
+  // hreflang alternates: link this page to its translations. When the page has a
+  // `translationKey`, match by that (so languages whose slugs differ — e.g. EN
+  // "introduction-merged" ↔ AR "introduction" — still pair up, using each
+  // language's OWN path). Otherwise fall back to a same-path match. Languages with
+  // no corresponding page get path:null and are omitted from hreflang, so we never
+  // point a crawler at a missing or wrong-language URL.
   const alternates = snapshot.project.languages.map((l) => {
-    const has = snapshot.pages.some((p) => p.languageCode === l.code && p.path === page.path && p.kind === 'PAGE' && !p.hidden);
-    return { code: l.code, isDefault: l.isDefault, path: has ? page.path : null };
+    const sibling = snapshot.pages.find(
+      (p) =>
+        p.languageCode === l.code &&
+        p.kind === 'PAGE' &&
+        !p.hidden &&
+        (page.translationKey ? p.translationKey === page.translationKey : p.path === page.path),
+    );
+    return { code: l.code, isDefault: l.isDefault, path: sibling ? sibling.path : null };
   });
   return {
     project: snapshot.project,

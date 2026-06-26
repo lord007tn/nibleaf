@@ -46,6 +46,7 @@ export interface PageNode {
   icon: string | null;
   description: string | null;
   config?: PageConfig | null;
+  translationKey?: string | null;
   position: number;
   hidden: boolean;
   updatedAt: string;
@@ -140,6 +141,7 @@ export interface AnalyticsOverview {
   topPages: Array<{ path: string; views: number }>;
   topSearches: Array<{ query: string; count: number }>;
   referrers: Array<{ referrer: string; views: number }>;
+  languages: Array<{ language: string; views: number }>;
 }
 
 export interface WorkspaceAnalytics {

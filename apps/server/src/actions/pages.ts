@@ -17,6 +17,7 @@ const pageListSelect = {
   icon: true,
   description: true,
   config: true,
+  translationKey: true,
   position: true,
   hidden: true,
   updatedAt: true,
@@ -175,6 +176,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
       ...(body.description === undefined ? {} : { description: body.description }),
       ...(body.content === undefined ? {} : { content: body.content }),
       ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
+      ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
       ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
     },
   });

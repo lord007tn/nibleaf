@@ -32,11 +32,17 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
       api.api.public.sites[':id'].events
         .$post({
           param: { id: projectId },
-          json: { type: 'pageview', path: data.page.path, sessionId: sessionId(), referrer: document.referrer || undefined },
+          json: {
+            type: 'pageview',
+            path: data.page.path,
+            sessionId: sessionId(),
+            referrer: document.referrer || undefined,
+            language: data.activeLanguage ?? lang,
+          },
         })
         .catch(() => undefined);
     }
-  }, [data?.page.path, projectId]);
+  }, [data?.page.path, data?.activeLanguage, lang, projectId]);
 
   if (isPending) {
     return <div className="px-10 py-12 text-muted-foreground text-sm">{t('loading')}</div>;

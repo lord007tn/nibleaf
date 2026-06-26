@@ -36,6 +36,7 @@ const url = z
   .max(500)
   .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
+const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
 const redirectPair = z.object({ from: z.string().max(300), to: z.string().max(300) }).strict();
 const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) }).strict();
 
@@ -78,6 +79,10 @@ export const projectConfigSchema = z
         ctaLabel: z.string().max(60).optional(),
         ctaUrl: url.optional(),
         links: z.array(navLink).max(20).optional(),
+        // Top-level tabs (a secondary nav row) and pinned sidebar anchors —
+        // Mintlify-style IA primitives for larger docs.
+        tabs: z.array(navLink).max(10).optional(),
+        anchors: z.array(navAnchor).max(12).optional(),
         showSearch: z.boolean().optional(),
       })
       .strict()
@@ -269,6 +274,7 @@ export const updatePageBody = z.object({
   description: z.string().max(500).nullable().optional(),
   content: z.string().optional(),
   config: pageConfigSchema.nullable().optional(),
+  translationKey: z.string().max(120).nullable().optional(),
   hidden: z.boolean().optional(),
 });
 export type UpdatePageBody = z.infer<typeof updatePageBody>;
@@ -356,6 +362,7 @@ export const trackEventBody = z.object({
   referrer: z.string().max(512).optional(),
   query: z.string().max(200).optional(),
   sessionId: z.string().max(64).optional(),
+  language: z.string().max(35).optional(),
 });
 export type TrackEventBody = z.infer<typeof trackEventBody>;
 

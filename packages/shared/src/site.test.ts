@@ -43,6 +43,7 @@ const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotP
   description: null,
   content: '',
   config: null,
+  translationKey: null,
   position: 0,
   hidden: false,
   ...over,
@@ -101,6 +102,7 @@ describe('buildSnapshot', () => {
     icon: null,
     description: null,
     content: '',
+    translationKey: null,
     position: 0,
     hidden: false,
   };

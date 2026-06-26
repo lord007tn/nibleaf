@@ -27,6 +27,8 @@ export interface SnapshotPage {
   description: string | null;
   content: string;
   config: SnapshotPageConfig | null;
+  /** Links this page to its translations in other languages (see Page.translationKey). */
+  translationKey: string | null;
   position: number;
   hidden: boolean;
 }
@@ -189,6 +191,7 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
       kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE',
       languageCode: page.languageCode || fallbackCode,
       config: (page.config as SnapshotPageConfig | null) ?? null,
+      translationKey: page.translationKey ?? null,
     })),
     generatedAt,
   };

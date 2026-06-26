@@ -254,6 +254,10 @@ model Page {
   /// canonicalUrl, noindex }, sidebarTitle, mode: 'default'|'wide'|'center',
   /// hideToc }. Layered over language.config + project.config on the live site.
   config      Json?
+  /// Links the same logical page across languages whose slugs differ (e.g. EN
+  /// "introduction-merged" ↔ AR "introduction"), so hreflang alternates pair up
+  /// even when paths don't match. Shared by all language variants of one page.
+  translationKey String?
   position    Int       @default(0)
   hidden      Boolean   @default(false)
   createdAt   DateTime  @default(now())
@@ -263,6 +267,7 @@ model Page {
 
   @@index([projectId, languageId, path])
   @@index([projectId, parentId])
+  @@index([projectId, translationKey])
   @@index([languageId])
   @@index([branchId])
   @@map("page")
@@ -362,6 +367,7 @@ model AnalyticsEvent {
   referrer  String?
   country   String?
   device    String?
+  language  String? // active language code at view time (e.g. "en", "ar")
   sessionId String?
   query     String? // for search events
   createdAt DateTime @default(now())
