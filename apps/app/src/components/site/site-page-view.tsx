@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { Markdown } from '@/components/markdown';
+import { TableOfContents } from '@/components/site/toc';
 import { useSitePage } from '@/hooks/api';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
@@ -67,7 +68,17 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
         {breadcrumbs.length > 1 ? (
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
             {breadcrumbs.slice(0, -1).map((crumb) => (
-              <span key={crumb.path}>{crumb.title} /</span>
+              <span key={crumb.path} className="flex items-center gap-1.5">
+                <Link
+                  to="/sites/$projectId/$"
+                  params={{ projectId, _splat: crumb.path }}
+                  search={{ lang }}
+                  className="transition-colors hover:text-foreground"
+                >
+                  {crumb.title}
+                </Link>
+                <span aria-hidden>/</span>
+              </span>
             ))}
           </div>
         ) : null}
@@ -112,24 +123,7 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
       </article>
 
       {/* Table of contents — hidden in wide/center mode or when hideToc is set */}
-      <aside className="hidden xl:block">
-        {showToc ? (
-          <div className="sticky top-20">
-            <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('onThisPage')}</div>
-            <ul className="space-y-1.5 border-border border-s ps-3 text-sm">
-              {page.headings
-                .filter((h) => h.depth <= 3)
-                .map((heading) => (
-                  <li key={heading.id} style={{ paddingInlineStart: (heading.depth - 1) * 8 }}>
-                    <a className="text-muted-foreground transition-colors hover:text-foreground" href={`#${heading.id}`}>
-                      {heading.text}
-                    </a>
-                  </li>
-                ))}
-            </ul>
-          </div>
-        ) : null}
-      </aside>
+      <aside className="hidden xl:block">{showToc ? <TableOfContents headings={page.headings} label={t('onThisPage')} /> : null}</aside>
     </div>
   );
 }

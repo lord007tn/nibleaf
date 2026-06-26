@@ -3,8 +3,9 @@ import { BookOpen, ExternalLink, Moon, Search, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
+import { MobileNav } from '@/components/site/mobile-nav';
 import { SiteBanner } from '@/components/site/site-banner';
-import { SiteNav } from '@/components/site/site-nav';
+import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { useSite } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
@@ -71,6 +72,9 @@ function SiteChrome() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
   const isChangelog = currentPath === 'changelog';
+  // The home route (empty path) renders the site's first page server-side, so
+  // highlight that page's nav entry rather than leaving the sidebar inert.
+  const effectiveCurrentPath = currentPath || firstLeafPath(site?.nav ?? []) || '';
 
   // Config is a free-form JSON blob server-side; treat every field as optional.
   const config = (site?.project.config ?? null) as unknown as ProjectConfig | null;
@@ -186,6 +190,7 @@ function SiteChrome() {
 
       <header className="sticky top-0 z-30 border-border border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-6">
+          <MobileNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} label={t('docs')} />
           <Link to="/sites/$projectId" params={{ projectId }} search={{ lang }} className="flex items-center gap-2 font-semibold tracking-tight">
             {site?.project.logoUrl ? (
               <img src={site.project.logoUrl} alt={site.project.name ?? 'Logo'} className="h-7 w-auto object-contain" />
@@ -261,7 +266,7 @@ function SiteChrome() {
             {isPending ? (
               <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
             ) : (
-              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={currentPath} lang={lang} />
+              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} />
             )}
           </div>
         </aside>

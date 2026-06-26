@@ -1,5 +1,5 @@
-import { AlertTriangle, Check, ChevronDown, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
-import { Children, isValidElement, type ReactNode, useState } from 'react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
+import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { cn } from '@/lib/utils';
@@ -154,5 +154,194 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
     <span className="cursor-help underline decoration-dotted underline-offset-2" title={tip}>
       {children}
     </span>
+  );
+}
+
+// ─── Inline icon ──────────────────────────────────────────────────────────────
+
+export function Icon({ icon, name, color, size }: { icon?: string; name?: string; color?: string; size?: string | number }) {
+  const resolved = icon ?? name;
+  if (!resolved) {
+    return null;
+  }
+  const px = typeof size === 'number' ? size : Number(String(size ?? '').replace(/[^0-9.]/g, '')) || undefined;
+  const style: CSSProperties = { color };
+  if (px) {
+    style.width = px;
+    style.height = px;
+  }
+  return (
+    <span className="inline-flex align-text-bottom" style={style}>
+      <PageIcon name={resolved} className={px ? 'h-full w-full' : 'size-[1.1em]'} />
+    </span>
+  );
+}
+
+// ─── API reference: ParamField / ResponseField / Expandable ───────────────────
+
+const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
+
+function FieldRow({
+  name,
+  type,
+  required,
+  defaultValue,
+  deprecated,
+  children,
+}: {
+  name?: string;
+  type?: string;
+  required?: unknown;
+  defaultValue?: string;
+  deprecated?: unknown;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="border-border border-b py-3 first:pt-0 last:border-b-0">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {name ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold text-[0.8rem]">{name}</code> : null}
+        {type ? <span className="font-mono text-muted-foreground text-xs">{type}</span> : null}
+        {truthyAttr(required) ? (
+          <span className="font-medium text-[11px] text-red-600 uppercase tracking-wide dark:text-red-400">required</span>
+        ) : null}
+        {truthyAttr(deprecated) ? (
+          <span className="font-medium text-[11px] text-amber-600 uppercase tracking-wide dark:text-amber-400">deprecated</span>
+        ) : null}
+        {defaultValue ? (
+          <span className="text-muted-foreground text-xs">
+            default: <code className="font-mono">{defaultValue}</code>
+          </span>
+        ) : null}
+      </div>
+      {children ? <div className="mt-1.5 text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
+    </div>
+  );
+}
+
+export function ParamField({
+  path,
+  query,
+  header,
+  body,
+  name,
+  type,
+  required,
+  default: defaultValue,
+  deprecated,
+  children,
+}: {
+  path?: string;
+  query?: string;
+  header?: string;
+  body?: string;
+  name?: string;
+  type?: string;
+  required?: unknown;
+  default?: string;
+  deprecated?: unknown;
+  children?: ReactNode;
+}) {
+  return (
+    <FieldRow name={path ?? query ?? header ?? body ?? name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated}>
+      {children}
+    </FieldRow>
+  );
+}
+
+export function ResponseField({
+  name,
+  type,
+  required,
+  default: defaultValue,
+  deprecated,
+  children,
+}: {
+  name?: string;
+  type?: string;
+  required?: unknown;
+  default?: string;
+  deprecated?: unknown;
+  children?: ReactNode;
+}) {
+  return (
+    <FieldRow name={name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated}>
+      {children}
+    </FieldRow>
+  );
+}
+
+export function Expandable({ title, defaultOpen, children }: { title?: string; defaultOpen?: string | boolean; children?: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
+  return (
+    <div className="my-4 overflow-hidden rounded-xl border border-border">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-start font-medium text-sm"
+      >
+        <ChevronRight className={cn('size-4 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} aria-hidden />
+        {title ?? 'Show properties'}
+      </button>
+      {open ? <div className="border-border border-t px-4 py-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
+    </div>
+  );
+}
+
+// ─── Update (changelog entry) ─────────────────────────────────────────────────
+
+export function Update({ label, description, children }: { label?: string; description?: string; children?: ReactNode }) {
+  return (
+    <div className="my-6 border-border border-s ps-6">
+      {label ? (
+        <span className="-ms-[calc(1.5rem+0.5px)] mb-2 inline-block rounded-full border border-border bg-card px-3 py-0.5 font-medium text-xs">
+          {label}
+        </span>
+      ) : null}
+      {description ? <div className="mb-2 text-muted-foreground text-sm">{description}</div> : null}
+      <div className="[&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div>
+    </div>
+  );
+}
+
+// ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
+
+type CodeProps = { className?: string; 'data-title'?: string; 'data-lang'?: string };
+type PreElement = ReactElement<{ 'data-title'?: string; 'data-lang'?: string; children?: { props?: CodeProps } }>;
+
+export function CodeGroup({ children }: { children?: ReactNode }) {
+  const blocks = Children.toArray(children).filter(isValidElement) as PreElement[];
+  const [active, setActive] = useState(0);
+  if (blocks.length === 0) {
+    return null;
+  }
+  const labelFor = (block: PreElement, index: number): string => {
+    const code = block.props?.children;
+    const title = block.props?.['data-title'] ?? code?.props?.['data-title'];
+    if (title) {
+      return title;
+    }
+    const lang = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
+    return lang ? lang.toUpperCase() : `Tab ${index + 1}`;
+  };
+  return (
+    <div className="my-5 overflow-hidden rounded-xl border border-border">
+      <div className="flex gap-1 overflow-x-auto border-border border-b bg-muted/40 px-2 pt-1.5">
+        {blocks.map((block, index) => (
+          <button
+            key={block.key}
+            type="button"
+            onClick={() => setActive(index)}
+            className={cn(
+              '-mb-px shrink-0 cursor-pointer rounded-t-md border-b-2 px-3 py-1.5 font-mono text-xs transition-colors',
+              index === active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {labelFor(block, index)}
+          </button>
+        ))}
+      </div>
+      <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0">{blocks[active]}</div>
+    </div>
   );
 }

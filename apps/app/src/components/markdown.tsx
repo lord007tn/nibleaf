@@ -1,23 +1,51 @@
+import 'katex/dist/katex.min.css';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
+import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
-import { Accordion, AccordionGroup, Callout, Card, CardGroup, Frame, Step, Steps, Tab, Tabs, Tooltip } from '@/components/site/mdx-components';
-import { normalizeMdxBlocks, remarkCallouts, sanitizeSchema } from '@/components/site/mdx-config';
+import remarkMath from 'remark-math';
+import {
+  Accordion,
+  AccordionGroup,
+  Callout,
+  Card,
+  CardGroup,
+  CodeGroup,
+  Expandable,
+  Frame,
+  Icon,
+  ParamField,
+  ResponseField,
+  Step,
+  Steps,
+  Tab,
+  Tabs,
+  Tooltip,
+  Update,
+} from '@/components/site/mdx-components';
+import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
+import { MermaidBlock } from '@/components/site/mermaid-block';
 import { cn } from '@/lib/utils';
 
-/** A code block with a one-click copy button (Mintlify-style). */
+/** A code block with a one-click copy button (Mintlify-style). When the fence
+ *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
+ *  filename header bar is drawn; otherwise the language shows as a floating badge. */
 function Pre(props: ComponentProps<'pre'>) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
-  // Language is on the child <code class="language-xxx"> (set from the fence info).
-  const child = props.children as { props?: { className?: string } } | null | undefined;
-  const lang = /language-([\w+#-]+)/.exec(child?.props?.className ?? '')?.[1];
+  // Language + optional title come from the fence meta. mdast→hast may attach
+  // them to this <pre> or to the child <code>, so check both.
+  const ownProps = props as ComponentProps<'pre'> & { 'data-title'?: string; 'data-lang'?: string };
+  const child = props.children as { props?: { className?: string; 'data-title'?: string; 'data-lang'?: string } } | null | undefined;
+  const cls = child?.props?.className ?? '';
+  const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
+  const title = ownProps['data-title'] ?? child?.props?.['data-title'];
   const copy = () => {
     const text = ref.current?.innerText ?? '';
     navigator.clipboard
@@ -28,20 +56,38 @@ function Pre(props: ComponentProps<'pre'>) {
       })
       .catch(() => undefined);
   };
+  const copyButton = (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={copied ? 'Copied' : 'Copy code'}
+      className={cn(
+        'grid size-7 cursor-pointer place-items-center rounded-md border border-white/15 bg-white/10 text-white/70 transition-opacity hover:text-white',
+        title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+      )}
+    >
+      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+    </button>
+  );
   return (
     <div className="group relative my-5 overflow-hidden rounded-xl border border-border bg-[#0d1117]">
-      {lang ? (
-        <span className="absolute start-3 top-2.5 z-10 font-mono text-[11px] text-white/40 uppercase tracking-wide [direction:ltr]">{lang}</span>
-      ) : null}
-      <button
-        type="button"
-        onClick={copy}
-        aria-label={copied ? 'Copied' : 'Copy code'}
-        className="absolute end-2 top-2 z-10 grid size-7 cursor-pointer place-items-center rounded-md border border-white/15 bg-white/10 text-white/70 opacity-0 transition-opacity hover:text-white focus-visible:opacity-100 group-hover:opacity-100"
-      >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-      </button>
-      <pre ref={ref} className={cn('overflow-x-auto p-4 text-sm leading-relaxed [direction:ltr]', lang && 'pt-9')} {...props} />
+      {title ? (
+        <div className="flex items-center justify-between gap-3 border-white/10 border-b bg-white/5 px-4 py-2 [direction:ltr]">
+          <span className="truncate font-mono text-[12px] text-white/70">{title}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            {lang ? <span className="font-mono text-[10px] text-white/35 uppercase">{lang}</span> : null}
+            {copyButton}
+          </div>
+        </div>
+      ) : (
+        <>
+          {lang ? (
+            <span className="absolute start-3 top-2.5 z-10 font-mono text-[11px] text-white/40 uppercase tracking-wide [direction:ltr]">{lang}</span>
+          ) : null}
+          {copyButton}
+        </>
+      )}
+      <pre ref={ref} className={cn('overflow-x-auto p-4 text-sm leading-relaxed [direction:ltr]', !title && lang && 'pt-9')} {...props} />
     </div>
   );
 }
@@ -115,6 +161,39 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
   step: ({ title, children }) => <Step title={str(title)}>{children}</Step>,
   mdxframe: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
   tooltip: ({ tip, children }) => <Tooltip tip={str(tip)}>{children}</Tooltip>,
+  icon: ({ icon, name, color, size }) => <Icon icon={str(icon)} name={str(name)} color={str(color)} size={str(size)} />,
+  update: ({ label, description, children }) => (
+    <Update label={str(label)} description={str(description)}>
+      {children}
+    </Update>
+  ),
+  codegroup: ({ children }) => <CodeGroup>{children}</CodeGroup>,
+  expandable: ({ title, defaultopen, children }) => (
+    <Expandable title={str(title)} defaultOpen={str(defaultopen)}>
+      {children}
+    </Expandable>
+  ),
+  paramfield: ({ path, query, header, body, name, type, required, default: def, deprecated, children }) => (
+    <ParamField
+      path={str(path)}
+      query={str(query)}
+      header={str(header)}
+      body={str(body)}
+      name={str(name)}
+      type={str(type)}
+      required={required}
+      default={str(def)}
+      deprecated={deprecated}
+    >
+      {children}
+    </ParamField>
+  ),
+  responsefield: ({ name, type, required, default: def, deprecated, children }) => (
+    <ResponseField name={str(name)} type={str(type)} required={required} default={str(def)} deprecated={deprecated}>
+      {children}
+    </ResponseField>
+  ),
+  mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
 const components = { ...htmlComponents, ...mdxComponents } as Components;
@@ -126,8 +205,16 @@ export function Markdown({ content, className }: { content: string; className?: 
     <div className={cn('text-[15px]', className)}>
       <ReactMarkdown
         components={components}
-        remarkPlugins={[remarkGfm, remarkCallouts]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema], rehypeSlug, [rehypeAutolinkHeadings, { behavior: 'wrap' }], rehypeHighlight]}
+        remarkPlugins={[remarkGfm, remarkMath, remarkCallouts, remarkCodeMeta]}
+        rehypePlugins={[
+          rehypeRaw,
+          [rehypeSanitize, sanitizeSchema],
+          rehypeMermaid,
+          rehypeKatex,
+          rehypeSlug,
+          [rehypeAutolinkHeadings, { behavior: 'wrap' }],
+          rehypeHighlight,
+        ]}
       >
         {normalizeMdxBlocks(content)}
       </ReactMarkdown>
