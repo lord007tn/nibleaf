@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig, useUploadAsset } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { FIELD_INPUT, FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
+import { FIELD_INPUT, FIELD_MONO, FIELD_TEXTAREA, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function SeoSection({ project }: { project: Project }) {
   const t = useT();
@@ -63,7 +63,7 @@ export function SeoSection({ project }: { project: Project }) {
         {(field) => (
           <Field hint={t('settings.seo.metaDescription.hint')} label={t('settings.seo.metaDescription.label')}>
             <Textarea
-              className="min-h-[84px] rounded-[10px] text-sm"
+              className={FIELD_TEXTAREA}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={project.description ?? undefined}
               value={field.state.value}

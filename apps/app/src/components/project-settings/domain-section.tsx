@@ -6,7 +6,7 @@ import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useVerifyDomain } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { SectionHeader } from './shared';
+import { FIELD_MONO, SectionHeader } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
@@ -42,13 +42,8 @@ export function DomainSection({ project }: { project: Project }) {
           );
         }}
       >
-        <Input
-          className="h-[42px] flex-1 rounded-[10px] font-mono text-sm"
-          onChange={(e) => setDomain(e.target.value)}
-          placeholder="docs.yoursite.com"
-          value={domain}
-        />
-        <Button className="h-[42px] cursor-pointer rounded-[10px]" disabled={add.isPending} type="submit">
+        <Input className={cn(FIELD_MONO, 'flex-1')} onChange={(e) => setDomain(e.target.value)} placeholder="docs.yoursite.com" value={domain} />
+        <Button className="cursor-pointer rounded-[10px]" disabled={add.isPending} type="submit">
           {t('settings.domain.add')}
         </Button>
       </form>

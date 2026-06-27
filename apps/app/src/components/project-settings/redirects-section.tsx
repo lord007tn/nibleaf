@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { SaveBar, SectionHeader, saveConfigSection } from './shared';
+import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 export function RedirectsSection({ project }: { project: Project }) {
   const t = useT();
@@ -42,7 +42,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                     <form.Field name={`redirects[${index}].from`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] rounded-lg font-mono text-[13px]"
+                          className={FIELD_COMPACT_MONO}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/intro"
                           value={sub.state.value}
@@ -53,7 +53,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                     <form.Field name={`redirects[${index}].to`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] rounded-lg font-mono text-[13px]"
+                          className={FIELD_COMPACT_MONO}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/get-started/introduction"
                           value={sub.state.value}

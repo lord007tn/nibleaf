@@ -9,7 +9,7 @@ import { useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { FIELD_INPUT, Field, SaveBar, SectionHeader, Segmented } from './shared';
+import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader, Segmented } from './shared';
 
 /** A small curated set of emoji icons the project can use as its avatar glyph. */
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
@@ -117,7 +117,7 @@ export function GeneralSection({ project }: { project: Project }) {
         {(field) => (
           <Field hint={t('settings.general.description.hint')} htmlFor="set-desc" label={t('settings.general.description.label')}>
             <Textarea
-              className="min-h-[84px] rounded-[10px] text-sm"
+              className={FIELD_TEXTAREA}
               id="set-desc"
               onBlur={field.handleBlur}
               onChange={(e) => field.handleChange(e.target.value)}

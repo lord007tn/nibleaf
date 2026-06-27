@@ -148,7 +148,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Input className="flex-1 font-mono text-[12px]" onFocus={(event) => event.currentTarget.select()} readOnly value={lastInvite.link} />
+            <Input className="flex-1 font-mono text-sm" onFocus={(event) => event.currentTarget.select()} readOnly value={lastInvite.link} />
             <Button
               onClick={async () => {
                 const ok = await copyToClipboard(lastInvite.link);
@@ -199,7 +199,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         )
                       }
                     >
-                      <SelectTrigger className="h-8 w-28">
+                      <SelectTrigger className="h-9 w-28">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

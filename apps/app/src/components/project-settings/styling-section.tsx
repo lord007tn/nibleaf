@@ -6,7 +6,7 @@ import type { Project } from '@/hooks/api';
 import { useUpdateProject, useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
-import { Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
+import { FIELD_MONO, Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
 
 const PRESETS = ['#5546e8', '#0ea5e9', '#16a34a', '#22c55e', '#eab308', '#ea580c', '#ef4444', '#db2777', '#a855f7', '#0f172a'];
 
@@ -153,12 +153,7 @@ export function StylingSection({ project }: { project: Project }) {
 
       <div className="mb-4 flex items-center gap-3.5">
         <span className="size-11 shrink-0 rounded-xl" style={{ background: hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />
-        <Input
-          className="h-[38px] w-[116px] rounded-[9px] font-mono text-[13.5px] uppercase"
-          maxLength={7}
-          onChange={(e) => applyHex(e.target.value)}
-          value={hex}
-        />
+        <Input className={cn(FIELD_MONO, 'w-[116px] uppercase')} maxLength={7} onChange={(e) => applyHex(e.target.value)} value={hex} />
         <span className="text-[12px] text-muted-foreground">{t('settings.styling.pickColor')}</span>
       </div>
 

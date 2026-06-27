@@ -172,6 +172,13 @@ export function SaveBar({ isSubmitting }: { isSubmitting: boolean }) {
   );
 }
 
-/** Shared input styling for the larger 42px-tall fields used across sections. */
-export const FIELD_INPUT = 'h-[42px] rounded-[10px] text-sm';
-export const FIELD_MONO = 'h-[42px] rounded-[10px] font-mono text-[13.5px]';
+/** Shared input styling tokens. These layer on top of the base `Input`/`Textarea`
+ *  spec (height 36px / h-9, rounded-md, focus ring) — callers inherit that, so the
+ *  tokens only carry the font and, for textareas, the taller min-height. */
+export const FIELD_INPUT = 'text-sm';
+export const FIELD_MONO = 'font-mono text-sm';
+export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
+
+/** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter. */
+export const FIELD_COMPACT = 'h-8 rounded-md text-[13px]';
+export const FIELD_COMPACT_MONO = 'h-8 rounded-md font-mono text-[13px]';

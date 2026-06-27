@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { FIELD_INPUT, Field, GroupLabel, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
+import { cn } from '@/lib/utils';
+import { FIELD_COMPACT, FIELD_COMPACT_MONO, FIELD_INPUT, Field, GroupLabel, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function NavbarSection({ project }: { project: Project }) {
   const t = useT();
@@ -78,7 +79,7 @@ export function NavbarSection({ project }: { project: Project }) {
                     <form.Field name={`links[${index}].label`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] flex-1 rounded-lg text-[13px]"
+                          className={cn(FIELD_COMPACT, 'flex-1')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder={t('settings.navbar.links.labelPlaceholder')}
                           value={sub.state.value}
@@ -88,7 +89,7 @@ export function NavbarSection({ project }: { project: Project }) {
                     <form.Field name={`links[${index}].href`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] flex-1 rounded-lg font-mono text-[13px]"
+                          className={cn(FIELD_COMPACT_MONO, 'flex-1')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/docs"
                           value={sub.state.value}

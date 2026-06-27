@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { SaveBar, SectionHeader, saveConfigSection } from './shared';
+import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
 
 export function VariablesSection({ project }: { project: Project }) {
   const t = useT();
@@ -45,7 +45,7 @@ export function VariablesSection({ project }: { project: Project }) {
                     <form.Field name={`variables[${index}].key`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] rounded-lg font-mono text-[13px]"
+                          className={FIELD_COMPACT_MONO}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="product"
                           value={sub.state.value}
@@ -55,7 +55,7 @@ export function VariablesSection({ project }: { project: Project }) {
                     <form.Field name={`variables[${index}].value`}>
                       {(sub) => (
                         <Input
-                          className="h-[34px] rounded-lg font-mono text-[13px]"
+                          className={FIELD_COMPACT_MONO}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="Acme"
                           value={sub.state.value}
