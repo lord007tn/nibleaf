@@ -29,7 +29,7 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
   // meta description are owned by the route's head() so they render server-side.)
   useEffect(() => {
     if (data?.page.path) {
-      api.api.public.sites[':id'].events
+      api.public.sites[':id'].events
         .$post({
           param: { id: projectId },
           json: {

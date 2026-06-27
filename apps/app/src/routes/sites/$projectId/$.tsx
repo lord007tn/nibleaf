@@ -13,7 +13,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   loader: async ({ params, deps }) => {
     try {
       const page = await getData<SitePage>(
-        await api.api.public.sites[':id'].page.$get({
+        await api.public.sites[':id'].page.$get({
           param: { id: params.projectId },
           query: deps.lang ? { path: params._splat ?? '', lang: deps.lang } : { path: params._splat ?? '' },
         }),

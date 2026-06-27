@@ -296,7 +296,7 @@ function EditorPage() {
       ) : activeId && page ? (
         /* Main area: page editor */
         <section className="flex min-w-0 flex-col">
-          <div className="flex items-center gap-3 border-border border-b px-5 py-3">
+          <div className="flex items-center gap-3 px-5 pt-3">
             <Input
               className="h-9 border-0 bg-transparent px-0 font-semibold text-lg shadow-none focus-visible:ring-0"
               onChange={(e) => setTitle(e.target.value)}

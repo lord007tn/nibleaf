@@ -55,7 +55,7 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
     queryKey: queryKeys.deployments.all(project.id),
     enabled: open,
     queryFn: async () =>
-      getData<Deployment[]>(await api.api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
+      getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
     refetchInterval: (query) => {
       const latest = query.state.data?.[0];
       return latest && (latest.status === 'PENDING' || latest.status === 'BUILDING') ? 1500 : false;

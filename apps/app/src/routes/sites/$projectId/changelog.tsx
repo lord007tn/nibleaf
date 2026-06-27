@@ -29,32 +29,37 @@ function SiteChangelog() {
       <h1 className="font-bold text-3xl tracking-tight">{t('changelog')}</h1>
       <p className="mt-1.5 text-muted-foreground text-sm">{t('changelogSubtitle')}</p>
 
-      <div className="mt-9">
+      <div className="mt-10">
         {isPending ? (
           <ChangelogSkeleton />
         ) : !data || data.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t('changelogEmpty')}</p>
         ) : (
-          data.map((entry) => (
-            <div className="grid grid-cols-[120px_1fr] gap-7 pb-8" key={entry.version}>
-              <div className="pt-0.5">
-                <div className="font-mono font-bold text-base text-foreground">v{entry.version}</div>
-                {entry.date ? <div className="mt-1 text-muted-foreground text-xs">{formatDate(entry.date, lang)}</div> : null}
-              </div>
-              <div className="relative border-border border-s ps-7">
-                <span className="absolute top-1 size-2.5 rounded-full bg-primary" style={{ insetInlineStart: -5 }} />
-                <div className="mb-2 flex items-center gap-2.5">
-                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-primary text-xs">
+          <div className="relative ms-1.5 border-border border-s ps-8">
+            {data.map((entry) => (
+              <div className="relative pb-10 last:pb-0" key={entry.version}>
+                {/* timeline node sitting on the rail */}
+                <span
+                  className="absolute top-1.5 grid size-3.5 place-items-center rounded-full border-[3px] border-background bg-primary"
+                  style={{ insetInlineStart: '-2.45rem' }}
+                  aria-hidden
+                />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-mono font-semibold text-foreground text-lg">v{entry.version}</span>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 font-medium text-[11px] text-primary uppercase tracking-wide">
                     {t('changelogRelease')}
                   </span>
+                  {entry.date ? <span className="text-muted-foreground text-xs">{formatDate(entry.date, lang)}</span> : null}
                 </div>
-                <div className="font-semibold text-foreground text-lg tracking-tight">{entry.title}</div>
-                <div className="mt-1.5 text-muted-foreground text-sm">
-                  {entry.pages} {entry.pages === 1 ? t('changelogPage') : t('changelogPages')}
+                <div className="mt-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+                  <div className="font-semibold text-base text-foreground tracking-tight">{entry.title}</div>
+                  <div className="mt-1 text-muted-foreground text-sm">
+                    {entry.pages} {entry.pages === 1 ? t('changelogPage') : t('changelogPages')}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -63,18 +68,15 @@ function SiteChangelog() {
 
 function ChangelogSkeleton() {
   return (
-    <div className="animate-pulse">
+    <div className="relative ms-1.5 animate-pulse border-border border-s ps-8">
       {[0, 1, 2, 3].map((row) => (
-        <div className="grid grid-cols-[120px_1fr] gap-7 pb-8" key={row}>
-          <div className="pt-0.5">
-            <div className="h-4 w-12 rounded bg-muted" />
-            <div className="mt-2 h-3 w-20 rounded bg-muted" />
+        <div className="pb-10" key={row}>
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-10 rounded bg-muted" />
+            <div className="h-4 w-16 rounded-full bg-muted" />
+            <div className="h-3 w-20 rounded bg-muted" />
           </div>
-          <div className="border-border border-s ps-7">
-            <div className="h-5 w-16 rounded-full bg-muted" />
-            <div className="mt-3 h-5 w-48 rounded bg-muted" />
-            <div className="mt-2 h-3 w-16 rounded bg-muted" />
-          </div>
+          <div className="mt-3 h-16 rounded-xl bg-muted" />
         </div>
       ))}
     </div>

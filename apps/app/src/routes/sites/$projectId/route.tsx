@@ -28,7 +28,7 @@ export const Route = createFileRoute('/sites/$projectId')({
   loader: async ({ params, deps }) => {
     try {
       const site = await getData<SiteShell>(
-        await api.api.public.sites[':id'].$get({ param: { id: params.projectId }, query: deps.lang ? { lang: deps.lang } : {} }),
+        await api.public.sites[':id'].$get({ param: { id: params.projectId }, query: deps.lang ? { lang: deps.lang } : {} }),
         'site',
       );
       return { site };

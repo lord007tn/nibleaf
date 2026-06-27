@@ -27,14 +27,14 @@ import type {
 export const useProjects = () =>
   useQuery({
     queryKey: queryKeys.projects.all(),
-    queryFn: async () => getData<Project[]>(await api.api.app.projects.$get(), 'documentation sites'),
+    queryFn: async () => getData<Project[]>(await api.app.projects.$get(), 'documentation sites'),
   });
 
 export const useProject = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.projects.detail(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<Project>(await api.api.app.projects[':id'].$get({ param: { id: projectId! } }), 'project'),
+    queryFn: async () => getData<Project>(await api.app.projects[':id'].$get({ param: { id: projectId! } }), 'project'),
   });
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
@@ -43,7 +43,7 @@ export const usePages = (projectId: string | undefined, languageId?: string, bra
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<PageNode[]>(
-        await api.api.app.projects[':projectId'].pages.$get({
+        await api.app.projects[':projectId'].pages.$get({
           param: { projectId: projectId! },
           query: { ...(languageId ? { languageId } : {}), ...(branchId ? { branchId } : {}) },
         }),
@@ -55,15 +55,14 @@ export const useLanguages = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.languages.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Language[]>(await api.api.app.projects[':projectId'].languages.$get({ param: { projectId: projectId! } }), 'languages'),
+    queryFn: async () => getData<Language[]>(await api.app.projects[':projectId'].languages.$get({ param: { projectId: projectId! } }), 'languages'),
   });
 
 export const useBranches = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.branches.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<Branch[]>(await api.api.app.projects[':projectId'].branches.$get({ param: { projectId: projectId! } }), 'branches'),
+    queryFn: async () => getData<Branch[]>(await api.app.projects[':projectId'].branches.$get({ param: { projectId: projectId! } }), 'branches'),
   });
 
 export const usePage = (projectId: string | undefined, pageId: string | undefined) =>
@@ -71,7 +70,7 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
     queryKey: queryKeys.pages.detail(projectId ?? '', pageId ?? ''),
     enabled: Boolean(projectId && pageId),
     queryFn: async () =>
-      getData<Page>(await api.api.app.projects[':projectId'].pages[':id'].$get({ param: { projectId: projectId!, id: pageId! } }), 'page'),
+      getData<Page>(await api.app.projects[':projectId'].pages[':id'].$get({ param: { projectId: projectId!, id: pageId! } }), 'page'),
   });
 
 // Publishing is async (worker builds the snapshot). Poll while a deployment is
@@ -84,7 +83,7 @@ export const useDeployments = (projectId: string | undefined) =>
     queryKey: queryKeys.deployments.all(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
-      getData<Deployment[]>(await api.api.app.projects[':projectId'].deployments.$get({ param: { projectId: projectId! } }), 'deployments'),
+      getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId: projectId! } }), 'deployments'),
     refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? 2500 : false),
   });
 
@@ -93,10 +92,7 @@ export const useLatestDeployment = (projectId: string | undefined) =>
     queryKey: queryKeys.deployments.latest(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
-      getData<Deployment | null>(
-        await api.api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }),
-        'deployment',
-      ),
+      getData<Deployment | null>(await api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }), 'deployment'),
     refetchInterval: (query) => (isInFlight(query.state.data?.status) ? 2500 : false),
   });
 
@@ -104,22 +100,21 @@ export const useDomains = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.domains.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<Domain[]>(await api.api.app.projects[':projectId'].domains.$get({ param: { projectId: projectId! } }), 'domains'),
+    queryFn: async () => getData<Domain[]>(await api.app.projects[':projectId'].domains.$get({ param: { projectId: projectId! } }), 'domains'),
   });
 
 export const useApiKeys = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.apiKeys.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<ApiKey[]>(await api.api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: projectId! } }), 'API keys'),
+    queryFn: async () => getData<ApiKey[]>(await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: projectId! } }), 'API keys'),
   });
 
 export const useAssets = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.assets.all(projectId ?? ''),
     enabled: Boolean(projectId),
-    queryFn: async () => getData<Asset[]>(await api.api.app.projects[':projectId'].assets.$get({ param: { projectId: projectId! } }), 'assets'),
+    queryFn: async () => getData<Asset[]>(await api.app.projects[':projectId'].assets.$get({ param: { projectId: projectId! } }), 'assets'),
   });
 
 export const useAnalytics = (projectId: string | undefined, range: string) =>
@@ -128,7 +123,7 @@ export const useAnalytics = (projectId: string | undefined, range: string) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<AnalyticsOverview>(
-        await api.api.app.projects[':projectId'].analytics.$get({
+        await api.app.projects[':projectId'].analytics.$get({
           param: { projectId: projectId! },
           query: { range: range as '24h' | '7d' | '30d' | '90d' },
         }),
@@ -142,7 +137,7 @@ export const useComments = (projectId: string | undefined, pageId?: string) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<Comment[]>(
-        await api.api.app.projects[':projectId'].comments.$get({ param: { projectId: projectId! }, query: pageId ? { pageId } : {} }),
+        await api.app.projects[':projectId'].comments.$get({ param: { projectId: projectId! }, query: pageId ? { pageId } : {} }),
         'comments',
       ),
   });
@@ -152,7 +147,7 @@ export const useWorkspaceAnalytics = (range: string) =>
     queryKey: queryKeys.workspace.analytics(range),
     queryFn: async () =>
       getData<WorkspaceAnalytics>(
-        await api.api.app.workspace.analytics.$get({ query: { range: range as '24h' | '7d' | '30d' | '90d' } }),
+        await api.app.workspace.analytics.$get({ query: { range: range as '24h' | '7d' | '30d' | '90d' } }),
         'workspace analytics',
       ),
   });
@@ -164,14 +159,14 @@ export const useWorkspaceSettings = (projectId?: string) =>
     queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings(),
     queryFn: async () =>
       projectId
-        ? getData<WorkspaceSettings>(await api.api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
-        : getData<WorkspaceSettings>(await api.api.app.workspace.$get(), 'workspace settings'),
+        ? getData<WorkspaceSettings>(await api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
+        : getData<WorkspaceSettings>(await api.app.workspace.$get(), 'workspace settings'),
   });
 
 export const useMembers = () =>
   useQuery({
     queryKey: queryKeys.members.all(),
-    queryFn: async () => getData<{ members: Member[]; invitations: Invitation[] }>(await api.api.app.members.$get(), 'members'),
+    queryFn: async () => getData<{ members: Member[]; invitations: Invitation[] }>(await api.app.members.$get(), 'members'),
   });
 
 /** Members + pending invitations for a single site (its own organization). */
@@ -181,7 +176,7 @@ export const useProjectMembers = (projectId: string | undefined) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<{ members: Member[]; invitations: Invitation[] }>(
-        await api.api.app.projects[':projectId'].members.$get({ param: { projectId: projectId! } }),
+        await api.app.projects[':projectId'].members.$get({ param: { projectId: projectId! } }),
         'members',
       ),
   });
@@ -194,7 +189,7 @@ export const useSite = (id: string | undefined, lang?: string, initialData?: Sit
     enabled: Boolean(id),
     retry: false,
     initialData,
-    queryFn: async () => getData<SiteShell>(await api.api.public.sites[':id'].$get({ param: { id: id! }, query: lang ? { lang } : {} }), 'site'),
+    queryFn: async () => getData<SiteShell>(await api.public.sites[':id'].$get({ param: { id: id! }, query: lang ? { lang } : {} }), 'site'),
   });
 
 export const useSitePage = (id: string | undefined, path: string, lang?: string, initialData?: SitePage) =>
@@ -204,7 +199,7 @@ export const useSitePage = (id: string | undefined, path: string, lang?: string,
     retry: false,
     initialData,
     queryFn: async () =>
-      getData<SitePage>(await api.api.public.sites[':id'].page.$get({ param: { id: id! }, query: lang ? { path, lang } : { path } }), 'page'),
+      getData<SitePage>(await api.public.sites[':id'].page.$get({ param: { id: id! }, query: lang ? { path, lang } : { path } }), 'page'),
   });
 
 export const useSiteSearch = (id: string | undefined, q: string, lang?: string) =>
@@ -213,7 +208,7 @@ export const useSiteSearch = (id: string | undefined, q: string, lang?: string) 
     enabled: Boolean(id && q.trim()),
     queryFn: async () => {
       const data = await getData<{ hits: SearchHit[] }>(
-        await api.api.public.sites[':id'].search.$get({ param: { id: id! }, query: lang ? { q, lang } : { q } }),
+        await api.public.sites[':id'].search.$get({ param: { id: id! }, query: lang ? { q, lang } : { q } }),
         'search',
       );
       return data.hits;
@@ -225,5 +220,5 @@ export const useSiteChangelog = (id: string | undefined) =>
     queryKey: queryKeys.site.changelog(id ?? ''),
     enabled: Boolean(id),
     retry: false,
-    queryFn: async () => getData<ChangelogEntry[]>(await api.api.public.sites[':id'].changelog.$get({ param: { id: id! } }), 'changelog'),
+    queryFn: async () => getData<ChangelogEntry[]>(await api.public.sites[':id'].changelog.$get({ param: { id: id! } }), 'changelog'),
   });

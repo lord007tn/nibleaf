@@ -18,7 +18,7 @@ function AnalyticsPage() {
   const { data, isPending } = useAnalytics(projectId, range);
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-6 py-8">
+    <div className="w-full px-6 py-8 xl:px-10">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-semibold text-2xl tracking-tight">{t('analytics.title')}</h1>
