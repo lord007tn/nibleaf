@@ -200,7 +200,13 @@ export function PageSettingsDialog({
                     hint={t('editor.pageSettings.metaDescriptionHint')}
                     htmlFor="page-meta-desc"
                   >
-                    <Textarea id="page-meta-desc" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={2} />
+                    <Textarea
+                      id="page-meta-desc"
+                      value={metaDescription}
+                      onChange={(e) => setMetaDescription(e.target.value)}
+                      rows={2}
+                      placeholder={page.description ?? undefined}
+                    />
                   </Field>
                   <Field label={t('editor.pageSettings.ogImage')} hint={t('editor.pageSettings.ogImageHint')} htmlFor="page-og">
                     <Input id="page-og" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://…/cover.png" />

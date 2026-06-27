@@ -49,7 +49,12 @@ export function SeoSection({ project }: { project: Project }) {
       <form.Field name="metaTitle">
         {(field) => (
           <Field hint={t('settings.seo.metaTitle.hint')} label={t('settings.seo.metaTitle.label')}>
-            <Input className={FIELD_INPUT} onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
+            <Input
+              className={FIELD_INPUT}
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder={project.name}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -60,6 +65,7 @@ export function SeoSection({ project }: { project: Project }) {
             <Textarea
               className="min-h-[84px] rounded-[10px] text-sm"
               onChange={(e) => field.handleChange(e.target.value)}
+              placeholder={project.description ?? undefined}
               value={field.state.value}
             />
           </Field>
