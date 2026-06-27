@@ -64,7 +64,7 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   return (
     <DragHandle
       editor={editor}
-      computePositionConfig={{ placement: dir === 'rtl' ? 'right-start' : 'left-start' }}
+      computePositionConfig={{ placement: dir === 'rtl' ? 'right' : 'left' }}
       onNodeChange={({ pos }) => {
         posRef.current = pos;
       }}

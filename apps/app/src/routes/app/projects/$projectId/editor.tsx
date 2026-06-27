@@ -9,6 +9,7 @@ import {
   FolderPlus,
   Languages,
   Loader2,
+  PanelLeft,
   PanelRight,
   Pencil,
   Plus,
@@ -30,7 +31,6 @@ import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
 import {
@@ -155,6 +155,21 @@ function EditorPage() {
       // ignore storage failures (private mode etc.)
     }
   }, [editorMode]);
+  // Collapse the page-tree sidebar to give the canvas full width (Mintlify-style;
+  // the toggle lives in the editor toolbar, not a breadcrumb). Persisted.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.localStorage.getItem('plume.editor.sidebarCollapsed') === '1';
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('plume.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
+  }, [sidebarCollapsed]);
 
   // The active page's language drives the editor/preview text direction.
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
@@ -187,6 +202,13 @@ function EditorPage() {
     if (title === page.title && content === page.content) {
       return;
     }
+    // Data-loss guard: never let an AUTOMATIC save replace a page that has content
+    // with an empty body. Protects against a transient empty `content` state (e.g. a
+    // hot-reload/Fast-Refresh reset, or a load race) silently wiping the page. A real
+    // "clear the page" still persists the moment any character is typed.
+    if (content.trim() === '' && page.content.trim() !== '') {
+      return;
+    }
     setStatus('saving');
     saveDraft(page.id, { title, content });
   }, [title, content, page, saveDraft]);
@@ -204,13 +226,6 @@ function EditorPage() {
     );
 
   const showRail = view === 'content' && railOpen && Boolean(activeId && page);
-  const crumbSection = useMemo(() => {
-    if (!page) {
-      return null;
-    }
-    const parent = page.parentId ? (allPages ?? []).find((p) => p.id === page.parentId) : null;
-    return parent?.title ?? null;
-  }, [page, allPages]);
 
   return (
     <div
@@ -218,11 +233,14 @@ function EditorPage() {
         'grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[var(--editor-sidebar)_1fr]',
         showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
       )}
-      style={{ '--editor-sidebar': `${sidebarWidth}px` } as CSSProperties}
+      style={{ '--editor-sidebar': sidebarCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
     >
       {/* Left rail: Content (page tree) or Configuration (site config sections) */}
-      <aside className="relative flex min-h-0 flex-col border-border border-e bg-sidebar/40">
-        <SidebarResizer onResize={setSidebarWidth} />
+      <aside
+        className={cn('relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40', sidebarCollapsed && 'border-e-0')}
+        aria-hidden={sidebarCollapsed}
+      >
+        {!sidebarCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
         <div className="px-2 pt-3 pb-2">
           <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
             <SegButton active={view === 'content'} onClick={() => setView('content')} icon={<FileText className="size-3.5" />}>
@@ -359,12 +377,28 @@ function EditorPage() {
       ) : activeId && page ? (
         /* Main area: page editor */
         <section className="flex min-w-0 flex-col">
-          <div className="flex items-center gap-3 px-5 pt-3">
-            <Input
-              className="h-9 border-0 bg-transparent px-0 font-semibold text-lg shadow-none focus-visible:ring-0"
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={t('editor.pageTitlePlaceholder')}
-              value={title}
+          {/* Editor toolbar (Mintlify-style): sidebar toggle + branch on the left,
+              document/view controls on the right. No breadcrumb. */}
+          <div className="flex h-12 items-center gap-2 border-border border-b px-4">
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={() => setSidebarCollapsed((v) => !v)}
+              aria-pressed={!sidebarCollapsed}
+              title={sidebarCollapsed ? t('editor.showSidebar') : t('editor.hideSidebar')}
+            >
+              <PanelLeft className="size-4" />
+            </Button>
+            <BranchSwitcher
+              projectId={projectId}
+              branches={branches ?? []}
+              activeBranchId={activeBranchId}
+              onSwitch={(id) => {
+                setActiveBranchId(id);
+                setSelectedId(null);
+                loadedFor.current = null;
+              }}
             />
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
               {status === 'saving' ? (
@@ -445,37 +479,27 @@ function EditorPage() {
             </Button>
           </div>
 
-          {/* Editor sub-toolbar: branch switcher + language-aware breadcrumb */}
-          <div className="flex h-12 items-center gap-3 border-border border-b px-5">
-            <BranchSwitcher
-              projectId={projectId}
-              branches={branches ?? []}
-              activeBranchId={activeBranchId}
-              onSwitch={(id) => {
-                setActiveBranchId(id);
-                setSelectedId(null);
-                loadedFor.current = null;
-              }}
-            />
-            <span className="h-5 w-px bg-border" />
-            <div className="min-w-0 truncate text-[13px] text-muted-foreground">
-              {activeLanguage ? (
-                <>
-                  {activeLanguage.label} <span className="font-mono text-[11px] opacity-70">({activeLanguage.code})</span>
-                  <span className="mx-1.5 text-muted-foreground/60">/</span>
-                </>
-              ) : null}
-              {crumbSection ? (
-                <>
-                  {crumbSection} <span className="mx-1.5 text-muted-foreground/60">/</span>
-                </>
-              ) : null}
-              <span className="font-medium text-foreground">{page.title}</span>
+          <div className="min-h-0 flex-1 overflow-y-auto px-7 py-8">
+            {/* Title rendered as the first line of the document column (Mintlify-style),
+                aligned to the same 720px measure as the body. */}
+            <div className="mx-auto max-w-[720px]">
+              {editorMode === 'preview' ? (
+                <h1 className="font-semibold text-[2.1rem] leading-[1.15] tracking-tight" dir={activeLangDir}>
+                  {title || t('editor.pageTitlePlaceholder')}
+                </h1>
+              ) : (
+                <input
+                  className="w-full border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40"
+                  dir={activeLangDir}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={t('editor.pageTitlePlaceholder')}
+                  value={title}
+                />
+              )}
             </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
             {editorMode === 'visual' ? (
+              // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
+              // gutter for the block handle — so it is NOT wrapped in a narrow box.
               <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
             ) : editorMode === 'markdown' ? (
               <textarea
@@ -484,11 +508,11 @@ function EditorPage() {
                 onChange={(e) => setContent(e.target.value)}
                 spellCheck={false}
                 placeholder={t('editor.markdownPlaceholder')}
-                className="mx-auto block h-full w-full max-w-[880px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
+                className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
               />
             ) : (
               // Live preview: the draft rendered through the exact live-site renderer.
-              <div className="mx-auto max-w-[880px]" dir={activeLangDir}>
+              <div className="mx-auto mt-4 max-w-[720px]" dir={activeLangDir}>
                 <Markdown content={content} />
               </div>
             )}
