@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { Page, PageConfig } from '@/hooks/api';
+import type { PageConfig, PageNode } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
@@ -32,7 +32,7 @@ export function PageSettingsDialog({
   onOpenChange,
 }: {
   projectId: string;
-  page: Page;
+  page: PageNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {

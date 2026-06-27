@@ -105,7 +105,10 @@ function EditorPage() {
   const [railOpen, setRailOpen] = useState(true);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // The page whose settings dialog is open — independent of the active editor
+  // page, so opening a page's settings from the tree does NOT switch what you're
+  // editing.
+  const [settingsForId, setSettingsForId] = useState<string | null>(null);
   const [langSettings, setLangSettings] = useState<Language | null>(null);
   const loadedFor = useRef<string | null>(null);
 
@@ -262,10 +265,7 @@ function EditorPage() {
                           activeId={activeId}
                           onSelect={setSelectedId}
                           onAddChild={(parentId) => addPage(parentId, lang.id)}
-                          onSettings={(id) => {
-                            setSelectedId(id);
-                            setSettingsOpen(true);
-                          }}
+                          onSettings={(id) => setSettingsForId(id)}
                           onMove={(items) => reorderPages.mutate({ items })}
                         />
                       )}
@@ -294,6 +294,14 @@ function EditorPage() {
             onOpenChange={(o) => !o && setLangSettings(null)}
           />
         ) : null}
+        {settingsForId
+          ? (() => {
+              const target = (allPages ?? []).find((p) => p.id === settingsForId);
+              return target ? (
+                <PageSettingsDialog projectId={projectId} page={target} open onOpenChange={(o) => !o && setSettingsForId(null)} />
+              ) : null;
+            })()
+          : null}
       </aside>
 
       {/* Main area: site configuration */}
@@ -358,7 +366,7 @@ function EditorPage() {
               size="icon-sm"
               variant="ghost"
               className="cursor-pointer"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => activeId && setSettingsForId(activeId)}
               title={t('editor.pageSettings.title')}
             >
               <Settings2 className="size-4" />
@@ -382,7 +390,6 @@ function EditorPage() {
             >
               <Trash2 className="size-4" />
             </Button>
-            <PageSettingsDialog projectId={projectId} page={page} open={settingsOpen} onOpenChange={setSettingsOpen} />
             <Button
               aria-pressed={railOpen}
               className="hidden cursor-pointer xl:inline-flex"
