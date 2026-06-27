@@ -158,6 +158,8 @@ export const messages = {
     'editor.pageSettings.ogImageHint': 'A 1200×630 image used when this page is shared (Open Graph / Twitter).',
     'editor.pageSettings.canonicalUrl': 'Canonical URL',
     'editor.pageSettings.canonicalUrlHint': 'Point search engines to the original URL when content is syndicated.',
+    'editor.pageSettings.tag': 'Tag',
+    'editor.pageSettings.tagHint': 'A small badge shown next to this page in the sidebar (e.g. New, Beta).',
     'editor.pageSettings.translationKey': 'Translation key',
     'editor.pageSettings.translationKeyHint':
       'Shared id linking this page to its translations in other languages (for hreflang), even when their slugs differ.',
@@ -925,6 +927,8 @@ export const messages = {
     'editor.pageSettings.ogImageHint': 'صورة 1200×630 تُستخدم عند مشاركة هذه الصفحة (Open Graph / Twitter).',
     'editor.pageSettings.canonicalUrl': 'الرابط الأساسي (Canonical)',
     'editor.pageSettings.canonicalUrlHint': 'وجّه محركات البحث إلى الرابط الأصلي عند نشر المحتوى في أكثر من مكان.',
+    'editor.pageSettings.tag': 'وسم',
+    'editor.pageSettings.tagHint': 'شارة صغيرة تظهر بجانب هذه الصفحة في الشريط الجانبي (مثل: جديد، تجريبي).',
     'editor.pageSettings.translationKey': 'مفتاح الترجمة',
     'editor.pageSettings.translationKeyHint': 'معرّف مشترك يربط هذه الصفحة بترجماتها في اللغات الأخرى (لأجل hreflang)، حتى عند اختلاف الروابط.',
     'editor.pageSettings.noindex': 'إخفاء من محركات البحث',

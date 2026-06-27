@@ -35,6 +35,11 @@ function NavLink({ node, projectId, currentPath, lang, depth }: NavItemProps & {
       >
         <PageIcon name={node.icon} className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
         <span className="truncate">{node.title}</span>
+        {node.tag ? (
+          <span className="ms-auto shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
+            {node.tag}
+          </span>
+        ) : null}
       </Link>
       {node.children.length > 0 ? (
         <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} />

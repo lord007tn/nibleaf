@@ -37,6 +37,7 @@ export function PageSettingsDialog({
   const [description, setDescription] = useState(page.description ?? '');
   const [hidden, setHidden] = useState(page.hidden);
   const [sidebarTitle, setSidebarTitle] = useState(page.config?.sidebarTitle ?? '');
+  const [tag, setTag] = useState(page.config?.tag ?? '');
   // SEO
   const [metaTitle, setMetaTitle] = useState(page.config?.seo?.metaTitle ?? '');
   const [metaDescription, setMetaDescription] = useState(page.config?.seo?.metaDescription ?? '');
@@ -58,6 +59,7 @@ export function PageSettingsDialog({
     setDescription(page.description ?? '');
     setHidden(page.hidden);
     setSidebarTitle(page.config?.sidebarTitle ?? '');
+    setTag(page.config?.tag ?? '');
     setMetaTitle(page.config?.seo?.metaTitle ?? '');
     setMetaDescription(page.config?.seo?.metaDescription ?? '');
     setOgImage(page.config?.seo?.ogImage ?? '');
@@ -75,6 +77,7 @@ export function PageSettingsDialog({
     // page's config stays null instead of bloating with an empty object.
     const config: PageConfig = {
       sidebarTitle: sidebarTitle.trim(),
+      tag: tag.trim(),
       mode,
       hideToc,
       seo: {
@@ -87,6 +90,7 @@ export function PageSettingsDialog({
     };
     const hasOverride =
       sidebarTitle.trim() !== '' ||
+      tag.trim() !== '' ||
       mode !== 'default' ||
       hideToc ||
       [metaTitle, metaDescription, ogImage, canonicalUrl].some((v) => v.trim() !== '') ||
@@ -135,6 +139,9 @@ export function PageSettingsDialog({
             </Field>
             <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
               <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
+            </Field>
+            <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
+              <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
             </Field>
             <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
               <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />

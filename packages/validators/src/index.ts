@@ -176,6 +176,8 @@ export const pageConfigSchema = z
       .optional(),
     /** Short label shown in the sidebar nav instead of the full title. */
     sidebarTitle: z.string().max(120).optional(),
+    /** A short badge shown next to the nav label (Mintlify `tag`, e.g. "New", "Beta"). */
+    tag: z.string().max(20).optional(),
     /** Content width on the live site. */
     mode: pageModeEnum.optional(),
     /** Hide the right-hand "On this page" table of contents. */

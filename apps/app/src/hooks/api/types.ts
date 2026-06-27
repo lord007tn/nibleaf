@@ -195,6 +195,7 @@ export interface NavNode {
   title: string;
   path: string;
   icon: string | null;
+  tag: string | null;
   children: NavNode[];
 }
 

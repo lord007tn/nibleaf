@@ -6,6 +6,7 @@ import { excerpt } from './utils';
 export interface SnapshotPageConfig {
   seo?: { metaTitle?: string; metaDescription?: string; ogImage?: string; canonicalUrl?: string; noindex?: boolean };
   sidebarTitle?: string;
+  tag?: string;
   mode?: 'default' | 'wide' | 'center';
   hideToc?: boolean;
 }
@@ -76,6 +77,7 @@ export interface NavNode {
   title: string;
   path: string;
   icon: string | null;
+  tag: string | null;
   children: NavNode[];
 }
 
@@ -101,6 +103,7 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
         title: page.config?.sidebarTitle?.trim() || page.title,
         path: page.path,
         icon: page.icon,
+        tag: page.config?.tag?.trim() || null,
         children: build(page.id),
       }));
   return build(null);
