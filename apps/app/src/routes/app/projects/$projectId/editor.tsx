@@ -1,6 +1,21 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
-import { Check, ExternalLink, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
+import {
+  Check,
+  Code2,
+  ExternalLink,
+  Eye,
+  FileText,
+  FolderPlus,
+  Languages,
+  Loader2,
+  PanelRight,
+  Pencil,
+  Plus,
+  Settings2,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
@@ -12,6 +27,7 @@ import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
+import { Markdown } from '@/components/markdown';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
 import { Input } from '@/components/ui/input';
@@ -103,6 +119,15 @@ function EditorPage() {
   const [content, setContent] = useState('');
   const [railTab, setRailTab] = useState<'comments' | 'ai'>('comments');
   const [railOpen, setRailOpen] = useState(true);
+  // How the page body is edited: WYSIWYG, raw Markdown/MDX, or a rendered preview.
+  // Content is Markdown end-to-end, so all three share the one `content` string.
+  const [editorMode, setEditorMode] = useState<'visual' | 'markdown' | 'preview'>(() => {
+    if (typeof window === 'undefined') {
+      return 'visual';
+    }
+    const stored = window.localStorage.getItem('plume.editor.contentMode');
+    return stored === 'markdown' || stored === 'preview' ? stored : 'visual';
+  });
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -123,6 +148,13 @@ function EditorPage() {
   useEffect(() => {
     window.localStorage.setItem('plume.editor.sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('plume.editor.contentMode', editorMode);
+    } catch {
+      // ignore storage failures (private mode etc.)
+    }
+  }, [editorMode]);
 
   // The active page's language drives the editor/preview text direction.
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
@@ -345,6 +377,17 @@ function EditorPage() {
                 </>
               ) : null}
             </span>
+            <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+              <SegButton active={editorMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
+                {t('editor.mode.visual')}
+              </SegButton>
+              <SegButton active={editorMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
+                {t('editor.mode.markdown')}
+              </SegButton>
+              <SegButton active={editorMode === 'preview'} onClick={() => setEditorMode('preview')} icon={<Eye className="size-3.5" />}>
+                {t('editor.mode.preview')}
+              </SegButton>
+            </div>
             <Button
               render={
                 // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
@@ -432,7 +475,23 @@ function EditorPage() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-7 py-6">
-            <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
+            {editorMode === 'visual' ? (
+              <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
+            ) : editorMode === 'markdown' ? (
+              <textarea
+                dir={activeLangDir}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                spellCheck={false}
+                placeholder={t('editor.markdownPlaceholder')}
+                className="mx-auto block h-full w-full max-w-[880px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
+              />
+            ) : (
+              // Live preview: the draft rendered through the exact live-site renderer.
+              <div className="mx-auto max-w-[880px]" dir={activeLangDir}>
+                <Markdown content={content} />
+              </div>
+            )}
           </div>
         </section>
       ) : (
