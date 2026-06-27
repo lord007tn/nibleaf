@@ -10,6 +10,7 @@ import { CommentsPanel } from '@/components/editor/comments-panel';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
+import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Button } from '@/components/ui/button';
 import { useConfirm } from '@/components/ui/confirm';
@@ -34,20 +35,6 @@ import { cn } from '@/lib/utils';
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
 });
-
-function buildTree(pages: PageNode[]): { roots: PageNode[]; childrenOf: Map<string, PageNode[]> } {
-  const childrenOf = new Map<string, PageNode[]>();
-  for (const page of pages) {
-    const key = page.parentId ?? '__root';
-    const list = childrenOf.get(key) ?? [];
-    list.push(page);
-    childrenOf.set(key, list);
-  }
-  for (const list of childrenOf.values()) {
-    list.sort((a, b) => a.position - b.position);
-  }
-  return { roots: childrenOf.get('__root') ?? [], childrenOf };
-}
 
 function EditorPage() {
   const t = useT();
@@ -80,34 +67,6 @@ function EditorPage() {
   const uploadAsset = useUploadAsset(projectId);
   const reorderPages = useReorderPages(projectId);
   const confirm = useConfirm();
-
-  // ─── Drag-to-reorder pages within a language's tree ──────────────────────────
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-  /** Drop page `draggedId` just before `targetId` — joining the target's parent.
-   *  Only reorders PAGES within the same language; renumbers the new sibling run. */
-  const movePage = (draggedId: string, targetId: string) => {
-    if (draggedId === targetId) {
-      return;
-    }
-    const pages = allPages ?? [];
-    const dragged = pages.find((p) => p.id === draggedId);
-    const target = pages.find((p) => p.id === targetId);
-    if (!dragged || !target || dragged.kind !== 'PAGE' || dragged.languageId !== target.languageId) {
-      return;
-    }
-    const newParent = target.parentId ?? null;
-    const siblings = pages
-      .filter((p) => p.languageId === target.languageId && (p.parentId ?? null) === newParent && p.id !== draggedId)
-      .sort((a, b) => a.position - b.position);
-    const idx = siblings.findIndex((p) => p.id === targetId);
-    if (idx < 0) {
-      return;
-    }
-    siblings.splice(idx, 0, dragged);
-    reorderPages.mutate({ items: siblings.map((p, i) => ({ id: p.id, parentId: newParent, position: i })) });
-  };
 
   // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
   const onUploadImage = async (file: File): Promise<string | null> => {
@@ -197,47 +156,6 @@ function EditorPage() {
       { onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')) },
     );
 
-  const renderItem = (node: PageNode) => (
-    <button
-      key={node.id}
-      type="button"
-      draggable
-      onClick={() => setSelectedId(node.id)}
-      onDragStart={(event) => {
-        setDraggingId(node.id);
-        event.dataTransfer.effectAllowed = 'move';
-      }}
-      onDragEnd={() => {
-        setDraggingId(null);
-        setDragOverId(null);
-      }}
-      onDragOver={(event) => {
-        if (draggingId && draggingId !== node.id) {
-          event.preventDefault();
-          setDragOverId(node.id);
-        }
-      }}
-      onDragLeave={() => setDragOverId((cur) => (cur === node.id ? null : cur))}
-      onDrop={(event) => {
-        event.preventDefault();
-        if (draggingId) {
-          movePage(draggingId, node.id);
-        }
-        setDraggingId(null);
-        setDragOverId(null);
-      }}
-      className={cn(
-        'flex w-full cursor-grab items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm active:cursor-grabbing',
-        activeId === node.id ? 'bg-accent text-accent-foreground' : 'text-foreground/80 hover:bg-muted',
-        draggingId === node.id && 'opacity-40',
-        dragOverId === node.id && 'border-primary border-t-2',
-      )}
-    >
-      <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">{node.config?.sidebarTitle?.trim() || node.title}</span>
-    </button>
-  );
-
   const showRail = view === 'content' && railOpen && Boolean(activeId && page);
   const crumbSection = useMemo(() => {
     if (!page) {
@@ -271,7 +189,7 @@ function EditorPage() {
             <>
               {orderedLanguages.map((lang) => {
                 const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
-                const { roots, childrenOf } = buildTree(pagesByLanguage.get(lang.id) ?? []);
+                const langPages = pagesByLanguage.get(lang.id) ?? [];
                 return (
                   <div key={lang.id} className="mb-2">
                     {/* Language section header */}
@@ -315,26 +233,18 @@ function EditorPage() {
                       </div>
                     </div>
 
-                    {/* This language's page tree */}
+                    {/* This language's page tree — Notion-style drag-and-drop */}
                     <div className="space-y-0.5" dir={dir}>
-                      {roots.length === 0 ? (
+                      {langPages.length === 0 ? (
                         <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
                       ) : (
-                        roots.map((node) =>
-                          node.kind === 'GROUP' ? (
-                            <div key={node.id} className="mt-2">
-                              <div className="flex items-center justify-between px-2 py-1">
-                                <span className="truncate font-semibold text-[11px] text-muted-foreground uppercase tracking-wide">{node.title}</span>
-                                <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => addPage(node.id, lang.id)}>
-                                  <Plus className="size-3" />
-                                </Button>
-                              </div>
-                              {(childrenOf.get(node.id) ?? []).map(renderItem)}
-                            </div>
-                          ) : (
-                            renderItem(node)
-                          ),
-                        )
+                        <SortablePageTree
+                          pages={langPages}
+                          activeId={activeId}
+                          onSelect={setSelectedId}
+                          onAddChild={(parentId) => addPage(parentId, lang.id)}
+                          onMove={(items) => reorderPages.mutate({ items })}
+                        />
                       )}
                     </div>
                   </div>
