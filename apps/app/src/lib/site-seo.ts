@@ -15,13 +15,54 @@ export function publicOrigin(): string {
 
 type Tag = Record<string, string>;
 interface Script {
-  type: string;
-  children: string;
+  type?: string;
+  children?: string;
+  src?: string;
+  async?: boolean;
+  defer?: boolean;
+  [key: string]: unknown;
 }
 interface Head {
   meta?: Tag[];
   links?: Tag[];
   scripts?: Script[];
+}
+
+/** Third-party analytics <script> tags for the configured providers. IDs are
+ *  charset-guarded (defense-in-depth: config is admin-only, but we still never
+ *  interpolate arbitrary text into an inline script). */
+function analyticsScripts(config: ProjectConfig | null): Script[] {
+  const scripts: Script[] = [];
+  const ga = config?.analytics?.ga4?.trim();
+  if (ga && /^[\w-]+$/.test(ga)) {
+    scripts.push({ src: `https://www.googletagmanager.com/gtag/js?id=${ga}`, async: true });
+    scripts.push({
+      children: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${ga}');`,
+    });
+  }
+  const plausible = config?.analytics?.plausible?.trim();
+  if (plausible && /^[\w.-]+$/.test(plausible)) {
+    scripts.push({ src: 'https://plausible.io/js/script.js', defer: true, 'data-domain': plausible });
+  }
+  return scripts;
+}
+
+/** A Google Fonts stylesheet <link> (+ preconnects) for the configured fonts, so
+ *  custom typography actually loads. Font names are charset-guarded. */
+function fontLinks(config: ProjectConfig | null): Tag[] {
+  const wanted = [config?.typography?.headingFont, config?.typography?.bodyFont, config?.typography?.codeFont]
+    .map((font) => font?.trim())
+    .filter((font): font is string => !!font && /^[A-Za-z0-9 ]+$/.test(font));
+  const unique = [...new Set(wanted)];
+  if (unique.length === 0) {
+    return [];
+  }
+  const families = unique.map((font) => `family=${encodeURIComponent(font).replace(/%20/g, '+')}:wght@400;500;600;700`).join('&');
+  return [
+    { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+    { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
+    { rel: 'stylesheet', href: `https://fonts.googleapis.com/css2?${families}&display=swap` },
+  ];
 }
 
 /** BCP-47 language code → Open Graph locale (`og:locale`). Falls back to a
@@ -78,10 +119,11 @@ export function siteHead(site: SiteShell | null | undefined): Head {
   if (themeColor) {
     meta.push({ name: 'theme-color', content: themeColor });
   }
-  // Always advertise a favicon: the project's own, or a built-in fallback so the
-  // browser tab and link previews are never icon-less.
-  const links: Tag[] = [{ rel: 'icon', href: site.project.faviconUrl || '/favicon.svg' }];
-  return { meta, links };
+  // Always advertise a favicon: the project's own, the branding override, or a
+  // built-in fallback so the browser tab and link previews are never icon-less.
+  const links: Tag[] = [{ rel: 'icon', href: site.project.faviconUrl || config?.branding?.favicon || '/favicon.svg' }, ...fontLinks(config)];
+  const scripts = analyticsScripts(config);
+  return { meta, links, ...(scripts.length ? { scripts } : {}) };
 }
 
 /**

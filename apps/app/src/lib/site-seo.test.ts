@@ -180,7 +180,7 @@ describe('pageHead og:locale', () => {
 
 describe('pageHead JSON-LD', () => {
   const ld = (head: ReturnType<typeof pageHead>): Array<Record<string, unknown>> =>
-    (head.scripts ?? []).filter((s) => s.type === 'application/ld+json').map((s) => JSON.parse(s.children) as Record<string, unknown>);
+    (head.scripts ?? []).filter((s) => s.type === 'application/ld+json').map((s) => JSON.parse(s.children ?? '{}') as Record<string, unknown>);
 
   it('emits a TechArticle for the page', () => {
     const article = ld(pageHead(base(), 'p1')).find((block) => block['@type'] === 'TechArticle');

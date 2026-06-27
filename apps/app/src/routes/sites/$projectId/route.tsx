@@ -172,6 +172,51 @@ function SiteChrome() {
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
 
+  // Branding: a theme-specific logo (config.branding) overrides the legacy
+  // top-level logoUrl, and an optional logoHref points the brand off-site.
+  const branding = config?.branding;
+  const logoSrc = (siteTheme === 'dark' ? branding?.logoDark || branding?.logoLight : branding?.logoLight) || site?.project.logoUrl || null;
+  const logoHref = branding?.logoHref?.trim() || undefined;
+
+  // Apply the configured corner radius + typography. Font names are charset-guarded
+  // before being interpolated into the scoped <style> below (defense-in-depth).
+  const safeFont = (font?: string): string | undefined => {
+    const trimmed = font?.trim();
+    return trimmed && /^[A-Za-z0-9 ]+$/.test(trimmed) ? trimmed : undefined;
+  };
+  const headingFont = safeFont(config?.typography?.headingFont);
+  const bodyFont = safeFont(config?.typography?.bodyFont);
+  const codeFont = safeFont(config?.typography?.codeFont);
+  const baseSize = config?.typography?.baseSize;
+  const radius = config?.styling?.radius;
+  const radiusValue = radius === 'sharp' ? '0px' : radius === 'pill' ? '1rem' : radius === 'rounded' ? '0.5rem' : undefined;
+  const chromeStyle = { '--primary': accent, '--ring': accent } as Record<string, string | number>;
+  if (radiusValue) {
+    chromeStyle['--radius'] = radiusValue;
+  }
+  if (bodyFont) {
+    chromeStyle.fontFamily = `'${bodyFont}', var(--font-sans, system-ui, sans-serif)`;
+  }
+  if (baseSize) {
+    chromeStyle.fontSize = `${baseSize}px`;
+  }
+  const fontCss = [
+    headingFont ? `.plume-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
+    codeFont ? `.plume-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
+  ]
+    .filter(Boolean)
+    .join('');
+  const brandInner = (
+    <>
+      {logoSrc ? (
+        <img src={logoSrc} alt={site?.project.name ?? 'Logo'} className="h-7 w-auto object-contain" />
+      ) : (
+        <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">{site?.project.name?.[0] ?? 'D'}</span>
+      )}
+      {site?.project.name ?? 'Documentation'}
+    </>
+  );
+
   const changeLanguage = (code: string) => {
     navigate({ search: (prev) => ({ ...prev, lang: code }) });
   };
@@ -181,22 +226,27 @@ function SiteChrome() {
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className={cn('min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
-      style={{ '--primary': accent, '--ring': accent } as CSSProperties}
+      className={cn('plume-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
+      style={chromeStyle as CSSProperties}
     >
+      {fontCss ? (
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: scoped font rules; font names are charset-guarded above.
+        <style dangerouslySetInnerHTML={{ __html: fontCss }} />
+      ) : null}
       <SiteBanner projectId={projectId} banner={config?.banner} />
 
       <header className="sticky top-0 z-30 border-border border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-6">
           <MobileNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} label={t('docs')} />
-          <Link to="/sites/$projectId" params={{ projectId }} search={{ lang }} className="flex items-center gap-2 font-semibold tracking-tight">
-            {site?.project.logoUrl ? (
-              <img src={site.project.logoUrl} alt={site.project.name ?? 'Logo'} className="h-7 w-auto object-contain" />
-            ) : (
-              <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">{site?.project.name?.[0] ?? 'D'}</span>
-            )}
-            {site?.project.name ?? 'Documentation'}
-          </Link>
+          {logoHref ? (
+            <a href={logoHref} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold tracking-tight">
+              {brandInner}
+            </a>
+          ) : (
+            <Link to="/sites/$projectId" params={{ projectId }} search={{ lang }} className="flex items-center gap-2 font-semibold tracking-tight">
+              {brandInner}
+            </Link>
+          )}
           <nav className="ms-4 hidden items-center gap-5 text-muted-foreground text-sm sm:flex">
             <Link
               to="/sites/$projectId"
@@ -358,7 +408,13 @@ function SiteChrome() {
         </footer>
       ) : null}
 
-      <SiteSearch projectId={projectId} open={searchOpen} onOpenChange={setSearchOpen} lang={activeLanguage?.code} />
+      <SiteSearch
+        projectId={projectId}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        lang={activeLanguage?.code}
+        placeholder={config?.search?.placeholder}
+      />
     </div>
   );
 }

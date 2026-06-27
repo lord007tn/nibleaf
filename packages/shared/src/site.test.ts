@@ -4,6 +4,7 @@ import {
   buildSnapshot,
   defaultLanguage,
   extractHeadings,
+  interpolateVariables,
   pageDescription,
   type SnapshotLanguage,
   type SnapshotPage,
@@ -119,6 +120,40 @@ describe('buildSnapshot', () => {
   it('synthesizes an English language when none are provided', () => {
     const snap = buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01');
     expect(snap.project.languages).toEqual([{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }]);
+  });
+  it('interpolates {{ variables }} from config into page title/description/content at build time', () => {
+    const snap = buildSnapshot(
+      {
+        ...projectRow,
+        config: {
+          variables: [
+            { key: 'product', value: 'Plume' },
+            { key: 'api.version', value: 'v2' },
+          ],
+        },
+      },
+      [
+        {
+          ...rawPage,
+          title: 'Welcome to {{ product }}',
+          description: 'Docs for {{product}}',
+          content: 'Use API {{ api.version }}. Unknown {{ nope }} stays.',
+        },
+      ],
+      '2026-01-01',
+    );
+    expect(snap.pages[0]?.title).toBe('Welcome to Plume');
+    expect(snap.pages[0]?.description).toBe('Docs for Plume');
+    expect(snap.pages[0]?.content).toBe('Use API v2. Unknown {{ nope }} stays.');
+  });
+});
+
+describe('interpolateVariables', () => {
+  it('replaces known keys (with surrounding whitespace) and leaves unknown tokens intact', () => {
+    expect(interpolateVariables('{{ a }} and {{b}} and {{c}}', { a: '1', b: '2' })).toBe('1 and 2 and {{c}}');
+  });
+  it('is a no-op when there are no variables', () => {
+    expect(interpolateVariables('{{ a }}', {})).toBe('{{ a }}');
   });
 });
 

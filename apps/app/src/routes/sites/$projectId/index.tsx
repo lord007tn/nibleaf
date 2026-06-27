@@ -4,6 +4,7 @@ import { getData } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { customDomainOrigin } from '@/lib/site-origin';
+import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/')({
@@ -21,6 +22,8 @@ export const Route = createFileRoute('/sites/$projectId/')({
       );
       return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch {
+      // Honor a configured redirect for the site root before the not-found state.
+      await redirectIfConfigured(params.projectId, '', deps.lang);
       return { page: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
     }
   },

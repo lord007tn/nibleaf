@@ -149,6 +149,31 @@ export const extractHeadings = (markdown: string): Heading[] => {
 /** Build a one-line description for a page (its own, or derived from content). */
 export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'>): string => page.description?.trim() || excerpt(page.content);
 
+/** Replace Mintlify-style `{{ key }}` content variables with their configured
+ *  values at snapshot-build time. Tokens whose key isn't defined are left intact
+ *  (rather than failing the build) so a typo never blanks out content. Dotted and
+ *  hyphenated keys (e.g. `{{ api.version }}`) are supported. */
+export const interpolateVariables = (text: string, variables: Record<string, string>): string => {
+  if (!text || Object.keys(variables).length === 0) {
+    return text;
+  }
+  return text.replace(/\{\{\s*([\w.-]+)\s*\}\}/g, (whole, key: string) => (Object.hasOwn(variables, key) ? (variables[key] ?? whole) : whole));
+};
+
+/** Extract a `{ key: value }` map from a project config's `variables` array. */
+const variablesFromConfig = (config: unknown): Record<string, string> => {
+  const list = (config as { variables?: Array<{ key?: unknown; value?: unknown }> } | null)?.variables;
+  const map: Record<string, string> = {};
+  if (Array.isArray(list)) {
+    for (const item of list) {
+      if (typeof item?.key === 'string' && item.key && typeof item?.value === 'string') {
+        map[item.key] = item.value;
+      }
+    }
+  }
+  return map;
+};
+
 type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean; config?: unknown };
 type ProjectRow = {
   id: string;
@@ -175,6 +200,9 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
     config: (l.config as SnapshotLanguageConfig | null) ?? null,
   }));
   const fallbackCode = languages.find((l) => l.isDefault)?.code ?? languages[0]?.code ?? 'en';
+  // Resolve Mintlify-style `{{ variables }}` once, then bake the substituted text
+  // into the snapshot so the live site, search index and SEO all see final values.
+  const variables = variablesFromConfig(project.config);
   return {
     project: {
       id: project.id,
@@ -192,6 +220,9 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
     pages: pages.map((page) => ({
       ...page,
       kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE',
+      title: interpolateVariables(page.title, variables),
+      description: page.description ? interpolateVariables(page.description, variables) : page.description,
+      content: interpolateVariables(page.content, variables),
       languageCode: page.languageCode || fallbackCode,
       config: (page.config as SnapshotPageConfig | null) ?? null,
       translationKey: page.translationKey ?? null,

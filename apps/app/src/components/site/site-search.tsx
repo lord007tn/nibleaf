@@ -43,11 +43,14 @@ export function SiteSearch({
   open,
   onOpenChange,
   lang,
+  placeholder,
 }: {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lang?: string;
+  /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
+  placeholder?: string;
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
@@ -74,7 +77,7 @@ export function SiteSearch({
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>
-          <CommandInput placeholder={t('searchPlaceholder')} value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
           <CommandList>
             <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
             <CommandGroup heading={t('results')}>

@@ -14,7 +14,9 @@ const cacheKey = (projectId: string, lang: string): string => `${projectId}:${la
 
 export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
   pages
-    .filter((page) => page.kind === 'PAGE' && !page.hidden)
+    // Exclude pages we serve `<meta robots noindex>` for, so in-product search
+    // never surfaces a page we've told crawlers to ignore.
+    .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex)
     .map((page) => ({
       id: page.id,
       title: page.title,
