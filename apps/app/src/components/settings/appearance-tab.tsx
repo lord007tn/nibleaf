@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/theme-provider';
 import { cn } from '@/lib/utils';
 import { SettingsSection } from './section';
 

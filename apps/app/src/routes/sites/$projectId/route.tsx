@@ -1,6 +1,5 @@
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Moon, Search, Sun } from 'lucide-react';
-import { useTheme } from 'next-themes';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MobileNav } from '@/components/site/mobile-nav';
@@ -69,7 +68,6 @@ function SiteChrome() {
   const navigate = useNavigate({ from: Route.fullPath });
   // Seed from the server loader so the nav + branding render in the initial HTML.
   const { data: site, isPending, isError } = useSite(projectId, lang, initialSite ?? undefined);
-  const { setTheme, resolvedTheme } = useTheme();
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
@@ -90,14 +88,30 @@ function SiteChrome() {
   // Chrome strings follow the active language so an Arabic site reads Arabic.
   const t = siteT(activeLanguage?.code);
 
-  // Seed the theme from config the first time a site with a theme preference loads.
-  // Skipped for 'system' so next-themes keeps following the OS.
-  const configTheme = config?.styling?.theme;
+  // The published site manages its OWN light/dark theme (a class on the chrome
+  // below), independent of the dashboard's theme — so the site's config default
+  // and a visitor's toggle never clobber the editor/dashboard theme.
+  const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(config?.styling?.theme === 'dark' ? 'dark' : 'light');
   useEffect(() => {
-    if (configTheme === 'light' || configTheme === 'dark') {
-      setTheme(configTheme);
+    if (typeof window === 'undefined') {
+      return;
     }
-  }, [configTheme, setTheme]);
+    const stored = window.localStorage.getItem(`plume.site.theme.${projectId}`);
+    if (stored === 'dark' || stored === 'light') {
+      setSiteTheme(stored);
+    }
+  }, [projectId]);
+  const toggleSiteTheme = () => {
+    setSiteTheme((current) => {
+      const next = current === 'dark' ? 'light' : 'dark';
+      try {
+        window.localStorage.setItem(`plume.site.theme.${projectId}`, next);
+      } catch (_) {
+        // ignore (private mode etc.)
+      }
+      return next;
+    });
+  };
 
   // Apply the project's favicon on the published site.
   const faviconUrl = site?.project.faviconUrl;
@@ -167,7 +181,7 @@ function SiteChrome() {
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-background [&_pre]:[direction:ltr] [&_code]:[direction:ltr]"
+      className={cn('min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
       style={{ '--primary': accent, '--ring': accent } as CSSProperties}
     >
       <SiteBanner projectId={projectId} banner={config?.banner} />
@@ -225,11 +239,11 @@ function SiteChrome() {
           <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
           <button
             className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted"
-            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleSiteTheme}
             type="button"
             aria-label="Toggle theme"
           >
-            {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            {siteTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
           {ctaLabel && ctaUrl ? (
             <a

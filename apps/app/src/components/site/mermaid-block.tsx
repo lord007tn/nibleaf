@@ -1,4 +1,4 @@
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/components/theme-provider';
 import { useEffect, useId, useState } from 'react';
 
 /**

@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { DirectionProvider } from '@/components/direction-provider';
-import { ThemeProvider } from '@/components/theme-provider';
+import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@/components/theme-provider';
 import { ConfirmProvider } from '@/components/ui/confirm';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -54,6 +54,9 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning>
       <head>
+        {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
