@@ -1,7 +1,7 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute } from '@tanstack/react-router';
 import { Check, ExternalLink, FileText, FolderPlus, Languages, Loader2, PanelRight, Plus, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
@@ -109,6 +109,18 @@ function EditorPage() {
   const [langSettings, setLangSettings] = useState<Language | null>(null);
   const loadedFor = useRef<string | null>(null);
 
+  // Resizable left sidebar (persisted). Clamp to a sensible range.
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') {
+      return 260;
+    }
+    const stored = Number(window.localStorage.getItem('plume.editor.sidebarWidth'));
+    return stored >= 200 && stored <= 520 ? stored : 260;
+  });
+  useEffect(() => {
+    window.localStorage.setItem('plume.editor.sidebarWidth', String(sidebarWidth));
+  }, [sidebarWidth]);
+
   // The active page's language drives the editor/preview text direction.
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
   const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
@@ -166,9 +178,16 @@ function EditorPage() {
   }, [page, allPages]);
 
   return (
-    <div className={cn('grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[260px_1fr]', showRail && 'xl:grid-cols-[260px_1fr_300px]')}>
+    <div
+      className={cn(
+        'grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[var(--editor-sidebar)_1fr]',
+        showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
+      )}
+      style={{ '--editor-sidebar': `${sidebarWidth}px` } as CSSProperties}
+    >
       {/* Left rail: Content (page tree) or Configuration (site config sections) */}
-      <aside className="flex min-h-0 flex-col border-border border-e bg-sidebar/40">
+      <aside className="relative flex min-h-0 flex-col border-border border-e bg-sidebar/40">
+        <SidebarResizer onResize={setSidebarWidth} />
         <div className="px-2 pt-3 pb-2">
           <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
             <SegButton active={view === 'content'} onClick={() => setView('content')} icon={<FileText className="size-3.5" />}>
@@ -456,5 +475,41 @@ function SegButton({ active, onClick, icon, children }: { active: boolean; onCli
       {icon}
       {children}
     </button>
+  );
+}
+
+/** Drag handle on the sidebar's inline-end edge to resize it (200–520px). Width
+ *  is derived from the aside's box so it's correct in both LTR and RTL. */
+function SidebarResizer({ onResize }: { onResize: (width: number) => void }) {
+  const dragging = useRef(false);
+  return (
+    <div
+      aria-hidden
+      onPointerDown={(event) => {
+        event.preventDefault();
+        dragging.current = true;
+        (event.target as HTMLElement).setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!dragging.current) {
+          return;
+        }
+        const aside = (event.currentTarget as HTMLElement).closest('aside');
+        if (!aside) {
+          return;
+        }
+        const rect = aside.getBoundingClientRect();
+        const rtl = getComputedStyle(aside).direction === 'rtl';
+        const width = rtl ? rect.right - event.clientX : event.clientX - rect.left;
+        onResize(Math.min(520, Math.max(200, Math.round(width))));
+      }}
+      onPointerUp={(event) => {
+        dragging.current = false;
+        (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+      }}
+      className="absolute inset-y-0 end-0 z-20 hidden w-1.5 translate-x-1/2 cursor-col-resize lg:block rtl:-translate-x-1/2"
+    >
+      <div className="mx-auto h-full w-px bg-transparent transition-colors hover:bg-primary/50" />
+    </div>
   );
 }
