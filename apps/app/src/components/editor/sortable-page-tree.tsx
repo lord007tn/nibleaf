@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FileText, Folder, GripVertical, Plus } from 'lucide-react';
+import { FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { PageNode } from '@/hooks/api';
@@ -115,12 +115,14 @@ export function SortablePageTree({
   activeId,
   onSelect,
   onAddChild,
+  onSettings,
   onMove,
 }: {
   pages: PageNode[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
+  onSettings: (id: string) => void;
   onMove: (items: Array<{ id: string; parentId: string | null; position: number }>) => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -196,6 +198,7 @@ export function SortablePageTree({
             active={activeId === item.id}
             onSelect={onSelect}
             onAddChild={onAddChild}
+            onSettings={onSettings}
           />
         ))}
       </SortableContext>
@@ -211,6 +214,7 @@ function SortableRow({
   active,
   onSelect,
   onAddChild,
+  onSettings,
 }: {
   id: string;
   node: PageNode;
@@ -218,6 +222,7 @@ function SortableRow({
   active: boolean;
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
+  onSettings: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Translate.toString(transform), transition };
@@ -229,6 +234,7 @@ function SortableRow({
         active={active}
         onSelect={onSelect}
         onAddChild={onAddChild}
+        onSettings={onSettings}
         handleProps={{ ...attributes, ...listeners }}
       />
     </div>
@@ -242,6 +248,7 @@ function RowPresentation({
   overlay,
   onSelect,
   onAddChild,
+  onSettings,
   handleProps,
 }: {
   node: PageNode;
@@ -250,6 +257,7 @@ function RowPresentation({
   overlay?: boolean;
   onSelect?: (id: string) => void;
   onAddChild?: (parentId: string) => void;
+  onSettings?: (id: string) => void;
   handleProps?: Record<string, unknown>;
 }) {
   const isGroup = node.kind === 'GROUP';
@@ -283,6 +291,17 @@ function RowPresentation({
         {isGroup ? <Folder className="size-3.5 shrink-0 text-muted-foreground" /> : <FileText className="size-3.5 shrink-0 text-muted-foreground" />}
         <span className="truncate">{label}</span>
       </button>
+      {!overlay && onSettings ? (
+        <Button
+          size="icon-xs"
+          variant="ghost"
+          className="shrink-0 cursor-pointer opacity-0 group-hover/row:opacity-100"
+          onClick={() => onSettings(node.id)}
+          title="Page settings"
+        >
+          <Settings2 className="size-3" />
+        </Button>
+      ) : null}
       {isGroup && onAddChild ? (
         <Button
           size="icon-xs"

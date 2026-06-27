@@ -262,6 +262,10 @@ function EditorPage() {
                           activeId={activeId}
                           onSelect={setSelectedId}
                           onAddChild={(parentId) => addPage(parentId, lang.id)}
+                          onSettings={(id) => {
+                            setSelectedId(id);
+                            setSettingsOpen(true);
+                          }}
                           onMove={(items) => reorderPages.mutate({ items })}
                         />
                       )}

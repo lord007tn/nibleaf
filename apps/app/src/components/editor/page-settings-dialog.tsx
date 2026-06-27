@@ -6,13 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { Page, PageConfig } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
+import { cn } from '@/lib/utils';
 
 type PageMode = 'default' | 'wide' | 'center';
+type PageSettingsSection = 'general' | 'seo' | 'behaviour';
+
+const PAGE_SETTINGS_SECTIONS = [
+  { id: 'general', labelKey: 'editor.pageSettings.tab.general', icon: '⊕' },
+  { id: 'seo', labelKey: 'editor.pageSettings.tab.seo', icon: '◎' },
+  { id: 'behaviour', labelKey: 'editor.pageSettings.tab.behaviour', icon: '◐' },
+] as const satisfies ReadonlyArray<{ id: PageSettingsSection; labelKey: MessageKey; icon: string }>;
 
 /** Per-page settings — General (nav metadata), SEO override, and Behaviour
  *  (layout). The SEO + behaviour fields persist to `page.config`, layered over
@@ -48,6 +56,7 @@ export function PageSettingsDialog({
   // Behaviour
   const [mode, setMode] = useState<PageMode>(page.config?.mode ?? 'default');
   const [hideToc, setHideToc] = useState(page.config?.hideToc ?? false);
+  const [section, setSection] = useState<PageSettingsSection>('general');
 
   // Re-seed the form from the page each time the dialog opens.
   useEffect(() => {
@@ -119,113 +128,142 @@ export function PageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{t('editor.pageSettings.title')}</DialogTitle>
-          <DialogDescription>{t('editor.pageSettings.desc')}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogDescription className="sr-only">{t('editor.pageSettings.desc')}</DialogDescription>
+        <div className="flex h-[min(560px,80vh)]">
+          {/* Left settings sidebar */}
+          <aside className="flex w-48 shrink-0 flex-col border-border border-e bg-muted/30 p-2.5">
+            <DialogHeader className="px-2 pt-1.5 pb-3">
+              <DialogTitle className="text-start text-base">{t('editor.pageSettings.title')}</DialogTitle>
+            </DialogHeader>
+            <nav className="flex flex-col gap-0.5">
+              {PAGE_SETTINGS_SECTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSection(item.id)}
+                  className={cn(
+                    'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                    section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-        <Tabs defaultValue="general" className="mt-1">
-          <TabsList>
-            <TabsTrigger value="general">{t('editor.pageSettings.tab.general')}</TabsTrigger>
-            <TabsTrigger value="seo">{t('editor.pageSettings.tab.seo')}</TabsTrigger>
-            <TabsTrigger value="behaviour">{t('editor.pageSettings.tab.behaviour')}</TabsTrigger>
-          </TabsList>
+          {/* Content + footer */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {section === 'general' ? (
+                <div className="flex flex-col gap-4">
+                  <Field label={t('editor.pageSettings.slug')} hint={t('editor.pageSettings.slugHint')} htmlFor="page-slug">
+                    <Input id="page-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="getting-started" />
+                  </Field>
+                  <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
+                    <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
+                  </Field>
+                  <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
+                    <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
+                  </Field>
+                  <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
+                    <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />
+                  </Field>
+                  <Field label={t('editor.pageSettings.description')} htmlFor="page-desc">
+                    <Textarea
+                      id="page-desc"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={3}
+                      placeholder={t('editor.pageSettings.descriptionPlaceholder')}
+                    />
+                  </Field>
+                  <Toggle
+                    label={t('editor.pageSettings.hidden')}
+                    hint={t('editor.pageSettings.hiddenHint')}
+                    id="page-hidden"
+                    checked={hidden}
+                    onCheckedChange={setHidden}
+                  />
+                </div>
+              ) : null}
 
-          {/* General */}
-          <TabsContent value="general" className="mt-4 flex flex-col gap-4">
-            <Field label={t('editor.pageSettings.slug')} hint={t('editor.pageSettings.slugHint')} htmlFor="page-slug">
-              <Input id="page-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="getting-started" />
-            </Field>
-            <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
-              <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
-            </Field>
-            <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
-              <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
-            </Field>
-            <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
-              <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />
-            </Field>
-            <Field label={t('editor.pageSettings.description')} htmlFor="page-desc">
-              <Textarea
-                id="page-desc"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder={t('editor.pageSettings.descriptionPlaceholder')}
-              />
-            </Field>
-            <Toggle
-              label={t('editor.pageSettings.hidden')}
-              hint={t('editor.pageSettings.hiddenHint')}
-              id="page-hidden"
-              checked={hidden}
-              onCheckedChange={setHidden}
-            />
-          </TabsContent>
+              {section === 'seo' ? (
+                <div className="flex flex-col gap-4">
+                  <Field label={t('editor.pageSettings.metaTitle')} hint={t('editor.pageSettings.metaTitleHint')} htmlFor="page-meta-title">
+                    <Input id="page-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={page.title} />
+                  </Field>
+                  <Field
+                    label={t('editor.pageSettings.metaDescription')}
+                    hint={t('editor.pageSettings.metaDescriptionHint')}
+                    htmlFor="page-meta-desc"
+                  >
+                    <Textarea id="page-meta-desc" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={2} />
+                  </Field>
+                  <Field label={t('editor.pageSettings.ogImage')} hint={t('editor.pageSettings.ogImageHint')} htmlFor="page-og">
+                    <Input id="page-og" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://…/cover.png" />
+                  </Field>
+                  <Field label={t('editor.pageSettings.canonicalUrl')} hint={t('editor.pageSettings.canonicalUrlHint')} htmlFor="page-canonical">
+                    <Input id="page-canonical" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} placeholder="https://…" />
+                  </Field>
+                  <Toggle
+                    label={t('editor.pageSettings.noindex')}
+                    hint={t('editor.pageSettings.noindexHint')}
+                    id="page-noindex"
+                    checked={noindex}
+                    onCheckedChange={setNoindex}
+                  />
+                  <Field
+                    label={t('editor.pageSettings.translationKey')}
+                    hint={t('editor.pageSettings.translationKeyHint')}
+                    htmlFor="page-translation-key"
+                  >
+                    <Input
+                      id="page-translation-key"
+                      value={translationKey}
+                      onChange={(e) => setTranslationKey(e.target.value)}
+                      placeholder="getting-started"
+                    />
+                  </Field>
+                </div>
+              ) : null}
 
-          {/* SEO */}
-          <TabsContent value="seo" className="mt-4 flex flex-col gap-4">
-            <Field label={t('editor.pageSettings.metaTitle')} hint={t('editor.pageSettings.metaTitleHint')} htmlFor="page-meta-title">
-              <Input id="page-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={page.title} />
-            </Field>
-            <Field label={t('editor.pageSettings.metaDescription')} hint={t('editor.pageSettings.metaDescriptionHint')} htmlFor="page-meta-desc">
-              <Textarea id="page-meta-desc" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={2} />
-            </Field>
-            <Field label={t('editor.pageSettings.ogImage')} hint={t('editor.pageSettings.ogImageHint')} htmlFor="page-og">
-              <Input id="page-og" value={ogImage} onChange={(e) => setOgImage(e.target.value)} placeholder="https://…/cover.png" />
-            </Field>
-            <Field label={t('editor.pageSettings.canonicalUrl')} hint={t('editor.pageSettings.canonicalUrlHint')} htmlFor="page-canonical">
-              <Input id="page-canonical" value={canonicalUrl} onChange={(e) => setCanonicalUrl(e.target.value)} placeholder="https://…" />
-            </Field>
-            <Toggle
-              label={t('editor.pageSettings.noindex')}
-              hint={t('editor.pageSettings.noindexHint')}
-              id="page-noindex"
-              checked={noindex}
-              onCheckedChange={setNoindex}
-            />
-            <Field label={t('editor.pageSettings.translationKey')} hint={t('editor.pageSettings.translationKeyHint')} htmlFor="page-translation-key">
-              <Input
-                id="page-translation-key"
-                value={translationKey}
-                onChange={(e) => setTranslationKey(e.target.value)}
-                placeholder="getting-started"
-              />
-            </Field>
-          </TabsContent>
+              {section === 'behaviour' ? (
+                <div className="flex flex-col gap-4">
+                  <Field label={t('editor.pageSettings.mode')} hint={t('editor.pageSettings.modeHint')} htmlFor="page-mode">
+                    <Select value={mode} onValueChange={(v) => setMode((v as PageMode) ?? 'default')}>
+                      <SelectTrigger id="page-mode" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="default">{t('editor.pageSettings.mode.default')}</SelectItem>
+                        <SelectItem value="wide">{t('editor.pageSettings.mode.wide')}</SelectItem>
+                        <SelectItem value="center">{t('editor.pageSettings.mode.center')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Toggle
+                    label={t('editor.pageSettings.hideToc')}
+                    hint={t('editor.pageSettings.hideTocHint')}
+                    id="page-hidetoc"
+                    checked={hideToc}
+                    onCheckedChange={setHideToc}
+                    disabled={mode !== 'default'}
+                  />
+                </div>
+              ) : null}
+            </div>
 
-          {/* Behaviour */}
-          <TabsContent value="behaviour" className="mt-4 flex flex-col gap-4">
-            <Field label={t('editor.pageSettings.mode')} hint={t('editor.pageSettings.modeHint')} htmlFor="page-mode">
-              <Select value={mode} onValueChange={(v) => setMode((v as PageMode) ?? 'default')}>
-                <SelectTrigger id="page-mode" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">{t('editor.pageSettings.mode.default')}</SelectItem>
-                  <SelectItem value="wide">{t('editor.pageSettings.mode.wide')}</SelectItem>
-                  <SelectItem value="center">{t('editor.pageSettings.mode.center')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Toggle
-              label={t('editor.pageSettings.hideToc')}
-              hint={t('editor.pageSettings.hideTocHint')}
-              id="page-hidetoc"
-              checked={hideToc}
-              onCheckedChange={setHideToc}
-              disabled={mode !== 'default'}
-            />
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter>
-          <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-          <Button type="button" onClick={save} disabled={update.isPending}>
-            {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="border-border border-t px-6 py-3">
+              <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
+              <Button type="button" onClick={save} disabled={update.isPending}>
+                {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
+              </Button>
+            </DialogFooter>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

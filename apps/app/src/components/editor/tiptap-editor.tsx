@@ -43,8 +43,9 @@ const CodeBlock = CodeBlockLowlight.extend({
 });
 
 /** Notion-style block handle: a grip to drag-reorder blocks and a + to insert a
- *  new block. Floats in the left gutter of whichever block the cursor hovers. */
-function BlockHandle({ editor }: { editor: Editor }) {
+ *  new block. Floats in the start-side gutter (left in LTR, right in RTL) of
+ *  whichever block the cursor hovers. */
+function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   const posRef = useRef<number | null>(null);
   const insertBelow = () => {
     const pos = posRef.current;
@@ -63,11 +64,12 @@ function BlockHandle({ editor }: { editor: Editor }) {
   return (
     <DragHandle
       editor={editor}
+      computePositionConfig={{ placement: dir === 'rtl' ? 'right-start' : 'left-start' }}
       onNodeChange={({ pos }) => {
         posRef.current = pos;
       }}
     >
-      <div className="flex items-center gap-0.5 pe-1 text-muted-foreground">
+      <div className="flex items-center gap-0.5 px-1 text-muted-foreground">
         <button
           type="button"
           title="Insert block"
@@ -224,7 +226,7 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
   return (
     <div className={cn('pl-editor', className)} dir={dir}>
       {editor ? <EditorBubbleMenu editor={editor} /> : null}
-      {editor ? <BlockHandle editor={editor} /> : null}
+      {editor ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       <EditorContent editor={editor} />
     </div>
   );
