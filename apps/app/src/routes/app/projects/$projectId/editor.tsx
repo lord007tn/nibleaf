@@ -1,7 +1,8 @@
 import { useDebouncedCallback } from '@tanstack/react-pacer';
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   Check,
+  ChevronLeft,
   Code2,
   ExternalLink,
   Eye,
@@ -9,7 +10,8 @@ import {
   FolderPlus,
   Languages,
   Loader2,
-  PanelLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   PanelRight,
   Pencil,
   Plus,
@@ -45,6 +47,7 @@ import {
   useUpdatePage,
   useUploadAsset,
 } from '@/hooks/api';
+import { PublishControl } from '@/layouts/project';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
@@ -251,334 +254,381 @@ function EditorPage() {
   const showRail = view === 'content' && railOpen && Boolean(activeId && page);
 
   return (
-    <div
-      className={cn(
-        'grid h-[calc(100vh-3.5rem)] grid-cols-1 lg:grid-cols-[var(--editor-sidebar)_1fr]',
-        showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
-      )}
-      style={{ '--editor-sidebar': sidebarCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
-    >
-      {/* Left rail: Content (page tree) or Configuration (site config sections) */}
-      <aside
-        className={cn('relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40', sidebarCollapsed && 'border-e-0')}
-        aria-hidden={sidebarCollapsed}
-      >
-        {!sidebarCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
-        <div className="px-2 pt-3 pb-2">
-          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-            <SegButton active={view === 'content'} onClick={() => setView('content')} icon={<FileText className="size-3.5" />}>
-              {t('editor.mode.content')}
-            </SegButton>
-            <SegButton active={view === 'config'} onClick={() => setView('config')} icon={<SlidersHorizontal className="size-3.5" />}>
-              {t('editor.mode.configuration')}
-            </SegButton>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-4">
-          {view === 'config' ? (
-            <ConfigSectionList active={configSection} onSelect={setConfigSection} />
-          ) : isPending ? (
-            <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
-          ) : (
+    <div className="flex h-screen flex-col">
+      {/* Top bar — workspace controls (Mintlify-style): back + branch on the left,
+          configure / preview / publish on the right. No breadcrumb. */}
+      <header className="flex h-14 shrink-0 items-center gap-2.5 border-border border-b bg-background px-3">
+        <Link
+          to="/app/projects/$projectId"
+          params={{ projectId }}
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title={t('editor.backToDashboard')}
+        >
+          <ChevronLeft className="size-4" />
+          <span className="max-w-[200px] truncate font-medium text-foreground text-sm">{project?.name ?? ''}</span>
+        </Link>
+        <span className="h-5 w-px bg-border" />
+        <BranchSwitcher
+          projectId={projectId}
+          branches={branches ?? []}
+          activeBranchId={activeBranchId}
+          onSwitch={(id) => {
+            setActiveBranchId(id);
+            setSelectedId(null);
+            synced.current = null;
+          }}
+        />
+        <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+          {status === 'saving' ? (
             <>
-              {orderedLanguages.map((lang) => {
-                const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
-                const langPages = pagesByLanguage.get(lang.id) ?? [];
-                return (
-                  <div key={lang.id} className="mb-2">
-                    {/* Language section header */}
-                    <div className="group flex items-center justify-between px-2 py-1.5">
-                      <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
-                        <Languages className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{lang.label}</span>
-                        <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
-                        {lang.isDefault ? (
-                          <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">{t('editor.default')}</span>
-                        ) : null}
-                      </span>
-                      <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          className="cursor-pointer"
-                          onClick={() => setLangSettings(lang)}
-                          title={t('editor.langSettings.settings')}
-                        >
-                          <Settings2 className="size-3" />
-                        </Button>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          className="cursor-pointer"
-                          onClick={() => addGroup(lang.id)}
-                          title={t('editor.newGroup')}
-                        >
-                          <FolderPlus className="size-3" />
-                        </Button>
-                        <Button
-                          size="icon-xs"
-                          variant="ghost"
-                          className="cursor-pointer"
-                          onClick={() => addPage(null, lang.id)}
-                          title={t('editor.newPage')}
-                        >
-                          <Plus className="size-3" />
-                        </Button>
+              <Loader2 className="size-3 animate-spin" /> {t('editor.savingShort')}
+            </>
+          ) : status === 'saved' ? (
+            <>
+              <Check className="size-3 text-primary" /> {t('editor.savedShort')}
+            </>
+          ) : null}
+        </span>
+        <div className="ms-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={view === 'config' ? 'secondary' : 'ghost'}
+            className="cursor-pointer"
+            onClick={() => setView((v) => (v === 'config' ? 'content' : 'config'))}
+          >
+            <SlidersHorizontal className="size-3.5" /> {t('editor.mode.configuration')}
+          </Button>
+          <Button
+            render={
+              // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
+              <a aria-label={t('project.preview')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
+            }
+            size="sm"
+            variant="outline"
+            className="cursor-pointer"
+          >
+            <Eye className="size-3.5" /> {t('project.preview')}
+          </Button>
+          {project ? <PublishControl project={project} /> : null}
+        </div>
+      </header>
+
+      {/* Editor grid: page-tree sidebar + canvas (+ comments rail) */}
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[var(--editor-sidebar)_1fr]',
+          showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
+        )}
+        style={{ '--editor-sidebar': sidebarCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
+      >
+        <aside
+          className={cn('relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40', sidebarCollapsed && 'border-e-0')}
+          aria-hidden={sidebarCollapsed}
+        >
+          {!sidebarCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
+          {/* Sidebar header: section label + the collapse control (lives ON the sidebar). */}
+          <div className="flex h-11 shrink-0 items-center justify-between border-border border-b ps-3 pe-1.5">
+            <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+              {view === 'config' ? t('editor.config.heading') : t('editor.pages')}
+            </span>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              className="cursor-pointer"
+              onClick={() => setSidebarCollapsed(true)}
+              title={t('editor.hideSidebar')}
+            >
+              <PanelLeftClose className="size-3.5" />
+            </Button>
+          </div>
+
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2">
+            {view === 'config' ? (
+              <ConfigSectionList active={configSection} onSelect={setConfigSection} />
+            ) : isPending ? (
+              <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
+            ) : (
+              <>
+                {orderedLanguages.map((lang) => {
+                  const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
+                  const langPages = pagesByLanguage.get(lang.id) ?? [];
+                  return (
+                    <div key={lang.id} className="mb-2">
+                      {/* Language section header */}
+                      <div className="group flex items-center justify-between px-2 py-1.5">
+                        <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
+                          <Languages className="size-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{lang.label}</span>
+                          <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
+                          {lang.isDefault ? (
+                            <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">
+                              {t('editor.default')}
+                            </span>
+                          ) : null}
+                        </span>
+                        <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            className="cursor-pointer"
+                            onClick={() => setLangSettings(lang)}
+                            title={t('editor.langSettings.settings')}
+                          >
+                            <Settings2 className="size-3" />
+                          </Button>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            className="cursor-pointer"
+                            onClick={() => addGroup(lang.id)}
+                            title={t('editor.newGroup')}
+                          >
+                            <FolderPlus className="size-3" />
+                          </Button>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            className="cursor-pointer"
+                            onClick={() => addPage(null, lang.id)}
+                            title={t('editor.newPage')}
+                          >
+                            <Plus className="size-3" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* This language's page tree — Notion-style drag-and-drop */}
+                      <div className="space-y-0.5" dir={dir}>
+                        {langPages.length === 0 ? (
+                          <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
+                        ) : (
+                          <SortablePageTree
+                            pages={langPages}
+                            activeId={activeId}
+                            onSelect={setSelectedId}
+                            onAddChild={(parentId) => addPage(parentId, lang.id)}
+                            onSettings={(id) => setSettingsForId(id)}
+                            onMove={(items) => reorderPages.mutate({ items })}
+                          />
+                        )}
                       </div>
                     </div>
+                  );
+                })}
 
-                    {/* This language's page tree — Notion-style drag-and-drop */}
-                    <div className="space-y-0.5" dir={dir}>
-                      {langPages.length === 0 ? (
-                        <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
-                      ) : (
-                        <SortablePageTree
-                          pages={langPages}
-                          activeId={activeId}
-                          onSelect={setSelectedId}
-                          onAddChild={(parentId) => addPage(parentId, lang.id)}
-                          onSettings={(id) => setSettingsForId(id)}
-                          onMove={(items) => reorderPages.mutate({ items })}
-                        />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Add a language */}
-              <button
-                type="button"
-                onClick={() => setAddLangOpen(true)}
-                className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
-              >
-                <Plus className="size-3.5" /> {t('editor.addLanguage')}
-              </button>
-            </>
-          )}
-        </div>
-        <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
-        {langSettings ? (
-          <LanguageSettingsDialog
-            projectId={projectId}
-            language={langSettings}
-            open={Boolean(langSettings)}
-            onOpenChange={(o) => !o && setLangSettings(null)}
-          />
-        ) : null}
-        {settingsForId
-          ? (() => {
-              const target = (allPages ?? []).find((p) => p.id === settingsForId);
-              return target ? (
-                <PageSettingsDialog projectId={projectId} page={target} open onOpenChange={(o) => !o && setSettingsForId(null)} />
-              ) : null;
-            })()
-          : null}
-      </aside>
-
-      {/* Main area: site configuration */}
-      {view === 'config' ? (
-        <section className="min-w-0 overflow-y-auto">
-          {/* A muted overline so it reads as "Site configuration › <section>"
-              rather than competing with each section's own heading. */}
-          <div className="border-border border-b px-6 py-3">
-            <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
-          </div>
-          <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">
-            {project ? (
-              <ConfigSection project={project} section={configSection} />
-            ) : (
-              <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+                {/* Add a language */}
+                <button
+                  type="button"
+                  onClick={() => setAddLangOpen(true)}
+                  className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+                >
+                  <Plus className="size-3.5" /> {t('editor.addLanguage')}
+                </button>
+              </>
             )}
           </div>
-        </section>
-      ) : activeId && !page ? (
-        <section className="grid place-items-center text-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </section>
-      ) : activeId && page ? (
-        /* Main area: page editor */
-        <section className="flex min-w-0 flex-col">
-          {/* Editor toolbar (Mintlify-style): sidebar toggle + branch on the left,
-              document/view controls on the right. No breadcrumb. */}
-          <div className="flex h-12 items-center gap-2 border-border border-b px-4">
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              className="cursor-pointer"
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              aria-pressed={!sidebarCollapsed}
-              title={sidebarCollapsed ? t('editor.showSidebar') : t('editor.hideSidebar')}
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-            <BranchSwitcher
+          <AddLanguageDialog projectId={projectId} open={addLangOpen} onOpenChange={setAddLangOpen} onCreated={() => setAddLangOpen(false)} />
+          {langSettings ? (
+            <LanguageSettingsDialog
               projectId={projectId}
-              branches={branches ?? []}
-              activeBranchId={activeBranchId}
-              onSwitch={(id) => {
-                setActiveBranchId(id);
-                setSelectedId(null);
-                synced.current = null;
-              }}
+              language={langSettings}
+              open={Boolean(langSettings)}
+              onOpenChange={(o) => !o && setLangSettings(null)}
             />
-            <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
-              {status === 'saving' ? (
-                <>
-                  <Loader2 className="size-3 animate-spin" /> {t('editor.savingShort')}
-                </>
-              ) : status === 'saved' ? (
-                <>
-                  <Check className="size-3 text-primary" /> {t('editor.savedShort')}
-                </>
-              ) : null}
-            </span>
-            <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-              <SegButton active={editorMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
-                {t('editor.mode.visual')}
-              </SegButton>
-              <SegButton active={editorMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
-                {t('editor.mode.markdown')}
-              </SegButton>
-              <SegButton active={editorMode === 'preview'} onClick={() => setEditorMode('preview')} icon={<Eye className="size-3.5" />}>
-                {t('editor.mode.preview')}
-              </SegButton>
-            </div>
-            <Button
-              render={
-                // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
-                <a
-                  aria-label={t('editor.viewOnSite')}
-                  href={`/sites/${projectId}/${page.path}${activeLanguage && !activeLanguage.isDefault ? `?lang=${activeLanguage.code}` : ''}`}
-                  rel="noreferrer"
-                  target="_blank"
-                />
-              }
-              size="icon-sm"
-              variant="ghost"
-              className="cursor-pointer"
-              title={t('editor.viewOnSite')}
-            >
-              <ExternalLink className="size-4" />
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              className="cursor-pointer"
-              onClick={() => activeId && setSettingsForId(activeId)}
-              title={t('editor.pageSettings.title')}
-            >
-              <Settings2 className="size-4" />
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              className="cursor-pointer"
-              title={t('editor.deletePage')}
-              onClick={async () => {
-                const ok = await confirm({
-                  title: t('editor.deletePage'),
-                  description: t('editor.deletePageConfirm'),
-                  confirmLabel: t('editor.deletePage'),
-                  destructive: true,
-                });
-                if (ok) {
-                  deletePage.mutate(page.id, { onSuccess: () => setSelectedId(null) });
-                }
-              }}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-            <Button
-              aria-pressed={railOpen}
-              className="hidden cursor-pointer xl:inline-flex"
-              onClick={() => setRailOpen((v) => !v)}
-              size="icon-sm"
-              title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
-              variant={railOpen ? 'secondary' : 'ghost'}
-            >
-              <PanelRight className="size-4" />
-            </Button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-7 py-8">
-            {/* Title rendered as the first line of the document column (Mintlify-style),
-                aligned to the same 720px measure as the body. */}
-            <div className="mx-auto max-w-[720px]">
-              {editorMode === 'preview' ? (
-                <h1 className="font-semibold text-[2.1rem] leading-[1.15] tracking-tight" dir={activeLangDir}>
-                  {title || t('editor.pageTitlePlaceholder')}
-                </h1>
-              ) : (
-                <input
-                  className="w-full border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40"
-                  dir={activeLangDir}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t('editor.pageTitlePlaceholder')}
-                  value={title}
-                />
-              )}
-            </div>
-            {editorMode === 'visual' ? (
-              // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
-              // gutter for the block handle — so it is NOT wrapped in a narrow box.
-              <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
-            ) : editorMode === 'markdown' ? (
-              <textarea
-                dir={activeLangDir}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                spellCheck={false}
-                placeholder={t('editor.markdownPlaceholder')}
-                className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
-              />
-            ) : (
-              // Live preview: the draft rendered through the exact live-site renderer.
-              <div className="mx-auto mt-4 max-w-[720px]" dir={activeLangDir}>
-                <Markdown content={content} />
-              </div>
-            )}
-          </div>
-        </section>
-      ) : (
-        <section className="grid place-items-center text-center">
-          <div>
-            <FileText className="mx-auto size-7 text-muted-foreground" />
-            <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
-            <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
-            {defaultLanguageId ? (
-              <Button className="mt-4 cursor-pointer" onClick={() => addPage(null, defaultLanguageId)}>
-                <Plus className="size-4" /> {t('editor.newPage')}
-              </Button>
-            ) : null}
-          </div>
-        </section>
-      )}
-
-      {/* Right rail: Figma-style tabbed panel — Comments / AI */}
-      {showRail && activeId ? (
-        <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
-          <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
-            <TabsList className="m-2 self-start">
-              <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
-              <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
-            </TabsList>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
-              {railTab === 'comments' ? (
-                <CommentsPanel pageId={activeId} projectId={projectId} />
-              ) : (
-                <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
-              )}
-            </div>
-          </Tabs>
+          ) : null}
+          {settingsForId
+            ? (() => {
+                const target = (allPages ?? []).find((p) => p.id === settingsForId);
+                return target ? (
+                  <PageSettingsDialog projectId={projectId} page={target} open onOpenChange={(o) => !o && setSettingsForId(null)} />
+                ) : null;
+              })()
+            : null}
         </aside>
-      ) : null}
+
+        {/* Main area: site configuration */}
+        {view === 'config' ? (
+          <section className="min-w-0 overflow-y-auto">
+            {/* A muted overline so it reads as "Site configuration › <section>"
+              rather than competing with each section's own heading. */}
+            <div className="border-border border-b px-6 py-3">
+              <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
+            </div>
+            <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">
+              {project ? (
+                <ConfigSection project={project} section={configSection} />
+              ) : (
+                <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+              )}
+            </div>
+          </section>
+        ) : activeId && !page ? (
+          <section className="grid place-items-center text-center">
+            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          </section>
+        ) : activeId && page ? (
+          /* Main area: page editor */
+          <section className="flex min-w-0 flex-col">
+            {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
+              document mode/view controls. */}
+            <div className="flex h-12 items-center gap-2 border-border border-b px-4">
+              {sidebarCollapsed ? (
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="cursor-pointer"
+                  onClick={() => setSidebarCollapsed(false)}
+                  title={t('editor.showSidebar')}
+                >
+                  <PanelLeftOpen className="size-4" />
+                </Button>
+              ) : null}
+              <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+                <SegButton active={editorMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
+                  {t('editor.mode.visual')}
+                </SegButton>
+                <SegButton active={editorMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
+                  {t('editor.mode.markdown')}
+                </SegButton>
+                <SegButton active={editorMode === 'preview'} onClick={() => setEditorMode('preview')} icon={<Eye className="size-3.5" />}>
+                  {t('editor.mode.preview')}
+                </SegButton>
+              </div>
+              <Button
+                render={
+                  // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
+                  <a
+                    aria-label={t('editor.viewOnSite')}
+                    href={`/sites/${projectId}/${page.path}${activeLanguage && !activeLanguage.isDefault ? `?lang=${activeLanguage.code}` : ''}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  />
+                }
+                size="icon-sm"
+                variant="ghost"
+                className="cursor-pointer"
+                title={t('editor.viewOnSite')}
+              >
+                <ExternalLink className="size-4" />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="cursor-pointer"
+                onClick={() => activeId && setSettingsForId(activeId)}
+                title={t('editor.pageSettings.title')}
+              >
+                <Settings2 className="size-4" />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                className="cursor-pointer"
+                title={t('editor.deletePage')}
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: t('editor.deletePage'),
+                    description: t('editor.deletePageConfirm'),
+                    confirmLabel: t('editor.deletePage'),
+                    destructive: true,
+                  });
+                  if (ok) {
+                    deletePage.mutate(page.id, { onSuccess: () => setSelectedId(null) });
+                  }
+                }}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+              <Button
+                aria-pressed={railOpen}
+                className="hidden cursor-pointer xl:inline-flex"
+                onClick={() => setRailOpen((v) => !v)}
+                size="icon-sm"
+                title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
+                variant={railOpen ? 'secondary' : 'ghost'}
+              >
+                <PanelRight className="size-4" />
+              </Button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-7 py-8">
+              {/* Title rendered as the first line of the document column (Mintlify-style),
+                aligned to the same 720px measure as the body. */}
+              <div className="mx-auto max-w-[720px]">
+                {editorMode === 'preview' ? (
+                  <h1 className="font-semibold text-[2.1rem] leading-[1.15] tracking-tight" dir={activeLangDir}>
+                    {title || t('editor.pageTitlePlaceholder')}
+                  </h1>
+                ) : (
+                  <input
+                    className="w-full border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40"
+                    dir={activeLangDir}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder={t('editor.pageTitlePlaceholder')}
+                    value={title}
+                  />
+                )}
+              </div>
+              {editorMode === 'visual' ? (
+                // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
+                // gutter for the block handle — so it is NOT wrapped in a narrow box.
+                <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
+              ) : editorMode === 'markdown' ? (
+                <textarea
+                  dir={activeLangDir}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  spellCheck={false}
+                  placeholder={t('editor.markdownPlaceholder')}
+                  className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
+                />
+              ) : (
+                // Live preview: the draft rendered through the exact live-site renderer.
+                <div className="mx-auto mt-4 max-w-[720px]" dir={activeLangDir}>
+                  <Markdown content={content} />
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <section className="grid place-items-center text-center">
+            <div>
+              <FileText className="mx-auto size-7 text-muted-foreground" />
+              <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
+              <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
+              {defaultLanguageId ? (
+                <Button className="mt-4 cursor-pointer" onClick={() => addPage(null, defaultLanguageId)}>
+                  <Plus className="size-4" /> {t('editor.newPage')}
+                </Button>
+              ) : null}
+            </div>
+          </section>
+        )}
+
+        {/* Right rail: Figma-style tabbed panel — Comments / AI */}
+        {showRail && activeId ? (
+          <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
+            <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="m-2 self-start">
+                <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
+                <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
+              </TabsList>
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
+                {railTab === 'comments' ? (
+                  <CommentsPanel pageId={activeId} projectId={projectId} />
+                ) : (
+                  <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
+                )}
+              </div>
+            </Tabs>
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-/** A segmented-control button used for the Content / Configuration toggle. */
+/** A segmented-control button used for the editor mode toggle (Visual / Markdown / Preview). */
 function SegButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <button

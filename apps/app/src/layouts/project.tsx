@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
@@ -14,7 +15,7 @@ import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow. */
-function PublishControl({ project }: { project: Project }) {
+export function PublishControl({ project }: { project: Project }) {
   const [publishOpen, setPublishOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
   const t = useT();
@@ -49,6 +50,12 @@ function PublishControl({ project }: { project: Project }) {
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
   const { data: project } = useProject(projectId);
   const t = useT();
+  // The editor is a focused, full-screen workspace (Mintlify-style): it renders
+  // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname.endsWith('/editor')) {
+    return <div className="h-screen overflow-hidden">{children}</div>;
+  }
 
   return (
     <SidebarProvider>
