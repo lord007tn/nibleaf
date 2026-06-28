@@ -219,7 +219,7 @@ export function TiptapEditor({
         const $pos = view.state.doc.resolve(pos);
         const depth = $pos.depth;
         const node = depth > 0 ? $pos.node(depth) : null;
-        if (!node || !node.isTextblock) {
+        if (!node?.isTextblock) {
           return false;
         }
         const quote = node.textContent.trim();
@@ -274,6 +274,7 @@ export function TiptapEditor({
 
   // Re-run the comment highlight decorations when the comments / active id change
   // (no doc change occurs, so nudge ProseMirror with an empty transaction).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: comments/activeCommentId are intentional re-render triggers (read via refs inside the plugin).
   useEffect(() => {
     if (editor) {
       editor.view.dispatch(editor.state.tr);
