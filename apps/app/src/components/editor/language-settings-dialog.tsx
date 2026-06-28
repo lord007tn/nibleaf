@@ -6,17 +6,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { Language, LanguageConfig } from '@/hooks/api';
 import { useUpdateLanguage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
+import { cn } from '@/lib/utils';
 
 type Direction = 'LTR' | 'RTL';
+type LangSettingsSection = 'general' | 'seo';
+
+const LANG_SETTINGS_SECTIONS = [
+  { id: 'general', labelKey: 'editor.langSettings.tab.general', icon: '⊕' },
+  { id: 'seo', labelKey: 'editor.langSettings.tab.seo', icon: '◎' },
+] as const satisfies ReadonlyArray<{ id: LangSettingsSection; labelKey: MessageKey; icon: string }>;
 
 /** Per-language settings: label, direction, default flag (General) and the SEO
  *  defaults that apply to every page in this language (SEO). The SEO fields
- *  persist to `language.config` and sit between the site and page SEO. */
+ *  persist to `language.config` and sit between the site and page SEO. Laid out
+ *  as a left-sidebar dialog to match the page-settings dialog. */
 export function LanguageSettingsDialog({
   projectId,
   language,
@@ -38,6 +46,7 @@ export function LanguageSettingsDialog({
   const [metaDescription, setMetaDescription] = useState(language.config?.seo?.metaDescription ?? '');
   const [socialImage, setSocialImage] = useState(language.config?.seo?.socialImage ?? '');
   const [allowIndex, setAllowIndex] = useState(language.config?.seo?.allowIndex ?? true);
+  const [section, setSection] = useState<LangSettingsSection>('general');
 
   useEffect(() => {
     if (!open) {
@@ -76,78 +85,131 @@ export function LanguageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>
-            {t('editor.langSettings.title')} · {language.label}
-          </DialogTitle>
-          <DialogDescription>{t('editor.langSettings.desc')}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogDescription className="sr-only">{t('editor.langSettings.desc')}</DialogDescription>
+        <div className="flex h-[min(520px,80vh)]">
+          {/* Left settings sidebar */}
+          <aside className="flex w-48 shrink-0 flex-col border-border border-e bg-muted/30 p-2.5">
+            <DialogHeader className="px-2 pt-1.5 pb-3">
+              <DialogTitle className="text-start text-base">{t('editor.langSettings.title')}</DialogTitle>
+              <p className="truncate text-muted-foreground text-xs">{language.label}</p>
+            </DialogHeader>
+            <nav className="flex flex-col gap-0.5">
+              {LANG_SETTINGS_SECTIONS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSection(item.id)}
+                  className={cn(
+                    'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                    section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </nav>
+          </aside>
 
-        <Tabs defaultValue="general" className="mt-1">
-          <TabsList>
-            <TabsTrigger value="general">{t('editor.langSettings.tab.general')}</TabsTrigger>
-            <TabsTrigger value="seo">{t('editor.langSettings.tab.seo')}</TabsTrigger>
-          </TabsList>
+          {/* Content + footer */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+              {section === 'general' ? (
+                <div className="flex flex-col gap-4">
+                  <Field label={t('editor.langSettings.label')} htmlFor="lang-label">
+                    <Input id="lang-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="English" />
+                  </Field>
+                  <Field label={t('editor.langSettings.direction')} htmlFor="lang-dir">
+                    <Select value={direction} onValueChange={(v) => setDirection((v as Direction) ?? 'LTR')}>
+                      <SelectTrigger id="lang-dir" className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LTR">{t('editor.addLanguage.ltr')}</SelectItem>
+                        <SelectItem value="RTL">{t('editor.addLanguage.rtl')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {/* Already-default can't be toggled off here — set another language default instead. */}
+                  <Toggle
+                    label={t('editor.langSettings.makeDefault')}
+                    hint={t('editor.langSettings.makeDefaultHint')}
+                    id="lang-default"
+                    checked={isDefault}
+                    onCheckedChange={setIsDefault}
+                    disabled={language.isDefault}
+                  />
+                </div>
+              ) : null}
 
-          <TabsContent value="general" className="mt-4 flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lang-label">{t('editor.langSettings.label')}</Label>
-              <Input id="lang-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="English" />
+              {section === 'seo' ? (
+                <div className="flex flex-col gap-4">
+                  <Field label={t('editor.langSettings.metaTitle')} hint={t('editor.langSettings.metaTitleHint')} htmlFor="lang-meta-title">
+                    <Input id="lang-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} placeholder={language.label} />
+                  </Field>
+                  <Field label={t('editor.langSettings.metaDescription')} htmlFor="lang-meta-desc">
+                    <Textarea id="lang-meta-desc" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={2} />
+                  </Field>
+                  <Field label={t('editor.langSettings.socialImage')} htmlFor="lang-social">
+                    <Input id="lang-social" value={socialImage} onChange={(e) => setSocialImage(e.target.value)} placeholder="https://…/cover.png" />
+                  </Field>
+                  <Toggle
+                    label={t('editor.langSettings.allowIndex')}
+                    hint={t('editor.langSettings.allowIndexHint')}
+                    id="lang-index"
+                    checked={allowIndex}
+                    onCheckedChange={setAllowIndex}
+                  />
+                </div>
+              ) : null}
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lang-dir">{t('editor.langSettings.direction')}</Label>
-              <Select value={direction} onValueChange={(v) => setDirection((v as Direction) ?? 'LTR')}>
-                <SelectTrigger id="lang-dir" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="LTR">{t('editor.addLanguage.ltr')}</SelectItem>
-                  <SelectItem value="RTL">{t('editor.addLanguage.rtl')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label htmlFor="lang-default">{t('editor.langSettings.makeDefault')}</Label>
-                <p className="text-muted-foreground text-xs">{t('editor.langSettings.makeDefaultHint')}</p>
-              </div>
-              {/* Already-default can't be toggled off here — set another language default instead. */}
-              <Switch id="lang-default" checked={isDefault} onCheckedChange={setIsDefault} disabled={language.isDefault} />
-            </div>
-          </TabsContent>
 
-          <TabsContent value="seo" className="mt-4 flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lang-meta-title">{t('editor.langSettings.metaTitle')}</Label>
-              <Input id="lang-meta-title" value={metaTitle} onChange={(e) => setMetaTitle(e.target.value)} />
-              <p className="text-muted-foreground text-xs">{t('editor.langSettings.metaTitleHint')}</p>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lang-meta-desc">{t('editor.langSettings.metaDescription')}</Label>
-              <Textarea id="lang-meta-desc" value={metaDescription} onChange={(e) => setMetaDescription(e.target.value)} rows={2} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lang-social">{t('editor.langSettings.socialImage')}</Label>
-              <Input id="lang-social" value={socialImage} onChange={(e) => setSocialImage(e.target.value)} placeholder="https://…/cover.png" />
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label htmlFor="lang-index">{t('editor.langSettings.allowIndex')}</Label>
-                <p className="text-muted-foreground text-xs">{t('editor.langSettings.allowIndexHint')}</p>
-              </div>
-              <Switch id="lang-index" checked={allowIndex} onCheckedChange={setAllowIndex} />
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter>
-          <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-          <Button type="button" onClick={save} disabled={update.isPending}>
-            {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="border-border border-t px-6 py-3">
+              <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
+              <Button type="button" onClick={save} disabled={update.isPending}>
+                {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
+              </Button>
+            </DialogFooter>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Field({ label, hint, htmlFor, children }: { label: string; hint?: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+      {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+    </div>
+  );
+}
+
+function Toggle({
+  label,
+  hint,
+  id,
+  checked,
+  onCheckedChange,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  id: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <Label htmlFor={id}>{label}</Label>
+        {hint ? <p className="text-muted-foreground text-xs">{hint}</p> : null}
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+    </div>
   );
 }

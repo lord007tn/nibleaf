@@ -127,6 +127,7 @@ export const usePublish = (projectId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
     },
   });
 };
@@ -142,6 +143,7 @@ export const useRollback = (projectId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
     },
   });
 };

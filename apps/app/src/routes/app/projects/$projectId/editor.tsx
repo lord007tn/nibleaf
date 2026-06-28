@@ -341,10 +341,13 @@ function EditorPage() {
         </div>
       </header>
 
-      {/* Editor grid: page-tree sidebar + canvas (+ comments rail) */}
+      {/* Editor grid: page-tree sidebar + canvas (+ comments rail). The single row is
+          pinned to the container height (minmax(0,1fr)) so each column is bounded and
+          its own overflow-y-auto scrolls — an implicit `auto` row would grow to the
+          tallest column's content and break scrolling. */}
       <div
         className={cn(
-          'grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[var(--editor-sidebar)_1fr]',
+          'grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[var(--editor-sidebar)_1fr]',
           showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
         )}
         style={{ '--editor-sidebar': sidebarCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
@@ -476,7 +479,7 @@ function EditorPage() {
 
         {/* Main area: site configuration */}
         {view === 'config' ? (
-          <section className="min-w-0 overflow-y-auto">
+          <section className="min-h-0 min-w-0 overflow-y-auto">
             {/* A muted overline so it reads as "Site configuration › <section>"
               rather than competing with each section's own heading. */}
             <div className="border-border border-b px-6 py-3">
@@ -496,7 +499,7 @@ function EditorPage() {
           </section>
         ) : activeId && page ? (
           /* Main area: page editor */
-          <section className="flex min-w-0 flex-col">
+          <section className="flex min-h-0 min-w-0 flex-col">
             {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
             <div className="flex h-12 items-center gap-2 border-border border-b px-4">
