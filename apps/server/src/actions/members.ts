@@ -5,6 +5,7 @@ import { canAssignRole, canManageMember } from '@plume/shared/rbac';
 import type { InviteMemberBody, UpdateMemberRoleBody } from '@plume/validators';
 import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
+import { notificationEnabled } from './notifications';
 
 const INVITE_TTL_DAYS = 7;
 
@@ -68,9 +69,15 @@ export const inviteMember = async (organizationId: string, inviterId: string, ac
   // best-effort: the invite also works as a copy-able link (returned to the UI),
   // so a stock self-host without SMTP still has a working invite path.
   const [org, inviter] = await Promise.all([
-    prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
+    prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true, metadata: true } }),
     prisma.user.findUnique({ where: { id: inviterId }, select: { name: true, email: true } }),
   ]);
+  // Respect the workspace's "member invited" notification toggle — when off, the
+  // invitation is still created (the copy-able accept link is returned), we just
+  // don't send the email.
+  if (!notificationEnabled(org?.metadata, 'member_invited')) {
+    return invitation;
+  }
   const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;
   const siteName = org?.name ?? 'a Plume workspace';
   const inviterName = inviter?.name || inviter?.email || 'A teammate';

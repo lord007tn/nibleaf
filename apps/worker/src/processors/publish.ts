@@ -3,8 +3,12 @@ import { prisma } from '@plume/database';
 import { createLogger } from '@plume/logger';
 import { buildSnapshot } from '@plume/shared/site';
 import type { Job } from 'bullmq';
+import { notifyDeployment } from '../lib/notify';
 
 const log = createLogger({ processor: 'publish' });
+
+const siteUrlFor = (projectId: string): string | undefined =>
+  process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined;
 
 /**
  * Build an immutable snapshot of the project's docs and mark the deployment
@@ -36,16 +40,25 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
-    await prisma.deployment.update({
+    const ready = await prisma.deployment.update({
       where: { id: deploymentId },
       data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, completedAt: new Date() },
     });
     log.info({ deploymentId, pageCount }, 'deployment ready');
+    await notifyDeployment({ projectId, projectName: project.name, version: ready.version, outcome: 'ready', siteUrl: siteUrlFor(projectId) });
     return { pages: pages.length };
   } catch (error) {
-    await prisma.deployment.update({
+    const failed = await prisma.deployment.update({
       where: { id: deploymentId },
       data: { status: 'FAILED', error: error instanceof Error ? error.message : String(error) },
+    });
+    const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
+    await notifyDeployment({
+      projectId,
+      projectName: proj?.name ?? 'Your site',
+      version: failed.version,
+      outcome: 'failed',
+      error: failed.error ?? undefined,
     });
     throw error;
   }

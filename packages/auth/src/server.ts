@@ -14,6 +14,32 @@ const log = createLogger({ module: 'auth' });
 const sendMail = (to: string, subject: string, html: string) =>
   createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, subject, html } }).catch(() => undefined);
 
+const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
+
+/** Workspace notification prefs are a JSON blob on Organization.metadata. Default ON. */
+function notificationEnabled(metadata: string | null | undefined, id: string): boolean {
+  if (!metadata) {
+    return true;
+  }
+  try {
+    const parsed = JSON.parse(metadata) as { notifications?: Record<string, boolean> };
+    return parsed.notifications?.[id] !== false;
+  } catch {
+    return true;
+  }
+}
+
+/** Account-level events (sign-in, password change) aren't tied to one workspace, so
+ *  honor the toggle across the user's orgs: send unless silenced everywhere they belong. */
+async function userNotificationEnabled(userId: string, id: string): Promise<boolean> {
+  const memberships = await prisma.member.findMany({ where: { userId }, select: { organization: { select: { metadata: true } } } });
+  if (memberships.length === 0) {
+    return true;
+  }
+  return memberships.some((m) => notificationEnabled(m.organization.metadata, id));
+}
+
 /**
  * Before a user is deleted, never orphan an organization: if they are the sole
  * member, delete the org (cascades its projects/pages); if they are the last
@@ -195,6 +221,25 @@ export const auth = betterAuth({
         afterCreateOrganization: async ({ organization: org }) => {
           await createStarterProject(org.id).catch(() => undefined);
         },
+        // Someone accepted an invite (members added via the org API → joins). Tell the
+        // workspace's existing owners/admins, unless `member_joined` is disabled.
+        afterAddMember: async ({ member, user, organization: org }) => {
+          try {
+            if (!notificationEnabled((org as { metadata?: string | null }).metadata, 'member_joined')) {
+              return;
+            }
+            const admins = await prisma.member.findMany({
+              where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: member.userId } },
+              select: { user: { select: { email: true } } },
+            });
+            const who = user.name || user.email || 'A new member';
+            const subject = `${who} joined ${org.name}`;
+            const html = `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New teammate in ${escapeHtml(org.name)}</h2><p style="margin:0;color:#475569;line-height:1.6"><strong>${escapeHtml(who)}</strong> just joined <strong>${escapeHtml(org.name)}</strong>.</p></div>`;
+            await Promise.all(admins.map((a) => (a.user.email ? sendMail(a.user.email, subject, html) : undefined)));
+          } catch {
+            // never block the join
+          }
+        },
       },
     }),
   ],
@@ -202,6 +247,64 @@ export const auth = betterAuth({
     user: {
       create: {
         after: (user) => provisionWorkspace(user),
+      },
+    },
+    // New sign-in alert — only on a sign-in from an IP we haven't seen for this user
+    // (a new device/location), so routine logins don't spam. Honors `security_login`.
+    session: {
+      create: {
+        after: async (session) => {
+          try {
+            const known = await prisma.session.count({
+              where: { userId: session.userId, id: { not: session.id }, ...(session.ipAddress ? { ipAddress: session.ipAddress } : {}) },
+            });
+            if (known > 0) {
+              return;
+            }
+            if (!(await userNotificationEnabled(session.userId, 'security_login'))) {
+              return;
+            }
+            const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { email: true } });
+            if (!user?.email) {
+              return;
+            }
+            const where = session.ipAddress ? ` from a new location (IP ${escapeHtml(session.ipAddress)})` : ' from a new device';
+            await sendMail(
+              user.email,
+              'New sign-in to your Plume account',
+              `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New sign-in detected</h2><p style="margin:0;color:#475569;line-height:1.6">We noticed a new sign-in to your account${where}. If this was you, you can ignore this email — otherwise change your password right away.</p></div>`,
+            );
+          } catch {
+            // never block sign-in
+          }
+        },
+      },
+    },
+    // Password-changed alert — credential-account updates are password changes for an
+    // email/password user (logins create sessions, not account rows). Honors `security_password`.
+    account: {
+      update: {
+        after: async (account) => {
+          try {
+            if (account.providerId !== 'credential') {
+              return;
+            }
+            if (!(await userNotificationEnabled(account.userId, 'security_password'))) {
+              return;
+            }
+            const user = await prisma.user.findUnique({ where: { id: account.userId }, select: { email: true } });
+            if (!user?.email) {
+              return;
+            }
+            await sendMail(
+              user.email,
+              'Your Plume password was changed',
+              `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">Password changed</h2><p style="margin:0;color:#475569;line-height:1.6">Your account password was just changed. If this wasn't you, reset your password immediately and review your active sessions.</p></div>`,
+            );
+          } catch {
+            // never block the password update
+          }
+        },
       },
     },
   },
