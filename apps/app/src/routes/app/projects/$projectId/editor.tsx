@@ -135,7 +135,10 @@ function EditorPage() {
   // editing.
   const [settingsForId, setSettingsForId] = useState<string | null>(null);
   const [langSettings, setLangSettings] = useState<Language | null>(null);
-  const loadedFor = useRef<string | null>(null);
+  // What's currently in sync with the server for the open page: its id + the
+  // exact title/content we last loaded (or saved). Drives re-seeding so the
+  // editor recovers when the server copy changes — without clobbering edits.
+  const synced = useRef<{ id: string; content: string; title: string } | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -175,28 +178,48 @@ function EditorPage() {
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
   const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
 
-  // Load the selected page into the local draft.
+  // Load the selected page into the local draft. Re-seed when switching pages, OR
+  // when the server's copy changed while the draft is still clean (matches what we
+  // last loaded/saved) — so an external update, a branch reload, or a stale→fresh
+  // cache transition refreshes the editor without ever clobbering unsaved edits.
   useEffect(() => {
-    if (page && loadedFor.current !== page.id) {
+    if (!page) {
+      return;
+    }
+    const samePage = synced.current?.id === page.id;
+    const clean = synced.current ? content === synced.current.content && title === synced.current.title : true;
+    if (!samePage || (page.content !== synced.current?.content && clean)) {
       setTitle(page.title);
       setContent(page.content);
-      loadedFor.current = page.id;
+      synced.current = { id: page.id, content: page.content, title: page.title };
       setStatus('idle');
     }
-  }, [page]);
+  }, [page, content, title]);
 
   // Debounced autosave: fire ~700ms after the user stops typing the title/content.
   // `onUnmount` flushes any pending save when the editor unmounts (route change /
   // tab close) so a keystroke made <700ms before leaving isn't dropped.
   const saveDraft = useDebouncedCallback(
     (pageId: string, draft: { title: string; content: string }) => {
-      updatePage.mutate({ pageId, body: draft }, { onSuccess: () => setStatus('saved'), onError: () => setStatus('idle') });
+      updatePage.mutate(
+        { pageId, body: draft },
+        {
+          onSuccess: () => {
+            setStatus('saved');
+            // The saved draft is now the synced server state.
+            if (synced.current?.id === pageId) {
+              synced.current = { id: pageId, content: draft.content, title: draft.title };
+            }
+          },
+          onError: () => setStatus('idle'),
+        },
+      );
     },
     { wait: 700, onUnmount: (d) => d.flush() },
   );
 
   useEffect(() => {
-    if (!page || loadedFor.current !== page.id) {
+    if (!page || synced.current?.id !== page.id) {
       return;
     }
     if (title === page.title && content === page.content) {
@@ -397,7 +420,7 @@ function EditorPage() {
               onSwitch={(id) => {
                 setActiveBranchId(id);
                 setSelectedId(null);
-                loadedFor.current = null;
+                synced.current = null;
               }}
             />
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
