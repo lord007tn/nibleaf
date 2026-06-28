@@ -17,6 +17,18 @@ const KEYWORD_TO_VARIANT: Record<string, CalloutVariant> = Object.fromEntries(
   Object.entries(CALLOUT_VARIANTS).map(([variant, def]) => [def.keyword, variant as CalloutVariant]),
 );
 
+/** Aliases so foreign callout keywords/types map onto our six variants. */
+const VARIANT_ALIASES: Record<string, CalloutVariant> = { caution: 'danger', error: 'danger', important: 'info', warn: 'warning' };
+
+/** Resolve a callout type/keyword/tag-name (e.g. "warning", "Caution", "Note") to a variant. */
+const normalizeVariant = (raw?: string | null): CalloutVariant => {
+  const t = (raw ?? 'note').toLowerCase();
+  if (t in CALLOUT_VARIANTS) {
+    return t as CalloutVariant;
+  }
+  return VARIANT_ALIASES[t] ?? 'note';
+};
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     callout: {
@@ -50,14 +62,26 @@ export const Callout = Node.create({
     return {
       variant: {
         default: 'note' as CalloutVariant,
-        parseHTML: (element) => element.getAttribute('data-variant') ?? 'note',
+        // Derive the variant from data-variant, or from a Mintlify-style tag
+        // (<Note>/<Tip>/…) name, or from <Callout type="…">.
+        parseHTML: (element) => {
+          const explicit = element.getAttribute('data-variant');
+          if (explicit) {
+            return normalizeVariant(explicit);
+          }
+          const tag = element.tagName.toLowerCase();
+          return tag === 'callout' ? normalizeVariant(element.getAttribute('type')) : normalizeVariant(tag);
+        },
         renderHTML: (attributes) => ({ 'data-variant': attributes.variant }),
       },
     };
   },
 
+  // Parse our own div, the generic <Callout type="…">, and each Mintlify-style
+  // callout tag (<Note>/<Tip>/<Info>/<Check>/<Warning>/<Danger>) so MDX-tag
+  // callouts round-trip into editor blocks instead of being dropped on save.
   parseHTML() {
-    return [{ tag: 'div[data-callout]' }];
+    return [{ tag: 'div[data-callout]' }, { tag: 'callout' }, ...Object.keys(CALLOUT_VARIANTS).map((variant) => ({ tag: variant }))];
   },
 
   renderHTML({ HTMLAttributes }) {
