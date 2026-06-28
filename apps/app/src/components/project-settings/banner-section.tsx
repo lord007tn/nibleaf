@@ -17,6 +17,7 @@ export function BannerSection({ project }: { project: Project }) {
     defaultValues: {
       message: banner.message ?? '',
       linkLabel: banner.linkLabel ?? '',
+      linkUrl: banner.linkUrl ?? '',
     },
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
@@ -25,6 +26,7 @@ export function BannerSection({ project }: { project: Project }) {
           dismissible,
           message: value.message.trim() || undefined,
           linkLabel: value.linkLabel.trim() || undefined,
+          linkUrl: value.linkUrl.trim() || undefined,
         },
       });
     },
@@ -63,6 +65,20 @@ export function BannerSection({ project }: { project: Project }) {
                 className={FIELD_INPUT}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={t('settings.banner.linkLabel.placeholder')}
+                value={field.state.value}
+              />
+            </Field>
+          )}
+        </form.Field>
+
+        <form.Field name="linkUrl">
+          {(field) => (
+            <Field hint={t('settings.banner.linkUrl.hint')} label={t('settings.banner.linkUrl.label')}>
+              <Input
+                className={FIELD_INPUT}
+                type="url"
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder={t('settings.banner.linkUrl.placeholder')}
                 value={field.state.value}
               />
             </Field>

@@ -91,16 +91,36 @@ function SiteChrome() {
   // The published site manages its OWN light/dark theme (a class on the chrome
   // below), independent of the dashboard's theme — so the site's config default
   // and a visitor's toggle never clobber the editor/dashboard theme.
-  const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(config?.styling?.theme === 'dark' ? 'dark' : 'light');
+  const configTheme = config?.styling?.theme; // 'light' | 'dark' | 'system' | undefined
+  const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(configTheme === 'dark' ? 'dark' : 'light');
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
-    const stored = window.localStorage.getItem(`plume.site.theme.${projectId}`);
+    const storageKey = `plume.site.theme.${projectId}`;
+    const stored = window.localStorage.getItem(storageKey);
+    // An explicit visitor choice always wins over the configured default.
     if (stored === 'dark' || stored === 'light') {
       setSiteTheme(stored);
+      return;
     }
-  }, [projectId]);
+    // 'system' follows the visitor's OS preference, and keeps following it live
+    // until the visitor toggles (which stores an explicit choice the guard below
+    // then respects). 'light'/'dark' apply the configured default directly.
+    if (configTheme === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)');
+      setSiteTheme(mq.matches ? 'dark' : 'light');
+      const onChange = (e: MediaQueryListEvent) => {
+        if (window.localStorage.getItem(storageKey)) {
+          return;
+        }
+        setSiteTheme(e.matches ? 'dark' : 'light');
+      };
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    }
+    setSiteTheme(configTheme === 'dark' ? 'dark' : 'light');
+  }, [projectId, configTheme]);
   const toggleSiteTheme = () => {
     setSiteTheme((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
@@ -165,6 +185,10 @@ function SiteChrome() {
   }
 
   const accent = config?.styling?.primaryColor ?? site?.project.color ?? '#5546e8';
+  // Search is on by default; only an explicit `false` hides it (legacy configs
+  // that never set the field keep search).
+  const showSearch = config?.navbar?.showSearch !== false;
+  const searchHotkey = config?.search?.hotkey;
   const navLinks = config?.navbar?.links ?? [];
   const navTabs = config?.navbar?.tabs ?? [];
   const navAnchors = config?.navbar?.anchors ?? [];
@@ -277,15 +301,21 @@ function SiteChrome() {
               </a>
             ))}
           </nav>
-          <button
-            className="ms-auto flex h-9 w-64 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-muted-foreground text-sm"
-            onClick={() => setSearchOpen(true)}
-            type="button"
-          >
-            <Search className="size-3.5" />
-            <span className="flex-1 text-start">{config?.search?.placeholder ?? t('search')}</span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">⌘K</kbd>
-          </button>
+          {showSearch ? (
+            <button
+              className="ms-auto flex h-9 w-64 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-muted-foreground text-sm"
+              onClick={() => setSearchOpen(true)}
+              type="button"
+            >
+              <Search className="size-3.5" />
+              <span className="flex-1 text-start">{config?.search?.placeholder ?? t('search')}</span>
+              <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">{searchHotkey === 'slash' ? '/' : '⌘K'}</kbd>
+            </button>
+          ) : (
+            // A zero-width flex spacer keeps the trailing controls right-aligned
+            // when the search field is hidden (it carried the `ms-auto`).
+            <div className="ms-auto" />
+          )}
           <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
           <button
             className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted"
@@ -408,13 +438,16 @@ function SiteChrome() {
         </footer>
       ) : null}
 
-      <SiteSearch
-        projectId={projectId}
-        open={searchOpen}
-        onOpenChange={setSearchOpen}
-        lang={activeLanguage?.code}
-        placeholder={config?.search?.placeholder}
-      />
+      {showSearch ? (
+        <SiteSearch
+          projectId={projectId}
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          lang={activeLanguage?.code}
+          placeholder={config?.search?.placeholder}
+          hotkey={searchHotkey}
+        />
+      ) : null}
     </div>
   );
 }

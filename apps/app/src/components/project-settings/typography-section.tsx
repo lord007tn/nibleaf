@@ -10,7 +10,7 @@ const HEADING_FONTS: [string, ...string[]] = ['Geist', 'Inter', 'Söhne', 'IBM P
 const BODY_FONTS: [string, ...string[]] = ['Geist', 'Inter', 'Source Sans 3', 'System UI'];
 const CODE_FONTS: [string, ...string[]] = ['Geist Mono', 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code'];
 
-type BaseSize = '14' | '16' | '18';
+type BaseSize = '14' | '15' | '16' | '17' | '18';
 
 function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
   return (
@@ -86,9 +86,11 @@ export function TypographySection({ project }: { project: Project }) {
           className="max-w-[240px]"
           onChange={setBaseSize}
           options={[
-            { value: '14', label: '14px' },
-            { value: '16', label: '16px' },
-            { value: '18', label: '18px' },
+            { value: '14', label: '14' },
+            { value: '15', label: '15' },
+            { value: '16', label: '16' },
+            { value: '17', label: '17' },
+            { value: '18', label: '18' },
           ]}
           value={baseSize}
         />

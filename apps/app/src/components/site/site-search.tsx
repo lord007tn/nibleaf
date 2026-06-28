@@ -44,6 +44,7 @@ export function SiteSearch({
   onOpenChange,
   lang,
   placeholder,
+  hotkey,
 }: {
   projectId: string;
   open: boolean;
@@ -51,6 +52,8 @@ export function SiteSearch({
   lang?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
   placeholder?: string;
+  /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
+  hotkey?: 'cmdk' | 'slash';
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
@@ -61,7 +64,22 @@ export function SiteSearch({
   const navigate = useNavigate();
 
   useEffect(() => {
+    const isTypingTarget = (el: EventTarget | null): boolean => {
+      const node = el as HTMLElement | null;
+      if (!node) {
+        return false;
+      }
+      const tag = node.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || node.isContentEditable;
+    };
     const onKey = (event: KeyboardEvent) => {
+      // Bare '/' opens search when configured (Mintlify-style), but never while the
+      // visitor is typing in a field. Cmd/Ctrl+K always works.
+      if (hotkey === 'slash' && event.key === '/' && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        onOpenChange(true);
+        return;
+      }
       if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         onOpenChange(!open);
@@ -69,7 +87,7 @@ export function SiteSearch({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, hotkey]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
