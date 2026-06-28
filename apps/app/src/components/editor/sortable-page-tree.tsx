@@ -15,6 +15,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Button } from '@/components/ui/button';
 import type { PageNode } from '@/hooks/api';
 import { cn } from '@/lib/utils';
@@ -267,8 +268,8 @@ function RowPresentation({
       className={cn(
         'group/row flex items-center gap-1 rounded-md pe-1',
         overlay && 'bg-card shadow-lg ring-1 ring-border',
-        !overlay && active && 'bg-accent text-accent-foreground',
-        !overlay && !active && 'hover:bg-muted',
+        !overlay && active && 'bg-primary/10 font-medium text-foreground',
+        !overlay && !active && 'text-foreground/80 hover:bg-muted hover:text-foreground',
       )}
       style={{ marginInlineStart: depth * INDENT }}
     >
@@ -288,7 +289,13 @@ function RowPresentation({
           isGroup && 'font-semibold text-[11px] uppercase tracking-wide',
         )}
       >
-        {isGroup ? <Folder className="size-3.5 shrink-0 text-muted-foreground" /> : <FileText className="size-3.5 shrink-0 text-muted-foreground" />}
+        {isGroup ? (
+          <Folder className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+        ) : hasIcon(node.icon) ? (
+          <PageIcon name={node.icon} className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+        ) : (
+          <FileText className={cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
+        )}
         <span className="truncate">{label}</span>
       </button>
       {!overlay && onSettings ? (
