@@ -7,7 +7,6 @@ import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { useProject } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, Project } from '@/hooks/api/types';
@@ -46,9 +45,9 @@ export function PublishControl({ project }: { project: Project }) {
 }
 
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
- *  content header carrying the Preview + Publish actions. */
+ *  content header. Publishing lives ONLY in the editor (Mintlify-style); the
+ *  dashboard header just offers a live-site preview. */
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
-  const { data: project } = useProject(projectId);
   const t = useT();
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
@@ -74,7 +73,6 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             >
               <Eye className="size-3.5" /> {t('project.preview')}
             </Button>
-            {project ? <PublishControl project={project} /> : null}
           </div>
         </header>
         <div className="flex-1">{children}</div>
