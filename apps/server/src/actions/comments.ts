@@ -23,6 +23,7 @@ export const createComment = async (organizationId: string, projectId: string, u
       userId,
       body: body.body,
       ...(body.pageId ? { pageId: body.pageId } : {}),
+      ...(body.anchor ? { anchor: body.anchor } : {}),
     },
     include: { user: { select: userSelect } },
   });

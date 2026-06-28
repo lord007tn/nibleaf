@@ -168,11 +168,21 @@ export interface WorkspaceSettings {
   [key: string]: unknown;
 }
 
+export interface CommentAnchor {
+  /** The anchored text — the durable locator (re-found on load). */
+  quote: string;
+  /** Creation-time ProseMirror position hints. */
+  from?: number;
+  to?: number;
+}
+
 export interface Comment {
   id: string;
   body: string;
   resolved: boolean;
   createdAt: string;
+  /** Figma-style anchor to a block/selection on the page (null = page-level). */
+  anchor?: CommentAnchor | null;
   user: { id: string; name: string; image: string | null };
 }
 

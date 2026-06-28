@@ -370,9 +370,21 @@ export type TrackEventBody = z.infer<typeof trackEventBody>;
 
 // ─── Comments ────────────────────────────────────────────────────────────────
 
+/** Figma-style anchor: the block/selection a comment is attached to. `quote` (the
+ *  anchored text) is the durable locator; from/to are creation-time position hints. */
+export const commentAnchor = z
+  .object({
+    quote: z.string().max(2000),
+    from: z.number().int().nonnegative().optional(),
+    to: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type CommentAnchor = z.infer<typeof commentAnchor>;
+
 export const createCommentBody = z.object({
   body: z.string().min(1).max(4000),
   pageId: z.string().nullable().optional(),
+  anchor: commentAnchor.nullable().optional(),
 });
 export type CreateCommentBody = z.infer<typeof createCommentBody>;
 

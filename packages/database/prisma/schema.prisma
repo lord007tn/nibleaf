@@ -351,6 +351,11 @@ model Comment {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   body      String
   resolved  Boolean  @default(false)
+  /// Figma-style anchor: which block/selection the comment is attached to.
+  /// Shape: { quote: string, from?: number, to?: number } — `quote` (the anchored
+  /// text) is the durable locator (re-found on load, since page content is Markdown
+  /// with no stable node ids); from/to are creation-time position hints.
+  anchor    Json?
   createdAt DateTime @default(now())
 
   @@index([projectId, pageId])
