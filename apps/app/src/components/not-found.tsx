@@ -8,7 +8,7 @@ export function NotFound() {
         <span className="font-mono text-muted-foreground text-sm">404</span>
         <h1 className="font-semibold text-2xl tracking-tight">Page not found</h1>
         <p className="max-w-sm text-muted-foreground text-sm">The page you are looking for doesn't exist or has moved.</p>
-        <Button className="mt-2" render={<Link to="/" />}>
+        <Button className="mt-2" nativeButton={false} render={<Link to="/" />}>
           Back home
         </Button>
       </div>

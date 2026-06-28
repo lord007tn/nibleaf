@@ -62,6 +62,7 @@ function SiteOverviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
+            nativeButton={false}
             render={
               // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
               <a href={`/sites/${projectId}`} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />
@@ -71,7 +72,7 @@ function SiteOverviewPage() {
           >
             <Eye className="size-3.5" /> {t('overview.viewSite')}
           </Button>
-          <Button render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} size="sm">
+          <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} size="sm">
             <PenLine className="size-3.5" /> {t('overview.openEditor')}
           </Button>
         </div>

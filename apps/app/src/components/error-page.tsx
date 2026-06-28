@@ -14,7 +14,9 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
           <Button onClick={() => reset()} variant="outline">
             Try again
           </Button>
-          <Button render={<Link to="/" />}>Back home</Button>
+          <Button nativeButton={false} render={<Link to="/" />}>
+            Back home
+          </Button>
         </div>
       </div>
     </div>

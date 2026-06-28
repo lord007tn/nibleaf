@@ -326,6 +326,7 @@ function EditorPage() {
             <SlidersHorizontal className="size-3.5" /> {t('editor.mode.configuration')}
           </Button>
           <Button
+            nativeButton={false}
             render={
               // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
               <a aria-label={t('project.preview')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
@@ -532,6 +533,7 @@ function EditorPage() {
                 <MessageSquare className="size-4" />
               </Button>
               <Button
+                nativeButton={false}
                 render={
                   // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
                   <a

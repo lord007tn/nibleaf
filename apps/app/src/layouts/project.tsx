@@ -64,6 +64,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
           <SidebarTrigger className="-ms-1" />
           <div className="ms-auto flex items-center gap-2">
             <Button
+              nativeButton={false}
               render={
                 // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
                 <a aria-label="Preview the live website" href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />

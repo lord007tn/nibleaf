@@ -100,7 +100,7 @@ function AcceptInvitePage() {
         <div className="flex flex-col gap-4">
           <p className="text-center text-muted-foreground text-sm">{t('auth.invite.invitedAs', { email: info.email })}</p>
           <p className="text-center text-muted-foreground text-sm">{t('auth.invite.signInPrompt')}</p>
-          <Button className="w-full" render={<Link search={search} to="/sign-up" />}>
+          <Button className="w-full" nativeButton={false} render={<Link search={search} to="/sign-up" />}>
             {t('auth.invite.createAccountToJoin')}
           </Button>
           <p className="text-center text-muted-foreground text-sm">

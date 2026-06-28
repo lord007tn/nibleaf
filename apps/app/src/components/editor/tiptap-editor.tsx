@@ -197,9 +197,15 @@ export function TiptapEditor({
     onCreate: ({ editor }) => {
       editorRef.current = editor;
       // Seed once with the markdown source (StarterKit treats string content as HTML;
-      // tiptap-markdown's setContent parses markdown).
-      editor.commands.setContent(value);
-      lastEmitted.current = getMarkdown(editor);
+      // tiptap-markdown's setContent parses markdown). Defer to a microtask so the React
+      // NodeViews (callout/mdx blocks) this mounts don't flushSync inside React's commit.
+      queueMicrotask(() => {
+        if (editor.isDestroyed) {
+          return;
+        }
+        editor.commands.setContent(value, { emitUpdate: false });
+        lastEmitted.current = getMarkdown(editor);
+      });
     },
     onUpdate: ({ editor }) => {
       const markdown = getMarkdown(editor);
@@ -262,23 +268,38 @@ export function TiptapEditor({
     }
     if (value !== lastEmitted.current) {
       lastEmitted.current = value;
-      // `emitUpdate: false` so re-seeding doesn't bounce back through onChange.
-      editor.commands.setContent(value, { emitUpdate: false });
+      // `emitUpdate: false` so re-seeding doesn't bounce back through onChange. Deferred
+      // to a microtask so NodeView remounts don't flushSync inside React's commit.
+      queueMicrotask(() => {
+        if (!editor.isDestroyed) {
+          editor.commands.setContent(value, { emitUpdate: false });
+        }
+      });
     }
   }, [value, editor]);
 
-  // Keep editability in sync — comment mode is review-only.
+  // Keep editability in sync — comment mode is review-only. Pass emitUpdate=false:
+  // setEditable() defaults to firing an `update` event, which would call onChange
+  // with the editor's (possibly still-empty) markdown and clobber a freshly-seeded
+  // value — toggling editability is not a content edit.
   useEffect(() => {
-    editor?.setEditable(editable && !commentMode);
+    editor?.setEditable(editable && !commentMode, false);
   }, [editable, commentMode, editor]);
 
   // Re-run the comment highlight decorations when the comments / active id change
-  // (no doc change occurs, so nudge ProseMirror with an empty transaction).
+  // (no doc change occurs, so nudge ProseMirror with an empty transaction). Defer to
+  // a microtask: dispatching synchronously here can nest a flushSync inside React's
+  // commit once the doc has React NodeViews (mdx/callout blocks), which React warns on.
   // biome-ignore lint/correctness/useExhaustiveDependencies: comments/activeCommentId are intentional re-render triggers (read via refs inside the plugin).
   useEffect(() => {
-    if (editor) {
-      editor.view.dispatch(editor.state.tr);
+    if (!editor) {
+      return;
     }
+    queueMicrotask(() => {
+      if (!editor.isDestroyed) {
+        editor.view.dispatch(editor.state.tr);
+      }
+    });
   }, [comments, activeCommentId, editor]);
 
   return (
