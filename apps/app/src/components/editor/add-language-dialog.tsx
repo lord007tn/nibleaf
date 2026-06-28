@@ -1,13 +1,11 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Language } from '@/hooks/api';
 import { useCreateLanguage, useLanguages } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { LANGUAGE_CATALOG } from '@/lib/languages';
+import { type CatalogLanguage, LANGUAGE_CATALOG } from '@/lib/languages';
 
 interface AddLanguageDialogProps {
   projectId: string;
@@ -17,33 +15,28 @@ interface AddLanguageDialogProps {
   onCreated: (language: Language) => void;
 }
 
-/** Dialog for adding a project language, chosen from a curated catalog (excludes already-added languages). */
+/** Dialog for adding a project language: a searchable combobox over a curated
+ *  catalog (filter by native name, English name, or code), excluding already-added
+ *  languages. Picking a language adds it immediately. */
 export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: AddLanguageDialogProps) {
   const t = useT();
   const createLanguage = useCreateLanguage(projectId);
   const { data: existing } = useLanguages(projectId);
-  const [code, setCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const existingCodes = useMemo(() => new Set((existing ?? []).map((lang) => lang.code)), [existing]);
   const available = useMemo(() => LANGUAGE_CATALOG.filter((lang) => !existingCodes.has(lang.code)), [existingCodes]);
 
-  const handleSubmit = async () => {
-    const selected = available.find((lang) => lang.code === code);
-    if (!selected) {
+  const handleAdd = async (lang: CatalogLanguage) => {
+    if (submitting) {
       return;
     }
     setSubmitting(true);
     try {
-      const language = await createLanguage.mutateAsync({
-        code: selected.code,
-        label: selected.label,
-        direction: selected.rtl ? 'RTL' : 'LTR',
-      });
+      const language = await createLanguage.mutateAsync({ code: lang.code, label: lang.label, direction: lang.rtl ? 'RTL' : 'LTR' });
       toast.success(t('editor.addLanguage.added', { label: language.label }));
       onCreated(language);
       onOpenChange(false);
-      setCode(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('editor.addLanguage.error'));
     } finally {
@@ -53,54 +46,42 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="overflow-hidden p-0">
+        <DialogHeader className="px-4 pt-4">
           <DialogTitle>{t('editor.addLanguage.title')}</DialogTitle>
           <DialogDescription>{t('editor.addLanguage.desc')}</DialogDescription>
         </DialogHeader>
 
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSubmit();
-          }}
-        >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="lang-select">{t('editor.addLanguage.languageField')}</Label>
-            {available.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t('editor.addLanguage.allAdded')}</p>
-            ) : (
-              <Select value={code ?? undefined} onValueChange={(value) => setCode(value as string)}>
-                <SelectTrigger id="lang-select" className="w-full">
-                  <SelectValue placeholder={t('editor.addLanguage.placeholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {available.map((lang) => (
-                    <SelectItem key={lang.code} value={lang.code}>
-                      <span>{lang.native}</span>
-                      <span className="font-mono text-xs text-muted-foreground">({lang.code})</span>
-                      {lang.rtl ? (
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
-                          {t('editor.addLanguage.rtlHint')}
-                        </span>
-                      ) : null}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={submitting || code === null || available.length === 0}>
-              {submitting ? t('editor.addLanguage.adding') : t('editor.addLanguage')}
-            </Button>
-          </DialogFooter>
-        </form>
+        {available.length === 0 ? (
+          <p className="px-4 pt-2 pb-4 text-muted-foreground text-sm">{t('editor.addLanguage.allAdded')}</p>
+        ) : (
+          <Command className="rounded-none bg-transparent">
+            <CommandInput placeholder={t('editor.addLanguage.searchPlaceholder')} />
+            <CommandList className="max-h-72 pb-1">
+              <CommandEmpty>{t('editor.addLanguage.noResults')}</CommandEmpty>
+              <CommandGroup>
+                {available.map((lang) => (
+                  <CommandItem
+                    key={lang.code}
+                    // Search across native name, English name, and code.
+                    value={`${lang.label} ${lang.native} ${lang.code}`}
+                    onSelect={() => void handleAdd(lang)}
+                    disabled={submitting}
+                  >
+                    <span className="font-medium">{lang.native}</span>
+                    <span className="text-muted-foreground text-sm">{lang.label}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">{lang.code}</span>
+                    {lang.rtl ? (
+                      <span className="ms-1 rounded bg-muted px-1.5 py-0.5 font-medium text-[10px] text-muted-foreground uppercase">
+                        {t('editor.addLanguage.rtlHint')}
+                      </span>
+                    ) : null}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        )}
       </DialogContent>
     </Dialog>
   );

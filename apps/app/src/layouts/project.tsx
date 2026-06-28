@@ -5,7 +5,6 @@ import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useProject } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
@@ -57,8 +56,6 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
-          <Separator className="me-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-          <span className="truncate font-medium text-sm">{project?.name ?? ''}</span>
           <div className="ms-auto flex items-center gap-2">
             <Button
               render={
