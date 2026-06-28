@@ -1,174 +1,153 @@
 import { useForm } from '@tanstack/react-form';
+import { DownloadCloud, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { GithubIcon, GitlabIcon } from '@/components/icons/brand';
-import { Badge } from '@/components/ui/badge';
+import { GithubIcon } from '@/components/icons/brand';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { useImportFromGitHub, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import { SettingsSection } from './section';
 
 interface GitConfig {
-  provider: 'github' | 'gitlab';
-  connected: boolean;
-  repo: string;
-  branch: string;
-  path: string;
-  twoWaySync: boolean;
+  provider?: 'github';
+  connected?: boolean;
+  repo?: string;
+  branch?: string;
+  path?: string;
+  lastImportedAt?: string;
 }
 
-const DEFAULTS: GitConfig = {
+const DEFAULTS: Required<Omit<GitConfig, 'lastImportedAt' | 'connected'>> = {
   provider: 'github',
-  connected: false,
   repo: '',
   branch: 'main',
-  path: '/docs',
-  twoWaySync: true,
+  path: 'docs',
 };
-
-const PROVIDERS = [
-  {
-    id: 'github' as const,
-    nameKey: 'settings.git.provider.github.name' as const,
-    descriptionKey: 'settings.git.provider.github.description' as const,
-    icon: GithubIcon,
-    tint: 'bg-foreground/10 text-foreground',
-  },
-  {
-    id: 'gitlab' as const,
-    nameKey: 'settings.git.provider.gitlab.name' as const,
-    descriptionKey: 'settings.git.provider.gitlab.description' as const,
-    icon: GitlabIcon,
-    tint: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
-  },
-];
 
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
   const { data } = useWorkspaceSettings(projectId);
   const update = useUpdateWorkspaceSettings(projectId);
-  const git = { ...DEFAULTS, ...((data?.git ?? {}) as Partial<GitConfig>) };
+  const importFromGitHub = useImportFromGitHub(projectId ?? '');
+  const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
+  const connected = Boolean((data?.git as GitConfig | undefined)?.connected && git.repo);
 
   const save = (patch: Partial<GitConfig>, message?: string) =>
     update.mutate(
-      { git: { ...git, ...patch } },
+      { git: { provider: 'github', repo: git.repo, branch: git.branch, path: git.path, ...patch } },
       {
-        onSuccess: () => {
-          if (message) {
-            toast.success(message);
-          }
-        },
+        onSuccess: () => message && toast.success(message),
         onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.saveError')),
       },
     );
 
+  const runImport = () =>
+    importFromGitHub.mutate(undefined, {
+      onSuccess: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.import.error')),
+    });
+
   const form = useForm({
     defaultValues: { repo: git.repo, branch: git.branch, path: git.path },
-    onSubmit: async ({ value }) => save({ ...value, connected: true }, t('settings.git.repoSaved')),
+    onSubmit: async ({ value }) =>
+      save({ repo: value.repo.trim(), branch: value.branch.trim() || 'main', path: value.path.trim(), connected: true }, t('settings.git.repoSaved')),
   });
+
+  const lastImported = (data?.git as GitConfig | undefined)?.lastImportedAt;
 
   return (
     <div className="flex flex-col gap-6">
-      <SettingsSection title={t('settings.git.access.title')} description={t('settings.git.access.description')}>
-        <div className="flex flex-col gap-3">
-          {PROVIDERS.map((provider) => {
-            const selected = git.provider === provider.id;
-            const Icon = provider.icon;
-            return (
-              <button
-                key={provider.id}
-                className={cn(
-                  'flex w-full items-center gap-4 rounded-lg border p-4 text-start transition-colors',
-                  selected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/40',
-                )}
-                onClick={() =>
-                  save(
-                    { provider: provider.id, connected: true },
-                    t('settings.git.connectedToast', { provider: provider.id === 'github' ? 'GitHub' : 'GitLab' }),
-                  )
-                }
-                type="button"
-              >
-                <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${provider.tint}`}>
-                  <Icon className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1 leading-snug">
-                  <span className="block font-medium text-sm">{t(provider.nameKey)}</span>
-                  <span className="block text-muted-foreground text-sm">{t(provider.descriptionKey)}</span>
-                </span>
-                <span className={cn('size-4 shrink-0 rounded-full border', selected ? 'border-[5px] border-primary' : 'border-input')} aria-hidden />
-              </button>
-            );
-          })}
-        </div>
-      </SettingsSection>
-
-      {git.connected ? (
-        <SettingsSection
-          title={t('settings.git.repository.title')}
-          action={<Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">{t('settings.git.connected')}</Badge>}
+      <SettingsSection title={t('settings.git.repository.title')} description={t('settings.git.import.description')}>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            form.handleSubmit();
+          }}
         >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              form.handleSubmit();
-            }}
-          >
-            <form.Field name="repo">
+          <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-foreground/10 text-foreground">
+              <GithubIcon className="size-5" />
+            </span>
+            <p className="text-muted-foreground text-sm leading-snug">{t('settings.git.oneWayNote')}</p>
+          </div>
+
+          <form.Field name="repo">
+            {(field) => (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
+                <Input
+                  className="font-mono"
+                  id="git-repo"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="acme-inc/docs"
+                  value={field.state.value}
+                />
+              </div>
+            )}
+          </form.Field>
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <form.Field name="branch">
               {(field) => (
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
+                  <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
                   <Input
                     className="font-mono"
-                    id="git-repo"
+                    id="git-branch"
                     onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="acme-inc/docs"
+                    placeholder="main"
                     value={field.state.value}
                   />
                 </div>
               )}
             </form.Field>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <form.Field name="branch">
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
-                    <Input className="font-mono" id="git-branch" onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
-                  </div>
-                )}
-              </form.Field>
-              <form.Field name="path">
-                {(field) => (
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
-                    <Input className="font-mono" id="git-path" onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
-                  </div>
-                )}
-              </form.Field>
-            </div>
-            <div className="mt-5 flex items-center gap-4 border-border border-t pt-5">
-              <div className="min-w-0 flex-1 leading-snug">
-                <div className="font-medium text-sm">{t('settings.git.twoWaySync.title')}</div>
-                <p className="mt-0.5 text-muted-foreground text-sm">{t('settings.git.twoWaySync.description')}</p>
-              </div>
-              <Switch checked={git.twoWaySync} disabled={update.isPending} onCheckedChange={(checked) => save({ twoWaySync: checked })} />
-            </div>
-            <div className="mt-5 flex justify-between">
+            <form.Field name="path">
+              {(field) => (
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
+                  <Input
+                    className="font-mono"
+                    id="git-path"
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="docs"
+                    value={field.state.value}
+                  />
+                </div>
+              )}
+            </form.Field>
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-3">
+            {connected ? (
               <Button type="button" variant="destructive" onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}>
                 {t('settings.git.disconnect')}
               </Button>
-              <form.Subscribe selector={(state) => state.isSubmitting}>
-                {(isSubmitting) => (
-                  <Button disabled={isSubmitting} type="submit">
-                    {isSubmitting ? t('common.saving') : t('settings.git.save')}
-                  </Button>
-                )}
-              </form.Subscribe>
-            </div>
-          </form>
+            ) : (
+              <span />
+            )}
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
+                <Button disabled={isSubmitting} type="submit" variant="outline">
+                  {isSubmitting ? t('common.saving') : t('settings.git.save')}
+                </Button>
+              )}
+            </form.Subscribe>
+          </div>
+        </form>
+      </SettingsSection>
+
+      {connected ? (
+        <SettingsSection title={t('settings.git.import.title')}>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-muted-foreground text-sm">
+              {lastImported
+                ? t('settings.git.import.lastImported', { when: new Date(lastImported).toLocaleString() })
+                : t('settings.git.import.never')}
+            </p>
+            <Button type="button" disabled={importFromGitHub.isPending} onClick={runImport}>
+              {importFromGitHub.isPending ? <Loader2 className="size-4 animate-spin" /> : <DownloadCloud className="size-4" />}
+              {importFromGitHub.isPending ? t('settings.git.import.importing') : t('settings.git.import.button')}
+            </Button>
+          </div>
         </SettingsSection>
       ) : null}
     </div>

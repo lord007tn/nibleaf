@@ -410,11 +410,27 @@ export type AiDraftBody = z.infer<typeof aiDraftBody>;
 const boundedRecord = <V extends z.ZodTypeAny>(value: V) =>
   z.record(z.string().max(64), value).refine((r) => Object.keys(r).length <= 50, { message: 'Too many keys.' });
 
+/** GitHub content source (one-way import). Only `github` is supported; the configured
+ *  repo/branch/path are pulled into pages on demand. `connected` marks it as configured. */
+export const gitConfigSchema = z.object({
+  provider: z.enum(['github']).optional(),
+  repo: z
+    .string()
+    .max(120)
+    .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.')
+    .optional(),
+  branch: z.string().max(120).optional(),
+  path: z.string().max(300).optional(),
+  connected: z.boolean().optional(),
+  lastImportedAt: z.string().max(40).optional(),
+});
+export type GitConfig = z.infer<typeof gitConfigSchema>;
+
 export const updateWorkspaceSettingsBody = z
   .object({
     notifications: boundedRecord(z.boolean()).optional(),
     integrations: boundedRecord(z.unknown()).optional(),
-    git: boundedRecord(z.unknown()).optional(),
+    git: gitConfigSchema.optional(),
     plan: z.string().max(40).optional(),
   })
   .strict();

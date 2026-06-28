@@ -98,6 +98,14 @@ export interface PendingChanges {
   changes: PendingChange[];
 }
 
+/** Result of a one-way GitHub → pages import. */
+export interface GitImportSummary {
+  files: number;
+  imported: number;
+  updated: number;
+  skipped: number;
+}
+
 export interface DnsRecord {
   type: string;
   name: string;

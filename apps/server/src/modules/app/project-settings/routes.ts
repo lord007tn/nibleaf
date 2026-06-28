@@ -21,6 +21,12 @@ const projectSettingsRoutes = {
     description: "Update a site's operational settings.",
     responses: ok,
   }),
+  gitImport: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['projects'],
+    description: 'Import Markdown pages from the configured GitHub repository.',
+    responses: ok,
+  }),
 };
 
 export default projectSettingsRoutes;

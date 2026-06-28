@@ -1,5 +1,6 @@
 import { updateWorkspaceSettingsBody } from '@plume/validators';
 import { Hono } from 'hono';
+import { importFromGitHub } from '@/actions/git-import';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -15,6 +16,12 @@ const app = new Hono<HonoEnv>()
   .patch('/', ...projectSettingsRoutes.update, validator('json', updateWorkspaceSettingsBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     return ctx.json({ data: await updateWorkspaceSettings(organizationId, ctx.req.valid('json')) }, 200);
+  })
+  .post('/git/import', ...projectSettingsRoutes.gitImport, async (ctx) => {
+    const organizationId = getContextOrganizationIdOrThrow();
+    // Always present — the module is mounted under /projects/:projectId/settings.
+    const projectId = ctx.req.param('projectId') ?? '';
+    return ctx.json({ data: await importFromGitHub(organizationId, projectId) }, 200);
   });
 
 export default app;

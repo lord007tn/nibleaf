@@ -20,7 +20,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { AiDraftResult, ApiKey, Asset, Branch, Comment, Deployment, Domain, Language, Page, Project, WorkspaceSettings } from './types';
+import type {
+  AiDraftResult,
+  ApiKey,
+  Asset,
+  Branch,
+  Comment,
+  Deployment,
+  Domain,
+  GitImportSummary,
+  Language,
+  Page,
+  Project,
+  WorkspaceSettings,
+} from './types';
 
 export const useCreateProject = () => {
   const qc = useQueryClient();
@@ -451,5 +464,21 @@ export const useUpdateWorkspaceSettings = (projectId?: string) => {
           )
         : mutateData<WorkspaceSettings>(await api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings() }),
+  });
+};
+
+/** Pull Markdown pages from the configured GitHub repo (one-way import). */
+export const useImportFromGitHub = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      mutateData<GitImportSummary>(
+        await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }),
+        'Could not import from GitHub.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
+      qc.invalidateQueries({ queryKey: ['pages', projectId] });
+    },
   });
 };
