@@ -14,6 +14,14 @@ interface CommentsPanelProps {
   projectId: string;
   /** Comments are scoped to the currently-selected page. */
   pageId: string | null;
+  /** A block was clicked in comment mode — compose a comment anchored to it. */
+  pendingAnchor?: { quote: string; from: number; to: number } | null;
+  onClearPending?: () => void;
+  /** The focused comment (highlighted here + in the editor). */
+  activeCommentId?: string | null;
+  onSelectComment?: (id: string | null) => void;
+  /** In comment mode the panel shows only threads (no page-level composer). */
+  commentMode?: boolean;
 }
 
 /** Initials from a display name, e.g. "Mei Kawano" → "MK". */
@@ -72,7 +80,15 @@ function gradientFor(id: string): string {
   return GRADIENTS[hash % GRADIENTS.length] ?? GRADIENTS[0];
 }
 
-export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
+export function CommentsPanel({
+  projectId,
+  pageId,
+  pendingAnchor,
+  onClearPending,
+  activeCommentId,
+  onSelectComment,
+  commentMode,
+}: CommentsPanelProps) {
   const t = useT();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
@@ -85,15 +101,20 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
 
   const list = comments ?? [];
 
-  const submit = () => {
+  const submit = (anchor?: { quote: string; from: number; to: number } | null) => {
     const body = draft.trim();
     if (!body) {
       return;
     }
     createComment.mutate(
-      { body, pageId: pageId ?? null },
+      { body, pageId: pageId ?? null, ...(anchor ? { anchor } : {}) },
       {
-        onSuccess: () => setDraft(''),
+        onSuccess: () => {
+          setDraft('');
+          if (anchor) {
+            onClearPending?.();
+          }
+        },
         onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.comments.postError')),
       },
     );
@@ -108,30 +129,85 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
         <span className="ms-auto font-mono text-muted-foreground text-xs">{list.length}</span>
       </div>
 
+      {/* Anchored composer — appears when a block was clicked in comment mode. */}
+      {pendingAnchor ? (
+        <div className="mb-3 rounded-xl border border-primary/40 bg-primary/5 p-3">
+          <p className="mb-2 line-clamp-2 border-amber-400 border-s-2 ps-2 text-muted-foreground text-xs italic">“{pendingAnchor.quote}”</p>
+          <Textarea
+            className="min-h-[56px] resize-none text-sm"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                submit(pendingAnchor);
+              }
+            }}
+            placeholder={t('editor.leaveComment')}
+            value={draft}
+          />
+          <div className="mt-2 flex justify-end gap-1.5">
+            <Button
+              onClick={() => {
+                setDraft('');
+                onClearPending?.();
+              }}
+              size="sm"
+              variant="ghost"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button disabled={!draft.trim() || createComment.isPending} onClick={() => submit(pendingAnchor)} size="sm">
+              {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {t('editor.comment')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <ScrollArea className="-mx-1 min-h-0 flex-1">
         <div className="space-y-2.5 px-1">
           {isPending ? (
             <p className="px-1 text-muted-foreground text-sm">{t('common.loading')}</p>
           ) : list.length === 0 ? (
-            <p className="px-1 py-6 text-center text-muted-foreground text-sm">{t('editor.noComments')}</p>
+            <p className="px-1 py-6 text-center text-muted-foreground text-sm">
+              {commentMode ? t('editor.comments.modeHint') : t('editor.noComments')}
+            </p>
           ) : (
             list.map((comment) => (
-              <div className={cn('rounded-xl border border-border bg-card p-3', comment.resolved && 'opacity-60')} key={comment.id}>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      'flex size-6 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-[10px] text-white',
-                      gradientFor(comment.user.id),
-                    )}
-                  >
-                    {initials(comment.user.name)}
-                  </span>
-                  <span className="font-semibold text-sm">{comment.user.name}</span>
-                  <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt, t('editor.comments.now'))}</span>
-                </div>
-                <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
-                  {comment.body}
-                </p>
+              <div
+                key={comment.id}
+                className={cn(
+                  'rounded-xl border p-3 transition-colors',
+                  comment.id === activeCommentId ? 'border-primary/50 bg-primary/5' : 'border-border bg-card',
+                  comment.resolved && 'opacity-60',
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSelectComment?.(comment.id === activeCommentId ? null : comment.id)}
+                  className="block w-full text-start"
+                >
+                  {comment.anchor?.quote ? (
+                    <p className="mb-2 line-clamp-1 border-amber-400/70 border-s-2 ps-2 text-[11.5px] text-muted-foreground italic">
+                      “{comment.anchor.quote}”
+                    </p>
+                  ) : null}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'flex size-6 items-center justify-center rounded-full bg-gradient-to-br font-semibold text-[10px] text-white',
+                        gradientFor(comment.user.id),
+                      )}
+                    >
+                      {initials(comment.user.name)}
+                    </span>
+                    <span className="font-semibold text-sm">{comment.user.name}</span>
+                    <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt, t('editor.comments.now'))}</span>
+                  </div>
+                  <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
+                    {comment.body}
+                  </p>
+                </button>
                 <div className="mt-2 flex items-center gap-1">
                   <Button
                     className={cn('h-6 gap-1 px-1.5 text-xs', comment.resolved ? 'text-primary' : 'text-muted-foreground')}
@@ -150,7 +226,7 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
                       disabled={deleteComment.isPending}
                       onClick={() =>
                         deleteComment.mutate(comment.id, {
-                          onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.comments.deleteError')),
+                          onError: (err) => toast.error(err instanceof Error ? err.message : t('editor.comments.deleteError')),
                         })
                       }
                       size="icon-xs"
@@ -166,24 +242,27 @@ export function CommentsPanel({ projectId, pageId }: CommentsPanelProps) {
         </div>
       </ScrollArea>
 
-      <div className="mt-3 space-y-2 border-border border-t pt-3">
-        <Textarea
-          className="min-h-[60px] resize-none text-sm"
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-              e.preventDefault();
-              submit();
-            }
-          }}
-          placeholder={t('editor.leaveComment')}
-          value={draft}
-        />
-        <Button className="w-full" disabled={!draft.trim() || createComment.isPending} onClick={submit} size="sm">
-          {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          {t('editor.comment')}
-        </Button>
-      </div>
+      {/* Page-level composer — only outside comment mode (in comment mode you click a block). */}
+      {!commentMode && !pendingAnchor ? (
+        <div className="mt-3 space-y-2 border-border border-t pt-3">
+          <Textarea
+            className="min-h-[60px] resize-none text-sm"
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                submit();
+              }
+            }}
+            placeholder={t('editor.leaveComment')}
+            value={draft}
+          />
+          <Button className="w-full" disabled={!draft.trim() || createComment.isPending} onClick={() => submit()} size="sm">
+            {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {t('editor.comment')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

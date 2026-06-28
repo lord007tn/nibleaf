@@ -20,6 +20,7 @@ import { Markdown } from 'tiptap-markdown';
 import { cn } from '@/lib/utils';
 import { EditorBubbleMenu } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
+import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { mdxNodes } from './extensions/mdx-nodes';
 import { SlashCommand } from './extensions/slash-command';
 import './tiptap.css';
@@ -100,6 +101,14 @@ interface TiptapEditorProps {
   dir?: 'ltr' | 'rtl';
   editable?: boolean;
   className?: string;
+  /** Comments anchored on this page — their quotes are highlighted in the body. */
+  comments?: CommentMarker[];
+  /** The focused comment id (drawn stronger). */
+  activeCommentId?: string | null;
+  /** Comment mode: clicking a block anchors a new comment to it (review mode). */
+  commentMode?: boolean;
+  /** Called when a block is clicked in comment mode, with the anchor to attach. */
+  onAddComment?: (anchor: { quote: string; from: number; to: number }) => void;
 }
 
 /**
@@ -111,13 +120,33 @@ interface TiptapEditorProps {
  * changes (e.g. the AI assistant rewriting the doc) re-seed the editor, while the
  * user's own keystrokes don't cause a feedback loop / cursor reset.
  */
-export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable = true, className }: TiptapEditorProps) {
+export function TiptapEditor({
+  value,
+  onChange,
+  onUpload,
+  dir = 'ltr',
+  editable = true,
+  className,
+  comments,
+  activeCommentId,
+  commentMode = false,
+  onAddComment,
+}: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   const onUploadRef = useRef(onUpload);
   onUploadRef.current = onUpload;
   const editorRef = useRef<Editor | null>(null);
+  // Comment state read by the CommentDecorations plugin + the click handler.
+  const commentsRef = useRef<CommentMarker[]>(comments ?? []);
+  commentsRef.current = comments ?? [];
+  const activeCommentRef = useRef<string | null>(activeCommentId ?? null);
+  activeCommentRef.current = activeCommentId ?? null;
+  const commentModeRef = useRef(commentMode);
+  commentModeRef.current = commentMode;
+  const onAddCommentRef = useRef(onAddComment);
+  onAddCommentRef.current = onAddComment;
 
   // Upload an image file and insert it at the current selection.
   const insertUploadedImage = (file: File) => {
@@ -162,6 +191,7 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
       Callout,
       ...mdxNodes,
       SlashCommand.configure({ onUpload: (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null) }),
+      CommentDecorations.configure({ getComments: () => commentsRef.current, getActiveId: () => activeCommentRef.current }),
     ],
     content: value,
     onCreate: ({ editor }) => {
@@ -179,6 +209,25 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
     editorProps: {
       attributes: {
         class: 'focus:outline-none',
+      },
+      // Comment mode: clicking a block anchors a new comment to it (its text is
+      // the quote; we hand the block range up so the composer can open).
+      handleClick: (view, pos) => {
+        if (!commentModeRef.current || !onAddCommentRef.current) {
+          return false;
+        }
+        const $pos = view.state.doc.resolve(pos);
+        const depth = $pos.depth;
+        const node = depth > 0 ? $pos.node(depth) : null;
+        if (!node || !node.isTextblock) {
+          return false;
+        }
+        const quote = node.textContent.trim();
+        if (!quote) {
+          return false;
+        }
+        onAddCommentRef.current({ quote, from: $pos.start(depth), to: $pos.end(depth) });
+        return true;
       },
       // Paste or drop an image file → upload and insert the hosted URL.
       handlePaste: (_view, event) => {
@@ -218,15 +267,23 @@ export function TiptapEditor({ value, onChange, onUpload, dir = 'ltr', editable 
     }
   }, [value, editor]);
 
-  // Keep editability in sync.
+  // Keep editability in sync — comment mode is review-only.
   useEffect(() => {
-    editor?.setEditable(editable);
-  }, [editable, editor]);
+    editor?.setEditable(editable && !commentMode);
+  }, [editable, commentMode, editor]);
+
+  // Re-run the comment highlight decorations when the comments / active id change
+  // (no doc change occurs, so nudge ProseMirror with an empty transaction).
+  useEffect(() => {
+    if (editor) {
+      editor.view.dispatch(editor.state.tr);
+    }
+  }, [comments, activeCommentId, editor]);
 
   return (
-    <div className={cn('pl-editor', className)} dir={dir}>
-      {editor ? <EditorBubbleMenu editor={editor} /> : null}
-      {editor ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
+    <div className={cn('pl-editor', commentMode && 'is-comment-mode', className)} dir={dir}>
+      {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
+      {editor && !commentMode ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       <EditorContent editor={editor} />
     </div>
   );

@@ -5,6 +5,30 @@
   width: 100%;
 }
 
+/* Comment anchors (Figma-style): the commented text is highlighted; the focused
+   comment is stronger. In comment mode the canvas shows a comment cursor. */
+.pl-editor .ProseMirror .pl-comment-highlight {
+  background: rgba(250, 204, 21, 0.25);
+  box-shadow: inset 0 -2px 0 rgba(245, 158, 11, 0.75);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.pl-editor .ProseMirror .pl-comment-active {
+  background: rgba(250, 204, 21, 0.45);
+}
+.pl-editor.is-comment-mode .ProseMirror {
+  cursor: crosshair;
+}
+.pl-editor.is-comment-mode .ProseMirror p:hover,
+.pl-editor.is-comment-mode .ProseMirror h1:hover,
+.pl-editor.is-comment-mode .ProseMirror h2:hover,
+.pl-editor.is-comment-mode .ProseMirror h3:hover,
+.pl-editor.is-comment-mode .ProseMirror li:hover {
+  background: rgba(250, 204, 21, 0.1);
+  border-radius: 3px;
+}
+
 .pl-editor .ProseMirror {
   max-width: 720px;
   margin: 0 auto;

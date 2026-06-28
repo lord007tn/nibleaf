@@ -10,6 +10,7 @@ import {
   FolderPlus,
   Languages,
   Loader2,
+  MessageSquare,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRight,
@@ -37,6 +38,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
 import {
   useBranches,
+  useComments,
   useCreatePage,
   useDeletePage,
   useLanguages,
@@ -122,6 +124,11 @@ function EditorPage() {
   const [content, setContent] = useState('');
   const [railTab, setRailTab] = useState<'comments' | 'ai'>('comments');
   const [railOpen, setRailOpen] = useState(true);
+  // Figma-style comment mode: click a block to anchor a comment; the rail shows the
+  // threads. Comment mode is review-only (the editor goes non-editable).
+  const [commentMode, setCommentMode] = useState(false);
+  const [pendingAnchor, setPendingAnchor] = useState<{ quote: string; from: number; to: number } | null>(null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   // How the page body is edited: WYSIWYG, raw Markdown/MDX, or a rendered preview.
   // Content is Markdown end-to-end, so all three share the one `content` string.
   const [editorMode, setEditorMode] = useState<'visual' | 'markdown' | 'preview'>(() => {
@@ -252,6 +259,26 @@ function EditorPage() {
     );
 
   const showRail = view === 'content' && railOpen && Boolean(activeId && page);
+
+  // Comments on the active page — anchored highlights in the editor + the rail.
+  const { data: pageComments } = useComments(projectId, activeId ?? undefined);
+  const commentMarkers = useMemo(
+    () => (pageComments ?? []).filter((c) => c.anchor?.quote).map((c) => ({ id: c.id, quote: c.anchor?.quote ?? '', resolved: c.resolved })),
+    [pageComments],
+  );
+  const toggleCommentMode = () => {
+    setCommentMode((on) => {
+      const next = !on;
+      if (next) {
+        setEditorMode('visual');
+        setRailOpen(true);
+        setRailTab('comments');
+      } else {
+        setPendingAnchor(null);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-screen flex-col">
@@ -495,6 +522,16 @@ function EditorPage() {
                 </SegButton>
               </div>
               <Button
+                size="icon-sm"
+                variant={commentMode ? 'secondary' : 'ghost'}
+                aria-pressed={commentMode}
+                className="cursor-pointer"
+                onClick={toggleCommentMode}
+                title={t('editor.comments.mode')}
+              >
+                <MessageSquare className="size-4" />
+              </Button>
+              <Button
                 render={
                   // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
                   <a
@@ -572,7 +609,20 @@ function EditorPage() {
               {editorMode === 'visual' ? (
                 // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
                 // gutter for the block handle — so it is NOT wrapped in a narrow box.
-                <TiptapEditor value={content} onChange={setContent} dir={activeLangDir} onUpload={onUploadImage} />
+                <TiptapEditor
+                  value={content}
+                  onChange={setContent}
+                  dir={activeLangDir}
+                  onUpload={onUploadImage}
+                  comments={commentMarkers}
+                  activeCommentId={activeCommentId}
+                  commentMode={commentMode}
+                  onAddComment={(anchor) => {
+                    setPendingAnchor(anchor);
+                    setRailOpen(true);
+                    setRailTab('comments');
+                  }}
+                />
               ) : editorMode === 'markdown' ? (
                 <textarea
                   dir={activeLangDir}
@@ -615,7 +665,15 @@ function EditorPage() {
               </TabsList>
               <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
                 {railTab === 'comments' ? (
-                  <CommentsPanel pageId={activeId} projectId={projectId} />
+                  <CommentsPanel
+                    pageId={activeId}
+                    projectId={projectId}
+                    pendingAnchor={pendingAnchor}
+                    onClearPending={() => setPendingAnchor(null)}
+                    activeCommentId={activeCommentId}
+                    onSelectComment={setActiveCommentId}
+                    commentMode={commentMode}
+                  />
                 ) : (
                   <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
                 )}
