@@ -9,6 +9,7 @@ const member = [isAuthenticated, requireProjectMember()] as const;
 const deploymentsRoutes = {
   list: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'List deployments for a project.', responses: ok }),
   latest: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Get the latest READY deployment.', responses: ok }),
+  changes: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Pending changes vs. the last publish.', responses: ok }),
   publish: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],
     tags: ['deployments'],

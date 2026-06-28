@@ -80,6 +80,24 @@ export interface Deployment {
   completedAt: string | null;
 }
 
+/** A single page's status in the publish diff (vs. the last published snapshot). */
+export interface PendingChange {
+  id: string;
+  title: string;
+  path: string;
+  languageCode: string;
+  kind: 'PAGE' | 'GROUP';
+  status: 'added' | 'modified' | 'removed';
+}
+
+/** What the next publish will change, relative to the last READY deployment. */
+export interface PendingChanges {
+  hasBaseline: boolean;
+  lastVersion: number | null;
+  lastPublishedAt: string | null;
+  changes: PendingChange[];
+}
+
 export interface DnsRecord {
   type: string;
   name: string;

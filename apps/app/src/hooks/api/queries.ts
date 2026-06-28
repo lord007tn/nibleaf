@@ -16,6 +16,7 @@ import type {
   Member,
   Page,
   PageNode,
+  PendingChanges,
   Project,
   SearchHit,
   SitePage,
@@ -94,6 +95,18 @@ export const useLatestDeployment = (projectId: string | undefined) =>
     queryFn: async () =>
       getData<Deployment | null>(await api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: projectId! } }), 'deployment'),
     refetchInterval: (query) => (isInFlight(query.state.data?.status) ? 2500 : false),
+  });
+
+// What the next publish will change vs. the last deploy (Mintlify-style "show
+// changes"). Cheap to recompute, and the editor autosaves constantly, so keep it
+// fresh: refetch on mount/focus rather than trusting the default staleTime.
+export const usePendingChanges = (projectId: string | undefined, options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: queryKeys.deployments.changes(projectId ?? ''),
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
+    staleTime: 0,
+    queryFn: async () =>
+      getData<PendingChanges>(await api.app.projects[':projectId'].deployments.changes.$get({ param: { projectId: projectId! } }), 'changes'),
   });
 
 export const useDomains = (projectId: string | undefined) =>

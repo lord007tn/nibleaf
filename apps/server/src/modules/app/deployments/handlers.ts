@@ -1,6 +1,13 @@
 import { createDeploymentBody } from '@plume/validators';
 import { Hono } from 'hono';
-import { createDeployment, getDeployment, getLatestReadyDeployment, listDeployments, rollbackDeployment } from '@/actions/deployments';
+import {
+  createDeployment,
+  getDeployment,
+  getLatestReadyDeployment,
+  getPendingChanges,
+  listDeployments,
+  rollbackDeployment,
+} from '@/actions/deployments';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -21,6 +28,10 @@ const app = new Hono<HonoEnv>()
   .get('/latest', ...deploymentsRoutes.latest, async (ctx) => {
     const { projectId } = await scope(ctx);
     return ctx.json({ data: await getLatestReadyDeployment(projectId) }, 200);
+  })
+  .get('/changes', ...deploymentsRoutes.changes, async (ctx) => {
+    const { projectId } = await scope(ctx);
+    return ctx.json({ data: await getPendingChanges(projectId) }, 200);
   })
   .post('/', ...deploymentsRoutes.publish, validator('json', createDeploymentBody), async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
