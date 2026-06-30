@@ -24,7 +24,7 @@ const projectSettingsRoutes = {
   gitImport: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
     tags: ['projects'],
-    description: 'Import Markdown pages from the configured GitHub repository.',
+    description: 'Import Markdown pages from the configured public Git repository.',
     responses: ok,
   }),
 };

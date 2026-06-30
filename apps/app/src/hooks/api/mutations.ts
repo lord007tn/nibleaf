@@ -479,14 +479,14 @@ export const useUpdateWorkspaceSettings = (projectId?: string) => {
   });
 };
 
-/** Pull Markdown pages from the configured GitHub repo (one-way import). */
+/** Pull Markdown pages from the configured public Git provider (one-way import). */
 export const useImportFromGitHub = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
       mutateData<GitImportSummary>(
         await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }),
-        'Could not import from GitHub.',
+        'Could not import from Git.',
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });

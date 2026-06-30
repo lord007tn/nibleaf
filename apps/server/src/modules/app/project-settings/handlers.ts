@@ -1,6 +1,6 @@
 import { updateWorkspaceSettingsBody } from '@midad/validators';
 import { Hono } from 'hono';
-import { importFromGitHub } from '@/actions/git-import';
+import { importFromGitProvider } from '@/actions/git-import';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -21,7 +21,7 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     // Always present — the module is mounted under /projects/:projectId/settings.
     const projectId = ctx.req.param('projectId') ?? '';
-    return ctx.json({ data: await importFromGitHub(organizationId, projectId) }, 200);
+    return ctx.json({ data: await importFromGitProvider(organizationId, projectId) }, 200);
   });
 
 export default app;

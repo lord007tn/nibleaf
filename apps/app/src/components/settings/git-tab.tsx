@@ -1,18 +1,20 @@
-import { useForm } from '@tanstack/react-form';
-import { DownloadCloud, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { GithubIcon } from '@/components/icons/brand';
 import { Button } from '@midad/design-system/components/ui/button';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
+import { useForm } from '@tanstack/react-form';
+import { DownloadCloud, GitBranch, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { GithubIcon } from '@/components/icons/brand';
 import { useImportFromGitHub, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
 
 interface GitConfig {
-  provider?: 'github';
+  provider?: 'github' | 'gitlab';
   connected?: boolean;
   repo?: string;
+  instanceUrl?: string;
   branch?: string;
   path?: string;
   lastImportedAt?: string;
@@ -21,6 +23,7 @@ interface GitConfig {
 const DEFAULTS: Required<Omit<GitConfig, 'lastImportedAt' | 'connected'>> = {
   provider: 'github',
   repo: '',
+  instanceUrl: 'https://gitlab.com',
   branch: 'main',
   path: 'docs',
 };
@@ -31,11 +34,15 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const update = useUpdateWorkspaceSettings(projectId);
   const importFromGitHub = useImportFromGitHub(projectId ?? '');
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
+  const [provider, setProvider] = useState<GitConfig['provider']>(git.provider ?? 'github');
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && git.repo);
+  const isGitLab = provider === 'gitlab';
+
+  useEffect(() => setProvider(git.provider ?? 'github'), [git.provider]);
 
   const save = (patch: Partial<GitConfig>, message?: string) =>
     update.mutate(
-      { git: { provider: 'github', repo: git.repo, branch: git.branch, path: git.path, ...patch } },
+      { git: { provider, repo: git.repo, instanceUrl: git.instanceUrl, branch: git.branch, path: git.path, ...patch } },
       {
         onSuccess: () => message && toast.success(message),
         onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.saveError')),
@@ -49,9 +56,19 @@ export function GitTab({ projectId }: { projectId?: string }) {
     });
 
   const form = useForm({
-    defaultValues: { repo: git.repo, branch: git.branch, path: git.path },
+    defaultValues: { repo: git.repo, instanceUrl: git.instanceUrl, branch: git.branch, path: git.path },
     onSubmit: async ({ value }) =>
-      save({ repo: value.repo.trim(), branch: value.branch.trim() || 'main', path: value.path.trim(), connected: true }, t('settings.git.repoSaved')),
+      save(
+        {
+          provider,
+          repo: value.repo.trim(),
+          instanceUrl: provider === 'gitlab' ? value.instanceUrl.trim() || 'https://gitlab.com' : undefined,
+          branch: value.branch.trim() || 'main',
+          path: value.path.trim(),
+          connected: true,
+        },
+        t('settings.git.repoSaved'),
+      ),
   });
 
   const lastImported = (data?.git as GitConfig | undefined)?.lastImportedAt;
@@ -67,10 +84,48 @@ export function GitTab({ projectId }: { projectId?: string }) {
         >
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-3">
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-foreground/10 text-foreground">
-              <GithubIcon className="size-5" />
+              {isGitLab ? <GitBranch className="size-5" /> : <GithubIcon className="size-5" />}
             </span>
             <p className="text-muted-foreground text-sm leading-snug">{t('settings.git.oneWayNote')}</p>
           </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <Button
+              className="justify-start"
+              onClick={() => setProvider('github')}
+              type="button"
+              variant={provider === 'github' ? 'secondary' : 'outline'}
+            >
+              <GithubIcon className="size-4" />
+              GitHub
+            </Button>
+            <Button
+              className="justify-start"
+              onClick={() => setProvider('gitlab')}
+              type="button"
+              variant={provider === 'gitlab' ? 'secondary' : 'outline'}
+            >
+              <GitBranch className="size-4" />
+              GitLab
+            </Button>
+          </div>
+
+          {isGitLab ? (
+            <form.Field name="instanceUrl">
+              {(field) => (
+                <div className="mb-4 flex flex-col gap-1.5">
+                  <Label htmlFor="git-instance-url">{t('settings.git.instanceUrl')}</Label>
+                  <Input
+                    className="font-mono"
+                    id="git-instance-url"
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    placeholder="https://gitlab.com"
+                    value={field.state.value}
+                  />
+                </div>
+              )}
+            </form.Field>
+          ) : null}
 
           <form.Field name="repo">
             {(field) => (
@@ -80,7 +135,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
                   className="font-mono"
                   id="git-repo"
                   onChange={(e) => field.handleChange(e.target.value)}
-                  placeholder="acme-inc/docs"
+                  placeholder={isGitLab ? 'group/project' : 'acme-inc/docs'}
                   value={field.state.value}
                 />
               </div>
@@ -145,7 +200,9 @@ export function GitTab({ projectId }: { projectId?: string }) {
             </p>
             <Button type="button" disabled={importFromGitHub.isPending} onClick={runImport}>
               {importFromGitHub.isPending ? <Loader2 className="size-4 animate-spin" /> : <DownloadCloud className="size-4" />}
-              {importFromGitHub.isPending ? t('settings.git.import.importing') : t('settings.git.import.button')}
+              {importFromGitHub.isPending
+                ? t('settings.git.import.importing')
+                : t('settings.git.import.button', { provider: isGitLab ? 'GitLab' : 'GitHub' })}
             </Button>
           </div>
         </SettingsSection>
@@ -153,4 +210,3 @@ export function GitTab({ projectId }: { projectId?: string }) {
     </div>
   );
 }
-

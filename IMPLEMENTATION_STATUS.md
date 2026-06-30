@@ -9,7 +9,7 @@ product, but as a self-hostable app:
 
 - docs dashboard, editor, publish pipeline, activity, analytics, and settings
 - project subdomains and custom domains
-- git-style branch workflow plus GitHub Markdown import
+- git-style branch workflow plus public GitHub/GitLab Markdown import
 - multilingual documentation
 - Docker Compose / Coolify deployment without the marketing site
 
@@ -51,7 +51,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - API key settings UI for create/copy/revoke using the existing scoped key API.
 - Git-style DB branches with create/fork/merge/delete and versioned published
   snapshots.
-- One-way public GitHub Markdown/MDX import into the default branch/language.
+- One-way public GitHub and GitLab Markdown/MDX import into the default
+  branch/language.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates.
 - Self-host Docker image and Compose stack for local/standard deployment.
@@ -60,9 +61,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 
 ## Partial / Deliberate Limits
 
-- Git integration is currently one-way import from public GitHub repositories.
-  There is no OAuth/private-repo sync, webhook sync, two-way push, or GitLab
-  import yet.
+- Git integration is currently one-way import from public GitHub/GitLab
+  repositories. There is no OAuth/private-repo sync, webhook sync, or two-way
+  push yet.
 - Multilingual authoring is manual/structural. There is no automatic translation
   workflow.
 - TLS certificates and wildcard/custom-domain ingress are handled by Coolify or
@@ -92,6 +93,7 @@ Completed on 2026-06-30:
 - `pnpm typecheck`.
 - `docker compose -f docker-compose.coolify.yml config` with sample env values.
 - `pnpm --filter @midad/shared test`.
+- `pnpm --filter @midad/validators test`.
 - `pnpm exec biome check` on the files changed for this status pass.
 - Local dev stack dogfood with seeded demo data:
   - `pnpm exec dotenv -e .env -- pnpm db:deploy`.
@@ -104,6 +106,8 @@ Completed on 2026-06-30:
   - Public resolver returned the seeded project for a local verified custom
     domain row `docs.raedbahri.test`, including a `:443` host header.
   - Public resolver returned `null` for nested and unrelated subdomain hosts.
+  - Chrome rendered the Git settings provider form with GitHub and GitLab
+    options, including GitLab instance URL and group/project fields.
 
 Pending / External:
 
@@ -111,8 +115,8 @@ Pending / External:
   visible existing GitHub repository matched the project metadata.
 - Cloudflare DNS for `raedbahri.com` is pending until there is a deployed
   Coolify ingress target and desired hostnames to point at.
-- Browser dogfood of the GitHub import UI is still pending; current git parity
-  remains one-way public GitHub Markdown/MDX import.
+- Live import dogfood against an external public GitLab repository is still
+  pending; current git parity remains one-way public Markdown/MDX import.
 
 Known verification caveat:
 

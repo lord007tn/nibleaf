@@ -7,7 +7,9 @@ import { ensureDefaultLanguage } from './languages';
 import { createPage } from './pages';
 import { assertProjectInOrg } from './projects';
 
-interface GitHubTreeItem {
+type GitProvider = NonNullable<GitConfig['provider']>;
+
+interface GitTreeItem {
   path: string;
   type: 'blob' | 'tree';
 }
@@ -62,29 +64,16 @@ function deriveTitle(meta: Record<string, string>, body: string, fallbackName: s
   return humanize(fallbackName);
 }
 
-/**
- * One-way import: pull Markdown/MDX files from a PUBLIC GitHub repo (the configured
- * repo/branch/path on the project's org) into the default branch + default language,
- * recreating the folder structure as page groups. Idempotent — re-importing updates a
- * page in place (matched by parent + slug) instead of duplicating it. Uses one GitHub
- * tree API call + the raw.githubusercontent CDN for file bodies (no rate-limited content
- * calls, public repos only).
- */
-export const importFromGitHub = async (organizationId: string, projectId: string): Promise<GitImportSummary> => {
-  await assertProjectInOrg(organizationId, projectId);
+const normalizeInstanceUrl = (value?: string): string => {
+  const raw = value?.trim() || 'https://gitlab.com';
+  const url = new URL(raw);
+  url.pathname = url.pathname.replace(/\/+$/, '');
+  url.search = '';
+  url.hash = '';
+  return url.toString().replace(/\/+$/, '');
+};
 
-  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
-  const metadata = org?.metadata ? (JSON.parse(org.metadata) as Record<string, unknown>) : {};
-  const git = (metadata.git ?? {}) as GitConfig;
-  if (git.provider !== 'github' || !git.repo || !git.repo.includes('/')) {
-    throw badRequest('Connect a GitHub repository (owner/repo) first.');
-  }
-  const [owner, repo] = git.repo.split('/');
-  const branch = git.branch?.trim() || 'main';
-  const basePath = (git.path ?? '').replace(/^\/+|\/+$/g, '');
-  const prefix = basePath ? `${basePath}/` : '';
-
-  // 1) One tree call lists every path in the branch.
+const listGitHubFiles = async (owner: string, repo: string, branch: string): Promise<GitTreeItem[]> => {
   const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`, {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'midad-docs' },
   });
@@ -95,8 +84,91 @@ export const importFromGitHub = async (organizationId: string, projectId: string
         : `GitHub API error (${treeRes.status}). Try again shortly.`,
     );
   }
-  const tree = (await treeRes.json()) as { tree?: GitHubTreeItem[] };
-  const mdFiles = (tree.tree ?? [])
+  const tree = (await treeRes.json()) as { tree?: GitTreeItem[] };
+  return tree.tree ?? [];
+};
+
+const listGitLabFiles = async (projectPath: string, branch: string, basePath: string, instanceUrl?: string): Promise<GitTreeItem[]> => {
+  const base = normalizeInstanceUrl(instanceUrl);
+  const project = encodeURIComponent(projectPath);
+  const files: GitTreeItem[] = [];
+  let page = 1;
+
+  while (files.length < MAX_FILES) {
+    const url = new URL(`${base}/api/v4/projects/${project}/repository/tree`);
+    url.searchParams.set('ref', branch);
+    url.searchParams.set('recursive', 'true');
+    url.searchParams.set('per_page', '100');
+    url.searchParams.set('page', String(page));
+    if (basePath) {
+      url.searchParams.set('path', basePath);
+    }
+
+    const res = await fetch(url, { headers: { 'User-Agent': 'midad-docs' } });
+    if (!res.ok) {
+      throw badRequest(
+        res.status === 404
+          ? 'Project, branch, or path not found. Imports support public GitLab repositories only.'
+          : `GitLab API error (${res.status}). Try again shortly.`,
+      );
+    }
+    const chunk = (await res.json()) as Array<{ path: string; type: 'blob' | 'tree' }>;
+    files.push(...chunk.map((item) => ({ path: item.path, type: item.type })));
+
+    if (chunk.length < 100) {
+      break;
+    }
+    page++;
+  }
+
+  return files;
+};
+
+const rawFileUrl = (provider: GitProvider, repo: string, branch: string, filePath: string, instanceUrl?: string): string => {
+  if (provider === 'github') {
+    const [owner, name] = repo.split('/');
+    return `https://raw.githubusercontent.com/${owner}/${name}/${encodeURIComponent(branch)}/${filePath.split('/').map(encodeURIComponent).join('/')}`;
+  }
+
+  const base = normalizeInstanceUrl(instanceUrl);
+  const url = new URL(`${base}/api/v4/projects/${encodeURIComponent(repo)}/repository/files/${encodeURIComponent(filePath)}/raw`);
+  url.searchParams.set('ref', branch);
+  return url.toString();
+};
+
+const providerName = (provider: GitProvider): string => (provider === 'gitlab' ? 'GitLab' : 'GitHub');
+
+/**
+ * One-way import: pull Markdown/MDX files from a PUBLIC Git provider (the configured
+ * repo/branch/path on the project's org) into the default branch + default language,
+ * recreating the folder structure as page groups. Idempotent — re-importing updates a
+ * page in place (matched by parent + slug) instead of duplicating it. Public GitHub and
+ * GitLab repositories are supported; private/OAuth/webhook/two-way sync is intentionally
+ * outside this import path.
+ */
+export const importFromGitProvider = async (organizationId: string, projectId: string): Promise<GitImportSummary> => {
+  await assertProjectInOrg(organizationId, projectId);
+
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
+  const metadata = org?.metadata ? (JSON.parse(org.metadata) as Record<string, unknown>) : {};
+  const git = (metadata.git ?? {}) as GitConfig;
+  const provider = git.provider ?? 'github';
+  if ((provider !== 'github' && provider !== 'gitlab') || !git.repo || !git.repo.includes('/')) {
+    throw badRequest('Connect a public GitHub or GitLab repository first.');
+  }
+  if (provider === 'github' && git.repo.split('/').length !== 2) {
+    throw badRequest('GitHub repositories must use owner/repo.');
+  }
+  const branch = git.branch?.trim() || 'main';
+  const basePath = (git.path ?? '').replace(/^\/+|\/+$/g, '');
+  const prefix = basePath ? `${basePath}/` : '';
+
+  const tree =
+    provider === 'github'
+      ? await listGitHubFiles(git.repo.split('/')[0] as string, git.repo.split('/')[1] as string, branch)
+      : await listGitLabFiles(git.repo, branch, basePath, git.instanceUrl);
+
+  const mdFiles = tree
     .filter((i) => i.type === 'blob' && (i.path.endsWith('.md') || i.path.endsWith('.mdx')) && i.path.startsWith(prefix))
     .slice(0, MAX_FILES);
   if (mdFiles.length === 0) {
@@ -139,10 +211,7 @@ export const importFromGitHub = async (organizationId: string, projectId: string
   const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0 };
 
   for (const file of mdFiles) {
-    const rawRes = await fetch(
-      `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(branch)}/${file.path.split('/').map(encodeURIComponent).join('/')}`,
-      { headers: { 'User-Agent': 'midad-docs' } },
-    );
+    const rawRes = await fetch(rawFileUrl(provider, git.repo, branch, file.path, git.instanceUrl), { headers: { 'User-Agent': 'midad-docs' } });
     if (!rawRes.ok) {
       summary.skipped++;
       continue;
@@ -201,3 +270,5 @@ export const importFromGitHub = async (organizationId: string, projectId: string
 
   return summary;
 };
+
+export const importFromGitHub = importFromGitProvider;

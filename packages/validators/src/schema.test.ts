@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addDomainBody, createLanguageBody, paginationQuery, presignAssetBody, projectConfigSchema } from './index';
+import { addDomainBody, createLanguageBody, gitConfigSchema, paginationQuery, presignAssetBody, projectConfigSchema } from './index';
 
 describe('projectConfigSchema', () => {
   it('accepts a valid single-section patch', () => {
@@ -47,6 +47,25 @@ describe('presignAssetBody', () => {
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 1024 }).success).toBe(true);
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 0 }).success).toBe(false);
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 51 * 1024 * 1024 }).success).toBe(false);
+  });
+});
+
+describe('gitConfigSchema', () => {
+  it('accepts public GitHub and GitLab repository settings', () => {
+    expect(gitConfigSchema.safeParse({ provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' }).success).toBe(true);
+    expect(
+      gitConfigSchema.safeParse({
+        provider: 'gitlab',
+        repo: 'platform/docs/site',
+        instanceUrl: 'https://gitlab.com',
+        branch: 'main',
+        path: 'docs',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects repository paths without an owner or group', () => {
+    expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'docs' }).success).toBe(false);
   });
 });
 
