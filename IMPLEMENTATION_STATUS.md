@@ -57,6 +57,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   configurable URL templates with `{path}`, `{encodedPath}`, and `{url}` tokens.
 - Publish-time add-on checks: when CI checks and broken-link checks are enabled,
   the worker blocks deployments with broken internal docs links.
+- Publish-time grammar linting: when CI checks and the grammar linter are
+  enabled, the worker blocks common documentation typos while ignoring code
+  blocks and inline code.
 - Authentication settings for public/private docs access, backed by the existing
   live-site visibility gate.
 - Git-style DB branches with create/fork/merge/delete and versioned published
@@ -82,8 +85,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Export-to-PDF remains out of scope for the free self-hostable target.
 - Advanced hosted search providers are not prioritized; built-in published-site
   search is implemented, including configurable result count.
-- Grammar linting and preview deployments persist in project config, but their
-  runtime/publish enforcement is still pending.
+- Preview deployments persist in project config, but runtime preview deployment
+  creation/serving is still pending.
 
 ## Deployment Notes
 
@@ -129,6 +132,8 @@ Completed on 2026-06-30:
   was recorded.
 - Worker publish checks were exercised directly with valid internal docs links
   and a failing broken-link case.
+- Worker grammar linting was exercised directly with valid docs, a failing typo
+  case, and typo text inside code blocks to confirm code is ignored.
 
 Pending / External:
 

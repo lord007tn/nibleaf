@@ -73,50 +73,98 @@ const markdownLinks = (content: string): string[] => {
   return links;
 };
 
+const stripCodeForCopyChecks = (content: string): string =>
+  content
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`[^`]*`/g, ' ')
+    .replace(/<pre[\s\S]*?<\/pre>/gi, ' ')
+    .replace(/<code[\s\S]*?<\/code>/gi, ' ');
+
+const GRAMMAR_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
+  { pattern: /\bteh\b/i, message: 'Use "the" instead of "teh".' },
+  { pattern: /\brecieve\b/i, message: 'Use "receive" instead of "recieve".' },
+  { pattern: /\bseperate\b/i, message: 'Use "separate" instead of "seperate".' },
+  { pattern: /\boccured\b/i, message: 'Use "occurred" instead of "occured".' },
+  { pattern: /\bdefinately\b/i, message: 'Use "definitely" instead of "definately".' },
+  { pattern: /\bpublically\b/i, message: 'Use "publicly" instead of "publically".' },
+  { pattern: /\bcan not\b/i, message: 'Prefer "cannot" in documentation copy.' },
+  { pattern: /\bthis are\b/i, message: 'Use "this is" or "these are".' },
+];
+
+const grammarIssues = (content: string): string[] => {
+  const copy = stripCodeForCopyChecks(content);
+  const issues: string[] = [];
+  for (const rule of GRAMMAR_PATTERNS) {
+    if (rule.pattern.test(copy)) {
+      issues.push(rule.message);
+    }
+  }
+  return issues;
+};
+
 /**
  * Publish-time add-on checks. The self-hosted free target treats CI checks as
- * the umbrella toggle and broken-link checks as the concrete gate we can run
- * locally without hosted integrations.
+ * the umbrella toggle and runs concrete local gates without hosted integrations.
  */
 export function validatePublishChecks(project: ProjectWithConfig, pages: PublishPage[]): void {
   const addons = objectValue(objectValue(project.config).addons);
-  if (addons.ciChecks === false || addons.brokenLinks === false) {
+  if (addons.ciChecks === false) {
     return;
   }
 
-  const pathsByScope = new Map<string, Set<string>>();
-  for (const page of pages) {
-    if (page.kind !== 'PAGE' || page.hidden) {
-      continue;
-    }
-    const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
-    const set = pathsByScope.get(scope) ?? new Set<string>();
-    set.add(normalizedPagePath(page.path));
-    pathsByScope.set(scope, set);
-  }
-
-  const broken: string[] = [];
-  for (const page of pages) {
-    if (page.kind !== 'PAGE' || page.hidden) {
-      continue;
-    }
-    const currentPath = normalizedPagePath(page.path);
-    const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
-    const scopePaths = pathsByScope.get(scope) ?? new Set<string>();
-    for (const href of markdownLinks(page.content)) {
-      const target = internalLinkTarget(href, currentPath);
-      if (!target || target === 'changelog') {
+  if (addons.brokenLinks !== false) {
+    const pathsByScope = new Map<string, Set<string>>();
+    for (const page of pages) {
+      if (page.kind !== 'PAGE' || page.hidden) {
         continue;
       }
-      if (!scopePaths.has(target)) {
-        broken.push(`${currentPath || '/'} -> ${href}`);
+      const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
+      const set = pathsByScope.get(scope) ?? new Set<string>();
+      set.add(normalizedPagePath(page.path));
+      pathsByScope.set(scope, set);
+    }
+
+    const broken: string[] = [];
+    for (const page of pages) {
+      if (page.kind !== 'PAGE' || page.hidden) {
+        continue;
       }
+      const currentPath = normalizedPagePath(page.path);
+      const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
+      const scopePaths = pathsByScope.get(scope) ?? new Set<string>();
+      for (const href of markdownLinks(page.content)) {
+        const target = internalLinkTarget(href, currentPath);
+        if (!target || target === 'changelog') {
+          continue;
+        }
+        if (!scopePaths.has(target)) {
+          broken.push(`${currentPath || '/'} -> ${href}`);
+        }
+      }
+    }
+
+    if (broken.length > 0) {
+      const sample = broken.slice(0, 8).join('; ');
+      throw new Error(`Broken internal links found (${broken.length}): ${sample}`);
     }
   }
 
-  if (broken.length > 0) {
-    const sample = broken.slice(0, 8).join('; ');
-    throw new Error(`Broken internal links found (${broken.length}): ${sample}`);
+  if (addons.grammarLinter === true) {
+    const grammar: string[] = [];
+    for (const page of pages) {
+      if (page.kind !== 'PAGE' || page.hidden) {
+        continue;
+      }
+      const currentPath = normalizedPagePath(page.path);
+      for (const issue of grammarIssues(page.content)) {
+        grammar.push(`${currentPath || '/'}: ${issue}`);
+      }
+    }
+
+    if (grammar.length > 0) {
+      const sample = grammar.slice(0, 8).join('; ');
+      throw new Error(`Grammar lint issues found (${grammar.length}): ${sample}`);
+    }
   }
 }
 
