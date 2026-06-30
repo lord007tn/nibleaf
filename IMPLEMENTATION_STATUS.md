@@ -68,6 +68,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   branch/language.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates.
+- Authenticated draft preview route for branches/languages before publish, gated
+  by the Add-ons preview deployments toggle.
 - Self-host Docker image and Compose stack for local/standard deployment.
 - Coolify-specific Compose stack in `docker-compose.coolify.yml` that excludes
   the marketing app and exposes only the docs platform services.
@@ -85,8 +87,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Export-to-PDF remains out of scope for the free self-hostable target.
 - Advanced hosted search providers are not prioritized; built-in published-site
   search is implemented, including configurable result count.
-- Preview deployments persist in project config, but runtime preview deployment
-  creation/serving is still pending.
+- The preview deployments add-on is implemented as an authenticated live draft
+  preview route, not as immutable public/shareable preview deployment artifacts.
 
 ## Deployment Notes
 
@@ -137,6 +139,8 @@ Completed on 2026-06-30:
 - Live public GitLab import was dogfooded against
   `raytio/documentation/api-docs` on GitLab (`master` branch): 8 Markdown files
   imported, 0 skipped, and imported pages were verified in the local database.
+- Playwright rendered the authenticated draft preview route with the draft
+  page tree and selected document content, with no console errors.
 
 Pending / External:
 

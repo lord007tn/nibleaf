@@ -1,12 +1,13 @@
+import { Button } from '@midad/design-system/components/ui/button';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
-import { useRouterState } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
-import { Button } from '@midad/design-system/components/ui/button';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
+import { useProject } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, Project } from '@/hooks/api/types';
@@ -49,6 +50,8 @@ export function PublishControl({ project }: { project: Project }) {
  *  dashboard header just offers a live-site preview. */
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
   const t = useT();
+  const { data: project } = useProject(projectId);
+  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -66,8 +69,12 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             <Button
               nativeButton={false}
               render={
-                // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                <a aria-label="Preview the live website" href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
+                previewEnabled ? (
+                  <Link aria-label="Preview draft website" params={{ projectId }} to="/app/projects/$projectId/preview" />
+                ) : (
+                  // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
+                  <a aria-label="Preview the live website" href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
+                )
               }
               size="sm"
               variant="outline"
@@ -81,4 +88,3 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
     </SidebarProvider>
   );
 }
-

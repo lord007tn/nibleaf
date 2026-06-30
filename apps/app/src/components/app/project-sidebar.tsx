@@ -1,9 +1,23 @@
-import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BarChart3, Boxes, Check, ChevronsUpDown, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
-import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { MidadMark } from '@midad/design-system/brand';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@midad/design-system/components/ui/dropdown-menu';
-import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@midad/design-system/components/ui/sidebar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@midad/design-system/components/ui/dropdown-menu';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@midad/design-system/components/ui/sidebar';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { BarChart3, Boxes, Check, ChevronsUpDown, Eye, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
+import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { useProject, useProjects } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
@@ -19,9 +33,20 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const t = useT();
 
   const base = `/app/projects/${projectId}`;
+  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const nav: NavItem[] = [
     { labelKey: 'project.overview', to: '/app/projects/$projectId', icon: LayoutDashboard, isActive: pathname === base },
     { labelKey: 'project.editor', to: '/app/projects/$projectId/editor', icon: PenLine, isActive: pathname.startsWith(`${base}/editor`) },
+    ...(previewEnabled
+      ? [
+          {
+            labelKey: 'project.preview' as MessageKey,
+            to: '/app/projects/$projectId/preview',
+            icon: Eye,
+            isActive: pathname.startsWith(`${base}/preview`),
+          },
+        ]
+      : []),
     { labelKey: 'project.analytics', to: '/app/projects/$projectId/analytics', icon: BarChart3, isActive: pathname.startsWith(`${base}/analytics`) },
     { labelKey: 'project.settings', to: '/app/projects/$projectId/settings', icon: SettingsIcon, isActive: pathname.startsWith(`${base}/settings`) },
   ];
@@ -81,4 +106,3 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
     </Sidebar>
   );
 }
-
