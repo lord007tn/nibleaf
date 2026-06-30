@@ -13,9 +13,11 @@ import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { BillingTab } from '@/components/settings/billing-tab';
+import { ExportsTab } from '@/components/settings/exports-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { NotificationsTab } from '@/components/settings/notifications-tab';
+import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
 import { useProject } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -42,9 +44,11 @@ const SECTIONS = [
   { id: 'members', group: 'workspace', icon: '⧉' },
   { id: 'apiKeys', group: 'workspace', icon: '⌁' },
   { id: 'plan', group: 'workspace', icon: '◇' },
+  { id: 'usage', group: 'workspace', icon: '▤' },
   { id: 'billing', group: 'workspace', icon: '◫' },
   { id: 'integrations', group: 'workspace', icon: '⚙' },
   { id: 'notifications', group: 'workspace', icon: '✉' },
+  { id: 'exports', group: 'advanced', icon: '⇩' },
   { id: 'danger', group: 'advanced', icon: '⚠' },
 ] as const satisfies ReadonlyArray<{ id: string; group: (typeof GROUPS)[number]['id']; icon: string }>;
 
@@ -118,9 +122,11 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
+    usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     billing: <BillingTab key={`billing-${projectId}`} projectId={projectId} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
+    exports: <ExportsTab key={`exports-${project.id}`} />,
     danger: <DangerSection project={project} />,
   };
   return sections[section];

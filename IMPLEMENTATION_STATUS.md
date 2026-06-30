@@ -52,6 +52,11 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   at the database layer so wildcard subdomain routing is deterministic.
 - Project overview live-domain and recent deployment activity panel.
 - API key settings UI for create/copy/revoke using the existing scoped key API.
+- Usage settings for local site counts, languages, members, custom domains,
+  deployments, and 30-day built-in analytics.
+- Exports settings surface that mirrors Mintlify free behavior: visible but
+  Enterprise-only, with PDF/static export jobs intentionally unavailable in the
+  free self-hosted build.
 - Add-ons settings for feedback, edit suggestions, issue links, CI checks,
   broken-link checks, grammar linting, preview deployments, and search indexing.
   Search indexing reuses the existing live `seo.allowIndex` behavior.
@@ -167,6 +172,11 @@ Completed on 2026-07-01:
   - Updating another project to that same slug was rejected with a conflict.
   - The public host resolver returned the project for
     `<updated-slug>.dogfood.test:443`.
+- Playwright rendered the authenticated Usage settings tab with local usage
+  counts and 30-day top-page analytics.
+- Playwright rendered the authenticated Exports settings tab as an
+  Enterprise-only surface, with no console errors beyond the React DevTools
+  development info line.
 
 Pending / External:
 
