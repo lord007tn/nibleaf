@@ -26,20 +26,63 @@ the marketing site.
 Use `docker-compose.coolify.yml` in Coolify when you only want the self-hosted
 docs product.
 
-Expose these service ports through Coolify domains:
+Bind these Coolify domains to services:
 
-| Service | Port | Purpose |
-| --- | --- | --- |
-| `app` | `4310` | Dashboard, editor, live docs, project subdomains, and custom domains |
-| `server` | `4311` | API, usually internal because `app` proxies `/api` |
-| `maxio` | `9000` | Optional public media/storage origin |
+| Host binding | Service | Port | Purpose |
+| --- | --- | --- | --- |
+| `app.example.com` | `app` | `4310` | Dashboard, editor, and `/api` proxy |
+| `*.docs.example.com` | `app` | `4310` | Free project subdomains |
+| `cname.docs.example.com` | `app` | `4310` | Custom-domain CNAME target |
+| `storage.example.com` | `maxio` | `9000` | Optional public media/storage origin |
 
 Set `SITE_BASE_DOMAIN` to your wildcard docs domain, for example
-`docs.example.com`, then point `*.docs.example.com` at `app:4310`.
+`docs.example.com`, then bind `*.docs.example.com` to the `app` service in
+Coolify.
 Set `CUSTOM_DOMAIN_CNAME_TARGET` to the host customers should CNAME to, for
-example `cname.docs.example.com`, and point that host at the same app ingress.
+example `cname.docs.example.com`, then bind that host to the same `app` service.
 If you do not run a separate marketing site, set `WWW_URL` to the same origin as
 `APP_URL`.
+
+Required Coolify environment values:
+
+```dotenv
+APP_URL=https://app.example.com
+WWW_URL=https://app.example.com
+SITE_BASE_DOMAIN=docs.example.com
+CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com
+TRUSTED_ORIGINS=https://app.example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com
+POSTGRES_USER=midad
+POSTGRES_PASSWORD=<strong-password>
+STORAGE_ACCESS_KEY_ID=<storage-access-key>
+STORAGE_SECRET_ACCESS_KEY=<storage-secret-key>
+STORAGE_PUBLIC_ENDPOINT=https://storage.example.com
+STORAGE_PUBLIC_URL=https://storage.example.com/midad
+BETTER_AUTH_SECRET=<64-hex-secret>
+```
+
+Create these DNS records before verifying domains in Midad:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `app.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+| `*.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+| `cname.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+
+For Cloudflare, use DNS-only mode first if certificate issuance or host
+verification fails, then enable proxying after Coolify has certificates for the
+dashboard, wildcard docs host, and custom-domain CNAME target.
+
+Customer custom domains need their own DNS records:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `docs.customer.com` | `CNAME` | `cname.docs.example.com` |
+| `_midad.docs.customer.com` | `TXT` | `midad-verify=<token shown in Midad>` |
+
+For apex custom domains such as `customer.com`, use Cloudflare CNAME flattening
+or an `A`/`AAAA` record to the same app ingress, plus the `_midad.customer.com`
+TXT verification record.
 
 ## Local development stack
 
@@ -82,6 +125,17 @@ curl http://localhost:4312/health
 
 Then publish a small docs change from the dashboard and open the live site from
 the project overview.
+
+For subdomain/custom-domain verification, also check:
+
+```bash
+curl -H "Host: <project>.docs.example.com" https://<coolify-app-host>/
+curl -H "Host: docs.customer.com" https://<coolify-app-host>/
+```
+
+The first request should serve the project whose deployment name is `<project>`.
+The second request serves a project only after the custom domain is added and
+verified in Midad.
 
 ## Common commands
 

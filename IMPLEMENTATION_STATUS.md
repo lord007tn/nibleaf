@@ -82,6 +82,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Self-host Docker image and Compose stack for local/standard deployment.
 - Coolify-specific Compose stack in `docker-compose.coolify.yml` that excludes
   the marketing app and exposes only the docs platform services.
+- Self-hosting docs for Coolify and Cloudflare DNS, including app service host
+  bindings, wildcard project subdomains, custom-domain CNAME/TXT verification,
+  apex-domain handling, and the Coolify-specific environment variable names.
 
 ## Partial / Deliberate Limits
 
@@ -177,6 +180,13 @@ Completed on 2026-07-01:
 - Playwright rendered the authenticated Exports settings tab as an
   Enterprise-only surface, with no console errors beyond the React DevTools
   development info line.
+- `pnpm --filter @midad/docs typecheck`.
+- `docker compose -f docker-compose.coolify.yml config` with sample Coolify
+  production values for dashboard, wildcard docs, custom-domain CNAME target,
+  storage, auth, Postgres, and CORS origins.
+- Multi-agent self-review of the self-hosting docs found Coolify env/routing,
+  TXT verification, and Cloudflare DNS/TLS documentation gaps; those gaps were
+  addressed in the self-hosting and publishing docs.
 
 Pending / External:
 

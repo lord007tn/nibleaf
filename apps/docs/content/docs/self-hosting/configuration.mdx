@@ -27,6 +27,8 @@ cp .env.example .env
 | `PUBLIC_API_URL` | Public API origin. In standard Compose, this is the dashboard origin because `/api` is proxied by `app`. |
 | `PUBLIC_WWW_URL` | Public marketing/root website origin. |
 | `PUBLIC_STORAGE_URL` | Public base URL for uploaded assets. |
+| `SITE_BASE_DOMAIN` | Wildcard docs base for free project subdomains, for example `docs.example.com`. |
+| `CUSTOM_DOMAIN_CNAME_TARGET` | Host customers CNAME custom domains to, for example `cname.docs.example.com`. |
 
 Generate secrets with OpenSSL:
 
@@ -112,6 +114,49 @@ PUBLIC_APP_URL=https://app.example.com
 PUBLIC_API_URL=https://app.example.com
 PUBLIC_WWW_URL=https://example.com
 ```
+
+## Docs domains
+
+Midad serves published docs from the dashboard app service. Two domain concepts
+need to be configured:
+
+- Free project subdomains: `<deployment-name>.<SITE_BASE_DOMAIN>`.
+- Customer custom domains: a verified hostname such as `docs.customer.com`.
+
+```dotenv
+SITE_BASE_DOMAIN=docs.example.com
+CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com
+```
+
+In DNS, point both the wildcard docs base and the CNAME target at the same app
+ingress:
+
+| Record | Type | Target |
+| --- | --- | --- |
+| `*.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+| `cname.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+
+In Cloudflare, keep those records on the same proxy mode as the dashboard app
+record. If Cloudflare proxies the records, configure Coolify to accept the host
+headers and issue certificates for the wildcard/docs hosts. Midad only resolves
+the incoming `Host`; TLS termination and wildcard certificates are handled by
+Cloudflare, Coolify, or your reverse proxy.
+
+### Coolify variable names
+
+`docker-compose.coolify.yml` uses production/Coolify variable names directly,
+not the `PUBLIC_*` aliases from the standard compose file:
+
+| Standard compose | Coolify compose |
+| --- | --- |
+| `PUBLIC_APP_URL` | `APP_URL` |
+| `PUBLIC_WWW_URL` | `WWW_URL` |
+| `PUBLIC_STORAGE_URL` | `STORAGE_PUBLIC_URL` |
+| `STORAGE_ACCESS_KEY` | `STORAGE_ACCESS_KEY_ID` |
+| `STORAGE_SECRET_KEY` | `STORAGE_SECRET_ACCESS_KEY` |
+
+Set the Coolify names in the Coolify environment screen. Leaving them unset
+causes compose interpolation to fail before the containers start.
 
 ## Email
 

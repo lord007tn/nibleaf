@@ -72,14 +72,25 @@ Map a project to your own domain so readers see your docs at, for example,
 
 <Steps>
   <Step>Add the domain to your project in the dashboard.</Step>
-  <Step>Create the DNS record pointing at your Midad deployment.</Step>
-  <Step>Midad serves the live deployment on that domain, with TLS.</Step>
+  <Step>Create the TXT ownership record shown by Midad (`_midad.<domain>`).</Step>
+  <Step>Create the CNAME record pointing at your Midad custom-domain target.</Step>
+  <Step>Click **Verify DNS** in Midad once the records have propagated.</Step>
+  <Step>Midad serves the live deployment on that domain after verification.</Step>
 </Steps>
 
 <Callout type="warn">
   DNS changes can take time to propagate. Until they do, your docs remain
   reachable on the default deployment URL.
 </Callout>
+
+Self-hosted operators configure the custom-domain target with
+`CUSTOM_DOMAIN_CNAME_TARGET`. For example, if the target is
+`cname.docs.example.com`, customer domains should CNAME to that host, and that
+host should route to the same app ingress as project subdomains.
+
+For apex domains, use your DNS provider's CNAME flattening or point the apex to
+the same app ingress with `A`/`AAAA` records, then add the `_midad.<domain>` TXT
+record shown in the dashboard.
 
 ## Analytics
 
