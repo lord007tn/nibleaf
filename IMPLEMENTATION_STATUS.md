@@ -93,13 +93,31 @@ Completed on 2026-06-30:
 - `docker compose -f docker-compose.coolify.yml config` with sample env values.
 - `pnpm --filter @midad/shared test`.
 - `pnpm exec biome check` on the files changed for this status pass.
+- Local dev stack dogfood with seeded demo data:
+  - `pnpm exec dotenv -e .env -- pnpm db:deploy`.
+  - `pnpm exec dotenv -e .env -- pnpm db:seed`.
+  - `pnpm dev` with Postgres, Dragonfly, and maxio already running.
+  - Chrome rendered the authenticated project overview, domain settings, API key
+    settings, search settings, and published docs site.
+  - Public resolver returned the seeded project for `docs.midad.app` when
+    `SITE_BASE_DOMAIN=midad.app` was injected.
+  - Public resolver returned the seeded project for a local verified custom
+    domain row `docs.raedbahri.test`, including a `:443` host header.
+  - Public resolver returned `null` for nested and unrelated subdomain hosts.
 
-Pending:
+Pending / External:
 
-- Browser dogfood of the dashboard, project settings, published docs, subdomain
-  host resolution, custom-domain resolver, git import UI, and language switcher.
+- Push is pending because this checkout has no configured Git remote and no
+  visible existing GitHub repository matched the project metadata.
+- Cloudflare DNS for `raedbahri.com` is pending until there is a deployed
+  Coolify ingress target and desired hostnames to point at.
+- Browser dogfood of the GitHub import UI is still pending; current git parity
+  remains one-way public GitHub Markdown/MDX import.
 
 Known verification caveat:
 
 - Full `pnpm lint` currently fails on broad pre-existing formatting/import
   diagnostics across the dirty worktree; touched files pass focused Biome checks.
+- Chrome profile extensions can block direct navigation to some local settings
+  URLs or add hydration warnings; authenticated in-app settings screens were
+  still verified after a clean dev-server restart.

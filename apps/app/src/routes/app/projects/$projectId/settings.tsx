@@ -8,6 +8,7 @@ import { DomainSection } from '@/components/project-settings/domain-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { MembersSection } from '@/components/project-settings/members-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
+import { SearchSection } from '@/components/project-settings/search-section';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { BillingTab } from '@/components/settings/billing-tab';
 import { GitTab } from '@/components/settings/git-tab';
@@ -32,6 +33,7 @@ const SECTIONS = [
   { id: 'general', group: 'site', icon: '⊕' },
   { id: 'domain', group: 'site', icon: '◷' },
   { id: 'analytics', group: 'site', icon: '◴' },
+  { id: 'search', group: 'site', icon: '⌕' },
   { id: 'git', group: 'deployment', icon: '⎇' },
   { id: 'members', group: 'workspace', icon: '⧉' },
   { id: 'apiKeys', group: 'workspace', icon: '⌁' },
@@ -105,6 +107,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
     analytics: <AnalyticsSection key={`analytics-${project.id}`} project={project} />,
+    search: <SearchSection key={`search-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,
