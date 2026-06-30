@@ -19,6 +19,22 @@ describe('projectConfigSchema', () => {
     expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#abc' } }).success).toBe(true);
     expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#xyz' } }).success).toBe(false);
   });
+  it('accepts bounded add-on toggles and rejects unknown add-ons', () => {
+    expect(
+      projectConfigSchema.safeParse({
+        addons: {
+          feedback: true,
+          editSuggestions: true,
+          issueLinks: true,
+          ciChecks: true,
+          brokenLinks: true,
+          grammarLinter: false,
+          previewDeployments: true,
+        },
+      }).success,
+    ).toBe(true);
+    expect(projectConfigSchema.safeParse({ addons: { advancedAiSearch: true } }).success).toBe(false);
+  });
 });
 
 describe('createLanguageBody', () => {

@@ -2,6 +2,7 @@ import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { cn } from '@midad/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
 import { DomainSection } from '@/components/project-settings/domain-section';
@@ -34,6 +35,7 @@ const SECTIONS = [
   { id: 'domain', group: 'site', icon: '◷' },
   { id: 'analytics', group: 'site', icon: '◴' },
   { id: 'search', group: 'site', icon: '⌕' },
+  { id: 'addons', group: 'site', icon: '◩' },
   { id: 'git', group: 'deployment', icon: '⎇' },
   { id: 'members', group: 'workspace', icon: '⧉' },
   { id: 'apiKeys', group: 'workspace', icon: '⌁' },
@@ -108,6 +110,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
     analytics: <AnalyticsSection key={`analytics-${project.id}`} project={project} />,
     search: <SearchSection key={`search-${project.id}`} project={project} />,
+    addons: <AddonsSection key={`addons-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,

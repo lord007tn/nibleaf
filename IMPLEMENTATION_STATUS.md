@@ -49,6 +49,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   redirect.
 - Project overview live-domain and recent deployment activity panel.
 - API key settings UI for create/copy/revoke using the existing scoped key API.
+- Add-ons settings for feedback, edit suggestions, issue links, CI checks,
+  broken-link checks, grammar linting, preview deployments, and search indexing.
+  Search indexing reuses the existing live `seo.allowIndex` behavior.
 - Git-style DB branches with create/fork/merge/delete and versioned published
   snapshots.
 - One-way public GitHub and GitLab Markdown/MDX import into the default
@@ -72,6 +75,10 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Export-to-PDF remains out of scope for the free self-hostable target.
 - Advanced hosted search providers are not prioritized; built-in published-site
   search is implemented, including configurable result count.
+- Add-ons beyond search indexing are currently settings parity: feedback, edit
+  suggestions, issue links, CI checks, broken-link checks, grammar linting, and
+  preview deployments persist in project config, but their runtime/publish
+  enforcement is still pending.
 
 ## Deployment Notes
 
@@ -106,8 +113,10 @@ Completed on 2026-06-30:
   - Public resolver returned the seeded project for a local verified custom
     domain row `docs.raedbahri.test`, including a `:443` host header.
   - Public resolver returned `null` for nested and unrelated subdomain hosts.
-  - Chrome rendered the Git settings provider form with GitHub and GitLab
-    options, including GitLab instance URL and group/project fields.
+- Chrome rendered the Git settings provider form with GitHub and GitLab
+  options, including GitLab instance URL and group/project fields.
+- Playwright rendered the Add-ons settings section and successfully saved an
+  add-on toggle through the authenticated local app.
 
 Pending / External:
 

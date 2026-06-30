@@ -124,6 +124,18 @@ export const projectConfigSchema = z
       })
       .strict()
       .optional(),
+    addons: z
+      .object({
+        feedback: z.boolean().optional(),
+        editSuggestions: z.boolean().optional(),
+        issueLinks: z.boolean().optional(),
+        ciChecks: z.boolean().optional(),
+        brokenLinks: z.boolean().optional(),
+        grammarLinter: z.boolean().optional(),
+        previewDeployments: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
     analytics: z
       .object({
         ga4: z.string().max(40).optional(),
