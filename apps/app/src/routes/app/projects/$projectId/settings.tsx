@@ -4,6 +4,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
+import { AuthenticationSection } from '@/components/project-settings/authentication-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
 import { DomainSection } from '@/components/project-settings/domain-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
@@ -33,6 +34,7 @@ const GROUPS = [
 const SECTIONS = [
   { id: 'general', group: 'site', icon: '⊕' },
   { id: 'domain', group: 'site', icon: '◷' },
+  { id: 'authentication', group: 'site', icon: '◉' },
   { id: 'analytics', group: 'site', icon: '◴' },
   { id: 'search', group: 'site', icon: '⌕' },
   { id: 'addons', group: 'site', icon: '◩' },
@@ -108,6 +110,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
   const sections: Record<SectionId, ReactNode> = {
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
+    authentication: <AuthenticationSection key={`authentication-${project.id}`} project={project} />,
     analytics: <AnalyticsSection key={`analytics-${project.id}`} project={project} />,
     search: <SearchSection key={`search-${project.id}`} project={project} />,
     addons: <AddonsSection key={`addons-${project.id}`} project={project} />,

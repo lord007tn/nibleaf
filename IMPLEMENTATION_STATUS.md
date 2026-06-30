@@ -52,6 +52,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Add-ons settings for feedback, edit suggestions, issue links, CI checks,
   broken-link checks, grammar linting, preview deployments, and search indexing.
   Search indexing reuses the existing live `seo.allowIndex` behavior.
+- Authentication settings for public/private docs access, backed by the existing
+  live-site visibility gate.
 - Git-style DB branches with create/fork/merge/delete and versioned published
   snapshots.
 - One-way public GitHub and GitLab Markdown/MDX import into the default
@@ -117,6 +119,8 @@ Completed on 2026-06-30:
   options, including GitLab instance URL and group/project fields.
 - Playwright rendered the Add-ons settings section and successfully saved an
   add-on toggle through the authenticated local app.
+- Playwright rendered the Authentication settings section and successfully saved
+  the current docs access mode through the authenticated local app.
 
 Pending / External:
 
