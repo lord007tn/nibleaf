@@ -2,12 +2,12 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { DirectionProvider } from '@/components/direction-provider';
-import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@/components/theme-provider';
-import { ConfirmProvider } from '@/components/ui/confirm';
-import { Toaster } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { ConfirmProvider as DesignConfirmProvider } from '@midad/design-system/components/ui/confirm';
+import { Toaster } from '@midad/design-system/components/ui/sonner';
+import { TooltipProvider } from '@midad/design-system/components/ui/tooltip';
+import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@midad/design-system/theme';
 import type { SiteShell } from '@/hooks/api/types';
-import { LocaleProvider } from '@/lib/i18n';
+import { LocaleProvider, useT } from '@/lib/i18n';
 import appCss from '@/styles.css?url';
 
 export interface RouterContext {
@@ -19,9 +19,14 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Plume — open-source documentation platform' },
+      { title: 'Midad — open-source documentation platform' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/site.webmanifest' },
+    ],
   }),
   component: RootComponent,
 });
@@ -63,10 +68,10 @@ function RootDocument({ children }: { children: ReactNode }) {
         <ThemeProvider>
           <DirectionProvider>
             <LocaleProvider>
-              <ConfirmProvider>
+              <AppConfirmProvider>
                 <TooltipProvider>{children}</TooltipProvider>
                 <Toaster position="bottom-right" richColors />
-              </ConfirmProvider>
+              </AppConfirmProvider>
             </LocaleProvider>
           </DirectionProvider>
         </ThemeProvider>
@@ -75,3 +80,10 @@ function RootDocument({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
+function AppConfirmProvider({ children }: { children: ReactNode }) {
+  const t = useT();
+  return <DesignConfirmProvider labels={{ cancel: t('common.cancel'), delete: t('common.delete'), save: t('common.save') }}>{children}</DesignConfirmProvider>;
+}
+
+

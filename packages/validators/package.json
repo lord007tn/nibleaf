@@ -1,5 +1,5 @@
 {
-  "name": "@plume/validators",
+  "name": "@midad/validators",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -17,7 +17,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@plume/tsconfig": "workspace:*",
+    "@midad/tsconfig": "workspace:*",
     "typescript": "^5.9.2"
   }
 }

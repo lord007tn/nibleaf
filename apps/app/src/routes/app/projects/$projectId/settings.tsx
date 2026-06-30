@@ -1,3 +1,5 @@
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { cn } from '@midad/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
@@ -6,16 +8,15 @@ import { DomainSection } from '@/components/project-settings/domain-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { MembersSection } from '@/components/project-settings/members-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
+import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { BillingTab } from '@/components/settings/billing-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { NotificationsTab } from '@/components/settings/notifications-tab';
-import { Skeleton } from '@/components/ui/skeleton';
 import type { Project } from '@/hooks/api';
 import { useProject } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
 // (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)
@@ -33,6 +34,7 @@ const SECTIONS = [
   { id: 'analytics', group: 'site', icon: '◴' },
   { id: 'git', group: 'deployment', icon: '⎇' },
   { id: 'members', group: 'workspace', icon: '⧉' },
+  { id: 'apiKeys', group: 'workspace', icon: '⌁' },
   { id: 'plan', group: 'workspace', icon: '◇' },
   { id: 'billing', group: 'workspace', icon: '◫' },
   { id: 'integrations', group: 'workspace', icon: '⚙' },
@@ -105,6 +107,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     analytics: <AnalyticsSection key={`analytics-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
+    apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     billing: <BillingTab key={`billing-${projectId}`} projectId={projectId} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} />,

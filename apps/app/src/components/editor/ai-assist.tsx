@@ -1,11 +1,11 @@
 import { ArrowDownToLine, Check, Loader2, Replace, Sparkles, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Textarea } from '@midad/design-system/components/ui/textarea';
 import { useAiDraft } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 type AiMode = 'continue' | 'rephrase' | 'outline' | 'summarize';
 
@@ -164,3 +164,4 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
     </div>
   );
 }
+

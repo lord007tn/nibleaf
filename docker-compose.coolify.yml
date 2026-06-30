@@ -1,0 +1,189 @@
+# Midad — Coolify production stack.
+#
+# Use this compose file in Coolify when you want the self-hostable docs
+# platform only. It intentionally omits the marketing/www app.
+#
+# Assign Coolify domains to:
+#   app   : 4310 -> dashboard + published docs + wildcard docs host
+#   server: 4311 -> optional direct API domain, otherwise keep internal
+#   maxio : 9000 -> optional public storage/media domain
+#
+# Required DNS for free project subdomains:
+#   *.${SITE_BASE_DOMAIN} CNAME/AAAA/A -> the Coolify app ingress
+#
+# Required DNS for custom domains:
+#   customers CNAME their docs host to ${CUSTOM_DOMAIN_CNAME_TARGET}
+
+name: midad-coolify
+
+x-build: &build
+  context: .
+  dockerfile: Dockerfile
+  target: runner
+  args:
+    VITE_APP_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
+    VITE_WWW_URL: ${WWW_URL:?set WWW_URL to the public site origin, or set it equal to APP_URL}
+    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
+
+x-service-env: &service-env
+  NODE_ENV: production
+  POSTGRES_URL: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midad}
+  REDIS_HOST: dragonfly
+  REDIS_PORT: "6379"
+  STORAGE_PROVIDER: maxio
+  STORAGE_ENDPOINT: http://maxio:9000
+  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:?set STORAGE_PUBLIC_ENDPOINT to the public storage origin}
+  STORAGE_REGION: ${STORAGE_REGION:-auto}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:-midad}
+  STORAGE_FORCE_PATH_STYLE: "true"
+  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:?set STORAGE_PUBLIC_URL to the public bucket URL}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${APP_URL:?set APP_URL to the public dashboard origin}
+  STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
+  BETTER_AUTH_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
+  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
+  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:?set TRUSTED_ORIGINS to the dashboard origin}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?set CORS_ALLOWED_ORIGINS to the dashboard origin}
+  API_PORT: "4311"
+  API_URL: http://server:4311
+  APP_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
+  SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
+  WORKER_PORT: "4312"
+  EMAIL_FROM: ${EMAIL_FROM:-midad@localhost}
+  SMTP_URL: ${SMTP_URL:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-midad}
+    volumes:
+      - midad-coolify-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    restart: unless-stopped
+    command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
+    volumes:
+      - midad-coolify-dragonfly:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  maxio:
+    image: ghcr.io/coollabsio/maxio:latest
+    restart: unless-stopped
+    environment:
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY}
+      MAXIO_REGION: ${STORAGE_REGION:-auto}
+      MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-midad}
+      MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-midad}
+      MAXIO_SECURE_COOKIES: ${MAXIO_SECURE_COOKIES:-true}
+    expose:
+      - "9000"
+    volumes:
+      - midad-coolify-maxio:/data
+    healthcheck:
+      test: ["CMD", "maxio", "healthcheck", "--url", "http://127.0.0.1:9000/healthz", "--timeout-ms", "2000"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  migrate:
+    build: *build
+    image: midad:${SERVICE_VERSION:-latest}
+    command: ["migrate"]
+    environment: *service-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build: *build
+    image: midad:${SERVICE_VERSION:-latest}
+    command: ["server"]
+    init: true
+    environment: *service-env
+    expose:
+      - "4311"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      maxio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4311/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    image: midad:${SERVICE_VERSION:-latest}
+    command: ["worker"]
+    init: true
+    environment: *service-env
+    expose:
+      - "4312"
+    depends_on:
+      dragonfly:
+        condition: service_healthy
+      maxio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4312/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  app:
+    image: midad:${SERVICE_VERSION:-latest}
+    command: ["app"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4310"
+      VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN}
+    expose:
+      - "4310"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4310/sign-in"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  midad-coolify-pg:
+  midad-coolify-dragonfly:
+  midad-coolify-maxio:

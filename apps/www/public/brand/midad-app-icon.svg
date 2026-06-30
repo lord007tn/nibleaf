@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Midad">
+  <rect width="1024" height="1024" fill="#FBF7EE"/>
+  <rect x="132" y="132" width="760" height="760" rx="176" fill="#8A4B2E"/>
+  <path d="M334 626 616 344c31-31 82-31 113 0l9 9c31 31 31 82 0 113L456 748l-159 40 37-162Z" fill="#FBF7EE"/>
+  <path d="m579 381 122 122" fill="none" stroke="#181612" stroke-linecap="round" stroke-width="38" opacity=".28"/>
+  <path d="M280 370c76-80 193-99 290-45" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="52"/>
+  <circle cx="709" cy="683" r="58" fill="#B96A3D"/>
+</svg>

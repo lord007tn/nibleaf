@@ -5,7 +5,7 @@
   "tsx": true,
   "tailwind": {
     "config": "",
-    "css": "src/styles.css",
+    "css": "../../packages/design-system/src/styles/globals.css",
     "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": true,
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@midad/design-system/components",
+    "utils": "@midad/design-system/lib/utils",
+    "ui": "@midad/design-system/components/ui",
+    "lib": "@midad/design-system/lib",
+    "hooks": "@midad/design-system/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

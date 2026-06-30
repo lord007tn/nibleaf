@@ -17,3 +17,4 @@ export function useActiveWorkspace(): ActiveWorkspace | null {
   const ws = active ?? (orgs ?? [])[0] ?? null;
   return ws ? { id: ws.id, name: ws.name, slug: ws.slug ?? '' } : null;
 }
+

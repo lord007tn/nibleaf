@@ -1,5 +1,5 @@
-import type { SendEmailJobData } from '@plume/bullmq/jobs/email';
-import { createLogger } from '@plume/logger';
+import type { SendEmailJobData } from '@midad/bullmq/jobs/email';
+import { createLogger } from '@midad/logger';
 import type { Job } from 'bullmq';
 import nodemailer from 'nodemailer';
 import { env } from '@/env';

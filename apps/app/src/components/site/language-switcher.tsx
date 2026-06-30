@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Languages } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@midad/design-system/components/ui/dropdown-menu';
 
 export interface SiteLanguage {
   code: string;
@@ -56,3 +56,4 @@ export function LanguageSwitcher({
     </DropdownMenu>
   );
 }
+

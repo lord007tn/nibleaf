@@ -1,4 +1,4 @@
-/* TipTap WYSIWYG styles — scoped to .ProseMirror, matching the Plume design.
+/* TipTap WYSIWYG styles — scoped to .ProseMirror, matching the Midad design.
    Uses the app's Tailwind color tokens (var(--color-*)) so it follows light/dark. */
 
 .pl-editor {
@@ -476,3 +476,4 @@
   font-size: 0.8rem;
   color: var(--color-muted-foreground);
 }
+

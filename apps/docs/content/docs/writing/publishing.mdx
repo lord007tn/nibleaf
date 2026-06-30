@@ -1,10 +1,10 @@
 ---
 title: Publishing
-description: From draft to deployed — how Plume builds, versions, and serves your docs.
+description: From draft to deployed — how Midad builds, versions, and serves your docs.
 icon: Send
 ---
 
-Publishing in Plume is a deliberate, versioned step. Drafts stay private until you
+Publishing in Midad is a deliberate, versioned step. Drafts stay private until you
 publish, and every publish produces an immutable version you can roll back to.
 
 ## The publish flow
@@ -25,7 +25,7 @@ publish, and every publish produces an immutable version you can roll back to.
   <Step>
     ### Build
 
-    The worker (`@plume/worker`) picks up the job, renders every page, and
+    The worker (`@midad/worker`) picks up the job, renders every page, and
     generates the Orama search index for the version.
   </Step>
   <Step>
@@ -72,8 +72,8 @@ Map a project to your own domain so readers see your docs at, for example,
 
 <Steps>
   <Step>Add the domain to your project in the dashboard.</Step>
-  <Step>Create the DNS record pointing at your Plume deployment.</Step>
-  <Step>Plume serves the live deployment on that domain, with TLS.</Step>
+  <Step>Create the DNS record pointing at your Midad deployment.</Step>
+  <Step>Midad serves the live deployment on that domain, with TLS.</Step>
 </Steps>
 
 <Callout type="warn">
@@ -98,5 +98,6 @@ If a release goes wrong:
 
 ## Next steps
 
-Ready to run Plume on your own servers? See
+Ready to run Midad on your own servers? See
 [self-hosting with Docker](/docs/self-hosting/docker).
+

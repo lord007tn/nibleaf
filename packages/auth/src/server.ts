@@ -1,7 +1,7 @@
-import { createJob, QueueNames } from '@plume/bullmq';
-import { prisma } from '@plume/database';
-import { createLogger } from '@plume/logger';
-import { joinPath, slugify } from '@plume/shared';
+import { createJob, QueueNames } from '@midad/bullmq';
+import { prisma } from '@midad/database';
+import { createLogger } from '@midad/logger';
+import { joinPath, slugify } from '@midad/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { organization } from 'better-auth/plugins';
@@ -62,9 +62,7 @@ async function reassignOrDeleteOrgs(userId: string): Promise<void> {
   }
 }
 
-const WELCOME_CONTENT = `# Welcome to your docs
-
-This is your first page, built with **Plume** — the open-source documentation
+const WELCOME_CONTENT = `This is your first page, built with **Midad** — the open-source documentation
 platform you can self-host on your own infrastructure.
 
 ## Quick start
@@ -81,22 +79,103 @@ docker compose up -d
 > Tip: pages are written in Markdown/MDX — use headings, code blocks, and callouts to structure your docs.
 `;
 
-const QUICKSTART_CONTENT = `# Quickstart
-
-Get your documentation live in minutes.
+const QUICKSTART_CONTENT = `Get your documentation live in minutes.
 
 ## Install
 
 \`\`\`bash
-git clone https://github.com/plume-docs/plume
-cd plume && cp .env.example .env
+git clone https://github.com/midad-docs/midad
+cd midad && cp .env.example .env
 docker compose up -d
 \`\`\`
 
 ## Write
 
 Pages are Markdown/MDX. Organize them into groups, reorder with drag handles,
-and Plume builds the navigation, search index, and table of contents for you.
+and Midad builds the navigation, search index, and table of contents for you.
+`;
+
+const SELF_HOSTING_CONTENT = `Run Midad on infrastructure you control. The standard stack uses Docker Compose
+for the dashboard, API, worker, Postgres, Dragonfly, and S3-compatible object
+storage.
+
+## Local stack
+
+\`\`\`bash
+cp .env.example .env
+docker compose -f docker-compose.dev.yml up -d
+pnpm db:deploy
+pnpm db:seed
+pnpm dev
+\`\`\`
+
+Open the dashboard at http://localhost:4310 and sign in with the demo account
+created by the seed command.
+
+## Production stack
+
+\`\`\`bash
+cp .env.example .env
+openssl rand -hex 32
+# Put the generated value in BETTER_AUTH_SECRET.
+docker compose up -d --build
+\`\`\`
+
+Create the first account at /sign-up. Production mode does not seed demo
+credentials unless you explicitly enable it.
+`;
+
+const CONFIGURATION_CONTENT = `Configure Midad with environment variables in the .env file next to
+docker-compose.yml.
+
+## Required production values
+
+| Variable | Purpose |
+| --- | --- |
+| NODE_ENV | Set to production for production deploys. |
+| BETTER_AUTH_SECRET | Strong random auth secret. |
+| POSTGRES_PASSWORD | Password for bundled Postgres. |
+| STORAGE_ACCESS_KEY | Access key for bundled object storage. |
+| STORAGE_SECRET_KEY | Secret key for bundled object storage. |
+| BETTER_AUTH_URL | Browser-facing dashboard origin. |
+| PUBLIC_APP_URL | Public dashboard origin. |
+| PUBLIC_API_URL | Public API origin, usually the dashboard proxy. |
+| PUBLIC_WWW_URL | Public marketing/root website origin. |
+| STORAGE_PUBLIC_URL | Public asset URL. |
+
+## Origins
+
+Set TRUSTED_ORIGINS and CORS_ALLOWED_ORIGINS to exact HTTPS origins. Avoid
+wildcards in production.
+
+## Storage
+
+The bundled stack uses maxio. You can also point Midad at Cloudflare R2, AWS S3,
+Backblaze B2, or another S3-compatible provider.
+`;
+
+const OPERATIONS_CONTENT = `Keep Postgres and object storage backed up, monitor worker jobs, and verify
+publishing after upgrades.
+
+## Health checks
+
+- API: /health on the server service.
+- Worker: /health on the worker ops service.
+- Jobs: /jobs on the worker ops service.
+- Public docs: open a published site and search for a known page.
+
+## Upgrade routine
+
+1. Back up Postgres and object storage.
+2. Pull the new source revision or image.
+3. Run migrations.
+4. Restart app, server, worker, and www.
+5. Publish a small docs change to verify queues and search indexing.
+
+## Publish troubleshooting
+
+If a publish does not become READY, check worker logs, Dragonfly connectivity,
+Postgres connectivity, and storage credentials.
 `;
 
 /** Create the starter docs site (with two pages) for a freshly created workspace. */
@@ -135,6 +214,59 @@ async function createStarterProject(organizationId: string): Promise<void> {
         icon: 'rocket',
         content: QUICKSTART_CONTENT,
         position: 1,
+      },
+    ],
+  });
+  const selfHostingSlug = slugify('Self-hosting');
+  const selfHosting = await prisma.page.create({
+    data: {
+      projectId: project.id,
+      languageId: language.id,
+      kind: 'GROUP',
+      title: 'Self-hosting',
+      slug: selfHostingSlug,
+      path: joinPath(null, selfHostingSlug),
+      icon: 'server',
+      position: 2,
+    },
+  });
+  const overview = slugify('Overview');
+  const configuration = slugify('Configuration');
+  const operations = slugify('Operations');
+  await prisma.page.createMany({
+    data: [
+      {
+        projectId: project.id,
+        languageId: language.id,
+        parentId: selfHosting.id,
+        title: 'Overview',
+        slug: overview,
+        path: joinPath(selfHosting.path, overview),
+        icon: 'container',
+        content: SELF_HOSTING_CONTENT,
+        position: 0,
+      },
+      {
+        projectId: project.id,
+        languageId: language.id,
+        parentId: selfHosting.id,
+        title: 'Configuration',
+        slug: configuration,
+        path: joinPath(selfHosting.path, configuration),
+        icon: 'settings',
+        content: CONFIGURATION_CONTENT,
+        position: 1,
+      },
+      {
+        projectId: project.id,
+        languageId: language.id,
+        parentId: selfHosting.id,
+        title: 'Operations',
+        slug: operations,
+        path: joinPath(selfHosting.path, operations),
+        icon: 'activity',
+        content: OPERATIONS_CONTENT,
+        position: 2,
       },
     ],
   });
@@ -185,14 +317,14 @@ export const auth = betterAuth({
     // for public instances. The verify-email UI + resend then work via the queue below.
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     sendResetPassword: async ({ user, url }) => {
-      await sendMail(user.email, 'Reset your Plume password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
+      await sendMail(user.email, 'Reset your Midad password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
     },
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
       await sendMail(
         user.email,
-        'Verify your Plume email',
+        'Verify your Midad email',
         `<p>Confirm your email to finish setting up your account:</p><p><a href="${url}">${url}</a></p>`,
       );
     },
@@ -203,7 +335,7 @@ export const auth = betterAuth({
       sendChangeEmailVerification: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
         await sendMail(
           user.email,
-          'Confirm your new Plume email',
+          'Confirm your new Midad email',
           `<p>Confirm changing your email to <strong>${newEmail}</strong>:</p><p><a href="${url}">${url}</a></p>`,
         );
       },
@@ -271,7 +403,7 @@ export const auth = betterAuth({
             const where = session.ipAddress ? ` from a new location (IP ${escapeHtml(session.ipAddress)})` : ' from a new device';
             await sendMail(
               user.email,
-              'New sign-in to your Plume account',
+              'New sign-in to your Midad account',
               `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New sign-in detected</h2><p style="margin:0;color:#475569;line-height:1.6">We noticed a new sign-in to your account${where}. If this was you, you can ignore this email — otherwise change your password right away.</p></div>`,
             );
           } catch {
@@ -298,7 +430,7 @@ export const auth = betterAuth({
             }
             await sendMail(
               user.email,
-              'Your Plume password was changed',
+              'Your Midad password was changed',
               `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">Password changed</h2><p style="margin:0;color:#475569;line-height:1.6">Your account password was just changed. If this wasn't you, reset your password immediately and review your active sessions.</p></div>`,
             );
           } catch {
@@ -313,3 +445,5 @@ export const auth = betterAuth({
 export type Auth = typeof auth;
 export type Session = typeof auth.$Infer.Session;
 export type AuthUser = (typeof auth.$Infer.Session)['user'];
+
+

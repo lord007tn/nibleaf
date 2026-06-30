@@ -1,4 +1,4 @@
-import { createBranchBody } from '@plume/validators';
+import { createBranchBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { createBranch, deleteBranch, listBranches, mergeBranch } from '@/actions/branches';
 import { assertProjectInOrg } from '@/actions/projects';

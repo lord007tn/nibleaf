@@ -1,4 +1,4 @@
-import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@plume/validators';
+import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { createPage, deletePage, getPage, listPages, reorderPages, updatePage } from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';

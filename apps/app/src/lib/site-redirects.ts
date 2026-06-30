@@ -2,7 +2,7 @@ import { redirect } from '@tanstack/react-router';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
-import { customDomainOrigin } from '@/lib/site-origin';
+import { isCustomDomainSite } from '@/lib/site-paths';
 
 const clean = (path: string): string => path.replace(/^\/+|\/+$/g, '');
 
@@ -39,6 +39,6 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
   }
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
   // On a custom domain the docs live at the root; on the app origin under /sites/:id.
-  const href = customDomainOrigin() ? `/${target}${query}` : `/sites/${projectId}${target ? `/${target}` : ''}${query}`;
+  const href = isCustomDomainSite(projectId) ? `/${target}${query}` : `/sites/${projectId}${target ? `/${target}` : ''}${query}`;
   throw redirect({ href, statusCode: 308 });
 }

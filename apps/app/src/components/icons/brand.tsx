@@ -27,3 +27,4 @@ export function SlackIcon({ className, ...props }: IconProps) {
     </svg>
   );
 }
+

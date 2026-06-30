@@ -13,19 +13,21 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
   loader: async ({ params, deps }) => {
     try {
+      const path = params._splat ?? '';
+      const version = path ? path.split('/')[0] : undefined;
       const page = await getData<SitePage>(
         await api.public.sites[':id'].page.$get({
           param: { id: params.projectId },
-          query: deps.lang ? { path: params._splat ?? '', lang: deps.lang } : { path: params._splat ?? '' },
+          query: { path, ...(deps.lang ? { lang: deps.lang } : {}), ...(version ? { version } : {}) },
         }),
         'page',
       );
-      return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
+      return { page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
     } catch {
       // Page didn't resolve — honor a configured redirect (throws a 308) before
       // falling back to the not-found state.
       await redirectIfConfigured(params.projectId, params._splat ?? '', deps.lang);
-      return { page: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
+      return { page: null, lang: deps.lang, version: undefined, siteOrigin: customDomainOrigin() };
     }
   },
   head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang, loaderData?.siteOrigin),
@@ -36,5 +38,7 @@ function SitePath() {
   // Active language comes from the parent route's ?lang= search param.
   const { lang } = Route.useSearch();
   const { page } = Route.useLoaderData();
-  return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={page ?? undefined} />;
+  const version = _splat ? _splat.split('/')[0] : undefined;
+  return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={page ?? undefined} version={version} />;
 }
+

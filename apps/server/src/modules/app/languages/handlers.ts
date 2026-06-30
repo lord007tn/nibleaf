@@ -1,4 +1,4 @@
-import { createLanguageBody, updateLanguageBody } from '@plume/validators';
+import { createLanguageBody, updateLanguageBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { createLanguage, deleteLanguage, listLanguages, updateLanguage } from '@/actions/languages';
 import { assertProjectInOrg } from '@/actions/projects';

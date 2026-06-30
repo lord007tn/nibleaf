@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import { getObjectStream, headObject } from '@plume/storage';
+import { getObjectStream, headObject } from '@midad/storage';
 import { Hono } from 'hono';
 import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';

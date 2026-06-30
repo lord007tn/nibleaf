@@ -1,0 +1,455 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+Add-Type -AssemblyName System.Drawing
+
+$Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$BrandDir = Join-Path $Root "apps/www/public/brand"
+$RasterDir = Join-Path $BrandDir "raster"
+$WwwPublic = Join-Path $Root "apps/www/public"
+$AppPublic = Join-Path $Root "apps/app/public"
+
+$Paper = [System.Drawing.ColorTranslator]::FromHtml("#FBF7EE")
+$Paper2 = [System.Drawing.ColorTranslator]::FromHtml("#EEE4D3")
+$Ink = [System.Drawing.ColorTranslator]::FromHtml("#181612")
+$Ink2 = [System.Drawing.ColorTranslator]::FromHtml("#4E453A")
+$Umber = [System.Drawing.ColorTranslator]::FromHtml("#8A4B2E")
+$Copper = [System.Drawing.ColorTranslator]::FromHtml("#B96A3D")
+
+$Browser = @(
+  "C:\Program Files\Google\Chrome\Application\chrome.exe",
+  "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+  "C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+  "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+function New-RoundedRectPath([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
+  $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
+  $d = $r * 2
+  $path.AddArc($x, $y, $d, $d, 180, 90)
+  $path.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
+  $path.AddArc($x + $w - $d, $y + $h - $d, $d, $d, 0, 90)
+  $path.AddArc($x, $y + $h - $d, $d, $d, 90, 90)
+  $path.CloseFigure()
+  return $path
+}
+
+function New-IconBitmap([int]$size, [switch]$Reverse, [switch]$Monochrome, [switch]$AppTile) {
+  $bmp = [System.Drawing.Bitmap]::new($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+  $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+  $g.Clear([System.Drawing.Color]::Transparent)
+
+  if ($AppTile) {
+    $g.Clear($Paper)
+    $outer = New-RoundedRectPath ($size * 0.129) ($size * 0.129) ($size * 0.742) ($size * 0.742) ($size * 0.172)
+    $g.FillPath([System.Drawing.SolidBrush]::new($Umber), $outer)
+  } else {
+    $bg = if ($Reverse) { $Paper } elseif ($Monochrome) { $Ink } else { $Umber }
+    $tile = New-RoundedRectPath 0 0 $size $size ($size * 0.205)
+    $g.FillPath([System.Drawing.SolidBrush]::new($bg), $tile)
+  }
+
+  $shape = if ($Reverse) { $Umber } else { $Paper }
+  $dot = if ($Monochrome) { $Paper } else { $Copper }
+  if ($Reverse) { $dot = $Copper }
+
+  $sx = $size / 512.0
+  $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
+  $path.AddPolygon([System.Drawing.PointF[]]@(
+      [System.Drawing.PointF]::new(183 * $sx, 314 * $sx),
+      [System.Drawing.PointF]::new(309 * $sx, 188 * $sx),
+      [System.Drawing.PointF]::new(364 * $sx, 243 * $sx),
+      [System.Drawing.PointF]::new(238 * $sx, 369 * $sx),
+      [System.Drawing.PointF]::new(166 * $sx, 387 * $sx)
+    ))
+  $g.FillPath([System.Drawing.SolidBrush]::new($shape), $path)
+
+  $pen = [System.Drawing.Pen]::new($shape, [Math]::Max(2, 24 * $sx))
+  $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $g.DrawBezier($pen, 158 * $sx, 196 * $sx, 196 * $sx, 156 * $sx, 244 * $sx, 153 * $sx, 287 * $sx, 176 * $sx)
+  $pen.Dispose()
+
+  $g.FillEllipse([System.Drawing.SolidBrush]::new($dot), (346 - 27) * $sx, (338 - 27) * $sx, 54 * $sx, 54 * $sx)
+  $g.Dispose()
+  return $bmp
+}
+
+function Save-Png([System.Drawing.Bitmap]$bmp, [string]$path) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+  $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+  $bmp.Dispose()
+}
+
+function Save-Jpeg([System.Drawing.Bitmap]$bmp, [string]$path) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $path) | Out-Null
+  $bmp.Save($path, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+  $bmp.Dispose()
+}
+
+function Render-BrandSvgPng([string]$sourceName, [string]$outPath, [int]$width, [int]$height) {
+  if (-not $Browser) {
+    throw "Chrome or Edge is required for browser-accurate SVG raster exports."
+  }
+
+  New-Item -ItemType Directory -Force -Path (Split-Path $outPath) | Out-Null
+  $sourcePath = Join-Path $BrandDir $sourceName
+  $htmlPath = Join-Path ([System.IO.Path]::GetTempPath()) "midad-brand-$PID-$([System.Guid]::NewGuid().ToString('N')).html"
+  $sourceUrl = ([System.Uri](Resolve-Path $sourcePath).Path).AbsoluteUri
+  $html = @"
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      img {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        object-fit: contain;
+      }
+    </style>
+  </head>
+  <body>
+    <img alt="" src="$sourceUrl" />
+  </body>
+</html>
+"@
+  Set-Content -LiteralPath $htmlPath -Value $html -Encoding utf8
+  try {
+    & $Browser "--headless=new" "--disable-gpu" "--hide-scrollbars" "--default-background-color=00000000" "--window-size=$width,$height" "--screenshot=$outPath" ([System.Uri]$htmlPath).AbsoluteUri | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+      throw "Browser SVG render failed for $sourceName"
+    }
+  } finally {
+    Remove-Item -LiteralPath $htmlPath -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Convert-PngToJpeg([string]$pngPath, [string]$jpgPath, [System.Drawing.Color]$background) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $jpgPath) | Out-Null
+  $source = [System.Drawing.Image]::FromFile($pngPath)
+  $bmp = [System.Drawing.Bitmap]::new($source.Width, $source.Height, [System.Drawing.Imaging.PixelFormat]::Format24bppRgb)
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  try {
+    $g.Clear($background)
+    $g.DrawImage($source, 0, 0, $source.Width, $source.Height)
+  } finally {
+    $g.Dispose()
+    $source.Dispose()
+  }
+  Save-Jpeg $bmp $jpgPath
+}
+
+function Write-Ico([string[]]$pngPaths, [string]$outPath) {
+  $pngs = @($pngPaths | ForEach-Object { ,([System.IO.File]::ReadAllBytes($_)) })
+  $fs = [System.IO.File]::Create($outPath)
+  $bw = [System.IO.BinaryWriter]::new($fs)
+  try {
+    $bw.Write([UInt16]0)
+    $bw.Write([UInt16]1)
+    $bw.Write([UInt16]$pngs.Count)
+    $offset = 6 + (16 * $pngs.Count)
+    for ($i = 0; $i -lt $pngs.Count; $i++) {
+      $img = [System.Drawing.Image]::FromFile($pngPaths[$i])
+      try {
+        $w = if ($img.Width -ge 256) { 0 } else { [byte]$img.Width }
+        $h = if ($img.Height -ge 256) { 0 } else { [byte]$img.Height }
+        $bw.Write([byte]$w)
+        $bw.Write([byte]$h)
+        $bw.Write([byte]0)
+        $bw.Write([byte]0)
+        $bw.Write([UInt16]1)
+        $bw.Write([UInt16]32)
+        $bw.Write([UInt32]$pngs[$i].Length)
+        $bw.Write([UInt32]$offset)
+        $offset += $pngs[$i].Length
+      } finally {
+        $img.Dispose()
+      }
+    }
+    foreach ($png in $pngs) { $bw.Write($png) }
+  } finally {
+    $bw.Dispose()
+    $fs.Dispose()
+  }
+}
+
+function Draw-LogoRaster([string]$path, [string]$Variant, [int]$width, [int]$height, [switch]$Jpeg) {
+  $bmp = [System.Drawing.Bitmap]::new($width, $height, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+  $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+
+  $isDark = $Variant -in @("dark", "horizontal-ltr-reverse", "horizontal-reverse", "wordmark-reverse", "wordmark-ar-reverse")
+  $isMono = $Variant -eq "monochrome"
+  $isArabic = $Variant -in @("stacked-ar", "horizontal-rtl", "horizontal-reverse", "sidebar-ar", "wordmark-ar", "wordmark-ar-reverse")
+  $transparent = $Variant -in @("stacked-transparent", "wordmark", "wordmark-reverse", "wordmark-ar", "wordmark-ar-reverse")
+
+  if ($transparent -and -not $Jpeg) {
+    $g.Clear([System.Drawing.Color]::Transparent)
+  } elseif ($isDark) {
+    $g.Clear($Ink)
+  } else {
+    $g.Clear($Paper)
+  }
+
+  if ($Variant -like "wordmark*") {
+    $brush = [System.Drawing.SolidBrush]::new($(if ($isDark) { $Paper } else { $Ink }))
+    $fontName = if ($isArabic) { "Tahoma" } else { "Arial" }
+    $font = [System.Drawing.Font]::new($fontName, 142, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    if ($isArabic) {
+      $format = [System.Drawing.StringFormat]::new()
+      $format.Alignment = [System.Drawing.StringAlignment]::Far
+      $format.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
+      $g.DrawString("مِداد", $font, $brush, [System.Drawing.RectangleF]::new(0, 58, $width - 18, 170), $format)
+      $format.Dispose()
+    } else {
+      $g.DrawString("Midad", $font, $brush, 0, 48)
+    }
+    $font.Dispose()
+    $brush.Dispose()
+  } elseif ($Variant -like "horizontal*" -or $Variant -like "sidebar*") {
+    $iconSize = if ($Variant -like "sidebar*") { 136 } else { 286 }
+    $iconY = if ($Variant -like "sidebar*") { 28 } else { 77 }
+    $iconX = if ($Variant -in @("horizontal-rtl", "horizontal-reverse")) { $width - $iconSize - 30 } elseif ($Variant -eq "horizontal-icon-right") { $width - $iconSize - 30 } else { if ($Variant -like "sidebar-ar") { $width - $iconSize - 24 } else { 30 } }
+    $icon = New-IconBitmap $iconSize
+    $g.DrawImage($icon, $iconX, $iconY, $iconSize, $iconSize)
+    $icon.Dispose()
+
+    $brush = [System.Drawing.SolidBrush]::new($(if ($isDark) { $Paper } else { $Ink }))
+    if ($isArabic) {
+      $format = [System.Drawing.StringFormat]::new()
+      $format.Alignment = [System.Drawing.StringAlignment]::Far
+      $format.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
+      $fontSize = if ($Variant -like "sidebar*") { 84 } else { 190 }
+      $font = [System.Drawing.Font]::new("Tahoma", $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+      $rect = if ($Variant -like "sidebar*") { [System.Drawing.RectangleF]::new(24, 51, 470, 110) } else { [System.Drawing.RectangleF]::new(30, 112, 1080, 220) }
+      $g.DrawString("مِداد", $font, $brush, $rect, $format)
+      $font.Dispose()
+      $format.Dispose()
+    } else {
+      $fontSize = if ($Variant -like "sidebar*") { 84 } else { 190 }
+      $font = [System.Drawing.Font]::new("Arial", $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+      $textX = if ($Variant -eq "horizontal-icon-right") { 30 } else { if ($Variant -like "sidebar*") { 190 } else { 370 } }
+      $textY = if ($Variant -like "sidebar*") { 42 } else { 92 }
+      $g.DrawString("Midad", $font, $brush, $textX, $textY)
+      $font.Dispose()
+    }
+    $brush.Dispose()
+  } else {
+    $icon = New-IconBitmap 400 -Monochrome:($isMono)
+    $g.DrawImage($icon, 312, 170, 400, 400)
+    $icon.Dispose()
+
+    $primaryBrush = [System.Drawing.SolidBrush]::new($(if ($isDark) { $Paper } else { $Ink }))
+    $secondaryBrush = [System.Drawing.SolidBrush]::new($(if ($isDark) { $Paper2 } else { $Ink2 }))
+    $latinFont = [System.Drawing.Font]::new("Arial", 150, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    $arabicFont = [System.Drawing.Font]::new("Tahoma", 132, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    $center = [System.Drawing.StringFormat]::new()
+    $center.Alignment = [System.Drawing.StringAlignment]::Center
+    $center.LineAlignment = [System.Drawing.StringAlignment]::Center
+    $rtlCenter = [System.Drawing.StringFormat]::new()
+    $rtlCenter.Alignment = [System.Drawing.StringAlignment]::Center
+    $rtlCenter.LineAlignment = [System.Drawing.StringAlignment]::Center
+    $rtlCenter.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
+
+    if ($isArabic) {
+      $g.DrawString("مِداد", $arabicFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 720, $width, 170), $rtlCenter)
+      $g.DrawString("Midad", $latinFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 890, $width, 150), $center)
+    } else {
+      $g.DrawString("Midad", $latinFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 700, $width, 170), $center)
+      $g.DrawString("مِداد", $arabicFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 870, $width, 150), $rtlCenter)
+    }
+
+    $center.Dispose()
+    $rtlCenter.Dispose()
+    $latinFont.Dispose()
+    $arabicFont.Dispose()
+    $primaryBrush.Dispose()
+    $secondaryBrush.Dispose()
+  }
+
+  $g.Dispose()
+  if ($Jpeg) {
+    Save-Jpeg $bmp $path
+  } else {
+    Save-Png $bmp $path
+  }
+}
+
+function Draw-SocialCard([string]$path, [switch]$Arabic, [switch]$Jpeg) {
+  $bmp = [System.Drawing.Bitmap]::new(1200, 630, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+  $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
+  $g.Clear($Paper)
+  $g.FillRectangle([System.Drawing.SolidBrush]::new($Paper2), 0, 502, 1200, 128)
+
+  $icon = New-IconBitmap 96
+  if ($Arabic) {
+    $g.DrawImage($icon, 1018, 84, 96, 96)
+    $format = [System.Drawing.StringFormat]::new()
+    $format.Alignment = [System.Drawing.StringAlignment]::Far
+    $format.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
+    $g.DrawString("مِداد", [System.Drawing.Font]::new("Tahoma", 52, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(650, 98, 340, 72), $format)
+    $g.DrawString("وثائق تظل", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(500, 244, 614, 82), $format)
+    $g.DrawString("بين يديك.", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), [System.Drawing.RectangleF]::new(500, 328, 614, 82), $format)
+    $g.DrawString("منصة توثيق مفتوحة المصدر، جاهزة للعربية، للنشر والبحث والاستضافة الذاتية.", [System.Drawing.Font]::new("Tahoma", 27), [System.Drawing.SolidBrush]::new($Ink2), [System.Drawing.RectangleF]::new(124, 448, 990, 50), $format)
+    $g.DrawString("AGPL-3.0 · استضافة ذاتية · docker compose up -d", [System.Drawing.Font]::new("Tahoma", 24), [System.Drawing.SolidBrush]::new($Copper), [System.Drawing.RectangleF]::new(124, 536, 990, 42), $format)
+    $format.Dispose()
+  } else {
+    $g.DrawImage($icon, 86, 84, 96, 96)
+    $g.DrawString("Midad", [System.Drawing.Font]::new("Arial", 54, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 206, 98)
+    $g.DrawString("Docs that stay", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 86, 232)
+    $g.DrawString("in your hands.", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), 86, 316)
+    $g.DrawString("Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting.", [System.Drawing.Font]::new("Arial", 28), [System.Drawing.SolidBrush]::new($Ink2), 86, 448)
+    $g.DrawString("AGPL-3.0 · self-hostable · docker compose up -d", [System.Drawing.Font]::new("Consolas", 24), [System.Drawing.SolidBrush]::new($Copper), 86, 536)
+  }
+  $icon.Dispose()
+  $g.Dispose()
+  if ($Jpeg) {
+    Save-Jpeg $bmp $path
+  } else {
+    Save-Png $bmp $path
+  }
+}
+
+if (Test-Path $RasterDir) {
+  Remove-Item -LiteralPath $RasterDir -Recurse -Force
+}
+
+$jobs = @()
+foreach ($size in @(16, 32, 48, 64)) {
+  $path = Join-Path $RasterDir "favicon/favicon-$size.png"
+  Save-Png (New-IconBitmap $size) $path
+  $jobs += @{ file = "apps/www/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
+}
+
+$appIconSizes = @{ "apple-touch-icon-180" = 180; "mstile-150" = 150; "android-chrome-192" = 192; "android-chrome-512" = 512; "app-icon-1024" = 1024 }
+foreach ($name in $appIconSizes.Keys) {
+  $size = [int]$appIconSizes[$name]
+  $path = Join-Path $RasterDir "app-icon/$name.png"
+  Save-Png (New-IconBitmap $size -AppTile) $path
+  $jobs += @{ file = "apps/www/public/brand/raster/app-icon/$name.png"; width = $size; height = $size; group = "app-icon" }
+}
+
+foreach ($size in @(64, 128, 256, 512, 1024)) {
+  $path = Join-Path $RasterDir "icon/midad-icon-$size.png"
+  Save-Png (New-IconBitmap $size) $path
+  $jobs += @{ file = "apps/www/public/brand/raster/icon/midad-icon-$size.png"; width = $size; height = $size; group = "icon" }
+}
+Save-Png (New-IconBitmap 512 -Reverse) (Join-Path $RasterDir "icon/midad-icon-reverse-512.png")
+Save-Png (New-IconBitmap 512 -Monochrome) (Join-Path $RasterDir "icon/midad-icon-monochrome-512.png")
+Save-Png (New-IconBitmap 512) (Join-Path $RasterDir "social/midad-social-avatar-512.png")
+Save-Png (New-IconBitmap 1024) (Join-Path $RasterDir "social/midad-social-avatar-1024.png")
+Render-BrandSvgPng "midad-og-card.svg" (Join-Path $RasterDir "social/midad-og-card.png") 1200 630
+Render-BrandSvgPng "midad-og-card-ar.svg" (Join-Path $RasterDir "social/midad-og-card-ar.png") 1200 630
+Convert-PngToJpeg (Join-Path $RasterDir "social/midad-og-card.png") (Join-Path $RasterDir "social/midad-og-card.jpg") $Paper
+Convert-PngToJpeg (Join-Path $RasterDir "social/midad-og-card-ar.png") (Join-Path $RasterDir "social/midad-og-card-ar.jpg") $Paper
+
+$logoJobs = @(
+  @{ source = "midad-wordmark.svg"; name = "midad-wordmark"; width = 840; height = 300; variant = "wordmark"; format = "png" },
+  @{ source = "midad-wordmark-reverse.svg"; name = "midad-wordmark-reverse"; width = 840; height = 300; variant = "wordmark-reverse"; format = "png" },
+  @{ source = "midad-wordmark-ar.svg"; name = "midad-wordmark-ar"; width = 840; height = 300; variant = "wordmark-ar"; format = "png" },
+  @{ source = "midad-wordmark-ar-reverse.svg"; name = "midad-wordmark-ar-reverse"; width = 840; height = 300; variant = "wordmark-ar-reverse"; format = "png" },
+  @{ source = "midad-logo-stacked.svg"; name = "midad-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "png" },
+  @{ source = "midad-logo-stacked-transparent.svg"; name = "midad-logo-stacked-transparent"; width = 1024; height = 1360; variant = "stacked-transparent"; format = "png" },
+  @{ source = "midad-logo-dark.svg"; name = "midad-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "png" },
+  @{ source = "midad-logo-monochrome.svg"; name = "midad-logo-monochrome"; width = 1024; height = 1360; variant = "monochrome"; format = "png" },
+  @{ source = "midad-logo-stacked-ar.svg"; name = "midad-logo-stacked-ar"; width = 1024; height = 1360; variant = "stacked-ar"; format = "png" },
+  @{ source = "midad-logo-horizontal-ltr.svg"; name = "midad-logo-horizontal-ltr"; width = 1520; height = 440; variant = "horizontal-ltr"; format = "png" },
+  @{ source = "midad-logo-horizontal-ltr-reverse.svg"; name = "midad-logo-horizontal-ltr-reverse"; width = 1520; height = 440; variant = "horizontal-ltr-reverse"; format = "png" },
+  @{ source = "midad-logo-horizontal-rtl.svg"; name = "midad-logo-horizontal-rtl"; width = 1520; height = 440; variant = "horizontal-rtl"; format = "png" },
+  @{ source = "midad-logo-horizontal-icon-right.svg"; name = "midad-logo-horizontal-icon-right"; width = 1520; height = 440; variant = "horizontal-icon-right"; format = "png" },
+  @{ source = "midad-logo-horizontal-reverse.svg"; name = "midad-logo-horizontal-reverse"; width = 1520; height = 440; variant = "horizontal-reverse"; format = "png" },
+  @{ source = "midad-sidebar-lockup.svg"; name = "midad-sidebar-lockup"; width = 680; height = 192; variant = "sidebar"; format = "png" },
+  @{ source = "midad-sidebar-lockup-ar.svg"; name = "midad-sidebar-lockup-ar"; width = 680; height = 192; variant = "sidebar-ar"; format = "png" },
+  @{ source = "midad-logo-stacked.svg"; name = "midad-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "jpg" },
+  @{ source = "midad-logo-dark.svg"; name = "midad-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "jpg" }
+)
+
+foreach ($job in $logoJobs) {
+  $ext = [string]$job.format
+  $name = [string]$job.name
+  $path = Join-Path $RasterDir "logo/$name.$ext"
+  if ($ext -eq "jpg") {
+    $tempPng = Join-Path ([System.IO.Path]::GetTempPath()) "midad-brand-$PID-$name.png"
+    Render-BrandSvgPng ([string]$job.source) $tempPng ([int]$job.width) ([int]$job.height)
+    $jpgBackground = if ([string]$job.variant -eq "dark") { $Ink } else { $Paper }
+    Convert-PngToJpeg $tempPng $path $jpgBackground
+    Remove-Item -LiteralPath $tempPng -Force -ErrorAction SilentlyContinue
+  } else {
+    Render-BrandSvgPng ([string]$job.source) $path ([int]$job.width) ([int]$job.height)
+  }
+  $jobs += @{
+    file = "apps/www/public/brand/raster/logo/$name.$ext"
+    source = [string]$job.source
+    width = [int]$job.width
+    height = [int]$job.height
+    format = $ext
+    group = "logo"
+  }
+}
+
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-social-avatar-512.png"; source = "midad-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-social-avatar-1024.png"; source = "midad-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card.png"; source = "midad-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card.jpg"; source = "midad-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card-ar.png"; source = "midad-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card-ar.jpg"; source = "midad-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+
+$manifestPath = Join-Path $RasterDir "manifest.json"
+New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
+($jobs | ConvertTo-Json -Depth 4) + "`n" | Set-Content -LiteralPath $manifestPath -Encoding utf8
+
+Copy-Item -LiteralPath (Join-Path $BrandDir "midad-favicon.svg") -Destination (Join-Path $WwwPublic "favicon.svg") -Force
+Copy-Item -LiteralPath (Join-Path $BrandDir "midad-og-card.svg") -Destination (Join-Path $WwwPublic "og.svg") -Force
+Copy-Item -LiteralPath (Join-Path $BrandDir "midad-favicon.svg") -Destination (Join-Path $AppPublic "favicon.svg") -Force
+
+foreach ($publicDir in @($WwwPublic, $AppPublic)) {
+  Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-16.png") -Destination (Join-Path $publicDir "favicon-16x16.png") -Force
+  Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-32.png") -Destination (Join-Path $publicDir "favicon-32x32.png") -Force
+  Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/apple-touch-icon-180.png") -Destination (Join-Path $publicDir "apple-touch-icon.png") -Force
+  Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/mstile-150.png") -Destination (Join-Path $publicDir "mstile-150x150.png") -Force
+  Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/android-chrome-192.png") -Destination (Join-Path $publicDir "android-chrome-192x192.png") -Force
+  Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/android-chrome-512.png") -Destination (Join-Path $publicDir "android-chrome-512x512.png") -Force
+  Write-Ico @(
+    (Join-Path $RasterDir "favicon/favicon-16.png"),
+    (Join-Path $RasterDir "favicon/favicon-32.png"),
+    (Join-Path $RasterDir "favicon/favicon-48.png")
+  ) (Join-Path $publicDir "favicon.ico")
+
+  $manifest = [ordered]@{
+    name = "Midad — مِداد"
+    short_name = "Midad"
+    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Midad is coming soon."
+    lang = "ar"
+    dir = "rtl"
+    start_url = "/"
+    scope = "/"
+    display = "standalone"
+    theme_color = "#8a4b2e"
+    background_color = "#fbf7ee"
+    icons = @(
+      [ordered]@{ src = "/favicon.svg"; type = "image/svg+xml"; sizes = "any"; purpose = "any" },
+      [ordered]@{ src = "/apple-touch-icon.png"; type = "image/png"; sizes = "180x180"; purpose = "any" },
+      [ordered]@{ src = "/android-chrome-192x192.png"; type = "image/png"; sizes = "192x192"; purpose = "any maskable" },
+      [ordered]@{ src = "/android-chrome-512x512.png"; type = "image/png"; sizes = "512x512"; purpose = "any maskable" }
+    )
+  }
+  ($manifest | ConvertTo-Json -Depth 8) + "`n" | Set-Content -LiteralPath (Join-Path $publicDir "site.webmanifest") -Encoding utf8
+}
+
+Write-Host "Exported Midad brand raster assets to $RasterDir"

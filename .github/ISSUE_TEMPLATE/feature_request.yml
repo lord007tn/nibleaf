@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea or improvement for Plume
+description: Suggest an idea or improvement for Midad
 labels: [enhancement]
 body:
   - type: textarea
@@ -25,4 +25,4 @@ body:
     attributes:
       label: Does this relate to a Mintlify capability?
       options:
-        - label: This brings Plume closer to parity with a Mintlify feature.
+        - label: This brings Midad closer to parity with a Mintlify feature.

@@ -1,5 +1,5 @@
-import { prisma } from '@plume/database';
-import type { CreateCommentBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import type { CreateCommentBody } from '@midad/validators';
 import { notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

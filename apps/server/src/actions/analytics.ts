@@ -1,5 +1,5 @@
-import { prisma } from '@plume/database';
-import type { AnalyticsRange, TrackEventBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import type { AnalyticsRange, TrackEventBody } from '@midad/validators';
 import { assertProjectInOrg } from './projects';
 
 const RANGE_DAYS: Record<AnalyticsRange, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };

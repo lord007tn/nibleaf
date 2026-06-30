@@ -2,7 +2,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { useDirection } from '@/components/direction-provider';
 import { type Locale, type MessageKey, messages } from './messages';
 
-const STORAGE_KEY = 'plume.locale';
+const STORAGE_KEY = 'midad.locale';
 
 const readStored = (): Locale => {
   if (typeof window === 'undefined') {
@@ -67,3 +67,4 @@ export function useLocale(): LocaleContextValue {
 
 /** Convenience hook returning just the translator. */
 export const useT = () => useLocale().t;
+

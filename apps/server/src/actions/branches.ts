@@ -1,6 +1,6 @@
-import { prisma } from '@plume/database';
-import { newId } from '@plume/shared/ids';
-import type { CreateBranchBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import { newId } from '@midad/shared/ids';
+import type { CreateBranchBody } from '@midad/validators';
 import { conflict, notFound } from '@/errors';
 
 /** Every branch of a project, default ('main') first. */

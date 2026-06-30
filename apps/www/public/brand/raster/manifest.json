@@ -1,0 +1,279 @@
+[
+  {
+    "file": "apps/www/public/brand/raster/favicon/favicon-16.png",
+    "width": 16,
+    "height": 16,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/favicon/favicon-32.png",
+    "width": 32,
+    "height": 32,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/favicon/favicon-48.png",
+    "width": 48,
+    "height": 48,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/favicon/favicon-64.png",
+    "width": 64,
+    "height": 64,
+    "group": "favicon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/app-icon/android-chrome-512.png",
+    "width": 512,
+    "height": 512,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/app-icon/app-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/app-icon/apple-touch-icon-180.png",
+    "width": 180,
+    "height": 180,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/app-icon/mstile-150.png",
+    "width": 150,
+    "height": 150,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/app-icon/android-chrome-192.png",
+    "width": 192,
+    "height": 192,
+    "group": "app-icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/icon/midad-icon-64.png",
+    "width": 64,
+    "height": 64,
+    "group": "icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/icon/midad-icon-128.png",
+    "width": 128,
+    "height": 128,
+    "group": "icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/icon/midad-icon-256.png",
+    "width": 256,
+    "height": 256,
+    "group": "icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/icon/midad-icon-512.png",
+    "width": 512,
+    "height": 512,
+    "group": "icon"
+  },
+  {
+    "file": "apps/www/public/brand/raster/icon/midad-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "group": "icon"
+  },
+  {
+    "height": 300,
+    "group": "logo",
+    "width": 840,
+    "source": "midad-wordmark.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-wordmark.png"
+  },
+  {
+    "height": 300,
+    "group": "logo",
+    "width": 840,
+    "source": "midad-wordmark-reverse.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-wordmark-reverse.png"
+  },
+  {
+    "height": 300,
+    "group": "logo",
+    "width": 840,
+    "source": "midad-wordmark-ar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-wordmark-ar.png"
+  },
+  {
+    "height": 300,
+    "group": "logo",
+    "width": 840,
+    "source": "midad-wordmark-ar-reverse.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-wordmark-ar-reverse.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-stacked.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-stacked.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-stacked-transparent.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-stacked-transparent.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-dark.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-dark.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-monochrome.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-monochrome.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-stacked-ar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-stacked-ar.png"
+  },
+  {
+    "height": 440,
+    "group": "logo",
+    "width": 1520,
+    "source": "midad-logo-horizontal-ltr.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-horizontal-ltr.png"
+  },
+  {
+    "height": 440,
+    "group": "logo",
+    "width": 1520,
+    "source": "midad-logo-horizontal-ltr-reverse.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-horizontal-ltr-reverse.png"
+  },
+  {
+    "height": 440,
+    "group": "logo",
+    "width": 1520,
+    "source": "midad-logo-horizontal-rtl.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-horizontal-rtl.png"
+  },
+  {
+    "height": 440,
+    "group": "logo",
+    "width": 1520,
+    "source": "midad-logo-horizontal-icon-right.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-horizontal-icon-right.png"
+  },
+  {
+    "height": 440,
+    "group": "logo",
+    "width": 1520,
+    "source": "midad-logo-horizontal-reverse.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-horizontal-reverse.png"
+  },
+  {
+    "height": 192,
+    "group": "logo",
+    "width": 680,
+    "source": "midad-sidebar-lockup.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-sidebar-lockup.png"
+  },
+  {
+    "height": 192,
+    "group": "logo",
+    "width": 680,
+    "source": "midad-sidebar-lockup-ar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/logo/midad-sidebar-lockup-ar.png"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-stacked.svg",
+    "format": "jpg",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-stacked.jpg"
+  },
+  {
+    "height": 1360,
+    "group": "logo",
+    "width": 1024,
+    "source": "midad-logo-dark.svg",
+    "format": "jpg",
+    "file": "apps/www/public/brand/raster/logo/midad-logo-dark.jpg"
+  },
+  {
+    "height": 512,
+    "group": "social",
+    "width": 512,
+    "source": "midad-social-avatar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/social/midad-social-avatar-512.png"
+  },
+  {
+    "height": 1024,
+    "group": "social",
+    "width": 1024,
+    "source": "midad-social-avatar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/social/midad-social-avatar-1024.png"
+  },
+  {
+    "height": 630,
+    "group": "social",
+    "width": 1200,
+    "source": "midad-og-card.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/social/midad-og-card.png"
+  },
+  {
+    "height": 630,
+    "group": "social",
+    "width": 1200,
+    "source": "midad-og-card.svg",
+    "format": "jpg",
+    "file": "apps/www/public/brand/raster/social/midad-og-card.jpg"
+  },
+  {
+    "height": 630,
+    "group": "social",
+    "width": 1200,
+    "source": "midad-og-card-ar.svg",
+    "format": "png",
+    "file": "apps/www/public/brand/raster/social/midad-og-card-ar.png"
+  },
+  {
+    "height": 630,
+    "group": "social",
+    "width": 1200,
+    "source": "midad-og-card-ar.svg",
+    "format": "jpg",
+    "file": "apps/www/public/brand/raster/social/midad-og-card-ar.jpg"
+  }
+]
+

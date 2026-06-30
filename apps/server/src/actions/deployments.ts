@@ -1,7 +1,8 @@
-import { createJob, QueueNames } from '@plume/bullmq';
-import { Prisma, prisma } from '@plume/database';
-import type { SiteSnapshot, SnapshotPage } from '@plume/shared/site';
-import type { CreateDeploymentBody } from '@plume/validators';
+import { createJob, QueueNames } from '@midad/bullmq';
+import { Prisma, prisma } from '@midad/database';
+import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@midad/shared/site';
+import type { CreateDeploymentBody } from '@midad/validators';
+import { diffLines } from 'diff';
 import { badRequest, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
@@ -19,14 +20,7 @@ export const getLatestReadyDeployment = (projectId: string) =>
   prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
 
 /** One page's status relative to the last published snapshot. */
-export interface PendingChange {
-  id: string;
-  title: string;
-  path: string;
-  languageCode: string;
-  kind: 'PAGE' | 'GROUP';
-  status: 'added' | 'modified' | 'removed';
-}
+export interface PendingChange extends DeploymentPageDiff {}
 
 /** What will change on the next publish, vs. the last READY deployment. */
 export interface PendingChanges {
@@ -35,6 +29,33 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+}
+
+export interface DeploymentDiffLine {
+  type: 'added' | 'removed' | 'unchanged';
+  text: string;
+  oldLine: number | null;
+  newLine: number | null;
+}
+
+export interface DeploymentPageDiff {
+  id: string;
+  title: string;
+  path: string;
+  languageCode: string;
+  kind: 'PAGE' | 'GROUP';
+  status: 'added' | 'modified' | 'removed';
+  fields: string[];
+  additions: number;
+  deletions: number;
+  lines: DeploymentDiffLine[];
+  truncated: boolean;
+}
+
+export interface DeploymentDiff {
+  deployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'>;
+  previousDeployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'> | null;
+  changes: DeploymentPageDiff[];
 }
 
 /** Stable JSON compare (key-order independent) for the page `config` blob. */
@@ -91,29 +112,162 @@ function pageChanged(
   );
 }
 
+const MAX_DIFF_LINES = 500;
+
+const splitDiffLines = (value: string): string[] => {
+  if (!value) {
+    return [];
+  }
+  const lines = value.split('\n');
+  if (lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+  return lines;
+};
+
+const contentDiff = (before: string, after: string): Pick<DeploymentPageDiff, 'additions' | 'deletions' | 'lines' | 'truncated'> => {
+  const lines: DeploymentDiffLine[] = [];
+  let oldLine = 1;
+  let newLine = 1;
+  let additions = 0;
+  let deletions = 0;
+  let truncated = false;
+
+  for (const part of diffLines(before, after)) {
+    const type: DeploymentDiffLine['type'] = part.added ? 'added' : part.removed ? 'removed' : 'unchanged';
+    for (const text of splitDiffLines(part.value)) {
+      if (type === 'added') {
+        additions += 1;
+      }
+      if (type === 'removed') {
+        deletions += 1;
+      }
+      if (lines.length < MAX_DIFF_LINES) {
+        lines.push({
+          type,
+          text,
+          oldLine: type === 'added' ? null : oldLine,
+          newLine: type === 'removed' ? null : newLine,
+        });
+      } else {
+        truncated = true;
+      }
+      if (type !== 'added') {
+        oldLine += 1;
+      }
+      if (type !== 'removed') {
+        newLine += 1;
+      }
+    }
+  }
+
+  return { additions, deletions, lines, truncated };
+};
+
+const changedFields = (current: SnapshotPage, previous: SnapshotPage): string[] => {
+  const fields: string[] = [];
+  const compare: Array<[keyof SnapshotPage, string]> = [
+    ['title', 'title'],
+    ['slug', 'slug'],
+    ['path', 'path'],
+    ['icon', 'icon'],
+    ['description', 'description'],
+    ['hidden', 'visibility'],
+    ['position', 'position'],
+    ['parentId', 'parent'],
+    ['translationKey', 'translation key'],
+    ['kind', 'kind'],
+    ['languageCode', 'language'],
+  ];
+  for (const [key, label] of compare) {
+    if ((current[key] ?? null) !== (previous[key] ?? null)) {
+      fields.push(label);
+    }
+  }
+  if (!stableEqual(current.config ?? null, previous.config ?? null)) {
+    fields.push('page settings');
+  }
+  if (current.content !== previous.content) {
+    fields.push('content');
+  }
+  return fields;
+};
+
+const pageSummary = (page: SnapshotPage, status: DeploymentPageDiff['status'], previous?: SnapshotPage): DeploymentPageDiff => {
+  const before = previous?.content ?? '';
+  const after = status === 'removed' ? '' : page.content;
+  const diff = contentDiff(before, after);
+  return {
+    id: page.id,
+    title: page.title,
+    path: page.path,
+    languageCode: page.languageCode,
+    kind: page.kind,
+    status,
+    fields: status === 'modified' && previous ? changedFields(page, previous) : ['content'],
+    ...diff,
+  };
+};
+
+const stripSnapshot = <T extends { snapshot: unknown }>(deployment: T): Omit<T, 'snapshot'> => {
+  const { snapshot: _snapshot, ...rest } = deployment;
+  return rest;
+};
+
+export const getDeploymentDiff = async (projectId: string, id: string): Promise<DeploymentDiff> => {
+  const deployment = await getDeployment(projectId, id);
+  if (deployment.status !== 'READY' || !deployment.snapshot) {
+    throw badRequest('Only a published deployment with a snapshot has a diff.', { id });
+  }
+  const previousDeployment = await prisma.deployment.findFirst({
+    where: { projectId, status: 'READY', version: { lt: deployment.version } },
+    orderBy: { version: 'desc' },
+  });
+
+  const currentSnapshot = deployment.snapshot as unknown as SiteSnapshot;
+  const previousSnapshot = previousDeployment?.snapshot ? (previousDeployment.snapshot as unknown as SiteSnapshot) : null;
+  const previousById = new Map((previousSnapshot?.pages ?? []).map((page) => [page.id, page]));
+  const currentIds = new Set((currentSnapshot.pages ?? []).map((page) => page.id));
+  const changes: DeploymentPageDiff[] = [];
+
+  for (const page of currentSnapshot.pages ?? []) {
+    const previous = previousById.get(page.id);
+    if (!previous) {
+      changes.push(pageSummary(page, 'added'));
+    } else if (pageChanged(page, previous)) {
+      changes.push(pageSummary(page, 'modified', previous));
+    }
+  }
+  for (const page of previousSnapshot?.pages ?? []) {
+    if (!currentIds.has(page.id)) {
+      changes.push(pageSummary(page, 'removed', page));
+    }
+  }
+
+  return { deployment: stripSnapshot(deployment), previousDeployment: previousDeployment ? stripSnapshot(previousDeployment) : null, changes };
+};
+
 /**
- * Diff the current default-branch draft against the last published snapshot, so the
- * publish dialog can show exactly which pages will change (Mintlify-style). The live
- * site is built from the default branch only, so that's what we compare.
+ * Diff every current docs version against the last published snapshot, so the
+ * publish dialog can show exactly which pages will change (Mintlify-style).
  */
 export const getPendingChanges = async (projectId: string): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
-  const defaultBranch = await prisma.branch.findFirst({ where: { projectId, isDefault: true }, select: { id: true } });
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: { languages: { orderBy: { position: 'asc' } }, branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] } },
+  });
+  if (!project) {
+    throw notFound('project', { projectId });
+  }
+  const branchIds = project.branches.map((branch) => branch.id);
   const pages = await prisma.page.findMany({
-    where: { projectId, ...(defaultBranch ? { branchId: defaultBranch.id } : {}) },
+    where: { projectId, ...(branchIds.length > 0 ? { branchId: { in: branchIds } } : {}) },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    include: { language: { select: { code: true } } },
+    include: { language: { select: { code: true } }, branch: { select: { id: true, name: true, isDefault: true } } },
   });
-  const current = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code ?? '' }));
-
-  const toChange = (p: (typeof current)[number], status: PendingChange['status']): PendingChange => ({
-    id: p.id,
-    title: p.title,
-    path: p.path,
-    languageCode: p.languageCode,
-    kind: p.kind as 'PAGE' | 'GROUP',
-    status,
-  });
+  const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
+  const current = buildSnapshot(project, pageRows, new Date().toISOString()).pages;
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
@@ -121,7 +275,7 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
       hasBaseline: false,
       lastVersion: null,
       lastPublishedAt: null,
-      changes: current.map((p) => toChange(p, 'added')),
+      changes: current.map((p) => pageSummary(p, 'added')),
     };
   }
 
@@ -133,14 +287,14 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
   for (const p of current) {
     const prev = prevById.get(p.id);
     if (!prev) {
-      changes.push(toChange(p, 'added'));
+      changes.push(pageSummary(p, 'added'));
     } else if (pageChanged(p, prev)) {
-      changes.push(toChange(p, 'modified'));
+      changes.push(pageSummary(p, 'modified', prev));
     }
   }
   for (const prev of snap.pages ?? []) {
     if (!currentIds.has(prev.id)) {
-      changes.push({ id: prev.id, title: prev.title, path: prev.path, languageCode: prev.languageCode, kind: prev.kind, status: 'removed' });
+      changes.push(pageSummary(prev, 'removed', prev));
     }
   }
 

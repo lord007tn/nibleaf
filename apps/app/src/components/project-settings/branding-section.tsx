@@ -2,8 +2,8 @@ import { useForm } from '@tanstack/react-form';
 import { Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Input } from '@midad/design-system/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig, useUploadAsset } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -165,3 +165,4 @@ export function BrandingSection({ project }: { project: Project }) {
     </form>
   );
 }
+

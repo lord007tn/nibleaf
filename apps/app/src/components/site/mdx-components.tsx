@@ -2,15 +2,15 @@ import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type 
 import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────
 
 const CALLOUT: Record<CalloutType, { icon: LucideIcon; cls: string }> = {
-  note: { icon: Info, cls: 'border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-100' },
-  info: { icon: Info, cls: 'border-sky-500/30 bg-sky-500/10 text-sky-900 dark:text-sky-100' },
-  tip: { icon: Lightbulb, cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100' },
-  check: { icon: Check, cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-900 dark:text-emerald-100' },
+  note: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
+  info: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
+  tip: { icon: Lightbulb, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100' },
+  check: { icon: Check, cls: 'border-stone-500/30 bg-stone-500/10 text-stone-950 dark:text-stone-100' },
   warning: { icon: AlertTriangle, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100' },
   danger: { icon: OctagonAlert, cls: 'border-red-500/30 bg-red-500/10 text-red-900 dark:text-red-100' },
 };
@@ -345,3 +345,4 @@ export function CodeGroup({ children }: { children?: ReactNode }) {
     </div>
   );
 }
+

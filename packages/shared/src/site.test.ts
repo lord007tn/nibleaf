@@ -6,6 +6,7 @@ import {
   extractHeadings,
   interpolateVariables,
   pageDescription,
+  projectSlugFromSubdomainHost,
   type SnapshotLanguage,
   type SnapshotPage,
   type SnapshotProject,
@@ -127,7 +128,7 @@ describe('buildSnapshot', () => {
         ...projectRow,
         config: {
           variables: [
-            { key: 'product', value: 'Plume' },
+            { key: 'product', value: 'Midad' },
             { key: 'api.version', value: 'v2' },
           ],
         },
@@ -142,8 +143,8 @@ describe('buildSnapshot', () => {
       ],
       '2026-01-01',
     );
-    expect(snap.pages[0]?.title).toBe('Welcome to Plume');
-    expect(snap.pages[0]?.description).toBe('Docs for Plume');
+    expect(snap.pages[0]?.title).toBe('Welcome to Midad');
+    expect(snap.pages[0]?.description).toBe('Docs for Midad');
     expect(snap.pages[0]?.content).toBe('Use API v2. Unknown {{ nope }} stays.');
   });
 });
@@ -171,5 +172,18 @@ describe('pageDescription and defaultLanguage', () => {
   it('tolerates legacy snapshots with no languages array (no crash, English fallback)', () => {
     // Snapshots captured before the languages feature have no `languages` key.
     expect(defaultLanguage({} as unknown as SnapshotProject).code).toBe('en');
+  });
+});
+
+describe('projectSlugFromSubdomainHost', () => {
+  it('extracts a single-label project slug from the configured base domain', () => {
+    expect(projectSlugFromSubdomainHost('docs.docs.example.com', 'docs.example.com')).toBe('docs');
+    expect(projectSlugFromSubdomainHost('Docs.Docs.Example.Com:443', '*.docs.example.com')).toBe('docs');
+  });
+
+  it('rejects the apex, nested subdomains, and unrelated hosts', () => {
+    expect(projectSlugFromSubdomainHost('docs.example.com', 'docs.example.com')).toBeNull();
+    expect(projectSlugFromSubdomainHost('a.b.docs.example.com', 'docs.example.com')).toBeNull();
+    expect(projectSlugFromSubdomainHost('docs.other.com', 'docs.example.com')).toBeNull();
   });
 });

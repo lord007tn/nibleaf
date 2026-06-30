@@ -1,5 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
-import { logger } from '@plume/logger';
+import { logger } from '@midad/logger';
 import { keys } from './keys';
 
 export interface StorageTarget {

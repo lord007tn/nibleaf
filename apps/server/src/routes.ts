@@ -1,4 +1,4 @@
-import { auth } from '@plume/auth/server';
+import { auth } from '@midad/auth/server';
 import { Hono } from 'hono';
 import type { HonoEnv } from './lib/hono/context';
 import { rateLimit } from './middlewares/rate-limit';

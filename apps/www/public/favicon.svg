@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Plume">
-  <rect width="64" height="64" rx="14" fill="#5546e8" />
-  <text x="32" y="45" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="40" font-weight="700" fill="#ffffff" text-anchor="middle">P</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Midad">
+  <rect width="64" height="64" rx="13" fill="#8A4B2E"/>
+  <path d="M22 39 39 22c2-2 5-2 7 0l1 1c2 2 2 5 0 7L30 47l-10 2 2-10Z" fill="#FBF7EE"/>
+  <path d="M20 25c5-6 12-7 18-3" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="5"/>
+  <circle cx="44" cy="43" r="4" fill="#B96A3D"/>
 </svg>

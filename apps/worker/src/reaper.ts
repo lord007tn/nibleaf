@@ -1,5 +1,5 @@
-import { prisma } from '@plume/database';
-import { createLogger } from '@plume/logger';
+import { prisma } from '@midad/database';
+import { createLogger } from '@midad/logger';
 
 const log = createLogger({ processor: 'reaper' });
 

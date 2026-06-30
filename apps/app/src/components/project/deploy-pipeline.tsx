@@ -2,16 +2,16 @@ import { useQuery } from '@tanstack/react-query';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { useConfirm } from '@/components/ui/confirm';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Dialog, DialogContent, DialogTitle } from '@midad/design-system/components/ui/dialog';
 import { useRollback } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteHref } from '@/lib/links';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 interface DeployPipelineProps {
   project: Project;
@@ -84,13 +84,13 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
       toast.success('Published — your site is live', {
         action: {
           label: 'View site →',
-          onClick: () => window.open(siteHref(project.id), '_blank', 'noopener,noreferrer'),
+          onClick: () => window.location.assign(siteHref(project.id)),
         },
       });
     }
   }, [open, done, latest, project.id]);
 
-  const viewSite = () => window.open(siteHref(project.id), '_blank', 'noopener,noreferrer');
+  const viewSite = () => window.location.assign(siteHref(project.id));
 
   const doRollback = async () => {
     if (!previousReady) {
@@ -213,3 +213,4 @@ function StepIndicator({ state }: { state: StepState }) {
     </span>
   );
 }
+

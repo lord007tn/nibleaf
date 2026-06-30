@@ -2,7 +2,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import type { Project } from '@/hooks/api';
 import { useProjects } from '@/hooks/api';
 
-const STORAGE_KEY = 'plume.activeProjectId';
+const STORAGE_KEY = 'midad.activeProjectId';
 
 interface ProjectContextValue {
   activeProject: Project | null;
@@ -73,3 +73,4 @@ export function useActiveProject(): ProjectContextValue {
   }
   return ctx;
 }
+

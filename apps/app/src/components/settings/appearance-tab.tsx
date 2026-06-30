@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
-import { useTheme } from '@/components/theme-provider';
-import { cn } from '@/lib/utils';
+import { useTheme } from '@midad/design-system/theme';
+import { cn } from '@midad/design-system/lib/utils';
 import { SettingsSection } from './section';
 
 interface ThemeOption {
@@ -45,7 +45,7 @@ export function AppearanceTab() {
   return (
     <SettingsSection
       title="Theme"
-      description="How the Plume dashboard, editor, and settings look for you. This doesn't change your published doc sites."
+      description="How the Midad dashboard, editor, and settings look for you. This doesn't change your published doc sites."
     >
       <div className="grid grid-cols-2 gap-4">
         {THEMES.map((option) => (
@@ -55,3 +55,5 @@ export function AppearanceTab() {
     </SettingsSection>
   );
 }
+
+

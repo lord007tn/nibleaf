@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { useFormatters } from '@/lib/format';
 
 export interface ListItem {
@@ -50,3 +50,4 @@ export function ListCard({
     </div>
   );
 }
+

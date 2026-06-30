@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { useWorkspaceAnalytics } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -82,3 +82,4 @@ export function TrafficPanel() {
     </div>
   );
 }
+

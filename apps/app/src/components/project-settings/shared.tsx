@@ -1,11 +1,11 @@
-import type { ProjectConfig } from '@plume/validators';
+import type { ProjectConfig } from '@midad/validators';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Switch } from '@midad/design-system/components/ui/switch';
 import { useT } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
@@ -17,7 +17,7 @@ type ConfigMutation = {
 const localized = (key: MessageKey): string => {
   let locale: 'en' | 'ar' = 'en';
   try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('plume.locale') === 'ar') {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('midad.locale') === 'ar') {
       locale = 'ar';
     }
   } catch {
@@ -182,3 +182,4 @@ export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
 /** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter. */
 export const FIELD_COMPACT = 'h-8 rounded-md text-[13px]';
 export const FIELD_COMPACT_MONO = 'h-8 rounded-md font-mono text-[13px]';
+

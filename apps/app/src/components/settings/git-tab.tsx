@@ -2,9 +2,9 @@ import { useForm } from '@tanstack/react-form';
 import { DownloadCloud, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
 import { useImportFromGitHub, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
@@ -153,3 +153,4 @@ export function GitTab({ projectId }: { projectId?: string }) {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 {
-  "name": "@plume/database",
+  "name": "@midad/database",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -25,7 +25,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@plume/tsconfig": "workspace:*",
+    "@midad/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "dotenv-cli": "^11.0.0",
     "prisma": "6.19.3",

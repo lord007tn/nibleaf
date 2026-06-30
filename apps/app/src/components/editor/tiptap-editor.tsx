@@ -17,7 +17,7 @@ import { common, createLowlight } from 'lowlight';
 import { GripVertical, Plus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 import { EditorBubbleMenu } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -312,3 +312,4 @@ export function TiptapEditor({
 }
 
 export default TiptapEditor;
+

@@ -1,4 +1,4 @@
-import { aiDraftBody } from '@plume/validators';
+import { aiDraftBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { draftContent } from '@/actions/ai';
 import { assertProjectInOrg } from '@/actions/projects';

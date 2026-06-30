@@ -1,4 +1,4 @@
-name: plume-dev
+name: midad-dev
 
 # Local development infrastructure only (Postgres, Dragonfly, maxio). Run the
 # apps with `pnpm dev`. For a full self-hosted stack see docker-compose.yml.
@@ -8,15 +8,15 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: plume
-      POSTGRES_PASSWORD: plume
-      POSTGRES_DB: plume
+      POSTGRES_USER: midad
+      POSTGRES_PASSWORD: midad
+      POSTGRES_DB: midad
     ports:
       - '5442:5432'
     volumes:
-      - plume-pg:/var/lib/postgresql/data
+      - midad-pg:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U plume -d plume']
+      test: ['CMD-SHELL', 'pg_isready -U midad -d midad']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -32,25 +32,25 @@ services:
     ports:
       - '6381:6379'
     volumes:
-      - plume-dragonfly:/data
+      - midad-dragonfly:/data
 
-  # maxio — S3-compatible object storage. Auto-creates the `plume` bucket and
+  # maxio — S3-compatible object storage. Auto-creates the `midad` bucket and
   # serves it with anonymous read so doc assets load by their public URL.
   # Console: http://localhost:9300/ui/
   maxio:
     image: ghcr.io/coollabsio/maxio:latest
     restart: unless-stopped
     environment:
-      MAXIO_ACCESS_KEY: plumeadmin
-      MAXIO_SECRET_KEY: plumeadmin123
+      MAXIO_ACCESS_KEY: midadadmin
+      MAXIO_SECRET_KEY: midadadmin123
       MAXIO_REGION: auto
-      MAXIO_DEFAULT_BUCKETS: plume
-      MAXIO_PUBLIC_BUCKETS: plume
+      MAXIO_DEFAULT_BUCKETS: midad
+      MAXIO_PUBLIC_BUCKETS: midad
       MAXIO_ALLOW_INSECURE_DEV: 'true'
     ports:
       - '9300:9000'
     volumes:
-      - plume-maxio:/data
+      - midad-maxio:/data
     healthcheck:
       test: ['CMD', 'maxio', 'healthcheck', '--url', 'http://127.0.0.1:9000/healthz', '--timeout-ms', '2000']
       interval: 5s
@@ -58,6 +58,6 @@ services:
       retries: 10
 
 volumes:
-  plume-pg:
-  plume-dragonfly:
-  plume-maxio:
+  midad-pg:
+  midad-dragonfly:
+  midad-maxio:

@@ -40,3 +40,4 @@ export function viewsTrend(series: Array<{ views: number }>): { pct: number; dir
   const pct = ((recent - older) / older) * 100;
   return { pct, direction: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat' };
 }
+

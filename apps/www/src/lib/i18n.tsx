@@ -2,7 +2,7 @@
  * Marketing-site UI strings (Arabic / English), keyed by dotted namespaces.
  *
  * Self-contained i18n for apps/www, mirroring the dashboard pattern. The locale
- * persists in localStorage (`plume.www.locale`, default 'en') and drives the
+ * persists in localStorage (`midad.www.locale`, default 'en') and drives the
  * document direction (Arabic → RTL) plus <html lang>. The site SSRs in English;
  * the effect below sets dir/lang on the client after mount.
  *
@@ -28,10 +28,11 @@ export const messages = {
     'hero.headlineLead': 'Beautiful docs,',
     'hero.headlineAccent': 'on your own infrastructure.',
     'hero.subhead':
-      'Plume is the open-source documentation platform. Write in Markdown, get a fast, searchable site with versioned publishing, custom domains, and analytics — self-hosted with one Docker command.',
+      'Midad is the open-source documentation platform. Write in Markdown, get a fast, searchable site with versioned publishing, custom domains, and analytics — self-hosted with one Docker command.',
     'hero.ctaPrimary': 'Start writing — free',
     'hero.ctaSecondary': 'Star on GitHub',
     'hero.terminal': 'docker compose up -d',
+    'palette.label': 'Midad brand palette',
 
     // Trust strip
     'trust.prefix': 'Built on a stack you control:',
@@ -53,9 +54,9 @@ export const messages = {
     'features.selfHost.body': 'Postgres, a Redis-compatible cache, and S3-compatible storage. Runs anywhere Docker does. Your data stays yours.',
 
     // Comparison
-    'compare.heading': 'Plume vs hosted-only platforms',
+    'compare.heading': 'Midad vs hosted-only platforms',
     'compare.subhead': 'The same great authoring experience — without the lock-in.',
-    'compare.colPlume': 'Plume',
+    'compare.colMidad': 'Midad',
     'compare.colHosted': 'Hosted',
     'compare.row.openSource': 'Open source',
     'compare.row.selfHost': 'Self-host on your infra',
@@ -77,7 +78,7 @@ export const messages = {
 
     // Pricing
     'pricing.heading': 'Simple, honest pricing',
-    'pricing.subhead': 'Self-host for free. Or let us run it for you.',
+    'pricing.subhead': 'Self-host for free today. Cloud-hosted Midad is coming soon.',
     'pricing.popular': 'Popular',
     'pricing.selfHosted.name': 'Self-hosted',
     'pricing.selfHosted.price': 'Free',
@@ -87,9 +88,9 @@ export const messages = {
     'pricing.selfHosted.feature.search': 'Search, analytics, custom domains',
     'pricing.selfHosted.feature.community': 'Community support',
     'pricing.selfHosted.cta': 'Get the source',
-    'pricing.cloud.name': 'Cloud',
-    'pricing.cloud.price': '$0',
-    'pricing.cloud.tagline': 'Hosted by us — coming soon.',
+    'pricing.cloud.name': 'Cloud-hosted',
+    'pricing.cloud.price': 'Soon',
+    'pricing.cloud.tagline': 'Managed Midad is not live yet — join the waitlist.',
     'pricing.cloud.feature.everything': 'Everything in self-hosted',
     'pricing.cloud.feature.managed': 'Managed Postgres & storage',
     'pricing.cloud.feature.upgrades': 'Automatic upgrades',
@@ -98,19 +99,19 @@ export const messages = {
 
     // FAQ
     'faq.heading': 'Frequently asked',
-    'faq.free.q': 'Is Plume really free?',
+    'faq.free.q': 'Is Midad really free?',
     'faq.free.a': 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.',
     'faq.selfHost.q': 'What do I need to self-host?',
     'faq.selfHost.a':
       'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
     'faq.storage.q': 'Can I use my own object storage?',
-    'faq.storage.a': 'Absolutely. Plume speaks the S3 API, so it works with MinIO, Cloudflare R2, AWS S3, or Backblaze B2.',
+    'faq.storage.a': 'Absolutely. Midad speaks the S3 API, so it works with MinIO, Cloudflare R2, AWS S3, or Backblaze B2.',
     'faq.search.q': 'How does search work?',
     'faq.search.a': 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.',
 
     // Call to action
     'cta.heading': 'Ship docs your users will love',
-    'cta.body': 'Start in the cloud or self-host today. Either way, you own your content.',
+    'cta.body': 'Self-host today. Cloud-hosted Midad is coming soon, with the same ownership-first defaults.',
     'cta.primary': 'Get started free',
     'cta.secondary': 'View on GitHub',
 
@@ -130,13 +131,13 @@ export const messages = {
     'terms.title': 'Terms of Service',
     'terms.s1.heading': '1. Acceptance of terms',
     'terms.s1.body':
-      'By accessing or using Plume (the "Service") you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Service. As Plume is self-hosted software, the operator of each deployment should review and adapt these terms with their own legal counsel.',
+      'By accessing or using Midad (the "Service") you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Service. As Midad is self-hosted software, the operator of each deployment should review and adapt these terms with their own legal counsel.',
     'terms.s2.heading': '2. The open-source license',
     'terms.s2.body':
-      "Plume is distributed under the GNU Affero General Public License v3.0 (AGPL-3.0). The license that ships with the source code governs your rights to use, copy, modify, and distribute the software, and — under the AGPL's network-use clause — to receive the corresponding source of any modified version offered to you over a network. Nothing in these terms limits the rights granted to you under that open-source license.",
+      "Midad is distributed under the GNU Affero General Public License v3.0 (AGPL-3.0). The license that ships with the source code governs your rights to use, copy, modify, and distribute the software, and — under the AGPL's network-use clause — to receive the corresponding source of any modified version offered to you over a network. Nothing in these terms limits the rights granted to you under that open-source license.",
     'terms.s3.heading': '3. Self-hosted deployments',
     'terms.s3.body':
-      'When you self-host Plume, you are solely responsible for your own infrastructure, configuration, data, security, and compliance. The Service is provided "as is" without warranties of any kind, to the maximum extent permitted by applicable law.',
+      'When you self-host Midad, you are solely responsible for your own infrastructure, configuration, data, security, and compliance. The Service is provided "as is" without warranties of any kind, to the maximum extent permitted by applicable law.',
     'terms.s4.heading': '4. Acceptable use',
     'terms.s4.body':
       'You agree not to use the Service to violate any law, infringe the rights of others, or distribute unlawful, harmful, or malicious content. Replace this section with the specific policies that apply to your deployment.',
@@ -151,13 +152,13 @@ export const messages = {
     'privacy.title': 'Privacy Policy',
     'privacy.s1.heading': '1. Your data stays yours',
     'privacy.s1.body':
-      "Plume is self-hosted by design. When you run Plume on your own infrastructure, your content and your users' data live in your own database and object storage — not ours. This is placeholder copy; replace it with a policy reviewed by your own legal counsel.",
+      "Midad is self-hosted by design. When you run Midad on your own infrastructure, your content and your users' data live in your own database and object storage — not ours. This is placeholder copy; replace it with a policy reviewed by your own legal counsel.",
     'privacy.s2.heading': '2. What we collect',
     'privacy.s2.body':
-      'The marketing site itself does not use third-party analytics or trackers. Any data processed by your Plume deployment is governed by the privacy policy you publish to your own users, not by this document.',
+      'The marketing site itself does not use third-party analytics or trackers. Any data processed by your Midad deployment is governed by the privacy policy you publish to your own users, not by this document.',
     'privacy.s3.heading': '3. Built-in analytics',
     'privacy.s3.body':
-      'Plume includes first-party analytics (page views, unique visitors, top pages and searches) that run entirely within your deployment. No data is sent to any external analytics provider unless you configure one.',
+      'Midad includes first-party analytics (page views, unique visitors, top pages and searches) that run entirely within your deployment. No data is sent to any external analytics provider unless you configure one.',
     'privacy.s4.heading': '4. Cookies',
     'privacy.s4.body':
       'Authentication uses first-party session cookies issued by your own deployment. Document the specific cookies your instance sets when you adapt this policy for production.',
@@ -183,10 +184,11 @@ export const messages = {
     'hero.headlineLead': 'توثيق أنيق،',
     'hero.headlineAccent': 'على بنيتك التحتية الخاصة.',
     'hero.subhead':
-      'Plume هي منصة التوثيق مفتوحة المصدر. اكتب بصيغة Markdown واحصل على موقع سريع وقابل للبحث مع نشر مُصدَّر ونطاقات مخصصة وتحليلات — مستضاف ذاتيًا بأمر Docker واحد.',
+      'مِداد منصة توثيق مفتوحة المصدر. اكتب بصيغة Markdown واحصل على موقع سريع وقابل للبحث مع نشر موثّق بالإصدارات ونطاقات مخصصة وتحليلات — واستضفه ذاتيًا بأمر Docker واحد.',
     'hero.ctaPrimary': 'ابدأ الكتابة — مجانًا',
     'hero.ctaSecondary': 'أضف نجمة على GitHub',
     'hero.terminal': 'docker compose up -d',
+    'palette.label': 'لوحة ألوان مِداد',
 
     // Trust strip
     'trust.prefix': 'مبنية على حزمة تقنية تتحكم بها بالكامل:',
@@ -198,7 +200,7 @@ export const messages = {
     'features.editor.body': 'محرّر مُركّز مع معاينة حية وشجرة صفحات ومجموعات وإعادة ترتيب بالسحب. اكتب بسرعة وانشر أسرع.',
     'features.search.title': 'بحث هجين',
     'features.search.body': 'بحث نصي كامل وتقريبي مدعوم بـ Orama، مدمج في كل موقع منشور. نتائج فورية عبر ⌘K.',
-    'features.publishing.title': 'نشر مُصدَّر',
+    'features.publishing.title': 'نشر موثّق بالإصدارات',
     'features.publishing.body': 'كل عملية نشر تلتقط لقطة من توثيقك. تقدّم بأمان؛ ولن يقدّم موقعك الحي صفحة غير مكتملة أبدًا.',
     'features.domains.title': 'نطاقات مخصصة',
     'features.domains.body': 'استخدم نطاقك الخاص مع سجلات DNS موجّهة وتحقّق بنقرة واحدة.',
@@ -208,9 +210,9 @@ export const messages = {
     'features.selfHost.body': 'Postgres وذاكرة تخزين مؤقت متوافقة مع Redis وتخزين متوافق مع S3. يعمل أينما يعمل Docker. بياناتك تبقى ملكك.',
 
     // Comparison
-    'compare.heading': 'Plume مقابل المنصات المُستضافة حصريًا',
+    'compare.heading': 'مِداد مقابل المنصات المُستضافة فقط',
     'compare.subhead': 'تجربة التأليف الرائعة نفسها — بدون قيود الاحتكار.',
-    'compare.colPlume': 'Plume',
+    'compare.colMidad': 'مِداد',
     'compare.colHosted': 'مُستضاف',
     'compare.row.openSource': 'مفتوح المصدر',
     'compare.row.selfHost': 'استضافة ذاتية على بنيتك التحتية',
@@ -232,7 +234,7 @@ export const messages = {
 
     // Pricing
     'pricing.heading': 'تسعير بسيط وصادق',
-    'pricing.subhead': 'استضف ذاتيًا مجانًا. أو دعنا نُشغّله نيابةً عنك.',
+    'pricing.subhead': 'استضف ذاتيًا مجانًا اليوم. النسخة السحابية من مِداد قادمة قريبًا.',
     'pricing.popular': 'الأكثر شيوعًا',
     'pricing.selfHosted.name': 'الاستضافة الذاتية',
     'pricing.selfHosted.price': 'مجانًا',
@@ -242,9 +244,9 @@ export const messages = {
     'pricing.selfHosted.feature.search': 'بحث وتحليلات ونطاقات مخصصة',
     'pricing.selfHosted.feature.community': 'دعم المجتمع',
     'pricing.selfHosted.cta': 'احصل على المصدر',
-    'pricing.cloud.name': 'السحابة',
-    'pricing.cloud.price': '$0',
-    'pricing.cloud.tagline': 'مُستضاف من قِبلنا — قريبًا.',
+    'pricing.cloud.name': 'النسخة السحابية',
+    'pricing.cloud.price': 'قريبًا',
+    'pricing.cloud.tagline': 'مِداد المُدار ليس متاحًا بعد — انضم إلى قائمة الانتظار.',
     'pricing.cloud.feature.everything': 'كل ما في الاستضافة الذاتية',
     'pricing.cloud.feature.managed': 'Postgres وتخزين مُدار',
     'pricing.cloud.feature.upgrades': 'ترقيات تلقائية',
@@ -253,19 +255,19 @@ export const messages = {
 
     // FAQ
     'faq.heading': 'الأسئلة الشائعة',
-    'faq.free.q': 'هل Plume مجاني فعلًا؟',
+    'faq.free.q': 'هل مِداد مجاني فعلًا؟',
     'faq.free.a': 'نعم. النسخة المُستضافة ذاتيًا مفتوحة المصدر ومجانية للتشغيل على بنيتك التحتية الخاصة، إلى الأبد.',
     'faq.selfHost.q': 'ما الذي أحتاجه للاستضافة الذاتية؟',
     'faq.selfHost.a':
       'Docker وDocker Compose. تتضمن الحزمة Postgres وذاكرة تخزين مؤقت متوافقة مع Redis وتخزينًا كائنيًا متوافقًا مع S3 — كلها مُهيّأة لك مسبقًا.',
     'faq.storage.q': 'هل يمكنني استخدام تخزيني الكائني الخاص؟',
-    'faq.storage.a': 'بالتأكيد. يتحدث Plume واجهة S3 البرمجية، لذا يعمل مع MinIO أو Cloudflare R2 أو AWS S3 أو Backblaze B2.',
+    'faq.storage.a': 'بالتأكيد. يدعم مِداد واجهة S3، لذا يعمل مع MinIO أو Cloudflare R2 أو AWS S3 أو Backblaze B2.',
     'faq.search.q': 'كيف يعمل البحث؟',
     'faq.search.a': 'يُفهرَس كل موقع منشور باستخدام Orama لبحث نصي كامل وتقريبي، يُقدَّم مباشرةً من واجهة API الخاصة بك — بلا خدمة خارجية.',
 
     // Call to action
     'cta.heading': 'انشر توثيقًا سيحبه مستخدموك',
-    'cta.body': 'ابدأ في السحابة أو استضف ذاتيًا اليوم. في كلتا الحالتين، محتواك ملكك.',
+    'cta.body': 'استضف ذاتيًا اليوم. النسخة السحابية من مِداد قادمة قريبًا، وبنفس مبادئ ملكية المحتوى.',
     'cta.primary': 'ابدأ مجانًا',
     'cta.secondary': 'استعرض على GitHub',
 
@@ -285,13 +287,13 @@ export const messages = {
     'terms.title': 'شروط الخدمة',
     'terms.s1.heading': '1. قبول الشروط',
     'terms.s1.body':
-      'باستخدامك Plume («الخدمة») أو الوصول إليها، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا لم توافق على هذه الشروط، فلا تستخدم الخدمة. وبما أن Plume برنامج مُستضاف ذاتيًا، ينبغي على مُشغّل كل عملية نشر مراجعة هذه الشروط وتكييفها بالاستعانة بمستشاره القانوني.',
+      'باستخدامك مِداد («الخدمة») أو الوصول إليها، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا لم توافق على هذه الشروط، فلا تستخدم الخدمة. وبما أن مِداد برنامج مُستضاف ذاتيًا، ينبغي على مُشغّل كل عملية نشر مراجعة هذه الشروط وتكييفها بالاستعانة بمستشاره القانوني.',
     'terms.s2.heading': '2. رخصة المصدر المفتوح',
     'terms.s2.body':
-      'يُوزَّع Plume بموجب رخصة جنو العمومية العامة أفيرو الإصدار 3.0 (AGPL-3.0). الرخصة المرفقة مع الشيفرة المصدرية تحكم حقوقك في استخدام البرنامج ونسخه وتعديله وتوزيعه، وكذلك — بموجب بند الاستخدام الشبكي في AGPL — في الحصول على الشيفرة المصدرية المقابلة لأي نسخة معدّلة تُقدَّم إليك عبر الشبكة. ولا يحدّ أي بند في هذه الشروط من الحقوق الممنوحة لك بموجب تلك الرخصة مفتوحة المصدر.',
+      'يُوزَّع مِداد بموجب رخصة جنو العمومية العامة أفيرو الإصدار 3.0 (AGPL-3.0). الرخصة المرفقة مع الشيفرة المصدرية تحكم حقوقك في استخدام البرنامج ونسخه وتعديله وتوزيعه، وكذلك — بموجب بند الاستخدام الشبكي في AGPL — في الحصول على الشيفرة المصدرية المقابلة لأي نسخة معدّلة تُقدَّم إليك عبر الشبكة. ولا يحدّ أي بند في هذه الشروط من الحقوق الممنوحة لك بموجب تلك الرخصة مفتوحة المصدر.',
     'terms.s3.heading': '3. عمليات النشر المُستضافة ذاتيًا',
     'terms.s3.body':
-      'عند استضافتك Plume ذاتيًا، تتحمل وحدك مسؤولية بنيتك التحتية وإعداداتك وبياناتك وأمنك والامتثال للأنظمة. تُقدَّم الخدمة «كما هي» دون أي ضمانات من أي نوع، إلى أقصى حد يسمح به القانون المعمول به.',
+      'عند استضافتك مِداد ذاتيًا، تتحمل وحدك مسؤولية بنيتك التحتية وإعداداتك وبياناتك وأمنك والامتثال للأنظمة. تُقدَّم الخدمة «كما هي» دون أي ضمانات من أي نوع، إلى أقصى حد يسمح به القانون المعمول به.',
     'terms.s4.heading': '4. الاستخدام المقبول',
     'terms.s4.body':
       'توافق على عدم استخدام الخدمة لمخالفة أي قانون أو انتهاك حقوق الآخرين أو نشر محتوى غير قانوني أو ضار أو خبيث. استبدل هذا القسم بالسياسات المحددة المنطبقة على عملية نشرك.',
@@ -305,13 +307,13 @@ export const messages = {
     'privacy.title': 'سياسة الخصوصية',
     'privacy.s1.heading': '1. بياناتك تبقى ملكك',
     'privacy.s1.body':
-      'صُمِّم Plume للاستضافة الذاتية. عند تشغيلك Plume على بنيتك التحتية الخاصة، يبقى محتواك وبيانات مستخدميك في قاعدة بياناتك وتخزينك الكائني — لا لدينا. هذا نص مؤقت؛ استبدله بسياسة راجعها مستشارك القانوني الخاص.',
+      'صُمِّم مِداد للاستضافة الذاتية. عند تشغيله على بنيتك التحتية الخاصة، يبقى محتواك وبيانات مستخدميك في قاعدة بياناتك وتخزينك الكائني — لا لدينا. هذا نص مؤقت؛ استبدله بسياسة راجعها مستشارك القانوني الخاص.',
     'privacy.s2.heading': '2. ما الذي نجمعه',
     'privacy.s2.body':
-      'لا يستخدم الموقع التسويقي نفسه أي تحليلات أو متعقّبات من جهات خارجية. وأي بيانات يعالجها نشرك لـ Plume تخضع لسياسة الخصوصية التي تنشرها لمستخدميك، لا لهذه الوثيقة.',
+      'لا يستخدم الموقع التسويقي نفسه أي تحليلات أو متعقّبات من جهات خارجية. وأي بيانات يعالجها نشر مِداد لديك تخضع لسياسة الخصوصية التي تنشرها لمستخدميك، لا لهذه الوثيقة.',
     'privacy.s3.heading': '3. التحليلات المدمجة',
     'privacy.s3.body':
-      'يتضمن Plume تحليلات داخلية (مشاهدات الصفحات والزوار الفريدون وأبرز الصفحات وعمليات البحث) تعمل بالكامل داخل عملية نشرك. ولا تُرسَل أي بيانات إلى أي مزوّد تحليلات خارجي ما لم تُهيّئ واحدًا.',
+      'يتضمن مِداد تحليلات داخلية (مشاهدات الصفحات والزوار الفريدون وأبرز الصفحات وعمليات البحث) تعمل بالكامل داخل عملية نشرك. ولا تُرسَل أي بيانات إلى أي مزوّد تحليلات خارجي ما لم تُهيّئ واحدًا.',
     'privacy.s4.heading': '4. ملفات تعريف الارتباط',
     'privacy.s4.body':
       'تستخدم المصادقة ملفات تعريف ارتباط للجلسة صادرة عن نشرك الخاص. وثّق ملفات تعريف الارتباط المحددة التي تُعيّنها نسختك عند تكييف هذه السياسة للإنتاج.',
@@ -326,7 +328,7 @@ export const messages = {
 export type Locale = keyof typeof messages;
 export type MessageKey = keyof (typeof messages)['en'];
 
-const STORAGE_KEY = 'plume.www.locale';
+const STORAGE_KEY = 'midad.www.locale';
 
 const readStored = (): Locale => {
   if (typeof window === 'undefined') {
@@ -389,3 +391,6 @@ export function useLocale(): LocaleContextValue {
 
 /** Convenience hook returning just the translator. */
 export const useT = () => useLocale().t;
+
+
+

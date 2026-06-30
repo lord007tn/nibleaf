@@ -1,3 +1,5 @@
+import { Button } from '@midad/design-system/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -5,6 +7,7 @@ import {
   CreditCard,
   Eye,
   FileText,
+  Globe2,
   type LucideIcon,
   PenLine,
   Plug,
@@ -15,10 +18,8 @@ import {
 import { useMemo, useState } from 'react';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { AnalyticsRange } from '@/hooks/api';
-import { useAnalytics, useDeployments, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import { useAnalytics, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { useFormatters, viewsTrend } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
@@ -38,11 +39,16 @@ function SiteOverviewPage() {
   const { data: pages } = usePages(projectId);
   const { data: members } = useProjectMembers(projectId);
   const { data: deployments } = useDeployments(projectId);
+  const { data: domains } = useDomains(projectId);
   const { data: analytics, isPending: analyticsPending } = useAnalytics(projectId, range);
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
+  const latestDeployment = deployments?.[0];
+  const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verified) ?? domains?.find((domain) => domain.verified);
+  const liveDomain =
+    primaryDomain?.domain ?? (project ? `${project.slug}.${(import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined) ?? 'midad.app'}` : null);
   const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
   const recentPages = useMemo(
     () =>
@@ -75,6 +81,42 @@ function SiteOverviewPage() {
           <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} size="sm">
             <PenLine className="size-3.5" /> {t('overview.openEditor')}
           </Button>
+        </div>
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
+              <Globe2 className="size-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="font-semibold text-sm">{t('overview.live.title')}</div>
+              <a className="truncate font-mono text-primary text-sm hover:underline" href={`/sites/${projectId}`} target="_blank" rel="noreferrer">
+                {liveDomain ?? t('overview.live.unavailable')}
+              </a>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-semibold text-sm">{t('overview.activity.title')}</h2>
+            {latestDeployment ? (
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary text-xs">{latestDeployment.status}</span>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-2">
+            {(deployments ?? []).slice(0, 3).map((deployment) => (
+              <div className="flex items-center justify-between gap-3 text-sm" key={deployment.id}>
+                <div className="min-w-0 truncate">
+                  <span className="font-medium">v{deployment.version}</span>
+                  <span className="ms-2 text-muted-foreground">{deployment.commitMessage || t('overview.activity.publish')}</span>
+                </div>
+                <span className="shrink-0 text-muted-foreground text-xs">{date(deployment.completedAt ?? deployment.createdAt)}</span>
+              </div>
+            ))}
+            {(deployments ?? []).length === 0 ? <p className="text-muted-foreground text-sm">{t('overview.activity.empty')}</p> : null}
+          </div>
         </div>
       </div>
 

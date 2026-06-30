@@ -5,8 +5,8 @@ import { type ReactNode, useState } from 'react';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
-import { Button } from '@/components/ui/button';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Button } from '@midad/design-system/components/ui/button';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, Project } from '@/hooks/api/types';
@@ -81,3 +81,4 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
     </SidebarProvider>
   );
 }
+

@@ -1,14 +1,14 @@
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@midad/design-system/components/ui/button';
+import { ScrollArea } from '@midad/design-system/components/ui/scroll-area';
+import { Textarea } from '@midad/design-system/components/ui/textarea';
 import type { Comment } from '@/hooks/api';
 import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 interface CommentsPanelProps {
   projectId: string;
@@ -65,12 +65,12 @@ function relativeTime(iso: string, nowLabel: string): string {
 
 /** Stable gradient per user id so avatars stay visually distinct. */
 const GRADIENTS = [
-  'from-emerald-500 to-teal-400',
-  'from-violet-500 to-indigo-400',
+  'from-amber-700 to-orange-500',
+  'from-stone-700 to-amber-500',
   'from-rose-500 to-orange-400',
-  'from-sky-500 to-cyan-400',
-  'from-amber-500 to-yellow-400',
-  'from-fuchsia-500 to-pink-400',
+  'from-red-700 to-amber-500',
+  'from-yellow-700 to-stone-500',
+  'from-orange-800 to-yellow-500',
 ] as const;
 function gradientFor(id: string): string {
   let hash = 0;
@@ -266,3 +266,4 @@ export function CommentsPanel({
     </div>
   );
 }
+

@@ -2,7 +2,7 @@ import { DirectionProvider as BaseDirectionProvider } from '@base-ui/react/direc
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 type Direction = 'ltr' | 'rtl';
-const STORAGE_KEY = 'plume.direction';
+const STORAGE_KEY = 'midad.direction';
 
 interface DirectionContextValue {
   direction: Direction;
@@ -58,3 +58,4 @@ export function useDirection(): DirectionContextValue {
   }
   return ctx;
 }
+

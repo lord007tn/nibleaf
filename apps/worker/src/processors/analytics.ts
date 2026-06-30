@@ -1,6 +1,6 @@
-import type { RollupAnalyticsJobData } from '@plume/bullmq/jobs/analytics';
-import { prisma } from '@plume/database';
-import { createLogger } from '@plume/logger';
+import type { RollupAnalyticsJobData } from '@midad/bullmq/jobs/analytics';
+import { prisma } from '@midad/database';
+import { createLogger } from '@midad/logger';
 import type { Job } from 'bullmq';
 
 const log = createLogger({ processor: 'analytics' });

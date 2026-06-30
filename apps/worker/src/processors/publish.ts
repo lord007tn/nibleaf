@@ -1,7 +1,7 @@
-import type { PublishDeploymentJobData } from '@plume/bullmq/jobs/publish';
-import { prisma } from '@plume/database';
-import { createLogger } from '@plume/logger';
-import { buildSnapshot } from '@plume/shared/site';
+import type { PublishDeploymentJobData } from '@midad/bullmq/jobs/publish';
+import { prisma } from '@midad/database';
+import { createLogger } from '@midad/logger';
+import { buildSnapshot } from '@midad/shared/site';
 import type { Job } from 'bullmq';
 import { notifyDeployment } from '../lib/notify';
 
@@ -23,18 +23,18 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
   try {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      include: { languages: { orderBy: { position: 'asc' } } },
+      include: { languages: { orderBy: { position: 'asc' } }, branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] } },
     });
     if (!project) {
       throw new Error(`project ${projectId} not found`);
     }
-    // The published site is built from the default ('main') branch only; other
-    // branches are isolated drafts. (Fallback to all pages for legacy projects.)
-    const defaultBranch = await prisma.branch.findFirst({ where: { projectId, isDefault: true }, select: { id: true } });
+    // Publish every branch as an addressable docs version. This keeps v1 live
+    // while v2 is being authored, and visitors can switch versions on the site.
+    const branchIds = project.branches.map((branch) => branch.id);
     const pages = await prisma.page.findMany({
-      where: { projectId, ...(defaultBranch ? { branchId: defaultBranch.id } : {}) },
+      where: { projectId, ...(branchIds.length > 0 ? { branchId: { in: branchIds } } : {}) },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { language: { select: { code: true } } },
+      include: { language: { select: { code: true } }, branch: { select: { id: true, name: true, isDefault: true } } },
     });
     const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
     const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());

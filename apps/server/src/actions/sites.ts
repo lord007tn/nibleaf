@@ -1,16 +1,18 @@
-import { auth } from '@plume/auth/server';
-import { prisma } from '@plume/database';
-import { searchDocs } from '@plume/search';
+import { auth } from '@midad/auth/server';
+import { prisma } from '@midad/database';
+import { searchDocs } from '@midad/search';
 import {
   buildNavTree,
   defaultLanguage,
   extractHeadings,
   type NavNode,
   pageDescription,
+  projectSlugFromSubdomainHost,
   type SiteSnapshot,
   type SnapshotPage,
-} from '@plume/shared/site';
-import type { TrackEventBody } from '@plume/validators';
+  type SnapshotVersion,
+} from '@midad/shared/site';
+import type { TrackEventBody } from '@midad/validators';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { notFound } from '@/errors';
@@ -72,6 +74,9 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   if (snapshot.project && !Array.isArray(snapshot.project.languages)) {
     snapshot.project.languages = [];
   }
+  if (snapshot.project && !Array.isArray(snapshot.project.versions)) {
+    snapshot.project.versions = [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
+  }
   await assertViewable(projectId, snapshot);
   return { snapshot, version: deployment.version, deploymentId: deployment.id };
 };
@@ -89,16 +94,51 @@ const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
  *  fall under whichever language is requested). */
 const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => (p.languageCode || lang) === lang);
 
+const versionsForSnapshot = (snapshot: SiteSnapshot): SnapshotVersion[] => {
+  const configured = snapshot.project.versions ?? [];
+  if (configured.length > 0) {
+    return configured;
+  }
+  return [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
+};
+
+const activeVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion => {
+  const versions = versionsForSnapshot(snapshot);
+  const requested = version?.trim();
+  if (requested) {
+    const match = versions.find((v) => v.slug === requested || v.name === requested || v.id === requested);
+    if (match) {
+      return match;
+    }
+  }
+  return versions.find((v) => v.isDefault) ?? versions[0] ?? { id: 'main', name: 'main', slug: 'main', isDefault: true };
+};
+
+const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion | undefined => {
+  const requested = version?.trim();
+  if (!requested) {
+    return undefined;
+  }
+  return versionsForSnapshot(snapshot).find((v) => v.slug === requested || v.name === requested || v.id === requested);
+};
+
+const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
+  snapshot.pages.filter((page) => !page.versionId || page.versionId === version.id || page.versionSlug === version.slug);
+
 /** The published site shell: project branding + navigation tree (per language). */
-export const getSite = async (identifier: string, lang?: string) => {
-  const { snapshot, version } = await getPublished(identifier);
+export const getSite = async (identifier: string, lang?: string, version?: string) => {
+  const { snapshot, version: deploymentVersion } = await getPublished(identifier);
+  const docsVersion = activeVersion(snapshot, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
+  const versionPages = pagesForVersion(snapshot, docsVersion);
   return {
     project: snapshot.project,
     languages: snapshot.project.languages,
+    versions: versionsForSnapshot(snapshot),
     activeLanguage,
-    nav: buildNavTree(snapshot.pages, activeLanguage),
-    version,
+    activeVersion: docsVersion.slug,
+    nav: buildNavTree(versionPages, activeLanguage),
+    version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
   };
 };
@@ -109,13 +149,19 @@ const flattenNav = (nav: NavNode[]): NavNode[] =>
 
 /** A single published page with TOC, breadcrumbs, and prev/next neighbours.
  *  Scoped to the active language, falling back to the default language. */
-export const getSitePage = async (identifier: string, path: string, lang?: string) => {
+export const getSitePage = async (identifier: string, path: string, lang?: string, version?: string) => {
   const { snapshot } = await getPublished(identifier);
-  const normalized = path.replace(/^\/+|\/+$/g, '');
+  const explicitVersion = matchingVersion(snapshot, version);
+  let normalized = path.replace(/^\/+|\/+$/g, '');
+  if (explicitVersion && (normalized === explicitVersion.slug || normalized.startsWith(`${explicitVersion.slug}/`))) {
+    normalized = normalized.slice(explicitVersion.slug.length).replace(/^\/+/, '');
+  }
   const activeLanguage = activeLanguageCode(snapshot, lang);
+  const docsVersion = explicitVersion ?? activeVersion(snapshot, version);
+  const versionPages = pagesForVersion(snapshot, docsVersion);
 
   const findIn = (langCode: string) => {
-    const langPages = pagesForLanguage(snapshot.pages, langCode);
+    const langPages = pagesForLanguage(versionPages, langCode);
     const found =
       langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
       (normalized === '' ? firstPage(langPages, langCode) : undefined);
@@ -143,7 +189,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   // no corresponding page get path:null and are omitted from hreflang, so we never
   // point a crawler at a missing or wrong-language URL.
   const alternates = snapshot.project.languages.map((l) => {
-    const sibling = snapshot.pages.find(
+    const sibling = versionPages.find(
       (p) =>
         p.languageCode === l.code &&
         p.kind === 'PAGE' &&
@@ -157,6 +203,8 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     // The language the page actually resolved in (may differ from the requested
     // ?lang when it fell back) — canonical/og/hreflang are built from this.
     activeLanguage: navLanguage,
+    activeVersion: docsVersion.slug,
+    versions: versionsForSnapshot(snapshot),
     page: {
       id: page.id,
       title: page.title,
@@ -198,10 +246,12 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
 
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  Scoped to the active language so each language has its own index. */
-export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number) => {
+export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
   const { snapshot, deploymentId } = await getPublished(identifier);
   const activeLanguage = activeLanguageCode(snapshot, lang);
-  const index = await getCachedIndex(snapshot.project.id, deploymentId, activeLanguage, snapshot.pages);
+  const docsVersion = activeVersion(snapshot, version);
+  const versionPages = pagesForVersion(snapshot, docsVersion);
+  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages);
   const hits = await searchDocs(index, query, { limit });
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
@@ -280,8 +330,11 @@ export const getSiteSitemap = async (identifier: string): Promise<string> => {
     .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode))
     .map((page) => {
       // Default-language pages use the clean URL (no ?lang) — their canonical.
+      const pageVersion = versionsForSnapshot(snapshot).find((v) => v.id === page.versionId || v.slug === page.versionSlug);
+      const versionPath = pageVersion && !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
+      const pagePath = page.path ? `/${page.path}` : '';
       const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-      const loc = `${base}${page.path ? `/${page.path}` : ''}${langQuery}`;
+      const loc = `${base}${versionPath}${pagePath}${langQuery}`;
       const lastmodTag = lastmod ? `<lastmod>${escapeXml(new Date(lastmod).toISOString())}</lastmod>` : '';
       return `  <url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;
     });
@@ -305,5 +358,14 @@ export const resolveDomainHost = async (host: string): Promise<string | null> =>
     return null;
   }
   const domain = await prisma.domain.findFirst({ where: { domain: clean, verified: true }, select: { projectId: true } });
-  return domain?.projectId ?? null;
+  if (domain?.projectId) {
+    return domain.projectId;
+  }
+
+  const slug = projectSlugFromSubdomainHost(clean, env.SITE_BASE_DOMAIN);
+  if (!slug) {
+    return null;
+  }
+  const project = await prisma.project.findFirst({ where: { slug }, select: { id: true }, orderBy: { createdAt: 'asc' } });
+  return project?.id ?? null;
 };

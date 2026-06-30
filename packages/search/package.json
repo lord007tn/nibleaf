@@ -1,5 +1,5 @@
 {
-  "name": "@plume/search",
+  "name": "@midad/search",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@orama/orama": "^3.1.18",
-    "@plume/logger": "workspace:*",
+    "@midad/logger": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@plume/tsconfig": "workspace:*",
+    "@midad/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "typescript": "^5.9.2"
   }

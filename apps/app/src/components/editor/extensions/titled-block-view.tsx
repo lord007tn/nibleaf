@@ -49,3 +49,4 @@ export function TitledBlockView({ node, updateAttributes, extension }: NodeViewP
     </NodeViewWrapper>
   );
 }
+

@@ -38,3 +38,4 @@ describe('viewsTrend', () => {
     expect(viewsTrend(series(0, 0, 0, 0))).toBeNull();
   });
 });
+

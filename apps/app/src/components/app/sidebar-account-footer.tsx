@@ -1,6 +1,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, Languages, LogOut, Moon, Sun } from 'lucide-react';
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@midad/design-system/theme';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +8,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
+} from '@midad/design-system/components/ui/dropdown-menu';
+import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@midad/design-system/components/ui/sidebar';
 import { authClient } from '@/lib/auth-client';
 import { useLocale } from '@/lib/i18n';
 
@@ -78,3 +78,5 @@ export function SidebarAccountFooter() {
     </SidebarFooter>
   );
 }
+
+

@@ -1,6 +1,6 @@
-import { prisma } from '@plume/database';
-import { slugify } from '@plume/shared';
-import type { GitConfig } from '@plume/validators';
+import { prisma } from '@midad/database';
+import { slugify } from '@midad/shared';
+import type { GitConfig } from '@midad/validators';
 import { badRequest } from '@/errors';
 import { ensureDefaultBranch } from './branches';
 import { ensureDefaultLanguage } from './languages';
@@ -86,7 +86,7 @@ export const importFromGitHub = async (organizationId: string, projectId: string
 
   // 1) One tree call lists every path in the branch.
   const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'plume-docs' },
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'midad-docs' },
   });
   if (!treeRes.ok) {
     throw badRequest(
@@ -141,7 +141,7 @@ export const importFromGitHub = async (organizationId: string, projectId: string
   for (const file of mdFiles) {
     const rawRes = await fetch(
       `https://raw.githubusercontent.com/${owner}/${repo}/${encodeURIComponent(branch)}/${file.path.split('/').map(encodeURIComponent).join('/')}`,
-      { headers: { 'User-Agent': 'plume-docs' } },
+      { headers: { 'User-Agent': 'midad-docs' } },
     );
     if (!rawRes.ok) {
       summary.skipped++;

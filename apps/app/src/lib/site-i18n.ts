@@ -68,3 +68,4 @@ export function siteT(langCode?: string): (key: SiteMessageKey) => string {
   const locale = resolveLocale(langCode);
   return (key) => MESSAGES[locale][key] ?? MESSAGES.en[key];
 }
+

@@ -1,7 +1,7 @@
-import { prisma } from '@plume/database';
-import type { MemberRole } from '@plume/shared/constants';
-import { hashApiKeySecret } from '@plume/shared/crypto';
-import { roleAtLeast } from '@plume/shared/rbac';
+import { prisma } from '@midad/database';
+import type { MemberRole } from '@midad/shared/constants';
+import { hashApiKeySecret } from '@midad/shared/crypto';
+import { roleAtLeast } from '@midad/shared/rbac';
 import type { Context, MiddlewareHandler } from 'hono';
 import { assertProjectAccess } from '@/actions/projects';
 import { AppError } from '@/errors';

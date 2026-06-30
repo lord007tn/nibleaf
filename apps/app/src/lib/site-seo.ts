@@ -150,6 +150,10 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // unknown (legacy snapshots with no Language rows), treat the active language
   // AS the default so the canonical stays param-less and matches the sitemap.
   const canonicalLang = activeLang && defaultCode && activeLang !== defaultCode ? activeLang : undefined;
+  const activeVersion = data.activeVersion;
+  const activeVersionMeta = data.versions?.find((version) => version.slug === activeVersion);
+  const versionPrefix = activeVersionMeta && !activeVersionMeta.isDefault ? activeVersionMeta.slug : undefined;
+  const versionedPath = (path: string) => [versionPrefix, path].filter(Boolean).join('/');
 
   // Site name for the "<page> — <site>" title pattern (language can rename it).
   const siteName = langSeo?.metaTitle || config?.seo?.metaTitle || data.project.name;
@@ -160,7 +164,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // body description; the page body excerpt is the final fallback.
   const description =
     pageSeo?.metaDescription || langSeo?.metaDescription || config?.seo?.metaDescription || data.page.description || data.project.description || '';
-  const url = sitePageUrl(projectId, data.page.path, canonicalLang, origin);
+  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, origin);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -210,11 +214,11 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (realAlternates.length > 1) {
     for (const language of realAlternates) {
       const altLang = language.isDefault ? undefined : language.code;
-      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, language.path as string, altLang, origin) });
+      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, origin) });
     }
     const fallback = realAlternates.find((language) => language.isDefault) ?? realAlternates[0];
     if (fallback) {
-      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, fallback.path as string, undefined, origin) });
+      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, origin) });
     }
   }
 
@@ -246,7 +250,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.title,
-          item: sitePageUrl(projectId, crumb.path, canonicalLang, origin),
+          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalLang, origin),
         })),
       }),
     });
@@ -254,3 +258,4 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
 
   return { meta, links, scripts };
 }
+

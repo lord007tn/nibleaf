@@ -1,6 +1,6 @@
 import { Info } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@midad/design-system/components/ui/badge';
+import { Button } from '@midad/design-system/components/ui/button';
 import { useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
@@ -12,7 +12,7 @@ export function BillingTab({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Honest framing: self-hosted Plume is free + unlimited; metered/hosted billing
+      {/* Honest framing: self-hosted Midad is free + unlimited; metered/hosted billing
           isn't wired up, so don't fake usage limits or working payment actions. */}
       <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -41,3 +41,5 @@ export function BillingTab({ projectId }: { projectId?: string }) {
     </div>
   );
 }
+
+

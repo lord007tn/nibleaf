@@ -1,5 +1,5 @@
 {
-  "name": "@plume/auth",
+  "name": "@midad/auth",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@plume/bullmq": "workspace:*",
-    "@plume/database": "workspace:*",
-    "@plume/logger": "workspace:*",
-    "@plume/shared": "workspace:*",
+    "@midad/bullmq": "workspace:*",
+    "@midad/database": "workspace:*",
+    "@midad/logger": "workspace:*",
+    "@midad/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "^1.6.19",
     "zod": "^4.4.3"
@@ -30,7 +30,7 @@
     }
   },
   "devDependencies": {
-    "@plume/tsconfig": "workspace:*",
+    "@midad/tsconfig": "workspace:*",
     "@types/react": "^19.2.0",
     "react": "^19.2.0",
     "typescript": "^5.9.2"

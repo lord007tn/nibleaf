@@ -1,3 +1,3 @@
-import { createLogger } from '@plume/logger';
+import { createLogger } from '@midad/logger';
 
 export const queueLogger = createLogger({ component: 'bullmq' });

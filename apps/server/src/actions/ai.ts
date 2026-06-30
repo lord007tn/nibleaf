@@ -1,4 +1,4 @@
-import type { AiDraftBody } from '@plume/validators';
+import type { AiDraftBody } from '@midad/validators';
 import { env } from '@/env';
 
 const SYSTEM_PROMPT =

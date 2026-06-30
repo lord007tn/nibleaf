@@ -2,11 +2,11 @@ import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { FieldError } from '@/components/ui/form-field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@midad/design-system/components/ui/badge';
+import { Button } from '@midad/design-system/components/ui/button';
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
 import { authClient, useSession } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
@@ -295,3 +295,4 @@ export function AccountTab() {
     </SettingsSection>
   );
 }
+

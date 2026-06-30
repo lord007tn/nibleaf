@@ -1,4 +1,5 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { cn } from '@midad/design-system/lib/utils';
+import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Moon, Search, Sun } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
@@ -7,13 +8,14 @@ import { PageIcon } from '@/components/site/page-icon';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
+import { VersionSwitcher } from '@/components/site/version-switcher';
 import { useSite } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
+import { siteHref } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
-import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteChrome,
@@ -27,7 +29,10 @@ export const Route = createFileRoute('/sites/$projectId')({
   loader: async ({ params, deps }) => {
     try {
       const site = await getData<SiteShell>(
-        await api.public.sites[':id'].$get({ param: { id: params.projectId }, query: deps.lang ? { lang: deps.lang } : {} }),
+        await api.public.sites[':id'].$get({
+          param: { id: params.projectId },
+          query: deps.lang ? { lang: deps.lang } : {},
+        }),
         'site',
       );
       return { site };
@@ -66,19 +71,27 @@ function SiteChrome() {
   const { lang } = Route.useSearch();
   const { site: initialSite } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
-  // Seed from the server loader so the nav + branding render in the initial HTML.
-  const { data: site, isPending, isError } = useSite(projectId, lang, initialSite ?? undefined);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
+  const versionCandidate = currentPath && currentPath !== 'changelog' ? currentPath.split('/')[0] : undefined;
+  // Seed from the server loader so the nav + branding render in the initial HTML.
+  const { data: site, isPending, isError } = useSite(projectId, lang, initialSite ?? undefined, versionCandidate);
   const isChangelog = currentPath === 'changelog';
+  const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
+  const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
+  const contentPath =
+    activeVersionPrefix && (currentPath === activeVersionPrefix || currentPath.startsWith(`${activeVersionPrefix}/`))
+      ? currentPath.slice(activeVersionPrefix.length).replace(/^\/+/, '')
+      : currentPath;
   // The home route (empty path) renders the site's first page server-side, so
   // highlight that page's nav entry rather than leaving the sidebar inert.
-  const effectiveCurrentPath = currentPath || firstLeafPath(site?.nav ?? []) || '';
+  const effectiveCurrentPath = contentPath || firstLeafPath(site?.nav ?? []) || '';
 
   // Config is a free-form JSON blob server-side; treat every field as optional.
   const config = (site?.project.config ?? null) as unknown as ProjectConfig | null;
   const languages = site?.languages ?? [];
+  const versions = site?.versions ?? [];
   // Resolve the active language: URL param → server-reported active → default → first.
   const activeLanguage = useMemo(() => {
     const code = lang ?? site?.activeLanguage;
@@ -97,7 +110,7 @@ function SiteChrome() {
     if (typeof window === 'undefined') {
       return;
     }
-    const storageKey = `plume.site.theme.${projectId}`;
+    const storageKey = `midad.site.theme.${projectId}`;
     const stored = window.localStorage.getItem(storageKey);
     // An explicit visitor choice always wins over the configured default.
     if (stored === 'dark' || stored === 'light') {
@@ -125,7 +138,7 @@ function SiteChrome() {
     setSiteTheme((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
       try {
-        window.localStorage.setItem(`plume.site.theme.${projectId}`, next);
+        window.localStorage.setItem(`midad.site.theme.${projectId}`, next);
       } catch (_) {
         // ignore (private mode etc.)
       }
@@ -225,8 +238,8 @@ function SiteChrome() {
     chromeStyle.fontSize = `${baseSize}px`;
   }
   const fontCss = [
-    headingFont ? `.plume-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
-    codeFont ? `.plume-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
+    headingFont ? `.midad-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
+    codeFont ? `.midad-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
   ]
     .filter(Boolean)
     .join('');
@@ -244,13 +257,25 @@ function SiteChrome() {
   const changeLanguage = (code: string) => {
     navigate({ search: (prev) => ({ ...prev, lang: code }) });
   };
+  const changeVersion = (slug: string) => {
+    const defaultVersion = versions.find((item) => item.isDefault);
+    const targetPrefix = defaultVersion?.slug === slug ? '' : slug;
+    const targetPath = [targetPrefix, isChangelog ? '' : contentPath].filter(Boolean).join('/');
+    if (targetPath) {
+      navigate({ to: '/sites/$projectId/$', params: { projectId, _splat: targetPath }, search: (prev) => ({ lang: prev.lang }) });
+      return;
+    }
+    navigate({ to: '/sites/$projectId', params: { projectId }, search: (prev) => ({ lang: prev.lang }) });
+  };
+  const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
+  const sitePath = (path = '') => siteHref(projectId, path, { lang, version: activeVersionPrefix });
 
   return (
     // `dir` flips the whole document tree for RTL languages; code blocks are
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className={cn('plume-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
+      className={cn('midad-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
       style={chromeStyle as CSSProperties}
     >
       {fontCss ? (
@@ -261,33 +286,33 @@ function SiteChrome() {
 
       <header className="sticky top-0 z-30 border-border border-b bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-6">
-          <MobileNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} label={t('docs')} />
+          <MobileNav
+            nodes={site?.nav ?? []}
+            projectId={projectId}
+            currentPath={effectiveCurrentPath}
+            lang={lang}
+            version={activeVersionPrefix}
+            label={t('docs')}
+          />
           {logoHref ? (
             <a href={logoHref} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold tracking-tight">
               {brandInner}
             </a>
           ) : (
-            <Link to="/sites/$projectId" params={{ projectId }} search={{ lang }} className="flex items-center gap-2 font-semibold tracking-tight">
+            <a href={sitePath()} className="flex items-center gap-2 font-semibold tracking-tight">
               {brandInner}
-            </Link>
+            </a>
           )}
           <nav className="ms-4 hidden items-center gap-5 text-muted-foreground text-sm sm:flex">
-            <Link
-              to="/sites/$projectId"
-              params={{ projectId }}
-              search={{ lang }}
-              className={`transition-colors hover:text-foreground ${isChangelog ? '' : 'font-medium text-foreground'}`}
-            >
+            <a href={sitePath()} className={`transition-colors hover:text-foreground ${isChangelog ? '' : 'font-medium text-foreground'}`}>
               {t('docs')}
-            </Link>
-            <Link
-              to="/sites/$projectId/changelog"
-              params={{ projectId }}
-              search={{ lang }}
+            </a>
+            <a
+              href={siteHref(projectId, 'changelog', { lang })}
               className={`transition-colors hover:text-foreground ${isChangelog ? 'font-medium text-foreground' : ''}`}
             >
               {t('changelog')}
-            </Link>
+            </a>
             {navLinks.map((link) => (
               <a
                 key={`${link.label}-${link.href}`}
@@ -317,6 +342,7 @@ function SiteChrome() {
             <div className="ms-auto" />
           )}
           <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
+          <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} />
           <button
             className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted"
             onClick={toggleSiteTheme}
@@ -386,7 +412,7 @@ function SiteChrome() {
             {isPending ? (
               <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
             ) : (
-              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} />
+              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
             )}
           </div>
         </aside>
@@ -444,8 +470,10 @@ function SiteChrome() {
           open={searchOpen}
           onOpenChange={setSearchOpen}
           lang={activeLanguage?.code}
+          version={activeVersionPrefix}
           placeholder={config?.search?.placeholder}
           hotkey={searchHotkey}
+          maxResults={config?.search?.maxResults}
         />
       ) : null}
     </div>

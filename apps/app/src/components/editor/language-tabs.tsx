@@ -1,9 +1,9 @@
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@midad/design-system/components/ui/button';
 import type { Language } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 import { AddLanguageDialog } from './add-language-dialog';
 
 interface LanguageTabsProps {
@@ -62,3 +62,4 @@ export function LanguageTabs({ projectId, languages, activeLanguageId, onSelect,
 }
 
 export default LanguageTabs;
+

@@ -1,14 +1,15 @@
-# Plume
+# Midad
 
 **The open-source documentation platform — a self-hostable alternative to Mintlify.**
 
 Write your docs in Markdown, organize them into a navigable tree, and publish a
 fast, searchable documentation site. Versioned publishing, custom domains,
-hybrid search, and analytics — all running on infrastructure you own.
+project subdomains, built-in search, multilingual docs, and analytics — all
+running on infrastructure you own.
 
 ```bash
-git clone https://github.com/plume-docs/plume
-cd plume && cp .env.example .env
+git clone https://github.com/midad-docs/midad
+cd midad && cp .env.example .env
 
 # Set a strong auth secret — the stack refuses to boot in production with the
 # placeholder. (Also set POSTGRES_PASSWORD / STORAGE_SECRET_KEY for real deploys.)
@@ -23,7 +24,7 @@ docker compose up -d --build
 > Open http://localhost:4310/sign-up and create the first account — it gets a
 > workspace and a starter docs project automatically. (The docker stack runs in
 > production mode and does **not** seed demo credentials; for local dev,
-> `pnpm db:seed` creates `demo@plume.dev` / `plumedemo123`.) See
+> `pnpm db:seed` creates `demo@midad.dev` / `midaddemo123`.) See
 > **[DEPLOYMENT.md](DEPLOYMENT.md)** for production hardening.
 
 ---
@@ -37,11 +38,13 @@ docker compose up -d --build
   built into every published site and available via ⌘K.
 - **Live documentation sites** with a 3-column layout (nav, content, table of
   contents), prev/next navigation, breadcrumbs, and per-project theming.
-- **Custom domains** with guided DNS records and verification.
+- **Custom domains and project subdomains** with guided DNS records,
+  verification, and host-based published-site routing.
 - **Analytics** — page views, unique visitors, top pages, and top searches.
 - **Workspaces & members** with role-based access (owner / admin / editor).
 - **Asset uploads** to any S3-compatible store (maxio, R2, S3, B2).
-- **RTL support** and light/dark themes throughout.
+- **Multilingual docs** with per-language page trees, RTL support, hreflang
+  alternates, and light/dark themes throughout.
 
 ## Architecture
 
@@ -105,7 +108,7 @@ pnpm dev
 | Worker ops | http://localhost:4312/jobs   |
 | Marketing  | http://localhost:4313        |
 
-Demo login: `demo@plume.dev` / `plumedemo123`.
+Demo login: `demo@midad.dev` / `midaddemo123`.
 
 ## Useful scripts
 
@@ -133,6 +136,13 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full production guide (secret
 generation, required `.env` vars behind a domain, an nginx reverse-proxy example,
 keeping datastore ports private, and a security checklist).
 
+For Coolify, use `docker-compose.coolify.yml`. It runs the self-hostable docs
+platform without the marketing app; point the app domain and wildcard docs
+domain at the `app` service on port `4310`.
+
+Implementation parity and open gaps are tracked in
+**[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**.
+
 Production **must** set `BETTER_AUTH_SECRET`, `POSTGRES_PASSWORD`, and
 `STORAGE_SECRET_KEY`. When `NODE_ENV=production`, the container entrypoint refuses
 to start (`exit 1`) if `BETTER_AUTH_SECRET` is empty or left at a known demo
@@ -140,10 +150,12 @@ default — generate one with `openssl rand -hex 32`.
 
 ## License
 
-Plume is free software, licensed under the **GNU Affero General Public License
+Midad is free software, licensed under the **GNU Affero General Public License
 v3.0** (AGPL-3.0) — see [LICENSE](LICENSE) for the full text.
 
 Because the AGPL includes the "network use" clause, if you run a modified version
-of Plume as a network service you must make your modified source available to its
+of Midad as a network service you must make your modified source available to its
 users. Contributions are accepted under the same license — see
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+

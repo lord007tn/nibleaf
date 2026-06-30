@@ -1,4 +1,4 @@
-import { analyticsQuery, updateWorkspaceSettingsBody } from '@plume/validators';
+import { analyticsQuery, updateWorkspaceSettingsBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { getWorkspaceAnalytics } from '@/actions/analytics';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';

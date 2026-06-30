@@ -1,5 +1,5 @@
-import { Prisma, prisma } from '@plume/database';
-import type { CreateLanguageBody, UpdateLanguageBody } from '@plume/validators';
+import { Prisma, prisma } from '@midad/database';
+import type { CreateLanguageBody, UpdateLanguageBody } from '@midad/validators';
 import { conflict, notFound } from '@/errors';
 
 /** Throw unless the language exists and belongs to the project. Returns it. */

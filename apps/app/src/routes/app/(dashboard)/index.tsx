@@ -5,13 +5,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { FieldError } from '@/components/ui/form-field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { MidadMark } from '@midad/design-system/brand';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@midad/design-system/components/ui/dialog';
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { required } from '@/lib/form';
@@ -202,12 +203,7 @@ function ProjectsPage() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <span
-                        className="grid size-8 shrink-0 place-items-center rounded-lg text-sm"
-                        style={{ backgroundColor: `${project.color}1a`, color: project.color }}
-                      >
-                        ✎
-                      </span>
+                      <MidadMark className="size-8 shrink-0" />
                       <div className="min-w-0">
                         <div className="truncate font-medium">{project.name}</div>
                         <div className="truncate font-mono text-muted-foreground text-xs">/{project.slug}</div>
@@ -226,3 +222,4 @@ function ProjectsPage() {
     </div>
   );
 }
+

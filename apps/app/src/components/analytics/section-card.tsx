@@ -1,10 +1,10 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@midad/design-system/components/ui/badge';
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@midad/design-system/components/ui/card';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { useFormatters } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 export type Trend = { pct: number; direction: 'up' | 'down' | 'flat' } | null;
 
@@ -73,3 +73,4 @@ export function SectionCard({
     </Card>
   );
 }
+

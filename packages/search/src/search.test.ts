@@ -12,6 +12,11 @@ describe('stripMarkdown (search snippets read as clean prose)', () => {
     expect(out).toContain('tips');
     expect(out).not.toContain('npm run dev'); // fenced code dropped
   });
+
+  it('preserves underscores in code-like identifiers', () => {
+    const out = stripMarkdown('| Variable | Purpose |\n| --- | --- |\n| `STORAGE_SECRET_KEY` | Object storage secret. |');
+    expect(out).toContain('STORAGE_SECRET_KEY');
+  });
 });
 
 describe('searchDocs snippets', () => {

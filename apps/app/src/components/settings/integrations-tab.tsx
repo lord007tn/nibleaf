@@ -3,13 +3,13 @@ import { ArrowLeft, MessageSquare, Zap } from 'lucide-react';
 import { type ComponentType, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon, GitlabIcon, SlackIcon } from '@/components/icons/brand';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 import { SettingsSection } from './section';
 
 interface ProviderField {
@@ -57,7 +57,7 @@ const PROVIDERS: Provider[] = [
     name: 'Slack',
     descriptionKey: 'settings.integrations.slack.description',
     icon: SlackIcon,
-    tint: 'bg-violet-500/15 text-violet-600 dark:text-violet-400',
+    tint: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
     fields: [{ key: 'channel', labelKey: 'settings.integrations.slack.channel', placeholder: '#docs' }],
   },
   {
@@ -65,7 +65,7 @@ const PROVIDERS: Provider[] = [
     name: 'Discord',
     descriptionKey: 'settings.integrations.discord.description',
     icon: MessageSquare,
-    tint: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400',
+    tint: 'bg-stone-500/15 text-stone-700 dark:text-stone-300',
     fields: [{ key: 'webhook', labelKey: 'settings.integrations.discord.webhook', placeholder: 'https://discord.com/api/webhooks/…' }],
   },
   {
@@ -101,8 +101,8 @@ function readState(raw: unknown): IntegrationState {
 function ConnectedPill() {
   const t = useT();
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-4xl bg-emerald-500/15 px-2.5 py-1 font-medium text-emerald-600 text-xs dark:text-emerald-400">
-      <span className="size-1.5 rounded-full bg-emerald-500" /> {t('settings.integrations.connected')}
+    <span className="inline-flex items-center gap-1.5 rounded-4xl bg-primary/15 px-2.5 py-1 font-medium text-primary text-xs">
+      <span className="size-1.5 rounded-full bg-primary" /> {t('settings.integrations.connected')}
     </span>
   );
 }
@@ -265,3 +265,4 @@ export function IntegrationsTab({ projectId }: { projectId?: string }) {
     </SettingsSection>
   );
 }
+

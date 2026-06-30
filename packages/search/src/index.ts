@@ -163,7 +163,7 @@ export function stripMarkdown(src: string): string {
     .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers
     .replace(/^\s*([-*+]|\d+\.)\s+/gm, '') // list bullets / ordered markers
     .replace(/^\s*([-=*_]\s*){3,}$/gm, ' ') // hr / setext underlines
-    .replace(/[*_~]{1,3}/g, '') // emphasis markers
+    .replace(/[*~]{1,3}/g, '') // emphasis markers (preserve underscores in code-like identifiers)
     .replace(/\|/g, ' ') // table pipes
     .replace(/\s+/g, ' ')
     .trim();

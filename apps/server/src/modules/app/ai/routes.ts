@@ -1,4 +1,4 @@
-import { MemberRole } from '@plume/shared/constants';
+import { MemberRole } from '@midad/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectRole } from '@/middlewares/guard';

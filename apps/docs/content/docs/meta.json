@@ -1,5 +1,6 @@
 {
-  "title": "Plume",
+  "title": "Midad",
   "root": true,
   "pages": ["index", "getting-started", "writing", "self-hosting"]
 }
+

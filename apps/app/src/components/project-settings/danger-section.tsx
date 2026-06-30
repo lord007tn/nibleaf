@@ -1,8 +1,8 @@
 import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { useConfirm } from '@/components/ui/confirm';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@midad/design-system/components/ui/tooltip';
 import type { Project } from '@/hooks/api';
 import { useDeleteProject } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -71,3 +71,4 @@ export function DangerSection({ project }: { project: Project }) {
     </div>
   );
 }
+

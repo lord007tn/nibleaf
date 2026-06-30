@@ -1,17 +1,18 @@
+import { slugify } from '@midad/shared/utils';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@midad/design-system/components/ui/button';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
+import { Switch } from '@midad/design-system/components/ui/switch';
+import { Textarea } from '@midad/design-system/components/ui/textarea';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -21,6 +22,8 @@ const PAGE_SETTINGS_SECTIONS = [
   { id: 'seo', labelKey: 'editor.pageSettings.tab.seo', icon: '◎' },
   { id: 'behaviour', labelKey: 'editor.pageSettings.tab.behaviour', icon: '◐' },
 ] as const satisfies ReadonlyArray<{ id: PageSettingsSection; labelKey: MessageKey; icon: string }>;
+
+const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
 
 /** Per-page settings — General (nav metadata), SEO override, and Behaviour
  *  (layout). The SEO + behaviour fields persist to `page.config`, layered over
@@ -40,7 +43,9 @@ export function PageSettingsDialog({
   const update = useUpdatePage(projectId);
 
   // General
+  const [title, setTitle] = useState(page.title);
   const [slug, setSlug] = useState(page.slug);
+  const [slugTouched, setSlugTouched] = useState(false);
   const [icon, setIcon] = useState(page.icon ?? '');
   const [description, setDescription] = useState(page.description ?? '');
   const [hidden, setHidden] = useState(page.hidden);
@@ -63,7 +68,9 @@ export function PageSettingsDialog({
     if (!open) {
       return;
     }
+    setTitle(page.title);
     setSlug(page.slug);
+    setSlugTouched(false);
     setIcon(page.icon ?? '');
     setDescription(page.description ?? '');
     setHidden(page.hidden);
@@ -108,7 +115,8 @@ export function PageSettingsDialog({
       {
         pageId: page.id,
         body: {
-          slug: slug.trim(),
+          title: title.trim(),
+          slug: slug.trim() || title.trim(),
           icon: icon.trim() || null,
           description: description.trim() || null,
           hidden,
@@ -159,8 +167,30 @@ export function PageSettingsDialog({
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {section === 'general' ? (
                 <div className="flex flex-col gap-4">
+                  <Field label={t('editor.pageSettings.pageTitle')} hint={t('editor.pageSettings.pageTitleHint')} htmlFor="page-title">
+                    <Input
+                      id="page-title"
+                      value={title}
+                      onChange={(e) => {
+                        const nextTitle = e.target.value;
+                        setTitle(nextTitle);
+                        if (!slugTouched && PLACEHOLDER_SLUG_RE.test(slug)) {
+                          setSlug(slugify(nextTitle));
+                        }
+                      }}
+                      placeholder={page.title}
+                    />
+                  </Field>
                   <Field label={t('editor.pageSettings.slug')} hint={t('editor.pageSettings.slugHint')} htmlFor="page-slug">
-                    <Input id="page-slug" value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="getting-started" />
+                    <Input
+                      id="page-slug"
+                      value={slug}
+                      onChange={(e) => {
+                        setSlugTouched(true);
+                        setSlug(e.target.value);
+                      }}
+                      placeholder="getting-started"
+                    />
                   </Field>
                   <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
                     <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
@@ -310,3 +340,4 @@ function Toggle({
     </div>
   );
 }
+

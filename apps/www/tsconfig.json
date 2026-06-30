@@ -1,5 +1,5 @@
 {
-  "extends": "@plume/tsconfig/react.json",
+  "extends": "@midad/tsconfig/react.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

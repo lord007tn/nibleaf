@@ -1,8 +1,9 @@
-import { createDeploymentBody } from '@plume/validators';
+import { createDeploymentBody } from '@midad/validators';
 import { Hono } from 'hono';
 import {
   createDeployment,
   getDeployment,
+  getDeploymentDiff,
   getLatestReadyDeployment,
   getPendingChanges,
   listDeployments,
@@ -32,6 +33,10 @@ const app = new Hono<HonoEnv>()
   .get('/changes', ...deploymentsRoutes.changes, async (ctx) => {
     const { projectId } = await scope(ctx);
     return ctx.json({ data: await getPendingChanges(projectId) }, 200);
+  })
+  .get('/:id/diff', ...deploymentsRoutes.diff, async (ctx) => {
+    const { projectId } = await scope(ctx);
+    return ctx.json({ data: await getDeploymentDiff(projectId, ctx.req.param('id')) }, 200);
   })
   .post('/', ...deploymentsRoutes.publish, validator('json', createDeploymentBody), async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);

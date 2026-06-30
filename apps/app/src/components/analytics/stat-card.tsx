@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { useFormatters } from '@/lib/format';
 
 /** Compact KPI tile: label, big value, optional leading icon. */
@@ -19,3 +19,4 @@ export function StatCard({ label, value, icon, loading }: { label: string; value
     </div>
   );
 }
+

@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server';
-import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@plume/bullmq/workers';
-import { logger } from '@plume/logger';
+import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@midad/bullmq/workers';
+import { logger } from '@midad/logger';
 import { env } from './env';
 import systemApp from './modules/system/handlers';
 import { processors } from './processors';
@@ -20,7 +20,7 @@ let reaperTimer: NodeJS.Timeout | null = null;
 
 async function main() {
   server = serve({ port: env.WORKER_PORT, fetch: systemApp.fetch }, (info) => {
-    logger.info(`Plume worker ops server on http://localhost:${info.port}`);
+    logger.info(`Midad worker ops server on http://localhost:${info.port}`);
     logger.info(`  health → http://localhost:${info.port}/health`);
     logger.info(`  jobs   → http://localhost:${info.port}/jobs`);
   });

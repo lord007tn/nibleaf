@@ -1,18 +1,20 @@
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Textarea } from '@midad/design-system/components/ui/textarea';
+import { cn } from '@midad/design-system/lib/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { FieldError } from '@/components/ui/form-field';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import type { Project } from '@/hooks/api';
 import { useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader, Segmented } from './shared';
 
 /** A small curated set of emoji icons the project can use as its avatar glyph. */
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
+
+const siteBaseDomain = (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') ?? 'midad.app';
 
 export function GeneralSection({ project }: { project: Project }) {
   const t = useT();
@@ -47,7 +49,7 @@ export function GeneralSection({ project }: { project: Project }) {
     },
   });
 
-  const subdomain = `${project.slug}.plume.app`;
+  const subdomain = `${project.slug}.${siteBaseDomain}`;
 
   return (
     <form

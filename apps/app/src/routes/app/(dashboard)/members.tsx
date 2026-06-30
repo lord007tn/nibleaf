@@ -2,11 +2,11 @@ import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { FieldError } from '@/components/ui/form-field';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@midad/design-system/components/ui/button';
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
@@ -189,3 +189,4 @@ function MembersPage() {
     </div>
   );
 }
+

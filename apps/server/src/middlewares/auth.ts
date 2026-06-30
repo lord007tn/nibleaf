@@ -1,5 +1,5 @@
-import { auth } from '@plume/auth/server';
-import { prisma } from '@plume/database';
+import { auth } from '@midad/auth/server';
+import { prisma } from '@midad/database';
 import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 

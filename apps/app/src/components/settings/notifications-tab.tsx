@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from '@midad/design-system/components/ui/switch';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
@@ -124,3 +124,4 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 {
   "title": "Self-hosting",
   "icon": "Server",
-  "pages": ["docker", "configuration"]
+  "pages": ["docker", "configuration", "production", "operations"]
 }

@@ -1,4 +1,4 @@
-import { confirmAssetBody, presignAssetBody } from '@plume/validators';
+import { confirmAssetBody, presignAssetBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { confirmAsset, listAssets, presignAsset } from '@/actions/assets';
 import { assertProjectInOrg } from '@/actions/projects';

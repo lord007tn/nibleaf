@@ -1,6 +1,6 @@
 # Production deployment
 
-This guide covers running Plume in production with Docker Compose behind a TLS
+This guide covers running Midad in production with Docker Compose behind a TLS
 reverse proxy. For local development see the [README](README.md).
 
 > The container entrypoint **refuses to start** (`exit 1`) when `NODE_ENV=production`
@@ -45,12 +45,21 @@ CORS_ALLOWED_ORIGINS=https://app.your-domain.com,https://your-domain.com
 PUBLIC_APP_URL=https://app.your-domain.com
 PUBLIC_API_URL=https://app.your-domain.com        # API is reached via the app proxy
 PUBLIC_WWW_URL=https://your-domain.com
-PUBLIC_STORAGE_URL=https://cdn.your-domain.com/plume
+PUBLIC_STORAGE_URL=https://cdn.your-domain.com/midad
+
+# Published docs domains. Create *.docs.your-domain.com at your proxy/Coolify
+# ingress so project slugs resolve as <slug>.docs.your-domain.com.
+SITE_BASE_DOMAIN=docs.your-domain.com
+CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.your-domain.com
 
 # Object storage. Keep the maxio block, or switch to R2/S3 below.
 STORAGE_PROVIDER=maxio
-STORAGE_PUBLIC_URL=https://cdn.your-domain.com/plume
+STORAGE_PUBLIC_URL=https://cdn.your-domain.com/midad
 ```
+
+Custom domains and free project subdomains are resolved by Midad after traffic
+reaches the `app` service. TLS certificates, wildcard DNS, and the public ingress
+for `*.docs.your-domain.com` remain reverse-proxy or Coolify responsibilities.
 
 ### Using Cloudflare R2 / AWS S3 instead of maxio
 
@@ -93,6 +102,27 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 Only the reverse proxy should bind public ports (443/80). The `app` and `www`
 services are reached through it; the `server` and `worker` ports stay internal.
+
+### Coolify without marketing
+
+Use `docker-compose.coolify.yml` when deploying the self-hostable docs platform
+to Coolify. It omits the `www` marketing service and exposes:
+
+- `app:4310` for dashboard, editor, published docs, project subdomains, and
+  custom domains.
+- `server:4311` for the API, usually internal because `app` proxies `/api`.
+- `worker:4312` internally for background jobs.
+- `maxio:9000` only if you use bundled storage as a public media origin.
+
+In Coolify, assign both the dashboard host and wildcard docs host to the `app`
+service. For example:
+
+- `app.your-domain.com -> app:4310`
+- `*.docs.your-domain.com -> app:4310`
+- `cname.docs.your-domain.com -> app:4310`
+
+Because this Coolify file omits the marketing service, set `WWW_URL` to your
+dashboard origin if you do not maintain a separate public website.
 
 ## 4. nginx reverse proxy (TLS termination)
 
@@ -167,7 +197,7 @@ browser must reach the API at a public URL), rebuild the `app` image with a
 different value, e.g.:
 
 ```bash
-docker build --build-arg VITE_API_URL=https://api.your-domain.com -t plume .
+docker build --build-arg VITE_API_URL=https://api.your-domain.com -t midad .
 ```
 
 ## 6. Run migrations before scaling
@@ -199,3 +229,5 @@ no demo account is created.
 - [ ] `PLUME_RUN_SEED` left unset (no demo account in production).
 - [ ] Database and object storage backed up on a schedule.
 - [ ] Container images rebuilt and redeployed for security updates.
+
+

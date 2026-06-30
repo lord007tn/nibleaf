@@ -1,4 +1,4 @@
-import { logger } from '@plume/logger';
+import { logger } from '@midad/logger';
 import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 

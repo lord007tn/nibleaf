@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@midad/design-system/components/ui/button';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
@@ -139,3 +139,4 @@ function AcceptInvitePage() {
     </AuthLayout>
   );
 }
+

@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { Markdown } from '@/components/markdown';
@@ -7,12 +6,13 @@ import { useSitePage } from '@/hooks/api';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
+import { siteHref } from '@/lib/site-paths';
 
 const sessionId = (): string => {
   if (typeof window === 'undefined') {
     return 'ssr';
   }
-  const key = 'plume.sid';
+  const key = 'midad.sid';
   let id = window.localStorage.getItem(key);
   if (!id) {
     id = Math.random().toString(36).slice(2);
@@ -21,9 +21,21 @@ const sessionId = (): string => {
   return id;
 };
 
-export function SitePageView({ projectId, path, lang, initialData }: { projectId: string; path: string; lang?: string; initialData?: SitePage }) {
+export function SitePageView({
+  projectId,
+  path,
+  lang,
+  version,
+  initialData,
+}: {
+  projectId: string;
+  path: string;
+  lang?: string;
+  version?: string;
+  initialData?: SitePage;
+}) {
   const t = siteT(lang);
-  const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData);
+  const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData, version);
 
   // Record a pageview whenever the resolved page changes. (The document title +
   // meta description are owned by the route's head() so they render server-side.)
@@ -52,7 +64,6 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
   }
 
   const { page, breadcrumbs, prev, next } = data;
-
   // Per-page layout behaviour (Mintlify-style `mode`/`hideToc`): `wide` drops the
   // TOC and fills the width, `center` narrows + centers the column.
   const mode = page.config?.mode ?? 'default';
@@ -75,14 +86,9 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
           <div className="mb-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
             {breadcrumbs.slice(0, -1).map((crumb) => (
               <span key={crumb.path} className="flex items-center gap-1.5">
-                <Link
-                  to="/sites/$projectId/$"
-                  params={{ projectId, _splat: crumb.path }}
-                  search={{ lang }}
-                  className="transition-colors hover:text-foreground"
-                >
+                <a href={siteHref(projectId, crumb.path, { lang, version })} className="transition-colors hover:text-foreground">
                   {crumb.title}
-                </Link>
+                </a>
                 <span aria-hidden>/</span>
               </span>
             ))}
@@ -96,32 +102,28 @@ export function SitePageView({ projectId, path, lang, initialData }: { projectId
 
         <div className="mt-12 grid grid-cols-2 gap-3 border-border border-t pt-6">
           {prev ? (
-            <Link
-              to="/sites/$projectId/$"
-              params={{ projectId, _splat: prev.path }}
-              search={{ lang }}
+            <a
+              href={siteHref(projectId, prev.path, { lang, version })}
               className="flex flex-col items-start rounded-xl border border-border p-4 hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
                 <ChevronLeft className="size-3 rtl:-scale-x-100" /> {t('previous')}
               </span>
               <span className="mt-1 font-medium">{prev.title}</span>
-            </Link>
+            </a>
           ) : (
             <span />
           )}
           {next ? (
-            <Link
-              to="/sites/$projectId/$"
-              params={{ projectId, _splat: next.path }}
-              search={{ lang }}
+            <a
+              href={siteHref(projectId, next.path, { lang, version })}
               className="flex flex-col items-end rounded-xl border border-border p-4 text-end hover:bg-muted"
             >
               <span className="flex items-center gap-1 text-muted-foreground text-xs">
                 {t('next')} <ChevronRight className="size-3 rtl:-scale-x-100" />
               </span>
               <span className="mt-1 font-medium">{next.title}</span>
-            </Link>
+            </a>
           ) : (
             <span />
           )}

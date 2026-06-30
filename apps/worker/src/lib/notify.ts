@@ -1,5 +1,5 @@
-import { createJob, QueueNames } from '@plume/bullmq';
-import { prisma } from '@plume/database';
+import { createJob, QueueNames } from '@midad/bullmq';
+import { prisma } from '@midad/database';
 
 /**
  * Workspace notification preferences live as a JSON blob on `Organization.metadata`

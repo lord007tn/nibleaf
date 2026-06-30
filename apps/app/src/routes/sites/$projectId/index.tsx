@@ -16,7 +16,7 @@ export const Route = createFileRoute('/sites/$projectId/')({
       const page = await getData<SitePage>(
         await api.public.sites[':id'].page.$get({
           param: { id: params.projectId },
-          query: deps.lang ? { path: '', lang: deps.lang } : { path: '' },
+          query: { path: '', ...(deps.lang ? { lang: deps.lang } : {}) },
         }),
         'page',
       );
@@ -38,3 +38,4 @@ function SiteHome() {
   // Empty path resolves to the first page server-side.
   return <SitePageView projectId={projectId} path="" lang={lang} initialData={page ?? undefined} />;
 }
+

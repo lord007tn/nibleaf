@@ -41,3 +41,4 @@ test-results
 
 # dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
 dogfood-output
+output

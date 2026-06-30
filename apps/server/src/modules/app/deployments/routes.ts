@@ -1,4 +1,4 @@
-import { MemberRole } from '@plume/shared/constants';
+import { MemberRole } from '@midad/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectMember, requireProjectRole } from '@/middlewares/guard';
@@ -10,6 +10,7 @@ const deploymentsRoutes = {
   list: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'List deployments for a project.', responses: ok }),
   latest: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Get the latest READY deployment.', responses: ok }),
   changes: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Pending changes vs. the last publish.', responses: ok }),
+  diff: createRouteConfig({ guard: [...member], tags: ['deployments'], description: 'Page and content diff for a deployment.', responses: ok }),
   publish: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],
     tags: ['deployments'],

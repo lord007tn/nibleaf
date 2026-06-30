@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
+import { Button } from '@midad/design-system/components/ui/button';
 
 export function NotFound() {
   return (
@@ -15,3 +15,4 @@ export function NotFound() {
     </div>
   );
 }
+

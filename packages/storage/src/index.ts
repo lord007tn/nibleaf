@@ -13,7 +13,7 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { logger } from '@plume/logger';
+import { logger } from '@midad/logger';
 import { getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
 
 export { defaultTarget, getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';

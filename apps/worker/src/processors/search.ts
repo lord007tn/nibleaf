@@ -1,5 +1,5 @@
-import type { ReindexProjectJobData } from '@plume/bullmq/jobs/search';
-import { createLogger } from '@plume/logger';
+import type { ReindexProjectJobData } from '@midad/bullmq/jobs/search';
+import { createLogger } from '@midad/logger';
 import type { Job } from 'bullmq';
 
 const log = createLogger({ processor: 'search' });

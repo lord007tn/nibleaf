@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 260" role="img" aria-label="مِداد">
+  <rect x="776" y="38" width="184" height="184" rx="40" fill="#D18A54"/>
+  <path d="M834 148 880 102c9-9 24-9 33 0l2 2c9 9 9 24 0 33l-46 46-38 10 3-45Z" fill="#181612"/>
+  <path d="M826 101c25-26 62-32 93-15" fill="none" stroke="#181612" stroke-linecap="round" stroke-width="14"/>
+  <circle cx="917" cy="165" r="12" fill="#B96A3D"/>
+  <text x="728" y="159" direction="rtl" fill="#FBF7EE" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="122" font-weight="800" text-anchor="start">مِداد</text>
+</svg>

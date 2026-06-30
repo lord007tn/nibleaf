@@ -10,9 +10,9 @@ function Home() {
   return (
     <HomeLayout {...baseOptions()}>
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
-        <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Plume documentation</h1>
+        <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Midad documentation</h1>
         <p className="mb-8 max-w-2xl text-fd-muted-foreground">
-          Plume is the open-source, self-hostable documentation platform — an alternative to Mintlify. Write in Markdown, publish versioned docs,
+          Midad is the open-source, self-hostable documentation platform — an alternative to Mintlify. Write in Markdown, publish versioned docs,
           search with Orama, and host it all on your own infrastructure.
         </p>
         <Link

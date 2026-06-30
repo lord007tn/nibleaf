@@ -206,3 +206,4 @@ describe('pageHead JSON-LD', () => {
     expect(ld(pageHead(base(), 'p1')).some((block) => block['@type'] === 'BreadcrumbList')).toBe(false);
   });
 });
+

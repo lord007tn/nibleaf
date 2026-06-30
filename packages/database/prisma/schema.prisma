@@ -1,4 +1,4 @@
-// Plume — documentation platform database schema.
+// Midad — documentation platform database schema.
 // Auth tables (User/Session/Account/Verification/Organization/Member/Invitation)
 // follow better-auth conventions. Domain tables model documentation sites:
 // Project → Page tree → Deployment snapshots, plus Domain, ApiKey, Asset,

@@ -1,0 +1,126 @@
+---
+title: Production deployment
+description: Run Midad behind TLS with private datastores and safe defaults.
+icon: ShieldCheck
+---
+
+This guide covers the standard production shape: Docker Compose on a host or VM,
+TLS terminated by a reverse proxy, and datastores kept on the private Docker
+network.
+
+## 1. Generate secrets
+
+Never reuse demo defaults.
+
+```bash
+openssl rand -hex 32      # BETTER_AUTH_SECRET
+openssl rand -base64 24   # POSTGRES_PASSWORD
+openssl rand -base64 24   # STORAGE_SECRET_KEY
+```
+
+Write those values to `.env` before starting the stack.
+
+## 2. Set public origins
+
+Use the dashboard as the primary browser origin. The dashboard proxies `/api` to
+the server over the internal Compose network.
+
+```dotenv
+NODE_ENV=production
+BETTER_AUTH_URL=https://app.example.com
+TRUSTED_ORIGINS=https://app.example.com,https://example.com
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://example.com
+PUBLIC_APP_URL=https://app.example.com
+PUBLIC_API_URL=https://app.example.com
+PUBLIC_WWW_URL=https://example.com
+PUBLIC_STORAGE_URL=https://cdn.example.com/midad
+SITE_BASE_DOMAIN=docs.example.com
+CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com
+```
+
+Create wildcard DNS for `*.docs.example.com` and route it to the `app` service.
+Custom-domain DNS should CNAME to `cname.docs.example.com`, which routes to the
+same ingress. Midad resolves the host once traffic reaches the app; TLS and DNS
+are handled by your proxy or Coolify.
+
+## 3. Keep datastores private
+
+The default compose file publishes datastore ports for local convenience. In
+production, remove those host port mappings with an override file.
+
+```yaml
+# docker-compose.prod.yml
+services:
+  postgres:
+    ports: []
+  dragonfly:
+    ports: []
+  maxio:
+    ports: []
+```
+
+Start with both files:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+## 4. Terminate TLS at a reverse proxy
+
+Route dashboard and live docs traffic to `app:4310`. Route marketing traffic to
+`www:4313`.
+
+```nginx
+server {
+  listen 443 ssl http2;
+  server_name app.example.com;
+
+  location / {
+    proxy_pass http://app:4310;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+  }
+}
+```
+
+If nginx runs outside the Compose network, bind app/www ports to `127.0.0.1` and
+proxy to those local ports instead.
+
+## 5. Run migrations before scaling
+
+Run migrations once before scaling app or worker containers.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+Production seeding is disabled unless `PLUME_RUN_SEED=true`. Leave it unset for
+real deployments.
+
+## 6. Validate publishing
+
+1. Create the first account at `/sign-up`.
+2. Open the starter Documentation project.
+3. Edit a page.
+4. Click **Publish**.
+5. Open the live site and search for the changed page.
+
+Readers only see `READY` deployments, so failed publishes do not expose partial
+drafts.
+
+## Security checklist
+
+- [ ] `BETTER_AUTH_SECRET` is generated and not a demo value.
+- [ ] `POSTGRES_PASSWORD` and `STORAGE_SECRET_KEY` are strong and unique.
+- [ ] `NODE_ENV=production` is set.
+- [ ] Postgres, Dragonfly, and maxio are not publicly reachable.
+- [ ] TLS is enforced and HTTP redirects to HTTPS.
+- [ ] `TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` list exact production origins.
+- [ ] `PLUME_RUN_SEED` is unset.
+- [ ] Postgres and object storage are backed up.
+

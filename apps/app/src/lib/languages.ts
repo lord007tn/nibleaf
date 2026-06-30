@@ -56,3 +56,4 @@ export const LANGUAGE_CATALOG: CatalogLanguage[] = [
 export function directionFor(code: string): 'LTR' | 'RTL' {
   return LANGUAGE_CATALOG.find((lang) => lang.code === code)?.rtl ? 'RTL' : 'LTR';
 }
+

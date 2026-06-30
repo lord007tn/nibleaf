@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { BarChart3, Boxes, Check, Languages, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
+import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
@@ -55,12 +56,13 @@ function LanguageToggle() {
 
 function SiteNav() {
   const t = useT();
+  const { locale } = useLocale();
   return (
     <header className="sticky top-0 z-40 border-border border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
         <a className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
-          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">✎</span>
-          Plume
+          <MidadMark className="size-8" />
+          <MidadWordmark script={locale === 'ar' ? 'arabic' : 'latin'} />
         </a>
         <nav className="ms-8 hidden items-center gap-6 text-muted-foreground text-sm md:flex">
           <a className="transition-colors hover:text-foreground" href="#features">
@@ -88,11 +90,11 @@ function SiteNav() {
           </a>
           <LanguageToggle />
           <ThemeToggle />
-          <a className="rounded-lg px-3 py-2 font-medium text-sm transition-colors hover:bg-muted" href={appHref()}>
+          <a className="hidden rounded-lg px-3 py-2 font-medium text-sm transition-colors hover:bg-muted sm:inline-flex" href={appHref()}>
             {t('nav.signIn')}
           </a>
           <a
-            className="rounded-lg bg-primary px-3.5 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+            className="whitespace-nowrap rounded-lg bg-primary px-3 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 sm:px-3.5"
             href={appHref('/sign-up')}
           >
             {t('nav.getStarted')}
@@ -105,10 +107,11 @@ function SiteNav() {
 
 function Hero() {
   const t = useT();
+  const { locale } = useLocale();
   return (
-    <section className="relative overflow-hidden">
-      <div className="-z-10 pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,color-mix(in_oklab,var(--primary)_18%,transparent),transparent)]" />
-      <div className="mx-auto max-w-4xl px-6 pt-24 pb-16 text-center">
+    <section className="relative overflow-hidden border-border border-b">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-20 pb-16 lg:grid-cols-[1fr_420px]">
+        <div className="text-center lg:text-start">
         <a
           className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs"
           href={GITHUB_URL}
@@ -120,8 +123,8 @@ function Hero() {
         <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">
           {t('hero.headlineLead')} <span className="text-primary">{t('hero.headlineAccent')}</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">{t('hero.subhead')}</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
           <a
             className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
             href={appHref('/sign-up')}
@@ -138,6 +141,21 @@ function Hero() {
           </a>
         </div>
         <p className="mt-5 font-mono text-muted-foreground text-xs">{t('hero.terminal')}</p>
+        </div>
+        <div className="relative mx-auto w-full max-w-[420px]">
+          <img
+            alt={locale === 'ar' ? 'شعار مِداد' : 'Midad brand mark'}
+            className="mx-auto h-auto w-full max-w-[360px]"
+            height="1180"
+            src="/brand/midad-logo-stacked.svg"
+            width="1024"
+          />
+          <div className="mt-5 grid grid-cols-4 gap-2" aria-label={t('palette.label')}>
+            {['#181612', '#8A4B2E', '#B96A3D', '#EEE4D3'].map((color) => (
+              <span key={color} className="h-2 rounded-full" style={{ backgroundColor: color }} />
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -192,14 +210,14 @@ function Features() {
   );
 }
 
-const COMPARE: { label: MessageKey; plume: boolean; them: boolean }[] = [
-  { label: 'compare.row.openSource', plume: true, them: false },
-  { label: 'compare.row.selfHost', plume: true, them: false },
-  { label: 'compare.row.ownData', plume: true, them: false },
-  { label: 'compare.row.editor', plume: true, them: true },
-  { label: 'compare.row.search', plume: true, them: true },
-  { label: 'compare.row.domains', plume: true, them: true },
-  { label: 'compare.row.noLockIn', plume: true, them: false },
+const COMPARE: { label: MessageKey; midad: boolean; them: boolean }[] = [
+  { label: 'compare.row.openSource', midad: true, them: false },
+  { label: 'compare.row.selfHost', midad: true, them: false },
+  { label: 'compare.row.ownData', midad: true, them: false },
+  { label: 'compare.row.editor', midad: true, them: true },
+  { label: 'compare.row.search', midad: true, them: true },
+  { label: 'compare.row.domains', midad: true, them: true },
+  { label: 'compare.row.noLockIn', midad: true, them: false },
 ];
 
 function Comparison() {
@@ -212,14 +230,14 @@ function Comparison() {
         <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-background">
           <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-border border-b px-6 py-3 font-medium text-sm">
             <span />
-            <span className="w-20 text-center text-primary">{t('compare.colPlume')}</span>
+            <span className="w-20 text-center text-primary">{t('compare.colMidad')}</span>
             <span className="w-20 text-center text-muted-foreground">{t('compare.colHosted')}</span>
           </div>
           {COMPARE.map((row) => (
             <div key={row.label} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
               <span>{t(row.label)}</span>
               <span className="flex w-20 justify-center">
-                {row.plume ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
+                {row.midad ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
               </span>
               <span className="flex w-20 justify-center">
                 {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}
@@ -264,7 +282,7 @@ function SelfHost() {
           </div>
           <pre className="overflow-x-auto p-5 text-white/90 leading-relaxed">{`# clone & configure
 git clone ${GITHUB_URL.replace('https://', '')}
-cd plume && cp .env.example .env
+cd midad && cp .env.example .env
 
 # bring up the whole stack
 docker compose up -d
@@ -412,12 +430,13 @@ function CallToAction() {
 
 function SiteFooter() {
   const t = useT();
+  const { locale } = useLocale();
   return (
     <footer className="border-border border-t">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-muted-foreground text-sm sm:flex-row">
         <div className="flex items-center gap-2">
-          <span className="grid size-6 place-items-center rounded-md bg-foreground text-background text-xs">✎</span>
-          <span className="font-medium text-foreground">Plume</span>
+          <MidadMark className="size-6" />
+          <MidadWordmark className="font-medium text-foreground" script={locale === 'ar' ? 'arabic' : 'latin'} />
           <span>{t('footer.tagline')}</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-5">
@@ -446,3 +465,4 @@ function SiteFooter() {
     </footer>
   );
 }
+

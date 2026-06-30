@@ -1,4 +1,4 @@
-import type { MemberRole } from '@plume/shared/constants';
+import type { MemberRole } from '@midad/shared/constants';
 
 export interface SessionUser {
   email: string;

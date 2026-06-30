@@ -120,6 +120,7 @@ export const projectConfigSchema = z
         provider: z.enum(['builtin', 'algolia', 'typesense']).optional(),
         placeholder: z.string().max(80).optional(),
         hotkey: z.enum(['cmdk', 'slash']).optional(),
+        maxResults: z.number().int().min(1).max(100).optional(),
       })
       .strict()
       .optional(),

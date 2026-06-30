@@ -1,9 +1,9 @@
-import { Link } from '@tanstack/react-router';
+import { cn } from '@midad/design-system/lib/utils';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
 import type { NavNode } from '@/hooks/api';
-import { cn } from '@/lib/utils';
+import { siteHref } from '@/lib/site-paths';
 
 /** First navigable page in document order — used to highlight the home page's entry. */
 export function firstLeafPath(nodes: NavNode[]): string | undefined {
@@ -20,14 +20,12 @@ export function firstLeafPath(nodes: NavNode[]): string | undefined {
   return undefined;
 }
 
-function NavLink({ node, projectId, currentPath, lang, depth }: NavItemProps & { node: NavNode }) {
+function NavLink({ node, projectId, currentPath, lang, version, depth }: NavItemProps & { node: NavNode }) {
   const active = currentPath === node.path;
   return (
     <li>
-      <Link
-        to="/sites/$projectId/$"
-        params={{ projectId, _splat: node.path }}
-        search={{ lang }}
+      <a
+        href={siteHref(projectId, node.path, { lang, version })}
         className={cn(
           'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
           active ? 'bg-primary/10 font-medium text-primary' : 'text-foreground/75 hover:bg-muted hover:text-foreground',
@@ -40,15 +38,15 @@ function NavLink({ node, projectId, currentPath, lang, depth }: NavItemProps & {
             {node.tag}
           </span>
         ) : null}
-      </Link>
+      </a>
       {node.children.length > 0 ? (
-        <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} />
+        <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} version={version} />
       ) : null}
     </li>
   );
 }
 
-function NavGroup({ node, projectId, currentPath, lang, depth }: NavItemProps & { node: NavNode }) {
+function NavGroup({ node, projectId, currentPath, lang, version, depth }: NavItemProps & { node: NavNode }) {
   // Groups expand by default (Mintlify shows their pages); collapsing is a
   // convenience for long sidebars. A nested page being active keeps it open.
   const [open, setOpen] = useState(true);
@@ -64,7 +62,7 @@ function NavGroup({ node, projectId, currentPath, lang, depth }: NavItemProps & 
         <span className="truncate">{node.title}</span>
       </button>
       {open && node.children.length > 0 ? (
-        <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} />
+        <NavItems nodes={node.children} projectId={projectId} currentPath={currentPath} depth={depth + 1} lang={lang} version={version} />
       ) : null}
     </li>
   );
@@ -75,6 +73,8 @@ interface NavItemProps {
   currentPath: string;
   depth: number;
   lang?: string;
+  /** Non-default version path prefix, e.g. "next". Default/latest is undefined. */
+  version?: string;
 }
 
 function NavItems({ nodes, ...rest }: NavItemProps & { nodes: NavNode[] }) {
@@ -87,10 +87,22 @@ function NavItems({ nodes, ...rest }: NavItemProps & { nodes: NavNode[] }) {
   );
 }
 
-export function SiteNav({ nodes, projectId, currentPath, lang }: { nodes: NavNode[]; projectId: string; currentPath: string; lang?: string }) {
+export function SiteNav({
+  nodes,
+  projectId,
+  currentPath,
+  lang,
+  version,
+}: {
+  nodes: NavNode[];
+  projectId: string;
+  currentPath: string;
+  lang?: string;
+  version?: string;
+}) {
   return (
     <nav className="py-6 pe-4">
-      <NavItems nodes={nodes} projectId={projectId} currentPath={currentPath} depth={0} lang={lang} />
+      <NavItems nodes={nodes} projectId={projectId} currentPath={currentPath} depth={0} lang={lang} version={version} />
     </nav>
   );
 }

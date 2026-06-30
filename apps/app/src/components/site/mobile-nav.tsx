@@ -1,7 +1,7 @@
 import { Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteNav } from '@/components/site/site-nav';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@midad/design-system/components/ui/sheet';
 import type { NavNode } from '@/hooks/api';
 
 /**
@@ -14,12 +14,14 @@ export function MobileNav({
   projectId,
   currentPath,
   lang,
+  version,
   label,
 }: {
   nodes: NavNode[];
   projectId: string;
   currentPath: string;
   lang?: string;
+  version?: string;
   label: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -41,9 +43,10 @@ export function MobileNav({
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>
         <div className="h-full overflow-y-auto px-4 pt-12 pb-8">
-          <SiteNav nodes={nodes} projectId={projectId} currentPath={currentPath} lang={lang} />
+          <SiteNav nodes={nodes} projectId={projectId} currentPath={currentPath} lang={lang} version={version} />
         </div>
       </SheetContent>
     </Sheet>
   );
 }
+

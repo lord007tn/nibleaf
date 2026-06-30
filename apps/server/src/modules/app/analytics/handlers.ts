@@ -1,4 +1,4 @@
-import { analyticsQuery } from '@plume/validators';
+import { analyticsQuery } from '@midad/validators';
 import { Hono } from 'hono';
 import { getAnalyticsOverview } from '@/actions/analytics';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';

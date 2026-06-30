@@ -5,15 +5,15 @@ import { LocaleProvider } from '@/lib/i18n';
 import { WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
-const TITLE = 'Plume — the open-source documentation platform';
-const DESCRIPTION = 'Beautiful, fast, searchable docs you can self-host. The open-source alternative to Mintlify.';
+const TITLE = 'Midad — open-source documentation publishing';
+const DESCRIPTION = 'Fast, searchable documentation you can self-host today. Cloud-hosted Midad is coming soon, with Arabic-ready authoring built in.';
 const OG_IMAGE = `${WWW_URL}/og.svg`;
 
 // Organization + SoftwareApplication structured data for rich results.
 const JSON_LD = JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  name: 'Plume',
+  name: 'Midad',
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Any',
   description: DESCRIPTION,
@@ -29,22 +29,27 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: TITLE },
       { name: 'description', content: DESCRIPTION },
+      { name: 'author', content: 'Takumi' },
       // Open Graph
       { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: 'Plume' },
+      { property: 'og:site_name', content: 'Midad' },
       { property: 'og:title', content: TITLE },
       { property: 'og:description', content: DESCRIPTION },
       { property: 'og:url', content: WWW_URL },
       { property: 'og:image', content: OG_IMAGE },
+      { property: 'article:author', content: 'Takumi' },
       // Twitter
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: TITLE },
       { name: 'twitter:description', content: DESCRIPTION },
       { name: 'twitter:image', content: OG_IMAGE },
+      { name: 'twitter:creator', content: 'Takumi' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/site.webmanifest' },
       { rel: 'canonical', href: WWW_URL },
     ],
     scripts: [{ type: 'application/ld+json', children: JSON_LD }],
@@ -75,3 +80,5 @@ function RootDocument({ children }: { children: ReactNode }) {
     </html>
   );
 }
+
+

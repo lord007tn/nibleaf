@@ -1,8 +1,9 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BarChart3, Boxes, Check, ChevronsUpDown, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import { MidadMark } from '@midad/design-system/brand';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@midad/design-system/components/ui/dropdown-menu';
+import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@midad/design-system/components/ui/sidebar';
 import { useProject, useProjects } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
@@ -36,8 +37,8 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 className="flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md p-2 text-start transition-colors hover:bg-sidebar-accent"
                 type="button"
               >
-                <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-foreground text-background text-xs">✎</span>
-                <span className="flex-1 truncate font-semibold tracking-tight">{project?.name ?? 'Plume'}</span>
+                <MidadMark className="size-7 shrink-0" />
+                <span className="flex-1 truncate font-semibold tracking-tight">{project?.name ?? 'Midad'}</span>
                 <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
               </button>
             }
@@ -80,3 +81,4 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
     </Sidebar>
   );
 }
+

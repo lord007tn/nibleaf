@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to Plume! -->
+<!-- Thanks for contributing to Midad! -->
 
 ## What does this PR do?
 

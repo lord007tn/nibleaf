@@ -1,18 +1,18 @@
 import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { useConfirm } from '@/components/ui/confirm';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@midad/design-system/components/ui/dropdown-menu';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
 import type { Branch } from '@/hooks/api';
 import { useCreateBranch, useMergeBranch } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 
-/** Git-style branch switcher for the editor: switch branches, or fork a new one
- *  from the current branch. The published site is always built from `main`. */
+/** Docs version switcher for the editor. Internally versions are backed by the
+ *  existing Branch model, but authors see v1/v2-style docs versions. */
 export function BranchSwitcher({
   projectId,
   branches,
@@ -121,7 +121,7 @@ export function BranchSwitcher({
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="feature/new-guides"
+              placeholder="v2"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   submit();
@@ -140,3 +140,4 @@ export function BranchSwitcher({
     </>
   );
 }
+

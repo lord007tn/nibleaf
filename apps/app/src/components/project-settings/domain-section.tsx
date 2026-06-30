@@ -1,11 +1,11 @@
+import { Button } from '@midad/design-system/components/ui/button';
+import { Input } from '@midad/design-system/components/ui/input';
+import { cn } from '@midad/design-system/lib/utils';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { Project } from '@/hooks/api';
-import { useAddDomain, useDeleteDomain, useDomains, useVerifyDomain } from '@/hooks/api';
+import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import { FIELD_MONO, SectionHeader } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
@@ -13,6 +13,7 @@ export function DomainSection({ project }: { project: Project }) {
   const { data: domains } = useDomains(project.id);
   const add = useAddDomain(project.id);
   const verify = useVerifyDomain(project.id);
+  const setPrimary = useSetPrimaryDomain(project.id);
   const remove = useDeleteDomain(project.id);
   const [domain, setDomain] = useState('');
 
@@ -63,6 +64,11 @@ export function DomainSection({ project }: { project: Project }) {
                   <span className={cn('size-1.5 rounded-full', d.verified ? 'bg-primary' : 'bg-amber-500')} />
                   {d.verified ? t('settings.domain.status.live') : t('settings.domain.status.pending')}
                 </span>
+                {d.isPrimary ? (
+                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
+                    {t('settings.domain.status.primary')}
+                  </span>
+                ) : null}
               </div>
               <div className="flex gap-1.5">
                 {!d.verified ? (
@@ -73,6 +79,16 @@ export function DomainSection({ project }: { project: Project }) {
                     variant="outline"
                   >
                     {t('settings.domain.verifyDns')}
+                  </Button>
+                ) : null}
+                {d.verified && !d.isPrimary ? (
+                  <Button
+                    className="cursor-pointer"
+                    onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {t('settings.domain.makePrimary')}
                   </Button>
                 ) : null}
                 <Button className="cursor-pointer" onClick={() => remove.mutate(d.id)} size="sm" variant="ghost">

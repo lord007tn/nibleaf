@@ -2,7 +2,7 @@ import GithubSlugger from 'github-slugger';
 import { excerpt } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
- *  `pageConfigSchema` in @plume/validators (kept inline to avoid a dep). */
+ *  `pageConfigSchema` in @midad/validators (kept inline to avoid a dep). */
 export interface SnapshotPageConfig {
   seo?: { metaTitle?: string; metaDescription?: string; ogImage?: string; canonicalUrl?: string; noindex?: boolean };
   sidebarTitle?: string;
@@ -19,6 +19,9 @@ export interface SnapshotLanguageConfig {
 export interface SnapshotPage {
   id: string;
   parentId: string | null;
+  versionId?: string;
+  version?: string;
+  versionSlug?: string;
   languageCode: string;
   kind: 'PAGE' | 'GROUP';
   title: string;
@@ -42,6 +45,13 @@ export interface SnapshotLanguage {
   config: SnapshotLanguageConfig | null;
 }
 
+export interface SnapshotVersion {
+  id: string;
+  name: string;
+  slug: string;
+  isDefault: boolean;
+}
+
 export interface SnapshotProject {
   id: string;
   name: string;
@@ -54,6 +64,7 @@ export interface SnapshotProject {
   theme: Record<string, unknown> | null;
   config: Record<string, unknown> | null;
   languages: SnapshotLanguage[];
+  versions: SnapshotVersion[];
 }
 
 export interface SiteSnapshot {
@@ -61,6 +72,18 @@ export interface SiteSnapshot {
   pages: SnapshotPage[];
   generatedAt: string;
 }
+
+/** Return the project slug for `<slug>.<baseDomain>` hosts. Custom domains and
+ *  nested hosts intentionally return null; they are resolved separately. */
+export const projectSlugFromSubdomainHost = (host: string, baseDomain?: string | null): string | null => {
+  const cleanHost = (host ?? '').toLowerCase().split(':')[0]?.trim().replace(/\.$/, '');
+  const cleanBase = (baseDomain ?? '').toLowerCase().trim().replace(/^\*\./, '').replace(/\.$/, '');
+  if (!cleanHost || !cleanBase || cleanHost === cleanBase || !cleanHost.endsWith(`.${cleanBase}`)) {
+    return null;
+  }
+  const slug = cleanHost.slice(0, -(cleanBase.length + 1));
+  return slug && !slug.includes('.') ? slug : null;
+};
 
 /** The default language of a snapshot (or a synthesized English fallback for
  *  legacy snapshots captured before languages existed). */
@@ -174,7 +197,17 @@ const variablesFromConfig = (config: unknown): Record<string, string> => {
   return map;
 };
 
+const versionSlug = (name: string, fallback: string): string => {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || fallback;
+};
+
 type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean; config?: unknown };
+type BranchRow = { id: string; name: string; isDefault: boolean };
 type ProjectRow = {
   id: string;
   name: string;
@@ -187,8 +220,15 @@ type ProjectRow = {
   theme: unknown;
   config?: unknown;
   languages?: LanguageRow[];
+  branches?: BranchRow[];
 };
-type PageRow = Omit<SnapshotPage, 'kind' | 'languageCode' | 'config'> & { kind: string; languageCode?: string; config?: unknown };
+type PageRow = Omit<SnapshotPage, 'kind' | 'languageCode' | 'config' | 'versionId' | 'version' | 'versionSlug'> & {
+  kind?: string;
+  languageCode?: string;
+  config?: unknown;
+  branchId?: string | null;
+  branch?: BranchRow | null;
+};
 
 /** Compose an immutable site snapshot from a project + its pages (publish time). */
 export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt: string): SiteSnapshot => {
@@ -200,6 +240,23 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
     config: (l.config as SnapshotLanguageConfig | null) ?? null,
   }));
   const fallbackCode = languages.find((l) => l.isDefault)?.code ?? languages[0]?.code ?? 'en';
+  const branchRows =
+    project.branches && project.branches.length > 0
+      ? project.branches
+      : Array.from(
+          new Map(
+            pages
+              .map((page) => page.branch)
+              .filter((branch): branch is BranchRow => Boolean(branch))
+              .map((branch) => [branch.id, branch]),
+          ).values(),
+        );
+  const versions: SnapshotVersion[] =
+    branchRows.length > 0
+      ? branchRows.map((branch) => ({ id: branch.id, name: branch.name, slug: versionSlug(branch.name, branch.id), isDefault: branch.isDefault }))
+      : [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
+  const defaultVersion = versions.find((version) => version.isDefault) ?? versions[0] ?? { id: 'main', name: 'main', slug: 'main', isDefault: true };
+  const versionById = new Map(versions.map((version) => [version.id, version]));
   // Resolve Mintlify-style `{{ variables }}` once, then bake the substituted text
   // into the snapshot so the live site, search index and SEO all see final values.
   const variables = variablesFromConfig(project.config);
@@ -216,9 +273,13 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
       theme: (project.theme as Record<string, unknown> | null) ?? null,
       config: (project.config as Record<string, unknown> | null) ?? null,
       languages: languages.length ? languages : [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }],
+      versions,
     },
     pages: pages.map((page) => ({
       ...page,
+      versionId: versionById.get(page.branchId ?? page.branch?.id ?? '')?.id ?? defaultVersion.id,
+      version: versionById.get(page.branchId ?? page.branch?.id ?? '')?.name ?? defaultVersion.name,
+      versionSlug: versionById.get(page.branchId ?? page.branch?.id ?? '')?.slug ?? defaultVersion.slug,
       kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE',
       title: interpolateVariables(page.title, variables),
       description: page.description ? interpolateVariables(page.description, variables) : page.description,

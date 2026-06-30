@@ -10,6 +10,7 @@ import type {
   ChangelogEntry,
   Comment,
   Deployment,
+  DeploymentDiff,
   Domain,
   Invitation,
   Language,
@@ -109,6 +110,17 @@ export const usePendingChanges = (projectId: string | undefined, options?: { ena
       getData<PendingChanges>(await api.app.projects[':projectId'].deployments.changes.$get({ param: { projectId: projectId! } }), 'changes'),
   });
 
+export const useDeploymentDiff = (projectId: string | undefined, deploymentId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.deployments.diff(projectId ?? '', deploymentId ?? ''),
+    enabled: Boolean(projectId && deploymentId),
+    queryFn: async () =>
+      getData<DeploymentDiff>(
+        await api.app.projects[':projectId'].deployments[':id'].diff.$get({ param: { projectId: projectId!, id: deploymentId! } }),
+        'deployment diff',
+      ),
+  });
+
 export const useDomains = (projectId: string | undefined) =>
   useQuery({
     queryKey: queryKeys.domains.all(projectId ?? ''),
@@ -196,32 +208,37 @@ export const useProjectMembers = (projectId: string | undefined) =>
 
 // ─── Public site (live preview) ─────────────────────────────────────────────
 
-export const useSite = (id: string | undefined, lang?: string, initialData?: SiteShell) =>
+const siteQuery = (lang?: string, version?: string) => ({ ...(lang ? { lang } : {}), ...(version ? { version } : {}) });
+
+export const useSite = (id: string | undefined, lang?: string, initialData?: SiteShell, version?: string) =>
   useQuery({
-    queryKey: queryKeys.site.shell(id ?? '', lang),
+    queryKey: queryKeys.site.shell(id ?? '', lang, version),
     enabled: Boolean(id),
     retry: false,
     initialData,
-    queryFn: async () => getData<SiteShell>(await api.public.sites[':id'].$get({ param: { id: id! }, query: lang ? { lang } : {} }), 'site'),
+    queryFn: async () => getData<SiteShell>(await api.public.sites[':id'].$get({ param: { id: id! }, query: siteQuery(lang, version) }), 'site'),
   });
 
-export const useSitePage = (id: string | undefined, path: string, lang?: string, initialData?: SitePage) =>
+export const useSitePage = (id: string | undefined, path: string, lang?: string, initialData?: SitePage, version?: string) =>
   useQuery({
-    queryKey: queryKeys.site.page(id ?? '', path, lang),
+    queryKey: queryKeys.site.page(id ?? '', path, lang, version),
     enabled: Boolean(id),
     retry: false,
     initialData,
     queryFn: async () =>
-      getData<SitePage>(await api.public.sites[':id'].page.$get({ param: { id: id! }, query: lang ? { path, lang } : { path } }), 'page'),
+      getData<SitePage>(await api.public.sites[':id'].page.$get({ param: { id: id! }, query: { path, ...siteQuery(lang, version) } }), 'page'),
   });
 
-export const useSiteSearch = (id: string | undefined, q: string, lang?: string) =>
+export const useSiteSearch = (id: string | undefined, q: string, lang?: string, version?: string, limit?: number) =>
   useQuery({
-    queryKey: queryKeys.site.search(id ?? '', q, lang),
+    queryKey: queryKeys.site.search(id ?? '', q, lang, version, limit),
     enabled: Boolean(id && q.trim()),
     queryFn: async () => {
       const data = await getData<{ hits: SearchHit[] }>(
-        await api.public.sites[':id'].search.$get({ param: { id: id! }, query: lang ? { q, lang } : { q } }),
+        await api.public.sites[':id'].search.$get({
+          param: { id: id! },
+          query: { q, ...(limit ? { limit: String(limit) } : {}), ...siteQuery(lang, version) },
+        }),
         'search',
       );
       return data.hits;

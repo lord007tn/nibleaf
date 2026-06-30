@@ -17,7 +17,7 @@ export interface CommentDecorationOptions {
   getActiveId: () => string | null;
 }
 
-const commentKey = new PluginKey('plume-comment-decorations');
+const commentKey = new PluginKey('midad-comment-decorations');
 
 /**
  * Locate a `quote` in the document and return its [from, to] ProseMirror range.
@@ -98,3 +98,4 @@ export const CommentDecorations = Extension.create<CommentDecorationOptions>({
 });
 
 export default CommentDecorations;
+

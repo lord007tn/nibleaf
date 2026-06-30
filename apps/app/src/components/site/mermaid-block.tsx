@@ -1,4 +1,4 @@
-import { useTheme } from '@/components/theme-provider';
+import { useTheme } from '@midad/design-system/theme';
 import { useEffect, useId, useState } from 'react';
 
 /**
@@ -43,3 +43,5 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     <div className="my-5 flex justify-center overflow-x-auto rounded-xl border border-border bg-card p-4" dangerouslySetInnerHTML={{ __html: svg }} />
   );
 }
+
+

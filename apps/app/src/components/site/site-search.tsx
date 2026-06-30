@@ -1,12 +1,12 @@
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@midad/design-system/components/ui/dialog';
 import { useDebouncedValue } from '@tanstack/react-pacer';
-import { useNavigate } from '@tanstack/react-router';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useSiteSearch } from '@/hooks/api';
 import { siteT } from '@/lib/site-i18n';
+import { siteHref } from '@/lib/site-paths';
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -43,25 +43,29 @@ export function SiteSearch({
   open,
   onOpenChange,
   lang,
+  version,
   placeholder,
   hotkey,
+  maxResults,
 }: {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lang?: string;
+  /** Non-default version path prefix, e.g. "next". Default/latest is undefined. */
+  version?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
   placeholder?: string;
   /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
   hotkey?: 'cmdk' | 'slash';
+  maxResults?: number;
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   // Debounce the typed query before it feeds the search hook, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
-  const { data: hits } = useSiteSearch(projectId, debouncedQuery, lang);
-  const navigate = useNavigate();
+  const { data: hits } = useSiteSearch(projectId, debouncedQuery, lang, version, maxResults);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -105,7 +109,7 @@ export function SiteSearch({
                   value={hit.id}
                   onSelect={() => {
                     onOpenChange(false);
-                    navigate({ to: '/sites/$projectId/$', params: { projectId, _splat: hit.path }, search: { lang } });
+                    window.location.href = siteHref(projectId, hit.path, { lang, version });
                   }}
                 >
                   {hasIcon(hit.icon) ? (

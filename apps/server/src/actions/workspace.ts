@@ -1,5 +1,5 @@
-import { prisma } from '@plume/database';
-import type { UpdateWorkspaceSettingsBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import type { UpdateWorkspaceSettingsBody } from '@midad/validators';
 import { notFound } from '@/errors';
 
 interface WorkspaceMetadata {

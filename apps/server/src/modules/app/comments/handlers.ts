@@ -1,4 +1,4 @@
-import { createCommentBody, resolveCommentBody } from '@plume/validators';
+import { createCommentBody, resolveCommentBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createComment, deleteComment, listComments, resolveComment } from '@/actions/comments';

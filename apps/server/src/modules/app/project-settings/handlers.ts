@@ -1,4 +1,4 @@
-import { updateWorkspaceSettingsBody } from '@plume/validators';
+import { updateWorkspaceSettingsBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { importFromGitHub } from '@/actions/git-import';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';

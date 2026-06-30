@@ -20,6 +20,7 @@ export const queryKeys = {
     latest: (projectId: string) => ['deployments', projectId, 'latest'] as const,
     changes: (projectId: string) => ['deployments', projectId, 'changes'] as const,
     detail: (projectId: string, id: string) => ['deployments', projectId, id] as const,
+    diff: (projectId: string, id: string) => ['deployments', projectId, id, 'diff'] as const,
   },
   domains: {
     all: (projectId: string) => ['domains', projectId] as const,
@@ -47,9 +48,10 @@ export const queryKeys = {
     forProject: (projectId: string) => ['members', projectId] as const,
   },
   site: {
-    shell: (id: string, lang?: string) => ['site', id, lang ?? null] as const,
-    page: (id: string, path: string, lang?: string) => ['site', id, 'page', path, lang ?? null] as const,
-    search: (id: string, q: string, lang?: string) => ['site', id, 'search', q, lang ?? null] as const,
+    shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
+    page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,
+    search: (id: string, q: string, lang?: string, version?: string, limit?: number) =>
+      ['site', id, 'search', q, lang ?? null, version ?? null, limit ?? null] as const,
     changelog: (id: string) => ['site', id, 'changelog'] as const,
   },
 } as const;

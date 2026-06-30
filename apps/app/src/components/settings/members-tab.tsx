@@ -2,7 +2,7 @@ import { useForm } from '@tanstack/react-form';
 import { Check, Link2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button } from '@midad/design-system/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -12,12 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { FieldError } from '@/components/ui/form-field';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+} from '@midad/design-system/components/ui/dialog';
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import type { Invitation, Member } from '@/hooks/api';
 import { useCancelInvitation, useInviteMember, useMembers, useUpdateMemberRole } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
@@ -273,3 +273,4 @@ export function MembersTab() {
     </div>
   );
 }
+

@@ -1,8 +1,8 @@
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
-import type { LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
+import type { LanguageConfig, PageConfig, ProjectConfig } from '@midad/validators';
 
-export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@plume/validators';
+export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@midad/validators';
 
 export interface Language {
   id: string;
@@ -88,6 +88,11 @@ export interface PendingChange {
   languageCode: string;
   kind: 'PAGE' | 'GROUP';
   status: 'added' | 'modified' | 'removed';
+  fields: string[];
+  additions: number;
+  deletions: number;
+  lines: DeploymentDiffLine[];
+  truncated: boolean;
 }
 
 /** What the next publish will change, relative to the last READY deployment. */
@@ -96,6 +101,33 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+}
+
+export interface DeploymentDiffLine {
+  type: 'added' | 'removed' | 'unchanged';
+  text: string;
+  oldLine: number | null;
+  newLine: number | null;
+}
+
+export interface DeploymentPageDiff {
+  id: string;
+  title: string;
+  path: string;
+  languageCode: string;
+  kind: PageKind;
+  status: 'added' | 'modified' | 'removed';
+  fields: string[];
+  additions: number;
+  deletions: number;
+  lines: DeploymentDiffLine[];
+  truncated: boolean;
+}
+
+export interface DeploymentDiff {
+  deployment: Deployment;
+  previousDeployment: Deployment | null;
+  changes: DeploymentPageDiff[];
 }
 
 /** Result of a one-way GitHub → pages import. */
@@ -248,7 +280,9 @@ export interface SiteShell {
   };
   nav: NavNode[];
   languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean }>;
+  versions: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   activeLanguage: string;
+  activeVersion: string;
   version: number;
   generatedAt: string;
 }
@@ -273,6 +307,9 @@ export interface SitePage {
   };
   /** The language the page actually resolved in (drives canonical/og/hreflang). */
   activeLanguage?: string;
+  /** The docs version the page resolved in. */
+  activeVersion?: string;
+  versions?: SiteShell['versions'];
   /** SEO defaults of the page's language (layered under the page's own SEO). */
   languageConfig: LanguageConfig | null;
   /** hreflang alternates: `path` is the page's URL in that language, or null
@@ -292,3 +329,4 @@ export interface SearchHit {
   snippet: string;
   score: number;
 }
+

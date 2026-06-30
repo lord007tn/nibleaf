@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/terms')({
   head: () => ({
-    meta: [{ title: 'Terms of Service — Plume' }, { name: 'description', content: 'The terms governing your use of Plume.' }],
+    meta: [{ title: 'Terms of Service — Midad' }, { name: 'description', content: 'The terms governing your use of Midad.' }],
   }),
   component: TermsPage,
 });
@@ -50,3 +50,5 @@ function TermsPage() {
     </div>
   );
 }
+
+

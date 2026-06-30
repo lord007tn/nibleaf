@@ -1,7 +1,7 @@
-import { Prisma, prisma } from '@plume/database';
-import { MemberRole } from '@plume/shared/constants';
-import { slugify } from '@plume/shared/utils';
-import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@plume/validators';
+import { Prisma, prisma } from '@midad/database';
+import { MemberRole } from '@midad/shared/constants';
+import { slugify } from '@midad/shared/utils';
+import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@midad/validators';
 import { notFound } from '@/errors';
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */

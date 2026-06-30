@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BarChart3, BookText, Settings } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
+import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@/components/ui/sidebar';
+} from '@midad/design-system/components/ui/sidebar';
 import { useLocale } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 
@@ -30,8 +31,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <span className="grid size-7 place-items-center rounded-lg bg-foreground text-background">✎</span>
-          <span className="font-semibold tracking-tight">Plume</span>
+          <MidadMark className="size-7" />
+          <MidadWordmark className="font-semibold tracking-tight" script="latin" />
           <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{t('brand.oss')}</span>
         </div>
       </SidebarHeader>
@@ -58,3 +59,4 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+

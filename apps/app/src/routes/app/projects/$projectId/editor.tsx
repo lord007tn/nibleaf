@@ -32,9 +32,9 @@ import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/compon
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Markdown } from '@/components/markdown';
-import { Button } from '@/components/ui/button';
-import { useConfirm } from '@/components/ui/confirm';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
 import {
   useBranches,
@@ -51,7 +51,7 @@ import {
 } from '@/hooks/api';
 import { PublishControl } from '@/layouts/project';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
@@ -117,7 +117,10 @@ function EditorPage() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const firstPageId = useMemo(() => (allPages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [allPages]);
-  const activeId = selectedId ?? firstPageId;
+  const selectedNode = useMemo(() => (allPages ?? []).find((p) => p.id === selectedId) ?? null, [allPages, selectedId]);
+  const selectedGroup = selectedNode?.kind === 'GROUP' ? selectedNode : null;
+  const activeId = selectedGroup ? null : (selectedId ?? firstPageId);
+  const activeTreeId = selectedId ?? activeId;
 
   const { data: page } = usePage(projectId, activeId ?? undefined);
   const [title, setTitle] = useState('');
@@ -135,7 +138,7 @@ function EditorPage() {
     if (typeof window === 'undefined') {
       return 'visual';
     }
-    const stored = window.localStorage.getItem('plume.editor.contentMode');
+    const stored = window.localStorage.getItem('midad.editor.contentMode');
     return stored === 'markdown' || stored === 'preview' ? stored : 'visual';
   });
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -149,21 +152,22 @@ function EditorPage() {
   // exact title/content we last loaded (or saved). Drives re-seeding so the
   // editor recovers when the server copy changes — without clobbering edits.
   const synced = useRef<{ id: string; content: string; title: string } | null>(null);
+  const hydrating = useRef<{ id: string; content: string; title: string } | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     if (typeof window === 'undefined') {
       return 260;
     }
-    const stored = Number(window.localStorage.getItem('plume.editor.sidebarWidth'));
+    const stored = Number(window.localStorage.getItem('midad.editor.sidebarWidth'));
     return stored >= 200 && stored <= 520 ? stored : 260;
   });
   useEffect(() => {
-    window.localStorage.setItem('plume.editor.sidebarWidth', String(sidebarWidth));
+    window.localStorage.setItem('midad.editor.sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
   useEffect(() => {
     try {
-      window.localStorage.setItem('plume.editor.contentMode', editorMode);
+      window.localStorage.setItem('midad.editor.contentMode', editorMode);
     } catch {
       // ignore storage failures (private mode etc.)
     }
@@ -174,11 +178,11 @@ function EditorPage() {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.localStorage.getItem('plume.editor.sidebarCollapsed') === '1';
+    return window.localStorage.getItem('midad.editor.sidebarCollapsed') === '1';
   });
   useEffect(() => {
     try {
-      window.localStorage.setItem('plume.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
+      window.localStorage.setItem('midad.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
     } catch {
       // ignore storage failures
     }
@@ -199,12 +203,23 @@ function EditorPage() {
     const samePage = synced.current?.id === page.id;
     const clean = synced.current ? content === synced.current.content && title === synced.current.title : true;
     if (!samePage || (page.content !== synced.current?.content && clean)) {
+      hydrating.current = { id: page.id, content: page.content, title: page.title };
       setTitle(page.title);
       setContent(page.content);
-      synced.current = { id: page.id, content: page.content, title: page.title };
       setStatus('idle');
     }
   }, [page, content, title]);
+
+  useEffect(() => {
+    const pending = hydrating.current;
+    if (!pending) {
+      return;
+    }
+    if (page?.id === pending.id && title === pending.title && content === pending.content) {
+      synced.current = pending;
+      hydrating.current = null;
+    }
+  }, [page?.id, title, content]);
 
   // Debounced autosave: fire ~700ms after the user stops typing the title/content.
   // `onUnmount` flushes any pending save when the editor unmounts (route change /
@@ -229,7 +244,7 @@ function EditorPage() {
   );
 
   useEffect(() => {
-    if (!page || synced.current?.id !== page.id) {
+    if (!page || synced.current?.id !== page.id || hydrating.current) {
       return;
     }
     if (title === page.title && content === page.content) {
@@ -255,7 +270,13 @@ function EditorPage() {
   const addGroup = (languageId: string) =>
     createPage.mutate(
       { title: 'New group', kind: 'GROUP', languageId, ...branchScope },
-      { onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')) },
+      {
+        onSuccess: (created) => {
+          setSelectedId(created.id);
+          setSettingsForId(created.id);
+        },
+        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
+      },
     );
 
   const showRail = view === 'content' && railOpen && Boolean(activeId && page);
@@ -435,7 +456,7 @@ function EditorPage() {
                         ) : (
                           <SortablePageTree
                             pages={langPages}
-                            activeId={activeId}
+                            activeId={activeTreeId}
                             onSelect={setSelectedId}
                             onAddChild={(parentId) => addPage(parentId, lang.id)}
                             onSettings={(id) => setSettingsForId(id)}
@@ -491,6 +512,24 @@ function EditorPage() {
               ) : (
                 <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
               )}
+            </div>
+          </section>
+        ) : selectedGroup ? (
+          <section className="grid place-items-center px-6 text-center">
+            <div className="max-w-sm">
+              <FolderPlus className="mx-auto size-7 text-muted-foreground" />
+              <h1 className="mt-3 font-semibold text-xl tracking-tight">{selectedGroup.title}</h1>
+              <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
+              <div className="mt-4 flex justify-center gap-2">
+                <Button variant="outline" onClick={() => setSettingsForId(selectedGroup.id)}>
+                  <Settings2 className="size-4" /> {t('editor.pageSettings.title')}
+                </Button>
+                {selectedGroup.languageId ? (
+                  <Button onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
+                    <Plus className="size-4" /> {t('editor.newPage')}
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </section>
         ) : activeId && !page ? (
@@ -743,3 +782,4 @@ function SidebarResizer({ onResize }: { onResize: (width: number) => void }) {
     </div>
   );
 }
+

@@ -1,8 +1,8 @@
-import { prisma } from '@plume/database';
-import { newId } from '@plume/shared/ids';
-import { slugify } from '@plume/shared/utils';
-import { presignPutUrl } from '@plume/storage';
-import type { ConfirmAssetBody, PresignAssetBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import { newId } from '@midad/shared/ids';
+import { slugify } from '@midad/shared/utils';
+import { presignPutUrl } from '@midad/storage';
+import type { ConfirmAssetBody, PresignAssetBody } from '@midad/validators';
 import { badRequest } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

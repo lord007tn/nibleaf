@@ -1,5 +1,5 @@
 {
-  "extends": "@plume/tsconfig/hono.json",
+  "extends": "@midad/tsconfig/hono.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

@@ -1,4 +1,4 @@
-import { logger } from '@plume/logger';
+import { logger } from '@midad/logger';
 import type { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';

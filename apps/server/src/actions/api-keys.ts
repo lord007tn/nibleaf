@@ -1,7 +1,7 @@
-import { prisma } from '@plume/database';
-import { hashApiKeySecret } from '@plume/shared/crypto';
-import { newApiKeySecret } from '@plume/shared/ids';
-import type { CreateApiKeyBody } from '@plume/validators';
+import { prisma } from '@midad/database';
+import { hashApiKeySecret } from '@midad/shared/crypto';
+import { newApiKeySecret } from '@midad/shared/ids';
+import type { CreateApiKeyBody } from '@midad/validators';
 import { notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

@@ -1,5 +1,5 @@
 {
-  "extends": "@plume/tsconfig/hono.json",
+  "extends": "@midad/tsconfig/hono.json",
   "include": ["src"],
   "exclude": ["node_modules", "dist", "src/generated"]
 }

@@ -5,7 +5,7 @@ import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/privacy')({
   head: () => ({
-    meta: [{ title: 'Privacy Policy — Plume' }, { name: 'description', content: 'How Plume handles your data.' }],
+    meta: [{ title: 'Privacy Policy — Midad' }, { name: 'description', content: 'How Midad handles your data.' }],
   }),
   component: PrivacyPage,
 });
@@ -50,3 +50,5 @@ function PrivacyPage() {
     </div>
   );
 }
+
+

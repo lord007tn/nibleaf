@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Single image for the whole Plume monorepo. The container command selects the
+# Single image for the whole Midad monorepo. The container command selects the
 # service (server / worker / app / www / migrate) via docker-entrypoint.sh.
 #
 # server & worker run their TypeScript directly with tsx (the Prisma driver
@@ -17,10 +17,16 @@ FROM base AS build
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # Generate the Prisma client (musl engine for this Alpine image).
-RUN pnpm --filter @plume/database generate
+RUN pnpm --filter @midad/database generate
 # Bake the in-cluster API URL so the app's Nitro /api proxy targets the server
 # service. The browser only ever sees the public app origin.
+ARG VITE_APP_URL=https://app.midad.dev
+ARG VITE_WWW_URL=https://midad.dev
+ARG VITE_SITE_BASE_DOMAIN=midad.app
 ENV VITE_API_URL=http://server:4311
+ENV VITE_APP_URL=$VITE_APP_URL
+ENV VITE_WWW_URL=$VITE_WWW_URL
+ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 RUN pnpm build
 
 FROM base AS runner

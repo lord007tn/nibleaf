@@ -8,11 +8,11 @@
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Validators run client-side, so localize the message to the user's chosen locale
-// (the same `plume.locale` key the i18n provider persists). Arabic messages are
+// (the same `midad.locale` key the i18n provider persists). Arabic messages are
 // generic (no English field label injected) to read naturally in RTL.
 const isArabic = (): boolean => {
   try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem('plume.locale') === 'ar';
+    return typeof localStorage !== 'undefined' && localStorage.getItem('midad.locale') === 'ar';
   } catch {
     return false;
   }
@@ -49,3 +49,4 @@ export const minLength =
 
 /** Normalise a TanStack Form field's `meta.errors` into clean strings to render. */
 export const fieldErrors = (errors: unknown[]): string[] => errors.filter((error): error is string => typeof error === 'string' && error.length > 0);
+

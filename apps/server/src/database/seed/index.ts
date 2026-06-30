@@ -1,9 +1,9 @@
-import { auth } from '@plume/auth/server';
-import { prisma } from '@plume/database';
-import { logger } from '@plume/logger';
-import { buildSnapshot } from '@plume/shared/site';
+import { auth } from '@midad/auth/server';
+import { prisma } from '@midad/database';
+import { logger } from '@midad/logger';
+import { buildSnapshot } from '@midad/shared/site';
 
-const DEMO = { email: 'demo@plume.dev', password: 'plumedemo123', name: 'Ada Lovelace' };
+const DEMO = { email: 'demo@midad.dev', password: 'midaddemo123', name: 'Ada Lovelace' };
 
 async function seed() {
   // Guard against clobbering a real environment with demo data.

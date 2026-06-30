@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Slider } from '@midad/design-system/components/ui/slider';
 import type { Project } from '@/hooks/api';
 import { useUpdateProject, useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 import { FIELD_MONO, Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
 
 const PRESETS = ['#5546e8', '#0ea5e9', '#16a34a', '#22c55e', '#eab308', '#ea580c', '#ef4444', '#db2777', '#a855f7', '#0f172a'];
@@ -230,3 +230,4 @@ export function StylingSection({ project }: { project: Project }) {
     </form>
   );
 }
+

@@ -13,3 +13,4 @@ function DashboardRoute() {
     </DashboardLayout>
   );
 }
+

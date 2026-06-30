@@ -2,7 +2,7 @@ import { Check } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@/lib/utils';
+import { cn } from '@midad/design-system/lib/utils';
 
 /** Per-site plan model. Billing isn't wired up yet — this is the framing so each
  *  website is self-contained (its own plan), ready to attach real plans/limits
@@ -91,3 +91,4 @@ export function PlanSection({ project }: { project: Project }) {
     </div>
   );
 }
+
