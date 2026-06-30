@@ -52,6 +52,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Add-ons settings for feedback, edit suggestions, issue links, CI checks,
   broken-link checks, grammar linting, preview deployments, and search indexing.
   Search indexing reuses the existing live `seo.allowIndex` behavior.
+- Published-site add-ons for reader feedback, edit links, and issue links.
+  Feedback is stored as public analytics events; edit/issue actions use
+  configurable URL templates with `{path}`, `{encodedPath}`, and `{url}` tokens.
 - Authentication settings for public/private docs access, backed by the existing
   live-site visibility gate.
 - Git-style DB branches with create/fork/merge/delete and versioned published
@@ -77,10 +80,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Export-to-PDF remains out of scope for the free self-hostable target.
 - Advanced hosted search providers are not prioritized; built-in published-site
   search is implemented, including configurable result count.
-- Add-ons beyond search indexing are currently settings parity: feedback, edit
-  suggestions, issue links, CI checks, broken-link checks, grammar linting, and
-  preview deployments persist in project config, but their runtime/publish
-  enforcement is still pending.
+- CI checks, broken-link checks, grammar linting, and preview deployments persist
+  in project config, but their runtime/publish enforcement is still pending.
 
 ## Deployment Notes
 
@@ -121,6 +122,9 @@ Completed on 2026-06-30:
   add-on toggle through the authenticated local app.
 - Playwright rendered the Authentication settings section and successfully saved
   the current docs access mode through the authenticated local app.
+- Playwright rendered published-site feedback/edit/issue add-ons from a seeded
+  snapshot, clicked reader feedback, and verified a `feedback` analytics event
+  was recorded.
 
 Pending / External:
 

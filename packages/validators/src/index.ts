@@ -133,6 +133,8 @@ export const projectConfigSchema = z
         brokenLinks: z.boolean().optional(),
         grammarLinter: z.boolean().optional(),
         previewDeployments: z.boolean().optional(),
+        editUrl: z.string().max(500).optional(),
+        issueUrl: z.string().max(500).optional(),
       })
       .strict()
       .optional(),
@@ -372,7 +374,7 @@ export const analyticsQuery = z.object({ range: analyticsRangeEnum.default('7d')
 export type AnalyticsQuery = z.infer<typeof analyticsQuery>;
 
 export const trackEventBody = z.object({
-  type: z.enum(['pageview', 'search']).default('pageview'),
+  type: z.enum(['pageview', 'search', 'feedback']).default('pageview'),
   path: z.string().max(512).optional(),
   referrer: z.string().max(512).optional(),
   query: z.string().max(200).optional(),

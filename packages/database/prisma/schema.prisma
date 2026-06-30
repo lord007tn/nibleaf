@@ -367,14 +367,14 @@ model AnalyticsEvent {
   id        String   @id @default(cuid())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type      String   @default("pageview") // "pageview" | "search"
+  type      String   @default("pageview") // "pageview" | "search" | "feedback"
   path      String?
   referrer  String?
   country   String?
   device    String?
   language  String? // active language code at view time (e.g. "en", "ar")
   sessionId String?
-  query     String? // for search events
+  query     String? // search query or feedback sentiment
   createdAt DateTime @default(now())
 
   @@index([projectId, createdAt])

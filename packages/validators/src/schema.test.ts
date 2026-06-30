@@ -30,6 +30,8 @@ describe('projectConfigSchema', () => {
           brokenLinks: true,
           grammarLinter: false,
           previewDeployments: true,
+          editUrl: 'https://github.com/acme/docs/edit/main/{path}.mdx',
+          issueUrl: 'https://github.com/acme/docs/issues/new?title=Docs%20feedback&body={url}',
         },
       }).success,
     ).toBe(true);

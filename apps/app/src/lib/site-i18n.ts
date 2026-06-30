@@ -28,6 +28,12 @@ const MESSAGES = {
     changelogRelease: 'Release',
     changelogPage: 'page',
     changelogPages: 'pages',
+    feedbackQuestion: 'Was this page helpful?',
+    feedbackYes: 'Yes',
+    feedbackNo: 'No',
+    feedbackThanks: 'Thanks for the feedback.',
+    editPage: 'Edit this page',
+    raiseIssue: 'Raise an issue',
   },
   ar: {
     docs: 'الوثائق',
@@ -51,6 +57,12 @@ const MESSAGES = {
     changelogRelease: 'إصدار',
     changelogPage: 'صفحة',
     changelogPages: 'صفحات',
+    feedbackQuestion: 'هل كانت هذه الصفحة مفيدة؟',
+    feedbackYes: 'نعم',
+    feedbackNo: 'لا',
+    feedbackThanks: 'شكرًا على الملاحظة.',
+    editPage: 'تحرير هذه الصفحة',
+    raiseIssue: 'فتح مشكلة',
   },
 } as const;
 
@@ -68,4 +80,3 @@ export function siteT(langCode?: string): (key: SiteMessageKey) => string {
   const locale = resolveLocale(langCode);
   return (key) => MESSAGES[locale][key] ?? MESSAGES.en[key];
 }
-

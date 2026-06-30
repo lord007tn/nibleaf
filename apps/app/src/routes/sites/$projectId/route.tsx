@@ -1,6 +1,6 @@
 import { cn } from '@midad/design-system/lib/utils';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BookOpen, ExternalLink, Moon, Search, Sun } from 'lucide-react';
+import { BookOpen, Check, CircleAlert, ExternalLink, Moon, PencilLine, Search, Sun, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MobileNav } from '@/components/site/mobile-nav';
@@ -63,6 +63,135 @@ function LinkedinIcon({ className }: { className?: string }) {
     <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
       <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.07 2.07 0 1 1 0-4.14 2.07 2.07 0 0 1 0 4.14Zm1.78 13.02H3.56V9h3.56v11.45ZM22.22 0H1.77C.8 0 0 .78 0 1.74v20.51C0 23.22.8 24 1.77 24h20.45c.98 0 1.78-.78 1.78-1.75V1.74C24 .78 23.2 0 22.22 0Z" />
     </svg>
+  );
+}
+
+const readerSessionId = (): string => {
+  if (typeof window === 'undefined') {
+    return 'ssr';
+  }
+  const key = 'midad.sid';
+  let id = window.localStorage.getItem(key);
+  if (!id) {
+    id = Math.random().toString(36).slice(2);
+    window.localStorage.setItem(key, id);
+  }
+  return id;
+};
+
+const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
+  const trimmed = template?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const pagePath = path.replace(/^\/+/, '');
+  return trimmed
+    .replaceAll('{path}', pagePath)
+    .replaceAll('{encodedPath}', encodeURIComponent(pagePath))
+    .replaceAll('{url}', encodeURIComponent(fallbackUrl));
+};
+
+function ReaderActions({
+  projectId,
+  path,
+  language,
+  addons,
+}: {
+  projectId: string;
+  path: string;
+  language?: string;
+  addons: NonNullable<ProjectConfig['addons']> | undefined;
+}) {
+  const t = siteT(language);
+  const [sentiment, setSentiment] = useState<'helpful' | 'not_helpful' | null>(null);
+  const [pageUrl, setPageUrl] = useState(() => `/sites/${projectId}/${path}`);
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+  const editUrl = addons?.editSuggestions !== false ? applyUrlTemplate(addons?.editUrl, path, pageUrl) : null;
+  const issueUrl = addons?.issueLinks !== false ? applyUrlTemplate(addons?.issueUrl, path, pageUrl) : null;
+  const showFeedback = addons?.feedback !== false;
+
+  if (!showFeedback && !editUrl && !issueUrl) {
+    return null;
+  }
+
+  const sendFeedback = (query: 'helpful' | 'not_helpful') => {
+    setSentiment(query);
+    api.public.sites[':id'].events
+      .$post({
+        param: { id: projectId },
+        json: {
+          type: 'feedback',
+          path,
+          query,
+          sessionId: readerSessionId(),
+          referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
+          language,
+        },
+      })
+      .catch(() => undefined);
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl px-8 pb-10">
+      <div className="flex flex-col gap-4 border-border border-t pt-5 text-sm sm:flex-row sm:items-center sm:justify-between">
+        {showFeedback ? (
+          <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
+            {sentiment ? (
+              <span className="inline-flex items-center gap-1.5 text-foreground">
+                <Check className="size-4 text-primary" /> {t('feedbackThanks')}
+              </span>
+            ) : (
+              <>
+                <span>{t('feedbackQuestion')}</span>
+                <button
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-foreground hover:bg-muted"
+                  onClick={() => sendFeedback('helpful')}
+                  type="button"
+                >
+                  <ThumbsUp className="size-3.5" /> {t('feedbackYes')}
+                </button>
+                <button
+                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-foreground hover:bg-muted"
+                  onClick={() => sendFeedback('not_helpful')}
+                  type="button"
+                >
+                  <ThumbsDown className="size-3.5" /> {t('feedbackNo')}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {editUrl || issueUrl ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {editUrl ? (
+              <a
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                href={editUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <PencilLine className="size-3.5" /> {t('editPage')}
+              </a>
+            ) : null}
+            {issueUrl ? (
+              <a
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                href={issueUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <CircleAlert className="size-3.5" /> {t('raiseIssue')}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -208,6 +337,7 @@ function SiteChrome() {
   const ctaLabel = config?.navbar?.ctaLabel;
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
+  const addons = config?.addons;
 
   // Branding: a theme-specific logo (config.branding) overrides the legacy
   // top-level logoUrl, and an optional logoHref points the brand off-site.
@@ -418,6 +548,7 @@ function SiteChrome() {
         </aside>
         <main className="min-w-0">
           <Outlet />
+          {!isChangelog ? <ReaderActions projectId={projectId} path={effectiveCurrentPath} language={activeLanguage?.code} addons={addons} /> : null}
         </main>
       </div>
 

@@ -173,7 +173,7 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
   return buckets;
 };
 
-/** Record a public analytics event (pageview or search) for a project. The
+/** Record a public analytics event (pageview, search, or feedback) for a project. The
  *  optional `meta` carries request-derived dimensions (device class, country)
  *  so the analytics breakdowns aren't permanently empty. */
 export const trackEvent = (projectId: string, body: TrackEventBody, meta?: { country?: string; device?: string }) =>

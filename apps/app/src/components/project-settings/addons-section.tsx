@@ -1,9 +1,10 @@
+import { Input } from '@midad/design-system/components/ui/input';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
+import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function AddonsSection({ project }: { project: Project }) {
   const t = useT();
@@ -20,8 +21,11 @@ export function AddonsSection({ project }: { project: Project }) {
   const [allowIndex, setAllowIndex] = useState<boolean>(seo.allowIndex ?? true);
 
   const form = useForm({
-    defaultValues: {},
-    onSubmit: async () => {
+    defaultValues: {
+      editUrl: addons.editUrl ?? '',
+      issueUrl: addons.issueUrl ?? '',
+    },
+    onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
         addons: {
           feedback,
@@ -31,6 +35,8 @@ export function AddonsSection({ project }: { project: Project }) {
           brokenLinks,
           grammarLinter,
           previewDeployments,
+          editUrl: value.editUrl.trim() || undefined,
+          issueUrl: value.issueUrl.trim() || undefined,
         },
         seo: { ...seo, allowIndex },
       });
@@ -58,12 +64,40 @@ export function AddonsSection({ project }: { project: Project }) {
         onCheckedChange={setEditSuggestions}
         title={t('settings.addons.editSuggestions.title')}
       />
+      {editSuggestions ? (
+        <form.Field name="editUrl">
+          {(field) => (
+            <Field className="mt-4" hint={t('settings.addons.editUrl.hint')} label={t('settings.addons.editUrl.label')}>
+              <Input
+                className={FIELD_MONO}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder="https://github.com/acme/docs/edit/main/{path}.mdx"
+                value={field.state.value}
+              />
+            </Field>
+          )}
+        </form.Field>
+      ) : null}
       <ToggleRow
         checked={issueLinks}
         hint={t('settings.addons.issueLinks.hint')}
         onCheckedChange={setIssueLinks}
         title={t('settings.addons.issueLinks.title')}
       />
+      {issueLinks ? (
+        <form.Field name="issueUrl">
+          {(field) => (
+            <Field className="mt-4" hint={t('settings.addons.issueUrl.hint')} label={t('settings.addons.issueUrl.label')}>
+              <Input
+                className={FIELD_MONO}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder="https://github.com/acme/docs/issues/new?title=Docs%20feedback&body={url}"
+                value={field.state.value}
+              />
+            </Field>
+          )}
+        </form.Field>
+      ) : null}
       <ToggleRow
         checked={ciChecks}
         hint={t('settings.addons.ciChecks.hint')}
