@@ -128,6 +128,41 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
   return prisma.member.update({ where: { id: memberId }, data: { role: body.role } });
 };
 
+export const transferOwnership = async (organizationId: string, actorUserId: string, targetMemberId: string) => {
+  const [actor, target] = await Promise.all([
+    prisma.member.findUnique({ where: { organizationId_userId: { organizationId, userId: actorUserId } } }),
+    prisma.member.findFirst({
+      where: { id: targetMemberId, organizationId },
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+    }),
+  ]);
+  if (!actor) {
+    throw forbidden('You are not a member of this workspace.');
+  }
+  if (actor.role !== MemberRole.OWNER) {
+    throw forbidden('Only the current owner can transfer ownership.');
+  }
+  if (!target) {
+    throw notFound('member', { id: targetMemberId });
+  }
+  if (target.userId === actorUserId) {
+    throw conflict('Choose another member to transfer ownership to.');
+  }
+  if (target.role === MemberRole.OWNER) {
+    throw conflict('That member is already an owner.');
+  }
+
+  const [, promoted] = await prisma.$transaction([
+    prisma.member.update({ where: { id: actor.id }, data: { role: MemberRole.ADMIN } }),
+    prisma.member.update({
+      where: { id: target.id },
+      data: { role: MemberRole.OWNER },
+      include: { user: { select: { id: true, name: true, email: true, image: true } } },
+    }),
+  ]);
+  return promoted;
+};
+
 export const removeMember = async (organizationId: string, memberId: string, actorRole: string) => {
   const member = await prisma.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true } });
   if (!member) {

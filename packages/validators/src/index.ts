@@ -338,6 +338,9 @@ export type InviteMemberBody = z.infer<typeof inviteMemberBody>;
 export const updateMemberRoleBody = z.object({ role: memberRoleEnum });
 export type UpdateMemberRoleBody = z.infer<typeof updateMemberRoleBody>;
 
+export const transferOwnershipBody = z.object({ memberId: z.string().min(1) });
+export type TransferOwnershipBody = z.infer<typeof transferOwnershipBody>;
+
 // ─── API keys ─────────────────────────────────────────────────────────────—
 
 export const createApiKeyBody = z.object({

@@ -6,6 +6,7 @@ import {
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
+  transferOwnershipBody,
   updateProjectBody,
 } from './index';
 
@@ -77,6 +78,13 @@ describe('addDomainBody', () => {
   it('rejects non-domains', () => {
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
+  });
+});
+
+describe('transferOwnershipBody', () => {
+  it('requires a target member id', () => {
+    expect(transferOwnershipBody.safeParse({ memberId: 'member_123' }).success).toBe(true);
+    expect(transferOwnershipBody.safeParse({ memberId: '' }).success).toBe(false);
   });
 });
 

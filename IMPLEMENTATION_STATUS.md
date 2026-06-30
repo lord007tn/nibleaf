@@ -52,6 +52,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   at the database layer so wildcard subdomain routing is deterministic.
 - Project overview live-domain and recent deployment activity panel.
 - API key settings UI for create/copy/revoke using the existing scoped key API.
+- Danger-zone project deletion and ownership transfer to another accepted
+  project member. Ownership transfer promotes the target member and demotes the
+  current owner to admin atomically.
 - Usage settings for local site counts, languages, members, custom domains,
   deployments, and 30-day built-in analytics.
 - Exports settings surface that mirrors Mintlify free behavior: visible but
@@ -187,6 +190,12 @@ Completed on 2026-07-01:
 - Multi-agent self-review of the self-hosting docs found Coolify env/routing,
   TXT verification, and Cloudflare DNS/TLS documentation gaps; those gaps were
   addressed in the self-hosting and publishing docs.
+- Direct server dogfood for Danger-zone ownership transfer:
+  - Created a throwaway project with owner and target member.
+  - Transferred ownership atomically; the original owner became admin and the
+    target member became owner.
+  - Verified self-transfer is rejected.
+  - Confirmed no throwaway transfer users/projects remained in the database.
 
 Pending / External:
 

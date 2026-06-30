@@ -10,6 +10,7 @@ import type {
   InviteMemberBody,
   ProjectConfig,
   ReorderPagesBody,
+  TransferOwnershipBody,
   UpdateLanguageBody,
   UpdateMemberRoleBody,
   UpdatePageBody,
@@ -306,6 +307,18 @@ export const useUpdateProjectMemberRole = (projectId: string) => {
       mutateData<unknown>(
         await api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
         'Could not update the role.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+  });
+};
+
+export const useTransferProjectOwnership = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: TransferOwnershipBody) =>
+      mutateData<unknown>(
+        await api.app.projects[':projectId'].members['transfer-owner'].$post({ param: { projectId }, json: body }),
+        'Could not transfer ownership.',
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });

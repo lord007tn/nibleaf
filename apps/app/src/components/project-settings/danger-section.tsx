@@ -1,18 +1,29 @@
-import { useNavigate } from '@tanstack/react-router';
-import { toast } from 'sonner';
 import { Button } from '@midad/design-system/components/ui/button';
 import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@midad/design-system/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
+import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
-import { useDeleteProject } from '@/hooks/api';
+import { useDeleteProject, useProjectMembers, useTransferProjectOwnership } from '@/hooks/api';
+import { useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
 import { SectionHeader } from './shared';
 
 export function DangerSection({ project }: { project: Project }) {
   const t = useT();
   const del = useDeleteProject();
+  const transfer = useTransferProjectOwnership(project.id);
+  const { data: memberData } = useProjectMembers(project.id);
+  const { data: session } = useSession();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const currentUserId = session?.user?.id;
+  const currentMember = (memberData?.members ?? []).find((member) => member.user.id === currentUserId);
+  const canTransferOwnership = currentMember?.role === 'owner';
+  const transferTargets = currentUserId ? (memberData?.members ?? []).filter((member) => member.user.id !== currentUserId) : [];
+  const [targetMemberId, setTargetMemberId] = useState('');
+  const selectedTarget = transferTargets.find((member) => member.id === targetMemberId);
 
   return (
     <div>
@@ -24,18 +35,54 @@ export function DangerSection({ project }: { project: Project }) {
           <br />
           {t('settings.danger.transfer.description')}
         </p>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button aria-disabled className="cursor-not-allowed opacity-50" variant="outline">
-                  {t('settings.danger.transfer.button')}
-                </Button>
+        <div className="flex min-w-[250px] items-center gap-2">
+          <Select
+            disabled={!canTransferOwnership || transferTargets.length === 0 || transfer.isPending}
+            onValueChange={(value) => setTargetMemberId(value ?? '')}
+            value={targetMemberId}
+          >
+            <SelectTrigger className="min-w-0 flex-1">
+              <SelectValue placeholder={t('settings.danger.transfer.placeholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {transferTargets.map((member) => (
+                <SelectItem key={member.id} value={member.id}>
+                  {member.user.name} · {member.user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            disabled={!canTransferOwnership || !targetMemberId || transfer.isPending}
+            onClick={async () => {
+              if (!selectedTarget) {
+                return;
               }
-            />
-            <TooltipContent>{t('settings.danger.comingSoon')}</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+              const ok = await confirm({
+                title: t('settings.danger.transfer.title'),
+                description: t('settings.danger.transfer.confirm', { name: selectedTarget.user.name }),
+                confirmLabel: t('settings.danger.transfer.button'),
+                destructive: true,
+              });
+              if (!ok) {
+                return;
+              }
+              transfer.mutate(
+                { memberId: selectedTarget.id },
+                {
+                  onSuccess: () => {
+                    toast.success(t('settings.danger.transfer.toast.transferred'));
+                    setTargetMemberId('');
+                  },
+                  onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.danger.transfer.toast.error')),
+                },
+              );
+            }}
+            variant="outline"
+          >
+            {t('settings.danger.transfer.button')}
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3.5 rounded-2xl border border-destructive/30 p-5">
@@ -71,4 +118,3 @@ export function DangerSection({ project }: { project: Project }) {
     </div>
   );
 }
-
