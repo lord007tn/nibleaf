@@ -134,6 +134,9 @@ Completed on 2026-06-30:
   and a failing broken-link case.
 - Worker grammar linting was exercised directly with valid docs, a failing typo
   case, and typo text inside code blocks to confirm code is ignored.
+- Live public GitLab import was dogfooded against
+  `raytio/documentation/api-docs` on GitLab (`master` branch): 8 Markdown files
+  imported, 0 skipped, and imported pages were verified in the local database.
 
 Pending / External:
 
@@ -141,8 +144,6 @@ Pending / External:
   visible existing GitHub repository matched the project metadata.
 - Cloudflare DNS for `raedbahri.com` is pending until there is a deployed
   Coolify ingress target and desired hostnames to point at.
-- Live import dogfood against an external public GitLab repository is still
-  pending; current git parity remains one-way public Markdown/MDX import.
 
 Known verification caveat:
 
