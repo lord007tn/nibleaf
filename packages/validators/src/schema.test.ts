@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { addDomainBody, createLanguageBody, gitConfigSchema, paginationQuery, presignAssetBody, projectConfigSchema } from './index';
+import {
+  addDomainBody,
+  createLanguageBody,
+  gitConfigSchema,
+  paginationQuery,
+  presignAssetBody,
+  projectConfigSchema,
+  updateProjectBody,
+} from './index';
 
 describe('projectConfigSchema', () => {
   it('accepts a valid single-section patch', () => {
@@ -47,6 +55,18 @@ describe('createLanguageBody', () => {
   it('rejects malformed codes', () => {
     expect(createLanguageBody.safeParse({ code: 'EN', label: 'x' }).success).toBe(false);
     expect(createLanguageBody.safeParse({ code: 'english', label: 'x' }).success).toBe(false);
+  });
+});
+
+describe('updateProjectBody', () => {
+  it('accepts a DNS-safe deployment slug', () => {
+    expect(updateProjectBody.safeParse({ slug: 'docs-v2' }).success).toBe(true);
+  });
+
+  it('rejects deployment slugs that cannot be used as subdomains', () => {
+    expect(updateProjectBody.safeParse({ slug: 'Docs' }).success).toBe(false);
+    expect(updateProjectBody.safeParse({ slug: '-docs' }).success).toBe(false);
+    expect(updateProjectBody.safeParse({ slug: 'docs.example' }).success).toBe(false);
   });
 });
 

@@ -1,6 +1,6 @@
 # Midad Implementation Status
 
-Last updated: 2026-06-30
+Last updated: 2026-07-01
 
 ## Target
 
@@ -47,6 +47,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Free project subdomains through `SITE_BASE_DOMAIN`; requests to
   `<project-slug>.<SITE_BASE_DOMAIN>` resolve to the published project without a
   redirect.
+- Editable deployment names in General settings. The deployment name is the
+  project's free subdomain slug, is DNS-label validated, and is globally unique
+  at the database layer so wildcard subdomain routing is deterministic.
 - Project overview live-domain and recent deployment activity panel.
 - API key settings UI for create/copy/revoke using the existing scoped key API.
 - Add-ons settings for feedback, edit suggestions, issue links, CI checks,
@@ -150,6 +153,20 @@ Completed on 2026-06-30:
   selectors, with no console errors or warnings.
 - Playwright rendered the authenticated draft preview route with the draft
   page tree and selected document content, with no console errors.
+
+Completed on 2026-07-01:
+
+- `pnpm --filter @midad/validators test`.
+- `pnpm --filter @midad/server typecheck`.
+- `pnpm --filter @midad/app typecheck`.
+- Direct server dogfood for deployment-name/subdomain behavior:
+  - Creating two projects with the same name produced unique slugs
+    (`temporary-docs`, `temporary-docs-2`).
+  - Creating a project with a long name produced a DNS-safe 63-character slug.
+  - Updating a project's deployment name persisted the new slug.
+  - Updating another project to that same slug was rejected with a conflict.
+  - The public host resolver returned the project for
+    `<updated-slug>.dogfood.test:443`.
 
 Pending / External:
 

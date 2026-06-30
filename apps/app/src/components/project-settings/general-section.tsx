@@ -2,6 +2,7 @@ import { FieldError } from '@midad/design-system/components/ui/form-field';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Textarea } from '@midad/design-system/components/ui/textarea';
 import { cn } from '@midad/design-system/lib/utils';
+import { slugify } from '@midad/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -15,6 +16,12 @@ import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader, Segmented }
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
 
 const siteBaseDomain = (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') ?? 'midad.app';
+const deploymentNameError = (value: string, message: string) => {
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) {
+    return message;
+  }
+  return undefined;
+};
 
 export function GeneralSection({ project }: { project: Project }) {
   const t = useT();
@@ -24,12 +31,13 @@ export function GeneralSection({ project }: { project: Project }) {
   const [visibility, setVisibility] = useState<'public' | 'private'>(project.config?.visibility ?? 'public');
 
   const form = useForm({
-    defaultValues: { name: project.name, description: project.description ?? '' },
+    defaultValues: { name: project.name, slug: project.slug, description: project.description ?? '' },
     onSubmit: async ({ value }) => {
       await new Promise<void>((resolve) => {
         update.mutate(
           {
             name: value.name.trim(),
+            slug: value.slug.trim(),
             description: value.description.trim() ? value.description.trim() : null,
             icon,
             config: { visibility },
@@ -48,8 +56,6 @@ export function GeneralSection({ project }: { project: Project }) {
       });
     },
   });
-
-  const subdomain = `${project.slug}.${siteBaseDomain}`;
 
   return (
     <form
@@ -109,11 +115,28 @@ export function GeneralSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <Field hint={t('settings.general.url.hint')} label={t('settings.general.url.label')}>
-        <div className="flex h-[42px] items-center rounded-[10px] border border-border bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
-          {subdomain}
-        </div>
-      </Field>
+      <form.Field name="slug" validators={{ onChange: ({ value }) => deploymentNameError(value, t('settings.general.url.error')) }}>
+        {(field) => (
+          <Field hint={t('settings.general.url.hint')} htmlFor="set-slug" label={t('settings.general.url.label')}>
+            <div className="flex h-[42px] overflow-hidden rounded-[10px] border border-border bg-background">
+              <Input
+                className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 font-mono text-[13px] focus-visible:ring-0"
+                id="set-slug"
+                onBlur={field.handleBlur}
+                onChange={(e) => field.handleChange(slugify(e.target.value))}
+                value={field.state.value}
+              />
+              <span className="flex shrink-0 items-center border-border border-l bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
+                .{siteBaseDomain}
+              </span>
+            </div>
+            <FieldError errors={field.state.meta.errors} />
+            <div className="mt-1.5 font-mono text-[12px] text-muted-foreground">
+              {field.state.value ? `${field.state.value}.${siteBaseDomain}` : `.${siteBaseDomain}`}
+            </div>
+          </Field>
+        )}
+      </form.Field>
 
       <form.Field name="description">
         {(field) => (

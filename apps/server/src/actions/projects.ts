@@ -2,7 +2,9 @@ import { Prisma, prisma } from '@midad/database';
 import { MemberRole } from '@midad/shared/constants';
 import { slugify } from '@midad/shared/utils';
 import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@midad/validators';
-import { notFound } from '@/errors';
+import { conflict, notFound } from '@/errors';
+
+const MAX_PROJECT_SLUG_LENGTH = 63;
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */
 export const assertProjectInOrg = async (organizationId: string, projectId: string) => {
@@ -34,6 +36,27 @@ export const assertProjectAccess = async (userId: string, projectId: string) => 
   return { project, organizationId: project.organizationId, role: member.role as MemberRole };
 };
 
+const candidateSlug = (base: string, index: number) => {
+  if (index === 0) {
+    return base.slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'docs';
+  }
+  const suffix = `-${index + 1}`;
+  return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
+};
+
+const uniqueProjectSlug = async (desired: string) => {
+  const base = slugify(desired) || 'docs';
+  for (let i = 0; i < 100; i++) {
+    const candidate = candidateSlug(base, i);
+    const existing = await prisma.project.findFirst({ where: { slug: candidate }, select: { id: true } });
+    if (!existing) {
+      return candidate;
+    }
+  }
+  const suffix = `-${Date.now().toString(36)}`;
+  return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
+};
+
 /** List every site the user can reach — i.e. across all the orgs they belong to. */
 export const listProjects = async (userId: string) => {
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
@@ -46,7 +69,7 @@ export const listProjects = async (userId: string) => {
 };
 
 export const createProject = async (userId: string, body: CreateProjectBody) => {
-  const slug = slugify(body.name) || 'docs';
+  const slug = await uniqueProjectSlug(body.name);
   return prisma.$transaction(async (tx) => {
     // Each site is its own workspace: mint a dedicated organization and make the
     // creator its owner. That org is the site's member boundary (per-site
@@ -103,6 +126,12 @@ const mergeConfig = (existing: ProjectConfig, incoming: ProjectConfig): ProjectC
 
 export const updateProject = async (organizationId: string, id: string, body: UpdateProjectBody) => {
   const project = await assertProjectInOrg(organizationId, id);
+  if (body.slug !== undefined && body.slug !== project.slug) {
+    const existing = await prisma.project.findFirst({ where: { slug: body.slug, id: { not: id } }, select: { id: true } });
+    if (existing) {
+      throw conflict('That deployment name is already in use.', { slug: body.slug });
+    }
+  }
 
   let configData: Prisma.InputJsonValue | undefined;
   let colorFromConfig: string | undefined;
@@ -119,6 +148,7 @@ export const updateProject = async (organizationId: string, id: string, body: Up
     where: { id },
     data: {
       ...(body.name === undefined ? {} : { name: body.name }),
+      ...(body.slug === undefined ? {} : { slug: body.slug }),
       ...(body.description === undefined ? {} : { description: body.description }),
       ...(body.icon === undefined ? {} : { icon: body.icon }),
       ...(colorFromConfig !== undefined ? { color: colorFromConfig } : body.color === undefined ? {} : { color: body.color }),

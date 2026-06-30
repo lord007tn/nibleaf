@@ -182,6 +182,7 @@ model Project {
   analyticsEvents AnalyticsEvent[]
 
   @@unique([organizationId, slug])
+  @@unique([slug])
   @@map("project")
 }
 
