@@ -1,17 +1,29 @@
+import { execFile } from 'node:child_process';
+import { lookup } from 'node:dns/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import { prisma } from '@midad/database';
 import { slugify } from '@midad/shared';
 import type { GitConfig } from '@midad/validators';
 import { badRequest } from '@/errors';
-import { ensureDefaultBranch } from './branches';
-import { ensureDefaultLanguage } from './languages';
+import { assertBranchInProject, ensureDefaultBranch } from './branches';
+import { assertLanguageInProject, ensureDefaultLanguage } from './languages';
 import { createPage } from './pages';
 import { assertProjectInOrg } from './projects';
 
 type GitProvider = NonNullable<GitConfig['provider']>;
+const execFileAsync = promisify(execFile);
 
 interface GitTreeItem {
   path: string;
   type: 'blob' | 'tree';
+}
+
+interface MarkdownFile {
+  path: string;
+  read: () => Promise<string | null>;
 }
 
 export interface GitImportSummary {
@@ -136,15 +148,93 @@ const rawFileUrl = (provider: GitProvider, repo: string, branch: string, filePat
   return url.toString();
 };
 
-const providerName = (provider: GitProvider): string => (provider === 'gitlab' ? 'GitLab' : 'GitHub');
+const isPrivateIp = (address: string): boolean =>
+  /^(?:10\.|127\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|0\.|::1$|fc00:|fd00:|fe80:)/i.test(address);
+
+const assertSafeCloneUrl = async (value: string): Promise<string> => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw badRequest('Enter a valid public Git URL.');
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw badRequest('Public Git URL imports only support http(s) clone URLs.');
+  }
+  if (url.username || url.password) {
+    throw badRequest('Public Git URL imports do not accept embedded credentials.');
+  }
+  if (process.env.ALLOW_PRIVATE_GIT_IMPORTS !== 'true') {
+    const records = await lookup(url.hostname, { all: true, verbatim: true });
+    if (records.length === 0 || records.some((record) => isPrivateIp(record.address))) {
+      throw badRequest('Public Git URL imports must resolve to a public host.');
+    }
+  }
+  url.hash = '';
+  return url.toString();
+};
+
+const walkMarkdownFiles = async (root: string, rel = '', found: string[] = []): Promise<string[]> => {
+  const entries = await readdir(path.join(root, rel), { withFileTypes: true });
+  for (const entry of entries) {
+    if (found.length >= MAX_FILES) {
+      return found;
+    }
+    if (entry.name === '.git') {
+      continue;
+    }
+    const child = rel ? `${rel}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      await walkMarkdownFiles(root, child, found);
+    } else if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.mdx'))) {
+      found.push(child);
+    }
+  }
+  return found;
+};
+
+const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: string): Promise<MarkdownFile[]> => {
+  const safeUrl = await assertSafeCloneUrl(cloneUrl);
+  const dir = await mkdtemp(path.join(tmpdir(), 'midad-git-'));
+  try {
+    await execFileAsync('git', ['clone', '--depth=1', '--single-branch', '--branch', branch, '--no-tags', safeUrl, dir], {
+      timeout: 60_000,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: '0',
+        GIT_CONFIG_COUNT: '2',
+        GIT_CONFIG_KEY_0: 'protocol.file.allow',
+        GIT_CONFIG_VALUE_0: 'never',
+        GIT_CONFIG_KEY_1: 'protocol.ssh.allow',
+        GIT_CONFIG_VALUE_1: 'never',
+      },
+    });
+    const contentRoot = basePath ? path.join(dir, basePath) : dir;
+    const files = await walkMarkdownFiles(contentRoot);
+    const loaded = await Promise.all(
+      files.map(async (file) => ({
+        path: basePath ? `${basePath}/${file}` : file,
+        content: await readFile(path.join(contentRoot, file), 'utf8'),
+      })),
+    );
+    return loaded.map((file) => ({ path: file.path, read: async () => file.content }));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw badRequest('Git is not installed in this Midad runtime.');
+    }
+    throw badRequest('Could not clone the public Git repository. Check the URL, branch, and path.');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+};
 
 /**
- * One-way import: pull Markdown/MDX files from a PUBLIC Git provider (the configured
- * repo/branch/path on the project's org) into the default branch + default language,
+ * One-way import: pull Markdown/MDX files from a PUBLIC Git source (the configured
+ * repo/branch/path on the project's org) into a configured or default branch/language,
  * recreating the folder structure as page groups. Idempotent — re-importing updates a
- * page in place (matched by parent + slug) instead of duplicating it. Public GitHub and
- * GitLab repositories are supported; private/OAuth/webhook/two-way sync is intentionally
- * outside this import path.
+ * page in place (matched by parent + slug) instead of duplicating it. Public GitHub,
+ * GitLab, and generic http(s) Git repositories are supported; private/OAuth/webhook/
+ * two-way sync is intentionally outside this import path.
  */
 export const importFromGitProvider = async (organizationId: string, projectId: string): Promise<GitImportSummary> => {
   await assertProjectInOrg(organizationId, projectId);
@@ -153,30 +243,50 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
   const metadata = org?.metadata ? (JSON.parse(org.metadata) as Record<string, unknown>) : {};
   const git = (metadata.git ?? {}) as GitConfig;
   const provider = git.provider ?? 'github';
-  if ((provider !== 'github' && provider !== 'gitlab') || !git.repo || !git.repo.includes('/')) {
-    throw badRequest('Connect a public GitHub or GitLab repository first.');
-  }
-  if (provider === 'github' && git.repo.split('/').length !== 2) {
-    throw badRequest('GitHub repositories must use owner/repo.');
+  if (provider !== 'github' && provider !== 'gitlab' && provider !== 'git') {
+    throw badRequest('Connect a public Git repository first.');
   }
   const branch = git.branch?.trim() || 'main';
   const basePath = (git.path ?? '').replace(/^\/+|\/+$/g, '');
   const prefix = basePath ? `${basePath}/` : '';
 
-  const tree =
-    provider === 'github'
-      ? await listGitHubFiles(git.repo.split('/')[0] as string, git.repo.split('/')[1] as string, branch)
-      : await listGitLabFiles(git.repo, branch, basePath, git.instanceUrl);
-
-  const mdFiles = tree
-    .filter((i) => i.type === 'blob' && (i.path.endsWith('.md') || i.path.endsWith('.mdx')) && i.path.startsWith(prefix))
-    .slice(0, MAX_FILES);
+  let mdFiles: MarkdownFile[];
+  if (provider === 'git') {
+    if (!git.cloneUrl) {
+      throw badRequest('Connect a public Git clone URL first.');
+    }
+    mdFiles = await listGenericGitFiles(git.cloneUrl, branch, basePath);
+  } else {
+    const repo = git.repo;
+    if (!repo?.includes('/')) {
+      throw badRequest('Connect a public GitHub or GitLab repository first.');
+    }
+    if (provider === 'github' && repo.split('/').length !== 2) {
+      throw badRequest('GitHub repositories must use owner/repo.');
+    }
+    const tree =
+      provider === 'github'
+        ? await listGitHubFiles(repo.split('/')[0] as string, repo.split('/')[1] as string, branch)
+        : await listGitLabFiles(repo, branch, basePath, git.instanceUrl);
+    mdFiles = tree
+      .filter((i) => i.type === 'blob' && (i.path.endsWith('.md') || i.path.endsWith('.mdx')) && i.path.startsWith(prefix))
+      .slice(0, MAX_FILES)
+      .map((file) => ({
+        path: file.path,
+        read: async () => {
+          const rawRes = await fetch(rawFileUrl(provider, repo, branch, file.path, git.instanceUrl), {
+            headers: { 'User-Agent': 'midad-docs' },
+          });
+          return rawRes.ok ? rawRes.text() : null;
+        },
+      }));
+  }
   if (mdFiles.length === 0) {
     throw badRequest('No Markdown (.md/.mdx) files found at that repo path.');
   }
 
-  const branchRow = await ensureDefaultBranch(projectId);
-  const language = await ensureDefaultLanguage(projectId);
+  const branchRow = git.importBranchId ? await assertBranchInProject(projectId, git.importBranchId) : await ensureDefaultBranch(projectId);
+  const language = git.importLanguageId ? await assertLanguageInProject(projectId, git.importLanguageId) : await ensureDefaultLanguage(projectId);
 
   // Cache the GROUP page id per directory so each folder is created once.
   const groupCache = new Map<string, string | null>();
@@ -211,12 +321,11 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
   const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0 };
 
   for (const file of mdFiles) {
-    const rawRes = await fetch(rawFileUrl(provider, git.repo, branch, file.path, git.instanceUrl), { headers: { 'User-Agent': 'midad-docs' } });
-    if (!rawRes.ok) {
+    const text = await file.read();
+    if (text === null) {
       summary.skipped++;
       continue;
     }
-    const text = await rawRes.text();
     const { meta, body } = parseFrontmatter(text);
 
     const rel = file.path.slice(prefix.length);

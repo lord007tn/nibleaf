@@ -64,7 +64,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   live-site visibility gate.
 - Git-style DB branches with create/fork/merge/delete and versioned published
   snapshots.
-- One-way public GitHub and GitLab Markdown/MDX import into the default
+- One-way public GitHub, GitLab, and generic http(s) Git Markdown/MDX import.
+  Imports can target the default branch/language or a selected Midad
   branch/language.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates.
@@ -76,9 +77,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 
 ## Partial / Deliberate Limits
 
-- Git integration is currently one-way import from public GitHub/GitLab
-  repositories. There is no OAuth/private-repo sync, webhook sync, or two-way
-  push yet.
+- Git integration is currently one-way import from public GitHub, GitLab, or
+  generic http(s) Git repositories. There is no OAuth/private-repo sync, webhook
+  sync, or two-way push yet.
 - Multilingual authoring is manual/structural. There is no automatic translation
   workflow.
 - TLS certificates and wildcard/custom-domain ingress are handled by Coolify or
@@ -139,6 +140,14 @@ Completed on 2026-06-30:
 - Live public GitLab import was dogfooded against
   `raytio/documentation/api-docs` on GitLab (`master` branch): 8 Markdown files
   imported, 0 skipped, and imported pages were verified in the local database.
+- Generic public Git URL import was dogfooded against
+  `https://gitlab.com/raytio/documentation/api-docs.git` using the local Git
+  CLI path: 8 Markdown files imported into a selected Midad branch and Arabic
+  language, and imported pages were verified in the local database before the
+  throwaway project was cleaned up.
+- Playwright rendered the Git settings tab with GitHub, GitLab, and Public Git
+  URL provider choices, clone URL input, and branch/language import target
+  selectors, with no console errors or warnings.
 - Playwright rendered the authenticated draft preview route with the draft
   page tree and selected document content, with no console errors.
 

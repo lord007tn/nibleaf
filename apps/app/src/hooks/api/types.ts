@@ -130,7 +130,7 @@ export interface DeploymentDiff {
   changes: DeploymentPageDiff[];
 }
 
-/** Result of a one-way GitHub → pages import. */
+/** Result of a one-way public Git → pages import. */
 export interface GitImportSummary {
   files: number;
   imported: number;
@@ -329,4 +329,3 @@ export interface SearchHit {
   snippet: string;
   score: number;
 }
-

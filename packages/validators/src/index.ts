@@ -428,15 +428,18 @@ const boundedRecord = <V extends z.ZodTypeAny>(value: V) =>
 /** Git content source (one-way import). Public GitHub and GitLab repositories are
  *  pulled into pages on demand. `connected` marks it as configured. */
 export const gitConfigSchema = z.object({
-  provider: z.enum(['github', 'gitlab']).optional(),
+  provider: z.enum(['github', 'gitlab', 'git']).optional(),
   repo: z
     .string()
     .max(120)
     .regex(/^[\w.-]+(?:\/[\w.-]+)+$/, 'Use the form owner/repo or group/project.')
     .optional(),
+  cloneUrl: z.url().max(500).optional(),
   instanceUrl: z.url().max(200).optional(),
   branch: z.string().max(120).optional(),
   path: z.string().max(300).optional(),
+  importBranchId: z.string().max(120).optional(),
+  importLanguageId: z.string().max(120).optional(),
   connected: z.boolean().optional(),
   lastImportedAt: z.string().max(40).optional(),
 });

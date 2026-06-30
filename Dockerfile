@@ -11,7 +11,8 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
-RUN apk add --no-cache curl openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
+# git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
+RUN apk add --no-cache curl git openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
 
 FROM base AS build
 COPY . .

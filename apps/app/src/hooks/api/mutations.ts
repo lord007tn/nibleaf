@@ -480,7 +480,7 @@ export const useUpdateWorkspaceSettings = (projectId?: string) => {
 };
 
 /** Pull Markdown pages from the configured public Git provider (one-way import). */
-export const useImportFromGitHub = (projectId: string) => {
+export const useImportFromGit = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
@@ -494,3 +494,5 @@ export const useImportFromGitHub = (projectId: string) => {
     },
   });
 };
+
+export const useImportFromGitHub = useImportFromGit;

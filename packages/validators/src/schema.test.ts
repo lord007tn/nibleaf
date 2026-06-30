@@ -70,12 +70,29 @@ describe('presignAssetBody', () => {
 
 describe('gitConfigSchema', () => {
   it('accepts public GitHub and GitLab repository settings', () => {
-    expect(gitConfigSchema.safeParse({ provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' }).success).toBe(true);
+    expect(
+      gitConfigSchema.safeParse({
+        provider: 'github',
+        repo: 'acme/docs',
+        branch: 'main',
+        path: 'docs',
+        importBranchId: 'branch_123',
+        importLanguageId: 'lang_123',
+      }).success,
+    ).toBe(true);
     expect(
       gitConfigSchema.safeParse({
         provider: 'gitlab',
         repo: 'platform/docs/site',
         instanceUrl: 'https://gitlab.com',
+        branch: 'main',
+        path: 'docs',
+      }).success,
+    ).toBe(true);
+    expect(
+      gitConfigSchema.safeParse({
+        provider: 'git',
+        cloneUrl: 'https://git.example.com/acme/docs.git',
         branch: 'main',
         path: 'docs',
       }).success,
