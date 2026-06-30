@@ -6,8 +6,6 @@ import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
-export const listDomains = (projectId: string) => prisma.domain.findMany({ where: { projectId }, orderBy: { createdAt: 'asc' } });
-
 /** DNS records the user must create to point a custom domain at Midad. */
 export const dnsRecords = (domain: Domain) => [
   { type: 'CNAME', name: domain.domain, value: env.CUSTOM_DOMAIN_CNAME_TARGET, ttl: 3600 },
@@ -18,6 +16,11 @@ interface Domain {
   domain: string;
   verificationToken: string;
 }
+
+export const listDomains = async (projectId: string) => {
+  const domains = await prisma.domain.findMany({ where: { projectId }, orderBy: { createdAt: 'asc' } });
+  return domains.map((domain) => ({ ...domain, records: dnsRecords(domain) }));
+};
 
 export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody) => {
   await assertProjectInOrg(organizationId, projectId);

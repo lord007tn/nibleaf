@@ -75,9 +75,17 @@ describe('addDomainBody', () => {
   it('accepts a hostname', () => {
     expect(addDomainBody.safeParse({ domain: 'docs.example.com' }).success).toBe(true);
   });
+
+  it('normalizes hostnames before validation', () => {
+    const parsed = addDomainBody.safeParse({ domain: ' Docs.Example.COM. ' });
+    expect(parsed.success && parsed.data.domain).toBe('docs.example.com');
+  });
+
   it('rejects non-domains', () => {
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
+    expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);
+    expect(addDomainBody.safeParse({ domain: '*.example.com' }).success).toBe(false);
   });
 });
 

@@ -39,7 +39,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   page tree editing, publish modal with pending-change diff, deployment pipeline,
   changelog, rollback, and published-site rendering.
 - Custom domains with add/list/verify/remove/primary APIs, TXT ownership checks,
-  DNS instruction records, and custom-domain root serving through the app server.
+  persistent DNS instruction records, copy-ready DNS rows, stricter hostname
+  validation, and custom-domain root serving through the app server.
 - Custom-domain navigation keeps reader URLs at the domain root instead of
   leaking the internal `/sites/:projectId` route.
 - Custom-domain primary selection in project settings.
@@ -196,6 +197,18 @@ Completed on 2026-07-01:
     target member became owner.
   - Verified self-transfer is rejected.
   - Confirmed no throwaway transfer users/projects remained in the database.
+- Custom-domain DNS setup verification:
+  - `pnpm exec biome check --write apps/server/src/actions/domains.ts
+    packages/validators/src/index.ts packages/validators/src/schema.test.ts
+    apps/app/src/components/project-settings/domain-section.tsx
+    apps/app/src/lib/i18n/messages.ts`.
+  - `pnpm --filter @midad/validators test`.
+  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm --filter @midad/app typecheck`.
+  - Direct server dogfood created a throwaway project/domain, confirmed
+    `addDomain` and refetched `listDomains` both return `CNAME` and `TXT`
+    setup records, confirmed hostname normalization, rejected invalid DNS
+    labels and wildcard input, and cleaned up the throwaway organization.
 
 Pending / External:
 

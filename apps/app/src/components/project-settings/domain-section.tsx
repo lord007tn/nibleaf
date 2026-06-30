@@ -1,11 +1,13 @@
 import { Button } from '@midad/design-system/components/ui/button';
 import { Input } from '@midad/design-system/components/ui/input';
 import { cn } from '@midad/design-system/lib/utils';
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
+import { copyToClipboard } from '@/lib/invitations';
 import { FIELD_MONO, SectionHeader } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
@@ -16,8 +18,19 @@ export function DomainSection({ project }: { project: Project }) {
   const setPrimary = useSetPrimaryDomain(project.id);
   const remove = useDeleteDomain(project.id);
   const [domain, setDomain] = useState('');
+  const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
   const list = domains ?? [];
+  const copyRecord = async (key: string, text: string) => {
+    const ok = await copyToClipboard(text);
+    if (!ok) {
+      toast.error(t('settings.domain.dns.copyFailed'));
+      return;
+    }
+    setCopiedRecord(key);
+    toast.success(t('settings.domain.dns.copied'));
+    window.setTimeout(() => setCopiedRecord((current) => (current === key ? null : current)), 1600);
+  };
 
   return (
     <div>
@@ -103,18 +116,37 @@ export function DomainSection({ project }: { project: Project }) {
                   {t('settings.domain.dns.heading')}
                 </div>
                 <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]">
-                  <div className="grid grid-cols-[80px_1fr_1.4fr] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
+                  <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
                     <span>{t('settings.domain.dns.type')}</span>
                     <span>{t('settings.domain.dns.name')}</span>
                     <span>{t('settings.domain.dns.value')}</span>
+                    <span className="sr-only">{t('settings.domain.dns.copy')}</span>
                   </div>
-                  {d.records.map((record) => (
-                    <div className="grid grid-cols-[80px_1fr_1.4fr] items-center px-3.5 py-2.5" key={record.type + record.name}>
-                      <span className="font-semibold">{record.type}</span>
-                      <span className="truncate">{record.name}</span>
-                      <span className="truncate text-primary">{record.value}</span>
-                    </div>
-                  ))}
+                  {d.records.map((record) => {
+                    const key = `${record.type}:${record.name}:${record.value}`;
+                    return (
+                      <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] items-center gap-2 px-3.5 py-2.5" key={key}>
+                        <span className="font-semibold">{record.type}</span>
+                        <span className="truncate" title={record.name}>
+                          {record.name}
+                        </span>
+                        <span className="truncate text-primary" title={record.value}>
+                          {record.value}
+                        </span>
+                        <Button
+                          aria-label={t('settings.domain.dns.copy')}
+                          className="size-8 cursor-pointer p-0"
+                          onClick={() => void copyRecord(key, `${record.type} ${record.name} ${record.value}`)}
+                          size="sm"
+                          title={t('settings.domain.dns.copy')}
+                          type="button"
+                          variant="ghost"
+                        >
+                          {copiedRecord === key ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="mt-3 text-[13px] text-muted-foreground">{t('settings.domain.dns.propagation')}</p>
               </div>
