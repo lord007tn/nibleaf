@@ -1,8 +1,8 @@
+import { cn } from '@midad/design-system/lib/utils';
 import { Check } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 /** Per-site plan model. Billing isn't wired up yet — this is the framing so each
  *  website is self-contained (its own plan), ready to attach real plans/limits
@@ -17,18 +17,14 @@ const TIERS = [
       'settings.plan.tier.free.feature.pages',
       'settings.plan.tier.free.feature.search',
       'settings.plan.tier.free.feature.languages',
+      'settings.plan.tier.free.feature.domain',
       'settings.plan.tier.free.feature.support',
     ],
   },
   {
     nameKey: 'settings.plan.tier.pro.name',
     price: '—',
-    featureKeys: [
-      'settings.plan.tier.pro.feature.domain',
-      'settings.plan.tier.pro.feature.badge',
-      'settings.plan.tier.pro.feature.analytics',
-      'settings.plan.tier.pro.feature.support',
-    ],
+    featureKeys: ['settings.plan.tier.pro.feature.badge', 'settings.plan.tier.pro.feature.analytics', 'settings.plan.tier.pro.feature.support'],
   },
   {
     nameKey: 'settings.plan.tier.team.name',
@@ -91,4 +87,3 @@ export function PlanSection({ project }: { project: Project }) {
     </div>
   );
 }
-

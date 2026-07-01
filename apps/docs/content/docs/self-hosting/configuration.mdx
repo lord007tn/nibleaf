@@ -26,6 +26,7 @@ cp .env.example .env
 | `PUBLIC_APP_URL` | Public dashboard origin. |
 | `PUBLIC_API_URL` | Public API origin. In standard Compose, this is the dashboard origin because `/api` is proxied by `app`. |
 | `PUBLIC_WWW_URL` | Public marketing/root website origin. |
+| `PUBLIC_STORAGE_ENDPOINT` / `STORAGE_PUBLIC_ENDPOINT` | Browser-reachable S3 endpoint used for presigned upload/download URLs. Standard Compose reads the `PUBLIC_*` alias; Coolify/raw S3 env uses `STORAGE_PUBLIC_ENDPOINT`. |
 | `PUBLIC_STORAGE_URL` | Public base URL for uploaded assets. |
 | `SITE_BASE_DOMAIN` | Wildcard docs base for free project subdomains, for example `docs.example.com`. |
 | `CUSTOM_DOMAIN_CNAME_TARGET` | Host customers CNAME custom domains to, for example `cname.docs.example.com`. |
@@ -89,6 +90,7 @@ S3-compatible service.
 ```dotenv
 STORAGE_PROVIDER=maxio
 STORAGE_ENDPOINT=http://maxio:9000
+STORAGE_PUBLIC_ENDPOINT=https://storage.example.com
 STORAGE_REGION=auto
 STORAGE_BUCKET=midad
 STORAGE_ACCESS_KEY_ID=<access-key>
@@ -96,6 +98,10 @@ STORAGE_SECRET_ACCESS_KEY=<secret-key>
 STORAGE_FORCE_PATH_STYLE=true
 STORAGE_PUBLIC_URL=https://cdn.example.com/midad
 ```
+
+`STORAGE_ENDPOINT` is the server-side S3 endpoint. `STORAGE_PUBLIC_ENDPOINT`
+must be reachable by the browser because presigned upload/download URLs use it.
+`STORAGE_PUBLIC_URL` is the public asset/CDN base used in rendered docs.
 
 Use `STORAGE_FORCE_PATH_STYLE=true` for maxio and R2. AWS S3 usually uses
 virtual-hosted style and can set it to `false`.
@@ -151,6 +157,7 @@ not the `PUBLIC_*` aliases from the standard compose file:
 | --- | --- |
 | `PUBLIC_APP_URL` | `APP_URL` |
 | `PUBLIC_WWW_URL` | `WWW_URL` |
+| `PUBLIC_STORAGE_ENDPOINT` | `STORAGE_PUBLIC_ENDPOINT` |
 | `PUBLIC_STORAGE_URL` | `STORAGE_PUBLIC_URL` |
 | `STORAGE_ACCESS_KEY` | `STORAGE_ACCESS_KEY_ID` |
 | `STORAGE_SECRET_KEY` | `STORAGE_SECRET_ACCESS_KEY` |

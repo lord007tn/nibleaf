@@ -45,6 +45,7 @@ CORS_ALLOWED_ORIGINS=https://app.your-domain.com,https://your-domain.com
 PUBLIC_APP_URL=https://app.your-domain.com
 PUBLIC_API_URL=https://app.your-domain.com        # API is reached via the app proxy
 PUBLIC_WWW_URL=https://your-domain.com
+PUBLIC_STORAGE_ENDPOINT=https://storage.your-domain.com
 PUBLIC_STORAGE_URL=https://cdn.your-domain.com/midad
 
 # Published docs domains. Create *.docs.your-domain.com at your proxy/Coolify
@@ -54,6 +55,7 @@ CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.your-domain.com
 
 # Object storage. Keep the maxio block, or switch to R2/S3 below.
 STORAGE_PROVIDER=maxio
+STORAGE_PUBLIC_ENDPOINT=https://storage.your-domain.com
 STORAGE_PUBLIC_URL=https://cdn.your-domain.com/midad
 ```
 
@@ -68,6 +70,7 @@ Drop the bundled `maxio` service (or ignore it) and point `STORAGE_*` at your bu
 ```dotenv
 STORAGE_PROVIDER=r2                                  # or s3
 STORAGE_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+STORAGE_PUBLIC_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 STORAGE_REGION=auto
 STORAGE_ACCESS_KEY_ID=<access-key-id>
 STORAGE_SECRET_ACCESS_KEY=<secret-access-key>
@@ -75,6 +78,10 @@ STORAGE_BUCKET=<bucket>
 STORAGE_FORCE_PATH_STYLE=true                        # R2/maxio; false for AWS S3
 STORAGE_PUBLIC_URL=https://cdn.your-domain.com/<bucket>
 ```
+
+`STORAGE_PUBLIC_ENDPOINT` must be reachable from the browser because presigned
+upload/download URLs are returned to the dashboard. `STORAGE_PUBLIC_URL` is the
+public asset/CDN base used when rendering uploaded files.
 
 ## 3. Do not expose datastore ports
 

@@ -14,6 +14,7 @@ x-build: &build
   dockerfile: Dockerfile
   target: runner
   args:
+    VITE_API_URL: http://server:4311
     VITE_APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
     VITE_WWW_URL: ${PUBLIC_WWW_URL:-http://localhost:4313}
     VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-midad.app}

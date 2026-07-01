@@ -27,6 +27,9 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
   component: SiteOverviewPage,
 });
 
+const siteBaseDomain = () => (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') ?? 'midad.app';
+const siteUrl = (domain: string | null, projectId: string) => (domain ? `https://${domain}` : `/sites/${projectId}`);
+
 /** Per-site dashboard: the hub each site opens to (stats, traffic, recent pages,
  *  and quick links). The full-page editor lives at /editor. */
 function SiteOverviewPage() {
@@ -47,8 +50,8 @@ function SiteOverviewPage() {
   const deployCount = (deployments ?? []).length;
   const latestDeployment = deployments?.[0];
   const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verified) ?? domains?.find((domain) => domain.verified);
-  const liveDomain =
-    primaryDomain?.domain ?? (project ? `${project.slug}.${(import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined) ?? 'midad.app'}` : null);
+  const liveDomain = primaryDomain?.domain ?? (project ? `${project.slug}.${siteBaseDomain()}` : null);
+  const liveHref = siteUrl(liveDomain, projectId);
   const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
   const recentPages = useMemo(
     () =>
@@ -71,7 +74,7 @@ function SiteOverviewPage() {
             nativeButton={false}
             render={
               // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
-              <a href={`/sites/${projectId}`} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />
+              <a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />
             }
             size="sm"
             variant="outline"
@@ -92,7 +95,7 @@ function SiteOverviewPage() {
             </span>
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
-              <a className="truncate font-mono text-primary text-sm hover:underline" href={`/sites/${projectId}`} target="_blank" rel="noreferrer">
+              <a className="truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
                 {liveDomain ?? t('overview.live.unavailable')}
               </a>
             </div>

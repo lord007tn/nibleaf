@@ -47,8 +47,6 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const isGitLab = provider === 'gitlab';
   const isGenericGit = provider === 'git';
 
-  useEffect(() => setProvider(git.provider ?? 'github'), [git.provider]);
-
   const save = (patch: Partial<GitConfig>, message?: string) =>
     update.mutate(
       {
@@ -102,6 +100,19 @@ export function GitTab({ projectId }: { projectId?: string }) {
         t('settings.git.repoSaved'),
       ),
   });
+
+  useEffect(() => {
+    setProvider(git.provider ?? 'github');
+    form.reset({
+      repo: git.repo,
+      cloneUrl: git.cloneUrl,
+      instanceUrl: git.instanceUrl,
+      branch: git.branch,
+      path: git.path,
+      importBranchId: git.importBranchId,
+      importLanguageId: git.importLanguageId,
+    });
+  }, [form, git.branch, git.cloneUrl, git.importBranchId, git.importLanguageId, git.instanceUrl, git.path, git.provider, git.repo]);
 
   const lastImported = (data?.git as GitConfig | undefined)?.lastImportedAt;
 

@@ -52,6 +52,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   project's free subdomain slug, is DNS-label validated, and is globally unique
   at the database layer so wildcard subdomain routing is deterministic.
 - Project overview live-domain and recent deployment activity panel.
+- Project overview "View site" and live-domain links open the configured
+  custom/free subdomain host when available, with the internal `/sites/:id`
+  route only as a fallback.
 - API key settings UI for create/copy/revoke using the existing scoped key API.
 - Danger-zone project deletion and ownership transfer to another accepted
   project member. Ownership transfer promotes the target member and demotes the
@@ -78,7 +81,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   snapshots.
 - One-way public GitHub, GitLab, and generic http(s) Git Markdown/MDX import.
   Imports can target the default branch/language or a selected Midad
-  branch/language.
+  branch/language. Saved Git import settings hydrate correctly after an async
+  settings load.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates.
 - Authenticated draft preview route for branches/languages before publish, gated
@@ -89,6 +93,12 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Self-hosting docs for Coolify and Cloudflare DNS, including app service host
   bindings, wildcard project subdomains, custom-domain CNAME/TXT verification,
   apex-domain handling, and the Coolify-specific environment variable names.
+- Production deployment docs and Compose config document the browser-reachable
+  storage endpoint required for presigned upload/download URLs, and the
+  Dockerfile now honors `--build-arg VITE_API_URL=...` for non-Compose
+  topologies while standard Compose bakes the internal `server:4311` URL.
+- The per-site Plan tab reflects the self-hosted free target: custom domains are
+  listed in the Free tier instead of behind a placeholder Pro tier.
 
 ## Partial / Deliberate Limits
 
@@ -209,6 +219,19 @@ Completed on 2026-07-01:
     `addDomain` and refetched `listDomains` both return `CNAME` and `TXT`
     setup records, confirmed hostname normalization, rejected invalid DNS
     labels and wildcard input, and cleaned up the throwaway organization.
+- Multi-agent parity/readiness follow-up:
+  - Git settings async hydration issue fixed so saved provider, repo/clone URL,
+    branch/path, and import target fields render after settings load.
+  - Plan tab custom-domain copy moved from placeholder Pro to Free to match the
+    implemented free/self-hosted domain feature.
+  - Overview live-site links now target the custom/free subdomain host shown in
+    the dashboard.
+  - `Dockerfile` build-arg handling, `docker-compose.yml` build args, production
+    storage endpoint docs, and stale maxio credential wording were corrected.
+  - Verified with `pnpm --filter @midad/app typecheck`,
+    `pnpm --filter @midad/docs typecheck`, focused Biome checks, and
+    `docker compose -f docker-compose.yml config` with representative
+    production domain/storage values.
 
 Pending / External:
 
