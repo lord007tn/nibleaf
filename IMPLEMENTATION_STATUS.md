@@ -100,6 +100,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Standard Docker Compose storage settings are overridable for R2/S3-compatible
   production deployments while keeping maxio as the default local bundled
   object store.
+- Coolify Compose storage settings are also overridable for R2/S3-compatible
+  deployments while keeping bundled maxio as the default.
 - The per-site Plan tab reflects the self-hosted free target: custom domains are
   listed in the Free tier instead of behind a placeholder Pro tier.
 
@@ -242,6 +244,13 @@ Completed on 2026-07-01:
     `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_PUBLIC_ENDPOINT`,
     `STORAGE_PUBLIC_URL`, `STORAGE_BUCKET`, credentials, path style, and storage
     CORS origins flow into the app/server/worker containers.
+- Coolify object-storage override verification:
+  - `docker compose -f docker-compose.coolify.yml config` confirmed explicit
+    maxio values render into the app/server/worker containers.
+  - The same config command with R2-style environment overrides confirmed
+    provider, endpoint, public endpoint, public URL, bucket, credentials, path
+    style, and storage CORS origins flow into the Coolify app/server/worker
+    containers.
 
 Pending / External:
 

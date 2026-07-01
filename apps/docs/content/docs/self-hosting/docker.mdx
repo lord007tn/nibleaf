@@ -61,6 +61,14 @@ STORAGE_PUBLIC_URL=https://storage.example.com/midad
 BETTER_AUTH_SECRET=<64-hex-secret>
 ```
 
+The Coolify stack defaults to bundled maxio storage. To use Cloudflare R2, AWS
+S3, Backblaze B2, or another S3-compatible store, set `STORAGE_PROVIDER`,
+`STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`,
+`STORAGE_FORCE_PATH_STYLE`, `STORAGE_ACCESS_KEY_ID`,
+`STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_ENDPOINT`, and
+`STORAGE_PUBLIC_URL` to that external bucket. Keep `STORAGE_PUBLIC_ENDPOINT`
+browser-reachable because presigned upload/download URLs use it.
+
 Create these DNS records before verifying domains in Midad:
 
 | Name | Type | Value |

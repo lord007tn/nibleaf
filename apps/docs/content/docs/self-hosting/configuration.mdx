@@ -165,6 +165,12 @@ not the `PUBLIC_*` aliases from the standard compose file:
 Set the Coolify names in the Coolify environment screen. Leaving them unset
 causes compose interpolation to fail before the containers start.
 
+Bundled maxio remains the default in Coolify. For external object storage, set
+the Coolify/raw `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`,
+`STORAGE_BUCKET`, `STORAGE_FORCE_PATH_STYLE`, `STORAGE_ACCESS_KEY_ID`,
+`STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_ENDPOINT`, and
+`STORAGE_PUBLIC_URL` values to your R2/S3-compatible bucket.
+
 ## Email
 
 SMTP is optional. Without SMTP, Midad still runs, but invites, reset-password
