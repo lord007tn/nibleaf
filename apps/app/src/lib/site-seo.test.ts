@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { SitePage } from '@/hooks/api/types';
-import { pageHead } from './site-seo';
+import type { SitePage, SiteShell } from '@/hooks/api/types';
+import { pageHead, siteHead } from './site-seo';
 
 /** Find the value of a meta tag emitted by pageHead (matches name or property). */
 const meta = (head: ReturnType<typeof pageHead>, key: string): string | undefined =>
@@ -207,3 +207,37 @@ describe('pageHead JSON-LD', () => {
   });
 });
 
+describe('siteHead analytics scripts', () => {
+  const shell = (config: SiteShell['project']['config']): SiteShell => ({
+    project: {
+      id: 'p1',
+      name: 'Acme Docs',
+      slug: 'acme',
+      description: null,
+      color: '#5546e8',
+      logoUrl: null,
+      faviconUrl: null,
+      config,
+    },
+    nav: [],
+    languages: [],
+    versions: [],
+    activeLanguage: 'en',
+    activeVersion: 'main',
+    version: 1,
+    generatedAt: '2026-07-01T00:00:00.000Z',
+  });
+
+  it('emits configured analytics scripts when consent is not required', () => {
+    const head = siteHead(shell({ analytics: { ga4: 'G-ABC123', plausible: 'docs.example.com' } }));
+    expect(head.scripts?.some((script) => script.src === 'https://www.googletagmanager.com/gtag/js?id=G-ABC123')).toBe(true);
+    expect(head.scripts?.some((script) => script.src === 'https://plausible.io/js/script.js' && script['data-domain'] === 'docs.example.com')).toBe(
+      true,
+    );
+  });
+
+  it('withholds third-party analytics scripts when cookie consent is required', () => {
+    const head = siteHead(shell({ analytics: { ga4: 'G-ABC123', plausible: 'docs.example.com', cookieConsent: true } }));
+    expect(head.scripts).toBeUndefined();
+  });
+});

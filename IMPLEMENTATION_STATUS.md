@@ -72,6 +72,10 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Published-site add-ons for reader feedback, edit links, and issue links.
   Feedback is stored as public analytics events; edit/issue actions use
   configurable URL templates with `{path}`, `{encodedPath}`, and `{url}` tokens.
+- Published-site external analytics for configured GA4 and Plausible IDs. When
+  cookie consent is disabled, validated third-party scripts are emitted in the
+  SSR head; when consent is enabled, scripts are withheld until the reader
+  accepts the localized consent prompt.
 - Publish-time add-on checks: when CI checks and broken-link checks are enabled,
   the worker blocks deployments with broken internal docs links.
 - Publish-time grammar linting: when CI checks and the grammar linter are
@@ -145,9 +149,6 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 
 ## Pending / Local Follow-ups
 
-- External analytics settings currently persist GA4/Plausible/cookie-consent
-  values, but the published site does not yet inject those scripts or consent
-  behavior.
 - Workspace integrations can save connected-looking provider metadata, but
   Slack/Discord/Zapier notification behavior is not wired yet and GitHub/GitLab
   duplicate the real per-site Git import settings.
@@ -323,7 +324,8 @@ Completed on 2026-07-01:
 - Multi-agent follow-up review:
   - Settings parity review found unwired external analytics scripts, connected
     integration metadata without notification behavior, and mixed self-hosted
-    free vs. hosted-tier Plan/Billing copy.
+    free vs. hosted-tier Plan/Billing copy; the external analytics/runtime
+    consent gap was addressed in this pass.
   - Published-site review found the version-switcher internal-route leak,
     branch version-slug collision risk, and translated-page language-switcher
     alternate-path gap; all three were addressed in this pass.
@@ -337,6 +339,17 @@ Completed on 2026-07-01:
     are published from `SitePageView` to the site chrome, and `changeLanguage`
     uses `siteHref` with the translated alternate path before falling back to
     query-only language switching.
+- Published-site analytics consent verification:
+  - `pnpm exec biome check --write apps/app/src/lib/site-seo.ts
+    apps/app/src/lib/site-seo.test.ts
+    apps/app/src/components/site/site-analytics-consent.tsx
+    apps/app/src/lib/site-i18n.ts apps/app/src/routes/sites/$projectId/route.tsx`.
+  - `pnpm --filter @midad/app test`.
+  - `pnpm --filter @midad/app typecheck`.
+  - `siteHead` regression tests confirm GA4/Plausible scripts are emitted when
+    consent is not required and withheld from the initial head when cookie
+    consent is enabled; the published-site chrome now renders a localized
+    consent prompt that injects the same validated scripts only after acceptance.
 
 ## Pending / External
 

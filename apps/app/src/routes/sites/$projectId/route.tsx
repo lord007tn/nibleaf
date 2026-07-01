@@ -6,6 +6,7 @@ import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MobileNav } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { PageIcon } from '@/components/site/page-icon';
+import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
@@ -614,6 +615,7 @@ function SiteChrome() {
           maxResults={config?.search?.maxResults}
         />
       ) : null}
+      <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />
     </div>
   );
 }

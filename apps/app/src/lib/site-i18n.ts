@@ -34,6 +34,9 @@ const MESSAGES = {
     feedbackThanks: 'Thanks for the feedback.',
     editPage: 'Edit this page',
     raiseIssue: 'Raise an issue',
+    analyticsConsentBody: 'This site uses optional analytics cookies to understand traffic.',
+    analyticsConsentAccept: 'Accept',
+    analyticsConsentDecline: 'Decline',
   },
   ar: {
     docs: 'الوثائق',
@@ -63,6 +66,9 @@ const MESSAGES = {
     feedbackThanks: 'شكرًا على الملاحظة.',
     editPage: 'تحرير هذه الصفحة',
     raiseIssue: 'فتح مشكلة',
+    analyticsConsentBody: 'يستخدم هذا الموقع ملفات تعريف ارتباط اختيارية للتحليلات لفهم الزيارات.',
+    analyticsConsentAccept: 'قبول',
+    analyticsConsentDecline: 'رفض',
   },
 } as const;
 

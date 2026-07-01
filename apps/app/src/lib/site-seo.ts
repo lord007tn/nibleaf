@@ -31,7 +31,7 @@ interface Head {
 /** Third-party analytics <script> tags for the configured providers. IDs are
  *  charset-guarded (defense-in-depth: config is admin-only, but we still never
  *  interpolate arbitrary text into an inline script). */
-function analyticsScripts(config: ProjectConfig | null): Script[] {
+export function analyticsScripts(config: ProjectConfig | null): Script[] {
   const scripts: Script[] = [];
   const ga = config?.analytics?.ga4?.trim();
   if (ga && /^[\w-]+$/.test(ga)) {
@@ -122,7 +122,7 @@ export function siteHead(site: SiteShell | null | undefined): Head {
   // Always advertise a favicon: the project's own, the branding override, or a
   // built-in fallback so the browser tab and link previews are never icon-less.
   const links: Tag[] = [{ rel: 'icon', href: site.project.faviconUrl || config?.branding?.favicon || '/favicon.svg' }, ...fontLinks(config)];
-  const scripts = analyticsScripts(config);
+  const scripts = config?.analytics?.cookieConsent ? [] : analyticsScripts(config);
   return { meta, links, ...(scripts.length ? { scripts } : {}) };
 }
 
@@ -214,11 +214,19 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (realAlternates.length > 1) {
     for (const language of realAlternates) {
       const altLang = language.isDefault ? undefined : language.code;
-      links.push({ rel: 'alternate', hreflang: language.code, href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, origin) });
+      links.push({
+        rel: 'alternate',
+        hreflang: language.code,
+        href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, origin),
+      });
     }
     const fallback = realAlternates.find((language) => language.isDefault) ?? realAlternates[0];
     if (fallback) {
-      links.push({ rel: 'alternate', hreflang: 'x-default', href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, origin) });
+      links.push({
+        rel: 'alternate',
+        hreflang: 'x-default',
+        href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, origin),
+      });
     }
   }
 
@@ -258,4 +266,3 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
 
   return { meta, links, scripts };
 }
-
