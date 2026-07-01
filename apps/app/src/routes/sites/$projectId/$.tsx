@@ -41,4 +41,3 @@ function SitePath() {
   const version = _splat ? _splat.split('/')[0] : undefined;
   return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={page ?? undefined} version={version} />;
 }
-

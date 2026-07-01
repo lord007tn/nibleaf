@@ -1,10 +1,10 @@
-import { useForm } from '@tanstack/react-form';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
 import { Button } from '@midad/design-system/components/ui/button';
 import { FieldError } from '@midad/design-system/components/ui/form-field';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
+import { useForm } from '@tanstack/react-form';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { AuthLayout } from '@/layouts/auth';
 import { signIn } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
@@ -115,4 +115,3 @@ function SignInPage() {
     </AuthLayout>
   );
 }
-

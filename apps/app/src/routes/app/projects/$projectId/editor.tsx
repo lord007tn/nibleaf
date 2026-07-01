@@ -1,3 +1,7 @@
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
+import { cn } from '@midad/design-system/lib/utils';
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
@@ -32,9 +36,6 @@ import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/compon
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { Markdown } from '@/components/markdown';
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import type { Language, PageNode } from '@/hooks/api';
 import {
   useBranches,
@@ -51,7 +52,6 @@ import {
 } from '@/hooks/api';
 import { PublishControl } from '@/layouts/project';
 import { useT } from '@/lib/i18n';
-import { cn } from '@midad/design-system/lib/utils';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
@@ -782,4 +782,3 @@ function SidebarResizer({ onResize }: { onResize: (width: number) => void }) {
     </div>
   );
 }
-

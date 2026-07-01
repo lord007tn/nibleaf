@@ -13,5 +13,3 @@ const client = hcWithType(API_URL, { init: { credentials: 'include' } });
 export const api = client.api;
 
 export { API_URL };
-
-

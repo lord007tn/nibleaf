@@ -68,4 +68,3 @@ export function SiteBanner({ projectId, banner }: { projectId: string; banner: S
     </div>
   );
 }
-

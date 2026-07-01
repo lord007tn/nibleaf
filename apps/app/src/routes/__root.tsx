@@ -1,11 +1,11 @@
-import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
-import { DirectionProvider } from '@/components/direction-provider';
 import { ConfirmProvider as DesignConfirmProvider } from '@midad/design-system/components/ui/confirm';
 import { Toaster } from '@midad/design-system/components/ui/sonner';
 import { TooltipProvider } from '@midad/design-system/components/ui/tooltip';
 import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@midad/design-system/theme';
+import type { QueryClient } from '@tanstack/react-query';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
+import { DirectionProvider } from '@/components/direction-provider';
 import type { SiteShell } from '@/hooks/api/types';
 import { LocaleProvider, useT } from '@/lib/i18n';
 import appCss from '@/styles.css?url';
@@ -83,7 +83,9 @@ function RootDocument({ children }: { children: ReactNode }) {
 
 function AppConfirmProvider({ children }: { children: ReactNode }) {
   const t = useT();
-  return <DesignConfirmProvider labels={{ cancel: t('common.cancel'), delete: t('common.delete'), save: t('common.save') }}>{children}</DesignConfirmProvider>;
+  return (
+    <DesignConfirmProvider labels={{ cancel: t('common.cancel'), delete: t('common.delete'), save: t('common.save') }}>
+      {children}
+    </DesignConfirmProvider>
+  );
 }
-
-

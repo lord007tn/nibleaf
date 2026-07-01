@@ -1,4 +1,5 @@
 import 'katex/dist/katex.min.css';
+import { cn } from '@midad/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -31,7 +32,6 @@ import {
 } from '@/components/site/mdx-components';
 import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
-import { cn } from '@midad/design-system/lib/utils';
 
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
@@ -221,4 +221,3 @@ export function Markdown({ content, className }: { content: string; className?: 
     </div>
   );
 }
-

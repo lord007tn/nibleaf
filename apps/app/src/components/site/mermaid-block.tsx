@@ -43,5 +43,3 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     <div className="my-5 flex justify-center overflow-x-auto rounded-xl border border-border bg-card p-4" dangerouslySetInnerHTML={{ __html: svg }} />
   );
 }
-
-

@@ -1,3 +1,19 @@
+import { MidadMark } from '@midad/design-system/brand';
+import { Button } from '@midad/design-system/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@midad/design-system/components/ui/dialog';
+import { FieldError } from '@midad/design-system/components/ui/form-field';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
@@ -5,14 +21,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
-import { MidadMark } from '@midad/design-system/brand';
-import { Button } from '@midad/design-system/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@midad/design-system/components/ui/dialog';
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { required } from '@/lib/form';
@@ -222,4 +230,3 @@ function ProjectsPage() {
     </div>
   );
 }
-

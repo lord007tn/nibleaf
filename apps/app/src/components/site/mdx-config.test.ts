@@ -38,4 +38,3 @@ describe('normalizeMdxBlocks', () => {
     expect(out).not.toContain('<Frame>');
   });
 });
-

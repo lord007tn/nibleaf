@@ -1,7 +1,7 @@
+import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
 import { BarChart3, Boxes, Check, Languages, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
@@ -112,35 +112,35 @@ function Hero() {
     <section className="relative overflow-hidden border-border border-b">
       <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-20 pb-16 lg:grid-cols-[1fr_420px]">
         <div className="text-center lg:text-start">
-        <a
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs"
-          href={GITHUB_URL}
-          rel="noreferrer"
-          target="_blank"
-        >
-          <Sparkles className="size-3.5 text-primary" /> {t('hero.badge')}
-        </a>
-        <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">
-          {t('hero.headlineLead')} <span className="text-primary">{t('hero.headlineAccent')}</span>
-        </h1>
-        <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
           <a
-            className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            href={appHref('/sign-up')}
-          >
-            {t('hero.ctaPrimary')}
-          </a>
-          <a
-            className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-medium transition-colors hover:bg-muted"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs"
             href={GITHUB_URL}
             rel="noreferrer"
             target="_blank"
           >
-            <Github className="size-4" /> {t('hero.ctaSecondary')}
+            <Sparkles className="size-3.5 text-primary" /> {t('hero.badge')}
           </a>
-        </div>
-        <p className="mt-5 font-mono text-muted-foreground text-xs">{t('hero.terminal')}</p>
+          <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">
+            {t('hero.headlineLead')} <span className="text-primary">{t('hero.headlineAccent')}</span>
+          </h1>
+          <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
+            <a
+              className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              href={appHref('/sign-up')}
+            >
+              {t('hero.ctaPrimary')}
+            </a>
+            <a
+              className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-medium transition-colors hover:bg-muted"
+              href={GITHUB_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <Github className="size-4" /> {t('hero.ctaSecondary')}
+            </a>
+          </div>
+          <p className="mt-5 font-mono text-muted-foreground text-xs">{t('hero.terminal')}</p>
         </div>
         <div className="relative mx-auto w-full max-w-[420px]">
           <img
@@ -150,7 +150,7 @@ function Hero() {
             src="/brand/midad-logo-stacked.svg"
             width="1024"
           />
-          <div className="mt-5 grid grid-cols-4 gap-2" aria-label={t('palette.label')}>
+          <div className="mt-5 grid grid-cols-4 gap-2" aria-label={t('palette.label')} role="img">
             {['#181612', '#8A4B2E', '#B96A3D', '#EEE4D3'].map((color) => (
               <span key={color} className="h-2 rounded-full" style={{ backgroundColor: color }} />
             ))}
@@ -465,4 +465,3 @@ function SiteFooter() {
     </footer>
   );
 }
-

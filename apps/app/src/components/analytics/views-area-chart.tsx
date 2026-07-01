@@ -1,11 +1,11 @@
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@midad/design-system/components/ui/card';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@midad/design-system/components/ui/chart';
 import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { cn } from '@midad/design-system/lib/utils';
+import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
-import { cn } from '@midad/design-system/lib/utils';
 
 const RANGES: AnalyticsRange[] = ['7d', '30d', '90d'];
 
@@ -82,4 +82,3 @@ export function ViewsAreaChart({
     </Card>
   );
 }
-

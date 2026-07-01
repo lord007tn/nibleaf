@@ -1,3 +1,4 @@
+import { cn } from '@midad/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
@@ -26,7 +27,6 @@ import type { ComponentType } from 'react';
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 interface SlashItem {
   titleKey: MessageKey;
@@ -525,4 +525,3 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
 });
 
 export default SlashCommand;
-

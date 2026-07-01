@@ -6,7 +6,8 @@ import { WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
 const TITLE = 'Midad — open-source documentation publishing';
-const DESCRIPTION = 'Fast, searchable documentation you can self-host today. Cloud-hosted Midad is coming soon, with Arabic-ready authoring built in.';
+const DESCRIPTION =
+  'Fast, searchable documentation you can self-host today. Cloud-hosted Midad is coming soon, with Arabic-ready authoring built in.';
 const OG_IMAGE = `${WWW_URL}/og.svg`;
 
 // Organization + SoftwareApplication structured data for rich results.
@@ -80,5 +81,3 @@ function RootDocument({ children }: { children: ReactNode }) {
     </html>
   );
 }
-
-

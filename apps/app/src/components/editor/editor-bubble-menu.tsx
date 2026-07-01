@@ -1,11 +1,11 @@
+import { usePrompt } from '@midad/design-system/components/ui/confirm';
+import { cn } from '@midad/design-system/lib/utils';
 import type { Editor } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Code, Highlighter, Italic, Link as LinkIcon, Strikethrough } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { usePrompt } from '@midad/design-system/components/ui/confirm';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 interface EditorBubbleMenuProps {
   editor: Editor;
@@ -109,4 +109,3 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
 }
 
 export default EditorBubbleMenu;
-

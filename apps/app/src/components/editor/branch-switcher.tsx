@@ -1,12 +1,26 @@
+import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@midad/design-system/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@midad/design-system/components/ui/dropdown-menu';
+import { Input } from '@midad/design-system/components/ui/input';
+import { Label } from '@midad/design-system/components/ui/label';
 import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@midad/design-system/components/ui/dropdown-menu';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
 import type { Branch } from '@/hooks/api';
 import { useCreateBranch, useMergeBranch } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -140,4 +154,3 @@ export function BranchSwitcher({
     </>
   );
 }
-

@@ -62,4 +62,3 @@ describe('Markdown renderer — Mintlify component parity', () => {
     expect(render('> [!WARNING]\n> be careful')).toContain('be careful');
   });
 });
-

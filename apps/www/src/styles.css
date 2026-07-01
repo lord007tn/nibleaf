@@ -33,12 +33,12 @@
 }
 
 .dark {
-  --background: #11100D;
+  --background: #11100d;
   --foreground: #fbf7ee;
   --card: #191713;
   --muted: #252017;
   --muted-foreground: #b8ad9e;
-  --border: #3B3127;
+  --border: #3b3127;
   --primary: #d18a54;
   --primary-foreground: #11100d;
   --brand-copper: #d48a5e;

@@ -17,4 +17,3 @@ describe('i18n message tables', () => {
     }
   });
 });
-

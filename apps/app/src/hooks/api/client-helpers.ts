@@ -25,4 +25,3 @@ export async function mutateData<T>(res: Response, fallback: string): Promise<T>
   const json = (await res.json()) as { data: T };
   return json.data;
 }
-

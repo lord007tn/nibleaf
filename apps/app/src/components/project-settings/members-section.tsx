@@ -1,13 +1,13 @@
-import { useForm } from '@tanstack/react-form';
-import { Check, Copy, Link2, Mail, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { GradientAvatar } from '@/components/settings/section';
 import { Button } from '@midad/design-system/components/ui/button';
 import { FieldError } from '@midad/design-system/components/ui/form-field';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
 import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { useForm } from '@tanstack/react-form';
+import { Check, Copy, Link2, Mail, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { GradientAvatar } from '@/components/settings/section';
 import {
   useCancelProjectInvitation,
   useInviteProjectMember,
@@ -267,4 +267,3 @@ export function MembersSection({ projectId }: { projectId: string }) {
     </div>
   );
 }
-

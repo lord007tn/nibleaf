@@ -73,4 +73,3 @@ export function useActiveProject(): ProjectContextValue {
   }
   return ctx;
 }
-

@@ -1,3 +1,4 @@
+import { cn } from '@midad/design-system/lib/utils';
 import type { Editor } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -17,7 +18,6 @@ import { common, createLowlight } from 'lowlight';
 import { GripVertical, Plus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
-import { cn } from '@midad/design-system/lib/utils';
 import { EditorBubbleMenu } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -312,4 +312,3 @@ export function TiptapEditor({
 }
 
 export default TiptapEditor;
-

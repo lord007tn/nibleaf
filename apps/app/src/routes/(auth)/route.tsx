@@ -22,4 +22,3 @@ function AuthRoute() {
   }
   return <Outlet />;
 }
-

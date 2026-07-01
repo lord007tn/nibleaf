@@ -1,6 +1,6 @@
+import { Input } from '@midad/design-system/components/ui/input';
 import { useForm } from '@tanstack/react-form';
 import { Plus, X } from 'lucide-react';
-import { Input } from '@midad/design-system/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -89,4 +89,3 @@ export function VariablesSection({ project }: { project: Project }) {
     </form>
   );
 }
-

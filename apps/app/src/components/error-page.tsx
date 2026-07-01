@@ -1,6 +1,6 @@
+import { Button } from '@midad/design-system/components/ui/button';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link } from '@tanstack/react-router';
-import { Button } from '@midad/design-system/components/ui/button';
 
 export function ErrorPage({ error, reset }: ErrorComponentProps) {
   const message = error instanceof Error ? error.message : 'An unexpected error occurred.';
@@ -22,4 +22,3 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
     </div>
   );
 }
-

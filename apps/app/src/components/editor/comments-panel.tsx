@@ -1,14 +1,14 @@
-import { Check, Loader2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@midad/design-system/components/ui/button';
 import { ScrollArea } from '@midad/design-system/components/ui/scroll-area';
 import { Textarea } from '@midad/design-system/components/ui/textarea';
+import { cn } from '@midad/design-system/lib/utils';
+import { Check, Loader2, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
 import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
-import { cn } from '@midad/design-system/lib/utils';
 
 interface CommentsPanelProps {
   projectId: string;
@@ -266,4 +266,3 @@ export function CommentsPanel({
     </div>
   );
 }
-

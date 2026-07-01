@@ -6,4 +6,3 @@ export const WWW_URL = (env.VITE_WWW_URL as string | undefined) ?? (dev ? 'http:
 export const GITHUB_URL = (env.VITE_GITHUB_URL as string | undefined) ?? 'https://github.com/midad-docs/midad';
 
 export const appHref = (path = '/app') => new URL(path, APP_URL).toString();
-

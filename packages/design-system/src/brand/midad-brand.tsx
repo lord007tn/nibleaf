@@ -44,5 +44,3 @@ export function MidadWordmark({
     </span>
   );
 }
-
-

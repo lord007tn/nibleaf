@@ -13,12 +13,12 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Button } from '@midad/design-system/components/ui/button';
+import { cn } from '@midad/design-system/lib/utils';
 import { FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { Button } from '@midad/design-system/components/ui/button';
 import type { PageNode } from '@/hooks/api';
-import { cn } from '@midad/design-system/lib/utils';
 
 /**
  * A Notion-style page tree with @dnd-kit: drag the handle to reorder, drag
@@ -323,4 +323,3 @@ function RowPresentation({
     </div>
   );
 }
-

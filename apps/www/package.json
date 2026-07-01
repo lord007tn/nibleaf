@@ -12,7 +12,7 @@
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
     "typecheck": "tsc --noEmit"
   },
-    "dependencies": {
+  "dependencies": {
     "@fontsource-variable/geist": "^5.2.5",
     "@fontsource-variable/geist-mono": "^5.2.5",
     "@midad/design-system": "workspace:*",

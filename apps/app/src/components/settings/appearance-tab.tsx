@@ -1,6 +1,6 @@
-import { Check } from 'lucide-react';
-import { useTheme } from '@midad/design-system/theme';
 import { cn } from '@midad/design-system/lib/utils';
+import { useTheme } from '@midad/design-system/theme';
+import { Check } from 'lucide-react';
 import { SettingsSection } from './section';
 
 interface ThemeOption {
@@ -55,5 +55,3 @@ export function AppearanceTab() {
     </SettingsSection>
   );
 }
-
-

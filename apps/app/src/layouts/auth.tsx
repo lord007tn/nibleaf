@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import { MidadMark } from '@midad/design-system/brand';
+import type { ReactNode } from 'react';
 
 /** Split auth chrome: a brand panel + a centered form card (matches the design). */
 export function AuthLayout({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
@@ -33,5 +33,3 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
     </main>
   );
 }
-
-

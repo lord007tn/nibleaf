@@ -1,11 +1,11 @@
+import { Input } from '@midad/design-system/components/ui/input';
+import { cn } from '@midad/design-system/lib/utils';
 import { useForm } from '@tanstack/react-form';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { Input } from '@midad/design-system/components/ui/input';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { cn } from '@midad/design-system/lib/utils';
 import { FIELD_COMPACT, FIELD_COMPACT_MONO, FIELD_INPUT, Field, GroupLabel, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function NavbarSection({ project }: { project: Project }) {
@@ -132,4 +132,3 @@ export function NavbarSection({ project }: { project: Project }) {
     </form>
   );
 }
-

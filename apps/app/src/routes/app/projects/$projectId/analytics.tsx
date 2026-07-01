@@ -1,8 +1,8 @@
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import { useAnalytics } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -143,4 +143,3 @@ function ListCard({ title, items, empty }: { title: string; items: Array<{ label
     </div>
   );
 }
-

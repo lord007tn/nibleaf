@@ -67,4 +67,3 @@ export function useLocale(): LocaleContextValue {
 
 /** Convenience hook returning just the translator. */
 export const useT = () => useLocale().t;
-

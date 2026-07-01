@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import type { Language } from '@/hooks/api';
 import { useCreateLanguage, useLanguages } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -88,4 +88,3 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
 }
 
 export default AddLanguageDialog;
-

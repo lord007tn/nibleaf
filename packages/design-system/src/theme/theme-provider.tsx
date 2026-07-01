@@ -84,4 +84,3 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   return ctx ?? { theme: 'system', resolvedTheme: 'light', setTheme: () => undefined };
 }
-

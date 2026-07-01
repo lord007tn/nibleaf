@@ -1,6 +1,6 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -100,4 +100,3 @@ export function TypographySection({ project }: { project: Project }) {
     </form>
   );
 }
-

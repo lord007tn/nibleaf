@@ -1,3 +1,5 @@
+import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Activity, BarChart3, Search, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -5,8 +7,6 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { BarRow } from '@/components/analytics/bar-row';
 import { ListCard } from '@/components/analytics/list-card';
 import { StatCard } from '@/components/analytics/stat-card';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
 import { useWorkspaceAnalytics } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -188,4 +188,3 @@ function WorkspaceAnalyticsPage() {
     </div>
   );
 }
-

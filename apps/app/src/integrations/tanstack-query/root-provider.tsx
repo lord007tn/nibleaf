@@ -18,4 +18,3 @@ export function getQueryContext() {
 export function QueryProvider({ children, queryClient }: { children: ReactNode; queryClient: QueryClient }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 }
-

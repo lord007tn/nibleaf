@@ -1,11 +1,11 @@
-import { useForm } from '@tanstack/react-form';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@midad/design-system/components/ui/button';
 import { FieldError } from '@midad/design-system/components/ui/form-field';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
+import { useForm } from '@tanstack/react-form';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient } from '@/lib/auth-client';
 import { minLength } from '@/lib/form';
@@ -96,4 +96,3 @@ function ResetPasswordPage() {
     </AuthLayout>
   );
 }
-

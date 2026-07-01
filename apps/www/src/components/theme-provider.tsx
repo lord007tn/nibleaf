@@ -8,4 +8,3 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     </NextThemeProvider>
   );
 }
-

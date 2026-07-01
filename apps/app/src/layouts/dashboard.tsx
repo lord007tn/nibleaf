@@ -1,10 +1,10 @@
+import { Separator } from '@midad/design-system/components/ui/separator';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
 import { CommandPalette } from '@/components/app/command-palette';
-import { Separator } from '@midad/design-system/components/ui/separator';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 
@@ -50,4 +50,3 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     </SidebarProvider>
   );
 }
-

@@ -1,3 +1,4 @@
+import { cn } from '@midad/design-system/lib/utils';
 import { BannerSection } from '@/components/project-settings/banner-section';
 import { BrandingSection } from '@/components/project-settings/branding-section';
 import { FooterSection } from '@/components/project-settings/footer-section';
@@ -11,7 +12,6 @@ import { VariablesSection } from '@/components/project-settings/variables-sectio
 import type { Project } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 /**
  * The authoring/appearance slice of a site's configuration, embedded in the
@@ -86,4 +86,3 @@ export function ConfigSection({ project, section }: { project: Project; section:
       return null;
   }
 }
-

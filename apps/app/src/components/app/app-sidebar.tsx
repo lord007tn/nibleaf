@@ -1,6 +1,3 @@
-import { Link, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookText, Settings } from 'lucide-react';
-import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
 import {
   Sidebar,
@@ -12,6 +9,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@midad/design-system/components/ui/sidebar';
+import { Link, useRouterState } from '@tanstack/react-router';
+import { BarChart3, BookText, Settings } from 'lucide-react';
+import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { useLocale } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 
@@ -59,4 +59,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

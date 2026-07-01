@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { cn } from '@midad/design-system/lib/utils';
+import { useEffect, useState } from 'react';
 
 type TocHeading = { id: string; text: string; depth: number };
 
@@ -63,4 +63,3 @@ export function TableOfContents({ headings, label }: { headings: TocHeading[]; l
     </div>
   );
 }
-

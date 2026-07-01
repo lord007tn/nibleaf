@@ -1,9 +1,9 @@
+import { cn } from '@midad/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 // Global account settings only — everything site-specific (members, billing,
 // integrations, notifications, git) now lives per-site under each site's Settings.
@@ -59,4 +59,3 @@ function WorkspaceSettingsPage() {
     </div>
   );
 }
-

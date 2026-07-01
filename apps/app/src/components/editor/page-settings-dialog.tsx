@@ -1,18 +1,26 @@
-import { slugify } from '@midad/shared/utils';
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@midad/design-system/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@midad/design-system/components/ui/dialog';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
 import { Switch } from '@midad/design-system/components/ui/switch';
 import { Textarea } from '@midad/design-system/components/ui/textarea';
+import { cn } from '@midad/design-system/lib/utils';
+import { slugify } from '@midad/shared/utils';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -340,4 +348,3 @@ function Toggle({
     </div>
   );
 }
-

@@ -38,4 +38,3 @@ function SiteHome() {
   // Empty path resolves to the first page server-side.
   return <SitePageView projectId={projectId} path="" lang={lang} initialData={page ?? undefined} />;
 }
-

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import { cn } from '@midad/design-system/lib/utils';
+import type { ReactNode } from 'react';
 
 /**
  * A settings panel card. Matches the dashboard's card convention
@@ -55,4 +55,3 @@ export function GradientAvatar({ name, className }: { name: string; className?: 
     </span>
   );
 }
-

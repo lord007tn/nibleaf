@@ -1,7 +1,7 @@
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
 import { useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
 import { useProjects } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 
@@ -58,4 +58,3 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     </CommandDialog>
   );
 }
-

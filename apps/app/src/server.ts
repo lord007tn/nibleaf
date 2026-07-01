@@ -105,4 +105,3 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
 };
 
 export default { fetch: handleRequest };
-
