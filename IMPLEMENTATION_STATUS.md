@@ -372,8 +372,7 @@ Completed on 2026-07-01:
 
 ## Pending / External
 
-- GitHub push target is `lord007tn/open-mintlify` on branch
-  `plume/gap-closure`.
+- GitHub push target is `lord007tn/midad` on branch `main`.
 - Coolify deployment and Cloudflare DNS setup were removed from the active
   work target by user request on 2026-07-01.
 
