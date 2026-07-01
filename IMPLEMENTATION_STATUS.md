@@ -66,6 +66,10 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Exports settings surface that mirrors Mintlify free behavior: visible but
   Enterprise-only, with PDF/static export jobs intentionally unavailable in the
   free self-hosted build.
+- Integrations settings are present for parity, but the self-hosted build keeps
+  external Slack/Discord/Zapier/GitHub/GitLab integration cards read-only until
+  backing workers are implemented; Git repository imports live in the dedicated
+  Git settings tab.
 - Add-ons settings for feedback, edit suggestions, issue links, CI checks,
   broken-link checks, grammar linting, preview deployments, and search indexing.
   Search indexing reuses the existing live `seo.allowIndex` behavior.
@@ -147,12 +151,6 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   search is implemented, including configurable result count.
 - The preview deployments add-on is implemented as an authenticated live draft
   preview route, not as immutable public/shareable preview deployment artifacts.
-
-## Pending / Local Follow-ups
-
-- Workspace integrations can save connected-looking provider metadata, but
-  Slack/Discord/Zapier notification behavior is not wired yet and GitHub/GitLab
-  duplicate the real per-site Git import settings.
 
 ## Deployment Notes
 
@@ -324,7 +322,8 @@ Completed on 2026-07-01:
   - Settings parity review found unwired external analytics scripts, connected
     integration metadata without notification behavior, and mixed self-hosted
     free vs. hosted-tier Plan/Billing copy; the external analytics/runtime
-    consent gap was addressed in this pass.
+    consent gap, read-only integrations behavior, and Plan/Billing copy were
+    addressed.
   - Published-site review found the version-switcher internal-route leak,
     branch version-slug collision risk, and translated-page language-switcher
     alternate-path gap; all three were addressed in this pass.
@@ -360,6 +359,16 @@ Completed on 2026-07-01:
     self-hosted free plan, the Billing tab has no upgrade/cancel controls, and
     the workspace plan summary no longer exposes a nonfunctional billing portal
     action.
+- Self-hosted integrations honesty verification:
+  - `pnpm exec biome check --write
+    apps/app/src/components/settings/integrations-tab.tsx
+    apps/app/src/lib/i18n/messages.ts IMPLEMENTATION_STATUS.md`.
+  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @midad/app test`.
+  - Code inspection confirmed integrations no longer persist connected-looking
+    states or expose connect/save controls in the self-hosted build; existing
+    metadata is displayed read-only and users are directed to the Git settings
+    tab for public repository imports.
 
 ## Pending / External
 

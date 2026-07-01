@@ -1,15 +1,12 @@
-import { useDebouncedCallback } from '@tanstack/react-pacer';
-import { ArrowLeft, MessageSquare, Zap } from 'lucide-react';
-import { type ComponentType, useMemo, useState } from 'react';
-import { toast } from 'sonner';
-import { GithubIcon, GitlabIcon, SlackIcon } from '@/components/icons/brand';
-import { Button } from '@midad/design-system/components/ui/button';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
-import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { cn } from '@midad/design-system/lib/utils';
+import { ArrowLeft, MessageSquare, Zap } from 'lucide-react';
+import { type ComponentType, useMemo, useState } from 'react';
+import { GithubIcon, GitlabIcon, SlackIcon } from '@/components/icons/brand';
+import { useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
-import { cn } from '@midad/design-system/lib/utils';
 import { SettingsSection } from './section';
 
 interface ProviderField {
@@ -78,33 +75,13 @@ const PROVIDERS: Provider[] = [
   },
 ];
 
-interface IntegrationState {
-  connected: boolean;
-  config: Record<string, string>;
-}
-
 /** Normalise the persisted integrations blob (which may hold legacy booleans). */
-function readState(raw: unknown): IntegrationState {
-  if (typeof raw === 'boolean') {
-    return { connected: raw, config: {} };
-  }
+function readConfig(raw: unknown): Record<string, string> {
   if (raw && typeof raw === 'object') {
-    const obj = raw as { connected?: unknown; config?: unknown };
-    return {
-      connected: Boolean(obj.connected),
-      config: obj.config && typeof obj.config === 'object' ? (obj.config as Record<string, string>) : {},
-    };
+    const obj = raw as { config?: unknown };
+    return obj.config && typeof obj.config === 'object' ? (obj.config as Record<string, string>) : {};
   }
-  return { connected: false, config: {} };
-}
-
-function ConnectedPill() {
-  const t = useT();
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-4xl bg-primary/15 px-2.5 py-1 font-medium text-primary text-xs">
-      <span className="size-1.5 rounded-full bg-primary" /> {t('settings.integrations.connected')}
-    </span>
-  );
+  return {};
 }
 
 function NotConnectedPill() {
@@ -116,54 +93,10 @@ function NotConnectedPill() {
   );
 }
 
-function IntegrationDetail({
-  provider,
-  integrations,
-  onBack,
-  projectId,
-}: {
-  provider: Provider;
-  integrations: Record<string, unknown>;
-  onBack: () => void;
-  projectId?: string;
-}) {
+function IntegrationDetail({ provider, integrations, onBack }: { provider: Provider; integrations: Record<string, unknown>; onBack: () => void }) {
   const t = useT();
-  const update = useUpdateWorkspaceSettings(projectId);
-  const persisted = readState(integrations[provider.id]);
-  const [connected, setConnected] = useState(persisted.connected);
-  const [config, setConfig] = useState<Record<string, string>>(persisted.config);
+  const config = readConfig(integrations[provider.id]);
   const Icon = provider.icon;
-
-  const persist = (next: IntegrationState) => update.mutate({ integrations: { ...integrations, [provider.id]: next } });
-
-  // Debounced autosave for field edits so we don't fire a request per keystroke.
-  const saveConfig = useDebouncedCallback((nextConfig: Record<string, string>) => persist({ connected, config: nextConfig }), { wait: 700 });
-
-  const onFieldChange = (key: string, value: string) => {
-    const next = { ...config, [key]: value };
-    setConfig(next);
-    saveConfig(next);
-  };
-
-  const toggleConnection = () => {
-    const next = !connected;
-    setConnected(next);
-    persist({ connected: next, config });
-    toast.success(
-      next
-        ? t('settings.integrations.connectedToast', { name: provider.name })
-        : t('settings.integrations.disconnectedToast', { name: provider.name }),
-    );
-  };
-
-  const saveChanges = () =>
-    update.mutate(
-      { integrations: { ...integrations, [provider.id]: { connected, config } } },
-      {
-        onSuccess: () => toast.success(t('settings.integrations.changesSaved')),
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.saveError')),
-      },
-    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -184,11 +117,12 @@ function IntegrationDetail({
             <div className="font-semibold text-lg tracking-tight">{provider.name}</div>
             <p className="mt-0.5 text-muted-foreground text-sm">{t(provider.descriptionKey)}</p>
           </div>
-          {connected ? <ConnectedPill /> : <NotConnectedPill />}
+          <NotConnectedPill />
         </div>
       </section>
 
       <SettingsSection title={t('settings.integrations.configuration')}>
+        <p className="mb-4 text-muted-foreground text-sm leading-relaxed">{t('settings.integrations.selfHostedUnavailable')}</p>
         <div className="flex flex-col gap-4">
           {provider.fields.map((field) => (
             <div key={field.key} className="flex flex-col gap-1.5">
@@ -197,21 +131,13 @@ function IntegrationDetail({
               </Label>
               <Input
                 className="font-mono"
+                disabled
                 id={`${provider.id}-${field.key}`}
-                onChange={(e) => onFieldChange(field.key, e.target.value)}
                 placeholder={field.placeholder}
                 value={config[field.key] ?? ''}
               />
             </div>
           ))}
-        </div>
-        <div className="mt-5 flex items-center gap-2.5">
-          <Button disabled={update.isPending} variant={connected ? 'outline' : 'default'} onClick={toggleConnection}>
-            {connected ? t('settings.integrations.disconnect') : t('settings.integrations.connect')}
-          </Button>
-          <Button disabled={update.isPending} variant="outline" onClick={saveChanges}>
-            {t('common.save')}
-          </Button>
         </div>
       </SettingsSection>
     </div>
@@ -227,16 +153,13 @@ export function IntegrationsTab({ projectId }: { projectId?: string }) {
   const selected = PROVIDERS.find((p) => p.id === selectedId) ?? null;
 
   if (selected) {
-    return (
-      <IntegrationDetail key={selected.id} integrations={integrations} onBack={() => setSelectedId(null)} projectId={projectId} provider={selected} />
-    );
+    return <IntegrationDetail key={selected.id} integrations={integrations} onBack={() => setSelectedId(null)} provider={selected} />;
   }
 
   return (
     <SettingsSection title={t('settings.integrations.title')} description={t('settings.integrations.subtitle')}>
       <div className="flex flex-col">
         {PROVIDERS.map((provider) => {
-          const connected = readState(integrations[provider.id]).connected;
           const Icon = provider.icon;
           return (
             <button
@@ -251,13 +174,11 @@ export function IntegrationsTab({ projectId }: { projectId?: string }) {
               <div className="min-w-0 flex-1 leading-snug">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-sm">{provider.name}</span>
-                  {connected ? <ConnectedPill /> : <NotConnectedPill />}
+                  <NotConnectedPill />
                 </div>
                 <p className="mt-0.5 text-muted-foreground text-sm">{t(provider.descriptionKey)}</p>
               </div>
-              <span className="text-muted-foreground text-sm">
-                {connected ? t('settings.integrations.manage') : t('settings.integrations.connect')}
-              </span>
+              <span className="text-muted-foreground text-sm">{t('settings.integrations.view')}</span>
             </button>
           );
         })}
@@ -265,4 +186,3 @@ export function IntegrationsTab({ projectId }: { projectId?: string }) {
     </SettingsSection>
   );
 }
-

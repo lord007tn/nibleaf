@@ -775,6 +775,9 @@ export const messages = {
     'settings.integrations.connect': 'Connect',
     'settings.integrations.disconnect': 'Disconnect',
     'settings.integrations.manage': 'Manage',
+    'settings.integrations.view': 'View',
+    'settings.integrations.selfHostedUnavailable':
+      'This self-hosted build does not run external integration workers yet. Use the Git settings tab for public repository imports.',
     'settings.integrations.changesSaved': 'Changes saved',
     'settings.integrations.connectedToast': '{name} connected',
     'settings.integrations.disconnectedToast': '{name} disconnected',
@@ -1715,6 +1718,9 @@ export const messages = {
     'settings.integrations.connect': 'ربط',
     'settings.integrations.disconnect': 'إلغاء الربط',
     'settings.integrations.manage': 'إدارة',
+    'settings.integrations.view': 'عرض',
+    'settings.integrations.selfHostedUnavailable':
+      'لا تشغّل هذه النسخة ذاتية الاستضافة عمال تكاملات خارجية بعد. استخدم تبويب إعدادات Git لاستيراد المستودعات العامة.',
     'settings.integrations.changesSaved': 'تم حفظ التغييرات',
     'settings.integrations.connectedToast': 'تم ربط {name}',
     'settings.integrations.disconnectedToast': 'تم إلغاء ربط {name}',
