@@ -130,8 +130,6 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
-      maxio:
-        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -151,8 +149,6 @@ services:
       - "${WORKER_PORT:-4312}:4312"
     depends_on:
       dragonfly:
-        condition: service_healthy
-      maxio:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully

@@ -128,8 +128,6 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
-      maxio:
-        condition: service_healthy
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -149,8 +147,6 @@ services:
       - "4312"
     depends_on:
       dragonfly:
-        condition: service_healthy
-      maxio:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully

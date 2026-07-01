@@ -102,6 +102,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   object store.
 - Coolify Compose storage settings are also overridable for R2/S3-compatible
   deployments while keeping bundled maxio as the default.
+- Standard and Coolify app containers no longer gate server/worker startup on
+  bundled maxio health; bucket creation and CORS remain best-effort on API boot,
+  so external object-storage deployments can start without local maxio.
 - The per-site Plan tab reflects the self-hosted free target: custom domains are
   listed in the Free tier instead of behind a placeholder Pro tier.
 
@@ -251,6 +254,11 @@ Completed on 2026-07-01:
     provider, endpoint, public endpoint, public URL, bucket, credentials, path
     style, and storage CORS origins flow into the Coolify app/server/worker
     containers.
+- Storage startup dependency verification:
+  - Rendered standard and Coolify Compose configs confirmed `server` and
+    `worker` depend on Postgres/Dragonfly/migrations but not on `maxio`.
+  - `pnpm --filter @midad/docs typecheck` passed after documenting the
+    best-effort storage bootstrap behavior.
 
 Pending / External:
 

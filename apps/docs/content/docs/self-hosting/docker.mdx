@@ -68,6 +68,8 @@ S3, Backblaze B2, or another S3-compatible store, set `STORAGE_PROVIDER`,
 `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_ENDPOINT`, and
 `STORAGE_PUBLIC_URL` to that external bucket. Keep `STORAGE_PUBLIC_ENDPOINT`
 browser-reachable because presigned upload/download URLs use it.
+The app/server/worker containers do not wait on local maxio health, so external
+object-storage deployments can leave the bundled storage service unused.
 
 Create these DNS records before verifying domains in Midad:
 

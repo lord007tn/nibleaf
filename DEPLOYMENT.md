@@ -83,6 +83,10 @@ must be reachable from the browser because presigned upload/download URLs are
 returned to the dashboard. `PUBLIC_STORAGE_URL` is the public asset/CDN base
 used when rendering uploaded files.
 
+The app containers do not wait on local `maxio` during startup. Bucket creation
+and CORS setup are best-effort on API boot, so external R2/S3 deployments can
+start without a bundled storage service.
+
 ## 3. Do not expose datastore ports
 
 The default `docker-compose.yml` publishes Postgres, Dragonfly, and maxio host ports

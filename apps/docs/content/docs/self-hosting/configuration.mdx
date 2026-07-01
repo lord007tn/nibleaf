@@ -171,6 +171,10 @@ the Coolify/raw `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`,
 `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_ENDPOINT`, and
 `STORAGE_PUBLIC_URL` values to your R2/S3-compatible bucket.
 
+The app containers do not depend on local `maxio` health at startup. Bucket
+creation and CORS setup are best-effort on API boot, so external object-storage
+deployments can start without waiting for bundled storage.
+
 ## Email
 
 SMTP is optional. Without SMTP, Midad still runs, but invites, reset-password
