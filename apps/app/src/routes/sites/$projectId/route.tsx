@@ -391,11 +391,7 @@ function SiteChrome() {
     const defaultVersion = versions.find((item) => item.isDefault);
     const targetPrefix = defaultVersion?.slug === slug ? '' : slug;
     const targetPath = [targetPrefix, isChangelog ? '' : contentPath].filter(Boolean).join('/');
-    if (targetPath) {
-      navigate({ to: '/sites/$projectId/$', params: { projectId, _splat: targetPath }, search: (prev) => ({ lang: prev.lang }) });
-      return;
-    }
-    navigate({ to: '/sites/$projectId', params: { projectId }, search: (prev) => ({ lang: prev.lang }) });
+    window.location.assign(siteHref(projectId, targetPath, { lang }));
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
   const sitePath = (path = '') => siteHref(projectId, path, { lang, version: activeVersionPrefix });

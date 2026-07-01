@@ -20,5 +20,6 @@ export function siteHref(projectId: string, path = '', options?: { lang?: string
   const fullPath = [options?.version, cleanPath(path)].filter(Boolean).join('/');
   const prefix = isCustomDomainSite(projectId) ? '' : `/sites/${projectId}`;
   const query = options?.lang ? `?lang=${encodeURIComponent(options.lang)}` : '';
-  return `${prefix}${fullPath ? `/${fullPath}` : ''}${query}` || `/${query}`;
+  const pathname = `${prefix}${fullPath ? `/${fullPath}` : ''}` || '/';
+  return `${pathname}${query}`;
 }

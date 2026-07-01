@@ -76,6 +76,8 @@ const uniqueSiblingSlug = async (
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
 const PLACEHOLDER_TITLE_RE = /^(?:Untitled|New group)$/;
 
+type PageTreeNode = { id: string; parentId: string | null; branchId: string | null; languageId: string | null };
+
 /** Resolve a parent's path, language, and branch. A child inherits both its
  *  parent's language and branch. */
 const parentInfo = async (
@@ -90,6 +92,21 @@ const parentInfo = async (
     throw notFound('page', { id: parentId });
   }
   return { path: parent.path, languageId: parent.languageId, branchId: parent.branchId };
+};
+
+const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, parentId: string | null): void => {
+  let current = parentId;
+  const seen = new Set<string>();
+  while (current) {
+    if (current === id) {
+      throw badRequest('A page cannot be moved under itself or one of its descendants.', { id, parentId });
+    }
+    if (seen.has(current)) {
+      throw badRequest('The page tree contains a parent cycle.', { id, parentId: current });
+    }
+    seen.add(current);
+    current = pages.get(current)?.parentId ?? null;
+  }
 };
 
 /** Recompute the materialized `path` of every page in a project from the tree. */
@@ -172,6 +189,8 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
     if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
       throw badRequest('A page can only be moved under a parent in the same branch and language.', { id, parentId: nextParentId });
     }
+    const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, parentId: true, branchId: true, languageId: true } });
+    assertNoParentCycle(new Map(pages.map((node) => [node.id, node])), id, nextParentId);
   }
   const slugChanged = body.slug !== undefined;
   const reparented = body.parentId !== undefined && nextParentId !== page.parentId;
@@ -220,29 +239,34 @@ export const deletePage = async (projectId: string, id: string) => {
 };
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
-  const pageIds = body.items.map((item) => item.id);
-  const parentIds = [...new Set(body.items.map((item) => item.parentId).filter((id): id is string => Boolean(id)))];
-  const [pages, parents] = await Promise.all([
-    prisma.page.findMany({ where: { id: { in: pageIds }, projectId }, select: { id: true, branchId: true, languageId: true } }),
-    prisma.page.findMany({ where: { id: { in: parentIds }, projectId }, select: { id: true, branchId: true, languageId: true } }),
-  ]);
+  const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, parentId: true, branchId: true, languageId: true } });
   const byPage = new Map(pages.map((page) => [page.id, page]));
-  const byParent = new Map(parents.map((page) => [page.id, page]));
+  const proposed = new Map<string, string | null>();
   for (const item of body.items) {
+    if (proposed.has(item.id)) {
+      throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
+    }
     const page = byPage.get(item.id);
     if (!page) {
       throw notFound('page', { id: item.id });
     }
+    proposed.set(item.id, item.parentId);
     if (!item.parentId) {
       continue;
     }
-    const parent = byParent.get(item.parentId);
+    const parent = byPage.get(item.parentId);
     if (!parent) {
       throw notFound('page', { id: item.parentId });
     }
     if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
       throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id: item.id, parentId: item.parentId });
     }
+  }
+  const nextTree = new Map(
+    pages.map((page) => [page.id, { ...page, parentId: proposed.has(page.id) ? (proposed.get(page.id) ?? null) : page.parentId }]),
+  );
+  for (const item of body.items) {
+    assertNoParentCycle(nextTree, item.id, item.parentId);
   }
   await prisma.$transaction(
     body.items.map((item) =>

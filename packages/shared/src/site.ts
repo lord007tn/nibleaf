@@ -206,6 +206,22 @@ const versionSlug = (name: string, fallback: string): string => {
   return slug || fallback;
 };
 
+const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): string => {
+  const base = versionSlug(name, fallback);
+  let candidate = base;
+  if (used.has(candidate)) {
+    const suffix = versionSlug(fallback, fallback).slice(0, 12) || 'version';
+    candidate = `${base}-${suffix}`;
+  }
+  let n = 2;
+  while (used.has(candidate)) {
+    candidate = `${base}-${n}`;
+    n += 1;
+  }
+  used.add(candidate);
+  return candidate;
+};
+
 type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean; config?: unknown };
 type BranchRow = { id: string; name: string; isDefault: boolean };
 type ProjectRow = {
@@ -251,9 +267,15 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
               .map((branch) => [branch.id, branch]),
           ).values(),
         );
+  const usedVersionSlugs = new Set<string>();
   const versions: SnapshotVersion[] =
     branchRows.length > 0
-      ? branchRows.map((branch) => ({ id: branch.id, name: branch.name, slug: versionSlug(branch.name, branch.id), isDefault: branch.isDefault }))
+      ? branchRows.map((branch) => ({
+          id: branch.id,
+          name: branch.name,
+          slug: uniqueVersionSlug(branch.name, branch.id, usedVersionSlugs),
+          isDefault: branch.isDefault,
+        }))
       : [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
   const defaultVersion = versions.find((version) => version.isDefault) ?? versions[0] ?? { id: 'main', name: 'main', slug: 'main', isDefault: true };
   const versionById = new Map(versions.map((version) => [version.id, version]));

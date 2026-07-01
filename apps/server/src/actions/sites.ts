@@ -122,8 +122,18 @@ const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVers
   return versionsForSnapshot(snapshot).find((v) => v.slug === requested || v.name === requested || v.id === requested);
 };
 
+const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => {
+  if (page.versionId) {
+    return page.versionId === version.id;
+  }
+  if (page.versionSlug) {
+    return page.versionSlug === version.slug;
+  }
+  return version.isDefault;
+};
+
 const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
-  snapshot.pages.filter((page) => !page.versionId || page.versionId === version.id || page.versionSlug === version.slug);
+  snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
@@ -330,7 +340,7 @@ export const getSiteSitemap = async (identifier: string): Promise<string> => {
     .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode))
     .map((page) => {
       // Default-language pages use the clean URL (no ?lang) — their canonical.
-      const pageVersion = versionsForSnapshot(snapshot).find((v) => v.id === page.versionId || v.slug === page.versionSlug);
+      const pageVersion = versionsForSnapshot(snapshot).find((v) => pageBelongsToVersion(page, v));
       const versionPath = pageVersion && !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
       const pagePath = page.path ? `/${page.path}` : '';
       const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';

@@ -122,6 +122,27 @@ describe('buildSnapshot', () => {
     const snap = buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01');
     expect(snap.project.languages).toEqual([{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }]);
   });
+  it('deduplicates branch version slugs while preserving exact version ids on pages', () => {
+    const snap = buildSnapshot(
+      {
+        ...projectRow,
+        branches: [
+          { id: 'branch_a', name: 'Foo Bar', isDefault: true },
+          { id: 'branch_b', name: 'foo-bar', isDefault: false },
+        ],
+      },
+      [
+        { ...rawPage, id: 'a', branchId: 'branch_a' },
+        { ...rawPage, id: 'b', branchId: 'branch_b' },
+      ],
+      '2026-01-01',
+    );
+    expect(snap.project.versions.map((version) => version.slug)).toEqual(['foo-bar', 'foo-bar-branch_b']);
+    expect(snap.pages.map((page) => [page.id, page.versionId, page.versionSlug])).toEqual([
+      ['a', 'branch_a', 'foo-bar'],
+      ['b', 'branch_b', 'foo-bar-branch_b'],
+    ]);
+  });
   it('interpolates {{ variables }} from config into page title/description/content at build time', () => {
     const snap = buildSnapshot(
       {

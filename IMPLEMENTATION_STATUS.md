@@ -81,6 +81,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   live-site visibility gate.
 - Git-style DB branches with create/fork/merge/delete and versioned published
   snapshots.
+- Published branch/version snapshots use unique URL slugs even when branch names
+  normalize to the same slug, and public version filtering prefers exact branch
+  version IDs so pages from colliding branches are not mixed.
 - One-way public GitHub, GitLab, and generic http(s) Git Markdown/MDX import.
   Imports can target the default branch/language or a selected Midad
   branch/language. Saved Git import settings hydrate correctly after an async
@@ -88,10 +91,15 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Page creation, listing, moving, and reordering validate branch/language scope
   server-side, so Git-style branches and multilingual trees cannot be crossed by
   submitting IDs from another project, branch, or language.
+- Page moves and batched reorders reject self/descendant parent cycles and
+  duplicate reorder entries before materialized paths are recomputed.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates. The server
   enforces that a project cannot directly unset its current default language;
   another language must be promoted instead.
+- Published-site version switching uses domain-aware site URLs, so switching
+  versions on a custom/free subdomain stays at the domain root instead of
+  navigating to the internal `/sites/:projectId` route.
 - Authenticated draft preview route for branches/languages before publish, gated
   by the Add-ons preview deployments toggle.
 - Self-host Docker image and Compose stack for local/standard deployment.
@@ -130,6 +138,20 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   search is implemented, including configurable result count.
 - The preview deployments add-on is implemented as an authenticated live draft
   preview route, not as immutable public/shareable preview deployment artifacts.
+
+## Pending / Local Follow-ups
+
+- External analytics settings currently persist GA4/Plausible/cookie-consent
+  values, but the published site does not yet inject those scripts or consent
+  behavior.
+- Workspace integrations can save connected-looking provider metadata, but
+  Slack/Discord/Zapier notification behavior is not wired yet and GitHub/GitLab
+  duplicate the real per-site Git import settings.
+- The Plan/Billing surfaces still contain mixed future hosted-tier copy in a few
+  places; self-hosted free/unlimited messaging should be made consistent.
+- Language switching on a page with translated siblings that use different
+  slugs still changes only `?lang=`; it should navigate to the matching
+  alternate path when a `translationKey` sibling exists.
 
 ## Deployment Notes
 
@@ -285,8 +307,27 @@ Completed on 2026-07-01:
     and list reject another project's branch/language IDs, confirmed moving or
     reordering an English page under an Arabic parent is rejected, and verified
     the page kept its original branch/language/parent before cleanup.
+- Page cycle and published-version invariant verification:
+  - `pnpm exec biome check --write packages/shared/src/site.ts
+    packages/shared/src/site.test.ts apps/server/src/actions/sites.ts
+    apps/server/src/actions/pages.ts apps/app/src/lib/site-paths.ts
+    apps/app/src/routes/sites/$projectId/route.tsx`.
+  - `pnpm --filter @midad/shared test`.
+  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm --filter @midad/app typecheck`.
+  - Direct server dogfood rejected page moves/reorders that would place a page
+    under itself or a descendant and verified the original tree remained intact.
+  - Direct snapshot dogfood confirmed branch names that both normalize to
+    `foo-bar` publish as distinct version slugs tied to exact branch IDs.
+- Multi-agent follow-up review:
+  - Settings parity review found unwired external analytics scripts, connected
+    integration metadata without notification behavior, and mixed self-hosted
+    free vs. hosted-tier Plan/Billing copy.
+  - Published-site review found the version-switcher internal-route leak,
+    branch version-slug collision risk, and translated-page language-switcher
+    alternate-path gap; the first two were addressed in this pass.
 
-Pending / External:
+## Pending / External
 
 - Push is pending because this checkout has no configured Git remote and no
   visible existing GitHub repository matched the project metadata.
