@@ -97,6 +97,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   storage endpoint required for presigned upload/download URLs, and the
   Dockerfile now honors `--build-arg VITE_API_URL=...` for non-Compose
   topologies while standard Compose bakes the internal `server:4311` URL.
+- Standard Docker Compose storage settings are overridable for R2/S3-compatible
+  production deployments while keeping maxio as the default local bundled
+  object store.
 - The per-site Plan tab reflects the self-hosted free target: custom domains are
   listed in the Free tier instead of behind a placeholder Pro tier.
 
@@ -232,6 +235,13 @@ Completed on 2026-07-01:
     `pnpm --filter @midad/docs typecheck`, focused Biome checks, and
     `docker compose -f docker-compose.yml config` with representative
     production domain/storage values.
+- Standard Compose object-storage override verification:
+  - `docker compose -f docker-compose.yml config` confirmed the default maxio
+    topology still resolves.
+  - The same config command with R2-style environment overrides confirmed
+    `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_PUBLIC_ENDPOINT`,
+    `STORAGE_PUBLIC_URL`, `STORAGE_BUCKET`, credentials, path style, and storage
+    CORS origins flow into the app/server/worker containers.
 
 Pending / External:
 
