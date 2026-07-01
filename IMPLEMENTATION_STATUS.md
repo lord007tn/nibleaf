@@ -138,8 +138,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Coolify deployment config now follows the working Keenpix-style pattern:
   Coolify-generated service URLs, users, passwords, and hex secrets feed the
   source Docker build and runtime environment; bundled datastores stay private;
-  optional resource caps are exposed; and the repo includes a Docker image build
-  workflow for `main` and release tags.
+  and the repo includes Docker image and changelogithub release workflows for
+  `main` and release tags.
 
 ## Partial / Deliberate Limits
 

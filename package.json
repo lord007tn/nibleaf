@@ -24,6 +24,7 @@
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "release:notes": "pnpm dlx changelogithub@14.0.0",
     "db:generate": "pnpm --filter @midad/database generate",
     "db:migrate": "pnpm --filter @midad/database migrate:dev",
     "db:deploy": "pnpm --filter @midad/database migrate:deploy",

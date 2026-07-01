@@ -64,9 +64,6 @@ services:
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
-    mem_limit: ${MIDAD_PG_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_PG_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_PG_CPU_LIMIT:-0}
     environment:
       POSTGRES_USER: ${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}
@@ -82,9 +79,6 @@ services:
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     restart: unless-stopped
-    mem_limit: ${MIDAD_REDIS_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_REDIS_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_REDIS_CPU_LIMIT:-0}
     command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
     volumes:
       - midad-coolify-dragonfly:/data
@@ -97,9 +91,6 @@ services:
   maxio:
     image: ghcr.io/coollabsio/maxio:latest
     restart: unless-stopped
-    mem_limit: ${MIDAD_STORAGE_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_STORAGE_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_STORAGE_CPU_LIMIT:-0}
     environment:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
       MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
@@ -133,9 +124,6 @@ services:
     image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["server"]
     init: true
-    mem_limit: ${MIDAD_SERVER_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_SERVER_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_SERVER_CPU_LIMIT:-0}
     environment: *service-env
     expose:
       - "4311"
@@ -158,9 +146,6 @@ services:
     image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["worker"]
     init: true
-    mem_limit: ${MIDAD_WORKER_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_WORKER_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_WORKER_CPU_LIMIT:-0}
     environment: *service-env
     expose:
       - "4312"
@@ -181,9 +166,6 @@ services:
     image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["app"]
     init: true
-    mem_limit: ${MIDAD_APP_MEM_LIMIT:-0}
-    mem_reservation: ${MIDAD_APP_MEM_RESERVATION:-0}
-    cpus: ${MIDAD_APP_CPU_LIMIT:-0}
     environment:
       <<: *service-env
       PORT: "4310"
