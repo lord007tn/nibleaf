@@ -63,7 +63,7 @@ export const QUEUE_CONFIGS: Record<QueueNames, QueueConfigEntry> = {
   },
 };
 
-/** Wrap the queue name in a Redis Cluster hash-tag when QUEUE_CLUSTER is set. */
+/** Wrap queue names in a Redis hash tag so BullMQ keys stay grouped for Dragonfly. */
 export function getQueueName(name: string): string {
   return env.QUEUE_CLUSTER ? `{${name}}` : name;
 }

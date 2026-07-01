@@ -21,12 +21,12 @@ services:
       timeout: 5s
       retries: 10
 
-  # Dragonfly — Redis-compatible backend for BullMQ. Single-node flag so BullMQ's
-  # multi-key Lua scripts work (queue names are not hash-tagged by default).
+  # Dragonfly — Redis-compatible backend for BullMQ. Midad hash-tags queue names
+  # so Dragonfly can keep BullMQ keys grouped.
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     restart: unless-stopped
-    command: ['dragonfly', '--default_lua_flags=allow-undeclared-keys']
+    command: ['dragonfly', '--cluster_mode=emulated', '--lock_on_hashtags']
     ulimits:
       memlock: -1
     ports:

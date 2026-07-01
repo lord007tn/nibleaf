@@ -31,6 +31,7 @@ x-service-env: &service-env
   POSTGRES_URL: postgresql://${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-midad}
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
+  QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
   STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_ENDPOINT for R2/S3}}
@@ -79,7 +80,7 @@ services:
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     restart: unless-stopped
-    command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
+    command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
     volumes:
       - midad-coolify-dragonfly:/data
     healthcheck:
@@ -111,7 +112,7 @@ services:
 
   migrate:
     build: *build
-    image: ${MIDAD_IMAGE:-midad:coolify}
+    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["migrate"]
     environment: *service-env
     depends_on:
@@ -121,7 +122,7 @@ services:
 
   server:
     build: *build
-    image: ${MIDAD_IMAGE:-midad:coolify}
+    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["server"]
     init: true
     environment: *service-env
@@ -143,7 +144,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ${MIDAD_IMAGE:-midad:coolify}
+    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["worker"]
     init: true
     environment: *service-env
@@ -163,7 +164,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: ${MIDAD_IMAGE:-midad:coolify}
+    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["app"]
     init: true
     environment:

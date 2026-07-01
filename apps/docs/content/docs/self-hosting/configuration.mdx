@@ -75,11 +75,17 @@ Background work uses BullMQ on Dragonfly, a Redis-compatible server.
 | `REDIS_PORT` | Dragonfly/Redis port. |
 | `REDIS_PASSWORD` | Optional password. |
 | `REDIS_DB` | Database index. |
+| `QUEUE_CLUSTER` | Hash-tag BullMQ queue names so Dragonfly can group queue keys. Defaults to `true`. |
 | `WORKER_QUEUES` | Optional comma-separated queue allowlist. |
 | `PUBLISH_CONCURRENCY` | Concurrent publish jobs. |
 | `SEARCH_CONCURRENCY` | Concurrent search indexing jobs. |
 | `EMAIL_CONCURRENCY` | Concurrent email jobs. |
 | `ANALYTICS_CONCURRENCY` | Concurrent analytics jobs. |
+
+The bundled Dragonfly containers run with `--cluster_mode=emulated` and
+`--lock_on_hashtags`. Keep `QUEUE_CLUSTER=true` unless you are intentionally
+pointing Midad at a Redis-compatible backend that should not use hash-tagged
+queue names.
 
 ## Object storage
 

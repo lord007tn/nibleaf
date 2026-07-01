@@ -24,6 +24,7 @@ x-service-env: &service-env
   POSTGRES_URL: postgresql://midad:${POSTGRES_PASSWORD:-midad}@postgres:5432/midad
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
+  QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
   STORAGE_PUBLIC_ENDPOINT: ${PUBLIC_STORAGE_ENDPOINT:-http://localhost:9300}
@@ -69,12 +70,12 @@ services:
       timeout: 5s
       retries: 12
 
-  # Dragonfly — a Redis-compatible cache/queue backend for BullMQ. Single-node:
-  # BullMQ's multi-key Lua scripts require non-clustered Redis semantics.
+  # Dragonfly — Redis-compatible queue backend for BullMQ. Queue names are
+  # hash-tagged by default, so Dragonfly can keep BullMQ keys grouped.
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     restart: unless-stopped
-    command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
+    command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
     ulimits:
       memlock: -1
     volumes:

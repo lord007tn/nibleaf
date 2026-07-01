@@ -118,7 +118,8 @@ services are reached through it; the `server` and `worker` ports stay internal.
 
 Use `docker-compose.coolify.yml` when deploying the self-hostable docs platform
 to Coolify. It omits the `www` marketing service, builds the Midad image with
-Coolify's generated public URLs, and exposes:
+Coolify's generated public URLs, defaults app containers to
+`ghcr.io/lord007tn/midad:latest`, and exposes:
 
 - `app:4310` for dashboard, editor, published docs, project subdomains, and
   custom domains.

@@ -139,7 +139,9 @@ keeping datastore ports private, and a security checklist).
 For Coolify, use `docker-compose.coolify.yml`. It runs the self-hostable docs
 platform without the marketing app; assign the dashboard, wildcard docs, CNAME
 target, and storage domains to the `app`/`maxio` services so Coolify provides
-the `SERVICE_URL_*` values used during the Docker build.
+the `SERVICE_URL_*` values used during the Docker build. The Coolify stack
+defaults to `ghcr.io/lord007tn/midad:latest`; set `MIDAD_IMAGE` only to pin a
+tag or digest.
 
 Implementation parity and open gaps are tracked in
 **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**.

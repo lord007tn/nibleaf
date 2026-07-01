@@ -8,7 +8,7 @@ export const keys = () =>
       REDIS_PORT: z.coerce.number().default(6379),
       REDIS_PASSWORD: z.string().optional(),
       REDIS_DB: z.coerce.number().default(0),
-      QUEUE_CLUSTER: z.stringbool().default(false),
+      QUEUE_CLUSTER: z.stringbool().default(true),
       // Comma-separated allowlist of queues this process runs workers for.
       // Empty = all queues (single-worker deployment).
       WORKER_QUEUES: z

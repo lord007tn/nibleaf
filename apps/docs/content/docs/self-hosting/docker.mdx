@@ -47,6 +47,10 @@ Coolify generates the service URL, user, password, and hex secret variables used
 by the compose file. Assign domains first, then set only the product-specific
 values manually.
 
+The Coolify stack defaults app containers to
+`ghcr.io/lord007tn/midad:latest`. Set `MIDAD_IMAGE` only when you want to pin a
+specific release tag or digest.
+
 ```dotenv
 SITE_BASE_DOMAIN=docs.example.com
 CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com

@@ -292,6 +292,14 @@ Completed on 2026-07-01:
     `worker` depend on Postgres/Dragonfly/migrations but not on `maxio`.
   - `pnpm --filter @midad/docs typecheck` passed after documenting the
     best-effort storage bootstrap behavior.
+- Dragonfly/BullMQ grouping:
+  - BullMQ queue names default to Redis hash tags (`{publish}`, `{search}`,
+    etc.) through `QUEUE_CLUSTER=true`.
+  - Standard, dev, and Coolify Dragonfly services now use
+    `--cluster_mode=emulated --lock_on_hashtags` instead of
+    `--default_lua_flags=allow-undeclared-keys`.
+  - Coolify app images default to `ghcr.io/lord007tn/midad:latest`; `MIDAD_IMAGE`
+    remains only as an optional pin/override.
 - Custom-domain primary invariant verification:
   - `pnpm --filter @midad/server typecheck`.
   - `pnpm exec biome check --write apps/server/src/actions/domains.ts`.
