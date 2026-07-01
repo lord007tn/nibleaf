@@ -26,6 +26,9 @@ require_prod_secret() {
 
 # Seed only when explicitly opted in, or in development. Never auto-seed in prod.
 should_seed() {
+  if [ "${MIDAD_RUN_SEED:-}" = "true" ] || [ "${MIDAD_RUN_SEED:-}" = "1" ]; then
+    return 0
+  fi
   if [ "${PLUME_RUN_SEED:-}" = "true" ] || [ "${PLUME_RUN_SEED:-}" = "1" ]; then
     return 0
   fi
@@ -44,7 +47,7 @@ case "$cmd" in
       echo "[midad] seeding demo data…"
       pnpm --filter @midad/server exec tsx src/database/seed/index.ts || echo "[midad] seed skipped (continuing)"
     else
-      echo "[midad] skipping seed (set PLUME_RUN_SEED=true to enable)"
+      echo "[midad] skipping seed (set MIDAD_RUN_SEED=true to enable)"
     fi
     echo "[midad] migrate complete"
     ;;

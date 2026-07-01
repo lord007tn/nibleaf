@@ -5,8 +5,7 @@
 #
 # Assign Coolify domains to:
 #   app   : 4310 -> dashboard + published docs + wildcard docs host
-#   server: 4311 -> optional direct API domain, otherwise keep internal
-#   maxio : 9000 -> optional public storage/media domain
+#   maxio : 9000 -> bundled public storage/media domain, unless using R2/S3
 #
 # Required DNS for free project subdomains:
 #   *.${SITE_BASE_DOMAIN} CNAME/AAAA/A -> the Coolify app ingress
@@ -21,48 +20,56 @@ x-build: &build
   dockerfile: Dockerfile
   target: runner
   args:
-    VITE_APP_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
-    VITE_WWW_URL: ${WWW_URL:?set WWW_URL to the public site origin, or set it equal to APP_URL}
+    VITE_API_URL: http://server:4311
+    VITE_APP_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
+    VITE_WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
     VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
+    VERSION: ${SERVICE_VERSION:-latest}
 
 x-service-env: &service-env
   NODE_ENV: production
-  POSTGRES_URL: postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-midad}
+  POSTGRES_URL: postgresql://${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-midad}
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
-  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:?set STORAGE_PUBLIC_ENDPOINT to the public storage origin}
+  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_ENDPOINT for R2/S3}}
   STORAGE_REGION: ${STORAGE_REGION:-auto}
-  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID}
-  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
   STORAGE_BUCKET: ${STORAGE_BUCKET:-midad}
   STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
-  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:?set STORAGE_PUBLIC_URL to the public bucket URL}
-  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${APP_URL:?set APP_URL to the public dashboard origin}}
+  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_URL for R2/S3}/midad}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
-  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET}
-  BETTER_AUTH_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
+  BETTER_AUTH_SECRET: ${SERVICE_HEX_64_MIDAD:?set SERVICE_HEX_64_MIDAD}
+  BETTER_AUTH_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
-  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:?set TRUSTED_ORIGINS to the dashboard origin}
-  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?set CORS_ALLOWED_ORIGINS to the dashboard origin}
+  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   API_PORT: "4311"
   API_URL: http://server:4311
-  APP_URL: ${APP_URL:?set APP_URL to the public dashboard origin}
+  APP_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
+  WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
   WORKER_PORT: "4312"
   EMAIL_FROM: ${EMAIL_FROM:-midad@localhost}
   SMTP_URL: ${SMTP_URL:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  MIDAD_RUN_SEED: ${MIDAD_RUN_SEED:-false}
+  PLUME_RUN_SEED: ${MIDAD_RUN_SEED:-false}
 
 services:
   postgres:
     image: postgres:18-alpine
     restart: unless-stopped
+    mem_limit: ${MIDAD_PG_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_PG_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_PG_CPU_LIMIT:-0}
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_USER: ${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}
       POSTGRES_DB: ${POSTGRES_DB:-midad}
     volumes:
       - midad-coolify-pg:/var/lib/postgresql/data
@@ -75,6 +82,9 @@ services:
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     restart: unless-stopped
+    mem_limit: ${MIDAD_REDIS_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_REDIS_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_REDIS_CPU_LIMIT:-0}
     command: ["dragonfly", "--default_lua_flags=allow-undeclared-keys"]
     volumes:
       - midad-coolify-dragonfly:/data
@@ -87,9 +97,12 @@ services:
   maxio:
     image: ghcr.io/coollabsio/maxio:latest
     restart: unless-stopped
+    mem_limit: ${MIDAD_STORAGE_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_STORAGE_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_STORAGE_CPU_LIMIT:-0}
     environment:
-      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:?set STORAGE_ACCESS_KEY_ID}
-      MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:?set STORAGE_SECRET_ACCESS_KEY}
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
       MAXIO_REGION: ${STORAGE_REGION:-auto}
       MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-midad}
       MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-midad}
@@ -107,7 +120,7 @@ services:
 
   migrate:
     build: *build
-    image: midad:${SERVICE_VERSION:-latest}
+    image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["migrate"]
     environment: *service-env
     depends_on:
@@ -117,9 +130,12 @@ services:
 
   server:
     build: *build
-    image: midad:${SERVICE_VERSION:-latest}
+    image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["server"]
     init: true
+    mem_limit: ${MIDAD_SERVER_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_SERVER_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_SERVER_CPU_LIMIT:-0}
     environment: *service-env
     expose:
       - "4311"
@@ -139,9 +155,12 @@ services:
     restart: unless-stopped
 
   worker:
-    image: midad:${SERVICE_VERSION:-latest}
+    image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["worker"]
     init: true
+    mem_limit: ${MIDAD_WORKER_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_WORKER_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_WORKER_CPU_LIMIT:-0}
     environment: *service-env
     expose:
       - "4312"
@@ -159,9 +178,12 @@ services:
     restart: unless-stopped
 
   app:
-    image: midad:${SERVICE_VERSION:-latest}
+    image: ${MIDAD_IMAGE:-midad:coolify}
     command: ["app"]
     init: true
+    mem_limit: ${MIDAD_APP_MEM_LIMIT:-0}
+    mem_reservation: ${MIDAD_APP_MEM_RESERVATION:-0}
+    cpus: ${MIDAD_APP_CPU_LIMIT:-0}
     environment:
       <<: *service-env
       PORT: "4310"

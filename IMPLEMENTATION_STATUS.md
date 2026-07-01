@@ -135,6 +135,11 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - The per-site Plan and workspace Billing surfaces reflect the self-hosted free
   target: there are no visible hosted Pro/Team tiers, upgrade/cancel actions, or
   billing-portal controls in the self-hosted build.
+- Coolify deployment config now follows the working Keenpix-style pattern:
+  Coolify-generated service URLs, users, passwords, and hex secrets feed the
+  source Docker build and runtime environment; bundled datastores stay private;
+  optional resource caps are exposed; and the repo includes a Docker image build
+  workflow for `main` and release tags.
 
 ## Partial / Deliberate Limits
 
@@ -373,8 +378,9 @@ Completed on 2026-07-01:
 ## Pending / External
 
 - GitHub push target is `lord007tn/midad` on branch `main`.
-- Coolify deployment and Cloudflare DNS setup were removed from the active
-  work target by user request on 2026-07-01.
+- Coolify repo readiness is implemented; creating the live Coolify app, assigning
+  domains, and setting DNS records remain external deployment steps.
+- Cloudflare DNS setup remains out of the active work target unless requested.
 
 Known verification caveat:
 

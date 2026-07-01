@@ -127,7 +127,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
-Production seeding is disabled unless `PLUME_RUN_SEED=true`. Leave it unset for
+Production seeding is disabled unless `MIDAD_RUN_SEED=true`. Leave it unset for
 real deployments.
 
 ## 6. Validate publishing
@@ -155,6 +155,6 @@ drafts.
 - [ ] `CUSTOM_DOMAIN_CNAME_TARGET` points at the same app ingress.
 - [ ] `TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` list exact production origins.
 - [ ] `PUBLIC_STORAGE_ENDPOINT` is reachable from browsers that upload assets.
-- [ ] `PLUME_RUN_SEED` is unset.
+- [ ] `MIDAD_RUN_SEED` is unset.
 - [ ] Postgres and object storage are backed up.
 

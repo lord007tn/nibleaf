@@ -8,6 +8,7 @@
 
 FROM node:22-alpine AS base
 ENV PNPM_HOME=/pnpm
+ENV PNPM_STORE_DIR=/pnpm/store
 ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
@@ -32,8 +33,15 @@ ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 RUN pnpm build
 
 FROM base AS runner
+ARG VERSION=0.1.0
 ENV NODE_ENV=production
+LABEL org.opencontainers.image.title="Midad" \
+  org.opencontainers.image.description="Self-hosted documentation platform" \
+  org.opencontainers.image.licenses="AGPL-3.0-only" \
+  org.opencontainers.image.source="https://github.com/lord007tn/midad" \
+  org.opencontainers.image.version=$VERSION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+EXPOSE 4310 4311 4312 4313 4314
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

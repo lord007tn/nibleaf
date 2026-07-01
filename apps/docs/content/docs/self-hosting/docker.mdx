@@ -43,23 +43,27 @@ example `cname.docs.example.com`, then bind that host to the same `app` service.
 If you do not run a separate marketing site, set `WWW_URL` to the same origin as
 `APP_URL`.
 
-Required Coolify environment values:
+Coolify generates the service URL, user, password, and hex secret variables used
+by the compose file. Assign domains first, then set only the product-specific
+values manually.
 
 ```dotenv
-APP_URL=https://app.example.com
-WWW_URL=https://app.example.com
 SITE_BASE_DOMAIN=docs.example.com
 CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com
-TRUSTED_ORIGINS=https://app.example.com
-CORS_ALLOWED_ORIGINS=https://app.example.com
-POSTGRES_USER=midad
-POSTGRES_PASSWORD=<strong-password>
-STORAGE_ACCESS_KEY_ID=<storage-access-key>
-STORAGE_SECRET_ACCESS_KEY=<storage-secret-key>
-STORAGE_PUBLIC_ENDPOINT=https://storage.example.com
-STORAGE_PUBLIC_URL=https://storage.example.com/midad
-BETTER_AUTH_SECRET=<64-hex-secret>
+WWW_URL=https://app.example.com
 ```
+
+The compose file consumes these generated Coolify variables:
+
+| Variable | Source |
+| --- | --- |
+| `SERVICE_URL_APP` | Dashboard/app domain assigned to `app:4310`. |
+| `SERVICE_URL_MAXIO` | Storage/media domain assigned to `maxio:9000`. |
+| `SERVICE_USER_POSTGRES` | Generated Postgres username. |
+| `SERVICE_PASSWORD_64_POSTGRES` | Generated Postgres password. |
+| `SERVICE_USER_STORAGE` | Generated maxio/S3 access key. |
+| `SERVICE_PASSWORD_64_STORAGE` | Generated maxio/S3 secret key. |
+| `SERVICE_HEX_64_MIDAD` | Generated auth secret. |
 
 The Coolify stack defaults to bundled maxio storage. To use Cloudflare R2, AWS
 S3, Backblaze B2, or another S3-compatible store, set `STORAGE_PROVIDER`,

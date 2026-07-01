@@ -150,26 +150,30 @@ Cloudflare, Coolify, or your reverse proxy.
 
 ### Coolify variable names
 
-`docker-compose.coolify.yml` uses production/Coolify variable names directly,
-not the `PUBLIC_*` aliases from the standard compose file:
+`docker-compose.coolify.yml` follows the same generated-variable pattern used by
+the working Keenpix deploy. Coolify supplies service URLs, generated users,
+generated passwords, and generated hex secrets:
 
-| Standard compose | Coolify compose |
+| Coolify variable | Purpose |
 | --- | --- |
-| `PUBLIC_APP_URL` | `APP_URL` |
-| `PUBLIC_WWW_URL` | `WWW_URL` |
-| `PUBLIC_STORAGE_ENDPOINT` | `STORAGE_PUBLIC_ENDPOINT` |
-| `PUBLIC_STORAGE_URL` | `STORAGE_PUBLIC_URL` |
-| `STORAGE_ACCESS_KEY` | `STORAGE_ACCESS_KEY_ID` |
-| `STORAGE_SECRET_KEY` | `STORAGE_SECRET_ACCESS_KEY` |
+| `SERVICE_URL_APP` | Public dashboard/app URL used for auth, CORS, and frontend build args. |
+| `SERVICE_URL_MAXIO` | Public bundled-storage URL used for browser uploads and asset URLs. |
+| `SERVICE_USER_POSTGRES` | Postgres username. |
+| `SERVICE_PASSWORD_64_POSTGRES` | Postgres password. |
+| `SERVICE_USER_STORAGE` | maxio access key. |
+| `SERVICE_PASSWORD_64_STORAGE` | maxio secret key. |
+| `SERVICE_HEX_64_MIDAD` | Better Auth signing secret. |
 
-Set the Coolify names in the Coolify environment screen. Leaving them unset
-causes compose interpolation to fail before the containers start.
+Set `SITE_BASE_DOMAIN` and `CUSTOM_DOMAIN_CNAME_TARGET` manually in the Coolify
+environment screen. `WWW_URL` is optional; leave it unset to reuse the dashboard
+origin because the Coolify stack omits the marketing service.
 
 Bundled maxio remains the default in Coolify. For external object storage, set
-the Coolify/raw `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`,
-`STORAGE_BUCKET`, `STORAGE_FORCE_PATH_STYLE`, `STORAGE_ACCESS_KEY_ID`,
+`STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`,
+`STORAGE_FORCE_PATH_STYLE`, `STORAGE_ACCESS_KEY_ID`,
 `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_ENDPOINT`, and
-`STORAGE_PUBLIC_URL` values to your R2/S3-compatible bucket.
+`STORAGE_PUBLIC_URL` values to your R2/S3-compatible bucket. Those explicit
+storage values override the generated maxio variables.
 
 The app containers do not depend on local `maxio` health at startup. Bucket
 creation and CORS setup are best-effort on API boot, so external object-storage

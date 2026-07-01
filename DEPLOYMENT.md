@@ -117,7 +117,8 @@ services are reached through it; the `server` and `worker` ports stay internal.
 ### Coolify without marketing
 
 Use `docker-compose.coolify.yml` when deploying the self-hostable docs platform
-to Coolify. It omits the `www` marketing service and exposes:
+to Coolify. It omits the `www` marketing service, builds the Midad image with
+Coolify's generated public URLs, and exposes:
 
 - `app:4310` for dashboard, editor, published docs, project subdomains, and
   custom domains.
@@ -125,15 +126,20 @@ to Coolify. It omits the `www` marketing service and exposes:
 - `worker:4312` internally for background jobs.
 - `maxio:9000` only if you use bundled storage as a public media origin.
 
-In Coolify, assign both the dashboard host and wildcard docs host to the `app`
-service. For example:
+In Coolify, assign the dashboard host, wildcard docs host, and custom-domain
+CNAME target to the `app` service. Assign the storage host to `maxio` unless
+you use external R2/S3 storage. For example:
 
 - `app.your-domain.com -> app:4310`
 - `*.docs.your-domain.com -> app:4310`
 - `cname.docs.your-domain.com -> app:4310`
+- `storage.your-domain.com -> maxio:9000`
 
-Because this Coolify file omits the marketing service, set `WWW_URL` to your
-dashboard origin if you do not maintain a separate public website.
+The compose file reads Coolify-generated values such as `SERVICE_URL_APP`,
+`SERVICE_URL_MAXIO`, `SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_64_POSTGRES`,
+`SERVICE_USER_STORAGE`, `SERVICE_PASSWORD_64_STORAGE`, and
+`SERVICE_HEX_64_MIDAD`. Set `SITE_BASE_DOMAIN` and
+`CUSTOM_DOMAIN_CNAME_TARGET` manually in the Coolify environment screen.
 
 ## 4. nginx reverse proxy (TLS termination)
 
@@ -217,7 +223,7 @@ The `migrate` service applies Prisma migrations and exits; `server` and `worker`
 wait for it to complete successfully. Run it **once** before scaling out:
 
 ```bash
-# apply migrations (and only seed if PLUME_RUN_SEED=true)
+# apply migrations (and only seed if MIDAD_RUN_SEED=true)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
 
 # then bring up / scale the long-running services
@@ -225,7 +231,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 Seeding is **off by default in production** — the entrypoint only seeds when
-`PLUME_RUN_SEED=true` (or `NODE_ENV=development`). Leave it unset in production so
+`MIDAD_RUN_SEED=true` (or `NODE_ENV=development`). Leave it unset in production so
 no demo account is created.
 
 ## 7. Security checklist
@@ -237,7 +243,7 @@ no demo account is created.
 - [ ] TLS terminated at the reverse proxy; HTTP redirects to HTTPS.
 - [ ] `TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` list only your real origins.
 - [ ] `STORAGE_CORS_ALLOWED_ORIGINS` restricted to the dashboard origin.
-- [ ] `PLUME_RUN_SEED` left unset (no demo account in production).
+- [ ] `MIDAD_RUN_SEED` left unset (no demo account in production).
 - [ ] Database and object storage backed up on a schedule.
 - [ ] Container images rebuilt and redeployed for security updates.
 

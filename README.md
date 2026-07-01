@@ -8,7 +8,7 @@ project subdomains, built-in search, multilingual docs, and analytics — all
 running on infrastructure you own.
 
 ```bash
-git clone https://github.com/midad-docs/midad
+git clone https://github.com/lord007tn/midad
 cd midad && cp .env.example .env
 
 # Set a strong auth secret — the stack refuses to boot in production with the
@@ -137,8 +137,9 @@ generation, required `.env` vars behind a domain, an nginx reverse-proxy example
 keeping datastore ports private, and a security checklist).
 
 For Coolify, use `docker-compose.coolify.yml`. It runs the self-hostable docs
-platform without the marketing app; point the app domain and wildcard docs
-domain at the `app` service on port `4310`.
+platform without the marketing app; assign the dashboard, wildcard docs, CNAME
+target, and storage domains to the `app`/`maxio` services so Coolify provides
+the `SERVICE_URL_*` values used during the Docker build.
 
 Implementation parity and open gaps are tracked in
 **[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**.
