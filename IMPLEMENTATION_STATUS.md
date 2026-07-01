@@ -97,6 +97,10 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   page trees, fallback, language switcher, and hreflang alternates. The server
   enforces that a project cannot directly unset its current default language;
   another language must be promoted instead.
+- The published-site language switcher uses each page's translated alternate
+  path when a `translationKey` sibling exists, so switching languages can move
+  from `/introduction` to `/ar/introduction`-style translated slugs instead of
+  only changing `?lang=`.
 - Published-site version switching uses domain-aware site URLs, so switching
   versions on a custom/free subdomain stays at the domain root instead of
   navigating to the internal `/sites/:projectId` route.
@@ -149,9 +153,6 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   duplicate the real per-site Git import settings.
 - The Plan/Billing surfaces still contain mixed future hosted-tier copy in a few
   places; self-hosted free/unlimited messaging should be made consistent.
-- Language switching on a page with translated siblings that use different
-  slugs still changes only `?lang=`; it should navigate to the matching
-  alternate path when a `translationKey` sibling exists.
 
 ## Deployment Notes
 
@@ -325,7 +326,17 @@ Completed on 2026-07-01:
     free vs. hosted-tier Plan/Billing copy.
   - Published-site review found the version-switcher internal-route leak,
     branch version-slug collision risk, and translated-page language-switcher
-    alternate-path gap; the first two were addressed in this pass.
+    alternate-path gap; all three were addressed in this pass.
+- Translated-page language switcher verification:
+  - `pnpm exec biome check --write
+    apps/app/src/components/site/page-alternates-context.tsx
+    apps/app/src/components/site/site-page-view.tsx
+    apps/app/src/routes/sites/$projectId/route.tsx`.
+  - `pnpm --filter @midad/app typecheck`.
+  - Code inspection confirmed page alternates returned by the public page API
+    are published from `SitePageView` to the site chrome, and `changeLanguage`
+    uses `siteHref` with the translated alternate path before falling back to
+    query-only language switching.
 
 ## Pending / External
 

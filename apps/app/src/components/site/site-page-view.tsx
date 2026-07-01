@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useEffect } from 'react';
 import { Markdown } from '@/components/markdown';
+import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import { useSitePage } from '@/hooks/api';
 import type { SitePage } from '@/hooks/api/types';
@@ -36,6 +37,12 @@ export function SitePageView({
 }) {
   const t = siteT(lang);
   const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData, version);
+  const { setAlternates } = useSitePageAlternates();
+
+  useEffect(() => {
+    setAlternates(data?.languages ?? []);
+    return () => setAlternates([]);
+  }, [data?.languages, setAlternates]);
 
   // Record a pageview whenever the resolved page changes. (The document title +
   // meta description are owned by the route's head() so they render server-side.)

@@ -4,6 +4,7 @@ import { BookOpen, Check, CircleAlert, ExternalLink, Moon, PencilLine, Search, S
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MobileNav } from '@/components/site/mobile-nav';
+import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { PageIcon } from '@/components/site/page-icon';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
@@ -201,6 +202,7 @@ function SiteChrome() {
   const { site: initialSite } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [pageAlternates, setPageAlternates] = useState<SiteLanguageAlternate[]>([]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
   const versionCandidate = currentPath && currentPath !== 'changelog' ? currentPath.split('/')[0] : undefined;
@@ -314,6 +316,8 @@ function SiteChrome() {
     }
   }, [site, isChangelog, config?.seo?.metaTitle, config?.seo?.metaDescription]);
 
+  const pageAlternatesContext = useMemo(() => ({ alternates: pageAlternates, setAlternates: setPageAlternates }), [pageAlternates]);
+
   if (isError) {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
@@ -385,6 +389,11 @@ function SiteChrome() {
   );
 
   const changeLanguage = (code: string) => {
+    const alternate = pageAlternates.find((item) => item.code === code && item.path);
+    if (!isChangelog && alternate?.path) {
+      window.location.assign(siteHref(projectId, alternate.path, { lang: code, version: activeVersionPrefix }));
+      return;
+    }
     navigate({ search: (prev) => ({ ...prev, lang: code }) });
   };
   const changeVersion = (slug: string) => {
@@ -543,7 +552,9 @@ function SiteChrome() {
           </div>
         </aside>
         <main className="min-w-0">
-          <Outlet />
+          <SitePageAlternatesContext.Provider value={pageAlternatesContext}>
+            <Outlet />
+          </SitePageAlternatesContext.Provider>
           {!isChangelog ? <ReaderActions projectId={projectId} path={effectiveCurrentPath} language={activeLanguage?.code} addons={addons} /> : null}
         </main>
       </div>
