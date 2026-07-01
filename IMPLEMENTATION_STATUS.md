@@ -372,10 +372,10 @@ Completed on 2026-07-01:
 
 ## Pending / External
 
-- Push is pending because this checkout has no configured Git remote and no
-  visible existing GitHub repository matched the project metadata.
-- Cloudflare DNS for `raedbahri.com` is pending until there is a deployed
-  Coolify ingress target and desired hostnames to point at.
+- GitHub push target is `lord007tn/open-mintlify` on branch
+  `plume/gap-closure`.
+- Coolify deployment and Cloudflare DNS setup were removed from the active
+  work target by user request on 2026-07-01.
 
 Known verification caveat:
 
