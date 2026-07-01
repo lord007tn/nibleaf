@@ -68,6 +68,9 @@ const mergeLanguageConfig = (existing: unknown, patch: UpdateLanguageBody['confi
 
 export const updateLanguage = async (projectId: string, id: string, body: UpdateLanguageBody) => {
   const language = await assertLanguageInProject(projectId, id);
+  if (language.isDefault && body.isDefault === false) {
+    throw conflict("Can't unset the default language. Make another language default instead.", { id });
+  }
   const nextConfig = mergeLanguageConfig(language.config, body.config);
   return prisma.$transaction(async (tx) => {
     if (body.isDefault === true) {

@@ -86,7 +86,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   branch/language. Saved Git import settings hydrate correctly after an async
   settings load.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
-  page trees, fallback, language switcher, and hreflang alternates.
+  page trees, fallback, language switcher, and hreflang alternates. The server
+  enforces that a project cannot directly unset its current default language;
+  another language must be promoted instead.
 - Authenticated draft preview route for branches/languages before publish, gated
   by the Add-ons preview deployments toggle.
 - Self-host Docker image and Compose stack for local/standard deployment.
@@ -267,6 +269,12 @@ Completed on 2026-07-01:
   - Direct server dogfood created a throwaway project/domain, confirmed an
     unverified domain is rejected as primary, verified the same domain, then
     confirmed it can become primary before cleanup.
+- Multilingual default-language invariant verification:
+  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm exec biome check --write apps/server/src/actions/languages.ts`.
+  - Direct server dogfood created a throwaway project with English and Arabic,
+    confirmed the current default cannot be unset directly, promoted Arabic to
+    default, and verified exactly one default language remained before cleanup.
 
 Pending / External:
 
