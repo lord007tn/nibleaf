@@ -65,6 +65,9 @@ export const setPrimaryDomain = async (organizationId: string, projectId: string
   if (!domain) {
     throw notFound('domain', { id });
   }
+  if (!domain.verified) {
+    throw badRequest('Verify DNS before making this domain primary.', { id, domain: domain.domain });
+  }
   await prisma.$transaction([
     prisma.domain.updateMany({ where: { projectId }, data: { isPrimary: false } }),
     prisma.domain.update({ where: { id }, data: { isPrimary: true } }),

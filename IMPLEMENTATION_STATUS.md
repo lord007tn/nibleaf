@@ -44,6 +44,8 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Custom-domain navigation keeps reader URLs at the domain root instead of
   leaking the internal `/sites/:projectId` route.
 - Custom-domain primary selection in project settings.
+- Custom-domain primary selection is enforced server-side: a domain must be
+  verified before it can become primary.
 - Configurable custom-domain CNAME target via `CUSTOM_DOMAIN_CNAME_TARGET`.
 - Free project subdomains through `SITE_BASE_DOMAIN`; requests to
   `<project-slug>.<SITE_BASE_DOMAIN>` resolve to the published project without a
@@ -259,6 +261,12 @@ Completed on 2026-07-01:
     `worker` depend on Postgres/Dragonfly/migrations but not on `maxio`.
   - `pnpm --filter @midad/docs typecheck` passed after documenting the
     best-effort storage bootstrap behavior.
+- Custom-domain primary invariant verification:
+  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm exec biome check --write apps/server/src/actions/domains.ts`.
+  - Direct server dogfood created a throwaway project/domain, confirmed an
+    unverified domain is rejected as primary, verified the same domain, then
+    confirmed it can become primary before cleanup.
 
 Pending / External:
 
