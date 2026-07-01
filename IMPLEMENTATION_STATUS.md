@@ -128,8 +128,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Standard and Coolify app containers no longer gate server/worker startup on
   bundled maxio health; bucket creation and CORS remain best-effort on API boot,
   so external object-storage deployments can start without local maxio.
-- The per-site Plan tab reflects the self-hosted free target: custom domains are
-  listed in the Free tier instead of behind a placeholder Pro tier.
+- The per-site Plan and workspace Billing surfaces reflect the self-hosted free
+  target: there are no visible hosted Pro/Team tiers, upgrade/cancel actions, or
+  billing-portal controls in the self-hosted build.
 
 ## Partial / Deliberate Limits
 
@@ -152,8 +153,6 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
 - Workspace integrations can save connected-looking provider metadata, but
   Slack/Discord/Zapier notification behavior is not wired yet and GitHub/GitLab
   duplicate the real per-site Git import settings.
-- The Plan/Billing surfaces still contain mixed future hosted-tier copy in a few
-  places; self-hosted free/unlimited messaging should be made consistent.
 
 ## Deployment Notes
 
@@ -350,6 +349,17 @@ Completed on 2026-07-01:
     consent is not required and withheld from the initial head when cookie
     consent is enabled; the published-site chrome now renders a localized
     consent prompt that injects the same validated scripts only after acceptance.
+- Self-hosted Plan/Billing copy verification:
+  - `pnpm exec biome check --write apps/app/src/components/project-settings/plan-section.tsx
+    apps/app/src/components/settings/billing-tab.tsx
+    apps/app/src/components/settings/workspace-tab.tsx apps/app/src/lib/i18n/messages.ts
+    IMPLEMENTATION_STATUS.md`.
+  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @midad/app test`.
+  - Code inspection confirmed the per-site Plan tab now renders a single
+    self-hosted free plan, the Billing tab has no upgrade/cancel controls, and
+    the workspace plan summary no longer exposes a nonfunctional billing portal
+    action.
 
 ## Pending / External
 

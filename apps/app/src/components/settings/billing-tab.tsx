@@ -1,6 +1,5 @@
-import { Info } from 'lucide-react';
 import { Badge } from '@midad/design-system/components/ui/badge';
-import { Button } from '@midad/design-system/components/ui/button';
+import { Info } from 'lucide-react';
 import { useWorkspaceSettings } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
@@ -31,15 +30,7 @@ export function BillingTab({ projectId }: { projectId?: string }) {
             <p className="mt-1 text-muted-foreground text-sm">{t('settings.billing.plan.selfHostFree')}</p>
           </div>
         </div>
-        <div className="mt-5 flex gap-2 border-border border-t pt-5">
-          <Button disabled>{t('settings.billing.upgradePlan')}</Button>
-          <Button variant="outline" disabled>
-            {t('settings.billing.cancelSubscription')}
-          </Button>
-        </div>
       </SettingsSection>
     </div>
   );
 }
-
-

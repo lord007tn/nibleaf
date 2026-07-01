@@ -1,12 +1,12 @@
-import { useForm } from '@tanstack/react-form';
-import { Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Badge } from '@midad/design-system/components/ui/badge';
 import { Button } from '@midad/design-system/components/ui/button';
 import { useConfirm } from '@midad/design-system/components/ui/confirm';
 import { FieldError } from '@midad/design-system/components/ui/form-field';
 import { Input } from '@midad/design-system/components/ui/input';
 import { Label } from '@midad/design-system/components/ui/label';
+import { useForm } from '@tanstack/react-form';
+import { Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useWorkspaceSettings } from '@/hooks/api';
 import type { ActiveWorkspace } from '@/hooks/use-active-workspace';
 import { authClient } from '@/lib/auth-client';
@@ -80,9 +80,6 @@ function PlanInline() {
           · {t('settings.workspace.planFeatures')}
         </p>
       </div>
-      <Button variant="outline" onClick={() => toast.info(t('settings.workspace.billingComingSoon'))}>
-        {t('settings.workspace.managePlan')}
-      </Button>
     </div>
   );
 }
@@ -144,4 +141,3 @@ export function WorkspaceTab({ workspace }: { workspace: ActiveWorkspace | null 
     </div>
   );
 }
-
