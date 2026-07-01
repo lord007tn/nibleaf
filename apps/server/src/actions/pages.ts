@@ -1,9 +1,9 @@
 import { Prisma, prisma } from '@midad/database';
 import { joinPath, slugify } from '@midad/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@midad/validators';
-import { notFound } from '@/errors';
-import { ensureDefaultBranch } from './branches';
-import { ensureDefaultLanguage } from './languages';
+import { badRequest, notFound } from '@/errors';
+import { assertBranchInProject, ensureDefaultBranch } from './branches';
+import { assertLanguageInProject, ensureDefaultLanguage } from './languages';
 import { assertProjectInOrg } from './projects';
 
 const pageListSelect = {
@@ -27,7 +27,10 @@ const pageListSelect = {
  *  given), ordered for tree assembly on the client. Scoped to a single language
  *  when `languageId` is given. */
 export const listPages = async (projectId: string, languageId?: string, branchId?: string) => {
-  const resolvedBranchId = branchId ?? (await ensureDefaultBranch(projectId)).id;
+  const resolvedBranchId = branchId ? (await assertBranchInProject(projectId, branchId)).id : (await ensureDefaultBranch(projectId)).id;
+  if (languageId) {
+    await assertLanguageInProject(projectId, languageId);
+  }
   return prisma.page.findMany({
     where: { projectId, branchId: resolvedBranchId, ...(languageId ? { languageId } : {}) },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
@@ -113,8 +116,11 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
   const parent = await parentInfo(projectId, parentId);
   // A child inherits its parent's branch + language; otherwise use the requested
   // ones, falling back to the project's defaults (creating them if absent).
-  const branchId = parent.branchId ?? body.branchId ?? (await ensureDefaultBranch(projectId)).id;
-  const languageId = parent.languageId ?? body.languageId ?? (await ensureDefaultLanguage(projectId)).id;
+  const branchId =
+    parent.branchId ?? (body.branchId ? (await assertBranchInProject(projectId, body.branchId)).id : (await ensureDefaultBranch(projectId)).id);
+  const languageId =
+    parent.languageId ??
+    (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await ensureDefaultLanguage(projectId)).id);
   const slug = await uniqueSiblingSlug(projectId, languageId, branchId, parentId, body.slug || body.title);
   const maxPosition = await prisma.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
   return prisma.page.create({
@@ -161,6 +167,12 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
   // uniqueness re-check among the new siblings). A title-only edit — e.g. every
   // editor autosave keystroke — must NOT silently rewrite the slug/path.
   const nextParentId = body.parentId === undefined ? page.parentId : body.parentId;
+  if (nextParentId !== null && nextParentId !== page.parentId) {
+    const parent = await parentInfo(projectId, nextParentId);
+    if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
+      throw badRequest('A page can only be moved under a parent in the same branch and language.', { id, parentId: nextParentId });
+    }
+  }
   const slugChanged = body.slug !== undefined;
   const reparented = body.parentId !== undefined && nextParentId !== page.parentId;
   const shouldAdoptTitleSlug =
@@ -208,6 +220,30 @@ export const deletePage = async (projectId: string, id: string) => {
 };
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
+  const pageIds = body.items.map((item) => item.id);
+  const parentIds = [...new Set(body.items.map((item) => item.parentId).filter((id): id is string => Boolean(id)))];
+  const [pages, parents] = await Promise.all([
+    prisma.page.findMany({ where: { id: { in: pageIds }, projectId }, select: { id: true, branchId: true, languageId: true } }),
+    prisma.page.findMany({ where: { id: { in: parentIds }, projectId }, select: { id: true, branchId: true, languageId: true } }),
+  ]);
+  const byPage = new Map(pages.map((page) => [page.id, page]));
+  const byParent = new Map(parents.map((page) => [page.id, page]));
+  for (const item of body.items) {
+    const page = byPage.get(item.id);
+    if (!page) {
+      throw notFound('page', { id: item.id });
+    }
+    if (!item.parentId) {
+      continue;
+    }
+    const parent = byParent.get(item.parentId);
+    if (!parent) {
+      throw notFound('page', { id: item.parentId });
+    }
+    if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
+      throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id: item.id, parentId: item.parentId });
+    }
+  }
   await prisma.$transaction(
     body.items.map((item) =>
       prisma.page.updateMany({ where: { id: item.id, projectId }, data: { parentId: item.parentId, position: item.position } }),

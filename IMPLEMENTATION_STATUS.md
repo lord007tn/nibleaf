@@ -85,6 +85,9 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   Imports can target the default branch/language or a selected Midad
   branch/language. Saved Git import settings hydrate correctly after an async
   settings load.
+- Page creation, listing, moving, and reordering validate branch/language scope
+  server-side, so Git-style branches and multilingual trees cannot be crossed by
+  submitting IDs from another project, branch, or language.
 - Multilingual docs with language CRUD, RTL/LTR direction, language-specific
   page trees, fallback, language switcher, and hreflang alternates. The server
   enforces that a project cannot directly unset its current default language;
@@ -275,6 +278,13 @@ Completed on 2026-07-01:
   - Direct server dogfood created a throwaway project with English and Arabic,
     confirmed the current default cannot be unset directly, promoted Arabic to
     default, and verified exactly one default language remained before cleanup.
+- Page branch/language scope verification:
+  - `pnpm exec biome check --write apps/server/src/actions/pages.ts`.
+  - `pnpm --filter @midad/server typecheck`.
+  - Direct server dogfood created two throwaway projects, confirmed page create
+    and list reject another project's branch/language IDs, confirmed moving or
+    reordering an English page under an Arabic parent is rejected, and verified
+    the page kept its original branch/language/parent before cleanup.
 
 Pending / External:
 
