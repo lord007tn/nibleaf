@@ -19,6 +19,24 @@ export function useFormatters() {
       new Intl.NumberFormat(tag, { style: 'percent', signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(value / 100),
     /** A short axis label (e.g. “Jun 23”) for time-series charts. */
     shortDate: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric' }).format(new Date(value)),
+    /** Full date + time (e.g. for "last imported"), locale-aware. */
+    dateTime: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)),
+    /** Locale-aware relative time (e.g. “5m ago” / “قبل ٥ دقائق”). Picks the
+     *  largest sensible unit and lets Intl supply the words + digits. */
+    relativeTime: (value: string | number | Date) => {
+      const rtf = new Intl.RelativeTimeFormat(tag, { numeric: 'auto', style: 'narrow' });
+      const diffMs = new Date(value).getTime() - Date.now();
+      const abs = Math.abs(diffMs);
+      const min = 60_000;
+      const hour = 60 * min;
+      const day = 24 * hour;
+      const week = 7 * day;
+      if (abs < min) return rtf.format(0, 'second');
+      if (abs < hour) return rtf.format(Math.round(diffMs / min), 'minute');
+      if (abs < day) return rtf.format(Math.round(diffMs / hour), 'hour');
+      if (abs < week) return rtf.format(Math.round(diffMs / day), 'day');
+      return rtf.format(Math.round(diffMs / week), 'week');
+    },
   };
 }
 

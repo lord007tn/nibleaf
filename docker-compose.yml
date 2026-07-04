@@ -203,6 +203,17 @@ services:
       - "${DOCS_PORT:-4314}:4314"
     restart: unless-stopped
 
+  admin:
+    image: midad:latest
+    command: ["admin"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4315"
+    ports:
+      - "${ADMIN_PORT:-4315}:4315"
+    restart: unless-stopped
+
 volumes:
   midad-pg:
   midad-dragonfly:

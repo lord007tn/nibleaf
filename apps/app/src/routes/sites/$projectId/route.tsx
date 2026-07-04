@@ -278,6 +278,29 @@ function SiteChrome() {
     });
   };
 
+  // The site is a full-page route, so it OWNS the document theme while mounted.
+  // Drive `.dark` on <html> from siteTheme (not just a class on the chrome): the
+  // design-system dark tokens key off any `.dark` ancestor, so a chrome-only
+  // class can force dark but can never force light while <html>.dark is set by
+  // the dashboard ThemeProvider. Capture the dashboard's theme on mount and
+  // restore it on unmount so leaving the site doesn't flip the dashboard.
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const root = document.documentElement;
+    const dashboardWasDark = root.classList.contains('dark');
+    return () => {
+      root.classList.toggle('dark', dashboardWasDark);
+    };
+  }, []);
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+    document.documentElement.classList.toggle('dark', siteTheme === 'dark');
+  }, [siteTheme]);
+
   // Apply the project's favicon on the published site.
   const faviconUrl = site?.project.faviconUrl;
   useEffect(() => {
@@ -295,27 +318,8 @@ function SiteChrome() {
 
   // (The document <html lang/dir> is set server-side in __root's RootDocument
   // from this route's resolved language, so crawlers + first paint are correct.)
-
-  // Site-level SEO fallback for routes without a SitePageView (e.g. changelog).
-  // On doc pages, SitePageView owns the title and merges config itself, so we
-  // skip here to avoid stomping the per-page title.
-  useEffect(() => {
-    if (typeof document === 'undefined' || !site || !isChangelog) {
-      return;
-    }
-    const metaTitle = config?.seo?.metaTitle;
-    document.title = metaTitle ? `Changelog — ${metaTitle}` : `Changelog — ${site.project.name}`;
-    const description = config?.seo?.metaDescription ?? site.project.description ?? '';
-    if (description) {
-      let tag = document.querySelector<HTMLMetaElement>('meta[name="description"]');
-      if (!tag) {
-        tag = document.createElement('meta');
-        tag.name = 'description';
-        document.head.appendChild(tag);
-      }
-      tag.content = description;
-    }
-  }, [site, isChangelog, config?.seo?.metaTitle, config?.seo?.metaDescription]);
+  // (The changelog route now owns its own SSR <title>/description/canonical via
+  // its head(), so there's no client-side title patching here.)
 
   const pageAlternatesContext = useMemo(() => ({ alternates: pageAlternates, setAlternates: setPageAlternates }), [pageAlternates]);
 
@@ -429,6 +433,7 @@ function SiteChrome() {
             lang={lang}
             version={activeVersionPrefix}
             label={t('docs')}
+            isRtl={isRtl}
           />
           {logoHref ? (
             <a href={logoHref} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold tracking-tight">

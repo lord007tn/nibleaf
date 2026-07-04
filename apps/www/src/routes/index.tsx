@@ -1,163 +1,154 @@
-import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
+import { MidadMark } from '@midad/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
-import { BarChart3, Boxes, Check, Languages, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, Check, FileText, Info, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
-import { useLocale, useT } from '@/lib/i18n';
-import { appHref, GITHUB_URL } from '@/lib/links';
-
-function Github(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg aria-hidden="true" fill="currentColor" viewBox="0 0 24 24" {...props}>
-      <path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2 0 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.4-1.3-5.4-5.9 0-1.3.5-2.4 1.2-3.2 0-.4-.5-1.6.2-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 6.6 18 7 18 7c.7 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.3v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z" />
-    </svg>
-  );
-}
+import { useT } from '@/lib/i18n';
+import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
 
 export const Route = createFileRoute('/')({
+  head: () => ({
+    links: [{ rel: 'canonical', href: canonicalHref('/') }],
+  }),
   component: LandingPage,
 });
 
 function LandingPage() {
   return (
-    <div className="min-h-screen">
-      <SiteNav />
-      <main>
-        <Hero />
-        <TrustStrip />
-        <Features />
-        <Comparison />
-        <SelfHost />
-        <Pricing />
-        <Faq />
-        <CallToAction />
-      </main>
-      <SiteFooter />
-    </div>
-  );
-}
-
-function LanguageToggle() {
-  const { locale, setLocale } = useLocale();
-  const t = useT();
-  return (
-    <button
-      aria-label={t('nav.language')}
-      className="flex items-center gap-1.5 rounded-lg border border-border p-2 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
-      onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
-      type="button"
-    >
-      <Languages className="size-4" />
-      {t('nav.language')}
-    </button>
-  );
-}
-
-function SiteNav() {
-  const t = useT();
-  const { locale } = useLocale();
-  return (
-    <header className="sticky top-0 z-40 border-border border-b bg-background/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
-        <a className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
-          <MidadMark className="size-8" />
-          <MidadWordmark script={locale === 'ar' ? 'arabic' : 'latin'} />
-        </a>
-        <nav className="ms-8 hidden items-center gap-6 text-muted-foreground text-sm md:flex">
-          <a className="transition-colors hover:text-foreground" href="#features">
-            {t('nav.features')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href="#compare">
-            {t('nav.compare')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href="#self-host">
-            {t('nav.selfHost')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href="#pricing">
-            {t('nav.pricing')}
-          </a>
-        </nav>
-        <div className="ms-auto flex items-center gap-2">
-          <a
-            className="hidden rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground sm:block"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
-            aria-label={t('nav.github')}
-          >
-            <Github className="size-4" />
-          </a>
-          <LanguageToggle />
-          <ThemeToggle />
-          <a className="hidden rounded-lg px-3 py-2 font-medium text-sm transition-colors hover:bg-muted sm:inline-flex" href={appHref()}>
-            {t('nav.signIn')}
-          </a>
-          <a
-            className="whitespace-nowrap rounded-lg bg-primary px-3 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 sm:px-3.5"
-            href={appHref('/sign-up')}
-          >
-            {t('nav.getStarted')}
-          </a>
-        </div>
-      </div>
-    </header>
+    <MarketingShell>
+      <Hero />
+      <TrustStrip />
+      <Features />
+      <Comparison />
+      <SelfHost />
+      <Pricing />
+      <Faq />
+      <CallToAction />
+    </MarketingShell>
   );
 }
 
 function Hero() {
   const t = useT();
-  const { locale } = useLocale();
+  const chips: MessageKey[] = ['hero.chip.oneCommand', 'hero.chip.ownData', 'hero.chip.bilingual'];
   return (
     <section className="relative overflow-hidden border-border border-b">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 pt-20 pb-16 lg:grid-cols-[1fr_420px]">
-        <div className="text-center lg:text-start">
+      {/* faint neutral texture — no colour wash */}
+      <div className="bg-dotgrid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 pt-20 pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,530px)] lg:pt-24">
+        <div className="animate-rise text-center lg:text-start">
           <a
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs shadow-xs transition-colors hover:text-foreground"
             href={GITHUB_URL}
             rel="noreferrer"
             target="_blank"
           >
             <Sparkles className="size-3.5 text-primary" /> {t('hero.badge')}
           </a>
-          <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">
-            {t('hero.headlineLead')} <span className="text-primary">{t('hero.headlineAccent')}</span>
+          <h1 className="mt-6 text-balance font-semibold text-[2.75rem] leading-[1.05] tracking-tight sm:text-6xl">
+            {t('hero.headlineLead')} <span className="text-gradient-brand">{t('hero.headlineAccent')}</span>
           </h1>
-          <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
+          <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
-            <a
-              className="rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              href={appHref('/sign-up')}
-            >
+            <a className={btn(BTN_DEFAULT, SZ_LG, 'group')} href={appHref('/sign-up')}>
               {t('hero.ctaPrimary')}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
             </a>
-            <a
-              className="flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-3 font-medium transition-colors hover:bg-muted"
-              href={GITHUB_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
+            <a className={btn(BTN_OUTLINE, SZ_LG)} href={GITHUB_URL} rel="noreferrer" target="_blank">
               <Github className="size-4" /> {t('hero.ctaSecondary')}
             </a>
           </div>
-          <p className="mt-5 font-mono text-muted-foreground text-xs">{t('hero.terminal')}</p>
-        </div>
-        <div className="relative mx-auto w-full max-w-[420px]">
-          <img
-            alt={locale === 'ar' ? 'شعار مِداد' : 'Midad brand mark'}
-            className="mx-auto h-auto w-full max-w-[360px]"
-            height="1180"
-            src="/brand/midad-logo-stacked.svg"
-            width="1024"
-          />
-          <div className="mt-5 grid grid-cols-4 gap-2" aria-label={t('palette.label')} role="img">
-            {['#181612', '#8A4B2E', '#B96A3D', '#EEE4D3'].map((color) => (
-              <span key={color} className="h-2 rounded-full" style={{ backgroundColor: color }} />
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-sm lg:justify-start">
+            {chips.map((chip) => (
+              <span key={chip} className="flex items-center gap-1.5">
+                <Check className="size-4 text-primary" /> {t(chip)}
+              </span>
             ))}
           </div>
         </div>
+        <div className="animate-rise [animation-delay:120ms]">
+          <DocsMock />
+        </div>
       </div>
     </section>
+  );
+}
+
+/** A stylised docs-site window used as the hero product visual. LTR-locked. */
+function DocsMock() {
+  const t = useT();
+  return (
+    <div className="relative mx-auto w-full max-w-[530px]" dir="ltr">
+      {/* floating status chip for depth */}
+      <div className="absolute -top-3 end-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 font-medium text-xs shadow-md">
+        <span className="size-2 rounded-full bg-emerald-500" /> {t('hero.mock.badge')}
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/5 ring-1 ring-black/5">
+        {/* title bar */}
+        <div className="flex items-center gap-2 border-border border-b bg-muted/50 px-4 py-3">
+          <span className="flex gap-1.5">
+            <span className="size-2.5 rounded-full bg-red-400/70" />
+            <span className="size-2.5 rounded-full bg-amber-400/70" />
+            <span className="size-2.5 rounded-full bg-green-400/70" />
+          </span>
+          <div className="ms-2 flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground">
+            <Search className="size-3" /> {t('hero.mock.search')}
+            <kbd className="ms-auto rounded border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd>
+          </div>
+          <MidadMark className="size-5" />
+        </div>
+        {/* body */}
+        <div className="grid grid-cols-[116px_1fr] text-[11px]">
+          {/* sidebar */}
+          <nav className="space-y-3 border-border border-e bg-muted/30 p-3">
+            <p className="font-semibold text-[9px] text-muted-foreground uppercase tracking-wider">Get started</p>
+            <ul className="space-y-1.5">
+              <li className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary">Introduction</li>
+              <li className="px-2 py-1 text-muted-foreground">Quickstart</li>
+              <li className="px-2 py-1 text-muted-foreground">Installation</li>
+            </ul>
+            <p className="pt-1 font-semibold text-[9px] text-muted-foreground uppercase tracking-wider">Guides</p>
+            <ul className="space-y-1.5">
+              <li className="px-2 py-1 text-muted-foreground">Authoring</li>
+              <li className="px-2 py-1 text-muted-foreground">Search</li>
+              <li className="px-2 py-1 text-muted-foreground">Deploy</li>
+            </ul>
+          </nav>
+          {/* content */}
+          <div className="space-y-3 p-4">
+            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              Docs <span className="opacity-50">/</span> Get started
+            </p>
+            <h3 className="font-semibold text-foreground text-lg tracking-tight">Introduction</h3>
+            <div className="space-y-1.5">
+              <span className="block h-2 w-full rounded bg-muted" />
+              <span className="block h-2 w-[85%] rounded bg-muted" />
+            </div>
+            {/* callout */}
+            <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+              <Info className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              <div className="space-y-1">
+                <span className="block h-1.5 w-24 rounded bg-primary/30" />
+                <span className="block h-1.5 w-32 rounded bg-primary/20" />
+              </div>
+            </div>
+            {/* code block */}
+            <div className="overflow-hidden rounded-lg border border-border bg-[#0d1117]">
+              <div className="flex items-center gap-1.5 border-white/10 border-b px-2.5 py-1.5">
+                <FileText className="size-3 text-white/40" />
+                <span className="font-mono text-[9px] text-white/40">config.mdx</span>
+              </div>
+              <div className="space-y-1.5 p-2.5 font-mono text-[10px]">
+                <span className="block h-1.5 w-20 rounded bg-emerald-400/50" />
+                <span className="block h-1.5 w-32 rounded bg-sky-400/40" />
+                <span className="block h-1.5 w-24 rounded bg-white/25" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -165,11 +156,11 @@ function TrustStrip() {
   const t = useT();
   const items = ['Postgres', 'Hono', 'TanStack Start', 'BullMQ', 'Orama search', 'S3 storage'];
   return (
-    <div className="border-border border-y bg-card/40">
+    <div className="border-border border-b bg-card/40">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-6 text-muted-foreground text-sm">
-        <span className="font-medium text-foreground/70">{t('trust.prefix')}</span>
+        <span className="font-medium text-foreground/60 text-xs uppercase tracking-wider">{t('trust.prefix')}</span>
         {items.map((item) => (
-          <span key={item} className="font-mono text-xs">
+          <span key={item} className="font-mono text-foreground/70 text-xs">
             {item}
           </span>
         ))}
@@ -192,13 +183,17 @@ function Features() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24" id="features">
       <div className="max-w-2xl">
-        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">{t('features.heading')}</h2>
+        <Eyebrow>{t('eyebrow.features')}</Eyebrow>
+        <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('features.heading')}</h2>
         <p className="mt-3 text-lg text-muted-foreground">{t('features.subhead')}</p>
       </div>
       <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
-          <div key={feature.title} className="rounded-2xl border border-border bg-card p-6 transition-shadow hover:shadow-sm">
-            <span className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+          <div
+            key={feature.title}
+            className="card-sheen group relative rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-black/5"
+          >
+            <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               <feature.icon className="size-5" />
             </span>
             <h3 className="mt-4 font-semibold text-lg">{t(feature.title)}</h3>
@@ -225,21 +220,24 @@ function Comparison() {
   return (
     <section className="border-border border-y bg-card/40" id="compare">
       <div className="mx-auto max-w-3xl px-6 py-24">
-        <h2 className="text-center font-semibold text-3xl tracking-tight sm:text-4xl">{t('compare.heading')}</h2>
-        <p className="mt-3 text-center text-lg text-muted-foreground">{t('compare.subhead')}</p>
-        <div className="mt-10 overflow-hidden rounded-2xl border border-border bg-background">
-          <div className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-border border-b px-6 py-3 font-medium text-sm">
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow>{t('eyebrow.compare')}</Eyebrow>
+          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('compare.heading')}</h2>
+          <p className="mt-3 text-lg text-muted-foreground">{t('compare.subhead')}</p>
+        </div>
+        <div className="mt-10 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+          <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 font-medium text-sm">
             <span />
-            <span className="w-20 text-center text-primary">{t('compare.colMidad')}</span>
-            <span className="w-20 text-center text-muted-foreground">{t('compare.colHosted')}</span>
+            <span className="rounded-md bg-primary/10 py-1 text-center text-primary">{t('compare.colMidad')}</span>
+            <span className="text-center text-muted-foreground">{t('compare.colHosted')}</span>
           </div>
           {COMPARE.map((row) => (
-            <div key={row.label} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
+            <div key={row.label} className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
               <span>{t(row.label)}</span>
-              <span className="flex w-20 justify-center">
+              <span className="flex justify-center bg-primary/5">
                 {row.midad ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
               </span>
-              <span className="flex w-20 justify-center">
+              <span className="flex justify-center">
                 {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}
               </span>
             </div>
@@ -263,17 +261,25 @@ function SelfHost() {
     <section className="mx-auto max-w-6xl px-6 py-24" id="self-host">
       <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
         <div>
-          <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">{t('selfHost.heading')}</h2>
+          <Eyebrow>{t('eyebrow.selfHost')}</Eyebrow>
+          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('selfHost.heading')}</h2>
           <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{t('selfHost.body')}</p>
           <ul className="mt-6 space-y-3 text-sm">
             {SELF_HOST_BULLETS.map((item) => (
               <li key={item} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {t(item)}
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                  <Check className="size-3.5" />
+                </span>
+                {t(item)}
               </li>
             ))}
           </ul>
+          <a className={btn(BTN_OUTLINE, SZ_DEFAULT, 'mt-7')} href="/self-hosting">
+            {t('eyebrow.selfHost')}
+            <ArrowRight className="size-4 rtl:rotate-180" />
+          </a>
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-[#0d1117] font-mono text-sm shadow-sm" dir="ltr">
+        <div className="overflow-hidden rounded-xl border border-border bg-[#0d1117] font-mono text-sm shadow-xl shadow-black/5" dir="ltr">
           <div className="flex items-center gap-1.5 border-white/10 border-b px-4 py-3">
             <span className="size-2.5 rounded-full bg-red-500/70" />
             <span className="size-2.5 rounded-full bg-amber-500/70" />
@@ -329,7 +335,7 @@ const PLANS: {
       'pricing.cloud.feature.priority',
     ],
     cta: 'pricing.cloud.cta',
-    href: appHref('/sign-up'),
+    href: '/cloud',
     featured: true,
   },
 ];
@@ -339,11 +345,17 @@ function Pricing() {
   return (
     <section className="border-border border-y bg-card/40" id="pricing">
       <div className="mx-auto max-w-4xl px-6 py-24">
-        <h2 className="text-center font-semibold text-3xl tracking-tight sm:text-4xl">{t('pricing.heading')}</h2>
-        <p className="mt-3 text-center text-lg text-muted-foreground">{t('pricing.subhead')}</p>
+        <div className="flex flex-col items-center text-center">
+          <Eyebrow>{t('eyebrow.pricing')}</Eyebrow>
+          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('pricing.heading')}</h2>
+          <p className="mt-3 text-lg text-muted-foreground">{t('pricing.subhead')}</p>
+        </div>
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2">
           {PLANS.map((plan) => (
-            <div key={plan.name} className={`rounded-2xl border bg-background p-7 ${plan.featured ? 'border-primary shadow-sm' : 'border-border'}`}>
+            <div
+              key={plan.name}
+              className={`relative rounded-xl border bg-background p-7 transition-shadow ${plan.featured ? 'border-primary/50 shadow-lg shadow-black/5 ring-1 ring-primary/20' : 'border-border hover:shadow-sm'}`}
+            >
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-lg">{t(plan.name)}</h3>
                 {plan.featured ? (
@@ -359,10 +371,7 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a
-                className={`mt-6 block rounded-xl py-2.5 text-center font-medium transition-opacity hover:opacity-90 ${plan.featured ? 'bg-primary text-primary-foreground' : 'border border-border'}`}
-                href={plan.href}
-              >
+              <a className={btn(plan.featured ? BTN_DEFAULT : BTN_OUTLINE, SZ_DEFAULT, 'mt-6 w-full')} href={plan.href}>
                 {t(plan.cta)}
               </a>
             </div>
@@ -384,13 +393,18 @@ function Faq() {
   const t = useT();
   return (
     <section className="mx-auto max-w-3xl px-6 py-24">
-      <h2 className="text-center font-semibold text-3xl tracking-tight sm:text-4xl">{t('faq.heading')}</h2>
+      <div className="flex flex-col items-center text-center">
+        <Eyebrow>{t('eyebrow.faq')}</Eyebrow>
+        <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('faq.heading')}</h2>
+      </div>
       <div className="mt-10 space-y-3">
         {FAQS.map((item) => (
-          <details key={item.q} className="group rounded-xl border border-border bg-card p-5">
-            <summary className="flex list-none items-center justify-between font-medium">
+          <details key={item.q} className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/30">
+            <summary className="flex list-none items-center justify-between gap-4 font-medium">
               {t(item.q)}
-              <span className="text-muted-foreground transition-transform group-open:rotate-45">+</span>
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition-transform group-open:rotate-45">
+                +
+              </span>
             </summary>
             <p className="mt-3 text-muted-foreground text-sm leading-relaxed">{t(item.a)}</p>
           </details>
@@ -404,64 +418,27 @@ function CallToAction() {
   const t = useT();
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
-      <div className="overflow-hidden rounded-3xl bg-primary px-8 py-16 text-center text-primary-foreground">
-        <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">{t('cta.heading')}</h2>
-        <p className="mx-auto mt-3 max-w-xl text-primary-foreground/85">{t('cta.body')}</p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <a
-            className="rounded-xl bg-primary-foreground px-5 py-3 font-medium text-primary transition-opacity hover:opacity-90"
-            href={appHref('/sign-up')}
-          >
-            {t('cta.primary')}
-          </a>
-          <a
-            className="rounded-xl border border-primary-foreground/30 px-5 py-3 font-medium transition-colors hover:bg-primary-foreground/10"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {t('cta.secondary')}
-          </a>
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-foreground px-8 py-16 text-center text-background">
+        <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-[0.15]" aria-hidden="true" />
+        <div className="relative">
+          <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">{t('cta.heading')}</h2>
+          <p className="mx-auto mt-3 max-w-xl text-background/75">{t('cta.body')}</p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
+            <a className={btn(BTN_DEFAULT, SZ_LG, 'group')} href={appHref('/sign-up')}>
+              {t('cta.primary')}
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
+            </a>
+            <a
+              className={btn(SZ_LG, 'border-background/25 text-background hover:bg-background/10')}
+              href={GITHUB_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {t('cta.secondary')}
+            </a>
+          </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function SiteFooter() {
-  const t = useT();
-  const { locale } = useLocale();
-  return (
-    <footer className="border-border border-t">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 text-muted-foreground text-sm sm:flex-row">
-        <div className="flex items-center gap-2">
-          <MidadMark className="size-6" />
-          <MidadWordmark className="font-medium text-foreground" script={locale === 'ar' ? 'arabic' : 'latin'} />
-          <span>{t('footer.tagline')}</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-center gap-5">
-          <a className="transition-colors hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">
-            {t('footer.github')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href={appHref()}>
-            {t('footer.dashboard')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href="/terms">
-            {t('footer.terms')}
-          </a>
-          <a className="transition-colors hover:text-foreground" href="/privacy">
-            {t('footer.privacy')}
-          </a>
-          <a
-            className="font-mono text-xs transition-colors hover:text-foreground"
-            href={`${GITHUB_URL}/blob/main/LICENSE`}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {t('footer.license')}
-          </a>
-        </div>
-      </div>
-    </footer>
   );
 }

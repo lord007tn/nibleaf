@@ -1,5 +1,5 @@
 import { createJob, QueueNames } from '@midad/bullmq';
-import { prisma } from '@midad/database';
+import { Prisma, prisma } from '@midad/database';
 import { createLogger } from '@midad/logger';
 import { joinPath, slugify } from '@midad/shared';
 import { betterAuth } from 'better-auth';
@@ -178,15 +178,53 @@ If a publish does not become READY, check worker logs, Dragonfly connectivity,
 Postgres connectivity, and storage credentials.
 `;
 
+/** A globally-unique project slug for the starter site. `project.slug` has a
+ *  global unique constraint, so a hard-coded `docs` collides for every signup
+ *  after the first — leaving new users with an empty workspace. Fall back to
+ *  `docs-2`, `docs-3`, … and finally a timestamp suffix so provisioning never
+ *  fails on the slug. */
+async function uniqueStarterSlug(): Promise<string> {
+  for (let i = 0; i < 100; i++) {
+    const candidate = i === 0 ? 'docs' : `docs-${i + 1}`;
+    const clash = await prisma.project.findFirst({ where: { slug: candidate }, select: { id: true } });
+    if (!clash) {
+      return candidate;
+    }
+  }
+  return `docs-${Date.now().toString(36)}`;
+}
+
 /** Create the starter docs site (with two pages) for a freshly created workspace. */
 async function createStarterProject(organizationId: string): Promise<void> {
   const existing = await prisma.project.findFirst({ where: { organizationId }, select: { id: true } });
   if (existing) {
     return;
   }
-  const project = await prisma.project.create({
-    data: { organizationId, name: 'Documentation', slug: 'docs', description: 'Your first documentation site.' },
-  });
+  // `project.slug` is globally unique and `uniqueStarterSlug()` only pre-checks —
+  // a concurrent signup can grab the same slug between the check and the create
+  // (TOCTOU). Retry on the unique-constraint violation, re-rolling the slug each
+  // time, and fall back to a timestamped slug so provisioning never fails here.
+  const createProjectWithUniqueSlug = async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
+      try {
+        return await prisma.project.create({
+          data: { organizationId, name: 'Documentation', slug, description: 'Your first documentation site.' },
+        });
+      } catch (error) {
+        const isSlugConflict =
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002' &&
+          (error.meta?.target as string[] | string | undefined)?.includes('slug');
+        if (!isSlugConflict || attempt === 4) {
+          throw error;
+        }
+      }
+    }
+    // Unreachable: the final attempt either returns or throws.
+    throw new Error('Failed to allocate a unique starter project slug.');
+  };
+  const project = await createProjectWithUniqueSlug();
   // Every project ships with a default English (LTR) language; pages live under it.
   const language = await prisma.language.create({
     data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },

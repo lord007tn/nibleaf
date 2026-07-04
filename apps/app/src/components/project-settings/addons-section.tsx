@@ -10,7 +10,6 @@ export function AddonsSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const addons = project.config?.addons ?? {};
-  const seo = project.config?.seo ?? {};
   const [feedback, setFeedback] = useState<boolean>(addons.feedback ?? true);
   const [editSuggestions, setEditSuggestions] = useState<boolean>(addons.editSuggestions ?? true);
   const [issueLinks, setIssueLinks] = useState<boolean>(addons.issueLinks ?? true);
@@ -18,7 +17,6 @@ export function AddonsSection({ project }: { project: Project }) {
   const [brokenLinks, setBrokenLinks] = useState<boolean>(addons.brokenLinks ?? true);
   const [grammarLinter, setGrammarLinter] = useState<boolean>(addons.grammarLinter ?? false);
   const [previewDeployments, setPreviewDeployments] = useState<boolean>(addons.previewDeployments ?? true);
-  const [allowIndex, setAllowIndex] = useState<boolean>(seo.allowIndex ?? true);
 
   const form = useForm({
     defaultValues: {
@@ -38,7 +36,6 @@ export function AddonsSection({ project }: { project: Project }) {
           editUrl: value.editUrl.trim() || undefined,
           issueUrl: value.issueUrl.trim() || undefined,
         },
-        seo: { ...seo, allowIndex },
       });
     },
   });
@@ -121,12 +118,6 @@ export function AddonsSection({ project }: { project: Project }) {
         hint={t('settings.addons.previewDeployments.hint')}
         onCheckedChange={setPreviewDeployments}
         title={t('settings.addons.previewDeployments.title')}
-      />
-      <ToggleRow
-        checked={allowIndex}
-        hint={t('settings.addons.allowIndex.hint')}
-        onCheckedChange={setAllowIndex}
-        title={t('settings.addons.allowIndex.title')}
       />
 
       <div className="mt-4">

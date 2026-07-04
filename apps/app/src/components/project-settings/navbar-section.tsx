@@ -18,14 +18,34 @@ export function NavbarSection({ project }: { project: Project }) {
     defaultValues: {
       ctaLabel: navbar.ctaLabel ?? '',
       ctaUrl: navbar.ctaUrl ?? '',
-      links: (navbar.links ?? []).map((link) => ({ label: link.label, href: link.href })),
+      links: (navbar.links ?? []).map((link) => ({ label: link.label, href: link.href, external: link.external })),
+      tabs: (navbar.tabs ?? []).map((tab) => ({ label: tab.label, href: tab.href, external: tab.external })),
+      anchors: (navbar.anchors ?? []).map((anchor) => ({
+        label: anchor.label,
+        href: anchor.href,
+        icon: anchor.icon ?? '',
+        external: anchor.external,
+      })),
     },
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
         navbar: {
           ctaLabel: value.ctaLabel.trim() || undefined,
           ctaUrl: value.ctaUrl.trim() || undefined,
-          links: value.links.filter((link) => link.label.trim() || link.href.trim()),
+          links: value.links
+            .filter((link) => link.label.trim() || link.href.trim())
+            .map((link) => ({ label: link.label, href: link.href, external: link.external })),
+          tabs: value.tabs
+            .filter((tab) => tab.label.trim() || tab.href.trim())
+            .map((tab) => ({ label: tab.label, href: tab.href, external: tab.external })),
+          anchors: value.anchors
+            .filter((anchor) => anchor.label.trim() || anchor.href.trim())
+            .map((anchor) => ({
+              label: anchor.label,
+              href: anchor.href,
+              icon: anchor.icon.trim() || undefined,
+              external: anchor.external,
+            })),
           showSearch,
         },
       });
@@ -110,10 +130,126 @@ export function NavbarSection({ project }: { project: Project }) {
             ) : null}
             <button
               className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => field.pushValue({ label: '', href: '' })}
+              onClick={() => field.pushValue({ label: '', href: '', external: undefined })}
               type="button"
             >
               <Plus className="size-3.5" /> {t('settings.navbar.links.add')}
+            </button>
+          </>
+        )}
+      </form.Field>
+
+      <GroupLabel className="mt-6 mb-1">{t('settings.navbar.tabs.label')}</GroupLabel>
+      <p className="mb-2.5 text-[12px] text-muted-foreground leading-snug">{t('settings.navbar.tabs.hint')}</p>
+      <form.Field mode="array" name="tabs">
+        {(field) => (
+          <>
+            {field.state.value.length > 0 ? (
+              <div className="mb-3 overflow-hidden rounded-xl border border-border">
+                {field.state.value.map((_, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorder by index
+                  <div className="flex items-center gap-2.5 border-border border-b p-3 last:border-b-0" key={index}>
+                    <form.Field name={`tabs[${index}].label`}>
+                      {(sub) => (
+                        <Input
+                          className={cn(FIELD_COMPACT, 'flex-1')}
+                          onChange={(e) => sub.handleChange(e.target.value)}
+                          placeholder={t('settings.navbar.tabs.labelPlaceholder')}
+                          value={sub.state.value}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name={`tabs[${index}].href`}>
+                      {(sub) => (
+                        <Input
+                          className={cn(FIELD_COMPACT_MONO, 'flex-1')}
+                          onChange={(e) => sub.handleChange(e.target.value)}
+                          placeholder="/guides"
+                          value={sub.state.value}
+                        />
+                      )}
+                    </form.Field>
+                    <button
+                      aria-label={t('settings.navbar.tabs.remove')}
+                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={() => field.removeValue(index)}
+                      type="button"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <button
+              className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => field.pushValue({ label: '', href: '', external: undefined })}
+              type="button"
+            >
+              <Plus className="size-3.5" /> {t('settings.navbar.tabs.add')}
+            </button>
+          </>
+        )}
+      </form.Field>
+
+      <GroupLabel className="mt-6 mb-1">{t('settings.navbar.anchors.label')}</GroupLabel>
+      <p className="mb-2.5 text-[12px] text-muted-foreground leading-snug">{t('settings.navbar.anchors.hint')}</p>
+      <form.Field mode="array" name="anchors">
+        {(field) => (
+          <>
+            {field.state.value.length > 0 ? (
+              <div className="mb-3 overflow-hidden rounded-xl border border-border">
+                {field.state.value.map((_, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorder by index
+                  <div className="flex items-center gap-2.5 border-border border-b p-3 last:border-b-0" key={index}>
+                    <form.Field name={`anchors[${index}].label`}>
+                      {(sub) => (
+                        <Input
+                          className={cn(FIELD_COMPACT, 'flex-1')}
+                          onChange={(e) => sub.handleChange(e.target.value)}
+                          placeholder={t('settings.navbar.anchors.labelPlaceholder')}
+                          value={sub.state.value}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name={`anchors[${index}].href`}>
+                      {(sub) => (
+                        <Input
+                          className={cn(FIELD_COMPACT_MONO, 'flex-1')}
+                          onChange={(e) => sub.handleChange(e.target.value)}
+                          placeholder="https://community.example.com"
+                          value={sub.state.value}
+                        />
+                      )}
+                    </form.Field>
+                    <form.Field name={`anchors[${index}].icon`}>
+                      {(sub) => (
+                        <Input
+                          className={cn(FIELD_COMPACT, 'w-[104px] shrink-0')}
+                          onChange={(e) => sub.handleChange(e.target.value)}
+                          placeholder={t('settings.navbar.anchors.iconPlaceholder')}
+                          value={sub.state.value}
+                        />
+                      )}
+                    </form.Field>
+                    <button
+                      aria-label={t('settings.navbar.anchors.remove')}
+                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      onClick={() => field.removeValue(index)}
+                      type="button"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <button
+              className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => field.pushValue({ label: '', href: '', icon: '', external: undefined })}
+              type="button"
+            >
+              <Plus className="size-3.5" /> {t('settings.navbar.anchors.add')}
             </button>
           </>
         )}

@@ -5,6 +5,7 @@ import assets from './assets/handlers';
 import domains from './domains/handlers';
 import invitations from './invitations/handlers';
 import sites from './sites/handlers';
+import waitlist from './waitlist/handlers';
 
 // Throttle unauthenticated public traffic (site shell, search, pageview tracking).
 const app = new Hono<HonoEnv>()
@@ -12,6 +13,7 @@ const app = new Hono<HonoEnv>()
   .route('/sites', sites)
   .route('/domains', domains)
   .route('/invitations', invitations)
-  .route('/assets', assets);
+  .route('/assets', assets)
+  .route('/waitlist', waitlist);
 
 export default app;

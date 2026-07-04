@@ -1,5 +1,5 @@
 import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { useConfirm, usePrompt } from '@midad/design-system/components/ui/confirm';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -18,6 +18,7 @@ export function DangerSection({ project }: { project: Project }) {
   const { data: session } = useSession();
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const prompt = usePrompt();
   const currentUserId = session?.user?.id;
   const currentMember = (memberData?.members ?? []).find((member) => member.user.id === currentUserId);
   const canTransferOwnership = currentMember?.role === 'owner';
@@ -94,21 +95,30 @@ export function DangerSection({ project }: { project: Project }) {
         <Button
           className="cursor-pointer"
           onClick={async () => {
-            const ok = await confirm({
+            // Type-the-name confirmation: deleting a project cascades its whole
+            // org (members, pages, deployments, domains), so require an explicit
+            // match — not a single click.
+            const typed = await prompt({
               title: t('settings.danger.delete.title'),
               description: t('settings.danger.delete.confirm', { name: project.name }),
+              label: t('settings.danger.delete.typeToConfirm', { name: project.name }),
+              placeholder: project.name,
               confirmLabel: t('settings.danger.delete.button'),
-              destructive: true,
             });
-            if (ok) {
-              del.mutate(project.id, {
-                onSuccess: () => {
-                  toast.success(t('settings.danger.delete.toast.deleted'));
-                  navigate({ to: '/app' });
-                },
-                onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.danger.delete.toast.error')),
-              });
+            if (typed === null) {
+              return;
             }
+            if (typed !== project.name) {
+              toast.error(t('settings.danger.delete.nameMismatch'));
+              return;
+            }
+            del.mutate(project.id, {
+              onSuccess: () => {
+                toast.success(t('settings.danger.delete.toast.deleted'));
+                navigate({ to: '/app' });
+              },
+              onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.danger.delete.toast.error')),
+            });
           }}
           variant="destructive"
         >

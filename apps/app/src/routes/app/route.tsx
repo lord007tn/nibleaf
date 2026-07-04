@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { PageLoader } from '@/components/page-loader';
 import { useSession } from '@/lib/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
 
@@ -22,7 +23,7 @@ function AppRoute() {
   }, [isPending, session, navigate]);
 
   if (isPending || !session) {
-    return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground text-sm">Loading…</div>;
+    return <PageLoader />;
   }
   return (
     <ProjectProvider>

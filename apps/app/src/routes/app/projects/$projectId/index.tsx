@@ -27,7 +27,9 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
   component: SiteOverviewPage,
 });
 
-const siteBaseDomain = () => (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') ?? 'midad.app';
+// Only present a `slug.<base>` free-subdomain host when a base domain is actually
+// configured for this deployment; otherwise it 404s, so we fall back to /sites/:id.
+const siteBaseDomain = () => (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 const siteUrl = (domain: string | null, projectId: string) => (domain ? `https://${domain}` : `/sites/${projectId}`);
 
 /** Per-site dashboard: the hub each site opens to (stats, traffic, recent pages,
@@ -50,7 +52,10 @@ function SiteOverviewPage() {
   const deployCount = (deployments ?? []).length;
   const latestDeployment = deployments?.[0];
   const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verified) ?? domains?.find((domain) => domain.verified);
-  const liveDomain = primaryDomain?.domain ?? (project ? `${project.slug}.${siteBaseDomain()}` : null);
+  const baseDomain = siteBaseDomain();
+  // Prefer a verified custom domain; else a configured free-subdomain host; else
+  // the always-working internal /sites/:id path (never a hardcoded fake host).
+  const liveDomain = primaryDomain?.domain ?? (project && baseDomain ? `${project.slug}.${baseDomain}` : null);
   const liveHref = siteUrl(liveDomain, projectId);
   const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
   const recentPages = useMemo(
@@ -96,7 +101,7 @@ function SiteOverviewPage() {
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
               <a className="truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
-                {liveDomain ?? t('overview.live.unavailable')}
+                {liveDomain ?? liveHref}
               </a>
             </div>
           </div>
@@ -207,7 +212,7 @@ function SiteOverviewPage() {
             <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />
           </ManageRow>
           <ManageRow icon={CreditCard} title={t('overview.link.billing')} desc={t('overview.link.billingDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'billing' }} to="/app/projects/$projectId/settings" />
+            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'plan' }} to="/app/projects/$projectId/settings" />
           </ManageRow>
           <ManageRow icon={SettingsIcon} title={t('overview.link.settings')} desc={t('overview.link.settingsDesc')}>
             <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'general' }} to="/app/projects/$projectId/settings" />

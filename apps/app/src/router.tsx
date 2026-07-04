@@ -1,6 +1,7 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { ErrorPage } from '@/components/error-page';
 import { NotFound } from '@/components/not-found';
+import { PageLoader } from '@/components/page-loader';
 import { getQueryContext, QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { routeTree } from './routeTree.gen';
 
@@ -11,6 +12,12 @@ export function getRouter() {
     context: queryContext,
     defaultNotFoundComponent: NotFound,
     defaultErrorComponent: ErrorPage,
+    // Branded loading screen for route transitions that resolve loaders/data.
+    // The delay avoids a flash on fast navigations; the min duration prevents a
+    // jarring flicker once it does show.
+    defaultPendingComponent: PageLoader,
+    defaultPendingMs: 200,
+    defaultPendingMinMs: 400,
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,

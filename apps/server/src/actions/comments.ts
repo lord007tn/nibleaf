@@ -17,6 +17,12 @@ export const listComments = async (organizationId: string, projectId: string, pa
 
 export const createComment = async (organizationId: string, projectId: string, userId: string, body: CreateCommentBody) => {
   await assertProjectInOrg(organizationId, projectId);
+  if (body.pageId) {
+    const page = await prisma.page.findFirst({ where: { id: body.pageId, projectId }, select: { id: true } });
+    if (!page) {
+      throw notFound('page', { id: body.pageId });
+    }
+  }
   return prisma.comment.create({
     data: {
       projectId,

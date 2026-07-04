@@ -12,7 +12,6 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
-import { BillingTab } from '@/components/settings/billing-tab';
 import { ExportsTab } from '@/components/settings/exports-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
@@ -45,7 +44,6 @@ const SECTIONS = [
   { id: 'apiKeys', group: 'workspace', icon: '⌁' },
   { id: 'plan', group: 'workspace', icon: '◇' },
   { id: 'usage', group: 'workspace', icon: '▤' },
-  { id: 'billing', group: 'workspace', icon: '◫' },
   { id: 'integrations', group: 'workspace', icon: '⚙' },
   { id: 'notifications', group: 'workspace', icon: '✉' },
   { id: 'exports', group: 'advanced', icon: '⇩' },
@@ -123,7 +121,6 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
-    billing: <BillingTab key={`billing-${projectId}`} projectId={projectId} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
     exports: <ExportsTab key={`exports-${project.id}`} />,

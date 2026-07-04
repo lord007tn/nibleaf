@@ -10,12 +10,15 @@ import type { Project } from '@/hooks/api';
 import { useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 import { useT } from '@/lib/i18n';
-import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader, Segmented } from './shared';
+import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader } from './shared';
 
 /** A small curated set of emoji icons the project can use as its avatar glyph. */
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
 
-const siteBaseDomain = (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') ?? 'midad.app';
+// Only present a `slug.<base>` preview when a base domain is actually configured
+// for this deployment; otherwise the free-subdomain host would 404, so fall back
+// to the working /sites/:id path.
+const siteBaseDomain = (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 const deploymentNameError = (value: string, message: string) => {
   if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) {
     return message;
@@ -28,7 +31,6 @@ export function GeneralSection({ project }: { project: Project }) {
   const update = useUpdateProject(project.id);
   const [icon, setIcon] = useState<string>(project.icon ?? '📘');
   const [iconOpen, setIconOpen] = useState(false);
-  const [visibility, setVisibility] = useState<'public' | 'private'>(project.config?.visibility ?? 'public');
 
   const form = useForm({
     defaultValues: { name: project.name, slug: project.slug, description: project.description ?? '' },
@@ -40,7 +42,6 @@ export function GeneralSection({ project }: { project: Project }) {
             slug: value.slug.trim(),
             description: value.description.trim() ? value.description.trim() : null,
             icon,
-            config: { visibility },
           },
           {
             onSuccess: () => {
@@ -118,7 +119,7 @@ export function GeneralSection({ project }: { project: Project }) {
       <form.Field name="slug" validators={{ onChange: ({ value }) => deploymentNameError(value, t('settings.general.url.error')) }}>
         {(field) => (
           <Field hint={t('settings.general.url.hint')} htmlFor="set-slug" label={t('settings.general.url.label')}>
-            <div className="flex h-[42px] overflow-hidden rounded-[10px] border border-border bg-background">
+            <div className="flex h-[42px] overflow-hidden rounded-[10px] border border-border bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
               <Input
                 className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 font-mono text-[13px] focus-visible:ring-0"
                 id="set-slug"
@@ -126,13 +127,15 @@ export function GeneralSection({ project }: { project: Project }) {
                 onChange={(e) => field.handleChange(slugify(e.target.value))}
                 value={field.state.value}
               />
-              <span className="flex shrink-0 items-center border-border border-l bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
-                .{siteBaseDomain}
-              </span>
+              {siteBaseDomain ? (
+                <span className="flex shrink-0 items-center border-border border-l bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
+                  .{siteBaseDomain}
+                </span>
+              ) : null}
             </div>
             <FieldError errors={field.state.meta.errors} />
             <div className="mt-1.5 font-mono text-[12px] text-muted-foreground">
-              {field.state.value ? `${field.state.value}.${siteBaseDomain}` : `.${siteBaseDomain}`}
+              {siteBaseDomain ? (field.state.value ? `${field.state.value}.${siteBaseDomain}` : `.${siteBaseDomain}`) : `/sites/${project.id}`}
             </div>
           </Field>
         )}
@@ -151,18 +154,6 @@ export function GeneralSection({ project }: { project: Project }) {
           </Field>
         )}
       </form.Field>
-
-      <Field hint={t('settings.general.visibility.hint')} label={t('settings.general.visibility.label')}>
-        <Segmented
-          className="max-w-[280px]"
-          onChange={setVisibility}
-          options={[
-            { value: 'public', label: t('settings.general.visibility.public') },
-            { value: 'private', label: t('settings.general.visibility.private') },
-          ]}
-          value={visibility}
-        />
-      </Field>
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
     </form>

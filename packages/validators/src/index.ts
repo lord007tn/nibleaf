@@ -470,3 +470,22 @@ export const updateWorkspaceSettingsBody = z
   })
   .strict();
 export type UpdateWorkspaceSettingsBody = z.infer<typeof updateWorkspaceSettingsBody>;
+
+// ─── Cloud waitlist ─────────────────────────────────────────────────────────
+
+/** Public "join the Cloud waitlist" submission. Email is normalised lower-case. */
+export const waitlistSubmitBody = z
+  .object({
+    email: z.string().trim().toLowerCase().email().max(254),
+    // Where the signup came from (e.g. 'cloud-page') and the visitor's locale.
+    source: z.string().max(64).optional(),
+    locale: z.string().max(8).optional(),
+  })
+  .strict();
+export type WaitlistSubmitBody = z.infer<typeof waitlistSubmitBody>;
+
+// ─── Admin panel ────────────────────────────────────────────────────────────
+
+/** Set a user's platform role from the internal admin panel. */
+export const adminSetRoleBody = z.object({ role: z.enum(['user', 'admin']) }).strict();
+export type AdminSetRoleBody = z.infer<typeof adminSetRoleBody>;

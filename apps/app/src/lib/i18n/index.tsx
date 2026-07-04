@@ -67,3 +67,8 @@ export function useLocale(): LocaleContextValue {
 
 /** Convenience hook returning just the translator. */
 export const useT = () => useLocale().t;
+
+/** Translate without the React context — for components that may render outside
+ *  the LocaleProvider (error boundary, 404). Reads the stored locale directly. */
+export const translateStandalone = (key: MessageKey, vars?: Record<string, string | number>): string =>
+  interpolate(messages[readStored()][key] ?? messages.en[key] ?? key, vars);

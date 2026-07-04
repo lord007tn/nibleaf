@@ -104,7 +104,7 @@ export function SitePageView({
         <h1 className="font-semibold text-4xl tracking-tight">{page.title}</h1>
         {page.description ? <p className="mt-2 text-lg text-muted-foreground">{page.description}</p> : null}
         <div className="mt-6">
-          <Markdown content={page.content} />
+          <Markdown content={page.content} site={{ projectId, lang, version }} />
         </div>
 
         <div className="mt-12 grid grid-cols-2 gap-3 border-border border-t pt-6">

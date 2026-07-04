@@ -68,11 +68,43 @@ async function serveDomainSeo(pathname: string, projectId: string, origin: strin
   return null;
 }
 
+/** Proxy an app-origin GET /sites/:id/{robots.txt,sitemap.xml} to the API's
+ *  public endpoint, preserving the content-type. These paths are in SKIP (so the
+ *  custom-domain rewrite leaves them alone) and would otherwise fall through to
+ *  the SPA shell — make them discoverable on the app origin too. */
+async function serveAppOriginSeo(pathname: string): Promise<Response | null> {
+  const match = /^\/sites\/([^/]+)\/(robots\.txt|sitemap\.xml)$/.exec(pathname);
+  if (!match) {
+    return null;
+  }
+  const [, projectId, file] = match;
+  const contentType = file === 'robots.txt' ? 'text/plain; charset=utf-8' : 'application/xml; charset=utf-8';
+  try {
+    const res = await fetch(`${SELF}/api/public/sites/${projectId}/${file}`);
+    if (!res.ok) {
+      return null;
+    }
+    const body = await res.text();
+    return new Response(body, { status: res.status, headers: { 'content-type': contentType } });
+  } catch {
+    return null;
+  }
+}
+
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   const url = new URL(request.url);
   const host = (request.headers.get('host') || url.host).toLowerCase();
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
+
+  // App-origin robots.txt / sitemap.xml for a site live under /sites/:id/*; serve
+  // them from the API (they're in SKIP so they never reach the site routes).
+  if (!isCustomDomain && request.method === 'GET') {
+    const seo = await serveAppOriginSeo(url.pathname);
+    if (seo) {
+      return seo;
+    }
+  }
 
   if (isCustomDomain) {
     // robots.txt / sitemap.xml are served at the domain root (they are not in

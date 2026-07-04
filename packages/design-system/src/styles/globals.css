@@ -5,6 +5,15 @@
 @import "@fontsource-variable/geist-mono";
 @import "highlight.js/styles/github-dark.css";
 
+/* Always scan the design-system's own source for class names. This package is
+   consumed as a workspace dependency (symlinked under node_modules), which
+   Tailwind v4's automatic content detection skips — so classes used ONLY here
+   (e.g. the dialog's `top-1/2` / `bg-popover`) would otherwise be missing from
+   the generated CSS, leaving those components unstyled. One recursive glob (as
+   in joodcms) covers every component/hook/lib/theme file. Relative to this file
+   (packages/design-system/src/styles/), so `../` is the package `src`. */
+@source "../**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

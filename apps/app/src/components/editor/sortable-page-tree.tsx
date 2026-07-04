@@ -15,10 +15,11 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@midad/design-system/components/ui/button';
 import { cn } from '@midad/design-system/lib/utils';
-import { FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
+import { ChevronRight, FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageNode } from '@/hooks/api';
+import { useT } from '@/lib/i18n';
 
 /**
  * A Notion-style page tree with @dnd-kit: drag the handle to reorder, drag
@@ -72,6 +73,36 @@ function removeDescendants(items: Flat[], id: string): Flat[] {
   });
 }
 
+/** Hide the descendants of any collapsed group (relies on tree order: a parent
+ *  always precedes its children in the flattened list). */
+function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
+  if (collapsed.size === 0) {
+    return items;
+  }
+  const hidden = new Set<string>();
+  return items.filter((item) => {
+    if (item.parentId && (collapsed.has(item.parentId) || hidden.has(item.parentId))) {
+      hidden.add(item.id);
+      return false;
+    }
+    return true;
+  });
+}
+
+const collapsedStoreKey = (treeKey: string) => `midad.editor.collapsedGroups:${treeKey}`;
+
+function readCollapsed(treeKey?: string): Set<string> {
+  if (typeof window === 'undefined' || !treeKey) {
+    return new Set();
+  }
+  try {
+    const raw = window.localStorage.getItem(collapsedStoreKey(treeKey));
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
 interface Projection {
   depth: number;
   parentId: string | null;
@@ -118,6 +149,7 @@ export function SortablePageTree({
   onAddChild,
   onSettings,
   onMove,
+  treeKey,
 }: {
   pages: PageNode[];
   activeId: string | null;
@@ -125,14 +157,47 @@ export function SortablePageTree({
   onAddChild: (parentId: string) => void;
   onSettings: (id: string) => void;
   onMove: (items: Array<{ id: string; parentId: string | null; position: number }>) => void;
+  /** Namespace for persisting which groups are collapsed (e.g. the language id). */
+  treeKey?: string;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [offsetLeft, setOffsetLeft] = useState(0);
 
+  // Which GROUP rows are collapsed (their children hidden). Persisted per tree.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsed(treeKey));
+  const toggleCollapse = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      if (typeof window !== 'undefined' && treeKey) {
+        try {
+          window.localStorage.setItem(collapsedStoreKey(treeKey), JSON.stringify([...next]));
+        } catch {
+          // ignore storage failures (private mode etc.)
+        }
+      }
+      return next;
+    });
+
   const flatFull = useMemo(() => flatten(pages), [pages]);
-  // While dragging, hide the dragged node's descendants so it moves as a subtree.
-  const flat = useMemo(() => (draggingId ? removeDescendants(flatFull, draggingId) : flatFull), [flatFull, draggingId]);
+  // Ids of nodes that have at least one child (so only those get a collapse chevron).
+  const parentIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of flatFull) {
+      if (item.parentId) {
+        set.add(item.parentId);
+      }
+    }
+    return set;
+  }, [flatFull]);
+  // Hide collapsed groups' descendants, then (while dragging) the dragged subtree.
+  const visible = useMemo(() => hideCollapsed(flatFull, collapsed), [flatFull, collapsed]);
+  const flat = useMemo(() => (draggingId ? removeDescendants(visible, draggingId) : visible), [visible, draggingId]);
   const ids = flat.map((f) => f.id);
 
   const projection = draggingId && overId ? getProjection(flat, draggingId, overId, offsetLeft, INDENT) : null;
@@ -197,6 +262,9 @@ export function SortablePageTree({
             node={item.node}
             depth={item.id === draggingId && projection ? projection.depth : item.depth}
             active={activeId === item.id}
+            hasChildren={parentIds.has(item.id)}
+            collapsed={collapsed.has(item.id)}
+            onToggleCollapse={toggleCollapse}
             onSelect={onSelect}
             onAddChild={onAddChild}
             onSettings={onSettings}
@@ -213,6 +281,9 @@ function SortableRow({
   node,
   depth,
   active,
+  hasChildren,
+  collapsed,
+  onToggleCollapse,
   onSelect,
   onAddChild,
   onSettings,
@@ -221,6 +292,9 @@ function SortableRow({
   node: PageNode;
   depth: number;
   active: boolean;
+  hasChildren: boolean;
+  collapsed: boolean;
+  onToggleCollapse: (id: string) => void;
   onSelect: (id: string) => void;
   onAddChild: (parentId: string) => void;
   onSettings: (id: string) => void;
@@ -233,6 +307,9 @@ function SortableRow({
         node={node}
         depth={depth}
         active={active}
+        hasChildren={hasChildren}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
         onSelect={onSelect}
         onAddChild={onAddChild}
         onSettings={onSettings}
@@ -247,6 +324,9 @@ function RowPresentation({
   depth,
   active,
   overlay,
+  hasChildren,
+  collapsed,
+  onToggleCollapse,
   onSelect,
   onAddChild,
   onSettings,
@@ -256,13 +336,18 @@ function RowPresentation({
   depth: number;
   active?: boolean;
   overlay?: boolean;
+  hasChildren?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: (id: string) => void;
   onSelect?: (id: string) => void;
   onAddChild?: (parentId: string) => void;
   onSettings?: (id: string) => void;
   handleProps?: Record<string, unknown>;
 }) {
+  const t = useT();
   const isGroup = node.kind === 'GROUP';
   const label = node.config?.sidebarTitle?.trim() || node.title;
+  const collapsible = isGroup && hasChildren && Boolean(onToggleCollapse);
   return (
     <div
       className={cn(
@@ -275,12 +360,32 @@ function RowPresentation({
     >
       <button
         type="button"
-        aria-label="Drag to reorder"
+        aria-label={t('editor.dragToReorder')}
         className="flex size-5 shrink-0 cursor-grab items-center justify-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground group-hover/row:opacity-100 active:cursor-grabbing"
         {...handleProps}
       >
         <GripVertical className="size-3.5" />
       </button>
+      {/* Collapse chevron for groups with children; a spacer otherwise so every
+          row's icon stays aligned. */}
+      {collapsible ? (
+        <button
+          type="button"
+          aria-label={collapsed ? t('editor.expand') : t('editor.collapse')}
+          aria-expanded={!collapsed}
+          className="flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleCollapse?.(node.id);
+          }}
+        >
+          {/* expanded → points down (both dirs); collapsed → points to the reading
+              start (right in LTR, left in RTL). */}
+          <ChevronRight className={cn('size-3.5 transition-transform', collapsed ? 'rtl:rotate-180' : 'rotate-90')} />
+        </button>
+      ) : (
+        <span className="size-4 shrink-0" aria-hidden />
+      )}
       <button
         type="button"
         onClick={() => onSelect?.(node.id)}
@@ -304,7 +409,8 @@ function RowPresentation({
           variant="ghost"
           className="shrink-0 cursor-pointer opacity-0 group-hover/row:opacity-100"
           onClick={() => onSettings(node.id)}
-          title="Page settings"
+          title={t('editor.pageSettings.title')}
+          aria-label={t('editor.pageSettings.title')}
         >
           <Settings2 className="size-3" />
         </Button>
@@ -315,7 +421,8 @@ function RowPresentation({
           variant="ghost"
           className="shrink-0 cursor-pointer opacity-0 group-hover/row:opacity-100"
           onClick={() => onAddChild(node.id)}
-          title="Add page"
+          title={t('editor.newPage')}
+          aria-label={t('editor.newPage')}
         >
           <Plus className="size-3" />
         </Button>

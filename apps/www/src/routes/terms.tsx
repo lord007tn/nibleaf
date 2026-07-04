@@ -1,16 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ArrowLeft } from 'lucide-react';
+import { MarketingShell } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
-import { useT } from '@/lib/i18n';
+import { useLocale, useT } from '@/lib/i18n';
+import { canonicalHref } from '@/lib/links';
 
 export const Route = createFileRoute('/terms')({
   head: () => ({
     meta: [{ title: 'Terms of Service — Midad' }, { name: 'description', content: 'The terms governing your use of Midad.' }],
+    links: [{ rel: 'canonical', href: canonicalHref('/terms') }],
   }),
   component: TermsPage,
 });
 
-const LAST_UPDATED = 'June 19, 2026';
+const LAST_UPDATED_ISO = '2026-06-19';
 
 const SECTIONS: { heading: MessageKey; body: MessageKey }[] = [
   { heading: 'terms.s1.heading', body: 'terms.s1.body' },
@@ -23,15 +25,17 @@ const SECTIONS: { heading: MessageKey; body: MessageKey }[] = [
 
 function TermsPage() {
   const t = useT();
+  const { locale } = useLocale();
+  const lastUpdated = new Intl.DateTimeFormat(locale === 'ar' ? 'ar' : 'en', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(LAST_UPDATED_ISO));
   return (
-    <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-6 py-20">
-        <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/">
-          <ArrowLeft className="size-4" /> {t('legal.back')}
-        </a>
-        <h1 className="mt-8 font-semibold text-4xl tracking-tight">{t('terms.title')}</h1>
-        <p className="mt-2 text-muted-foreground text-sm">{t('legal.lastUpdated', { date: LAST_UPDATED })}</p>
-
+    <MarketingShell>
+      <article className="mx-auto max-w-3xl px-6 py-20">
+        <h1 className="font-semibold text-4xl tracking-tight">{t('terms.title')}</h1>
+        <p className="mt-2 text-muted-foreground text-sm">{t('legal.lastUpdated', { date: lastUpdated })}</p>
         <div className="mt-10 space-y-8 text-muted-foreground leading-relaxed">
           {SECTIONS.map((section) => (
             <section key={section.heading}>
@@ -40,13 +44,7 @@ function TermsPage() {
             </section>
           ))}
         </div>
-
-        <div className="mt-12 border-border border-t pt-8">
-          <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/">
-            <ArrowLeft className="size-4" /> {t('legal.back')}
-          </a>
-        </div>
-      </main>
-    </div>
+      </article>
+    </MarketingShell>
   );
 }

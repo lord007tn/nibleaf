@@ -11,6 +11,7 @@ import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 import { siteHref } from '@/lib/links';
 
 interface DeployPipelineProps {
@@ -19,7 +20,7 @@ interface DeployPipelineProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const STEPS = ['Queued', 'Building snapshot', 'Indexing search', 'Live'] as const;
+const STEP_KEYS = ['deploy.step.queued', 'deploy.step.building', 'deploy.step.indexing', 'deploy.step.live'] as const;
 
 /**
  * Maps a deployment status to how far the pipeline has progressed.
@@ -36,7 +37,7 @@ function activeStep(status: DeploymentStatus | undefined): number {
     case 'BUILDING':
       return 1;
     case 'READY':
-      return STEPS.length;
+      return STEP_KEYS.length;
     case 'FAILED':
       return 1;
     default:
@@ -50,6 +51,7 @@ type StepState = 'done' | 'active' | 'failed' | 'pending';
 export function DeployPipeline({ project, open, onOpenChange }: DeployPipelineProps) {
   const rollback = useRollback(project.id);
   const confirm = useConfirm();
+  const t = useT();
 
   const deployments = useQuery({
     queryKey: queryKeys.deployments.all(project.id),
@@ -81,26 +83,26 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
     }
     if (done && latest && announced.current !== latest.id) {
       announced.current = latest.id;
-      toast.success('Published — your site is live', {
+      toast.success(t('deploy.published'), {
         action: {
-          label: 'View site →',
+          label: t('deploy.viewSiteArrow'),
           onClick: () => window.location.assign(siteHref(project.id)),
         },
       });
     }
-  }, [open, done, latest, project.id]);
+  }, [open, done, latest, project.id, t]);
 
   const viewSite = () => window.location.assign(siteHref(project.id));
 
   const doRollback = async () => {
     if (!previousReady) {
-      toast.error('No previous deployment to roll back to.');
+      toast.error(t('deploy.rollback.none'));
       return;
     }
     const ok = await confirm({
-      title: 'Roll back',
-      description: `Roll back to v${previousReady.version}? Your live site will revert to that version.`,
-      confirmLabel: 'Roll back',
+      title: t('deploy.rollback'),
+      description: t('deploy.rollback.confirmDesc', { version: previousReady.version }),
+      confirmLabel: t('deploy.rollback'),
       destructive: true,
     });
     if (!ok) {
@@ -108,10 +110,10 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
     }
     rollback.mutate(previousReady.id, {
       onSuccess: () => {
-        toast.success(`Rolled back to v${previousReady.version}`);
+        toast.success(t('deploy.rollback.success', { version: previousReady.version }));
         onOpenChange(false);
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not roll back'),
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('deploy.rollback.error')),
     });
   };
 
@@ -135,17 +137,17 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
             )}
             <div className="min-w-0 leading-snug">
               <DialogTitle className="font-semibold text-base tracking-tight">
-                {done ? 'Deployed successfully' : failed ? 'Deploy failed' : 'Deploying…'}
+                {done ? t('deploy.deployed') : failed ? t('deploy.failed') : t('deploy.deploying')}
               </DialogTitle>
               <div className="truncate font-mono text-[12.5px] text-muted-foreground">{siteHref(project.id)}</div>
             </div>
           </div>
 
           <ul className="border-border border-t pt-1">
-            {STEPS.map((label, i) => {
+            {STEP_KEYS.map((key, i) => {
               const state: StepState = failed && i === active ? 'failed' : i < active ? 'done' : i === active && running ? 'active' : 'pending';
               return (
-                <li key={label} className="flex items-center gap-3 py-2.5">
+                <li key={key} className="flex items-center gap-3 py-2.5">
                   <StepIndicator state={state} />
                   <span
                     className={cn(
@@ -155,7 +157,7 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
                       (state === 'done' || state === 'active') && 'text-foreground',
                     )}
                   >
-                    {label}
+                    {t(key)}
                   </span>
                 </li>
               );
@@ -169,18 +171,18 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
           <div className="flex items-center gap-2.5 px-6 pt-3.5 pb-5">
             <Button variant="outline" disabled={!previousReady || rollback.isPending} onClick={doRollback}>
               {rollback.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-              Roll back
+              {t('deploy.rollback')}
             </Button>
             <span className="flex-1" />
             <Button variant="outline" onClick={viewSite}>
-              View site <ExternalLink className="size-3.5" />
+              {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
             </Button>
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+            <Button onClick={() => onOpenChange(false)}>{t('deploy.done')}</Button>
           </div>
         ) : failed ? (
           <div className="flex justify-end px-6 pt-3.5 pb-5">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
+              {t('deploy.close')}
             </Button>
           </div>
         ) : null}

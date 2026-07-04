@@ -274,7 +274,11 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
     ),
   );
   await recomputeProjectPaths(projectId);
-  return listPages(projectId);
+  // Return the list scoped to the branch the moved pages live on (all items share
+  // a branch — they were validated against their parents above). Empty items keep
+  // the default-branch behavior.
+  const firstMoved = body.items[0] ? byPage.get(body.items[0].id) : undefined;
+  return listPages(projectId, undefined, firstMoved?.branchId ?? undefined);
 };
 
 export { assertProjectInOrg };

@@ -2,6 +2,7 @@ import { Skeleton } from '@midad/design-system/components/ui/skeleton';
 import { Activity, FileText, Globe2, Languages, Rocket, Users } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useAnalytics, useProjectMembers } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 import { SettingsSection } from './section';
@@ -12,10 +13,9 @@ interface UsageItem {
   value: number | string;
 }
 
-const formatNumber = (value: number) => new Intl.NumberFormat().format(value);
-
 export function UsageTab({ project }: { project: Project }) {
   const t = useT();
+  const { number: formatNumber } = useFormatters();
   const { data: analytics, isLoading: analyticsLoading } = useAnalytics(project.id, '30d');
   const { data: members } = useProjectMembers(project.id);
 

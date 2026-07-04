@@ -211,6 +211,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <Button
                       size="icon-sm"
                       variant="ghost"
+                      aria-label={t('settings.members.remove')}
+                      title={t('settings.members.remove')}
                       onClick={() =>
                         remove.mutate(member.id, {
                           onSuccess: () => toast.success(t('settings.members.toast.removed')),
@@ -254,6 +256,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       }
                       size="icon-sm"
                       variant="ghost"
+                      aria-label={t('settings.members.revokeInvite')}
+                      title={t('settings.members.revokeInvite')}
                     >
                       <Trash2 className="size-4" />
                     </Button>

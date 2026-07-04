@@ -2,7 +2,7 @@ import { Button } from '@midad/design-system/components/ui/button';
 import { Switch } from '@midad/design-system/components/ui/switch';
 import { cn } from '@midad/design-system/lib/utils';
 import type { ProjectConfig } from '@midad/validators';
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
@@ -149,13 +149,18 @@ export function ToggleRow({
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
 }) {
+  // Associate the visible title with the Switch so assistive tech announces a
+  // name (the base-ui switch has no intrinsic label otherwise).
+  const titleId = useId();
   return (
     <div className="flex items-center gap-4 border-border border-t py-3.5">
       <div className="flex-1 leading-snug">
-        <div className="font-medium text-[13.5px]">{title}</div>
+        <div id={titleId} className="font-medium text-[13.5px]">
+          {title}
+        </div>
         {hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} />
+      <Switch checked={checked} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
     </div>
   );
 }

@@ -121,7 +121,12 @@ export function siteHead(site: SiteShell | null | undefined): Head {
   }
   // Always advertise a favicon: the project's own, the branding override, or a
   // built-in fallback so the browser tab and link previews are never icon-less.
-  const links: Tag[] = [{ rel: 'icon', href: site.project.faviconUrl || config?.branding?.favicon || '/favicon.svg' }, ...fontLinks(config)];
+  // Also point crawlers at the sitemap (served from the API's public endpoint).
+  const links: Tag[] = [
+    { rel: 'icon', href: site.project.faviconUrl || config?.branding?.favicon || '/favicon.svg' },
+    { rel: 'sitemap', type: 'application/xml', href: `${publicOrigin()}/api/public/sites/${site.project.id}/sitemap.xml` },
+    ...fontLinks(config),
+  ];
   const scripts = config?.analytics?.cookieConsent ? [] : analyticsScripts(config);
   return { meta, links, ...(scripts.length ? { scripts } : {}) };
 }
@@ -135,7 +140,9 @@ export function siteHead(site: SiteShell | null | undefined): Head {
  */
 export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
   if (!data) {
-    return {};
+    // A nonexistent page is a soft-404: give it a distinct title and, crucially,
+    // a robots noindex so search engines never index the not-found shell.
+    return { meta: [{ title: 'Page not found' }, { name: 'robots', content: 'noindex,nofollow' }] };
   }
   const config = seoConfig(data.project.config);
   const langSeo = data.languageConfig?.seo;

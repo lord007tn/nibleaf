@@ -1,7 +1,7 @@
 import 'katex/dist/katex.min.css';
 import { cn } from '@midad/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
-import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
+import { type ComponentProps, type ReactNode, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
@@ -32,6 +32,31 @@ import {
 } from '@/components/site/mdx-components';
 import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
+import { siteHref } from '@/lib/site-paths';
+
+/** Link context for a published site: lets the renderer rewrite authored
+ *  root-relative doc links (`/guide`) to the site's base path so they don't
+ *  break when the site is served under `/sites/:id` (or a custom domain). */
+export interface SiteLinkContext {
+  projectId: string;
+  lang?: string;
+  version?: string;
+}
+
+/** Rewrite a root-relative internal doc link to the site base. External URLs,
+ *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
+function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefined): string | undefined {
+  if (!href || !site) {
+    return href;
+  }
+  if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || /^([a-z][\w+.-]*:)?\/\//i.test(href)) {
+    return href;
+  }
+  if (href.startsWith('/')) {
+    return siteHref(site.projectId, href, { lang: site.lang, version: site.version });
+  }
+  return href;
+}
 
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
@@ -98,7 +123,6 @@ const htmlComponents: Components = {
   h3: (props) => <h3 className="mt-8 mb-2 scroll-mt-24 font-semibold text-xl tracking-tight" {...props} />,
   h4: (props) => <h4 className="mt-6 mb-2 scroll-mt-24 font-semibold text-lg" {...props} />,
   p: (props) => <p className="my-4 leading-7 text-foreground/90" {...props} />,
-  a: (props) => <a className="font-medium text-primary underline underline-offset-4 hover:opacity-80" {...props} />,
   ul: (props) => <ul className="my-4 ms-6 list-disc space-y-2 marker:text-muted-foreground" {...props} />,
   ol: (props) => <ol className="my-4 ms-6 list-decimal space-y-2 marker:text-muted-foreground" {...props} />,
   li: (props) => <li className="leading-7" {...props} />,
@@ -129,6 +153,27 @@ const htmlComponents: Components = {
   },
   img: (props) => <img className="my-5 rounded-xl border border-border" alt={props.alt ?? ''} {...props} />,
 };
+
+/** Anchor renderer, built per site-context. Heading self-links (added by
+ *  rehype-autolink-headings with the `heading-anchor` class) keep the heading's
+ *  own styling — not link color/underline — so headings don't look like broken
+ *  hyperlinks. Everything else gets normal link styling and internal doc links
+ *  are rewritten to the site base. */
+function anchorRenderer(site: SiteLinkContext | undefined) {
+  return function Anchor({ className, href, ...props }: ComponentProps<'a'>) {
+    const isHeadingAnchor = typeof className === 'string' && className.split(/\s+/).includes('heading-anchor');
+    if (isHeadingAnchor) {
+      return <a className={cn('font-[inherit] text-inherit no-underline hover:no-underline', className)} href={href} {...props} />;
+    }
+    return (
+      <a
+        className={cn('font-medium text-primary underline underline-offset-4 hover:opacity-80', className)}
+        href={resolveDocHref(href, site)}
+        {...props}
+      />
+    );
+  };
+}
 
 // MDX component tags. react-markdown's Components type only knows HTML tags, so
 // these custom-tag renderers are declared separately and merged with a cast.
@@ -196,11 +241,25 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
-const components = { ...htmlComponents, ...mdxComponents } as Components;
-
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
- *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting. */
-export function Markdown({ content, className }: { content: string; className?: string }) {
+ *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
+ *  Pass `site` on a published site so internal links resolve to the site base. */
+export function Markdown({ content, className, site }: { content: string; className?: string; site?: SiteLinkContext }) {
+  const components = useMemo(
+    () =>
+      ({
+        ...htmlComponents,
+        a: anchorRenderer(site),
+        ...mdxComponents,
+        // Card links are internal doc targets too — rewrite them to the site base.
+        card: ({ title, href, icon, children }: MdxProps) => (
+          <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
+            {children}
+          </Card>
+        ),
+      }) as Components,
+    [site],
+  );
   return (
     <div className={cn('text-[15px]', className)}>
       <ReactMarkdown
@@ -212,7 +271,9 @@ export function Markdown({ content, className }: { content: string; className?: 
           rehypeMermaid,
           rehypeKatex,
           rehypeSlug,
-          [rehypeAutolinkHeadings, { behavior: 'wrap' }],
+          // `heading-anchor` class lets the anchor renderer keep heading styling
+          // (not link color/underline); tabIndex -1 keeps it out of the tab order.
+          [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: 'heading-anchor', tabIndex: -1 } }],
           rehypeHighlight,
         ]}
       >

@@ -29,6 +29,7 @@
   border-radius: 3px;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: base editor styles intentionally follow the higher-specificity .is-comment-mode overrides above; comment-mode always wins by specificity regardless of source order. */
 .pl-editor .ProseMirror {
   max-width: 720px;
   margin: 0 auto;

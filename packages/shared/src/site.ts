@@ -140,6 +140,21 @@ export interface Heading {
   id: string;
 }
 
+/** Reduce an inline-Markdown heading to the plain text the renderer produces, so
+ *  the slug we compute matches the DOM id (rehype-slug slugs the rendered text
+ *  content). Without this, a heading like `## See [the guide](/x)` or
+ *  `## The _fast_ path` gets a different id than the anchor, breaking the TOC and
+ *  deep links. */
+const stripInlineMarkdown = (text: string): string =>
+  text
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images render as <img> — no text content
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → their text
+    .replace(/`([^`]+)`/g, '$1') // inline code
+    .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2') // italic
+    .replace(/~~(.*?)~~/g, '$2') // strikethrough
+    .trim();
+
 /** Extract markdown headings (h1–h4) with slug ids — powers search + the TOC.
  *  Ids are produced with github-slugger, the same slugger rehype-slug uses to
  *  set DOM ids, so TOC anchors resolve for Unicode (e.g. Arabic) headings and
@@ -158,7 +173,7 @@ export const extractHeadings = (markdown: string): Heading[] => {
     }
     const match = HEADING.exec(line);
     if (match) {
-      const text = match[2]?.trim() ?? '';
+      const text = stripInlineMarkdown(match[2]?.trim() ?? '');
       headings.push({
         depth: match[1]?.length ?? 1,
         text,

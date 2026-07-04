@@ -3,7 +3,7 @@ import { SitePageView } from '@/components/site/site-page-view';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
-import { customDomainOrigin } from '@/lib/site-origin';
+import { customDomainOrigin, setSsrStatus } from '@/lib/site-origin';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
 
@@ -25,8 +25,12 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       return { page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
     } catch {
       // Page didn't resolve — honor a configured redirect (throws a 308) before
-      // falling back to the not-found state.
+      // falling back to the not-found state. Mark the SSR response 404 so this
+      // soft-404 returns the right status (the head also carries robots noindex).
       await redirectIfConfigured(params.projectId, params._splat ?? '', deps.lang);
+      // Return a real 404 for SSR (no-ops on client navigation); the head also
+      // carries robots noindex so crawlers don't index this dead URL.
+      setSsrStatus(404);
       return { page: null, lang: deps.lang, version: undefined, siteOrigin: customDomainOrigin() };
     }
   },

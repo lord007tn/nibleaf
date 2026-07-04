@@ -6,9 +6,13 @@ import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
+/** The host a custom domain should CNAME to. Prefer an explicit target, else the
+ *  instance's own base domain — never a SaaS host the self-hoster doesn't own. */
+const cnameTarget = (): string => env.CUSTOM_DOMAIN_CNAME_TARGET || env.SITE_BASE_DOMAIN || new URL(env.APP_URL).host;
+
 /** DNS records the user must create to point a custom domain at Midad. */
 export const dnsRecords = (domain: Domain) => [
-  { type: 'CNAME', name: domain.domain, value: env.CUSTOM_DOMAIN_CNAME_TARGET, ttl: 3600 },
+  { type: 'CNAME', name: domain.domain, value: cnameTarget(), ttl: 3600 },
   { type: 'TXT', name: `_midad.${domain.domain}`, value: `midad-verify=${domain.verificationToken}`, ttl: 3600 },
 ];
 

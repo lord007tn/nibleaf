@@ -5,42 +5,81 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Mirrors the @midad/design-system (shadcn) token structure so the marketing
+ * site shares the product's radius scale + component styling — only the colours
+ * differ (a cool, neutral zinc base with the Midad umber kept as the accent). */
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
 :root {
-  --radius: 0.75rem;
-  --background: #fbf7ee;
-  --foreground: #181612;
+  --radius: 0.625rem;
+  --background: #fafafa;
+  --foreground: #18181b;
   --card: #ffffff;
-  --muted: #eee4d3;
-  --muted-foreground: #6f655b;
-  --border: #ded2c0;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
   --primary: #8a4b2e;
-  --primary-foreground: #ffffff;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #e5484d;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #8a4b2e;
   --brand-copper: #b96a3d;
 }
 
 .dark {
-  --background: #11100d;
-  --foreground: #fbf7ee;
-  --card: #191713;
-  --muted: #252017;
-  --muted-foreground: #b8ad9e;
-  --border: #3b3127;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #121216;
+  --card-foreground: #fafafa;
+  --popover: #121216;
+  --popover-foreground: #fafafa;
   --primary: #d18a54;
-  --primary-foreground: #11100d;
+  --primary-foreground: #1a1206;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ff6166;
+  --destructive-foreground: #18181b;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #d18a54;
   --brand-copper: #d48a5e;
 }
 
@@ -53,6 +92,7 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   button:not(:disabled),
   [role="button"],
@@ -61,6 +101,52 @@
     cursor: pointer;
   }
   ::selection {
-    background: color-mix(in oklab, var(--primary) 25%, transparent);
+    background: color-mix(in oklab, var(--primary) 22%, transparent);
+  }
+  a:focus-visible,
+  summary:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* Faint neutral dot texture (no colour), fades toward the section edges. */
+.bg-dotgrid {
+  background-image: radial-gradient(color-mix(in oklab, var(--foreground) 5%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, #000 35%, transparent 100%);
+}
+
+/* The single warm brand moment: gradient accent word in the headline. */
+.text-gradient-brand {
+  background: linear-gradient(120deg, var(--primary) 0%, var(--brand-copper) 70%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.card-sheen {
+  background-image: linear-gradient(180deg, color-mix(in oklab, var(--foreground) 2%, transparent) 0%, transparent 30%);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
   }
 }

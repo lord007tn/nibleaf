@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
 import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 interface CommentsPanelProps {
@@ -38,31 +39,6 @@ function initials(name: string): string {
   return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
 }
 
-/** Compact relative time, e.g. "now", "5m", "3h", "2d". */
-function relativeTime(iso: string, nowLabel: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) {
-    return '';
-  }
-  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
-  if (secs < 60) {
-    return nowLabel;
-  }
-  const mins = Math.round(secs / 60);
-  if (mins < 60) {
-    return `${mins}m`;
-  }
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) {
-    return `${hrs}h`;
-  }
-  const days = Math.round(hrs / 24);
-  if (days < 7) {
-    return `${days}d`;
-  }
-  return `${Math.round(days / 7)}w`;
-}
-
 /** Stable gradient per user id so avatars stay visually distinct. */
 const GRADIENTS = [
   'from-amber-700 to-orange-500',
@@ -90,6 +66,7 @@ export function CommentsPanel({
   commentMode,
 }: CommentsPanelProps) {
   const t = useT();
+  const { relativeTime } = useFormatters();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
   const { data: comments, isPending } = useComments(projectId, pageId ?? undefined);
@@ -202,7 +179,7 @@ export function CommentsPanel({
                       {initials(comment.user.name)}
                     </span>
                     <span className="font-semibold text-sm">{comment.user.name}</span>
-                    <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt, t('editor.comments.now'))}</span>
+                    <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt)}</span>
                   </div>
                   <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
                     {comment.body}

@@ -10,7 +10,11 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SelfHostingRouteImport } from './routes/self-hosting'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as CloudRouteImport } from './routes/cloud'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TermsRoute = TermsRouteImport.update({
@@ -18,9 +22,29 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SelfHostingRoute = SelfHostingRouteImport.update({
+  id: '/self-hosting',
+  path: '/self-hosting',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CloudRoute = CloudRouteImport.update({
+  id: '/cloud',
+  path: '/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,31 +55,69 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
   '/terms': typeof TermsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/privacy' | '/terms'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/cloud'
+    | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/privacy' | '/terms'
-  id: '__root__' | '/' | '/privacy' | '/terms'
+  to:
+    | '/'
+    | '/about'
+    | '/cloud'
+    | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/cloud'
+    | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  CloudRoute: typeof CloudRoute
+  PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
+  SelfHostingRoute: typeof SelfHostingRoute
   TermsRoute: typeof TermsRoute
 }
 
@@ -68,11 +130,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/self-hosting': {
+      id: '/self-hosting'
+      path: '/self-hosting'
+      fullPath: '/self-hosting'
+      preLoaderRoute: typeof SelfHostingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/privacy': {
       id: '/privacy'
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cloud': {
+      id: '/cloud'
+      path: '/cloud'
+      fullPath: '/cloud'
+      preLoaderRoute: typeof CloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -87,7 +177,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  CloudRoute: CloudRoute,
+  PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
+  SelfHostingRoute: SelfHostingRoute,
   TermsRoute: TermsRoute,
 }
 export const routeTree = rootRouteImport

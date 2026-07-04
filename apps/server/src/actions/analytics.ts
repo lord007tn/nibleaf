@@ -70,10 +70,18 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
   };
 };
 
-/** Aggregate analytics across every project in an organization. */
-export const getWorkspaceAnalytics = async (organizationId: string, range: AnalyticsRange) => {
+/** Aggregate analytics across every site the user can reach — i.e. across all
+ *  the organizations they belong to. Each site owns its own org (1:1), so this
+ *  is the correct scope for the multi-site "Your sites" overview; scoping to a
+ *  single active org would show zeros for anyone with more than one site. */
+export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRange) => {
   const since = rangeStart(range);
-  const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true, name: true, color: true } });
+  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
+  const organizationIds = memberships.map((m) => m.organizationId);
+  const projects = await prisma.project.findMany({
+    where: { organizationId: { in: organizationIds } },
+    select: { id: true, name: true, color: true },
+  });
   const projectIds = projects.map((p) => p.id);
   const nameById = new Map(projects.map((p) => [p.id, p.name]));
   const colorById = new Map(projects.map((p) => [p.id, p.color]));

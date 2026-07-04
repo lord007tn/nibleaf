@@ -29,6 +29,10 @@ function ProjectPreview() {
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
   const activeLanguageId = search.languageId ?? languages?.find((language) => language.isDefault)?.id ?? languages?.[0]?.id;
+  const activeLanguage = languages?.find((language) => language.id === activeLanguageId);
+  // Content direction follows the previewed language (Arabic → RTL), mirroring
+  // the published site so authors preview real layout, not always-LTR.
+  const contentDir = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
   const activeBranchId = search.branchId ?? branches?.find((branch) => branch.isDefault)?.id ?? branches?.[0]?.id;
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const { data: pages, isPending: pagesPending } = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
@@ -119,7 +123,7 @@ function ProjectPreview() {
       </aside>
 
       <main className="overflow-y-auto bg-background">
-        <article className="mx-auto max-w-4xl px-10 py-10">
+        <article className="mx-auto max-w-4xl px-10 py-10" dir={contentDir}>
           {contentPending ? (
             <div className="space-y-4">
               <Skeleton className="h-8 w-64" />
@@ -136,7 +140,7 @@ function ProjectPreview() {
                 <h1 className="mt-2 font-semibold text-3xl tracking-tight">{page.title}</h1>
                 {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}
               </div>
-              <Markdown content={page.content} />
+              <Markdown content={page.content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId }} />
             </>
           ) : (
             <div className="text-muted-foreground text-sm">{t('preview.empty')}</div>

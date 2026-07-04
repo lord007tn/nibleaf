@@ -6,11 +6,13 @@ interface Entry {
   index: DocIndex;
 }
 
-// One in-memory Orama index per (project, language), keyed by the published
-// deployment id so it rebuilds automatically when a new version is published.
+// One in-memory Orama index per (project, language, docs-version), keyed by the
+// published deployment id so it rebuilds automatically when a new version is
+// published. Including the version in the slot keeps distinct docs versions from
+// evicting each other when a reader switches versions.
 const cache = new Map<string, Entry>();
 
-const cacheKey = (projectId: string, lang: string): string => `${projectId}:${lang}`;
+const cacheKey = (projectId: string, lang: string, version: string): string => `${projectId}:${lang}:${version}`;
 
 export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
   pages
@@ -33,7 +35,10 @@ export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
  *  scoped to a single language. Legacy pages without a languageCode are indexed
  *  under whichever language is requested so old snapshots still search. */
 export const getCachedIndex = async (projectId: string, key: string, lang: string, pages: SnapshotPage[]): Promise<DocIndex> => {
-  const mapKey = cacheKey(projectId, lang);
+  // `key` is `${deploymentId}:${versionSlug}` — the slug (no colons) scopes the
+  // cache slot per version; the full key still triggers a rebuild on re-publish.
+  const version = key.slice(key.indexOf(':') + 1) || 'main';
+  const mapKey = cacheKey(projectId, lang, version);
   const existing = cache.get(mapKey);
   if (existing && existing.key === key) {
     return existing.index;

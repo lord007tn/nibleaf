@@ -18,19 +18,34 @@ import {
   ListCollapse,
   ListOrdered,
   ListTodo,
+  MessageCircle,
   Minus,
   Quote,
+  Sparkles,
   Table as TableIcon,
   Type,
+  Workflow,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { useT } from '@/lib/i18n';
+import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { useLocale } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
 
+/** An inline en+ar label pair, for slash items whose strings are not (yet) in
+ *  the shared messages catalog. Resolved the same way as a `MessageKey`. */
+interface InlineLabel {
+  en: string;
+  ar: string;
+}
+
+/** A slash-item label: either a shared i18n key or an inline en/ar pair. */
+type SlashLabel = MessageKey | InlineLabel;
+
+const isMessageKey = (label: SlashLabel): label is MessageKey => typeof label === 'string';
+
 interface SlashItem {
-  titleKey: MessageKey;
-  descKey: MessageKey;
+  titleKey: SlashLabel;
+  descKey: SlashLabel;
   icon: ComponentType<{ className?: string }>;
   /** Short mono glyph shown in the 32px tile (matches the design's monospace tiles). */
   glyph: string;
@@ -142,6 +157,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     glyph: '<>',
     keywords: ['snippet', 'pre'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleCodeBlock().run(),
+  },
+  {
+    titleKey: 'editor.slash.mermaid.title',
+    descKey: 'editor.slash.mermaid.desc',
+    icon: Workflow,
+    glyph: '⧉',
+    keywords: ['mermaid', 'diagram', 'flowchart', 'sequence', 'graph'],
+    // A fenced code block tagged `mermaid` — the live site renders it as an SVG
+    // diagram (rehypeMermaid), and it round-trips as ```mermaid in Markdown.
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run(),
   },
   {
     titleKey: 'editor.slash.callout.title',
@@ -261,6 +286,36 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
+    titleKey: { en: 'Tooltip', ar: 'تلميح' },
+    descKey: { en: 'Inline text with a hover tooltip.', ar: 'نص مضمّن مع تلميح عند التمرير.' },
+    icon: MessageCircle,
+    glyph: '?',
+    keywords: ['tooltip', 'hint', 'hover', 'inline'],
+    // An inline Tooltip wrapping the current selection (or placeholder text).
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxTooltip', attrs: { tip: 'Tooltip text' }, content: [{ type: 'text', text: 'term' }] })
+        .run(),
+  },
+  {
+    titleKey: { en: 'Icon', ar: 'أيقونة' },
+    descKey: { en: 'An inline icon by name.', ar: 'أيقونة مضمّنة بالاسم.' },
+    icon: Sparkles,
+    glyph: '✦',
+    keywords: ['icon', 'glyph', 'symbol', 'inline'],
+    // A self-closing inline Icon atom.
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxIcon', attrs: { icon: 'star' } })
+        .run(),
+  },
+  {
     titleKey: 'editor.slash.update.title',
     descKey: 'editor.slash.update.desc',
     icon: ListChecks,
@@ -345,10 +400,13 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
   },
 ];
 
+/** Resolve a slash label in one locale (message key or inline pair). */
+const labelIn = (label: SlashLabel, locale: 'en' | 'ar'): string => (isMessageKey(label) ? messages[locale][label] : label[locale]);
+
 /** Search haystack across BOTH locales (+ keywords) so filtering works whatever
  *  language the menu is displayed in. */
 const haystackOf = (item: SlashItem): string =>
-  [messages.en[item.titleKey], messages.ar[item.titleKey], messages.en[item.descKey], messages.ar[item.descKey], ...(item.keywords ?? [])]
+  [labelIn(item.titleKey, 'en'), labelIn(item.titleKey, 'ar'), labelIn(item.descKey, 'en'), labelIn(item.descKey, 'ar'), ...(item.keywords ?? [])]
     .join(' ')
     .toLowerCase();
 
@@ -362,8 +420,11 @@ interface SlashListProps {
 }
 
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
-  const t = useT();
+  const { t, locale } = useLocale();
+  /** Resolve a slash label in the active locale (shared key or inline pair). */
+  const label = (value: SlashLabel): string => (isMessageKey(value) ? t(value) : labelIn(value, locale));
   const [selected, setSelected] = useState(0);
+  const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Reset the highlight to the first item whenever the filtered list changes.
@@ -400,7 +461,12 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
   }));
 
   return (
-    <div ref={containerRef} className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl">
+    <div
+      ref={containerRef}
+      role="listbox"
+      aria-label={t('editor.slash.basicBlocks')}
+      className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl"
+    >
       <div className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground uppercase tracking-wide">{t('editor.slash.basicBlocks')}</div>
       {items.length === 0 ? (
         <div className="px-3 py-3 text-muted-foreground text-sm">{t('editor.slash.empty')}</div>
@@ -410,7 +476,10 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
           return (
             <button
               type="button"
-              key={item.titleKey}
+              key={labelIn(item.titleKey, 'en')}
+              id={`${listboxId}-opt-${index}`}
+              role="option"
+              aria-selected={index === selected}
               data-index={index}
               onMouseEnter={() => setSelected(index)}
               onClick={() => command(item)}
@@ -423,8 +492,8 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
                 <Icon className="size-4 text-foreground/80" />
               </span>
               <span className="min-w-0">
-                <span className="block font-medium text-[13.5px] text-foreground">{t(item.titleKey)}</span>
-                <span className="block truncate text-muted-foreground text-xs">{t(item.descKey)}</span>
+                <span className="block font-medium text-[13.5px] text-foreground">{label(item.titleKey)}</span>
+                <span className="block truncate text-muted-foreground text-xs">{label(item.descKey)}</span>
               </span>
             </button>
           );

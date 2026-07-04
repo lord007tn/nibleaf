@@ -18,6 +18,7 @@ import { common, createLowlight } from 'lowlight';
 import { GripVertical, Plus } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
+import { useT } from '@/lib/i18n';
 import { EditorBubbleMenu } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -47,6 +48,7 @@ const CodeBlock = CodeBlockLowlight.extend({
  *  new block. Floats in the start-side gutter (left in LTR, right in RTL) of
  *  whichever block the cursor hovers. */
 function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
+  const t = useT();
   const posRef = useRef<number | null>(null);
   const insertBelow = () => {
     const pos = posRef.current;
@@ -73,7 +75,8 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
       <div className="flex items-center gap-0.5 px-1 text-muted-foreground">
         <button
           type="button"
-          title="Insert block"
+          title={t('editor.insertBlock')}
+          aria-label={t('editor.insertBlock')}
           onMouseDown={(event) => event.preventDefault()}
           onClick={insertBelow}
           className="grid size-6 cursor-pointer place-items-center rounded hover:bg-muted hover:text-foreground"
@@ -81,7 +84,7 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
           <Plus className="size-4" />
         </button>
         <span
-          title="Drag to move"
+          title={t('editor.dragToMove')}
           className="grid size-6 cursor-grab place-items-center rounded hover:bg-muted hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-4" />

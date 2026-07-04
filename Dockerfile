@@ -43,6 +43,6 @@ LABEL org.opencontainers.image.title="Midad" \
   org.opencontainers.image.version=$VERSION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
-EXPOSE 4310 4311 4312 4313 4314
+EXPOSE 4310 4311 4312 4313 4314 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

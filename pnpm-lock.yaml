@@ -33,6 +33,112 @@ importers:
         specifier: ^3.2.4
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)
 
+  apps/admin:
+    dependencies:
+      '@base-ui/react':
+        specifier: ^1.6.0
+        version: 1.6.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@fontsource-variable/geist':
+        specifier: ^5.2.5
+        version: 5.2.9
+      '@fontsource-variable/geist-mono':
+        specifier: ^5.2.5
+        version: 5.2.8
+      '@midad/design-system':
+        specifier: workspace:*
+        version: link:../../packages/design-system
+      '@midad/server':
+        specifier: workspace:*
+        version: link:../server
+      '@midad/validators':
+        specifier: workspace:*
+        version: link:../../packages/validators
+      '@tailwindcss/vite':
+        specifier: ^4.2.1
+        version: 4.3.1(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      '@tanstack/react-form':
+        specifier: 1.32.0
+        version: 1.32.0(@tanstack/react-start@1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-query':
+        specifier: ^5.100.14
+        version: 5.101.0(react@19.2.7)
+      '@tanstack/react-router':
+        specifier: ^1.167.4
+        version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@tanstack/react-start':
+        specifier: ^1.166.15
+        version: 1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      better-auth:
+        specifier: ^1.6.19
+        version: 1.6.19(@prisma/client@6.19.3(prisma@6.19.3(magicast@0.3.5)(typescript@5.9.3))(typescript@5.9.3))(@tanstack/react-start@1.168.26(crossws@0.4.6(srvx@0.11.17))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)))(pg@8.22.0)(prisma@6.19.3(magicast@0.3.5)(typescript@5.9.3))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      class-variance-authority:
+        specifier: ^0.7.1
+        version: 0.7.1
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      hono:
+        specifier: ^4.12.23
+        version: 4.12.26
+      lucide-react:
+        specifier: ^1.16.0
+        version: 1.21.0(react@19.2.7)
+      next-themes:
+        specifier: ^0.4.6
+        version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      nitro:
+        specifier: 3.0.260522-beta
+        version: 3.0.260522-beta(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(ioredis@5.11.1)(jiti@2.7.0)(lru-cache@11.5.1)(rollup@4.62.2)(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      react:
+        specifier: ^19.2.4
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.4
+        version: 19.2.7(react@19.2.7)
+      recharts:
+        specifier: 3.8.0
+        version: 3.8.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react-is@19.2.7)(react@19.2.7)(redux@5.0.1)
+      sonner:
+        specifier: ^2.0.7
+        version: 2.0.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      tailwind-merge:
+        specifier: ^3.6.0
+        version: 3.6.0
+      tailwindcss:
+        specifier: ^4.2.1
+        version: 4.3.1
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@midad/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
+      '@types/node':
+        specifier: ^22.15.0
+        version: 22.19.21
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.17)
+      '@vitejs/plugin-react':
+        specifier: ^5.2.0
+        version: 5.2.0(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+      vite:
+        specifier: ^7.3.1
+        version: 7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4)
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.9.3)(vite@7.3.5(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.4))
+
   apps/app:
     dependencies:
       '@base-ui/react':
@@ -8750,7 +8856,7 @@ snapshots:
       immer: 11.1.8
       redux: 5.0.1
       redux-thunk: 3.1.0(redux@5.0.1)
-      reselect: 5.1.1
+      reselect: 5.2.0
     optionalDependencies:
       react: 19.2.7
       react-redux: 9.3.0(@types/react@19.2.17)(react@19.2.7)(redux@5.0.1)

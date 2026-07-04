@@ -2,16 +2,22 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "plume-app",
+      "name": "midad-app",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@plume/app", "dev"],
+      "runtimeArgs": ["--filter", "@midad/app", "dev"],
       "port": 4310
     },
     {
-      "name": "plume-www",
+      "name": "midad-www",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@plume/www", "dev"],
+      "runtimeArgs": ["--filter", "@midad/www", "dev"],
       "port": 4313
+    },
+    {
+      "name": "midad-admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@midad/admin", "dev"],
+      "port": 4315
     }
   ]
 }

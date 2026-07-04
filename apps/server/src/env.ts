@@ -23,9 +23,11 @@ export const env = createEnv({
     APP_URL: z.url().default('http://localhost:4310'),
     WWW_URL: z.url().default('http://localhost:4313'),
     SITE_BASE_DOMAIN: z.string().optional(),
-    CUSTOM_DOMAIN_CNAME_TARGET: z.string().default('cname.midad.dev'),
+    // No SaaS default: a self-hoster must not tell their readers to CNAME to a
+    // host they don't control. Falls back to SITE_BASE_DOMAIN in dnsRecords().
+    CUSTOM_DOMAIN_CNAME_TARGET: z.string().optional(),
     SERVICE_NAME: z.string().default('midad-api'),
-    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4313').transform(csv),
+    CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4313,http://localhost:4315').transform(csv),
     EMAIL_FROM: z.string().default('midad@localhost'),
     OPENAI_API_KEY: z.string().optional(),
   },

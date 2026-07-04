@@ -16,6 +16,7 @@ export function MobileNav({
   lang,
   version,
   label,
+  isRtl,
 }: {
   nodes: NavNode[];
   projectId: string;
@@ -23,6 +24,7 @@ export function MobileNav({
   lang?: string;
   version?: string;
   label: string;
+  isRtl?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: close the drawer when the route (currentPath) changes.
@@ -38,7 +40,8 @@ export function MobileNav({
       >
         <Menu className="size-5" />
       </SheetTrigger>
-      <SheetContent side="left" className="w-80 p-0">
+      {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic). */}
+      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 p-0">
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>

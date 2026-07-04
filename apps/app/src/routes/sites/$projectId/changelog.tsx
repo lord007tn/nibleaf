@@ -1,11 +1,43 @@
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { useSiteChangelog } from '@/hooks/api';
-import type { ChangelogEntry } from '@/hooks/api/types';
+import { getData } from '@/hooks/api/client-helpers';
+import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
+import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
+import { customDomainOrigin } from '@/lib/site-origin';
+import { sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
+  loaderDeps: ({ search }) => ({ lang: search.lang }),
+  // Fetch the site shell server-side so the changelog gets a real SSR <title>
+  // and canonical (the changelog route renders no SitePageView to own the head).
+  loader: async ({ params, deps }) => {
+    try {
+      const site = await getData<SiteShell>(
+        await api.public.sites[':id'].$get({
+          param: { id: params.projectId },
+          query: deps.lang ? { lang: deps.lang } : {},
+        }),
+        'site',
+      );
+      return { site, lang: deps.lang, siteOrigin: customDomainOrigin() };
+    } catch {
+      return { site: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const site = loaderData?.site ?? null;
+    const config = (site?.project.config ?? null) as { seo?: { metaTitle?: string; metaDescription?: string } } | null;
+    const name = config?.seo?.metaTitle || site?.project.name || 'Documentation';
+    const description = config?.seo?.metaDescription || site?.project.description || `Every update shipped to ${name}.`;
+    const url = sitePageUrl(params.projectId, 'changelog', loaderData?.lang, loaderData?.siteOrigin);
+    return {
+      meta: [{ title: `Changelog — ${name}` }, { name: 'description', content: description }],
+      links: [{ rel: 'canonical', href: url }],
+    };
+  },
 });
 
 const parse = (value: string | null): Date | null => {

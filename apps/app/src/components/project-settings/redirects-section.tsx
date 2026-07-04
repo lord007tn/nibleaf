@@ -43,6 +43,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                       {(sub) => (
                         <Input
                           className={FIELD_COMPACT_MONO}
+                          aria-label={t('settings.redirects.fromLabel')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/intro"
                           value={sub.state.value}
@@ -54,6 +55,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                       {(sub) => (
                         <Input
                           className={FIELD_COMPACT_MONO}
+                          aria-label={t('settings.redirects.toLabel')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/get-started/introduction"
                           value={sub.state.value}

@@ -164,6 +164,8 @@ function MembersPage() {
                       <Button
                         size="icon-sm"
                         variant="ghost"
+                        aria-label={t('members.remove')}
+                        title={t('members.remove')}
                         onClick={() => remove.mutate(member.id, { onSuccess: () => toast.success(t('members.toast.removed')) })}
                       >
                         <Trash2 className="size-4" />

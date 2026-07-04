@@ -46,6 +46,7 @@ export function VariablesSection({ project }: { project: Project }) {
                       {(sub) => (
                         <Input
                           className={FIELD_COMPACT_MONO}
+                          aria-label={t('settings.variables.keyLabel')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="product"
                           value={sub.state.value}
@@ -56,6 +57,7 @@ export function VariablesSection({ project }: { project: Project }) {
                       {(sub) => (
                         <Input
                           className={FIELD_COMPACT_MONO}
+                          aria-label={t('settings.variables.valueLabel')}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="Acme"
                           value={sub.state.value}

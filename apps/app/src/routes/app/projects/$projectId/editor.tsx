@@ -7,6 +7,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   Check,
   ChevronLeft,
+  ChevronRight,
   Code2,
   ExternalLink,
   Eye,
@@ -188,6 +189,48 @@ function EditorPage() {
     }
   }, [sidebarCollapsed]);
 
+  // Which per-language sections are collapsed in the page tree. Persisted.
+  const [collapsedLangs, setCollapsedLangs] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') {
+      return new Set();
+    }
+    try {
+      const raw = window.localStorage.getItem('midad.editor.collapsedLangs');
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  const persistLangs = (set: Set<string>) => {
+    try {
+      window.localStorage.setItem('midad.editor.collapsedLangs', JSON.stringify([...set]));
+    } catch {
+      // ignore storage failures
+    }
+  };
+  const toggleLang = (id: string) =>
+    setCollapsedLangs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      persistLangs(next);
+      return next;
+    });
+  // Adding a page/group to a collapsed language auto-expands it so the new node shows.
+  const expandLang = (id: string) =>
+    setCollapsedLangs((prev) => {
+      if (!prev.has(id)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.delete(id);
+      persistLangs(next);
+      return next;
+    });
+
   // The active page's language drives the editor/preview text direction.
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
   const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
@@ -312,7 +355,7 @@ function EditorPage() {
           className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           title={t('editor.backToDashboard')}
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4 rtl:-scale-x-100" />
           <span className="max-w-[200px] truncate font-medium text-foreground text-sm">{project?.name ?? ''}</span>
         </Link>
         <span className="h-5 w-px bg-border" />
@@ -404,11 +447,25 @@ function EditorPage() {
                 {orderedLanguages.map((lang) => {
                   const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
                   const langPages = pagesByLanguage.get(lang.id) ?? [];
+                  const langCollapsed = collapsedLangs.has(lang.id);
                   return (
                     <div key={lang.id} className="mb-2">
-                      {/* Language section header */}
-                      <div className="group flex items-center justify-between px-2 py-1.5">
-                        <span className="flex min-w-0 items-center gap-1.5 font-semibold text-[12.5px] text-foreground" dir={dir}>
+                      {/* Language section header — click the label to collapse/expand */}
+                      <div className="group flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-muted/40">
+                        <button
+                          type="button"
+                          onClick={() => toggleLang(lang.id)}
+                          aria-expanded={!langCollapsed}
+                          title={langCollapsed ? t('editor.expand') : t('editor.collapse')}
+                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 font-semibold text-[12.5px] text-foreground"
+                          dir={dir}
+                        >
+                          <ChevronRight
+                            className={cn(
+                              'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                              langCollapsed ? 'rtl:rotate-180' : 'rotate-90',
+                            )}
+                          />
                           <Languages className="size-3.5 shrink-0 text-muted-foreground" />
                           <span className="truncate">{lang.label}</span>
                           <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
@@ -417,7 +474,7 @@ function EditorPage() {
                               {t('editor.default')}
                             </span>
                           ) : null}
-                        </span>
+                        </button>
                         <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                           <Button
                             size="icon-xs"
@@ -432,7 +489,10 @@ function EditorPage() {
                             size="icon-xs"
                             variant="ghost"
                             className="cursor-pointer"
-                            onClick={() => addGroup(lang.id)}
+                            onClick={() => {
+                              expandLang(lang.id);
+                              addGroup(lang.id);
+                            }}
                             title={t('editor.newGroup')}
                           >
                             <FolderPlus className="size-3" />
@@ -441,7 +501,10 @@ function EditorPage() {
                             size="icon-xs"
                             variant="ghost"
                             className="cursor-pointer"
-                            onClick={() => addPage(null, lang.id)}
+                            onClick={() => {
+                              expandLang(lang.id);
+                              addPage(null, lang.id);
+                            }}
                             title={t('editor.newPage')}
                           >
                             <Plus className="size-3" />
@@ -450,20 +513,23 @@ function EditorPage() {
                       </div>
 
                       {/* This language's page tree — Notion-style drag-and-drop */}
-                      <div className="space-y-0.5" dir={dir}>
-                        {langPages.length === 0 ? (
-                          <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
-                        ) : (
-                          <SortablePageTree
-                            pages={langPages}
-                            activeId={activeTreeId}
-                            onSelect={setSelectedId}
-                            onAddChild={(parentId) => addPage(parentId, lang.id)}
-                            onSettings={(id) => setSettingsForId(id)}
-                            onMove={(items) => reorderPages.mutate({ items })}
-                          />
-                        )}
-                      </div>
+                      {langCollapsed ? null : (
+                        <div className="space-y-0.5" dir={dir}>
+                          {langPages.length === 0 ? (
+                            <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
+                          ) : (
+                            <SortablePageTree
+                              pages={langPages}
+                              activeId={activeTreeId}
+                              treeKey={lang.id}
+                              onSelect={setSelectedId}
+                              onAddChild={(parentId) => addPage(parentId, lang.id)}
+                              onSettings={(id) => setSettingsForId(id)}
+                              onMove={(items) => reorderPages.mutate({ items })}
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -642,8 +708,9 @@ function EditorPage() {
                   </h1>
                 ) : (
                   <input
-                    className="w-full border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40"
+                    className="w-full rounded-sm border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40"
                     dir={activeLangDir}
+                    aria-label={t('editor.pageTitlePlaceholder')}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder={t('editor.pageTitlePlaceholder')}
                     value={title}
@@ -670,16 +737,17 @@ function EditorPage() {
               ) : editorMode === 'markdown' ? (
                 <textarea
                   dir={activeLangDir}
+                  aria-label={t('editor.markdownPlaceholder')}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   spellCheck={false}
                   placeholder={t('editor.markdownPlaceholder')}
-                  className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground"
+                  className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none rounded-sm bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
                 />
               ) : (
                 // Live preview: the draft rendered through the exact live-site renderer.
                 <div className="mx-auto mt-4 max-w-[720px]" dir={activeLangDir}>
-                  <Markdown content={content} />
+                  <Markdown content={content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId ?? undefined }} />
                 </div>
               )}
             </div>

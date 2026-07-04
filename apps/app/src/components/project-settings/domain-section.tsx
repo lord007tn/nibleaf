@@ -1,4 +1,5 @@
 import { Button } from '@midad/design-system/components/ui/button';
+import { useConfirm } from '@midad/design-system/components/ui/confirm';
 import { Input } from '@midad/design-system/components/ui/input';
 import { cn } from '@midad/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
@@ -12,11 +13,23 @@ import { FIELD_MONO, SectionHeader } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
+  const confirm = useConfirm();
   const { data: domains } = useDomains(project.id);
   const add = useAddDomain(project.id);
   const verify = useVerifyDomain(project.id);
   const setPrimary = useSetPrimaryDomain(project.id);
   const remove = useDeleteDomain(project.id);
+  const removeDomain = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: t('settings.domain.remove'),
+      description: t('settings.domain.removeConfirm', { domain: name }),
+      confirmLabel: t('settings.domain.remove'),
+      destructive: true,
+    });
+    if (ok) {
+      remove.mutate(id);
+    }
+  };
   const [domain, setDomain] = useState('');
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
@@ -104,7 +117,7 @@ export function DomainSection({ project }: { project: Project }) {
                     {t('settings.domain.makePrimary')}
                   </Button>
                 ) : null}
-                <Button className="cursor-pointer" onClick={() => remove.mutate(d.id)} size="sm" variant="ghost">
+                <Button className="cursor-pointer" onClick={() => removeDomain(d.id, d.domain)} size="sm" variant="ghost">
                   {t('settings.domain.remove')}
                 </Button>
               </div>

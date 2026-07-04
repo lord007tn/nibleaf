@@ -22,6 +22,9 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
+  /// Platform role for the internal admin panel (apps/admin): "user" | "admin".
+  /// Separate from per-workspace Member roles; managed via the grant-admin script.
+  role          String   @default("user")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -381,4 +384,16 @@ model AnalyticsEvent {
   @@index([projectId, createdAt])
   @@index([projectId, type])
   @@map("analytics_event")
+}
+
+/// Sign-ups for the managed Midad Cloud waitlist (collected from the marketing
+/// site while Cloud is not yet live). Idempotent by email.
+model WaitlistEntry {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String? // where the signup came from, e.g. "cloud-page"
+  locale    String? // visitor locale at signup (e.g. "en", "ar")
+  createdAt DateTime @default(now())
+
+  @@map("waitlist_entry")
 }

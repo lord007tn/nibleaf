@@ -2,15 +2,17 @@ import { analyticsQuery, updateWorkspaceSettingsBody } from '@midad/validators';
 import { Hono } from 'hono';
 import { getWorkspaceAnalytics } from '@/actions/analytics';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
-import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import workspaceRoutes from './routes';
 
 const app = new Hono<HonoEnv>()
   .get('/analytics', ...workspaceRoutes.analytics, validator('query', analyticsQuery), async (ctx) => {
-    const organizationId = getContextOrganizationIdOrThrow();
+    // Workspace analytics span every site the user can reach (all their orgs),
+    // not just the session's active org — see getWorkspaceAnalytics.
+    const user = getContextUserOrThrow();
     const { range } = ctx.req.valid('query');
-    return ctx.json({ data: await getWorkspaceAnalytics(organizationId, range) }, 200);
+    return ctx.json({ data: await getWorkspaceAnalytics(user.id, range) }, 200);
   })
   .get('/', ...workspaceRoutes.settings, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

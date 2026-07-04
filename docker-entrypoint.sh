@@ -73,6 +73,10 @@ case "$cmd" in
     echo "[midad] starting docs site on :${PORT:-4314}"
     exec node apps/docs/.output/server/index.mjs
     ;;
+  admin)
+    echo "[midad] starting admin panel on :${PORT:-4315}"
+    exec node apps/admin/.output/server/index.mjs
+    ;;
   *)
     exec "$@"
     ;;

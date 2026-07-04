@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
 import { useBranches, useImportFromGit, useLanguages, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
 
@@ -36,6 +37,7 @@ const DEFAULTS: Required<Omit<GitConfig, 'lastImportedAt' | 'connected'>> = {
 
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
+  const { dateTime } = useFormatters();
   const { data } = useWorkspaceSettings(projectId);
   const update = useUpdateWorkspaceSettings(projectId);
   const importFromGit = useImportFromGit(projectId ?? '');
@@ -302,9 +304,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
         <SettingsSection title={t('settings.git.import.title')}>
           <div className="flex items-center justify-between gap-4">
             <p className="text-muted-foreground text-sm">
-              {lastImported
-                ? t('settings.git.import.lastImported', { when: new Date(lastImported).toLocaleString() })
-                : t('settings.git.import.never')}
+              {lastImported ? t('settings.git.import.lastImported', { when: dateTime(lastImported) }) : t('settings.git.import.never')}
             </p>
             <Button type="button" disabled={importFromGit.isPending} onClick={runImport}>
               {importFromGit.isPending ? <Loader2 className="size-4 animate-spin" /> : <DownloadCloud className="size-4" />}

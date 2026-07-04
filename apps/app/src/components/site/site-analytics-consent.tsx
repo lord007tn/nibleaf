@@ -5,6 +5,13 @@ import { analyticsScripts } from '@/lib/site-seo';
 
 const consentKey = (projectId: string) => `midad.analytics.consent.${projectId}`;
 
+/** Read the persisted consent choice; anything other than a stored accept/decline
+ *  is treated as still pending (so the banner shows). */
+const readConsent = (projectId: string): 'pending' | 'accepted' | 'declined' => {
+  const stored = window.localStorage.getItem(consentKey(projectId));
+  return stored === 'accepted' || stored === 'declined' ? stored : 'pending';
+};
+
 function appendAnalyticsScript(projectId: string, index: number, script: ReturnType<typeof analyticsScripts>[number]) {
   const id = `midad-analytics-${projectId}-${index}`;
   if (document.getElementById(id)) {
@@ -43,7 +50,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
     if (typeof window === 'undefined' || !requiresConsent) {
       return 'pending';
     }
-    return window.localStorage.getItem(consentKey(projectId)) === 'accepted' ? 'accepted' : 'pending';
+    return readConsent(projectId);
   });
   const t = siteT(lang);
 
@@ -51,7 +58,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
     if (typeof window === 'undefined' || !requiresConsent) {
       return;
     }
-    setChoice(window.localStorage.getItem(consentKey(projectId)) === 'accepted' ? 'accepted' : 'pending');
+    setChoice(readConsent(projectId));
   }, [projectId, requiresConsent]);
 
   useEffect(() => {
@@ -68,13 +75,16 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
   }
 
   return (
-    <div className="fixed right-4 bottom-4 z-50 max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg">
+    <div className="fixed end-4 bottom-4 z-50 max-w-sm rounded-lg border border-border bg-background p-4 shadow-lg">
       <p className="text-sm leading-relaxed">{t('analyticsConsentBody')}</p>
       <div className="mt-3 flex justify-end gap-2">
         <button
           className="rounded-md border border-border px-3 py-1.5 text-muted-foreground text-sm hover:bg-muted"
           type="button"
-          onClick={() => setChoice('declined')}
+          onClick={() => {
+            window.localStorage.setItem(consentKey(projectId), 'declined');
+            setChoice('declined');
+          }}
         >
           {t('analyticsConsentDecline')}
         </button>

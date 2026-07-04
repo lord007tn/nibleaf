@@ -21,6 +21,7 @@ type SerializeState = {
   write: (text: string) => void;
   closeBlock: (node: PMNode) => void;
   renderContent: (node: PMNode) => void;
+  renderInline: (node: PMNode) => void;
 };
 
 /** Render the MDX attribute string for the configured keys (skips empty values). */
@@ -194,6 +195,53 @@ export const ResponseField = containerNode({
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
 export const CodeGroup = containerNode({ name: 'mdxCodeGroup', tag: 'CodeGroup', content: 'block+', className: 'pl-codegroup' });
 
+// ─── Inline: Tooltip ──────────────────────────────────────────────────────────
+// `<Tooltip tip="…">text</Tooltip>` — an inline wrapper whose children stay
+// editable. Serializes with `renderInline` (NOT the block factory's
+// renderContent/closeBlock) so the tag and its text stay on the same line.
+export const Tooltip = Node.create({
+  name: 'mdxTooltip',
+  group: 'inline',
+  inline: true,
+  content: 'inline*',
+  addAttributes: () => stringAttr('tip'),
+  parseHTML: () => [{ tag: 'tooltip' }, { tag: 'span[data-mdx="Tooltip"]' }],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': 'Tooltip', class: 'pl-tooltip' }), 0],
+  addStorage: () => ({
+    markdown: {
+      serialize: (state: SerializeState, node: PMNode) => {
+        state.write(`<Tooltip${attrString(node, ['tip'])}>`);
+        state.renderInline(node);
+        state.write('</Tooltip>');
+      },
+      parse: {},
+    } satisfies MarkdownNodeSpec,
+  }),
+});
+
+// ─── Inline: Icon ─────────────────────────────────────────────────────────────
+// `<Icon icon|name color size />` — a self-closing inline atom. It carries no
+// content, so it parses as a leaf (atom) that never absorbs following siblings,
+// and serializes as a self-closing tag.
+export const Icon = Node.create({
+  name: 'mdxIcon',
+  group: 'inline',
+  inline: true,
+  atom: true,
+  selectable: true,
+  addAttributes: () => stringAttrs('icon', 'name', 'color', 'size'),
+  parseHTML: () => [{ tag: 'icon' }, { tag: 'span[data-mdx="Icon"]' }],
+  renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': 'Icon', class: 'pl-icon' })],
+  addStorage: () => ({
+    markdown: {
+      serialize: (state: SerializeState, node: PMNode) => {
+        state.write(`<Icon${attrString(node, ['icon', 'name', 'color', 'size'])} />`);
+      },
+      parse: {},
+    } satisfies MarkdownNodeSpec,
+  }),
+});
+
 /** All MDX component nodes, for the editor's extension list. Modeling every
  *  renderer-supported component here is what keeps the editor↔live-site round-trip
  *  lossless — an unmodeled tag would be silently dropped on the next save. */
@@ -212,4 +260,6 @@ export const mdxNodes = [
   ParamField,
   ResponseField,
   CodeGroup,
+  Tooltip,
+  Icon,
 ];

@@ -61,6 +61,29 @@ const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promis
   }
 };
 
+/** Overlay live, non-versioned site chrome from the Project row onto a snapshot.
+ *  Branding, theme, and config (styling, navbar/footer, SEO, visibility,
+ *  analytics, variables) reflect the current settings so appearance edits are
+ *  live without a re-publish. Content, pages, languages and versions are left
+ *  as captured — those are the versioned docs a publish freezes. */
+const overlayLiveChrome = async (projectId: string, snapshot: SiteSnapshot): Promise<void> => {
+  const live = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { name: true, description: true, icon: true, color: true, logoUrl: true, faviconUrl: true, theme: true, config: true },
+  });
+  if (!live || !snapshot.project) {
+    return;
+  }
+  snapshot.project.name = live.name;
+  snapshot.project.description = live.description;
+  snapshot.project.icon = live.icon;
+  snapshot.project.color = live.color;
+  snapshot.project.logoUrl = live.logoUrl;
+  snapshot.project.faviconUrl = live.faviconUrl;
+  snapshot.project.theme = (live.theme as Record<string, unknown> | null) ?? null;
+  snapshot.project.config = (live.config as Record<string, unknown> | null) ?? null;
+};
+
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const projectId = await resolveProjectId(identifier);
   const deployment = await prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
@@ -77,6 +100,12 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   if (snapshot.project && !Array.isArray(snapshot.project.versions)) {
     snapshot.project.versions = [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
   }
+  // Overlay the LIVE site chrome (branding, styling, navbar/footer, SEO,
+  // visibility, analytics) over the frozen snapshot so config/appearance edits
+  // apply to the live site immediately — without a re-publish. Page CONTENT and
+  // navigation STRUCTURE stay frozen in the snapshot (those are the versioned
+  // docs that a publish captures); only presentational/config fields are live.
+  await overlayLiveChrome(projectId, snapshot);
   await assertViewable(projectId, snapshot);
   return { snapshot, version: deployment.version, deploymentId: deployment.id };
 };
@@ -355,7 +384,13 @@ export const getSiteSitemap = async (identifier: string): Promise<string> => {
  *  sitemap is reachable at the app origin through the same-origin /api proxy
  *  (until per-site custom domains serve it from the domain root). */
 export const getSiteRobots = async (identifier: string): Promise<string> => {
-  const projectId = await resolveProjectId(identifier);
+  const { snapshot } = await getPublished(identifier);
+  const projectId = snapshot.project.id;
+  const config = snapshot.project.config as { visibility?: string; seo?: { allowIndex?: boolean } } | null;
+  // A private or index-disabled site disallows all crawling and omits the sitemap.
+  if (config?.visibility === 'private' || config?.seo?.allowIndex === false) {
+    return 'User-agent: *\nDisallow: /\n';
+  }
   return `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`;
 };
 
