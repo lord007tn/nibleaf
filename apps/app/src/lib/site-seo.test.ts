@@ -241,3 +241,18 @@ describe('siteHead analytics scripts', () => {
     expect(head.scripts).toBeUndefined();
   });
 });
+
+describe('pageHead not-found (soft-404)', () => {
+  it('emits robots noindex + a distinct title for a missing page so crawlers de-index dead URLs', () => {
+    const head = pageHead(null, 'p1');
+    expect(title(head)).toBe('Page not found');
+    expect(meta(head, 'robots')).toBe('noindex,nofollow');
+    // No canonical for a page that does not exist.
+    expect(canonical(head)).toBeUndefined();
+  });
+
+  it('does NOT mark a real, indexable page as noindex', () => {
+    const head = pageHead(base(), 'p1');
+    expect(meta(head, 'robots')).toBeUndefined();
+  });
+});

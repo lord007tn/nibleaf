@@ -32,6 +32,16 @@ describe('extractHeadings', () => {
     const hs = extractHeadings('# Setup\n# Setup\n# Setup');
     expect(hs.map((h) => h.id)).toEqual(['setup', 'setup-1', 'setup-2']);
   });
+  it('strips inline markdown from heading text so the slug matches the rendered DOM id', () => {
+    // rehype-slug slugs the *rendered* text content, so links/bold/code must be
+    // reduced to their text before slugging or the TOC anchor won't resolve.
+    const [link] = extractHeadings('## See [the guide](/guide)');
+    expect(link).toMatchObject({ text: 'See the guide', id: 'see-the-guide' });
+    const [rich] = extractHeadings('## The **fast** `path` and _italics_');
+    expect(rich).toMatchObject({ text: 'The fast path and italics', id: 'the-fast-path-and-italics' });
+    const [img] = extractHeadings('## Logo ![alt](/logo.png) here');
+    expect(img?.text).toBe('Logo  here');
+  });
 });
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotPage => ({
