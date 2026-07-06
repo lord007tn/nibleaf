@@ -77,9 +77,9 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             VITE_API_URL=http://server:4311
-            VITE_APP_URL=https://app.midad.example
-            VITE_WWW_URL=https://app.midad.example
-            VITE_SITE_BASE_DOMAIN=docs.midad.example
+            VITE_APP_URL=https://app.trymidad.com
+            VITE_WWW_URL=https://trymidad.com
+            VITE_SITE_BASE_DOMAIN=docs.trymidad.com
           cache-from: |
             type=gha,scope=midad-image
           cache-to: |
