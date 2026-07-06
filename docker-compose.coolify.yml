@@ -15,16 +15,17 @@
 
 name: midad-coolify
 
-x-build: &build
-  context: .
-  dockerfile: Dockerfile
-  target: runner
-  args:
-    VITE_API_URL: http://server:4311
-    VITE_APP_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
-    VITE_WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
-    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
-    VERSION: ${SERVICE_VERSION:-latest}
+# Pull-based Coolify stack: it PULLS the prebuilt image published by CI
+# (.github/workflows/docker.yml -> ghcr.io/lord007tn/midad:latest) instead of
+# building on the Coolify server. Building the whole monorepo in-container needs
+# ~5-6GB free RAM and OOMs on smaller/shared servers, so pulling the CI image is
+# both faster and more reliable. Override the tag with MIDAD_IMAGE if needed.
+# To build from source instead, use docker-compose.yml (which keeps `build:`).
+#
+# NOTE: the published image bakes CI's generic VITE_* client URLs. The published
+# docs site (SSR) and same-origin /api use the RUNTIME APP_URL / SERVICE_URL_APP
+# you assign in Coolify, so it is functionally correct; only the dashboard's
+# client-side URL previews reflect the build-time defaults.
 
 x-service-env: &service-env
   NODE_ENV: production
@@ -111,7 +112,6 @@ services:
       start_period: 10s
 
   migrate:
-    build: *build
     image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["migrate"]
     environment: *service-env
@@ -121,7 +121,6 @@ services:
     restart: "no"
 
   server:
-    build: *build
     image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
     command: ["server"]
     init: true
