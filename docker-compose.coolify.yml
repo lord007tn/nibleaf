@@ -64,7 +64,7 @@ x-service-env: &service-env
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}
