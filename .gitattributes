@@ -1,0 +1,7 @@
+# Shell scripts must stay LF. A CRLF shebang (`#!/bin/sh\r`) fails to exec inside
+# Linux containers with "no such file or directory", which breaks
+# docker-entrypoint.sh and therefore every container command
+# (migrate / server / worker / app). Enforce LF regardless of the committer's
+# platform or core.autocrlf setting so the image is always buildable.
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf

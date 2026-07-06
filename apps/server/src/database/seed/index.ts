@@ -69,6 +69,8 @@ async function seed() {
 seed()
   .then(() => process.exit(0))
   .catch((error) => {
-    logger.error({ error }, 'seed failed');
+    // Log the actual message/stack — a bare Error serializes to `{}` under pino
+    // (its fields are non-enumerable), which hid why the seed failed.
+    logger.error({ err: error instanceof Error ? { message: error.message, stack: error.stack } : error }, 'seed failed');
     process.exit(1);
   });

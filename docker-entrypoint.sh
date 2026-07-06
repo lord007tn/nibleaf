@@ -45,7 +45,11 @@ case "$cmd" in
     pnpm --filter @midad/database exec prisma migrate deploy
     if should_seed; then
       echo "[midad] seeding demo data…"
-      pnpm --filter @midad/server exec tsx src/database/seed/index.ts || echo "[midad] seed skipped (continuing)"
+      # MIDAD_RUN_SEED is an explicit operator opt-in, so pass ALLOW_SEED=1 to
+      # clear the seed script's own production guard (it otherwise refuses to
+      # seed when NODE_ENV=production). Seeding is idempotent and never runs
+      # unless opted in.
+      ALLOW_SEED=1 pnpm --filter @midad/server exec tsx src/database/seed/index.ts || echo "[midad] seed skipped (continuing)"
     else
       echo "[midad] skipping seed (set MIDAD_RUN_SEED=true to enable)"
     fi
