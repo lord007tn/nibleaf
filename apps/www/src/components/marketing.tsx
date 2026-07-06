@@ -46,6 +46,7 @@ export function AnnouncementBar() {
   return (
     <a
       href="/cloud"
+      aria-label={t('banner.ariaLabel')}
       className="group flex items-center justify-center gap-2 border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
     >
       <Sparkles className="size-3.5 text-primary" />
@@ -63,7 +64,7 @@ function LanguageToggle() {
   const t = useT();
   return (
     <button
-      aria-label={t('nav.language')}
+      aria-label={t('nav.switchLanguage')}
       className={btn(BTN_OUTLINE, SZ_SM, 'text-muted-foreground')}
       onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
       type="button"
@@ -152,7 +153,7 @@ export function SiteFooter() {
           </div>
           <p className="mt-3 max-w-xs text-muted-foreground text-sm leading-relaxed">{t('footer.blurb')}</p>
           <p className="mt-4 flex items-center gap-1.5 text-muted-foreground text-xs">
-            <span className="size-1.5 rounded-full bg-emerald-500" /> {t('footer.status')}
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> {t('footer.status')}
           </p>
         </div>
         <FooterCol title={t('footer.col.product')} links={FOOTER_PRODUCT} />
@@ -193,11 +194,20 @@ function FooterCol({ title, links }: { title: string; links: { href: string; lab
 
 /** Page shell: announcement bar + nav + main + footer. */
 export function MarketingShell({ children }: { children: ReactNode }) {
+  const t = useT();
   return (
     <div className="min-h-screen">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:start-2 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        {t('nav.skipToContent')}
+      </a>
       <AnnouncementBar />
       <SiteNav />
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );

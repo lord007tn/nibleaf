@@ -4,11 +4,22 @@ import { BTN_DEFAULT, BTN_OUTLINE, btn, MarketingShell, PageHeader, SZ_DEFAULT }
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { canonicalHref, GITHUB_URL } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/pricing')({
   head: () => ({
-    meta: [{ title: 'Pricing — Midad' }, { name: 'description', content: 'Self-host Midad for free, forever. Managed Midad Cloud is coming soon.' }],
-    links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],
+    meta: pageMeta({
+      title: 'Pricing — Midad',
+      description: 'Self-host Midad for free, forever. Managed Midad Cloud is coming soon.',
+      path: '/pricing',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/pricing') }, ...hreflangLinks('/pricing')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Pricing', path: '/pricing' },
+      ]),
+    ],
   }),
   component: PricingPage,
 });

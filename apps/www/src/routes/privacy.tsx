@@ -3,11 +3,22 @@ import { MarketingShell } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
 import { canonicalHref } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/privacy')({
   head: () => ({
-    meta: [{ title: 'Privacy Policy — Midad' }, { name: 'description', content: 'How Midad handles your data.' }],
-    links: [{ rel: 'canonical', href: canonicalHref('/privacy') }],
+    meta: pageMeta({
+      title: 'Privacy Policy — Midad',
+      description: 'How Midad handles your data.',
+      path: '/privacy',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/privacy') }, ...hreflangLinks('/privacy')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Privacy Policy', path: '/privacy' },
+      ]),
+    ],
   }),
   component: PrivacyPage,
 });

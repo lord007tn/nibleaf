@@ -2,28 +2,54 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-r
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
 import { LocaleProvider } from '@/lib/i18n';
-import { WWW_URL } from '@/lib/links';
+import { APP_URL, GITHUB_URL, WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
-const TITLE = 'Midad — open-source documentation publishing';
+const TITLE = 'Midad — open-source, self-hostable documentation platform';
 const DESCRIPTION =
-  'Fast, searchable documentation you can self-host today. Cloud-hosted Midad is coming soon, with Arabic-ready authoring built in.';
+  'Midad is the open-source, self-hostable documentation platform — a Mintlify alternative you run yourself. Markdown authoring, hybrid search, versioned publishing, custom domains, and Arabic-ready RTL. Deploy with one Docker command.';
 const OG_IMAGE = `${WWW_URL}/brand/raster/social/midad-og-card.png`;
 const OG_IMAGE_ALT = 'Midad — open-source documentation platform';
 
-// Organization + SoftwareApplication structured data for rich results.
+// Organization + WebSite + SoftwareApplication structured data for rich results.
 const JSON_LD = JSON.stringify({
   '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'Midad',
-  applicationCategory: 'DeveloperApplication',
-  operatingSystem: 'Any',
-  description: DESCRIPTION,
-  url: WWW_URL,
-  image: OG_IMAGE,
-  license: 'https://www.gnu.org/licenses/agpl-3.0.html',
-  isAccessibleForFree: true,
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': WWW_URL + '/#organization',
+      name: 'Midad',
+      url: WWW_URL,
+      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/midad-logo-horizontal-ltr.svg' },
+      sameAs: [GITHUB_URL],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': WWW_URL + '/#website',
+      name: 'Midad',
+      url: WWW_URL,
+      inLanguage: ['en', 'ar'],
+      publisher: { '@id': WWW_URL + '/#organization' },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': WWW_URL + '/#software',
+      name: 'Midad',
+      applicationCategory: 'DeveloperApplication',
+      applicationSubCategory: 'Documentation Platform',
+      operatingSystem: 'Linux, Docker',
+      description: DESCRIPTION,
+      url: WWW_URL,
+      image: OG_IMAGE,
+      inLanguage: ['en', 'ar'],
+      license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+      downloadUrl: GITHUB_URL,
+      softwareVersion: '0.1.0',
+      isAccessibleForFree: true,
+      publisher: { '@id': WWW_URL + '/#organization' },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+    },
+  ],
 });
 
 export const Route = createRootRoute({
@@ -51,7 +77,7 @@ export const Route = createRootRoute({
       { property: 'og:image:height', content: '630' },
       { property: 'og:image:alt', content: OG_IMAGE_ALT },
       { property: 'og:locale', content: 'en_US' },
-      { property: 'og:locale:alternate', content: 'ar_AR' },
+      { property: 'og:locale:alternate', content: 'ar_SA' },
       // Twitter
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: TITLE },
@@ -60,6 +86,8 @@ export const Route = createRootRoute({
       { name: 'twitter:image:alt', content: OG_IMAGE_ALT },
     ],
     links: [
+      { rel: 'preconnect', href: APP_URL, crossOrigin: 'anonymous' },
+      { rel: 'dns-prefetch', href: APP_URL },
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
       { rel: 'icon', href: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
@@ -81,7 +109,7 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

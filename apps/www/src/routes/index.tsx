@@ -6,10 +6,41 @@ import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, SZ_DEFA
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
+import { hreflangLinks } from '@/lib/seo';
+
+const HOME_FAQS: { q: string; a: string }[] = [
+  { q: 'Is Midad really free?', a: 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.' },
+  {
+    q: 'What do I need to self-host?',
+    a: 'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
+  },
+  {
+    q: 'Can I use my own object storage?',
+    a: 'Absolutely. Midad speaks the S3 API, so it works with maxio, Cloudflare R2, AWS S3, or Backblaze B2.',
+  },
+  {
+    q: 'How does search work?',
+    a: 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.',
+  },
+];
 
 export const Route = createFileRoute('/')({
   head: () => ({
-    links: [{ rel: 'canonical', href: canonicalHref('/') }],
+    links: [{ rel: 'canonical', href: canonicalHref('/') }, ...hreflangLinks('/')],
+    scripts: [
+      {
+        type: 'application/ld+json',
+        children: JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: HOME_FAQS.map((item) => ({
+            '@type': 'Question',
+            name: item.q,
+            acceptedAnswer: { '@type': 'Answer', text: item.a },
+          })),
+        }),
+      },
+    ],
   }),
   component: LandingPage,
 });
@@ -79,7 +110,7 @@ function Hero() {
 function DocsMock() {
   const t = useT();
   return (
-    <div className="relative mx-auto w-full max-w-[530px]" dir="ltr">
+    <div className="relative mx-auto w-full max-w-[530px]" dir="ltr" aria-hidden="true">
       {/* floating status chip for depth */}
       <div className="absolute -top-3 end-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 font-medium text-xs shadow-md">
         <span className="size-2 rounded-full bg-emerald-500" /> {t('hero.mock.badge')}
@@ -120,7 +151,7 @@ function DocsMock() {
             <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
               Docs <span className="opacity-50">/</span> Get started
             </p>
-            <h3 className="font-semibold text-foreground text-lg tracking-tight">Introduction</h3>
+            <p className="font-semibold text-foreground text-lg tracking-tight">Introduction</p>
             <div className="space-y-1.5">
               <span className="block h-2 w-full rounded bg-muted" />
               <span className="block h-2 w-[85%] rounded bg-muted" />

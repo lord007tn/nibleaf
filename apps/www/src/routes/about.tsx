@@ -5,17 +5,22 @@ import { BTN_DEFAULT, BTN_OUTLINE, btn, MarketingShell, PageHeader, SZ_LG } from
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { appHref, canonicalHref } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/about')({
   head: () => ({
-    meta: [
-      { title: 'About — Midad' },
-      {
-        name: 'description',
-        content: 'Midad is an open-source, Arabic-first documentation platform for teams who want to own their content and their readers.',
-      },
+    meta: pageMeta({
+      title: 'About — Midad',
+      description: 'Midad is an open-source, Arabic-first documentation platform for teams who want to own their content and their readers.',
+      path: '/about',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/about') }, ...hreflangLinks('/about')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'About', path: '/about' },
+      ]),
     ],
-    links: [{ rel: 'canonical', href: canonicalHref('/about') }],
   }),
   component: AboutPage,
 });

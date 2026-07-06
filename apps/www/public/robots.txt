@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://midad.dev/sitemap.xml
+Sitemap: https://trymidad.com/sitemap.xml

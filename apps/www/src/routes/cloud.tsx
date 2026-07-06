@@ -6,14 +6,22 @@ import { BTN_DEFAULT, btn, Eyebrow, MarketingShell, SZ_DEFAULT } from '@/compone
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
 import { canonicalHref } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/cloud')({
   head: () => ({
-    meta: [
-      { title: 'Midad Cloud — managed hosting' },
-      { name: 'description', content: 'Managed Midad is coming soon — the same platform, fully managed. Join the waitlist for launch.' },
+    meta: pageMeta({
+      title: 'Midad Cloud — managed hosting',
+      description: 'Managed Midad is coming soon — the same platform, fully managed. Join the waitlist for launch.',
+      path: '/cloud',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/cloud') }, ...hreflangLinks('/cloud')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Cloud', path: '/cloud' },
+      ]),
     ],
-    links: [{ rel: 'canonical', href: canonicalHref('/cloud') }],
   }),
   component: CloudPage,
 });

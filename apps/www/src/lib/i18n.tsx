@@ -66,7 +66,7 @@ export const messages = {
     'features.selfHost.body': 'Postgres, a Redis-compatible cache, and S3-compatible storage. Runs anywhere Docker does. Your data stays yours.',
 
     // Comparison
-    'compare.heading': 'Midad vs hosted-only platforms',
+    'compare.heading': 'The open-source Mintlify alternative',
     'compare.subhead': 'The same great authoring experience — without the lock-in.',
     'compare.colMidad': 'Midad',
     'compare.colHosted': 'Hosted',
@@ -144,8 +144,11 @@ export const messages = {
 
     // Marketing chrome
     'nav.cloud': 'Cloud',
+    'nav.switchLanguage': 'Switch language to Arabic',
+    'nav.skipToContent': 'Skip to content',
     'banner.cloud': 'Midad Cloud — fully managed hosting — is on the way.',
     'banner.cloudCta': 'Join the waitlist',
+    'banner.ariaLabel': 'Midad Cloud waitlist',
 
     // Self-hosting page
     'selfhost.eyebrow': 'Self-host',
@@ -334,7 +337,7 @@ export const messages = {
     'features.selfHost.body': 'Postgres وذاكرة تخزين مؤقت متوافقة مع Redis وتخزين متوافق مع S3. يعمل أينما يعمل Docker. بياناتك تبقى ملكك.',
 
     // Comparison
-    'compare.heading': 'مِداد مقابل المنصات المُستضافة فقط',
+    'compare.heading': 'البديل مفتوح المصدر لـ Mintlify',
     'compare.subhead': 'تجربة التأليف الرائعة نفسها — بدون قيود الاحتكار.',
     'compare.colMidad': 'مِداد',
     'compare.colHosted': 'مُستضاف',
@@ -412,8 +415,11 @@ export const messages = {
 
     // Marketing chrome
     'nav.cloud': 'السحابة',
+    'nav.switchLanguage': 'Switch language to English',
+    'nav.skipToContent': 'تخطَّ إلى المحتوى',
     'banner.cloud': 'مِداد السحابي — استضافة مُدارة بالكامل — في الطريق.',
     'banner.cloudCta': 'انضم إلى قائمة الانتظار',
+    'banner.ariaLabel': 'قائمة انتظار Midad Cloud',
 
     // Self-hosting page
     'selfhost.eyebrow': 'الاستضافة الذاتية',

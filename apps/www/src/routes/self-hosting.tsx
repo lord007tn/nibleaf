@@ -5,18 +5,23 @@ import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, PageHea
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { canonicalHref, GITHUB_URL } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/self-hosting')({
   head: () => ({
-    meta: [
-      { title: 'Self-hosting — Midad' },
-      {
-        name: 'description',
-        content:
-          'Run the entire Midad stack on your own infrastructure with one Docker command. Your content and your users’ data never leave your servers.',
-      },
+    meta: pageMeta({
+      title: 'Self-hosting — Midad',
+      description:
+        'Run the entire Midad stack on your own infrastructure with one Docker command. Your content and your users’ data never leave your servers.',
+      path: '/self-hosting',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }, ...hreflangLinks('/self-hosting')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Self-hosting', path: '/self-hosting' },
+      ]),
     ],
-    links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }],
   }),
   component: SelfHostingPage,
 });

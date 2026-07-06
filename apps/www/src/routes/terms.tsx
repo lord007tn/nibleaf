@@ -3,11 +3,22 @@ import { MarketingShell } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
 import { canonicalHref } from '@/lib/links';
+import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/terms')({
   head: () => ({
-    meta: [{ title: 'Terms of Service — Midad' }, { name: 'description', content: 'The terms governing your use of Midad.' }],
-    links: [{ rel: 'canonical', href: canonicalHref('/terms') }],
+    meta: pageMeta({
+      title: 'Terms of Service — Midad',
+      description: 'The terms governing your use of Midad.',
+      path: '/terms',
+    }),
+    links: [{ rel: 'canonical', href: canonicalHref('/terms') }, ...hreflangLinks('/terms')],
+    scripts: [
+      breadcrumbLd([
+        { name: 'Home', path: '/' },
+        { name: 'Terms of Service', path: '/terms' },
+      ]),
+    ],
   }),
   component: TermsPage,
 });
