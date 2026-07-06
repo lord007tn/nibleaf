@@ -20,7 +20,7 @@ const JSON_LD = JSON.stringify({
       '@id': WWW_URL + '/#organization',
       name: 'Midad',
       url: WWW_URL,
-      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/midad-logo-horizontal-ltr.svg' },
+      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/raster/logo/midad-logo-horizontal-ltr.png' },
       sameAs: [GITHUB_URL],
     },
     {
