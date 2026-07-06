@@ -188,7 +188,7 @@ Completed on 2026-06-30:
   - Public resolver returned the seeded project for `docs.midad.app` when
     `SITE_BASE_DOMAIN=midad.app` was injected.
   - Public resolver returned the seeded project for a local verified custom
-    domain row `docs.raedbahri.test`, including a `:443` host header.
+    domain row `docs.example.test`, including a `:443` host header.
   - Public resolver returned `null` for nested and unrelated subdomain hosts.
 - Chrome rendered the Git settings provider form with GitHub and GitLab
   options, including GitLab instance URL and group/project fields.
