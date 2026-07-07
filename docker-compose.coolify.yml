@@ -12,6 +12,13 @@
 #
 # Required DNS for custom domains:
 #   customers CNAME their docs host to ${CUSTOM_DOMAIN_CNAME_TARGET}
+#
+# Set MIDAD_HEALTHCHECK_HOST to the dashboard host without a scheme when your
+# app uses host-based routing.
+#
+# When moving an existing Coolify Application to a Service, set
+# MIDAD_EXTERNAL_VOLUMES=true and point the MIDAD_*_VOLUME variables at the
+# existing Docker volume names before deploying the replacement service.
 
 name: midad-coolify
 
@@ -176,7 +183,7 @@ services:
       server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4310/sign-in"]
+      test: ["CMD-SHELL", "curl -fsS -A midad-healthcheck -H \"Host: ${MIDAD_HEALTHCHECK_HOST:-app.trymidad.com}\" http://127.0.0.1:4310/ >/dev/null && curl -fsS -A midad-healthcheck -H \"Host: ${MIDAD_HEALTHCHECK_HOST:-app.trymidad.com}\" http://127.0.0.1:4310/api/app/health >/dev/null"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -185,5 +192,11 @@ services:
 
 volumes:
   midad-coolify-pg:
+    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
+    name: ${MIDAD_PG_VOLUME:-midad-coolify-pg}
   midad-coolify-dragonfly:
+    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
+    name: ${MIDAD_DRAGONFLY_VOLUME:-midad-coolify-dragonfly}
   midad-coolify-maxio:
+    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
+    name: ${MIDAD_MAXIO_VOLUME:-midad-coolify-maxio}
