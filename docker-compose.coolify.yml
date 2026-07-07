@@ -63,8 +63,8 @@ x-service-env: &service-env
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
   WORKER_PORT: "4312"
-  EMAIL_FROM: ${EMAIL_FROM:-midad@localhost}
-  SMTP_URL: ${SMTP_URL:-}
+  EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+  SMTP_URL: ${SMTP_URL:?set SMTP_URL}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   MIDAD_RUN_SEED: ${MIDAD_RUN_SEED:-false}
   PLUME_RUN_SEED: ${MIDAD_RUN_SEED:-false}
