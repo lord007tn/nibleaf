@@ -6,7 +6,7 @@ import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AuthLayout } from '@/layouts/auth';
-import { signUp } from '@/lib/auth-client';
+import { signIn, signUp } from '@/lib/auth-client';
 import { minLength, required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -30,6 +30,22 @@ function SignUpPage() {
   const search = Route.useSearch();
   const lockedEmail = Boolean(search.email);
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+
+  const afterAuthPath = () => {
+    const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+    return inviteId ? `/accept-invite/${inviteId}` : '/app';
+  };
+
+  const signUpWithGoogle = async () => {
+    setError(null);
+    setIsGoogleSubmitting(true);
+    const { error: signInError } = await signIn.social({ provider: 'google', callbackURL: afterAuthPath() });
+    if (signInError) {
+      setError(signInError.message ?? t('auth.signUp.error'));
+      setIsGoogleSubmitting(false);
+    }
+  };
 
   const form = useForm({
     defaultValues: { name: '', email: search.email ?? '', password: '' },
@@ -52,6 +68,14 @@ function SignUpPage() {
 
   return (
     <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+      <Button className="mb-4 w-full" disabled={isGoogleSubmitting || lockedEmail} onClick={signUpWithGoogle} type="button" variant="outline">
+        {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+      </Button>
+      <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
+        <span className="h-px flex-1 bg-border" />
+        <span>{t('auth.divider.or')}</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {

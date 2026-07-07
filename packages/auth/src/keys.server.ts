@@ -25,6 +25,8 @@ export const keys = () =>
         }),
       BETTER_AUTH_URL: z.url().default('http://localhost:4310'),
       TRUSTED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4311,http://localhost:4313,http://localhost:4315').transform(csv),
+      GOOGLE_CLIENT_ID: z.string().optional(),
+      GOOGLE_CLIENT_SECRET: z.string().optional(),
       // Optional: require a verified email before sign-in (off by default so a
       // private self-host works without SMTP; turn on for public instances).
       REQUIRE_EMAIL_VERIFICATION: z

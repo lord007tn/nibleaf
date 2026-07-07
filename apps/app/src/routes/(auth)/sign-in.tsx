@@ -29,6 +29,22 @@ function SignInPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [error, setError] = useState<string | null>(null);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+
+  const afterAuthPath = () => {
+    const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+    return inviteId ? `/accept-invite/${inviteId}` : '/app';
+  };
+
+  const signInWithGoogle = async () => {
+    setError(null);
+    setIsGoogleSubmitting(true);
+    const { error: signInError } = await signIn.social({ provider: 'google', callbackURL: afterAuthPath() });
+    if (signInError) {
+      setError(signInError.message ?? t('auth.signIn.error'));
+      setIsGoogleSubmitting(false);
+    }
+  };
 
   const form = useForm({
     defaultValues: { email: search.email ?? '', password: '' },
@@ -50,6 +66,14 @@ function SignInPage() {
 
   return (
     <AuthLayout subtitle={t('auth.signIn.subtitle')}>
+      <Button className="mb-4 w-full" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
+        {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+      </Button>
+      <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
+        <span className="h-px flex-1 bg-border" />
+        <span>{t('auth.divider.or')}</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
