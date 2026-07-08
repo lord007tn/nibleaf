@@ -1,4 +1,4 @@
-import { createApiKeyBody } from '@midad/validators';
+import { createApiKeyBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { createApiKey, listApiKeys, revokeApiKey } from '@/actions/api-keys';
 import { assertProjectInOrg } from '@/actions/projects';

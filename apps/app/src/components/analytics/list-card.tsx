@@ -1,4 +1,4 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { ReactNode } from 'react';
 import { useFormatters } from '@/lib/format';
 

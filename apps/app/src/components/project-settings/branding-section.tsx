@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Input } from '@midad/design-system/components/ui/input';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useForm } from '@tanstack/react-form';
 import { Upload } from 'lucide-react';
 import { useRef, useState } from 'react';

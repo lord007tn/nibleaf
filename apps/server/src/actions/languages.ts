@@ -1,5 +1,5 @@
-import { Prisma, prisma } from '@midad/database';
-import type { CreateLanguageBody, UpdateLanguageBody } from '@midad/validators';
+import { Prisma, prisma } from '@nibleaf/database';
+import type { CreateLanguageBody, UpdateLanguageBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 /** Throw unless the language exists and belongs to the project. Returns it. */

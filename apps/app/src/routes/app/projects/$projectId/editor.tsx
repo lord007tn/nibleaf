@@ -1,7 +1,7 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
-import { cn } from '@midad/design-system/lib/utils';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
@@ -139,7 +139,7 @@ function EditorPage() {
     if (typeof window === 'undefined') {
       return 'visual';
     }
-    const stored = window.localStorage.getItem('midad.editor.contentMode');
+    const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
     return stored === 'markdown' || stored === 'preview' ? stored : 'visual';
   });
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -160,15 +160,15 @@ function EditorPage() {
     if (typeof window === 'undefined') {
       return 260;
     }
-    const stored = Number(window.localStorage.getItem('midad.editor.sidebarWidth'));
+    const stored = Number(window.localStorage.getItem('nibleaf.editor.sidebarWidth'));
     return stored >= 200 && stored <= 520 ? stored : 260;
   });
   useEffect(() => {
-    window.localStorage.setItem('midad.editor.sidebarWidth', String(sidebarWidth));
+    window.localStorage.setItem('nibleaf.editor.sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
   useEffect(() => {
     try {
-      window.localStorage.setItem('midad.editor.contentMode', editorMode);
+      window.localStorage.setItem('nibleaf.editor.contentMode', editorMode);
     } catch {
       // ignore storage failures (private mode etc.)
     }
@@ -179,11 +179,11 @@ function EditorPage() {
     if (typeof window === 'undefined') {
       return false;
     }
-    return window.localStorage.getItem('midad.editor.sidebarCollapsed') === '1';
+    return window.localStorage.getItem('nibleaf.editor.sidebarCollapsed') === '1';
   });
   useEffect(() => {
     try {
-      window.localStorage.setItem('midad.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
+      window.localStorage.setItem('nibleaf.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
     } catch {
       // ignore storage failures
     }
@@ -195,7 +195,7 @@ function EditorPage() {
       return new Set();
     }
     try {
-      const raw = window.localStorage.getItem('midad.editor.collapsedLangs');
+      const raw = window.localStorage.getItem('nibleaf.editor.collapsedLangs');
       return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
     } catch {
       return new Set();
@@ -203,7 +203,7 @@ function EditorPage() {
   });
   const persistLangs = (set: Set<string>) => {
     try {
-      window.localStorage.setItem('midad.editor.collapsedLangs', JSON.stringify([...set]));
+      window.localStorage.setItem('nibleaf.editor.collapsedLangs', JSON.stringify([...set]));
     } catch {
       // ignore storage failures
     }

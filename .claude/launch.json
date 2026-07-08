@@ -2,21 +2,21 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "midad-app",
+      "name": "nibleaf-app",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@midad/app", "dev"],
+      "runtimeArgs": ["--filter", "@nibleaf/app", "dev"],
       "port": 4310
     },
     {
-      "name": "midad-www",
+      "name": "nibleaf-www",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@midad/www", "dev"],
+      "runtimeArgs": ["--filter", "@nibleaf/www", "dev"],
       "port": 4313
     },
     {
-      "name": "midad-admin",
+      "name": "nibleaf-admin",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@midad/admin", "dev"],
+      "runtimeArgs": ["--filter", "@nibleaf/admin", "dev"],
       "port": 4315
     }
   ]

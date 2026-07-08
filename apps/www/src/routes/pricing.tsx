@@ -9,8 +9,8 @@ import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 export const Route = createFileRoute('/pricing')({
   head: () => ({
     meta: pageMeta({
-      title: 'Pricing — Midad',
-      description: 'Self-host Midad for free, forever. Managed Midad Cloud is coming soon.',
+      title: 'Pricing — Nibleaf',
+      description: 'Self-host Nibleaf for free, forever. Managed Nibleaf Cloud is coming soon.',
       path: '/pricing',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }, ...hreflangLinks('/pricing')],

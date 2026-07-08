@@ -1,8 +1,8 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { Mail, Trash2 } from 'lucide-react';

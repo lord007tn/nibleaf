@@ -21,7 +21,7 @@ function OverviewPage() {
   return (
     <div className="mx-auto max-w-5xl px-8 py-8">
       <h1 className="font-semibold text-2xl tracking-tight">Overview</h1>
-      <p className="mt-1 text-muted-foreground text-sm">Platform-wide stats for this Midad instance.</p>
+      <p className="mt-1 text-muted-foreground text-sm">Platform-wide stats for this Nibleaf instance.</p>
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-card p-5">

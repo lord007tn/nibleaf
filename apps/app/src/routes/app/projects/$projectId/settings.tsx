@@ -1,5 +1,5 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { cn } from '@midad/design-system/lib/utils';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AddonsSection } from '@/components/project-settings/addons-section';

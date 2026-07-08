@@ -1,35 +1,35 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="apps/www/public/brand/midad-logo-horizontal-ltr-reverse.svg" />
-  <img src="apps/www/public/brand/midad-logo-horizontal-ltr.svg" alt="Midad" height="56" />
+  <source media="(prefers-color-scheme: dark)" srcset="apps/www/public/brand/nibleaf-logo-horizontal-ltr-reverse.svg" />
+  <img src="apps/www/public/brand/nibleaf-logo-horizontal-ltr.svg" alt="Nibleaf" height="56" />
 </picture>
 
 ### Beautiful docs, on your own infrastructure.
 
-**Midad** (مِداد, *“ink”*) is an open-source, self-hostable documentation platform — a
+**Nibleaf** is an open-source, self-hostable documentation platform — a
 [Mintlify](https://mintlify.com) alternative. Author in Markdown/MDX, publish a fast,
 searchable, versioned docs site, and run all of it on infrastructure **you** own.
 First-class **English + Arabic, RTL-first**.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/lord007tn/midad?sort=semver&color=B96A3D)](https://github.com/lord007tn/midad/releases)
-[![CI](https://github.com/lord007tn/midad/actions/workflows/ci.yml/badge.svg)](https://github.com/lord007tn/midad/actions/workflows/ci.yml)
-[![Docker image](https://github.com/lord007tn/midad/actions/workflows/docker.yml/badge.svg)](https://github.com/lord007tn/midad/pkgs/container/midad)
+[![Release](https://img.shields.io/github/v/release/lord007tn/nibleaf?sort=semver&color=B96A3D)](https://github.com/lord007tn/nibleaf/releases)
+[![CI](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml/badge.svg)](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml)
+[![Docker image](https://github.com/lord007tn/nibleaf/actions/workflows/docker.yml/badge.svg)](https://github.com/lord007tn/nibleaf/pkgs/container/nibleaf)
 
-[Homepage](https://trymidad.com) · [Quick start](#-quick-start) · [Features](#-features) · [Deploy](#-deploy-to-production) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
+[Homepage](https://trynibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Deploy](#-deploy-to-production) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
 
 <br />
 
-<img src=".github/assets/landing.png" alt="Midad — the open-source documentation platform" width="840" />
+<img src=".github/assets/landing.png" alt="Nibleaf — the open-source documentation platform" width="840" />
 
 </div>
 
 ---
 
-## What is Midad?
+## What is Nibleaf?
 
-Midad lets you write documentation in Markdown/MDX, organize it into a navigable tree,
+Nibleaf lets you write documentation in Markdown/MDX, organize it into a navigable tree,
 and publish a fast, searchable, multilingual site — with versioned deploys, custom
 domains, per-site teams, and analytics — **all self-hosted with one Docker command**.
 It's the docs platform you own end to end: no per-seat pricing, no vendor lock-in, and
@@ -49,12 +49,12 @@ your content stays in your database.
 **The published docs site** — three-column layout, instant `⌘K` search, and a scroll-spy
 table of contents:
 
-<img src=".github/assets/docs-en.png" alt="A published Midad documentation site" width="840" />
+<img src=".github/assets/docs-en.png" alt="A published Nibleaf documentation site" width="840" />
 
 **The editor** — Visual / Markdown / Preview modes, a drag-and-drop page tree, branches,
 anchored comments, and one-click publish:
 
-<img src=".github/assets/editor.png" alt="The Midad editor" width="840" />
+<img src=".github/assets/editor.png" alt="The Nibleaf editor" width="840" />
 
 ## ✨ Features
 
@@ -87,8 +87,8 @@ anchored comments, and one-click publish:
 ## 🚀 Quick start
 
 ```bash
-git clone https://github.com/lord007tn/midad
-cd midad && cp .env.example .env
+git clone https://github.com/lord007tn/nibleaf
+cd nibleaf && cp .env.example .env
 
 # Set a strong auth secret — the stack refuses to boot in production with the
 # placeholder. (Also set POSTGRES_PASSWORD / STORAGE_SECRET_KEY for real deploys.)
@@ -103,14 +103,14 @@ docker compose up -d --build
 > Open **http://localhost:4310/sign-up** and create the first account — it's provisioned
 > with a workspace and a starter docs project automatically. (The Docker stack runs in
 > production mode and does **not** seed demo credentials; for local dev, `pnpm db:seed`
-> creates `demo@midad.dev` / `midaddemo123`.) See **[DEPLOYMENT.md](DEPLOYMENT.md)** for
+> creates `demo@nibleaf.dev` / `nibleafdemo123`.) See **[DEPLOYMENT.md](DEPLOYMENT.md)** for
 > production hardening.
 
 ## 🐳 Deploy to production
 
 **[Coolify](https://coolify.io)** is the easiest path. Use
 [`docker-compose.coolify.yml`](docker-compose.coolify.yml) — it **pulls the prebuilt image**
-`ghcr.io/lord007tn/midad:latest` (published by CI on every push and release), so nothing is
+`ghcr.io/lord007tn/nibleaf:latest` (published by CI on every push and release), so nothing is
 built on your server:
 
 1. In Coolify, add a **Docker Compose** resource from this repo (a Public or Private-Repo /
@@ -120,7 +120,7 @@ built on your server:
 3. Set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`, then **Deploy**. The `migrate`
    service runs database migrations before `server` / `worker` / `app` start.
 
-Pin a specific build with `MIDAD_IMAGE=ghcr.io/lord007tn/midad:v0.1.0`. For a plain Docker
+Pin a specific build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.0`. For a plain Docker
 host, `docker-compose.yml` builds from source and also serves the marketing site. Full
 guide (secrets, reverse proxy, TLS, security checklist) in **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
@@ -187,7 +187,7 @@ pnpm dev
 | Worker ops | http://localhost:4312/jobs   |
 | Marketing  | http://localhost:4313        |
 
-Demo login (after `pnpm db:seed`): `demo@midad.dev` / `midaddemo123`.
+Demo login (after `pnpm db:seed`): `demo@nibleaf.dev` / `nibleafdemo123`.
 
 ## 📜 Scripts
 
@@ -224,10 +224,10 @@ please open an issue to discuss substantial changes first. Found a vulnerability
 
 ## 📄 License
 
-Midad is free software, licensed under the **GNU Affero General Public License v3.0**
+Nibleaf is free software, licensed under the **GNU Affero General Public License v3.0**
 (AGPL-3.0) — see [LICENSE](LICENSE) for the full text. Because the AGPL includes the
-“network use” clause, if you run a modified version of Midad as a network service you must
+“network use” clause, if you run a modified version of Nibleaf as a network service you must
 make your modified source available to its users. Contributions are accepted under the same
 license.
 
-<div align="center"><sub>Built with 🖋️ — <a href="https://trymidad.com">trymidad.com</a></sub></div>
+<div align="center"><sub>Built with 🖋️ — <a href="https://trynibleaf.com">trynibleaf.com</a></sub></div>

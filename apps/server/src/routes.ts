@@ -1,4 +1,4 @@
-import { auth } from '@midad/auth/server';
+import { auth } from '@nibleaf/auth/server';
 import { Hono } from 'hono';
 import type { HonoEnv } from './lib/hono/context';
 import { rateLimit } from './middlewares/rate-limit';

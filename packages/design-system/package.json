@@ -1,5 +1,5 @@
 {
-  "name": "@midad/design-system",
+  "name": "@nibleaf/design-system",
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
@@ -37,7 +37,7 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

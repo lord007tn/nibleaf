@@ -2,7 +2,7 @@ import { DirectionProvider as BaseDirectionProvider } from '@base-ui/react/direc
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 
 type Direction = 'ltr' | 'rtl';
-const STORAGE_KEY = 'midad.direction';
+const STORAGE_KEY = 'nibleaf.direction';
 
 interface DirectionContextValue {
   direction: Direction;

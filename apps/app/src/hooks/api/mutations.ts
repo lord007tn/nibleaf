@@ -16,7 +16,7 @@ import type {
   UpdatePageBody,
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
-} from '@midad/validators';
+} from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { mutateData } from './client-helpers';

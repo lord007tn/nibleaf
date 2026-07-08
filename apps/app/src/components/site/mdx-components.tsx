@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
 import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';

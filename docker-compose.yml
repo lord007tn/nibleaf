@@ -1,9 +1,9 @@
-name: midad
+name: nibleaf
 
-# Full self-hosted Midad stack. Quick start:
+# Full self-hosted Nibleaf stack. Quick start:
 #   cp .env.example .env   # (optional — sensible defaults below)
 #   docker compose up -d --build
-# Then open http://localhost:4310  (demo@midad.dev / midaddemo123)
+# Then open http://localhost:4310  (demo@nibleaf.dev / nibleafdemo123)
 #
 # For production: set strong POSTGRES_PASSWORD / STORAGE_SECRET_KEY /
 # BETTER_AUTH_SECRET and put the apps behind a TLS reverse proxy.
@@ -17,11 +17,11 @@ x-build: &build
     VITE_API_URL: http://server:4311
     VITE_APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
     VITE_WWW_URL: ${PUBLIC_WWW_URL:-http://localhost:4313}
-    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-docs.trymidad.com}
+    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-docs.trynibleaf.com}
 
 x-service-env: &service-env
   NODE_ENV: production
-  POSTGRES_URL: postgresql://midad:${POSTGRES_PASSWORD:-midad}@postgres:5432/midad
+  POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:-nibleaf}@postgres:5432/nibleaf
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
   QUEUE_CLUSTER: "true"
@@ -29,11 +29,11 @@ x-service-env: &service-env
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
   STORAGE_PUBLIC_ENDPOINT: ${PUBLIC_STORAGE_ENDPOINT:-http://localhost:9300}
   STORAGE_REGION: ${STORAGE_REGION:-auto}
-  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY:-midadadmin}
-  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_KEY:-midadadmin123}
-  STORAGE_BUCKET: ${STORAGE_BUCKET:-midad}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY:-nibleafadmin}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_KEY:-nibleafadmin123}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:-nibleaf}
   STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
-  STORAGE_PUBLIC_URL: ${PUBLIC_STORAGE_URL:-http://localhost:9300/midad}
+  STORAGE_PUBLIC_URL: ${PUBLIC_STORAGE_URL:-http://localhost:9300/nibleaf}
   STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${PUBLIC_APP_URL:-http://localhost:4310}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
@@ -45,11 +45,11 @@ x-service-env: &service-env
   API_URL: ${PUBLIC_API_URL:-http://localhost:4311}
   APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
-  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.trymidad.com}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.trynibleaf.com}
   WORKER_PORT: "4312"
   # Email delivery (optional). Without SMTP_URL the worker logs mail instead of
   # sending it — invite/reset links still work via the copy-able link in the UI.
-  EMAIL_FROM: ${EMAIL_FROM:-midad@localhost}
+  EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
   SMTP_URL: ${SMTP_URL:-}
 
 services:
@@ -57,15 +57,15 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: midad
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-midad}
-      POSTGRES_DB: midad
+      POSTGRES_USER: nibleaf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nibleaf}
+      POSTGRES_DB: nibleaf
     volumes:
-      - midad-pg:/var/lib/postgresql/data
+      - nibleaf-pg:/var/lib/postgresql/data
     ports:
       - "${POSTGRES_PORT:-5442}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U midad -d midad"]
+      test: ["CMD-SHELL", "pg_isready -U nibleaf -d nibleaf"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -79,7 +79,7 @@ services:
     ulimits:
       memlock: -1
     volumes:
-      - midad-dragonfly:/data
+      - nibleaf-dragonfly:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -93,14 +93,14 @@ services:
     image: ghcr.io/coollabsio/maxio:latest
     restart: unless-stopped
     environment:
-      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-midadadmin}
-      MAXIO_SECRET_KEY: ${STORAGE_SECRET_KEY:-midadadmin123}
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-nibleafadmin}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_KEY:-nibleafadmin123}
       MAXIO_REGION: auto
-      MAXIO_DEFAULT_BUCKETS: midad
-      MAXIO_PUBLIC_BUCKETS: midad
+      MAXIO_DEFAULT_BUCKETS: nibleaf
+      MAXIO_PUBLIC_BUCKETS: nibleaf
       MAXIO_ALLOW_INSECURE_DEV: "true"
     volumes:
-      - midad-maxio:/data
+      - nibleaf-maxio:/data
     ports:
       - "${MAXIO_PORT:-9300}:9000"
     healthcheck:
@@ -110,7 +110,7 @@ services:
       retries: 12
 
   migrate:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["migrate"]
     environment: *service-env
     depends_on:
@@ -120,7 +120,7 @@ services:
 
   server:
     build: *build
-    image: midad:latest
+    image: nibleaf:latest
     command: ["server"]
     init: true
     environment: *service-env
@@ -142,7 +142,7 @@ services:
       start_period: 20s
 
   worker:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["worker"]
     init: true
     environment: *service-env
@@ -162,7 +162,7 @@ services:
       start_period: 20s
 
   app:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["app"]
     init: true
     environment:
@@ -182,7 +182,7 @@ services:
       start_period: 20s
 
   www:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["www"]
     init: true
     environment:
@@ -193,7 +193,7 @@ services:
     restart: unless-stopped
 
   docs:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["docs"]
     init: true
     environment:
@@ -204,7 +204,7 @@ services:
     restart: unless-stopped
 
   admin:
-    image: midad:latest
+    image: nibleaf:latest
     command: ["admin"]
     init: true
     environment:
@@ -215,6 +215,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  midad-pg:
-  midad-dragonfly:
-  midad-maxio:
+  nibleaf-pg:
+  nibleaf-dragonfly:
+  nibleaf-maxio:

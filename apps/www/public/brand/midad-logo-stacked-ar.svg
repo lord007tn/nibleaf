@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1180" role="img" aria-label="مِداد">
-  <rect width="1024" height="1180" fill="#FBF7EE"/>
-  <rect x="312" y="170" width="400" height="400" rx="88" fill="#8A4B2E"/>
-  <path d="M454 419 573 300c16-16 41-16 57 0l5 5c16 16 16 41 0 57L516 481l-73 18 11-80Z" fill="#FBF7EE"/>
-  <path d="M420 318c40-42 101-52 151-24" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="30"/>
-  <circle cx="633" cy="451" r="27" fill="#B96A3D"/>
-  <text x="512" y="805" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="168" font-weight="800" text-anchor="middle">مِداد</text>
-  <text x="512" y="930" fill="#4E453A" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="92" font-weight="760" text-anchor="middle">Midad</text>
-</svg>

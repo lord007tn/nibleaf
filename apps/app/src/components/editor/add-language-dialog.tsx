@@ -1,5 +1,5 @@
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language } from '@/hooks/api';

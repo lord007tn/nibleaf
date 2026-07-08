@@ -1,4 +1,4 @@
-import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
+import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import { ArrowRight, Languages, Sparkles, Star } from 'lucide-react';
 import type { ReactNode, SVGProps } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -9,7 +9,7 @@ import { appHref, GITHUB_URL } from '@/lib/links';
 /**
  * Shared marketing chrome — the nav, footer, announcement bar, button styles and
  * section helpers reused across every page in apps/www so they stay consistent.
- * Buttons mirror the @midad/design-system (shadcn) Button; colours come from the
+ * Buttons mirror the @nibleaf/design-system (shadcn) Button; colours come from the
  * tokens in styles.css.
  */
 export const BTN_BASE =
@@ -84,13 +84,12 @@ const NAV_LINKS: { href: string; label: MessageKey }[] = [
 
 export function SiteNav() {
   const t = useT();
-  const { locale } = useLocale();
   return (
     <header className="sticky top-0 z-40 border-border/70 border-b bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
         <a className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
-          <MidadMark className="size-8" />
-          <MidadWordmark script={locale === 'ar' ? 'arabic' : 'latin'} />
+          <NibleafMark className="size-8" />
+          <NibleafWordmark />
         </a>
         <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
           {NAV_LINKS.map((link) => (
@@ -142,14 +141,13 @@ const FOOTER_LEGAL: { href: string; label: MessageKey; external?: boolean }[] = 
 
 export function SiteFooter() {
   const t = useT();
-  const { locale } = useLocale();
   return (
     <footer className="border-border border-t bg-card/30">
       <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 py-14 sm:grid-cols-4">
         <div className="col-span-2 sm:col-span-1">
           <div className="flex items-center gap-2">
-            <MidadMark className="size-6" />
-            <MidadWordmark className="font-medium text-foreground" script={locale === 'ar' ? 'arabic' : 'latin'} />
+            <NibleafMark className="size-6" />
+            <NibleafWordmark className="font-medium text-foreground" />
           </div>
           <p className="mt-3 max-w-xs text-muted-foreground text-sm leading-relaxed">{t('footer.blurb')}</p>
           <p className="mt-4 flex items-center gap-1.5 text-muted-foreground text-xs">

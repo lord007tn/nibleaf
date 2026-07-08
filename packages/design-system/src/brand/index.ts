@@ -1,1 +1,1 @@
-export { MidadMark, MidadWordmark } from './midad-brand';
+export { NibleafMark, NibleafWordmark } from './nibleaf-brand';

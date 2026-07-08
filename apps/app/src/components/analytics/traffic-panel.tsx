@@ -1,4 +1,4 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Link } from '@tanstack/react-router';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
 import { useWorkspaceAnalytics } from '@/hooks/api';

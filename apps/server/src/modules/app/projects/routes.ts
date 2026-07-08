@@ -1,4 +1,4 @@
-import { MemberRole } from '@midad/shared/constants';
+import { MemberRole } from '@nibleaf/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectMember, requireProjectRole } from '@/middlewares/guard';

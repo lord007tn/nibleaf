@@ -1,4 +1,4 @@
-import { createProjectBody, updateProjectBody } from '@midad/validators';
+import { createProjectBody, updateProjectBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';

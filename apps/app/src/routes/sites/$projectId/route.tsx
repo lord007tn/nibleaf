@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, Check, CircleAlert, ExternalLink, Moon, PencilLine, Search, Sun, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
@@ -72,7 +72,7 @@ const readerSessionId = (): string => {
   if (typeof window === 'undefined') {
     return 'ssr';
   }
-  const key = 'midad.sid';
+  const key = 'nibleaf.sid';
   let id = window.localStorage.getItem(key);
   if (!id) {
     id = Math.random().toString(36).slice(2);
@@ -242,7 +242,7 @@ function SiteChrome() {
     if (typeof window === 'undefined') {
       return;
     }
-    const storageKey = `midad.site.theme.${projectId}`;
+    const storageKey = `nibleaf.site.theme.${projectId}`;
     const stored = window.localStorage.getItem(storageKey);
     // An explicit visitor choice always wins over the configured default.
     if (stored === 'dark' || stored === 'light') {
@@ -270,7 +270,7 @@ function SiteChrome() {
     setSiteTheme((current) => {
       const next = current === 'dark' ? 'light' : 'dark';
       try {
-        window.localStorage.setItem(`midad.site.theme.${projectId}`, next);
+        window.localStorage.setItem(`nibleaf.site.theme.${projectId}`, next);
       } catch (_) {
         // ignore (private mode etc.)
       }
@@ -377,8 +377,8 @@ function SiteChrome() {
     chromeStyle.fontSize = `${baseSize}px`;
   }
   const fontCss = [
-    headingFont ? `.midad-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
-    codeFont ? `.midad-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
+    headingFont ? `.nibleaf-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
+    codeFont ? `.nibleaf-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
   ]
     .filter(Boolean)
     .join('');
@@ -415,7 +415,7 @@ function SiteChrome() {
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className={cn('midad-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
+      className={cn('nibleaf-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
       style={chromeStyle as CSSProperties}
     >
       {fontCss ? (

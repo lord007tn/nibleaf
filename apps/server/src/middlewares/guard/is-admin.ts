@@ -1,4 +1,4 @@
-import { prisma } from '@midad/database';
+import { prisma } from '@nibleaf/database';
 import type { MiddlewareHandler } from 'hono';
 import { forbidden } from '@/errors';
 import { getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';

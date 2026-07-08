@@ -1,6 +1,6 @@
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
-import { cn } from '@midad/design-system/lib/utils';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { ArrowLeft, MessageSquare, Zap } from 'lucide-react';
 import { type ComponentType, useMemo, useState } from 'react';
 import { GithubIcon, GitlabIcon, SlackIcon } from '@/components/icons/brand';

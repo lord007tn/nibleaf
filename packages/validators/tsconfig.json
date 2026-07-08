@@ -1,5 +1,5 @@
 {
-  "extends": "@midad/tsconfig/base.json",
+  "extends": "@nibleaf/tsconfig/base.json",
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

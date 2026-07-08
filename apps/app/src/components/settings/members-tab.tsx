@@ -1,4 +1,4 @@
-import { Button } from '@midad/design-system/components/ui/button';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -8,12 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@midad/design-system/components/ui/dialog';
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+} from '@nibleaf/design-system/components/ui/dialog';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useForm } from '@tanstack/react-form';
 import { Check, Link2, Plus } from 'lucide-react';
 import { useState } from 'react';

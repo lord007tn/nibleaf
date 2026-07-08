@@ -4,9 +4,9 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { prisma } from '@midad/database';
-import { slugify } from '@midad/shared';
-import type { GitConfig } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import { slugify } from '@nibleaf/shared';
+import type { GitConfig } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
 import { assertBranchInProject, ensureDefaultBranch } from './branches';
 import { assertLanguageInProject, ensureDefaultLanguage } from './languages';
@@ -87,7 +87,7 @@ const normalizeInstanceUrl = (value?: string): string => {
 
 const listGitHubFiles = async (owner: string, repo: string, branch: string): Promise<GitTreeItem[]> => {
   const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'midad-docs' },
+    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'nibleaf-docs' },
   });
   if (!treeRes.ok) {
     throw badRequest(
@@ -116,7 +116,7 @@ const listGitLabFiles = async (projectPath: string, branch: string, basePath: st
       url.searchParams.set('path', basePath);
     }
 
-    const res = await fetch(url, { headers: { 'User-Agent': 'midad-docs' } });
+    const res = await fetch(url, { headers: { 'User-Agent': 'nibleaf-docs' } });
     if (!res.ok) {
       throw badRequest(
         res.status === 404
@@ -195,7 +195,7 @@ const walkMarkdownFiles = async (root: string, rel = '', found: string[] = []): 
 
 const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: string): Promise<MarkdownFile[]> => {
   const safeUrl = await assertSafeCloneUrl(cloneUrl);
-  const dir = await mkdtemp(path.join(tmpdir(), 'midad-git-'));
+  const dir = await mkdtemp(path.join(tmpdir(), 'nibleaf-git-'));
   try {
     await execFileAsync('git', ['clone', '--depth=1', '--single-branch', '--branch', branch, '--no-tags', safeUrl, dir], {
       timeout: 60_000,
@@ -220,7 +220,7 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
     return loaded.map((file) => ({ path: file.path, read: async () => file.content }));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw badRequest('Git is not installed in this Midad runtime.');
+      throw badRequest('Git is not installed in this Nibleaf runtime.');
     }
     throw badRequest('Could not clone the public Git repository. Check the URL, branch, and path.');
   } finally {
@@ -275,7 +275,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         path: file.path,
         read: async () => {
           const rawRes = await fetch(rawFileUrl(provider, repo, branch, file.path, git.instanceUrl), {
-            headers: { 'User-Agent': 'midad-docs' },
+            headers: { 'User-Agent': 'nibleaf-docs' },
           });
           return rawRes.ok ? rawRes.text() : null;
         },

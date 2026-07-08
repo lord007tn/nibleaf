@@ -1,5 +1,5 @@
-import { prisma } from '@midad/database';
-import type { CreateCommentBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import type { CreateCommentBody } from '@nibleaf/validators';
 import { notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

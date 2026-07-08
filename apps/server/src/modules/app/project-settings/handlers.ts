@@ -1,4 +1,4 @@
-import { updateWorkspaceSettingsBody } from '@midad/validators';
+import { updateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { importFromGitProvider } from '@/actions/git-import';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';

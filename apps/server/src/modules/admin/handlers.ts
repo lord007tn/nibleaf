@@ -1,4 +1,4 @@
-import { adminSetRoleBody } from '@midad/validators';
+import { adminSetRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { deleteWaitlistEntry, getAdminOverview, listAdminSites, listAdminUsers, listWaitlist, setUserRole } from '@/actions/admin';
 import type { HonoEnv } from '@/lib/hono/context';

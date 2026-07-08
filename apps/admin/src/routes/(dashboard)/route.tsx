@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@midad/design-system/components/ui/sheet';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { LayoutDashboard, LogOut, Mailbox, Menu, Server, ShieldCheck, Users } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
@@ -70,7 +70,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
           <ShieldCheck className="size-4" />
         </span>
-        <span className="font-semibold tracking-tight">Midad Admin</span>
+        <span className="font-semibold tracking-tight">Nibleaf Admin</span>
       </div>
       <nav className="mt-2 flex flex-1 flex-col gap-0.5">
         {NAV.map((item) => (
@@ -118,7 +118,7 @@ function AdminShell() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-3">
               <SheetHeader className="sr-only">
-                <SheetTitle>Midad Admin</SheetTitle>
+                <SheetTitle>Nibleaf Admin</SheetTitle>
               </SheetHeader>
               <div className="flex h-full flex-col">
                 <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
@@ -129,7 +129,7 @@ function AdminShell() {
             <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
               <ShieldCheck className="size-3.5" />
             </span>
-            <span className="font-semibold text-sm tracking-tight">Midad Admin</span>
+            <span className="font-semibold text-sm tracking-tight">Nibleaf Admin</span>
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-y-auto">

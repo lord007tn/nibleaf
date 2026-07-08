@@ -1,5 +1,5 @@
-import { usePrompt } from '@midad/design-system/components/ui/confirm';
-import { cn } from '@midad/design-system/lib/utils';
+import { usePrompt } from '@nibleaf/design-system/components/ui/confirm';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor } from '@tiptap/core';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Code, Highlighter, Italic, Link as LinkIcon, Strikethrough } from 'lucide-react';

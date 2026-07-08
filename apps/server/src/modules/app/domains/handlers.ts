@@ -1,4 +1,4 @@
-import { addDomainBody } from '@midad/validators';
+import { addDomainBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { addDomain, deleteDomain, listDomains, setPrimaryDomain, verifyDomain } from '@/actions/domains';
 import { assertProjectInOrg } from '@/actions/projects';

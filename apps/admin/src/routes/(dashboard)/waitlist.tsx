@@ -1,7 +1,7 @@
-import { Badge } from '@midad/design-system/components/ui/badge';
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { createFileRoute } from '@tanstack/react-router';
 import { Download, Trash2 } from 'lucide-react';
 import { useDeleteWaitlistEntry } from '@/hooks/api/mutations';
@@ -28,7 +28,7 @@ function exportCsv(rows: AdminWaitlistEntry[]) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'midad-cloud-waitlist.csv';
+  a.download = 'nibleaf-cloud-waitlist.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -43,7 +43,7 @@ function WaitlistPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-semibold text-2xl tracking-tight">Cloud waitlist</h1>
-          <p className="mt-1 text-muted-foreground text-sm">Signups from the marketing site while Midad Cloud is not yet live.</p>
+          <p className="mt-1 text-muted-foreground text-sm">Signups from the marketing site while Nibleaf Cloud is not yet live.</p>
         </div>
         <Button disabled={rows.length === 0} onClick={() => exportCsv(rows)} size="sm" variant="outline">
           <Download className="size-4" /> Export CSV

@@ -7,7 +7,7 @@ const waitlistRoutes = {
   submit: createRouteConfig({
     guard: passthrough,
     tags: ['public'],
-    description: 'Join the managed Midad Cloud waitlist. Public and idempotent by email.',
+    description: 'Join the managed Nibleaf Cloud waitlist. Public and idempotent by email.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };

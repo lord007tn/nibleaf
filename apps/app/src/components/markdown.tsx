@@ -1,5 +1,5 @@
 import 'katex/dist/katex.min.css';
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';

@@ -1,5 +1,5 @@
 {
-  "extends": "@midad/tsconfig/react.json",
+  "extends": "@nibleaf/tsconfig/react.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

@@ -1,5 +1,5 @@
-import { createDocIndex, type DocIndex, oramaLanguageForCode, type SearchDoc } from '@midad/search';
-import { extractHeadings, type SnapshotPage } from '@midad/shared/site';
+import { createDocIndex, type DocIndex, oramaLanguageForCode, type SearchDoc } from '@nibleaf/search';
+import { extractHeadings, type SnapshotPage } from '@nibleaf/shared/site';
 
 interface Entry {
   key: string;

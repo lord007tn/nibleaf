@@ -8,10 +8,10 @@ export const Route = createRootRoute({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Midad — Documentation' },
+      { title: 'Nibleaf — Documentation' },
       {
         name: 'description',
-        content: 'Documentation for Midad, the open-source, self-hostable documentation platform.',
+        content: 'Documentation for Nibleaf, the open-source, self-hostable documentation platform.',
       },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],

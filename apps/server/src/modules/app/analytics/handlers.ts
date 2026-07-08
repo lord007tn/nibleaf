@@ -1,4 +1,4 @@
-import { analyticsQuery } from '@midad/validators';
+import { analyticsQuery } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { getAnalyticsOverview } from '@/actions/analytics';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';

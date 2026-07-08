@@ -1,7 +1,7 @@
-import { ConfirmProvider as DesignConfirmProvider } from '@midad/design-system/components/ui/confirm';
-import { Toaster } from '@midad/design-system/components/ui/sonner';
-import { TooltipProvider } from '@midad/design-system/components/ui/tooltip';
-import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@midad/design-system/theme';
+import { ConfirmProvider as DesignConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
+import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
+import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -19,7 +19,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Midad — open-source documentation platform' },
+      { title: 'Nibleaf — open-source documentation platform' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },

@@ -1,4 +1,4 @@
-import { MidadMark } from '@midad/design-system/brand';
+import { NibleafMark } from '@nibleaf/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BarChart3, Boxes, Check, FileText, Info, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
@@ -9,14 +9,14 @@ import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
 import { hreflangLinks } from '@/lib/seo';
 
 const HOME_FAQS: { q: string; a: string }[] = [
-  { q: 'Is Midad really free?', a: 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.' },
+  { q: 'Is Nibleaf really free?', a: 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.' },
   {
     q: 'What do I need to self-host?',
     a: 'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
   },
   {
     q: 'Can I use my own object storage?',
-    a: 'Absolutely. Midad speaks the S3 API, so it works with maxio, Cloudflare R2, AWS S3, or Backblaze B2.',
+    a: 'Absolutely. Nibleaf speaks the S3 API, so it works with maxio, Cloudflare R2, AWS S3, or Backblaze B2.',
   },
   {
     q: 'How does search work?',
@@ -127,7 +127,7 @@ function DocsMock() {
             <Search className="size-3" /> {t('hero.mock.search')}
             <kbd className="ms-auto rounded border border-border bg-muted px-1 font-mono text-[10px]">⌘K</kbd>
           </div>
-          <MidadMark className="size-5" />
+          <NibleafMark className="size-5" />
         </div>
         {/* body */}
         <div className="grid grid-cols-[116px_1fr] text-[11px]">
@@ -236,14 +236,14 @@ function Features() {
   );
 }
 
-const COMPARE: { label: MessageKey; midad: boolean; them: boolean }[] = [
-  { label: 'compare.row.openSource', midad: true, them: false },
-  { label: 'compare.row.selfHost', midad: true, them: false },
-  { label: 'compare.row.ownData', midad: true, them: false },
-  { label: 'compare.row.editor', midad: true, them: true },
-  { label: 'compare.row.search', midad: true, them: true },
-  { label: 'compare.row.domains', midad: true, them: true },
-  { label: 'compare.row.noLockIn', midad: true, them: false },
+const COMPARE: { label: MessageKey; nibleaf: boolean; them: boolean }[] = [
+  { label: 'compare.row.openSource', nibleaf: true, them: false },
+  { label: 'compare.row.selfHost', nibleaf: true, them: false },
+  { label: 'compare.row.ownData', nibleaf: true, them: false },
+  { label: 'compare.row.editor', nibleaf: true, them: true },
+  { label: 'compare.row.search', nibleaf: true, them: true },
+  { label: 'compare.row.domains', nibleaf: true, them: true },
+  { label: 'compare.row.noLockIn', nibleaf: true, them: false },
 ];
 
 function Comparison() {
@@ -259,14 +259,14 @@ function Comparison() {
         <div className="mt-10 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
           <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 font-medium text-sm">
             <span />
-            <span className="rounded-md bg-primary/10 py-1 text-center text-primary">{t('compare.colMidad')}</span>
+            <span className="rounded-md bg-primary/10 py-1 text-center text-primary">{t('compare.colNibleaf')}</span>
             <span className="text-center text-muted-foreground">{t('compare.colHosted')}</span>
           </div>
           {COMPARE.map((row) => (
             <div key={row.label} className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
               <span>{t(row.label)}</span>
               <span className="flex justify-center bg-primary/5">
-                {row.midad ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
+                {row.nibleaf ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
               </span>
               <span className="flex justify-center">
                 {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}
@@ -319,7 +319,7 @@ function SelfHost() {
           </div>
           <pre className="overflow-x-auto p-5 text-white/90 leading-relaxed">{`# clone & configure
 git clone ${GITHUB_URL.replace('https://', '')}
-cd midad && cp .env.example .env
+cd nibleaf && cp .env.example .env
 
 # bring up the whole stack
 docker compose up -d

@@ -1,5 +1,5 @@
-import { Input } from '@midad/design-system/components/ui/input';
-import { cn } from '@midad/design-system/lib/utils';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useForm } from '@tanstack/react-form';
 import { Plus, X } from 'lucide-react';
 import { useState } from 'react';

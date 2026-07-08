@@ -1,6 +1,6 @@
-import { auth } from '@midad/auth/server';
-import { prisma } from '@midad/database';
-import { searchDocs } from '@midad/search';
+import { auth } from '@nibleaf/auth/server';
+import { prisma } from '@nibleaf/database';
+import { searchDocs } from '@nibleaf/search';
 import {
   buildNavTree,
   defaultLanguage,
@@ -11,8 +11,8 @@ import {
   type SiteSnapshot,
   type SnapshotPage,
   type SnapshotVersion,
-} from '@midad/shared/site';
-import type { TrackEventBody } from '@midad/validators';
+} from '@nibleaf/shared/site';
+import type { TrackEventBody } from '@nibleaf/validators';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { notFound } from '@/errors';

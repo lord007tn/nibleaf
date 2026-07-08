@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import type { ReactNode } from 'react';
 
 /**

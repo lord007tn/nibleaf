@@ -17,7 +17,7 @@ export interface CommentDecorationOptions {
   getActiveId: () => string | null;
 }
 
-const commentKey = new PluginKey('midad-comment-decorations');
+const commentKey = new PluginKey('nibleaf-comment-decorations');
 
 /**
  * Locate a `quote` in the document and return its [from, to] ProseMirror range.

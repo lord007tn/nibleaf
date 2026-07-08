@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 192" role="img" aria-label="Midad">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 192" role="img" aria-label="Nibleaf">
   <rect x="24" y="28" width="136" height="136" rx="30" fill="#8A4B2E"/>
   <path d="M67 110 101 76c7-7 18-7 25 0l2 2c7 7 7 18 0 25l-34 34-28 7 1-34Z" fill="#FBF7EE"/>
   <path d="M61 75c19-19 46-24 69-11" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="10"/>
   <circle cx="129" cy="122" r="9" fill="#B96A3D"/>
-  <text x="190" y="119" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="84" font-weight="760">Midad</text>
+  <text x="190" y="119" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="84" font-weight="760">Nibleaf</text>
 </svg>

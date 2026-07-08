@@ -159,7 +159,7 @@ describe('buildSnapshot', () => {
         ...projectRow,
         config: {
           variables: [
-            { key: 'product', value: 'Midad' },
+            { key: 'product', value: 'Nibleaf' },
             { key: 'api.version', value: 'v2' },
           ],
         },
@@ -174,8 +174,8 @@ describe('buildSnapshot', () => {
       ],
       '2026-01-01',
     );
-    expect(snap.pages[0]?.title).toBe('Welcome to Midad');
-    expect(snap.pages[0]?.description).toBe('Docs for Midad');
+    expect(snap.pages[0]?.title).toBe('Welcome to Nibleaf');
+    expect(snap.pages[0]?.description).toBe('Docs for Nibleaf');
     expect(snap.pages[0]?.content).toBe('Use API v2. Unknown {{ nope }} stays.');
   });
 });

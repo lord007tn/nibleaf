@@ -1,5 +1,5 @@
 {
-  "name": "@midad/admin",
+  "name": "@nibleaf/admin",
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
@@ -16,9 +16,9 @@
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist": "^5.2.5",
     "@fontsource-variable/geist-mono": "^5.2.5",
-    "@midad/design-system": "workspace:*",
-    "@midad/server": "workspace:*",
-    "@midad/validators": "workspace:*",
+    "@nibleaf/design-system": "workspace:*",
+    "@nibleaf/server": "workspace:*",
+    "@nibleaf/validators": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-form": "1.32.0",
     "@tanstack/react-query": "^5.100.14",
@@ -41,7 +41,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

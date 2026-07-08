@@ -1,4 +1,4 @@
-import { createLanguageBody, updateLanguageBody } from '@midad/validators';
+import { createLanguageBody, updateLanguageBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { createLanguage, deleteLanguage, listLanguages, updateLanguage } from '@/actions/languages';
 import { assertProjectInOrg } from '@/actions/projects';

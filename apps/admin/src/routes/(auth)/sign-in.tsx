@@ -1,6 +1,6 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
@@ -35,7 +35,7 @@ function SignInPage() {
           <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
             <ShieldCheck className="size-5" />
           </span>
-          <h1 className="mt-2 font-semibold text-2xl tracking-tight">Midad Admin</h1>
+          <h1 className="mt-2 font-semibold text-2xl tracking-tight">Nibleaf Admin</h1>
           <p className="text-muted-foreground text-sm">Sign in to the platform admin panel.</p>
         </div>
         <form

@@ -1,7 +1,7 @@
 import { APP_URL } from '@/lib/links';
 
 /** localStorage key holding an invitation id captured before the user authenticated. */
-export const PENDING_INVITE_KEY = 'midad.pendingInvitation';
+export const PENDING_INVITE_KEY = 'nibleaf.pendingInvitation';
 
 export interface InvitationInfo {
   id: string;

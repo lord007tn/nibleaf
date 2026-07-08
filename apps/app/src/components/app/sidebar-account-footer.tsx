@@ -5,9 +5,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@midad/design-system/components/ui/dropdown-menu';
-import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@midad/design-system/components/ui/sidebar';
-import { useTheme } from '@midad/design-system/theme';
+} from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
+import { useTheme } from '@nibleaf/design-system/theme';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, Languages, LogOut, Moon, Sun } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';

@@ -1,4 +1,4 @@
-# Midad — Coolify production stack.
+# Nibleaf — Coolify production stack.
 #
 # Use this compose file in Coolify when you want the self-hostable docs
 # platform only. It intentionally omits the marketing/www app.
@@ -13,20 +13,20 @@
 # Required DNS for custom domains:
 #   customers CNAME their docs host to ${CUSTOM_DOMAIN_CNAME_TARGET}
 #
-# Set MIDAD_HEALTHCHECK_HOST to the dashboard host without a scheme when your
+# Set NIBLEAF_HEALTHCHECK_HOST to the dashboard host without a scheme when your
 # app uses host-based routing.
 #
 # When moving an existing Coolify Application to a Service, set
-# MIDAD_EXTERNAL_VOLUMES=true and point the MIDAD_*_VOLUME variables at the
+# NIBLEAF_EXTERNAL_VOLUMES=true and point the NIBLEAF_*_VOLUME variables at the
 # existing Docker volume names before deploying the replacement service.
 
-name: midad-coolify
+name: nibleaf-coolify
 
 # Pull-based Coolify stack: it PULLS the prebuilt image published by CI
-# (.github/workflows/docker.yml -> ghcr.io/lord007tn/midad:latest) instead of
+# (.github/workflows/docker.yml -> ghcr.io/lord007tn/nibleaf:latest) instead of
 # building on the Coolify server. Building the whole monorepo in-container needs
 # ~5-6GB free RAM and OOMs on smaller/shared servers, so pulling the CI image is
-# both faster and more reliable. Override the tag with MIDAD_IMAGE if needed.
+# both faster and more reliable. Override the tag with NIBLEAF_IMAGE if needed.
 # To build from source instead, use docker-compose.yml (which keeps `build:`).
 #
 # NOTE: the published image bakes CI's generic VITE_* client URLs. The published
@@ -36,7 +36,7 @@ name: midad-coolify
 
 x-service-env: &service-env
   NODE_ENV: production
-  POSTGRES_URL: postgresql://${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-midad}
+  POSTGRES_URL: postgresql://${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-nibleaf}
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
   QUEUE_CLUSTER: "true"
@@ -46,12 +46,12 @@ x-service-env: &service-env
   STORAGE_REGION: ${STORAGE_REGION:-auto}
   STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
   STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
-  STORAGE_BUCKET: ${STORAGE_BUCKET:-midad}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:-nibleaf}
   STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
-  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_URL for R2/S3}/midad}
+  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_URL for R2/S3}/nibleaf}
   STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
-  BETTER_AUTH_SECRET: ${SERVICE_HEX_64_MIDAD:?set SERVICE_HEX_64_MIDAD}
+  BETTER_AUTH_SECRET: ${SERVICE_HEX_64_NIBLEAF:?set SERVICE_HEX_64_NIBLEAF}
   BETTER_AUTH_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
@@ -68,8 +68,7 @@ x-service-env: &service-env
   EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
   SMTP_URL: ${SMTP_URL:?set SMTP_URL}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-  MIDAD_RUN_SEED: ${MIDAD_RUN_SEED:-false}
-  PLUME_RUN_SEED: ${MIDAD_RUN_SEED:-false}
+  NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
 
 services:
   postgres:
@@ -78,9 +77,9 @@ services:
     environment:
       POSTGRES_USER: ${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}
       POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}
-      POSTGRES_DB: ${POSTGRES_DB:-midad}
+      POSTGRES_DB: ${POSTGRES_DB:-nibleaf}
     volumes:
-      - midad-coolify-pg:/var/lib/postgresql/data
+      - nibleaf-coolify-pg:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 10s
@@ -92,7 +91,7 @@ services:
     restart: unless-stopped
     command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
     volumes:
-      - midad-coolify-dragonfly:/data
+      - nibleaf-coolify-dragonfly:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -106,13 +105,13 @@ services:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
       MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
       MAXIO_REGION: ${STORAGE_REGION:-auto}
-      MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-midad}
-      MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-midad}
+      MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
+      MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
       MAXIO_SECURE_COOKIES: ${MAXIO_SECURE_COOKIES:-true}
     expose:
       - "9000"
     volumes:
-      - midad-coolify-maxio:/data
+      - nibleaf-coolify-maxio:/data
     healthcheck:
       test: ["CMD", "maxio", "healthcheck", "--url", "http://127.0.0.1:9000/healthz", "--timeout-ms", "2000"]
       interval: 30s
@@ -121,7 +120,7 @@ services:
       start_period: 10s
 
   migrate:
-    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
+    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
     pull_policy: always
     command: ["migrate"]
     environment: *service-env
@@ -131,7 +130,7 @@ services:
     restart: "no"
 
   server:
-    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
+    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
     pull_policy: always
     command: ["server"]
     init: true
@@ -154,7 +153,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
+    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
     pull_policy: always
     command: ["worker"]
     init: true
@@ -175,7 +174,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: "${MIDAD_IMAGE:-ghcr.io/lord007tn/midad:latest}"
+    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
     pull_policy: always
     command: ["app"]
     init: true
@@ -189,7 +188,7 @@ services:
       server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS -A midad-healthcheck -H \"Host: ${MIDAD_HEALTHCHECK_HOST:-app.trymidad.com}\" http://127.0.0.1:4310/ >/dev/null && curl -fsS -A midad-healthcheck -H \"Host: ${MIDAD_HEALTHCHECK_HOST:-app.trymidad.com}\" http://127.0.0.1:4310/api/app/health >/dev/null"]
+      test: ["CMD-SHELL", "curl -fsS -A nibleaf-healthcheck -H \"Host: ${NIBLEAF_HEALTHCHECK_HOST:-app.trynibleaf.com}\" http://127.0.0.1:4310/ >/dev/null && curl -fsS -A nibleaf-healthcheck -H \"Host: ${NIBLEAF_HEALTHCHECK_HOST:-app.trynibleaf.com}\" http://127.0.0.1:4310/api/app/health >/dev/null"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -197,12 +196,12 @@ services:
     restart: unless-stopped
 
 volumes:
-  midad-coolify-pg:
-    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
-    name: ${MIDAD_PG_VOLUME:-midad-coolify-pg}
-  midad-coolify-dragonfly:
-    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
-    name: ${MIDAD_DRAGONFLY_VOLUME:-midad-coolify-dragonfly}
-  midad-coolify-maxio:
-    external: ${MIDAD_EXTERNAL_VOLUMES:-false}
-    name: ${MIDAD_MAXIO_VOLUME:-midad-coolify-maxio}
+  nibleaf-coolify-pg:
+    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
+    name: ${NIBLEAF_PG_VOLUME:-nibleaf-coolify-pg}
+  nibleaf-coolify-dragonfly:
+    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
+    name: ${NIBLEAF_DRAGONFLY_VOLUME:-nibleaf-coolify-dragonfly}
+  nibleaf-coolify-maxio:
+    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
+    name: ${NIBLEAF_MAXIO_VOLUME:-nibleaf-coolify-maxio}

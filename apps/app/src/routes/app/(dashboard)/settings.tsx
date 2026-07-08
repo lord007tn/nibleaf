@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';

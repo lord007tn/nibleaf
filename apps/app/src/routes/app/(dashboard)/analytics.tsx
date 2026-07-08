@@ -1,5 +1,5 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@midad/design-system/components/ui/tabs';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Activity, BarChart3, Search, Users } from 'lucide-react';
 import { useState } from 'react';

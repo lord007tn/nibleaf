@@ -1,4 +1,4 @@
-name: midad-dev
+name: nibleaf-dev
 
 # Local development infrastructure only (Postgres, Dragonfly, maxio). Run the
 # apps with `pnpm dev`. For a full self-hosted stack see docker-compose.yml.
@@ -8,20 +8,20 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: midad
-      POSTGRES_PASSWORD: midad
-      POSTGRES_DB: midad
+      POSTGRES_USER: nibleaf
+      POSTGRES_PASSWORD: nibleaf
+      POSTGRES_DB: nibleaf
     ports:
       - '5442:5432'
     volumes:
-      - midad-pg:/var/lib/postgresql/data
+      - nibleaf-pg:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U midad -d midad']
+      test: ['CMD-SHELL', 'pg_isready -U nibleaf -d nibleaf']
       interval: 5s
       timeout: 5s
       retries: 10
 
-  # Dragonfly — Redis-compatible backend for BullMQ. Midad hash-tags queue names
+  # Dragonfly — Redis-compatible backend for BullMQ. Nibleaf hash-tags queue names
   # so Dragonfly can keep BullMQ keys grouped.
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
@@ -32,25 +32,25 @@ services:
     ports:
       - '6381:6379'
     volumes:
-      - midad-dragonfly:/data
+      - nibleaf-dragonfly:/data
 
-  # maxio — S3-compatible object storage. Auto-creates the `midad` bucket and
+  # maxio — S3-compatible object storage. Auto-creates the `nibleaf` bucket and
   # serves it with anonymous read so doc assets load by their public URL.
   # Console: http://localhost:9300/ui/
   maxio:
     image: ghcr.io/coollabsio/maxio:latest
     restart: unless-stopped
     environment:
-      MAXIO_ACCESS_KEY: midadadmin
-      MAXIO_SECRET_KEY: midadadmin123
+      MAXIO_ACCESS_KEY: nibleafadmin
+      MAXIO_SECRET_KEY: nibleafadmin123
       MAXIO_REGION: auto
-      MAXIO_DEFAULT_BUCKETS: midad
-      MAXIO_PUBLIC_BUCKETS: midad
+      MAXIO_DEFAULT_BUCKETS: nibleaf
+      MAXIO_PUBLIC_BUCKETS: nibleaf
       MAXIO_ALLOW_INSECURE_DEV: 'true'
     ports:
       - '9300:9000'
     volumes:
-      - midad-maxio:/data
+      - nibleaf-maxio:/data
     healthcheck:
       test: ['CMD', 'maxio', 'healthcheck', '--url', 'http://127.0.0.1:9000/healthz', '--timeout-ms', '2000']
       interval: 5s
@@ -58,6 +58,6 @@ services:
       retries: 10
 
 volumes:
-  midad-pg:
-  midad-dragonfly:
-  midad-maxio:
+  nibleaf-pg:
+  nibleaf-dragonfly:
+  nibleaf-maxio:

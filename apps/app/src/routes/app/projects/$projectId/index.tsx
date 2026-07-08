@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,

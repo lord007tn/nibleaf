@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { BannerSection } from '@/components/project-settings/banner-section';
 import { BrandingSection } from '@/components/project-settings/branding-section';
 import { FooterSection } from '@/components/project-settings/footer-section';

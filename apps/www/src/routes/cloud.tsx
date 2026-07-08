@@ -11,8 +11,8 @@ import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 export const Route = createFileRoute('/cloud')({
   head: () => ({
     meta: pageMeta({
-      title: 'Midad Cloud — managed hosting',
-      description: 'Managed Midad is coming soon — the same platform, fully managed. Join the waitlist for launch.',
+      title: 'Nibleaf Cloud — managed hosting',
+      description: 'Managed Nibleaf is coming soon — the same platform, fully managed. Join the waitlist for launch.',
       path: '/cloud',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/cloud') }, ...hreflangLinks('/cloud')],
@@ -33,7 +33,7 @@ const FEATURES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: MessageKe
 ];
 
 /**
- * Cloud waitlist — POSTs to the Midad API `POST /api/public/waitlist` (proxied
+ * Cloud waitlist — POSTs to the Nibleaf API `POST /api/public/waitlist` (proxied
  * same-origin via Nitro; see vite.config.ts). Idempotent by email server-side.
  */
 function WaitlistForm() {

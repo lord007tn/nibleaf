@@ -3,7 +3,7 @@ import type { ProjectConfig } from '@/hooks/api/types';
 import { siteT } from '@/lib/site-i18n';
 import { analyticsScripts } from '@/lib/site-seo';
 
-const consentKey = (projectId: string) => `midad.analytics.consent.${projectId}`;
+const consentKey = (projectId: string) => `nibleaf.analytics.consent.${projectId}`;
 
 /** Read the persisted consent choice; anything other than a stored accept/decline
  *  is treated as still pending (so the banner shows). */
@@ -13,7 +13,7 @@ const readConsent = (projectId: string): 'pending' | 'accepted' | 'declined' => 
 };
 
 function appendAnalyticsScript(projectId: string, index: number, script: ReturnType<typeof analyticsScripts>[number]) {
-  const id = `midad-analytics-${projectId}-${index}`;
+  const id = `nibleaf-analytics-${projectId}-${index}`;
   if (document.getElementById(id)) {
     return;
   }

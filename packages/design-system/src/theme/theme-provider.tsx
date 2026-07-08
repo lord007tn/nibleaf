@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 export type Theme = 'light' | 'dark' | 'system';
 type Resolved = 'light' | 'dark';
 
-export const THEME_STORAGE_KEY = 'midad.theme';
+export const THEME_STORAGE_KEY = 'nibleaf.theme';
 
 interface ThemeContextValue {
   theme: Theme;

@@ -1,4 +1,4 @@
-import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';

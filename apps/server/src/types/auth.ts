@@ -1,4 +1,4 @@
-import type { MemberRole } from '@midad/shared/constants';
+import type { MemberRole } from '@nibleaf/shared/constants';
 
 export interface SessionUser {
   email: string;

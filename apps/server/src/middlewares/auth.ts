@@ -1,5 +1,5 @@
-import { auth } from '@midad/auth/server';
-import { prisma } from '@midad/database';
+import { auth } from '@nibleaf/auth/server';
+import { prisma } from '@nibleaf/database';
 import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Single image for the whole Midad monorepo. The container command selects the
+# Single image for the whole Nibleaf monorepo. The container command selects the
 # service (server / worker / app / www / migrate) via docker-entrypoint.sh.
 #
 # server & worker run their TypeScript directly with tsx (the Prisma driver
@@ -19,12 +19,12 @@ FROM base AS build
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # Generate the Prisma client (musl engine for this Alpine image).
-RUN pnpm --filter @midad/database generate
+RUN pnpm --filter @nibleaf/database generate
 # Bake the in-cluster API URL so the app's Nitro /api proxy targets the server
 # service. The browser only ever sees the public app origin.
-ARG VITE_APP_URL=https://app.midad.dev
-ARG VITE_WWW_URL=https://midad.dev
-ARG VITE_SITE_BASE_DOMAIN=midad.app
+ARG VITE_APP_URL=https://app.nibleaf.dev
+ARG VITE_WWW_URL=https://nibleaf.dev
+ARG VITE_SITE_BASE_DOMAIN=nibleaf.app
 ARG VITE_API_URL=http://server:4311
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_URL=$VITE_APP_URL
@@ -36,10 +36,10 @@ RUN pnpm exec turbo run build --concurrency=1
 FROM base AS runner
 ARG VERSION=0.1.0
 ENV NODE_ENV=production
-LABEL org.opencontainers.image.title="Midad" \
+LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.description="Self-hosted documentation platform" \
   org.opencontainers.image.licenses="AGPL-3.0-only" \
-  org.opencontainers.image.source="https://github.com/lord007tn/midad" \
+  org.opencontainers.image.source="https://github.com/lord007tn/nibleaf" \
   org.opencontainers.image.version=$VERSION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh

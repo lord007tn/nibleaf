@@ -1,8 +1,8 @@
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
-import type { LanguageConfig, PageConfig, ProjectConfig } from '@midad/validators';
+import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
-export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@midad/validators';
+export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export interface Language {
   id: string;

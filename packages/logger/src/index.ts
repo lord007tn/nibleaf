@@ -6,7 +6,7 @@ const isProduction = process.env.NODE_ENV === 'production';
 export const logger = pino({
   level,
   base: {
-    service: process.env.SERVICE_NAME ?? 'midad',
+    service: process.env.SERVICE_NAME ?? 'nibleaf',
   },
   ...(isProduction
     ? {}

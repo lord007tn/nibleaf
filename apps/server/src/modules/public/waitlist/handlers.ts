@@ -1,4 +1,4 @@
-import { waitlistSubmitBody } from '@midad/validators';
+import { waitlistSubmitBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { addToWaitlist } from '@/actions/waitlist';
 import type { HonoEnv } from '@/lib/hono/context';

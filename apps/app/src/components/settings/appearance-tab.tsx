@@ -1,5 +1,5 @@
-import { cn } from '@midad/design-system/lib/utils';
-import { useTheme } from '@midad/design-system/theme';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import { useTheme } from '@nibleaf/design-system/theme';
 import { Check } from 'lucide-react';
 import { SettingsSection } from './section';
 
@@ -45,7 +45,7 @@ export function AppearanceTab() {
   return (
     <SettingsSection
       title="Theme"
-      description="How the Midad dashboard, editor, and settings look for you. This doesn't change your published doc sites."
+      description="How the Nibleaf dashboard, editor, and settings look for you. This doesn't change your published doc sites."
     >
       <div className="grid grid-cols-2 gap-4">
         {THEMES.map((option) => (

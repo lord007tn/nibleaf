@@ -1,5 +1,5 @@
 {
-  "name": "@midad/app",
+  "name": "@nibleaf/app",
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
@@ -20,10 +20,10 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/geist": "^5.2.5",
     "@fontsource-variable/geist-mono": "^5.2.5",
-    "@midad/design-system": "workspace:*",
-    "@midad/server": "workspace:*",
-    "@midad/shared": "workspace:*",
-    "@midad/validators": "workspace:*",
+    "@nibleaf/design-system": "workspace:*",
+    "@nibleaf/server": "workspace:*",
+    "@nibleaf/shared": "workspace:*",
+    "@nibleaf/validators": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/pacer": "^0.21.1",
     "@tanstack/react-form": "1.32.0",
@@ -90,7 +90,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@tanstack/devtools-vite": "^0.6.0",
     "@tanstack/react-query-devtools": "^5.100.14",
     "@tanstack/react-router-devtools": "^1.166.9",

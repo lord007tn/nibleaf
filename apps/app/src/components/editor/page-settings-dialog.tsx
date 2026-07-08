@@ -1,4 +1,4 @@
-import { Button } from '@midad/design-system/components/ui/button';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -7,14 +7,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@midad/design-system/components/ui/dialog';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
-import { Switch } from '@midad/design-system/components/ui/switch';
-import { Textarea } from '@midad/design-system/components/ui/textarea';
-import { cn } from '@midad/design-system/lib/utils';
-import { slugify } from '@midad/shared/utils';
+} from '@nibleaf/design-system/components/ui/dialog';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import { slugify } from '@nibleaf/shared/utils';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';

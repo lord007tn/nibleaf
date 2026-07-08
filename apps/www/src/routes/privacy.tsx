@@ -8,8 +8,8 @@ import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 export const Route = createFileRoute('/privacy')({
   head: () => ({
     meta: pageMeta({
-      title: 'Privacy Policy — Midad',
-      description: 'How Midad handles your data.',
+      title: 'Privacy Policy — Nibleaf',
+      description: 'How Nibleaf handles your data.',
       path: '/privacy',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/privacy') }, ...hreflangLinks('/privacy')],

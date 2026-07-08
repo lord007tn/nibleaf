@@ -2,9 +2,9 @@
  * Grant (or revoke) the platform admin role used by the internal admin panel
  * (apps/admin). This is the only way to mint the first admin.
  *
- *   pnpm --filter @midad/server with-env tsx src/scripts/grant-admin.ts <email> [admin|user]
+ *   pnpm --filter @nibleaf/server with-env tsx src/scripts/grant-admin.ts <email> [admin|user]
  */
-import { prisma } from '@midad/database';
+import { prisma } from '@nibleaf/database';
 
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();

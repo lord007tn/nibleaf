@@ -1,7 +1,7 @@
-import { prisma } from '@midad/database';
-import { hashApiKeySecret } from '@midad/shared/crypto';
-import { newApiKeySecret } from '@midad/shared/ids';
-import type { CreateApiKeyBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import { hashApiKeySecret } from '@nibleaf/shared/crypto';
+import { newApiKeySecret } from '@nibleaf/shared/ids';
+import type { CreateApiKeyBody } from '@nibleaf/validators';
 import { notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

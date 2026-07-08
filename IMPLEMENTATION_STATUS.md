@@ -1,10 +1,10 @@
-# Midad Implementation Status
+# Nibleaf Implementation Status
 
 Last updated: 2026-07-01
 
 ## Target
 
-Midad is tracking the practical feature set of Mintlify's free documentation
+Nibleaf is tracking the practical feature set of Mintlify's free documentation
 product, but as a self-hostable app:
 
 - docs dashboard, editor, publish pipeline, activity, analytics, and settings
@@ -93,7 +93,7 @@ Observed with Chrome on the `private-product/private-product` Mintlify workspace
   normalize to the same slug, and public version filtering prefers exact branch
   version IDs so pages from colliding branches are not mixed.
 - One-way public GitHub, GitLab, and generic http(s) Git Markdown/MDX import.
-  Imports can target the default branch/language or a selected Midad
+  Imports can target the default branch/language or a selected Nibleaf
   branch/language. Saved Git import settings hydrate correctly after an async
   settings load.
 - Page creation, listing, moving, and reordering validate branch/language scope
@@ -176,8 +176,8 @@ Completed on 2026-06-30:
 
 - `pnpm typecheck`.
 - `docker compose -f docker-compose.coolify.yml config` with sample env values.
-- `pnpm --filter @midad/shared test`.
-- `pnpm --filter @midad/validators test`.
+- `pnpm --filter @nibleaf/shared test`.
+- `pnpm --filter @nibleaf/validators test`.
 - `pnpm exec biome check` on the files changed for this status pass.
 - Local dev stack dogfood with seeded demo data:
   - `pnpm exec dotenv -e .env -- pnpm db:deploy`.
@@ -185,8 +185,8 @@ Completed on 2026-06-30:
   - `pnpm dev` with Postgres, Dragonfly, and maxio already running.
   - Chrome rendered the authenticated project overview, domain settings, API key
     settings, search settings, and published docs site.
-  - Public resolver returned the seeded project for `docs.midad.app` when
-    `SITE_BASE_DOMAIN=midad.app` was injected.
+  - Public resolver returned the seeded project for `docs.nibleaf.app` when
+    `SITE_BASE_DOMAIN=nibleaf.app` was injected.
   - Public resolver returned the seeded project for a local verified custom
     domain row `docs.example.test`, including a `:443` host header.
   - Public resolver returned `null` for nested and unrelated subdomain hosts.
@@ -208,7 +208,7 @@ Completed on 2026-06-30:
   imported, 0 skipped, and imported pages were verified in the local database.
 - Generic public Git URL import was dogfooded against
   `https://gitlab.com/raytio/documentation/api-docs.git` using the local Git
-  CLI path: 8 Markdown files imported into a selected Midad branch and Arabic
+  CLI path: 8 Markdown files imported into a selected Nibleaf branch and Arabic
   language, and imported pages were verified in the local database before the
   throwaway project was cleaned up.
 - Playwright rendered the Git settings tab with GitHub, GitLab, and Public Git
@@ -219,9 +219,9 @@ Completed on 2026-06-30:
 
 Completed on 2026-07-01:
 
-- `pnpm --filter @midad/validators test`.
-- `pnpm --filter @midad/server typecheck`.
-- `pnpm --filter @midad/app typecheck`.
+- `pnpm --filter @nibleaf/validators test`.
+- `pnpm --filter @nibleaf/server typecheck`.
+- `pnpm --filter @nibleaf/app typecheck`.
 - Direct server dogfood for deployment-name/subdomain behavior:
   - Creating two projects with the same name produced unique slugs
     (`temporary-docs`, `temporary-docs-2`).
@@ -235,7 +235,7 @@ Completed on 2026-07-01:
 - Playwright rendered the authenticated Exports settings tab as an
   Enterprise-only surface, with no console errors beyond the React DevTools
   development info line.
-- `pnpm --filter @midad/docs typecheck`.
+- `pnpm --filter @nibleaf/docs typecheck`.
 - `docker compose -f docker-compose.coolify.yml config` with sample Coolify
   production values for dashboard, wildcard docs, custom-domain CNAME target,
   storage, auth, Postgres, and CORS origins.
@@ -253,9 +253,9 @@ Completed on 2026-07-01:
     packages/validators/src/index.ts packages/validators/src/schema.test.ts
     apps/app/src/components/project-settings/domain-section.tsx
     apps/app/src/lib/i18n/messages.ts`.
-  - `pnpm --filter @midad/validators test`.
-  - `pnpm --filter @midad/server typecheck`.
-  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @nibleaf/validators test`.
+  - `pnpm --filter @nibleaf/server typecheck`.
+  - `pnpm --filter @nibleaf/app typecheck`.
   - Direct server dogfood created a throwaway project/domain, confirmed
     `addDomain` and refetched `listDomains` both return `CNAME` and `TXT`
     setup records, confirmed hostname normalization, rejected invalid DNS
@@ -269,8 +269,8 @@ Completed on 2026-07-01:
     the dashboard.
   - `Dockerfile` build-arg handling, `docker-compose.yml` build args, production
     storage endpoint docs, and stale maxio credential wording were corrected.
-  - Verified with `pnpm --filter @midad/app typecheck`,
-    `pnpm --filter @midad/docs typecheck`, focused Biome checks, and
+  - Verified with `pnpm --filter @nibleaf/app typecheck`,
+    `pnpm --filter @nibleaf/docs typecheck`, focused Biome checks, and
     `docker compose -f docker-compose.yml config` with representative
     production domain/storage values.
 - Standard Compose object-storage override verification:
@@ -290,7 +290,7 @@ Completed on 2026-07-01:
 - Storage startup dependency verification:
   - Rendered standard and Coolify Compose configs confirmed `server` and
     `worker` depend on Postgres/Dragonfly/migrations but not on `maxio`.
-  - `pnpm --filter @midad/docs typecheck` passed after documenting the
+  - `pnpm --filter @nibleaf/docs typecheck` passed after documenting the
     best-effort storage bootstrap behavior.
 - Dragonfly/BullMQ grouping:
   - BullMQ queue names default to Redis hash tags (`{publish}`, `{search}`,
@@ -298,23 +298,23 @@ Completed on 2026-07-01:
   - Standard, dev, and Coolify Dragonfly services now use
     `--cluster_mode=emulated --lock_on_hashtags` instead of
     `--default_lua_flags=allow-undeclared-keys`.
-  - Coolify app images default to `ghcr.io/lord007tn/midad:latest`; `MIDAD_IMAGE`
+  - Coolify app images default to `ghcr.io/lord007tn/nibleaf:latest`; `NIBLEAF_IMAGE`
     remains only as an optional pin/override.
 - Custom-domain primary invariant verification:
-  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm --filter @nibleaf/server typecheck`.
   - `pnpm exec biome check --write apps/server/src/actions/domains.ts`.
   - Direct server dogfood created a throwaway project/domain, confirmed an
     unverified domain is rejected as primary, verified the same domain, then
     confirmed it can become primary before cleanup.
 - Multilingual default-language invariant verification:
-  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm --filter @nibleaf/server typecheck`.
   - `pnpm exec biome check --write apps/server/src/actions/languages.ts`.
   - Direct server dogfood created a throwaway project with English and Arabic,
     confirmed the current default cannot be unset directly, promoted Arabic to
     default, and verified exactly one default language remained before cleanup.
 - Page branch/language scope verification:
   - `pnpm exec biome check --write apps/server/src/actions/pages.ts`.
-  - `pnpm --filter @midad/server typecheck`.
+  - `pnpm --filter @nibleaf/server typecheck`.
   - Direct server dogfood created two throwaway projects, confirmed page create
     and list reject another project's branch/language IDs, confirmed moving or
     reordering an English page under an Arabic parent is rejected, and verified
@@ -324,9 +324,9 @@ Completed on 2026-07-01:
     packages/shared/src/site.test.ts apps/server/src/actions/sites.ts
     apps/server/src/actions/pages.ts apps/app/src/lib/site-paths.ts
     apps/app/src/routes/sites/$projectId/route.tsx`.
-  - `pnpm --filter @midad/shared test`.
-  - `pnpm --filter @midad/server typecheck`.
-  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @nibleaf/shared test`.
+  - `pnpm --filter @nibleaf/server typecheck`.
+  - `pnpm --filter @nibleaf/app typecheck`.
   - Direct server dogfood rejected page moves/reorders that would place a page
     under itself or a descendant and verified the original tree remained intact.
   - Direct snapshot dogfood confirmed branch names that both normalize to
@@ -345,7 +345,7 @@ Completed on 2026-07-01:
     apps/app/src/components/site/page-alternates-context.tsx
     apps/app/src/components/site/site-page-view.tsx
     apps/app/src/routes/sites/$projectId/route.tsx`.
-  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @nibleaf/app typecheck`.
   - Code inspection confirmed page alternates returned by the public page API
     are published from `SitePageView` to the site chrome, and `changeLanguage`
     uses `siteHref` with the translated alternate path before falling back to
@@ -355,8 +355,8 @@ Completed on 2026-07-01:
     apps/app/src/lib/site-seo.test.ts
     apps/app/src/components/site/site-analytics-consent.tsx
     apps/app/src/lib/site-i18n.ts apps/app/src/routes/sites/$projectId/route.tsx`.
-  - `pnpm --filter @midad/app test`.
-  - `pnpm --filter @midad/app typecheck`.
+  - `pnpm --filter @nibleaf/app test`.
+  - `pnpm --filter @nibleaf/app typecheck`.
   - `siteHead` regression tests confirm GA4/Plausible scripts are emitted when
     consent is not required and withheld from the initial head when cookie
     consent is enabled; the published-site chrome now renders a localized
@@ -366,8 +366,8 @@ Completed on 2026-07-01:
     apps/app/src/components/settings/billing-tab.tsx
     apps/app/src/components/settings/workspace-tab.tsx apps/app/src/lib/i18n/messages.ts
     IMPLEMENTATION_STATUS.md`.
-  - `pnpm --filter @midad/app typecheck`.
-  - `pnpm --filter @midad/app test`.
+  - `pnpm --filter @nibleaf/app typecheck`.
+  - `pnpm --filter @nibleaf/app test`.
   - Code inspection confirmed the per-site Plan tab now renders a single
     self-hosted free plan, the Billing tab has no upgrade/cancel controls, and
     the workspace plan summary no longer exposes a nonfunctional billing portal
@@ -376,8 +376,8 @@ Completed on 2026-07-01:
   - `pnpm exec biome check --write
     apps/app/src/components/settings/integrations-tab.tsx
     apps/app/src/lib/i18n/messages.ts IMPLEMENTATION_STATUS.md`.
-  - `pnpm --filter @midad/app typecheck`.
-  - `pnpm --filter @midad/app test`.
+  - `pnpm --filter @nibleaf/app typecheck`.
+  - `pnpm --filter @nibleaf/app test`.
   - Code inspection confirmed integrations no longer persist connected-looking
     states or expose connect/save controls in the self-hosted build; existing
     metadata is displayed read-only and users are directed to the Git settings
@@ -385,7 +385,7 @@ Completed on 2026-07-01:
 
 ## Pending / External
 
-- GitHub push target is `lord007tn/midad` on branch `main`.
+- GitHub push target is `lord007tn/nibleaf` on branch `main`.
 - Coolify repo readiness is implemented; creating the live Coolify app, assigning
   domains, and setting DNS records remain external deployment steps.
 - Cloudflare DNS setup remains out of the active work target unless requested.

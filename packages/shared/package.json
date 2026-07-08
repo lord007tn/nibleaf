@@ -1,5 +1,5 @@
 {
-  "name": "@midad/shared",
+  "name": "@nibleaf/shared",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -23,7 +23,7 @@
     "nanoid": "^5.1.14"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "typescript": "^5.9.2"
   }

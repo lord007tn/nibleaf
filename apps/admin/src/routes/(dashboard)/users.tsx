@@ -1,6 +1,6 @@
-import { Badge } from '@midad/design-system/components/ui/badge';
-import { Button } from '@midad/design-system/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { createFileRoute } from '@tanstack/react-router';
 import { useSetUserRole } from '@/hooks/api/mutations';
 import { useAdminUsers } from '@/hooks/api/queries';

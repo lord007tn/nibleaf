@@ -13,7 +13,7 @@ export default defineConfig({
     viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
     // Same-origin /api proxy: the browser only talks to the dashboard origin, so
-    // better-auth session cookies stay first-party. All /api/** → the Midad API.
+    // better-auth session cookies stay first-party. All /api/** → the Nibleaf API.
     // Custom-domain serving is handled in src/server.ts (request URL rewrite).
     nitro({
       routeRules: {

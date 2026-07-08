@@ -10,9 +10,9 @@ import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 export const Route = createFileRoute('/self-hosting')({
   head: () => ({
     meta: pageMeta({
-      title: 'Self-hosting — Midad',
+      title: 'Self-hosting — Nibleaf',
       description:
-        'Run the entire Midad stack on your own infrastructure with one Docker command. Your content and your users’ data never leave your servers.',
+        'Run the entire Nibleaf stack on your own infrastructure with one Docker command. Your content and your users’ data never leave your servers.',
       path: '/self-hosting',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }, ...hreflangLinks('/self-hosting')],
@@ -102,7 +102,7 @@ function SelfHostingPage() {
             </div>
             <pre className="overflow-x-auto p-5 text-white/90 leading-relaxed">{`# 1 · clone
 git clone ${GITHUB_URL.replace('https://', '')}
-cd midad
+cd nibleaf
 
 # 2 · configure
 cp .env.example .env

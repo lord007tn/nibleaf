@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';

@@ -1,5 +1,5 @@
 {
-  "extends": "@midad/tsconfig/hono.json",
+  "extends": "@nibleaf/tsconfig/hono.json",
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

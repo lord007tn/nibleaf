@@ -1,7 +1,7 @@
-import { Prisma, prisma } from '@midad/database';
-import { MemberRole } from '@midad/shared/constants';
-import { slugify } from '@midad/shared/utils';
-import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@midad/validators';
+import { Prisma, prisma } from '@nibleaf/database';
+import { MemberRole } from '@nibleaf/shared/constants';
+import { slugify } from '@nibleaf/shared/utils';
+import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;

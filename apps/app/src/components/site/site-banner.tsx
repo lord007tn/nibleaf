@@ -18,7 +18,7 @@ export interface SiteBannerConfig {
 export function SiteBanner({ projectId, banner }: { projectId: string; banner: SiteBannerConfig | undefined }) {
   const message = banner?.message?.trim();
   const dismissible = banner?.dismissible !== false;
-  const storageKey = `midad.banner.${projectId}.${message ?? ''}`;
+  const storageKey = `nibleaf.banner.${projectId}.${message ?? ''}`;
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {

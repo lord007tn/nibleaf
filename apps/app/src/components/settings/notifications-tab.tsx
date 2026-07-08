@@ -1,4 +1,4 @@
-import { Switch } from '@midad/design-system/components/ui/switch';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { toast } from 'sonner';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';

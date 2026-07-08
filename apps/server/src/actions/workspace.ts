@@ -1,5 +1,5 @@
-import { prisma } from '@midad/database';
-import type { UpdateWorkspaceSettingsBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { notFound } from '@/errors';
 
 interface WorkspaceMetadata {

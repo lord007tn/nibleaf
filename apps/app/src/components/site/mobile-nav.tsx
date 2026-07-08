@@ -1,4 +1,4 @@
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@midad/design-system/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SiteNav } from '@/components/site/site-nav';

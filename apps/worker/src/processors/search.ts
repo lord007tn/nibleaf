@@ -1,5 +1,5 @@
-import type { ReindexProjectJobData } from '@midad/bullmq/jobs/search';
-import { createLogger } from '@midad/logger';
+import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
+import { createLogger } from '@nibleaf/logger';
 import type { Job } from 'bullmq';
 
 const log = createLogger({ processor: 'search' });

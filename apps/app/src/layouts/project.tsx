@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';

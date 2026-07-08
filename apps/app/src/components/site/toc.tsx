@@ -1,4 +1,4 @@
-import { cn } from '@midad/design-system/lib/utils';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useEffect, useState } from 'react';
 
 type TocHeading = { id: string; text: string; depth: number };

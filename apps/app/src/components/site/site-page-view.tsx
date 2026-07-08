@@ -13,7 +13,7 @@ const sessionId = (): string => {
   if (typeof window === 'undefined') {
     return 'ssr';
   }
-  const key = 'midad.sid';
+  const key = 'nibleaf.sid';
   let id = window.localStorage.getItem(key);
   if (!id) {
     id = Math.random().toString(36).slice(2);

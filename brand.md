@@ -1,6 +1,6 @@
-# Midad Brand Assets
+# Nibleaf Brand Assets
 
-Midad / `مِداد` is the production brand for this project. The identity is built around ink, ivory paper, composed technical publishing, and warm umber/copper accents that work in both Arabic and English UI without a cold cast.
+Nibleaf is the production brand for this project. The identity is built around ink, ivory paper, composed technical publishing, and warm umber/copper accents that work in both Arabic and English UI without a cold cast.
 
 ## Core Palette
 
@@ -11,7 +11,7 @@ Midad / `مِداد` is the production brand for this project. The identity is b
 | Ink | `#181612` | Primary text, dark surfaces, monochrome mark |
 | Ink 2 | `#4E453A` | Softer text |
 | Border | `#DED2C0` | Lines and quiet dividers |
-| Midad Umber | `#8A4B2E` | Primary brand mark and calls to action |
+| Nibleaf Umber | `#8A4B2E` | Primary brand mark and calls to action |
 | Warm Umber | `#D18A54` | Dark-mode primary/accent |
 | Copper | `#B96A3D` | Editorial accent, highlights, social art |
 | Date | `#5D3928` | Warm secondary accent |
@@ -35,31 +35,31 @@ Root browser/app icon files are written to both public app roots:
 
 | Asset | File | Use |
 | --- | --- | --- |
-| Core icon | `midad-icon.svg` | Compact UI mark, avatars, product chrome |
-| Favicon | `midad-favicon.svg` | Browser favicon source |
-| App icon | `midad-app-icon.svg` | Large icon source for platform exports |
-| Reverse icon | `midad-icon-reverse.svg` | Mark on dark/ink surfaces |
-| Monochrome icon | `midad-icon-monochrome.svg` | One-color fallback |
-| Current-color icon | `midad-icon-currentcolor.svg` | Inline UI usage controlled by CSS color |
-| Latin wordmark | `midad-wordmark.svg` | Latin `Midad` wordmark |
-| Reverse Latin wordmark | `midad-wordmark-reverse.svg` | Latin wordmark on dark/ink backgrounds |
-| Arabic wordmark | `midad-wordmark-ar.svg` | Arabic `مِداد` wordmark |
-| Reverse Arabic wordmark | `midad-wordmark-ar-reverse.svg` | Arabic wordmark on dark/ink backgrounds |
-| Horizontal LTR lockup | `midad-logo-horizontal-ltr.svg` | English headers and sidebars |
-| Horizontal LTR reverse | `midad-logo-horizontal-ltr-reverse.svg` | English horizontal lockup for dark/ink surfaces |
-| Horizontal RTL lockup | `midad-logo-horizontal-rtl.svg` | Arabic headers and sidebars |
-| Horizontal icon-right alternate | `midad-logo-horizontal-icon-right.svg` | Alternate English lockup with the icon at the far right |
-| Horizontal reverse | `midad-logo-horizontal-reverse.svg` | Arabic horizontal lockup for dark/ink surfaces |
-| Stacked logo | `midad-logo-stacked.svg` | Centered logo treatment |
-| Stacked transparent | `midad-logo-stacked-transparent.svg` | Centered logo on existing light surfaces |
-| Dark stacked logo | `midad-logo-dark.svg` | Centered logo on ink background |
-| Monochrome stacked logo | `midad-logo-monochrome.svg` | One-color fallback |
-| Arabic stacked logo | `midad-logo-stacked-ar.svg` | Centered Arabic-first logo treatment |
-| Sidebar lockup | `midad-sidebar-lockup.svg` | Compact English dashboard/sidebar lockup |
-| Arabic sidebar lockup | `midad-sidebar-lockup-ar.svg` | Compact Arabic dashboard/sidebar lockup |
-| Social avatar | `midad-social-avatar.svg` | Profile/avatar crop |
-| OG card | `midad-og-card.svg` | English social preview source |
-| Arabic OG card | `midad-og-card-ar.svg` | Arabic social preview source |
+| Core icon | `nibleaf-icon.svg` | Compact UI mark, avatars, product chrome |
+| Favicon | `nibleaf-favicon.svg` | Browser favicon source |
+| App icon | `nibleaf-app-icon.svg` | Large icon source for platform exports |
+| Reverse icon | `nibleaf-icon-reverse.svg` | Mark on dark/ink surfaces |
+| Monochrome icon | `nibleaf-icon-monochrome.svg` | One-color fallback |
+| Current-color icon | `nibleaf-icon-currentcolor.svg` | Inline UI usage controlled by CSS color |
+| Latin wordmark | `nibleaf-wordmark.svg` | Latin `Nibleaf` wordmark |
+| Reverse Latin wordmark | `nibleaf-wordmark-reverse.svg` | Latin wordmark on dark/ink backgrounds |
+| Arabic wordmark | `nibleaf-wordmark-ar.svg` | Arabic `Nibleaf` wordmark |
+| Reverse Arabic wordmark | `nibleaf-wordmark-ar-reverse.svg` | Arabic wordmark on dark/ink backgrounds |
+| Horizontal LTR lockup | `nibleaf-logo-horizontal-ltr.svg` | English headers and sidebars |
+| Horizontal LTR reverse | `nibleaf-logo-horizontal-ltr-reverse.svg` | English horizontal lockup for dark/ink surfaces |
+| Horizontal RTL lockup | `nibleaf-logo-horizontal-rtl.svg` | Arabic headers and sidebars |
+| Horizontal icon-right alternate | `nibleaf-logo-horizontal-icon-right.svg` | Alternate English lockup with the icon at the far right |
+| Horizontal reverse | `nibleaf-logo-horizontal-reverse.svg` | Arabic horizontal lockup for dark/ink surfaces |
+| Stacked logo | `nibleaf-logo-stacked.svg` | Centered logo treatment |
+| Stacked transparent | `nibleaf-logo-stacked-transparent.svg` | Centered logo on existing light surfaces |
+| Dark stacked logo | `nibleaf-logo-dark.svg` | Centered logo on ink background |
+| Monochrome stacked logo | `nibleaf-logo-monochrome.svg` | One-color fallback |
+| Arabic stacked logo | `nibleaf-logo-stacked-ar.svg` | Centered Arabic-first logo treatment |
+| Sidebar lockup | `nibleaf-sidebar-lockup.svg` | Compact English dashboard/sidebar lockup |
+| Arabic sidebar lockup | `nibleaf-sidebar-lockup-ar.svg` | Compact Arabic dashboard/sidebar lockup |
+| Social avatar | `nibleaf-social-avatar.svg` | Profile/avatar crop |
+| OG card | `nibleaf-og-card.svg` | English social preview source |
+| Arabic OG card | `nibleaf-og-card-ar.svg` | Arabic social preview source |
 
 ## Validation
 
@@ -74,10 +74,10 @@ Root browser/app icon files are written to both public app roots:
 | --- | --- |
 | Favicon | `favicon-16.png`, `favicon-32.png`, `favicon-48.png`, `favicon-64.png` |
 | App icon | `apple-touch-icon-180.png`, `mstile-150.png`, `android-chrome-192.png`, `android-chrome-512.png`, `app-icon-1024.png` |
-| Core icon | `midad-icon-64.png`, `midad-icon-128.png`, `midad-icon-256.png`, `midad-icon-512.png`, `midad-icon-1024.png`, `midad-icon-reverse-512.png`, `midad-icon-monochrome-512.png` |
-| Logo PNG | `midad-wordmark.png`, `midad-wordmark-reverse.png`, `midad-wordmark-ar.png`, `midad-wordmark-ar-reverse.png`, `midad-logo-stacked.png`, `midad-logo-stacked-transparent.png`, `midad-logo-dark.png`, `midad-logo-monochrome.png`, `midad-logo-stacked-ar.png`, `midad-logo-horizontal-ltr.png`, `midad-logo-horizontal-ltr-reverse.png`, `midad-logo-horizontal-rtl.png`, `midad-logo-horizontal-icon-right.png`, `midad-logo-horizontal-reverse.png`, `midad-sidebar-lockup.png`, `midad-sidebar-lockup-ar.png` |
-| JPEG | `midad-og-card.jpg`, `midad-og-card-ar.jpg`, `midad-logo-stacked.jpg`, `midad-logo-dark.jpg` |
-| Social | `midad-social-avatar-512.png`, `midad-social-avatar-1024.png`, `midad-og-card.png`, `midad-og-card-ar.png` |
+| Core icon | `nibleaf-icon-64.png`, `nibleaf-icon-128.png`, `nibleaf-icon-256.png`, `nibleaf-icon-512.png`, `nibleaf-icon-1024.png`, `nibleaf-icon-reverse-512.png`, `nibleaf-icon-monochrome-512.png` |
+| Logo PNG | `nibleaf-wordmark.png`, `nibleaf-wordmark-reverse.png`, `nibleaf-wordmark-ar.png`, `nibleaf-wordmark-ar-reverse.png`, `nibleaf-logo-stacked.png`, `nibleaf-logo-stacked-transparent.png`, `nibleaf-logo-dark.png`, `nibleaf-logo-monochrome.png`, `nibleaf-logo-stacked-ar.png`, `nibleaf-logo-horizontal-ltr.png`, `nibleaf-logo-horizontal-ltr-reverse.png`, `nibleaf-logo-horizontal-rtl.png`, `nibleaf-logo-horizontal-icon-right.png`, `nibleaf-logo-horizontal-reverse.png`, `nibleaf-sidebar-lockup.png`, `nibleaf-sidebar-lockup-ar.png` |
+| JPEG | `nibleaf-og-card.jpg`, `nibleaf-og-card-ar.jpg`, `nibleaf-logo-stacked.jpg`, `nibleaf-logo-dark.jpg` |
+| Social | `nibleaf-social-avatar-512.png`, `nibleaf-social-avatar-1024.png`, `nibleaf-og-card.png`, `nibleaf-og-card-ar.png` |
 
 To regenerate raster/app icons:
 

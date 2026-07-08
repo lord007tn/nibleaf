@@ -1,5 +1,5 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { cn } from '@midad/design-system/lib/utils';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Eye, FileText } from 'lucide-react';
 import { useMemo } from 'react';

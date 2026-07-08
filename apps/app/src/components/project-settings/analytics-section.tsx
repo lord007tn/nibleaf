@@ -1,5 +1,5 @@
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';

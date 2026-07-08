@@ -1,7 +1,7 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
-import { Input } from '@midad/design-system/components/ui/input';
-import { cn } from '@midad/design-system/lib/utils';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

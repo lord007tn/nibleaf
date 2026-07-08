@@ -1,7 +1,7 @@
-import { prisma } from '@midad/database';
-import type { MemberRole } from '@midad/shared/constants';
-import { hashApiKeySecret } from '@midad/shared/crypto';
-import { roleAtLeast } from '@midad/shared/rbac';
+import { prisma } from '@nibleaf/database';
+import type { MemberRole } from '@nibleaf/shared/constants';
+import { hashApiKeySecret } from '@nibleaf/shared/crypto';
+import { roleAtLeast } from '@nibleaf/shared/rbac';
 import type { Context, MiddlewareHandler } from 'hono';
 import { assertProjectAccess } from '@/actions/projects';
 import { AppError } from '@/errors';

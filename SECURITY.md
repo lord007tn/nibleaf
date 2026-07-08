@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Midad is pre-1.0. Security fixes are applied to the `main` branch and the latest
+Nibleaf is pre-1.0. Security fixes are applied to the `main` branch and the latest
 tagged release. Self-hosters should track `main` or the most recent release.
 
 ## Reporting a vulnerability
@@ -11,9 +11,9 @@ tagged release. Self-hosters should track `main` or the most recent release.
 
 Instead, use one of the following private channels:
 
-- Open a [GitHub security advisory](https://github.com/midad-docs/midad/security/advisories/new)
+- Open a [GitHub security advisory](https://github.com/nibleaf-docs/nibleaf/security/advisories/new)
   (preferred), or
-- Email **security@midad.dev** _(replace with your project's real security contact
+- Email **security@nibleaf.dev** _(replace with your project's real security contact
   before publishing the repository)_.
 
 Please include:

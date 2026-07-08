@@ -1,8 +1,8 @@
-import { createJob, QueueNames } from '@midad/bullmq';
-import { prisma } from '@midad/database';
-import { MemberRole } from '@midad/shared/constants';
-import { canAssignRole, canManageMember } from '@midad/shared/rbac';
-import type { InviteMemberBody, UpdateMemberRoleBody } from '@midad/validators';
+import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { prisma } from '@nibleaf/database';
+import { MemberRole } from '@nibleaf/shared/constants';
+import { canAssignRole, canManageMember } from '@nibleaf/shared/rbac';
+import type { InviteMemberBody, UpdateMemberRoleBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
 import { notificationEnabled } from './notifications';
@@ -79,11 +79,11 @@ export const inviteMember = async (organizationId: string, inviterId: string, ac
     return invitation;
   }
   const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;
-  const siteName = org?.name ?? 'a Midad workspace';
+  const siteName = org?.name ?? 'a Nibleaf workspace';
   const inviterName = inviter?.name || inviter?.email || 'A teammate';
-  const subject = `${inviterName} invited you to ${siteName} on Midad`;
+  const subject = `${inviterName} invited you to ${siteName} on Nibleaf`;
   const text = [
-    `${inviterName} invited you to join ${siteName} as ${body.role} on Midad.`,
+    `${inviterName} invited you to join ${siteName} as ${body.role} on Nibleaf.`,
     '',
     'Accept your invitation:',
     acceptUrl,
@@ -92,7 +92,7 @@ export const inviteMember = async (organizationId: string, inviterId: string, ac
   ].join('\n');
   const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0f172a">
   <h2 style="font-size:18px;margin:0 0 12px">You're invited to ${escapeHtml(siteName)}</h2>
-  <p style="margin:0 0 16px;color:#475569;line-height:1.6"><strong>${escapeHtml(inviterName)}</strong> invited you to collaborate on documentation in <strong>${escapeHtml(siteName)}</strong> as <strong>${escapeHtml(body.role)}</strong> on Midad.</p>
+  <p style="margin:0 0 16px;color:#475569;line-height:1.6"><strong>${escapeHtml(inviterName)}</strong> invited you to collaborate on documentation in <strong>${escapeHtml(siteName)}</strong> as <strong>${escapeHtml(body.role)}</strong> on Nibleaf.</p>
   <p style="margin:0 0 24px"><a href="${acceptUrl}" style="display:inline-block;background:#5546e8;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Accept invitation</a></p>
   <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">Or paste this link into your browser:</p>
   <p style="margin:0 0 16px;font-size:13px"><a href="${acceptUrl}" style="color:#5546e8">${acceptUrl}</a></p>

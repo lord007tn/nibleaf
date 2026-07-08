@@ -2,7 +2,7 @@ import GithubSlugger from 'github-slugger';
 import { excerpt } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
- *  `pageConfigSchema` in @midad/validators (kept inline to avoid a dep). */
+ *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
 export interface SnapshotPageConfig {
   seo?: { metaTitle?: string; metaDescription?: string; ogImage?: string; canonicalUrl?: string; noindex?: boolean };
   sidebarTitle?: string;

@@ -1,8 +1,8 @@
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Textarea } from '@midad/design-system/components/ui/textarea';
-import { cn } from '@midad/design-system/lib/utils';
-import { slugify } from '@midad/shared/utils';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';

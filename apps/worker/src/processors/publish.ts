@@ -1,7 +1,7 @@
-import type { PublishDeploymentJobData } from '@midad/bullmq/jobs/publish';
-import { prisma } from '@midad/database';
-import { createLogger } from '@midad/logger';
-import { buildSnapshot } from '@midad/shared/site';
+import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
+import { prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
+import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { notifyDeployment } from '../lib/notify';
 

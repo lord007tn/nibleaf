@@ -1,5 +1,5 @@
-import { Badge } from '@midad/design-system/components/ui/badge';
-import { Button } from '@midad/design-system/components/ui/button';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Download, FileArchive, LockKeyhole } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';

@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Input } from '@midad/design-system/components/ui/input';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { KeyRound } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

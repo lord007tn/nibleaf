@@ -1,10 +1,10 @@
 ---
 title: Publishing
-description: From draft to deployed — how Midad builds, versions, and serves your docs.
+description: From draft to deployed — how Nibleaf builds, versions, and serves your docs.
 icon: Send
 ---
 
-Publishing in Midad is a deliberate, versioned step. Drafts stay private until you
+Publishing in Nibleaf is a deliberate, versioned step. Drafts stay private until you
 publish, and every publish produces an immutable version you can roll back to.
 
 ## The publish flow
@@ -25,7 +25,7 @@ publish, and every publish produces an immutable version you can roll back to.
   <Step>
     ### Build
 
-    The worker (`@midad/worker`) picks up the job, renders every page, and
+    The worker (`@nibleaf/worker`) picks up the job, renders every page, and
     generates the Orama search index for the version.
   </Step>
   <Step>
@@ -72,10 +72,10 @@ Map a project to your own domain so readers see your docs at, for example,
 
 <Steps>
   <Step>Add the domain to your project in the dashboard.</Step>
-  <Step>Create the TXT ownership record shown by Midad (`_midad.<domain>`).</Step>
-  <Step>Create the CNAME record pointing at your Midad custom-domain target.</Step>
-  <Step>Click **Verify DNS** in Midad once the records have propagated.</Step>
-  <Step>Midad serves the live deployment on that domain after verification.</Step>
+  <Step>Create the TXT ownership record shown by Nibleaf (`_nibleaf.<domain>`).</Step>
+  <Step>Create the CNAME record pointing at your Nibleaf custom-domain target.</Step>
+  <Step>Click **Verify DNS** in Nibleaf once the records have propagated.</Step>
+  <Step>Nibleaf serves the live deployment on that domain after verification.</Step>
 </Steps>
 
 <Callout type="warn">
@@ -89,7 +89,7 @@ Self-hosted operators configure the custom-domain target with
 host should route to the same app ingress as project subdomains.
 
 For apex domains, use your DNS provider's CNAME flattening or point the apex to
-the same app ingress with `A`/`AAAA` records, then add the `_midad.<domain>` TXT
+the same app ingress with `A`/`AAAA` records, then add the `_nibleaf.<domain>` TXT
 record shown in the dashboard.
 
 ## Analytics
@@ -109,6 +109,6 @@ If a release goes wrong:
 
 ## Next steps
 
-Ready to run Midad on your own servers? See
+Ready to run Nibleaf on your own servers? See
 [self-hosting with Docker](/docs/self-hosting/docker).
 

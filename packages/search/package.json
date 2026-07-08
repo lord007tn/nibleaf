@@ -1,5 +1,5 @@
 {
-  "name": "@midad/search",
+  "name": "@nibleaf/search",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@orama/orama": "^3.1.18",
-    "@midad/logger": "workspace:*",
+    "@nibleaf/logger": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
     "typescript": "^5.9.2"
   }

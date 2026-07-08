@@ -1,9 +1,9 @@
 import './lib/serialize-bigint';
 
 import { serve } from '@hono/node-server';
-import { scheduleAnalyticsRollup } from '@midad/bullmq';
-import { logger } from '@midad/logger';
-import { configureUploadCors, ensureBucket } from '@midad/storage';
+import { scheduleAnalyticsRollup } from '@nibleaf/bullmq';
+import { logger } from '@nibleaf/logger';
+import { configureUploadCors, ensureBucket } from '@nibleaf/storage';
 import { Scalar } from '@scalar/hono-api-reference';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { env } from './env';
@@ -25,19 +25,19 @@ app.get(
   '/openapi.json',
   openAPIRouteHandler(app, {
     documentation: {
-      info: { title: 'Midad API', version: '0.1.0', description: 'Open-source documentation platform.' },
-      servers: [{ url: env.API_URL, description: 'Midad API' }],
+      info: { title: 'Nibleaf API', version: '0.1.0', description: 'Open-source documentation platform.' },
+      servers: [{ url: env.API_URL, description: 'Nibleaf API' }],
     },
   }),
 );
 
-app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', title: 'Midad API' }] }));
+app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', title: 'Nibleaf API' }] }));
 
 app.get('/health', (ctx) => ctx.json({ status: 'ok', service: env.SERVICE_NAME }));
 
 async function main() {
   server = serve({ port: env.API_PORT, fetch: app.fetch }, (info) => {
-    logger.info(`Midad API on http://localhost:${info.port}`);
+    logger.info(`Nibleaf API on http://localhost:${info.port}`);
     logger.info(`  docs   → http://localhost:${info.port}/docs`);
     logger.info(`  health → http://localhost:${info.port}/health`);
   });

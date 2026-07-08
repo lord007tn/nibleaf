@@ -1,6 +1,6 @@
-import { Prisma, prisma } from '@midad/database';
-import { joinPath, slugify } from '@midad/shared/utils';
-import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@midad/validators';
+import { Prisma, prisma } from '@nibleaf/database';
+import { joinPath, slugify } from '@nibleaf/shared/utils';
+import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, ensureDefaultBranch } from './branches';
 import { assertLanguageInProject, ensureDefaultLanguage } from './languages';

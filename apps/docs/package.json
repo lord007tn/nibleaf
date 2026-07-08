@@ -1,5 +1,5 @@
 {
-  "name": "@midad/docs",
+  "name": "@nibleaf/docs",
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
@@ -24,7 +24,7 @@
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.15.0",

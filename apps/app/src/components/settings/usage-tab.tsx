@@ -1,4 +1,4 @@
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Activity, FileText, Globe2, Languages, Rocket, Users } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useAnalytics, useProjectMembers } from '@/hooks/api';

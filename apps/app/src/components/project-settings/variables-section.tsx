@@ -1,4 +1,4 @@
-import { Input } from '@midad/design-system/components/ui/input';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useForm } from '@tanstack/react-form';
 import { Plus, X } from 'lucide-react';
 import type { Project } from '@/hooks/api';

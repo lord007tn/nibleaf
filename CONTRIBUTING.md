@@ -1,12 +1,12 @@
-# Contributing to Midad
+# Contributing to Nibleaf
 
-Thanks for your interest in improving Midad — the open-source, self-hostable
+Thanks for your interest in improving Nibleaf — the open-source, self-hostable
 documentation platform. This guide covers how to get a local environment running
 and the conventions we follow.
 
 ## Licensing of contributions
 
-Midad is licensed under the **GNU Affero General Public License v3.0**
+Nibleaf is licensed under the **GNU Affero General Public License v3.0**
 ([LICENSE](LICENSE)). By submitting a contribution (a pull request, patch, or any
 other change) you agree that your contribution is licensed under the AGPL-3.0,
 the same license as the project. We do not require a separate CLA; the
@@ -19,8 +19,8 @@ Requirements: **Node ≥ 22.13**, **pnpm ≥ 10**, and **Docker** (for Postgres,
 cache, and S3-compatible storage).
 
 ```bash
-git clone https://github.com/midad-docs/midad
-cd midad
+git clone https://github.com/nibleaf-docs/nibleaf
+cd nibleaf
 cp .env.example .env
 echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> .env
 
@@ -29,7 +29,7 @@ pnpm install
 # Bring up the datastores (Postgres, Dragonfly, maxio):
 docker compose up -d postgres dragonfly maxio
 
-# Apply migrations and seed a local demo account (demo@midad.dev / midaddemo123):
+# Apply migrations and seed a local demo account (demo@nibleaf.dev / nibleafdemo123):
 pnpm db:deploy
 pnpm db:seed
 
@@ -57,7 +57,7 @@ pnpm format      # biome format --write . (auto-fix formatting)
 ## Conventions
 
 - **Monorepo** (pnpm + turbo). Apps live in `apps/*`, shared libraries in
-  `packages/*`, all scoped `@midad/*`.
+  `packages/*`, all scoped `@nibleaf/*`.
 - **Content is Markdown end-to-end.** `Page.content` is a Markdown string that
   feeds search, the table of contents, excerpts, and the live site. The editor
   round-trips Markdown — never persist ProseMirror/TipTap JSON.

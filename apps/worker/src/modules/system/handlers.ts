@@ -1,5 +1,5 @@
 import { workbench } from '@getworkbench/hono';
-import { queues } from '@midad/bullmq/queues';
+import { queues } from '@nibleaf/bullmq/queues';
 import { Hono } from 'hono';
 import { env } from '../../env';
 
@@ -12,7 +12,7 @@ const app = new Hono()
     '/jobs',
     workbench({
       queues: Object.values(queues),
-      title: 'Midad Queues',
+      title: 'Nibleaf Queues',
       ...(workbenchAuth ? { auth: workbenchAuth } : {}),
     }),
   );

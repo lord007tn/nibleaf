@@ -1,4 +1,4 @@
-import { createDeploymentBody } from '@midad/validators';
+import { createDeploymentBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import {
   createDeployment,

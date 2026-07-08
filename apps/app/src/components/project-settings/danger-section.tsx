@@ -1,6 +1,6 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm, usePrompt } from '@midad/design-system/components/ui/confirm';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@midad/design-system/components/ui/select';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/confirm';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';

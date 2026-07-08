@@ -1,4 +1,4 @@
-import { createCommentBody, resolveCommentBody } from '@midad/validators';
+import { createCommentBody, resolveCommentBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createComment, deleteComment, listComments, resolveComment } from '@/actions/comments';

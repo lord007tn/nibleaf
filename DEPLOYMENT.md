@@ -1,6 +1,6 @@
 # Production deployment
 
-This guide covers running Midad in production with Docker Compose behind a TLS
+This guide covers running Nibleaf in production with Docker Compose behind a TLS
 reverse proxy. For local development see the [README](README.md).
 
 > The container entrypoint **refuses to start** (`exit 1`) when `NODE_ENV=production`
@@ -46,7 +46,7 @@ PUBLIC_APP_URL=https://app.your-domain.com
 PUBLIC_API_URL=https://app.your-domain.com        # API is reached via the app proxy
 PUBLIC_WWW_URL=https://your-domain.com
 PUBLIC_STORAGE_ENDPOINT=https://storage.your-domain.com
-PUBLIC_STORAGE_URL=https://cdn.your-domain.com/midad
+PUBLIC_STORAGE_URL=https://cdn.your-domain.com/nibleaf
 
 # Published docs domains. Create *.docs.your-domain.com at your proxy/Coolify
 # ingress so project slugs resolve as <slug>.docs.your-domain.com.
@@ -55,10 +55,10 @@ CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.your-domain.com
 
 # Object storage. Keep the maxio defaults, or switch to R2/S3 below.
 STORAGE_PROVIDER=maxio
-STORAGE_PUBLIC_URL=https://cdn.your-domain.com/midad
+STORAGE_PUBLIC_URL=https://cdn.your-domain.com/nibleaf
 ```
 
-Custom domains and free project subdomains are resolved by Midad after traffic
+Custom domains and free project subdomains are resolved by Nibleaf after traffic
 reaches the `app` service. TLS certificates, wildcard DNS, and the public ingress
 for `*.docs.your-domain.com` remain reverse-proxy or Coolify responsibilities.
 
@@ -117,9 +117,9 @@ services are reached through it; the `server` and `worker` ports stay internal.
 ### Coolify without marketing
 
 Use `docker-compose.coolify.yml` when deploying the self-hostable docs platform
-to Coolify. It omits the `www` marketing service, builds the Midad image with
+to Coolify. It omits the `www` marketing service, builds the Nibleaf image with
 Coolify's generated public URLs, defaults app containers to
-`ghcr.io/lord007tn/midad:latest`, and exposes:
+`ghcr.io/lord007tn/nibleaf:latest`, and exposes:
 
 - `app:4310` for dashboard, editor, published docs, project subdomains, and
   custom domains.
@@ -139,7 +139,7 @@ you use external R2/S3 storage. For example:
 The compose file reads Coolify-generated values such as `SERVICE_URL_APP`,
 `SERVICE_URL_MAXIO`, `SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_64_POSTGRES`,
 `SERVICE_USER_STORAGE`, `SERVICE_PASSWORD_64_STORAGE`, and
-`SERVICE_HEX_64_MIDAD`. Set `SITE_BASE_DOMAIN` and
+`SERVICE_HEX_64_NIBLEAF`. Set `SITE_BASE_DOMAIN` and
 `CUSTOM_DOMAIN_CNAME_TARGET` manually in the Coolify environment screen.
 
 ## 4. nginx reverse proxy (TLS termination)
@@ -215,7 +215,7 @@ browser must reach the API at a public URL), rebuild the `app` image with a
 different value, e.g.:
 
 ```bash
-docker build --build-arg VITE_API_URL=https://api.your-domain.com -t midad .
+docker build --build-arg VITE_API_URL=https://api.your-domain.com -t nibleaf .
 ```
 
 ## 6. Run migrations before scaling
@@ -224,7 +224,7 @@ The `migrate` service applies Prisma migrations and exits; `server` and `worker`
 wait for it to complete successfully. Run it **once** before scaling out:
 
 ```bash
-# apply migrations (and only seed if MIDAD_RUN_SEED=true)
+# apply migrations (and only seed if NIBLEAF_RUN_SEED=true)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
 
 # then bring up / scale the long-running services
@@ -232,7 +232,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 Seeding is **off by default in production** — the entrypoint only seeds when
-`MIDAD_RUN_SEED=true` (or `NODE_ENV=development`). Leave it unset in production so
+`NIBLEAF_RUN_SEED=true` (or `NODE_ENV=development`). Leave it unset in production so
 no demo account is created.
 
 ## 7. Security checklist
@@ -244,7 +244,7 @@ no demo account is created.
 - [ ] TLS terminated at the reverse proxy; HTTP redirects to HTTPS.
 - [ ] `TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` list only your real origins.
 - [ ] `STORAGE_CORS_ALLOWED_ORIGINS` restricted to the dashboard origin.
-- [ ] `MIDAD_RUN_SEED` left unset (no demo account in production).
+- [ ] `NIBLEAF_RUN_SEED` left unset (no demo account in production).
 - [ ] Database and object storage backed up on a schedule.
 - [ ] Container images rebuilt and redeployed for security updates.
 

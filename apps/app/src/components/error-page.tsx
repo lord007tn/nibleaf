@@ -1,4 +1,4 @@
-import { Button } from '@midad/design-system/components/ui/button';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link } from '@tanstack/react-router';
 import { translateStandalone as t } from '@/lib/i18n';

@@ -1,6 +1,6 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { DownloadCloud, GitBranch, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';

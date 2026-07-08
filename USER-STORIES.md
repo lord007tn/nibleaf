@@ -1,4 +1,4 @@
-# Plume / Midad — User Stories & Flows
+# Nibleaf — User Stories & Flows
 
 > Open-source, self-hostable documentation platform (a Mintlify alternative). Authors write in Markdown/MDX, customize branding & navigation, publish versioned snapshots, and serve a fast, searchable, multi-language (LTR/RTL) docs site — all on their own infrastructure.
 
@@ -307,7 +307,7 @@ sequenceDiagram
     S->>DNS: Create CNAME + TXT records
     S->>App: Click "Verify"
     App->>API: POST verify
-    API->>DNS: resolveTxt(_midad.docs.acme.com)
+    API->>DNS: resolveTxt(_nibleaf.docs.acme.com)
     DNS-->>API: token
     API-->>App: verified = true
     Note over Edge: resolveDomainHost() maps the verified host -> project
@@ -443,7 +443,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Toggle["Language switch (EN / العربية)"] --> Locale["Store locale (midad.locale)"]
+    Toggle["Language switch (EN / العربية)"] --> Locale["Store locale (nibleaf.locale)"]
     Locale --> Dir["Set <html dir> + lang"]
     Dir -->|ar| RTL["RTL: mirrored layout, logical spacing (ms/me, start/end)"]
     Dir -->|en| LTR["LTR"]

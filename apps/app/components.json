@@ -13,11 +13,11 @@
   "iconLibrary": "lucide",
   "rtl": true,
   "aliases": {
-    "components": "@midad/design-system/components",
-    "utils": "@midad/design-system/lib/utils",
-    "ui": "@midad/design-system/components/ui",
-    "lib": "@midad/design-system/lib",
-    "hooks": "@midad/design-system/hooks"
+    "components": "@nibleaf/design-system/components",
+    "utils": "@nibleaf/design-system/lib/utils",
+    "ui": "@nibleaf/design-system/components/ui",
+    "lib": "@nibleaf/design-system/lib",
+    "hooks": "@nibleaf/design-system/hooks"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

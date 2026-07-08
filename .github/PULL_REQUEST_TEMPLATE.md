@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to Midad! -->
+<!-- Thanks for contributing to Nibleaf! -->
 
 ## What does this PR do?
 

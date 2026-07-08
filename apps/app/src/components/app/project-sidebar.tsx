@@ -1,11 +1,11 @@
-import { MidadMark } from '@midad/design-system/brand';
+import { NibleafMark } from '@nibleaf/design-system/brand';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@midad/design-system/components/ui/dropdown-menu';
+} from '@nibleaf/design-system/components/ui/dropdown-menu';
 import {
   Sidebar,
   SidebarContent,
@@ -14,7 +14,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@midad/design-system/components/ui/sidebar';
+} from '@nibleaf/design-system/components/ui/sidebar';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BarChart3, Boxes, Check, ChevronsUpDown, Eye, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
@@ -62,8 +62,8 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 className="flex w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md p-2 text-start transition-colors hover:bg-sidebar-accent"
                 type="button"
               >
-                <MidadMark className="size-7 shrink-0" />
-                <span className="flex-1 truncate font-semibold tracking-tight">{project?.name ?? 'Midad'}</span>
+                <NibleafMark className="size-7 shrink-0" />
+                <span className="flex-1 truncate font-semibold tracking-tight">{project?.name ?? 'Nibleaf'}</span>
                 <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground" />
               </button>
             }

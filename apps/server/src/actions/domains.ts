@@ -1,7 +1,7 @@
 import { resolveTxt } from 'node:dns/promises';
-import { prisma } from '@midad/database';
-import { newToken } from '@midad/shared/ids';
-import type { AddDomainBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import { newToken } from '@nibleaf/shared/ids';
+import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
@@ -10,10 +10,10 @@ import { assertProjectInOrg } from './projects';
  *  instance's own base domain — never a SaaS host the self-hoster doesn't own. */
 const cnameTarget = (): string => env.CUSTOM_DOMAIN_CNAME_TARGET || env.SITE_BASE_DOMAIN || new URL(env.APP_URL).host;
 
-/** DNS records the user must create to point a custom domain at Midad. */
+/** DNS records the user must create to point a custom domain at Nibleaf. */
 export const dnsRecords = (domain: Domain) => [
   { type: 'CNAME', name: domain.domain, value: cnameTarget(), ttl: 3600 },
-  { type: 'TXT', name: `_midad.${domain.domain}`, value: `midad-verify=${domain.verificationToken}`, ttl: 3600 },
+  { type: 'TXT', name: `_nibleaf.${domain.domain}`, value: `nibleaf-verify=${domain.verificationToken}`, ttl: 3600 },
 ];
 
 interface Domain {
@@ -40,7 +40,7 @@ export const addDomain = async (organizationId: string, projectId: string, body:
 /**
  * Verify ownership by checking the DNS TXT record.
  *
- * In production we resolve `_midad.<domain>` and require a record containing the
+ * In production we resolve `_nibleaf.<domain>` and require a record containing the
  * project's verification token. In non-production we bypass the lookup so local
  * testing (where DNS isn't configured) still works.
  */
@@ -52,8 +52,8 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
   }
 
   if (env.NODE_ENV === 'production') {
-    const expected = `midad-verify=${domain.verificationToken}`;
-    const records = await resolveTxt(`_midad.${domain.domain}`).catch(() => [] as string[][]);
+    const expected = `nibleaf-verify=${domain.verificationToken}`;
+    const records = await resolveTxt(`_nibleaf.${domain.domain}`).catch(() => [] as string[][]);
     const verified = records.some((chunks) => chunks.join('').includes(expected));
     if (!verified) {
       throw badRequest('DNS TXT record not found yet — add the record and retry.');

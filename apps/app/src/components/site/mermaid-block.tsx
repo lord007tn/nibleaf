@@ -1,4 +1,4 @@
-import { useTheme } from '@midad/design-system/theme';
+import { useTheme } from '@nibleaf/design-system/theme';
 import { useEffect, useId, useState } from 'react';
 
 /**

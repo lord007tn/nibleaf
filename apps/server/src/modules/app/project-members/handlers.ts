@@ -1,4 +1,4 @@
-import { inviteMemberBody, transferOwnershipBody, updateMemberRoleBody } from '@midad/validators';
+import { inviteMemberBody, transferOwnershipBody, updateMemberRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { cancelInvitation, inviteMember, listMembers, removeMember, transferOwnership, updateMemberRole } from '@/actions/members';
 import { getContextMembershipOrThrow, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';

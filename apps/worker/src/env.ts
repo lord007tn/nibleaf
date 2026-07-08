@@ -1,5 +1,5 @@
-import { keys as bullmq } from '@midad/bullmq/keys';
-import { keys as database } from '@midad/database/keys';
+import { keys as bullmq } from '@nibleaf/bullmq/keys';
+import { keys as database } from '@nibleaf/database/keys';
 import { createEnv } from '@t3-oss/env-core';
 import { z } from 'zod';
 
@@ -10,7 +10,7 @@ export const env = createEnv({
     WORKER_PORT: z.coerce.number().default(4312),
     API_URL: z.url().default('http://localhost:4311'),
     SMTP_URL: z.string().optional(),
-    EMAIL_FROM: z.string().default('midad@localhost'),
+    EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),
   },

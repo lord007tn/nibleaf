@@ -1,5 +1,5 @@
-import { Separator } from '@midad/design-system/components/ui/separator';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@midad/design-system/components/ui/sidebar';
+import { Separator } from '@nibleaf/design-system/components/ui/separator';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
 import { type ReactNode, useState } from 'react';

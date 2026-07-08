@@ -4,7 +4,7 @@ description: Environment variables for auth, database, queues, storage, and publ
 icon: Settings
 ---
 
-Midad is configured through environment variables. Start by copying the example
+Nibleaf is configured through environment variables. Start by copying the example
 file and then replace every demo secret before production use.
 
 ```bash
@@ -46,17 +46,17 @@ openssl rand -base64 24   # STORAGE_SECRET_KEY
 
 ## Database
 
-Midad uses PostgreSQL through Prisma.
+Nibleaf uses PostgreSQL through Prisma.
 
 ```dotenv
-POSTGRES_URL=postgresql://midad:<password>@postgres:5432/midad
+POSTGRES_URL=postgresql://nibleaf:<password>@postgres:5432/nibleaf
 ```
 
 For local development outside Docker, `.env.example` points at the dev compose
 port:
 
 ```dotenv
-POSTGRES_URL=postgresql://midad:midad@localhost:5442/midad
+POSTGRES_URL=postgresql://nibleaf:nibleaf@localhost:5442/nibleaf
 ```
 
 Run migrations manually with:
@@ -84,13 +84,13 @@ Background work uses BullMQ on Dragonfly, a Redis-compatible server.
 
 The bundled Dragonfly containers run with `--cluster_mode=emulated` and
 `--lock_on_hashtags`. Keep `QUEUE_CLUSTER=true` unless you are intentionally
-pointing Midad at a Redis-compatible backend that should not use hash-tagged
+pointing Nibleaf at a Redis-compatible backend that should not use hash-tagged
 queue names.
 
 ## Object storage
 
 The bundled stack uses maxio for S3-compatible local object storage. You can keep
-maxio or point Midad at Cloudflare R2, AWS S3, Backblaze B2, or another
+maxio or point Nibleaf at Cloudflare R2, AWS S3, Backblaze B2, or another
 S3-compatible service.
 
 ```dotenv
@@ -98,11 +98,11 @@ STORAGE_PROVIDER=maxio
 STORAGE_ENDPOINT=http://maxio:9000
 STORAGE_PUBLIC_ENDPOINT=https://storage.example.com
 STORAGE_REGION=auto
-STORAGE_BUCKET=midad
+STORAGE_BUCKET=nibleaf
 STORAGE_ACCESS_KEY_ID=<access-key>
 STORAGE_SECRET_ACCESS_KEY=<secret-key>
 STORAGE_FORCE_PATH_STYLE=true
-STORAGE_PUBLIC_URL=https://cdn.example.com/midad
+STORAGE_PUBLIC_URL=https://cdn.example.com/nibleaf
 ```
 
 `STORAGE_ENDPOINT` is the server-side S3 endpoint. `STORAGE_PUBLIC_ENDPOINT`
@@ -129,7 +129,7 @@ PUBLIC_WWW_URL=https://example.com
 
 ## Docs domains
 
-Midad serves published docs from the dashboard app service. Two domain concepts
+Nibleaf serves published docs from the dashboard app service. Two domain concepts
 need to be configured:
 
 - Free project subdomains: `<deployment-name>.<SITE_BASE_DOMAIN>`.
@@ -150,7 +150,7 @@ ingress:
 
 In Cloudflare, keep those records on the same proxy mode as the dashboard app
 record. If Cloudflare proxies the records, configure Coolify to accept the host
-headers and issue certificates for the wildcard/docs hosts. Midad only resolves
+headers and issue certificates for the wildcard/docs hosts. Nibleaf only resolves
 the incoming `Host`; TLS termination and wildcard certificates are handled by
 Cloudflare, Coolify, or your reverse proxy.
 
@@ -168,7 +168,7 @@ generated passwords, and generated hex secrets:
 | `SERVICE_PASSWORD_64_POSTGRES` | Postgres password. |
 | `SERVICE_USER_STORAGE` | maxio access key. |
 | `SERVICE_PASSWORD_64_STORAGE` | maxio secret key. |
-| `SERVICE_HEX_64_MIDAD` | Better Auth signing secret. |
+| `SERVICE_HEX_64_NIBLEAF` | Better Auth signing secret. |
 
 Set `SITE_BASE_DOMAIN` and `CUSTOM_DOMAIN_CNAME_TARGET` manually in the Coolify
 environment screen. `WWW_URL` is optional; leave it unset to reuse the dashboard
@@ -187,7 +187,7 @@ deployments can start without waiting for bundled storage.
 
 ## Email
 
-SMTP is optional. Without SMTP, Midad still runs, but invites, reset-password
+SMTP is optional. Without SMTP, Nibleaf still runs, but invites, reset-password
 emails, and verification emails will only be logged/queued.
 
 | Variable | Purpose |

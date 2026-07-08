@@ -1,7 +1,7 @@
-import { createJob, QueueNames } from '@midad/bullmq';
-import { Prisma, prisma } from '@midad/database';
-import { createLogger } from '@midad/logger';
-import { joinPath, slugify } from '@midad/shared';
+import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { Prisma, prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
+import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { organization } from 'better-auth/plugins';
@@ -62,7 +62,7 @@ async function reassignOrDeleteOrgs(userId: string): Promise<void> {
   }
 }
 
-const WELCOME_CONTENT = `This is your first page, built with **Midad** — the open-source documentation
+const WELCOME_CONTENT = `This is your first page, built with **Nibleaf** — the open-source documentation
 platform you can self-host on your own infrastructure.
 
 ## Quick start
@@ -84,18 +84,18 @@ const QUICKSTART_CONTENT = `Get your documentation live in minutes.
 ## Install
 
 \`\`\`bash
-git clone https://github.com/midad-docs/midad
-cd midad && cp .env.example .env
+git clone https://github.com/nibleaf-docs/nibleaf
+cd nibleaf && cp .env.example .env
 docker compose up -d
 \`\`\`
 
 ## Write
 
 Pages are Markdown/MDX. Organize them into groups, reorder with drag handles,
-and Midad builds the navigation, search index, and table of contents for you.
+and Nibleaf builds the navigation, search index, and table of contents for you.
 `;
 
-const SELF_HOSTING_CONTENT = `Run Midad on infrastructure you control. The standard stack uses Docker Compose
+const SELF_HOSTING_CONTENT = `Run Nibleaf on infrastructure you control. The standard stack uses Docker Compose
 for the dashboard, API, worker, Postgres, Dragonfly, and S3-compatible object
 storage.
 
@@ -125,7 +125,7 @@ Create the first account at /sign-up. Production mode does not seed demo
 credentials unless you explicitly enable it.
 `;
 
-const CONFIGURATION_CONTENT = `Configure Midad with environment variables in the .env file next to
+const CONFIGURATION_CONTENT = `Configure Nibleaf with environment variables in the .env file next to
 docker-compose.yml.
 
 ## Required production values
@@ -150,7 +150,7 @@ wildcards in production.
 
 ## Storage
 
-The bundled stack uses maxio. You can also point Midad at Cloudflare R2, AWS S3,
+The bundled stack uses maxio. You can also point Nibleaf at Cloudflare R2, AWS S3,
 Backblaze B2, or another S3-compatible provider.
 `;
 
@@ -364,14 +364,14 @@ export const auth = betterAuth({
     // for public instances. The verify-email UI + resend then work via the queue below.
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     sendResetPassword: async ({ user, url }) => {
-      await sendMail(user.email, 'Reset your Midad password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
+      await sendMail(user.email, 'Reset your Nibleaf password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
     },
   },
   emailVerification: {
     sendVerificationEmail: async ({ user, url }) => {
       await sendMail(
         user.email,
-        'Verify your Midad email',
+        'Verify your Nibleaf email',
         `<p>Confirm your email to finish setting up your account:</p><p><a href="${url}">${url}</a></p>`,
       );
     },
@@ -382,7 +382,7 @@ export const auth = betterAuth({
       sendChangeEmailVerification: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
         await sendMail(
           user.email,
-          'Confirm your new Midad email',
+          'Confirm your new Nibleaf email',
           `<p>Confirm changing your email to <strong>${newEmail}</strong>:</p><p><a href="${url}">${url}</a></p>`,
         );
       },
@@ -450,7 +450,7 @@ export const auth = betterAuth({
             const where = session.ipAddress ? ` from a new location (IP ${escapeHtml(session.ipAddress)})` : ' from a new device';
             await sendMail(
               user.email,
-              'New sign-in to your Midad account',
+              'New sign-in to your Nibleaf account',
               `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New sign-in detected</h2><p style="margin:0;color:#475569;line-height:1.6">We noticed a new sign-in to your account${where}. If this was you, you can ignore this email — otherwise change your password right away.</p></div>`,
             );
           } catch {
@@ -477,7 +477,7 @@ export const auth = betterAuth({
             }
             await sendMail(
               user.email,
-              'Your Midad password was changed',
+              'Your Nibleaf password was changed',
               `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">Password changed</h2><p style="margin:0;color:#475569;line-height:1.6">Your account password was just changed. If this wasn't you, reset your password immediately and review your active sessions.</p></div>`,
             );
           } catch {

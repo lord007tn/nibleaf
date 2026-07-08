@@ -1,7 +1,7 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { ScrollArea } from '@midad/design-system/components/ui/scroll-area';
-import { Textarea } from '@midad/design-system/components/ui/textarea';
-import { cn } from '@midad/design-system/lib/utils';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

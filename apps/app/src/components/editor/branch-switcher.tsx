@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { useConfirm } from '@midad/design-system/components/ui/confirm';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import {
   Dialog,
   DialogClose,
@@ -8,16 +8,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@midad/design-system/components/ui/dialog';
+} from '@nibleaf/design-system/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@midad/design-system/components/ui/dropdown-menu';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
+} from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';

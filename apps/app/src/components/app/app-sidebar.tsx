@@ -1,4 +1,4 @@
-import { MidadMark, MidadWordmark } from '@midad/design-system/brand';
+import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import {
   Sidebar,
   SidebarContent,
@@ -8,7 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@midad/design-system/components/ui/sidebar';
+} from '@nibleaf/design-system/components/ui/sidebar';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BarChart3, BookText, Settings } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
@@ -31,8 +31,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <MidadMark className="size-7" />
-          <MidadWordmark className="font-semibold tracking-tight" script="latin" />
+          <NibleafMark className="size-7" />
+          <NibleafWordmark className="font-semibold tracking-tight" />
           <span className="ms-auto rounded-md bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">{t('brand.oss')}</span>
         </div>
       </SidebarHeader>

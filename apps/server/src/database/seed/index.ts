@@ -1,9 +1,9 @@
-import { auth } from '@midad/auth/server';
-import { prisma } from '@midad/database';
-import { logger } from '@midad/logger';
-import { buildSnapshot } from '@midad/shared/site';
+import { auth } from '@nibleaf/auth/server';
+import { prisma } from '@nibleaf/database';
+import { logger } from '@nibleaf/logger';
+import { buildSnapshot } from '@nibleaf/shared/site';
 
-const DEMO = { email: 'demo@midad.dev', password: 'midaddemo123', name: 'Ada Lovelace' };
+const DEMO = { email: 'demo@nibleaf.dev', password: 'nibleafdemo123', name: 'Ada Lovelace' };
 
 async function seed() {
   // Guard against clobbering a real environment with demo data.

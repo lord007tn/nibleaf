@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { createFileRoute } from '@tanstack/react-router';
 import { ExternalLink } from 'lucide-react';
 import { useAdminSites } from '@/hooks/api/queries';

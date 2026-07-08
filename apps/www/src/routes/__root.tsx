@@ -5,11 +5,11 @@ import { LocaleProvider } from '@/lib/i18n';
 import { APP_URL, GITHUB_URL, WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
-const TITLE = 'Midad — open-source, self-hostable documentation platform';
+const TITLE = 'Nibleaf — open-source, self-hostable documentation platform';
 const DESCRIPTION =
-  'Midad is the open-source, self-hostable documentation platform — a Mintlify alternative you run yourself. Markdown authoring, hybrid search, versioned publishing, custom domains, and Arabic-ready RTL. Deploy with one Docker command.';
-const OG_IMAGE = `${WWW_URL}/brand/raster/social/midad-og-card.png`;
-const OG_IMAGE_ALT = 'Midad — open-source documentation platform';
+  'Nibleaf is the open-source, self-hostable documentation platform — a Mintlify alternative you run yourself. Markdown authoring, hybrid search, versioned publishing, custom domains, and Arabic-ready RTL. Deploy with one Docker command.';
+const OG_IMAGE = `${WWW_URL}/brand/raster/social/nibleaf-og-card.png`;
+const OG_IMAGE_ALT = 'Nibleaf — open-source documentation platform';
 
 // Organization + WebSite + SoftwareApplication structured data for rich results.
 const JSON_LD = JSON.stringify({
@@ -18,15 +18,15 @@ const JSON_LD = JSON.stringify({
     {
       '@type': 'Organization',
       '@id': WWW_URL + '/#organization',
-      name: 'Midad',
+      name: 'Nibleaf',
       url: WWW_URL,
-      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/raster/logo/midad-logo-horizontal-ltr.png' },
+      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/raster/logo/nibleaf-logo-horizontal-ltr.png' },
       sameAs: [GITHUB_URL],
     },
     {
       '@type': 'WebSite',
       '@id': WWW_URL + '/#website',
-      name: 'Midad',
+      name: 'Nibleaf',
       url: WWW_URL,
       inLanguage: ['en', 'ar'],
       publisher: { '@id': WWW_URL + '/#organization' },
@@ -34,7 +34,7 @@ const JSON_LD = JSON.stringify({
     {
       '@type': 'SoftwareApplication',
       '@id': WWW_URL + '/#software',
-      name: 'Midad',
+      name: 'Nibleaf',
       applicationCategory: 'DeveloperApplication',
       applicationSubCategory: 'Documentation Platform',
       operatingSystem: 'Linux, Docker',
@@ -59,15 +59,15 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: TITLE },
       { name: 'description', content: DESCRIPTION },
-      { name: 'author', content: 'Midad' },
-      { name: 'application-name', content: 'Midad' },
+      { name: 'author', content: 'Nibleaf' },
+      { name: 'application-name', content: 'Nibleaf' },
       { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' },
       // A single brand-umber chrome colour (TanStack dedupes meta by `name`, so
       // media-scoped light/dark variants would collapse to one anyway).
       { name: 'theme-color', content: '#8a4b2e' },
       // Open Graph
       { property: 'og:type', content: 'website' },
-      { property: 'og:site_name', content: 'Midad' },
+      { property: 'og:site_name', content: 'Nibleaf' },
       { property: 'og:title', content: TITLE },
       { property: 'og:description', content: DESCRIPTION },
       { property: 'og:url', content: WWW_URL },

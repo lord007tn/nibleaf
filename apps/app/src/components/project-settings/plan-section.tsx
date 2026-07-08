@@ -1,4 +1,4 @@
-import { Badge } from '@midad/design-system/components/ui/badge';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Check, Info } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -25,7 +25,7 @@ export function PlanSection({ project }: { project: Project }) {
         </p>
       </div>
 
-      {/* Honest framing: self-hosted Midad is free + unlimited; metered/hosted billing
+      {/* Honest framing: self-hosted Nibleaf is free + unlimited; metered/hosted billing
           isn't wired up, so don't fake usage limits or working payment actions. */}
       <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">

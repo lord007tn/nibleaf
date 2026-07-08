@@ -1,5 +1,5 @@
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@midad/design-system/components/ui/command';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@midad/design-system/components/ui/dialog';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';

@@ -1,5 +1,5 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { cn } from '@midad/design-system/lib/utils';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { Language } from '@/hooks/api';

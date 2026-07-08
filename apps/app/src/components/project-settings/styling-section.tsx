@@ -1,6 +1,6 @@
-import { Input } from '@midad/design-system/components/ui/input';
-import { Slider } from '@midad/design-system/components/ui/slider';
-import { cn } from '@midad/design-system/lib/utils';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Slider } from '@nibleaf/design-system/components/ui/slider';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';

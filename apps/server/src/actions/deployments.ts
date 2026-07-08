@@ -1,7 +1,7 @@
-import { createJob, QueueNames } from '@midad/bullmq';
-import { Prisma, prisma } from '@midad/database';
-import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@midad/shared/site';
-import type { CreateDeploymentBody } from '@midad/validators';
+import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { Prisma, prisma } from '@nibleaf/database';
+import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { badRequest, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';

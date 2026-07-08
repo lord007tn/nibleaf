@@ -1,5 +1,5 @@
-import { QueueNames } from '@midad/bullmq';
-import type { ProcessorRegistry } from '@midad/bullmq/workers';
+import { QueueNames } from '@nibleaf/bullmq';
+import type { ProcessorRegistry } from '@nibleaf/bullmq/workers';
 import { handleAnalyticsJobs } from './processors/analytics';
 import { handleEmailJobs } from './processors/email';
 import { handlePublishJobs } from './processors/publish';

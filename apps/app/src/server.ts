@@ -127,7 +127,7 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
         // against the custom domain root, not the internal /sites/:id origin.
         const rewritten = new Request(url, request);
         const proto = request.headers.get('x-forwarded-proto') || 'https';
-        rewritten.headers.set('x-midad-site-origin', `${proto}://${host}`);
+        rewritten.headers.set('x-nibleaf-site-origin', `${proto}://${host}`);
         return startHandler(rewritten, ...rest);
       }
     }

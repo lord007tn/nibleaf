@@ -1,4 +1,4 @@
-import { Prisma, prisma } from '@midad/database';
+import { Prisma, prisma } from '@nibleaf/database';
 import { AppError, notFound } from '@/errors';
 
 /** Platform-wide counts + recent activity for the admin overview screen. */

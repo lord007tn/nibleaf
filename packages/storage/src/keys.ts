@@ -13,9 +13,9 @@ export const keys = () =>
       // needed in containerized setups where the internal host isn't reachable by the browser.
       STORAGE_PUBLIC_ENDPOINT: z.string().optional(),
       STORAGE_REGION: z.string().default('auto'),
-      STORAGE_ACCESS_KEY_ID: z.string().default('midadadmin'),
-      STORAGE_SECRET_ACCESS_KEY: z.string().default('midadadmin123'),
-      STORAGE_BUCKET: z.string().default('midad'),
+      STORAGE_ACCESS_KEY_ID: z.string().default('nibleafadmin'),
+      STORAGE_SECRET_ACCESS_KEY: z.string().default('nibleafadmin123'),
+      STORAGE_BUCKET: z.string().default('nibleaf'),
       STORAGE_FORCE_PATH_STYLE: z.stringbool().default(true),
       STORAGE_PUBLIC_URL: z.string().optional(),
       CDN_URL: z.string().optional(),

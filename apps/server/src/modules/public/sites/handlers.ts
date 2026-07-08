@@ -1,4 +1,4 @@
-import { searchQuery, trackEventBody } from '@midad/validators';
+import { searchQuery, trackEventBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { getSite, getSiteChangelog, getSitePage, getSiteRobots, getSiteSitemap, recordSiteEvent, searchSite } from '@/actions/sites';

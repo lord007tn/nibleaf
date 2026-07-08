@@ -1,7 +1,7 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';

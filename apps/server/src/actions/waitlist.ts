@@ -1,5 +1,5 @@
-import { prisma } from '@midad/database';
-import type { WaitlistSubmitBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import type { WaitlistSubmitBody } from '@nibleaf/validators';
 
 /**
  * Add an email to the managed-Cloud waitlist. Idempotent: re-submitting the same

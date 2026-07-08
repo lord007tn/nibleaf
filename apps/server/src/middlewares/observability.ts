@@ -1,4 +1,4 @@
-import { logger } from '@midad/logger';
+import { logger } from '@nibleaf/logger';
 import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 

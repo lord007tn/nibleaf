@@ -1,4 +1,4 @@
-import { analyticsQuery, updateWorkspaceSettingsBody } from '@midad/validators';
+import { analyticsQuery, updateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { getWorkspaceAnalytics } from '@/actions/analytics';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';

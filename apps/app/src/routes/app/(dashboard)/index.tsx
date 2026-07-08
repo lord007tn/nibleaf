@@ -1,5 +1,5 @@
-import { MidadMark } from '@midad/design-system/brand';
-import { Button } from '@midad/design-system/components/ui/button';
+import { NibleafMark } from '@nibleaf/design-system/brand';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,12 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@midad/design-system/components/ui/dialog';
-import { FieldError } from '@midad/design-system/components/ui/form-field';
-import { Input } from '@midad/design-system/components/ui/input';
-import { Label } from '@midad/design-system/components/ui/label';
-import { Skeleton } from '@midad/design-system/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@midad/design-system/components/ui/table';
+} from '@nibleaf/design-system/components/ui/dialog';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
@@ -211,7 +211,7 @@ function ProjectsPage() {
                 >
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <MidadMark className="size-8 shrink-0" />
+                      <NibleafMark className="size-8 shrink-0" />
                       <div className="min-w-0">
                         <div className="truncate font-medium">{project.name}</div>
                         <div className="truncate font-mono text-muted-foreground text-xs">/{project.slug}</div>

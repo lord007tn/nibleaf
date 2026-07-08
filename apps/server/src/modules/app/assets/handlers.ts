@@ -1,4 +1,4 @@
-import { confirmAssetBody, presignAssetBody } from '@midad/validators';
+import { confirmAssetBody, presignAssetBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { confirmAsset, listAssets, presignAsset } from '@/actions/assets';
 import { assertProjectInOrg } from '@/actions/projects';

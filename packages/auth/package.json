@@ -1,5 +1,5 @@
 {
-  "name": "@midad/auth",
+  "name": "@nibleaf/auth",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -13,10 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@midad/bullmq": "workspace:*",
-    "@midad/database": "workspace:*",
-    "@midad/logger": "workspace:*",
-    "@midad/shared": "workspace:*",
+    "@nibleaf/bullmq": "workspace:*",
+    "@nibleaf/database": "workspace:*",
+    "@nibleaf/logger": "workspace:*",
+    "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "^1.6.19",
     "zod": "^4.4.3"
@@ -30,7 +30,7 @@
     }
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "@types/react": "^19.2.0",
     "react": "^19.2.0",
     "typescript": "^5.9.2"

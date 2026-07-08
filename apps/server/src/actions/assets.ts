@@ -1,8 +1,8 @@
-import { prisma } from '@midad/database';
-import { newId } from '@midad/shared/ids';
-import { slugify } from '@midad/shared/utils';
-import { presignPutUrl } from '@midad/storage';
-import type { ConfirmAssetBody, PresignAssetBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import { newId } from '@nibleaf/shared/ids';
+import { slugify } from '@nibleaf/shared/utils';
+import { presignPutUrl } from '@nibleaf/storage';
+import type { ConfirmAssetBody, PresignAssetBody } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
 import { assertProjectInOrg } from './projects';
 

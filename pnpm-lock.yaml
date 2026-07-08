@@ -11,7 +11,7 @@ importers:
       '@biomejs/biome':
         specifier: 2.4.16
         version: 2.4.16
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:packages/tsconfig
       '@vitest/coverage-v8':
@@ -44,13 +44,13 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.2.5
         version: 5.2.8
-      '@midad/design-system':
+      '@nibleaf/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@midad/server':
+      '@nibleaf/server':
         specifier: workspace:*
         version: link:../server
-      '@midad/validators':
+      '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       '@tailwindcss/vite':
@@ -114,7 +114,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -159,16 +159,16 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.2.5
         version: 5.2.8
-      '@midad/design-system':
+      '@nibleaf/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
-      '@midad/server':
+      '@nibleaf/server':
         specifier: workspace:*
         version: link:../server
-      '@midad/shared':
+      '@nibleaf/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@midad/validators':
+      '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       '@tailwindcss/vite':
@@ -364,7 +364,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tanstack/devtools-vite':
@@ -431,7 +431,7 @@ importers:
         specifier: ^4.2.1
         version: 4.3.1
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@tailwindcss/vite':
@@ -470,28 +470,28 @@ importers:
       '@hono/standard-validator':
         specifier: ^0.2.2
         version: 0.2.2(@standard-schema/spec@1.1.0)(hono@4.12.26)
-      '@midad/auth':
+      '@nibleaf/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@midad/bullmq':
+      '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../../packages/bullmq
-      '@midad/database':
+      '@nibleaf/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@midad/search':
+      '@nibleaf/search':
         specifier: workspace:*
         version: link:../../packages/search
-      '@midad/shared':
+      '@nibleaf/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@midad/storage':
+      '@nibleaf/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@midad/validators':
+      '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
       '@scalar/hono-api-reference':
@@ -516,7 +516,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -543,16 +543,16 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.4
         version: 2.0.5(hono@4.12.26)
-      '@midad/bullmq':
+      '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../../packages/bullmq
-      '@midad/database':
+      '@nibleaf/database':
         specifier: workspace:*
         version: link:../../packages/database
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../../packages/logger
-      '@midad/shared':
+      '@nibleaf/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@t3-oss/env-core':
@@ -571,7 +571,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -601,7 +601,7 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.2.5
         version: 5.2.8
-      '@midad/design-system':
+      '@nibleaf/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
       '@tailwindcss/vite':
@@ -641,7 +641,7 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -668,16 +668,16 @@ importers:
 
   packages/auth:
     dependencies:
-      '@midad/bullmq':
+      '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../bullmq
-      '@midad/database':
+      '@nibleaf/database':
         specifier: workspace:*
         version: link:../database
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
-      '@midad/shared':
+      '@nibleaf/shared':
         specifier: workspace:*
         version: link:../shared
       '@t3-oss/env-core':
@@ -690,7 +690,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':
@@ -705,7 +705,7 @@ importers:
 
   packages/bullmq:
     dependencies:
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
       '@t3-oss/env-core':
@@ -721,7 +721,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -746,7 +746,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -813,7 +813,7 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -838,7 +838,7 @@ importers:
         specifier: ^13.1.3
         version: 13.1.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -850,7 +850,7 @@ importers:
 
   packages/search:
     dependencies:
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
       '@orama/orama':
@@ -863,7 +863,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -882,7 +882,7 @@ importers:
         specifier: ^5.1.14
         version: 5.1.14
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -900,7 +900,7 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.700.0
         version: 3.1072.0
-      '@midad/logger':
+      '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
       '@t3-oss/env-core':
@@ -910,7 +910,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -928,7 +928,7 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@midad/tsconfig':
+      '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       typescript:

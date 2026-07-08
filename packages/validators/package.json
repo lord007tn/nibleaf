@@ -1,5 +1,5 @@
 {
-  "name": "@midad/validators",
+  "name": "@nibleaf/validators",
   "license": "AGPL-3.0-only",
   "version": "0.0.0",
   "private": true,
@@ -17,7 +17,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@midad/tsconfig": "workspace:*",
+    "@nibleaf/tsconfig": "workspace:*",
     "typescript": "^5.9.2"
   }
 }

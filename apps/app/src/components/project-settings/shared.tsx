@@ -1,7 +1,7 @@
-import { Button } from '@midad/design-system/components/ui/button';
-import { Switch } from '@midad/design-system/components/ui/switch';
-import { cn } from '@midad/design-system/lib/utils';
-import type { ProjectConfig } from '@midad/validators';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import type { ProjectConfig } from '@nibleaf/validators';
 import { type ReactNode, useId } from 'react';
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
@@ -17,7 +17,7 @@ type ConfigMutation = {
 const localized = (key: MessageKey): string => {
   let locale: 'en' | 'ar' = 'en';
   try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('midad.locale') === 'ar') {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('nibleaf.locale') === 'ar') {
       locale = 'ar';
     }
   } catch {

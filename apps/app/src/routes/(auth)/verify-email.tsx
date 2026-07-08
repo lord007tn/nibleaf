@@ -1,4 +1,4 @@
-import { Button } from '@midad/design-system/components/ui/button';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';

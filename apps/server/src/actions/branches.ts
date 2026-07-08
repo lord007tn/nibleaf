@@ -1,6 +1,6 @@
-import { prisma } from '@midad/database';
-import { newId } from '@midad/shared/ids';
-import type { CreateBranchBody } from '@midad/validators';
+import { prisma } from '@nibleaf/database';
+import { newId } from '@nibleaf/shared/ids';
+import type { CreateBranchBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 /** Every branch of a project, default ('main') first. */

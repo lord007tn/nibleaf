@@ -1,5 +1,5 @@
-import { MidadMark } from '@midad/design-system/brand';
-import { Button } from '@midad/design-system/components/ui/button';
+import { NibleafMark } from '@nibleaf/design-system/brand';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -8,10 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@midad/design-system/components/ui/dialog';
-import { Input } from '@midad/design-system/components/ui/input';
-import { ScrollArea } from '@midad/design-system/components/ui/scroll-area';
-import { cn } from '@midad/design-system/lib/utils';
+} from '@nibleaf/design-system/components/ui/dialog';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { ArrowLeft, FileText, Loader2, Minus, Pencil, Plus, Rocket } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -193,7 +193,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
         ) : (
           <div className="flex flex-col gap-4 px-6 py-5">
             <div className="flex items-center gap-3 rounded-xl border border-border px-4 py-3">
-              <MidadMark className="size-9 shrink-0" />
+              <NibleafMark className="size-9 shrink-0" />
               <div className="min-w-0 leading-tight">
                 <div className="truncate font-semibold text-[13.5px]">{project.name}</div>
                 <div className="truncate font-mono text-[12.5px] text-muted-foreground">{siteHref(project.id)}</div>

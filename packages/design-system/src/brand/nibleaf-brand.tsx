@@ -1,9 +1,9 @@
 import type { ComponentProps } from 'react';
 import { cn } from '../lib/utils';
 
-export function MidadMark({
+export function NibleafMark({
   className,
-  title = 'Midad',
+  title = 'Nibleaf',
   variant = 'tile',
   ...props
 }: ComponentProps<'svg'> & { title?: string; variant?: 'tile' | 'bare' }) {
@@ -25,22 +25,22 @@ export function MidadMark({
   );
 }
 
-export function MidadWordmark({
+export function NibleafWordmark({
   className,
-  script = 'latin',
-  title = script === 'latin' ? 'Midad' : 'مِداد',
+  title = 'Nibleaf',
   ...props
-}: ComponentProps<'span'> & { script?: 'arabic' | 'latin'; title?: string }) {
-  const isLatin = script === 'latin';
+}: ComponentProps<'span'> & { title?: string }) {
+  // The brand name is always set in Latin script "Nibleaf", including in
+  // Arabic-locale UI (same as how "Mintlify" stays Latin in Arabic copy).
   return (
     <span
       aria-label={title}
       className={cn('inline-block select-none font-extrabold leading-none tracking-normal', className)}
-      dir={isLatin ? 'ltr' : 'rtl'}
+      dir="ltr"
       role="img"
       {...props}
     >
-      {isLatin ? 'Midad' : 'مِداد'}
+      Nibleaf
     </span>
   );
 }

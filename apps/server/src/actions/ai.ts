@@ -1,4 +1,4 @@
-import type { AiDraftBody } from '@midad/validators';
+import type { AiDraftBody } from '@nibleaf/validators';
 import { env } from '@/env';
 
 const SYSTEM_PROMPT =

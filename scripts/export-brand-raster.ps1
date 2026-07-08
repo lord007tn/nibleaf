@@ -96,7 +96,7 @@ function Render-BrandSvgPng([string]$sourceName, [string]$outPath, [int]$width, 
 
   New-Item -ItemType Directory -Force -Path (Split-Path $outPath) | Out-Null
   $sourcePath = Join-Path $BrandDir $sourceName
-  $htmlPath = Join-Path ([System.IO.Path]::GetTempPath()) "midad-brand-$PID-$([System.Guid]::NewGuid().ToString('N')).html"
+  $htmlPath = Join-Path ([System.IO.Path]::GetTempPath()) "nibleaf-brand-$PID-$([System.Guid]::NewGuid().ToString('N')).html"
   $sourceUrl = ([System.Uri](Resolve-Path $sourcePath).Path).AbsoluteUri
   $html = @"
 <!doctype html>
@@ -213,10 +213,10 @@ function Draw-LogoRaster([string]$path, [string]$Variant, [int]$width, [int]$hei
       $format = [System.Drawing.StringFormat]::new()
       $format.Alignment = [System.Drawing.StringAlignment]::Far
       $format.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
-      $g.DrawString("مِداد", $font, $brush, [System.Drawing.RectangleF]::new(0, 58, $width - 18, 170), $format)
+      $g.DrawString("Nibleaf", $font, $brush, [System.Drawing.RectangleF]::new(0, 58, $width - 18, 170), $format)
       $format.Dispose()
     } else {
-      $g.DrawString("Midad", $font, $brush, 0, 48)
+      $g.DrawString("Nibleaf", $font, $brush, 0, 48)
     }
     $font.Dispose()
     $brush.Dispose()
@@ -236,7 +236,7 @@ function Draw-LogoRaster([string]$path, [string]$Variant, [int]$width, [int]$hei
       $fontSize = if ($Variant -like "sidebar*") { 84 } else { 190 }
       $font = [System.Drawing.Font]::new("Tahoma", $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
       $rect = if ($Variant -like "sidebar*") { [System.Drawing.RectangleF]::new(24, 51, 470, 110) } else { [System.Drawing.RectangleF]::new(30, 112, 1080, 220) }
-      $g.DrawString("مِداد", $font, $brush, $rect, $format)
+      $g.DrawString("Nibleaf", $font, $brush, $rect, $format)
       $font.Dispose()
       $format.Dispose()
     } else {
@@ -244,7 +244,7 @@ function Draw-LogoRaster([string]$path, [string]$Variant, [int]$width, [int]$hei
       $font = [System.Drawing.Font]::new("Arial", $fontSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
       $textX = if ($Variant -eq "horizontal-icon-right") { 30 } else { if ($Variant -like "sidebar*") { 190 } else { 370 } }
       $textY = if ($Variant -like "sidebar*") { 42 } else { 92 }
-      $g.DrawString("Midad", $font, $brush, $textX, $textY)
+      $g.DrawString("Nibleaf", $font, $brush, $textX, $textY)
       $font.Dispose()
     }
     $brush.Dispose()
@@ -266,11 +266,11 @@ function Draw-LogoRaster([string]$path, [string]$Variant, [int]$width, [int]$hei
     $rtlCenter.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
 
     if ($isArabic) {
-      $g.DrawString("مِداد", $arabicFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 720, $width, 170), $rtlCenter)
-      $g.DrawString("Midad", $latinFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 890, $width, 150), $center)
+      $g.DrawString("Nibleaf", $arabicFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 720, $width, 170), $rtlCenter)
+      $g.DrawString("Nibleaf", $latinFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 890, $width, 150), $center)
     } else {
-      $g.DrawString("Midad", $latinFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 700, $width, 170), $center)
-      $g.DrawString("مِداد", $arabicFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 870, $width, 150), $rtlCenter)
+      $g.DrawString("Nibleaf", $latinFont, $primaryBrush, [System.Drawing.RectangleF]::new(0, 700, $width, 170), $center)
+      $g.DrawString("Nibleaf", $arabicFont, $secondaryBrush, [System.Drawing.RectangleF]::new(0, 870, $width, 150), $rtlCenter)
     }
 
     $center.Dispose()
@@ -303,7 +303,7 @@ function Draw-SocialCard([string]$path, [switch]$Arabic, [switch]$Jpeg) {
     $format = [System.Drawing.StringFormat]::new()
     $format.Alignment = [System.Drawing.StringAlignment]::Far
     $format.FormatFlags = [System.Drawing.StringFormatFlags]::DirectionRightToLeft
-    $g.DrawString("مِداد", [System.Drawing.Font]::new("Tahoma", 52, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(650, 98, 340, 72), $format)
+    $g.DrawString("Nibleaf", [System.Drawing.Font]::new("Tahoma", 52, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(650, 98, 340, 72), $format)
     $g.DrawString("وثائق تظل", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(500, 244, 614, 82), $format)
     $g.DrawString("بين يديك.", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), [System.Drawing.RectangleF]::new(500, 328, 614, 82), $format)
     $g.DrawString("منصة توثيق مفتوحة المصدر، جاهزة للعربية، للنشر والبحث والاستضافة الذاتية.", [System.Drawing.Font]::new("Tahoma", 27), [System.Drawing.SolidBrush]::new($Ink2), [System.Drawing.RectangleF]::new(124, 448, 990, 50), $format)
@@ -311,7 +311,7 @@ function Draw-SocialCard([string]$path, [switch]$Arabic, [switch]$Jpeg) {
     $format.Dispose()
   } else {
     $g.DrawImage($icon, 86, 84, 96, 96)
-    $g.DrawString("Midad", [System.Drawing.Font]::new("Arial", 54, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 206, 98)
+    $g.DrawString("Nibleaf", [System.Drawing.Font]::new("Arial", 54, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 206, 98)
     $g.DrawString("Docs that stay", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 86, 232)
     $g.DrawString("in your hands.", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), 86, 316)
     $g.DrawString("Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting.", [System.Drawing.Font]::new("Arial", 28), [System.Drawing.SolidBrush]::new($Ink2), 86, 448)
@@ -346,38 +346,38 @@ foreach ($name in $appIconSizes.Keys) {
 }
 
 foreach ($size in @(64, 128, 256, 512, 1024)) {
-  $path = Join-Path $RasterDir "icon/midad-icon-$size.png"
+  $path = Join-Path $RasterDir "icon/nibleaf-icon-$size.png"
   Save-Png (New-IconBitmap $size) $path
-  $jobs += @{ file = "apps/www/public/brand/raster/icon/midad-icon-$size.png"; width = $size; height = $size; group = "icon" }
+  $jobs += @{ file = "apps/www/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
 }
-Save-Png (New-IconBitmap 512 -Reverse) (Join-Path $RasterDir "icon/midad-icon-reverse-512.png")
-Save-Png (New-IconBitmap 512 -Monochrome) (Join-Path $RasterDir "icon/midad-icon-monochrome-512.png")
-Save-Png (New-IconBitmap 512) (Join-Path $RasterDir "social/midad-social-avatar-512.png")
-Save-Png (New-IconBitmap 1024) (Join-Path $RasterDir "social/midad-social-avatar-1024.png")
-Render-BrandSvgPng "midad-og-card.svg" (Join-Path $RasterDir "social/midad-og-card.png") 1200 630
-Render-BrandSvgPng "midad-og-card-ar.svg" (Join-Path $RasterDir "social/midad-og-card-ar.png") 1200 630
-Convert-PngToJpeg (Join-Path $RasterDir "social/midad-og-card.png") (Join-Path $RasterDir "social/midad-og-card.jpg") $Paper
-Convert-PngToJpeg (Join-Path $RasterDir "social/midad-og-card-ar.png") (Join-Path $RasterDir "social/midad-og-card-ar.jpg") $Paper
+Save-Png (New-IconBitmap 512 -Reverse) (Join-Path $RasterDir "icon/nibleaf-icon-reverse-512.png")
+Save-Png (New-IconBitmap 512 -Monochrome) (Join-Path $RasterDir "icon/nibleaf-icon-monochrome-512.png")
+Save-Png (New-IconBitmap 512) (Join-Path $RasterDir "social/nibleaf-social-avatar-512.png")
+Save-Png (New-IconBitmap 1024) (Join-Path $RasterDir "social/nibleaf-social-avatar-1024.png")
+Render-BrandSvgPng "nibleaf-og-card.svg" (Join-Path $RasterDir "social/nibleaf-og-card.png") 1200 630
+Render-BrandSvgPng "nibleaf-og-card-ar.svg" (Join-Path $RasterDir "social/nibleaf-og-card-ar.png") 1200 630
+Convert-PngToJpeg (Join-Path $RasterDir "social/nibleaf-og-card.png") (Join-Path $RasterDir "social/nibleaf-og-card.jpg") $Paper
+Convert-PngToJpeg (Join-Path $RasterDir "social/nibleaf-og-card-ar.png") (Join-Path $RasterDir "social/nibleaf-og-card-ar.jpg") $Paper
 
 $logoJobs = @(
-  @{ source = "midad-wordmark.svg"; name = "midad-wordmark"; width = 840; height = 300; variant = "wordmark"; format = "png" },
-  @{ source = "midad-wordmark-reverse.svg"; name = "midad-wordmark-reverse"; width = 840; height = 300; variant = "wordmark-reverse"; format = "png" },
-  @{ source = "midad-wordmark-ar.svg"; name = "midad-wordmark-ar"; width = 840; height = 300; variant = "wordmark-ar"; format = "png" },
-  @{ source = "midad-wordmark-ar-reverse.svg"; name = "midad-wordmark-ar-reverse"; width = 840; height = 300; variant = "wordmark-ar-reverse"; format = "png" },
-  @{ source = "midad-logo-stacked.svg"; name = "midad-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "png" },
-  @{ source = "midad-logo-stacked-transparent.svg"; name = "midad-logo-stacked-transparent"; width = 1024; height = 1360; variant = "stacked-transparent"; format = "png" },
-  @{ source = "midad-logo-dark.svg"; name = "midad-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "png" },
-  @{ source = "midad-logo-monochrome.svg"; name = "midad-logo-monochrome"; width = 1024; height = 1360; variant = "monochrome"; format = "png" },
-  @{ source = "midad-logo-stacked-ar.svg"; name = "midad-logo-stacked-ar"; width = 1024; height = 1360; variant = "stacked-ar"; format = "png" },
-  @{ source = "midad-logo-horizontal-ltr.svg"; name = "midad-logo-horizontal-ltr"; width = 1520; height = 440; variant = "horizontal-ltr"; format = "png" },
-  @{ source = "midad-logo-horizontal-ltr-reverse.svg"; name = "midad-logo-horizontal-ltr-reverse"; width = 1520; height = 440; variant = "horizontal-ltr-reverse"; format = "png" },
-  @{ source = "midad-logo-horizontal-rtl.svg"; name = "midad-logo-horizontal-rtl"; width = 1520; height = 440; variant = "horizontal-rtl"; format = "png" },
-  @{ source = "midad-logo-horizontal-icon-right.svg"; name = "midad-logo-horizontal-icon-right"; width = 1520; height = 440; variant = "horizontal-icon-right"; format = "png" },
-  @{ source = "midad-logo-horizontal-reverse.svg"; name = "midad-logo-horizontal-reverse"; width = 1520; height = 440; variant = "horizontal-reverse"; format = "png" },
-  @{ source = "midad-sidebar-lockup.svg"; name = "midad-sidebar-lockup"; width = 680; height = 192; variant = "sidebar"; format = "png" },
-  @{ source = "midad-sidebar-lockup-ar.svg"; name = "midad-sidebar-lockup-ar"; width = 680; height = 192; variant = "sidebar-ar"; format = "png" },
-  @{ source = "midad-logo-stacked.svg"; name = "midad-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "jpg" },
-  @{ source = "midad-logo-dark.svg"; name = "midad-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "jpg" }
+  @{ source = "nibleaf-wordmark.svg"; name = "nibleaf-wordmark"; width = 840; height = 300; variant = "wordmark"; format = "png" },
+  @{ source = "nibleaf-wordmark-reverse.svg"; name = "nibleaf-wordmark-reverse"; width = 840; height = 300; variant = "wordmark-reverse"; format = "png" },
+  @{ source = "nibleaf-wordmark-ar.svg"; name = "nibleaf-wordmark-ar"; width = 840; height = 300; variant = "wordmark-ar"; format = "png" },
+  @{ source = "nibleaf-wordmark-ar-reverse.svg"; name = "nibleaf-wordmark-ar-reverse"; width = 840; height = 300; variant = "wordmark-ar-reverse"; format = "png" },
+  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "png" },
+  @{ source = "nibleaf-logo-stacked-transparent.svg"; name = "nibleaf-logo-stacked-transparent"; width = 1024; height = 1360; variant = "stacked-transparent"; format = "png" },
+  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "png" },
+  @{ source = "nibleaf-logo-monochrome.svg"; name = "nibleaf-logo-monochrome"; width = 1024; height = 1360; variant = "monochrome"; format = "png" },
+  @{ source = "nibleaf-logo-stacked-ar.svg"; name = "nibleaf-logo-stacked-ar"; width = 1024; height = 1360; variant = "stacked-ar"; format = "png" },
+  @{ source = "nibleaf-logo-horizontal-ltr.svg"; name = "nibleaf-logo-horizontal-ltr"; width = 1520; height = 440; variant = "horizontal-ltr"; format = "png" },
+  @{ source = "nibleaf-logo-horizontal-ltr-reverse.svg"; name = "nibleaf-logo-horizontal-ltr-reverse"; width = 1520; height = 440; variant = "horizontal-ltr-reverse"; format = "png" },
+  @{ source = "nibleaf-logo-horizontal-rtl.svg"; name = "nibleaf-logo-horizontal-rtl"; width = 1520; height = 440; variant = "horizontal-rtl"; format = "png" },
+  @{ source = "nibleaf-logo-horizontal-icon-right.svg"; name = "nibleaf-logo-horizontal-icon-right"; width = 1520; height = 440; variant = "horizontal-icon-right"; format = "png" },
+  @{ source = "nibleaf-logo-horizontal-reverse.svg"; name = "nibleaf-logo-horizontal-reverse"; width = 1520; height = 440; variant = "horizontal-reverse"; format = "png" },
+  @{ source = "nibleaf-sidebar-lockup.svg"; name = "nibleaf-sidebar-lockup"; width = 680; height = 192; variant = "sidebar"; format = "png" },
+  @{ source = "nibleaf-sidebar-lockup-ar.svg"; name = "nibleaf-sidebar-lockup-ar"; width = 680; height = 192; variant = "sidebar-ar"; format = "png" },
+  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "jpg" },
+  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "jpg" }
 )
 
 foreach ($job in $logoJobs) {
@@ -385,7 +385,7 @@ foreach ($job in $logoJobs) {
   $name = [string]$job.name
   $path = Join-Path $RasterDir "logo/$name.$ext"
   if ($ext -eq "jpg") {
-    $tempPng = Join-Path ([System.IO.Path]::GetTempPath()) "midad-brand-$PID-$name.png"
+    $tempPng = Join-Path ([System.IO.Path]::GetTempPath()) "nibleaf-brand-$PID-$name.png"
     Render-BrandSvgPng ([string]$job.source) $tempPng ([int]$job.width) ([int]$job.height)
     $jpgBackground = if ([string]$job.variant -eq "dark") { $Ink } else { $Paper }
     Convert-PngToJpeg $tempPng $path $jpgBackground
@@ -403,20 +403,20 @@ foreach ($job in $logoJobs) {
   }
 }
 
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-social-avatar-512.png"; source = "midad-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-social-avatar-1024.png"; source = "midad-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card.png"; source = "midad-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card.jpg"; source = "midad-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card-ar.png"; source = "midad-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/midad-og-card-ar.jpg"; source = "midad-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-social-avatar-512.png"; source = "nibleaf-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-social-avatar-1024.png"; source = "nibleaf-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card.png"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card.jpg"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card-ar.png"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card-ar.jpg"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
 
 $manifestPath = Join-Path $RasterDir "manifest.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
 ($jobs | ConvertTo-Json -Depth 4) + "`n" | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
-Copy-Item -LiteralPath (Join-Path $BrandDir "midad-favicon.svg") -Destination (Join-Path $WwwPublic "favicon.svg") -Force
-Copy-Item -LiteralPath (Join-Path $BrandDir "midad-og-card.svg") -Destination (Join-Path $WwwPublic "og.svg") -Force
-Copy-Item -LiteralPath (Join-Path $BrandDir "midad-favicon.svg") -Destination (Join-Path $AppPublic "favicon.svg") -Force
+Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $WwwPublic "favicon.svg") -Force
+Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-og-card.svg") -Destination (Join-Path $WwwPublic "og.svg") -Force
+Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $AppPublic "favicon.svg") -Force
 
 foreach ($publicDir in @($WwwPublic, $AppPublic)) {
   Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-16.png") -Destination (Join-Path $publicDir "favicon-16x16.png") -Force
@@ -432,9 +432,9 @@ foreach ($publicDir in @($WwwPublic, $AppPublic)) {
   ) (Join-Path $publicDir "favicon.ico")
 
   $manifest = [ordered]@{
-    name = "Midad — مِداد"
-    short_name = "Midad"
-    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Midad is coming soon."
+    name = "Nibleaf"
+    short_name = "Nibleaf"
+    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Nibleaf is coming soon."
     lang = "ar"
     dir = "rtl"
     start_url = "/"
@@ -452,4 +452,4 @@ foreach ($publicDir in @($WwwPublic, $AppPublic)) {
   ($manifest | ConvertTo-Json -Depth 8) + "`n" | Set-Content -LiteralPath (Join-Path $publicDir "site.webmanifest") -Encoding utf8
 }
 
-Write-Host "Exported Midad brand raster assets to $RasterDir"
+Write-Host "Exported Nibleaf brand raster assets to $RasterDir"

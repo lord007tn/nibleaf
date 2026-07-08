@@ -13,8 +13,8 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button } from '@midad/design-system/components/ui/button';
-import { cn } from '@midad/design-system/lib/utils';
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { ChevronRight, FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
@@ -89,7 +89,7 @@ function hideCollapsed(items: Flat[], collapsed: Set<string>): Flat[] {
   });
 }
 
-const collapsedStoreKey = (treeKey: string) => `midad.editor.collapsedGroups:${treeKey}`;
+const collapsedStoreKey = (treeKey: string) => `nibleaf.editor.collapsedGroups:${treeKey}`;
 
 function readCollapsed(treeKey?: string): Set<string> {
   if (typeof window === 'undefined' || !treeKey) {

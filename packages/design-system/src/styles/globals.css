@@ -57,7 +57,7 @@
   --radius-xl: calc(var(--radius) * 1.4);
 }
 
-/* Midad palette — ink, ivory paper, umber, and copper. */
+/* Nibleaf palette — ink, ivory paper, umber, and copper. */
 :root {
   --radius: 0.625rem;
   --background: #fbf7ee;

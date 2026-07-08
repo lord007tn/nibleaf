@@ -5,9 +5,9 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Mirrors the @midad/design-system (shadcn) token structure so the marketing
+/* Mirrors the @nibleaf/design-system (shadcn) token structure so the marketing
  * site shares the product's radius scale + component styling — only the colours
- * differ (a cool, neutral zinc base with the Midad umber kept as the accent). */
+ * differ (a cool, neutral zinc base with the Nibleaf umber kept as the accent). */
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
