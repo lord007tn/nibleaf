@@ -567,6 +567,9 @@ importers:
       nodemailer:
         specifier: ^6.9.0
         version: 6.10.1
+      postmark:
+        specifier: ^5.0.0
+        version: 5.0.0
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -6188,6 +6191,10 @@ packages:
   postgres-interval@1.2.0:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
+
+  postmark@5.0.0:
+    resolution: {integrity: sha512-r9e8X/Jt8JbWAJZ3/bAACrZesWQjMycJlR9BhR4hLHyo4IMfOqNSinFAqQ7nRToe1J696UjkImll6WWUyUcdCQ==}
+    engines: {node: '>=18.0.0'}
 
   powershell-utils@0.1.0:
     resolution: {integrity: sha512-dM0jVuXJPsDN6DvRpea484tCUaMiXWjuCn++HGTqUWzGDjv5tZkEZldAJ/UMlqRYGFrD/etByo4/xOuC/snX2A==}
@@ -12853,6 +12860,8 @@ snapshots:
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+
+  postmark@5.0.0: {}
 
   powershell-utils@0.1.0: {}
 

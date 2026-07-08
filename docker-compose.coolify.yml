@@ -52,7 +52,7 @@ x-service-env: &service-env
   STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${SERVICE_HEX_64_NIBLEAF:?set SERVICE_HEX_64_NIBLEAF}
-  BETTER_AUTH_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
@@ -60,13 +60,15 @@ x-service-env: &service-env
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   API_PORT: "4311"
   API_URL: http://server:4311
-  APP_URL: ${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}
+  APP_URL: ${APP_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
   WORKER_PORT: "4312"
   EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
-  SMTP_URL: ${SMTP_URL:?set SMTP_URL}
+  POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+  POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
+  SMTP_URL: ${SMTP_URL:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
 
