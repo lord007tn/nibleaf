@@ -5,6 +5,7 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
+import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
 import { signIn } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
@@ -66,7 +67,8 @@ function SignInPage() {
 
   return (
     <AuthLayout subtitle={t('auth.signIn.subtitle')}>
-      <Button className="mb-4 w-full" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
+      <Button className="mb-4 w-full gap-2" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
+        <GoogleIcon className="size-4" />
         {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
       </Button>
       <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">

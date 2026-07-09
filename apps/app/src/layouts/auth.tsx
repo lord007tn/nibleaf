@@ -1,16 +1,16 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { Languages, Server, ShieldCheck } from 'lucide-react';
+import { Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 
 /**
  * Auth chrome — a premium split: a dark, brand-led panel (value props +
- * "self-hostable today, cloud soon" positioning) beside a focused form card.
- * The brand panel is decorative marketing copy (English, hidden below lg); the
- * form heading uses the localized `subtitle` each page passes.
+ * cloud-product positioning) beside a focused form card. The brand panel is
+ * decorative marketing copy (English, hidden below lg); the form heading uses
+ * the localized `subtitle` each page passes.
  */
 const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; text: string }[] = [
-  { icon: Server, text: 'Self-host on your own infrastructure' },
-  { icon: ShieldCheck, text: 'Own your data, storage, and domains' },
+  { icon: Cloud, text: 'Managed hosting for every docs site' },
+  { icon: Globe2, text: 'Custom domains and fast global delivery' },
   { icon: Languages, text: 'Arabic-ready, RTL-first authoring' },
 ];
 
@@ -38,10 +38,9 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
           <span className="font-semibold text-lg tracking-tight">Nibleaf</span>
         </div>
         <div className="relative">
-          <h2 className="font-semibold text-[2rem] leading-[1.15] tracking-tight">Docs that stay in your hands.</h2>
+          <h2 className="font-semibold text-[2rem] leading-[1.15] tracking-tight">Your docs, hosted and ready.</h2>
           <p className="mt-3 max-w-md text-sm text-white/65 leading-relaxed">
-            The open-source documentation platform — write in Markdown, publish a fast searchable site, and keep everything on your own
-            infrastructure.
+            Nibleaf Cloud gives teams a polished Markdown workflow, instant search, analytics, custom domains, and managed infrastructure.
           </p>
           <ul className="mt-8 space-y-3.5">
             {BRAND_POINTS.map((point) => (
@@ -56,8 +55,10 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
         </div>
         <div className="relative flex items-center gap-2 text-white/55 text-xs">
           <span className="size-1.5 rounded-full bg-emerald-400" />
-          Self-hostable today · Cloud coming soon
-          <span className="ms-auto font-mono text-white/40">AGPL-3.0</span>
+          Cloud deployment active
+          <span className="ms-auto inline-flex items-center gap-1 font-mono text-white/40">
+            <ShieldCheck className="size-3" /> open source core
+          </span>
         </div>
       </div>
 

@@ -2,12 +2,12 @@
   <rect width="1200" height="630" fill="#FBF7EE"/>
   <path d="M0 502c150-48 290-60 420-36 137 25 247 14 331-34 108-61 238-74 449-40v238H0Z" fill="#EEE4D3"/>
   <rect x="86" y="84" width="96" height="96" rx="22" fill="#8A4B2E"/>
-  <path d="M120 142 145 117c5-5 13-5 18 0l1 1c5 5 5 13 0 18l-25 25-21 5 2-24Z" fill="#FBF7EE"/>
-  <path d="M115 117c13-14 33-17 50-8" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="8"/>
-  <circle cx="164" cy="151" r="7" fill="#B96A3D"/>
+  <path d="M111 138 136 113c5-5 13-5 18 0l1 1c5 5 5 13 0 18l-25 25-21 5 2-24Z" fill="#FBF7EE"/>
+  <path d="M106 113c13-14 33-17 50-8" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="8"/>
+  <circle cx="155" cy="147" r="7" fill="#B96A3D"/>
   <text x="206" y="151" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="54" font-weight="760">Nibleaf</text>
   <text x="86" y="304" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="72" font-weight="760">Docs that stay</text>
   <text x="86" y="386" fill="#8A4B2E" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="72" font-weight="760">in your hands.</text>
-  <text x="86" y="476" fill="#4E453A" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="30">Self-host today. Cloud-hosted Nibleaf is coming soon.</text>
-  <text x="86" y="552" fill="#B96A3D" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">AGPL-3.0 · self-hostable · by Takumi</text>
+  <text x="86" y="476" fill="#4E453A" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="30">Nibleaf Cloud is live for production docs teams.</text>
+  <text x="86" y="552" fill="#B96A3D" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">nibleaf.com · open-source core</text>
 </svg>

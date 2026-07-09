@@ -2,12 +2,12 @@
   <rect width="1200" height="630" fill="#FBF7EE"/>
   <path d="M0 502c150-48 290-60 420-36 137 25 247 14 331-34 108-61 238-74 449-40v238H0Z" fill="#EEE4D3"/>
   <rect x="1018" y="84" width="96" height="96" rx="22" fill="#8A4B2E"/>
-  <path d="M1052 142 1077 117c5-5 13-5 18 0l1 1c5 5 5 13 0 18l-25 25-21 5 2-24Z" fill="#FBF7EE"/>
-  <path d="M1047 117c13-14 33-17 50-8" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="8"/>
-  <circle cx="1096" cy="151" r="7" fill="#B96A3D"/>
+  <path d="M1043 138 1068 113c5-5 13-5 18 0l1 1c5 5 5 13 0 18l-25 25-21 5 2-24Z" fill="#FBF7EE"/>
+  <path d="M1038 113c13-14 33-17 50-8" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="8"/>
+  <circle cx="1087" cy="147" r="7" fill="#B96A3D"/>
   <text x="990" y="151" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="54" font-weight="800" text-anchor="start">Nibleaf</text>
   <text x="1114" y="296" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="62" font-weight="800" text-anchor="start">وثائق تظل</text>
   <text x="1114" y="376" direction="rtl" fill="#8A4B2E" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="62" font-weight="800" text-anchor="start">بين يديك.</text>
-  <text x="1114" y="474" direction="rtl" fill="#4E453A" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="31" text-anchor="start">استضف ذاتيًا اليوم. النسخة السحابية من Nibleaf قادمة قريبًا.</text>
-  <text x="1114" y="552" direction="rtl" fill="#B96A3D" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="25" text-anchor="start">AGPL-3.0 · استضافة ذاتية · Takumi</text>
+  <text x="1114" y="474" direction="rtl" fill="#4E453A" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="31" text-anchor="start">Nibleaf Cloud متاح الآن لفرق توثيق الإنتاج.</text>
+  <text x="1114" y="552" direction="rtl" fill="#B96A3D" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="25" text-anchor="start">AGPL-3.0 · استضافة ذاتية</text>
 </svg>

@@ -13,8 +13,7 @@ export default defineConfig({
     viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
     // Same-origin /api proxy (mirrors apps/app): the browser talks only to the
-    // marketing origin and Nitro forwards /api/** to the Nibleaf API server, so the
-    // Cloud waitlist form POSTs same-origin — no CORS.
+    // marketing origin and Nitro forwards /api/** to the Nibleaf API server.
     nitro({ routeRules: { '/api/**': { proxy: `${API_TARGET}/api/**` } } }),
     tanstackStart(),
     viteReact(),

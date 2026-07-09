@@ -25,8 +25,8 @@ export function PlanSection({ project }: { project: Project }) {
         </p>
       </div>
 
-      {/* Honest framing: self-hosted Nibleaf is free + unlimited; metered/hosted billing
-          isn't wired up, so don't fake usage limits or working payment actions. */}
+      {/* Honest framing: Cloud beta billing isn't wired up, so don't fake usage
+          limits or working payment actions. */}
       <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Info className="size-5" />

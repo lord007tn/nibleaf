@@ -1,6 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
-import { ArrowRight, BarChart3, Boxes, Check, FileText, Info, Search, Server, Sparkles, Workflow, X, Zap } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, Check, Cloud, FileText, Info, Search, Sparkles, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
@@ -9,10 +9,13 @@ import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
 import { hreflangLinks } from '@/lib/seo';
 
 const HOME_FAQS: { q: string; a: string }[] = [
-  { q: 'Is Nibleaf really free?', a: 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.' },
   {
-    q: 'What do I need to self-host?',
-    a: 'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
+    q: 'Can I use Nibleaf Cloud now?',
+    a: 'Yes. Nibleaf Cloud is live for teams that want managed docs hosting, sign-in, publishing, search, and custom domains.',
+  },
+  {
+    q: 'Is Nibleaf still open source?',
+    a: 'Yes. The core platform remains open source, and self-hosting is still available for teams that want to run their own infrastructure.',
   },
   {
     q: 'Can I use my own object storage?',
@@ -185,7 +188,7 @@ function DocsMock() {
 
 function TrustStrip() {
   const t = useT();
-  const items = ['Postgres', 'Hono', 'TanStack Start', 'BullMQ', 'Orama search', 'S3 storage'];
+  const items = ['Managed hosting', 'Custom domains', 'Markdown/MDX', 'Orama search', 'Analytics', 'S3 storage'];
   return (
     <div className="border-border border-b bg-card/40">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-6 text-muted-foreground text-sm">
@@ -206,7 +209,7 @@ const FEATURES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: MessageKe
   { icon: Workflow, title: 'features.publishing.title', body: 'features.publishing.body' },
   { icon: Boxes, title: 'features.domains.title', body: 'features.domains.body' },
   { icon: BarChart3, title: 'features.analytics.title', body: 'features.analytics.body' },
-  { icon: Server, title: 'features.selfHost.title', body: 'features.selfHost.body' },
+  { icon: Cloud, title: 'features.selfHost.title', body: 'features.selfHost.body' },
 ];
 
 function Features() {
@@ -343,6 +346,20 @@ const PLANS: {
   featured?: boolean;
 }[] = [
   {
+    name: 'pricing.cloud.name',
+    price: 'pricing.cloud.price',
+    tagline: 'pricing.cloud.tagline',
+    features: [
+      'pricing.cloud.feature.everything',
+      'pricing.cloud.feature.managed',
+      'pricing.cloud.feature.upgrades',
+      'pricing.cloud.feature.priority',
+    ],
+    cta: 'pricing.cloud.cta',
+    href: appHref('/sign-up'),
+    featured: true,
+  },
+  {
     name: 'pricing.selfHosted.name',
     price: 'pricing.selfHosted.price',
     tagline: 'pricing.selfHosted.tagline',
@@ -354,20 +371,6 @@ const PLANS: {
     ],
     cta: 'pricing.selfHosted.cta',
     href: GITHUB_URL,
-  },
-  {
-    name: 'pricing.cloud.name',
-    price: 'pricing.cloud.price',
-    tagline: 'pricing.cloud.tagline',
-    features: [
-      'pricing.cloud.feature.everything',
-      'pricing.cloud.feature.managed',
-      'pricing.cloud.feature.upgrades',
-      'pricing.cloud.feature.priority',
-    ],
-    cta: 'pricing.cloud.cta',
-    href: '/cloud',
-    featured: true,
   },
 ];
 

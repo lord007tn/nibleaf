@@ -11,10 +11,18 @@ export const Route = createRootRoute({
       { title: 'Nibleaf — Documentation' },
       {
         name: 'description',
-        content: 'Documentation for Nibleaf, the open-source, self-hostable documentation platform.',
+        content: 'Documentation for Nibleaf Cloud and the open-source Nibleaf core.',
       },
+      { name: 'application-name', content: 'Nibleaf Documentation' },
+      { name: 'theme-color', content: '#8a4b2e' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      { rel: 'icon', href: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+      { rel: 'manifest', href: '/site.webmanifest' },
+    ],
   }),
   component: RootComponent,
 });

@@ -5,11 +5,11 @@ import { LocaleProvider } from '@/lib/i18n';
 import { APP_URL, GITHUB_URL, WWW_URL } from '@/lib/links';
 import appCss from '@/styles.css?url';
 
-const TITLE = 'Nibleaf — open-source, self-hostable documentation platform';
+const TITLE = 'Nibleaf — cloud documentation hosting with an open-source core';
 const DESCRIPTION =
-  'Nibleaf is the open-source, self-hostable documentation platform — a Mintlify alternative you run yourself. Markdown authoring, hybrid search, versioned publishing, custom domains, and Arabic-ready RTL. Deploy with one Docker command.';
+  'Nibleaf Cloud is the managed documentation platform for teams shipping polished docs. Write in Markdown, publish searchable sites, connect custom domains, track analytics, and keep an open-source core in reach.';
 const OG_IMAGE = `${WWW_URL}/brand/raster/social/nibleaf-og-card.png`;
-const OG_IMAGE_ALT = 'Nibleaf — open-source documentation platform';
+const OG_IMAGE_ALT = 'Nibleaf Cloud — managed documentation hosting';
 
 // Organization + WebSite + SoftwareApplication structured data for rich results.
 const JSON_LD = JSON.stringify({
@@ -17,27 +17,27 @@ const JSON_LD = JSON.stringify({
   '@graph': [
     {
       '@type': 'Organization',
-      '@id': WWW_URL + '/#organization',
+      '@id': `${WWW_URL}/#organization`,
       name: 'Nibleaf',
       url: WWW_URL,
-      logo: { '@type': 'ImageObject', url: WWW_URL + '/brand/raster/logo/nibleaf-logo-horizontal-ltr.png' },
+      logo: { '@type': 'ImageObject', url: `${WWW_URL}/brand/raster/logo/nibleaf-logo-horizontal-ltr.png` },
       sameAs: [GITHUB_URL],
     },
     {
       '@type': 'WebSite',
-      '@id': WWW_URL + '/#website',
+      '@id': `${WWW_URL}/#website`,
       name: 'Nibleaf',
       url: WWW_URL,
       inLanguage: ['en', 'ar'],
-      publisher: { '@id': WWW_URL + '/#organization' },
+      publisher: { '@id': `${WWW_URL}/#organization` },
     },
     {
       '@type': 'SoftwareApplication',
-      '@id': WWW_URL + '/#software',
+      '@id': `${WWW_URL}/#software`,
       name: 'Nibleaf',
       applicationCategory: 'DeveloperApplication',
       applicationSubCategory: 'Documentation Platform',
-      operatingSystem: 'Linux, Docker',
+      operatingSystem: 'Web',
       description: DESCRIPTION,
       url: WWW_URL,
       image: OG_IMAGE,
@@ -46,8 +46,8 @@ const JSON_LD = JSON.stringify({
       downloadUrl: GITHUB_URL,
       softwareVersion: '0.1.0',
       isAccessibleForFree: true,
-      publisher: { '@id': WWW_URL + '/#organization' },
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+      publisher: { '@id': `${WWW_URL}/#organization` },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: `${APP_URL}/sign-up` },
     },
   ],
 });

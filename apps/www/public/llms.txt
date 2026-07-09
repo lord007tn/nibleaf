@@ -1,23 +1,23 @@
 # Nibleaf
 
-> Nibleaf is an open-source, self-hostable documentation platform — a Mintlify/GitBook alternative you run on your own infrastructure. Write docs in Markdown/MDX, get a fast, searchable site with versioned publishing, custom domains, and first-party analytics. Bilingual English/Arabic with first-class right-to-left (RTL) support. Deploy the whole stack with one Docker command. Licensed AGPL-3.0.
+> Nibleaf Cloud is a managed documentation platform for teams shipping polished docs. Write in Markdown/MDX, get a fast searchable site with versioned publishing, custom domains, first-party analytics, and bilingual English/Arabic authoring with first-class right-to-left (RTL) support. The core remains open source under AGPL-3.0.
 
 ## Key facts
-- Self-hostable via a single `docker compose up -d` (app, API, worker, Postgres, Redis-compatible cache, S3-compatible storage)
-- Own your data: content, search index, analytics, and readers stay in your database and storage
+- Managed cloud hosting at nibleaf.com for app, publishing, search, analytics, storage, and custom domains
+- Open-source core remains available for teams that need to inspect, extend, or self-host the platform
 - WYSIWYG + Markdown editor that round-trips MDX components (callouts, cards, steps, tabs, code groups, accordions, params, math, Mermaid)
 - Versioned publishing: every publish is an immutable snapshot; rollback is atomic
 - Hybrid full-text + fuzzy search powered by Orama, built into every published site (bilingual, incl. an Arabic tokenizer)
 - Arabic-ready, RTL-first bilingual authoring and reading
-- Free and open source (AGPL-3.0); managed Nibleaf Cloud is coming soon
+- Free beta for Nibleaf Cloud; open-source core licensed AGPL-3.0
 
 ## Pages
-- [Home](https://trynibleaf.com/): overview and features
-- [Self-hosting guide](https://trynibleaf.com/self-hosting): requirements and one-command Docker setup
-- [Pricing](https://trynibleaf.com/pricing): free self-hosted, Cloud waitlist
-- [Nibleaf Cloud](https://trynibleaf.com/cloud): managed hosting waitlist
-- [About](https://trynibleaf.com/about): mission and stack
+- [Home](https://nibleaf.com/): overview and features
+- [Nibleaf Cloud](https://nibleaf.com/cloud): managed documentation hosting
+- [Pricing](https://nibleaf.com/pricing): Cloud beta and open-source edition
+- [Self-hosting guide](https://nibleaf.com/self-hosting): requirements and one-command Docker setup
+- [About](https://nibleaf.com/about): mission and stack
 - [Source code](https://github.com/lord007tn/nibleaf): GitHub repository
 
 ## Comparison
-- Nibleaf vs Mintlify / GitBook / ReadMe: the same polished authoring experience, but open source, self-hostable, and with no per-seat lock-in.
+- Nibleaf vs Mintlify / GitBook / ReadMe: a polished managed authoring experience with an open-source core and no per-seat lock-in.

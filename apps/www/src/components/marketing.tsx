@@ -40,7 +40,7 @@ export function Eyebrow({ children }: { children: string }) {
   );
 }
 
-/** Thin site-wide bar reinforcing the "self-host now, cloud soon" positioning. */
+/** Thin site-wide bar reinforcing the live Nibleaf Cloud positioning. */
 export function AnnouncementBar() {
   const t = useT();
   return (
@@ -77,9 +77,9 @@ function LanguageToggle() {
 
 const NAV_LINKS: { href: string; label: MessageKey }[] = [
   { href: '/#features', label: 'nav.features' },
-  { href: '/self-hosting', label: 'nav.selfHost' },
-  { href: '/pricing', label: 'nav.pricing' },
   { href: '/cloud', label: 'nav.cloud' },
+  { href: '/pricing', label: 'nav.pricing' },
+  { href: '/self-hosting', label: 'nav.selfHost' },
 ];
 
 export function SiteNav() {
@@ -124,9 +124,9 @@ export function SiteNav() {
 
 const FOOTER_PRODUCT: { href: string; label: MessageKey }[] = [
   { href: '/#features', label: 'nav.features' },
-  { href: '/self-hosting', label: 'nav.selfHost' },
-  { href: '/pricing', label: 'nav.pricing' },
   { href: '/cloud', label: 'nav.cloud' },
+  { href: '/pricing', label: 'nav.pricing' },
+  { href: '/self-hosting', label: 'nav.selfHost' },
 ];
 const FOOTER_RESOURCES: { href: string; label: MessageKey; external?: boolean }[] = [
   { href: '/about', label: 'about.eyebrow' },

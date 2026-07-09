@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://trynibleaf.com/sitemap.xml
+Sitemap: https://nibleaf.com/sitemap.xml

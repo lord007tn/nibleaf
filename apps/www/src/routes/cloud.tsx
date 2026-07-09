@@ -1,18 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ArrowRight, Check, Cloud, Layers, Sparkles } from 'lucide-react';
+import { ArrowRight, Cloud, Layers, Sparkles } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { useState } from 'react';
-import { BTN_DEFAULT, btn, Eyebrow, MarketingShell, SZ_DEFAULT } from '@/components/marketing';
+import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
-import { useLocale, useT } from '@/lib/i18n';
-import { canonicalHref } from '@/lib/links';
+import { useT } from '@/lib/i18n';
+import { appHref, canonicalHref } from '@/lib/links';
 import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/cloud')({
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud — managed hosting',
-      description: 'Managed Nibleaf is coming soon — the same platform, fully managed. Join the waitlist for launch.',
+      description:
+        'Nibleaf Cloud is the managed documentation platform for teams that want Markdown authoring, search, analytics, and custom domains without running servers.',
       path: '/cloud',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/cloud') }, ...hreflangLinks('/cloud')],
@@ -32,56 +32,18 @@ const FEATURES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: MessageKe
   { icon: Sparkles, title: 'cloud.feature.same.title', body: 'cloud.feature.same.body' },
 ];
 
-/**
- * Cloud waitlist — POSTs to the Nibleaf API `POST /api/public/waitlist` (proxied
- * same-origin via Nitro; see vite.config.ts). Idempotent by email server-side.
- */
-function WaitlistForm() {
+function CloudSignup() {
   const t = useT();
-  const { locale } = useLocale();
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
 
-  if (status === 'done') {
-    return (
-      <p className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-        <Check className="size-4 text-primary" /> {t('cloud.form.thanks')}
-      </p>
-    );
-  }
   return (
-    <div>
-      <form
-        className="flex flex-col gap-2 sm:flex-row"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setStatus('submitting');
-          try {
-            const res = await fetch('/api/public/waitlist', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify({ email, source: 'cloud-page', locale }),
-            });
-            setStatus(res.ok ? 'done' : 'error');
-          } catch {
-            setStatus('error');
-          }
-        }}
-      >
-        <input
-          type="email"
-          required
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder={t('cloud.form.placeholder')}
-          className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        />
-        <button type="submit" disabled={status === 'submitting'} className={btn(BTN_DEFAULT, SZ_DEFAULT, 'h-10')}>
-          {status === 'submitting' ? t('cloud.form.submitting') : t('cloud.form.submit')}
-        </button>
-      </form>
-      {status === 'error' ? <p className="mt-2 text-destructive text-sm">{t('cloud.form.error')}</p> : null}
+    <div className="flex flex-wrap justify-center gap-3">
+      <a className={btn(BTN_DEFAULT, SZ_LG, 'group')} href={appHref('/sign-up')}>
+        {t('cloud.form.submit')}
+        <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
+      </a>
+      <a className={btn(BTN_OUTLINE, SZ_LG)} href="/pricing">
+        {t('nav.pricing')}
+      </a>
     </div>
   );
 }
@@ -98,8 +60,8 @@ function CloudPage() {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">{t('cloud.title')}</h1>
           <p className="mx-auto mt-4 max-w-xl text-balance text-lg text-muted-foreground leading-relaxed">{t('cloud.lead')}</p>
-          <div className="mx-auto mt-8 max-w-md">
-            <WaitlistForm />
+          <div className="mx-auto mt-8">
+            <CloudSignup />
             <p className="mt-2.5 text-muted-foreground text-xs">{t('cloud.form.note')}</p>
           </div>
         </div>

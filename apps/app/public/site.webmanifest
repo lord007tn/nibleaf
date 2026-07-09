@@ -1,9 +1,9 @@
 {
   "name": "Nibleaf",
   "short_name": "Nibleaf",
-  "description": "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Nibleaf is coming soon.",
-  "lang": "ar",
-  "dir": "rtl",
+  "description": "Nibleaf Cloud documentation publishing with Arabic-ready authoring, search, analytics, and custom domains.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

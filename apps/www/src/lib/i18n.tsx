@@ -16,7 +16,7 @@ export const messages = {
     // Nav
     'nav.features': 'Features',
     'nav.compare': 'vs Mintlify',
-    'nav.selfHost': 'Self-host',
+    'nav.selfHost': 'Open source',
     'nav.pricing': 'Pricing',
     'nav.signIn': 'Sign in',
     'nav.getStarted': 'Get started',
@@ -24,17 +24,17 @@ export const messages = {
     'nav.language': 'العربية',
 
     // Hero
-    'hero.badge': 'Open source · self-hostable · AGPL-3.0',
+    'hero.badge': 'Nibleaf Cloud is live · open-source core',
     'hero.headlineLead': 'Beautiful docs,',
-    'hero.headlineAccent': 'on your own infrastructure.',
+    'hero.headlineAccent': 'hosted for your team.',
     'hero.subhead':
-      'Nibleaf is the open-source documentation platform. Write in Markdown, get a fast, searchable site with versioned publishing, custom domains, and analytics — self-hosted with one Docker command.',
-    'hero.ctaPrimary': 'Start writing — free',
-    'hero.ctaSecondary': 'Star on GitHub',
+      'Nibleaf Cloud is the managed documentation platform for teams shipping polished docs. Write in Markdown, publish a fast searchable site, connect custom domains, and track what readers need — without running servers.',
+    'hero.ctaPrimary': 'Start writing',
+    'hero.ctaSecondary': 'View source',
     'hero.terminal': 'docker compose up -d',
     'palette.label': 'Nibleaf brand palette',
-    'hero.chip.oneCommand': 'One Docker command',
-    'hero.chip.ownData': 'Own your data',
+    'hero.chip.oneCommand': 'Managed hosting',
+    'hero.chip.ownData': 'Custom domains',
     'hero.chip.bilingual': 'Arabic-ready, RTL-first',
     'hero.mock.search': 'Search or ask…',
     'hero.mock.badge': 'Live preview',
@@ -42,16 +42,16 @@ export const messages = {
     // Section eyebrows
     'eyebrow.features': 'Features',
     'eyebrow.compare': 'Comparison',
-    'eyebrow.selfHost': 'Deploy',
+    'eyebrow.selfHost': 'Open source',
     'eyebrow.pricing': 'Pricing',
     'eyebrow.faq': 'FAQ',
 
     // Trust strip
-    'trust.prefix': 'Built on a stack you control:',
+    'trust.prefix': 'Built for cloud docs teams:',
 
     // Features
     'features.heading': 'Everything you need to ship docs',
-    'features.subhead': 'The polish of a hosted platform, with the freedom of open source.',
+    'features.subhead': 'A managed docs workflow with the freedom of an open-source core.',
     'features.editor.title': 'Markdown editor',
     'features.editor.body': 'A focused editor with live preview, page tree, groups, and drag-to-reorder. Write fast, ship faster.',
     'features.search.title': 'Hybrid search',
@@ -62,14 +62,14 @@ export const messages = {
     'features.domains.body': 'Bring your own domain with guided DNS records and one-click verification.',
     'features.analytics.title': 'Analytics',
     'features.analytics.body': 'See page views, unique visitors, top pages, and what people search for — no third-party tracker.',
-    'features.selfHost.title': 'Self-host first',
-    'features.selfHost.body': 'Postgres, a Redis-compatible cache, and S3-compatible storage. Runs anywhere Docker does. Your data stays yours.',
+    'features.selfHost.title': 'Managed cloud',
+    'features.selfHost.body': 'We run the app, database, storage, queues, and upgrades so your team can focus on writing and publishing.',
 
     // Comparison
-    'compare.heading': 'The open-source Mintlify alternative',
-    'compare.subhead': 'The same great authoring experience — without the lock-in.',
+    'compare.heading': 'A cloud docs platform without lock-in',
+    'compare.subhead': 'A polished managed experience, with source-available escape hatches when you need them.',
     'compare.colNibleaf': 'Nibleaf',
-    'compare.colHosted': 'Hosted',
+    'compare.colHosted': 'Other SaaS',
     'compare.row.openSource': 'Open source',
     'compare.row.selfHost': 'Self-host on your infra',
     'compare.row.ownData': 'Own your data & storage',
@@ -79,9 +79,9 @@ export const messages = {
     'compare.row.noLockIn': 'No per-seat lock-in',
 
     // Self-host
-    'selfHost.heading': 'Self-host in 90 seconds',
+    'selfHost.heading': 'Open source when you need it',
     'selfHost.body':
-      'Clone the repo, copy the env file, and bring the whole stack up with Docker Compose — app, API, worker, Postgres, cache, and object storage.',
+      'Nibleaf Cloud is the default hosted experience. The same core remains available for teams that need to inspect, extend, or run the platform themselves.',
     'selfHost.bullet.migrations': 'Postgres + Prisma migrations run automatically',
     'selfHost.bullet.worker': 'BullMQ worker builds & indexes your published docs',
     'selfHost.bullet.storage': 'Any S3-compatible storage (maxio, R2, S3, B2) for assets',
@@ -90,7 +90,7 @@ export const messages = {
 
     // Pricing
     'pricing.heading': 'Simple, honest pricing',
-    'pricing.subhead': 'Self-host for free today. Cloud-hosted Nibleaf is coming soon.',
+    'pricing.subhead': 'Start on Nibleaf Cloud, with the open-source edition available when you need full infrastructure control.',
     'pricing.popular': 'Popular',
     'pricing.selfHosted.name': 'Self-hosted',
     'pricing.selfHosted.price': 'Free',
@@ -100,19 +100,19 @@ export const messages = {
     'pricing.selfHosted.feature.search': 'Search, analytics, custom domains',
     'pricing.selfHosted.feature.community': 'Community support',
     'pricing.selfHosted.cta': 'Get the source',
-    'pricing.cloud.name': 'Cloud-hosted',
-    'pricing.cloud.price': 'Soon',
-    'pricing.cloud.tagline': 'Managed Nibleaf is not live yet — join the waitlist.',
-    'pricing.cloud.feature.everything': 'Everything in self-hosted',
-    'pricing.cloud.feature.managed': 'Managed Postgres & storage',
-    'pricing.cloud.feature.upgrades': 'Automatic upgrades',
-    'pricing.cloud.feature.priority': 'Priority support',
-    'pricing.cloud.cta': 'Join the waitlist',
+    'pricing.cloud.name': 'Cloud',
+    'pricing.cloud.price': 'Free beta',
+    'pricing.cloud.tagline': 'Managed Nibleaf for teams publishing production docs.',
+    'pricing.cloud.feature.everything': 'Hosted dashboard and docs sites',
+    'pricing.cloud.feature.managed': 'Managed database, queues, and storage',
+    'pricing.cloud.feature.upgrades': 'Automatic deploys and upgrades',
+    'pricing.cloud.feature.priority': 'Custom domains and analytics',
+    'pricing.cloud.cta': 'Start on Cloud',
 
     // FAQ
     'faq.heading': 'Frequently asked',
-    'faq.free.q': 'Is Nibleaf really free?',
-    'faq.free.a': 'Yes. The self-hosted version is open source and free to run on your own infrastructure, forever.',
+    'faq.free.q': 'Can I use Nibleaf Cloud now?',
+    'faq.free.a': 'Yes. Nibleaf Cloud is live for teams that want managed docs hosting, sign-in, publishing, search, and custom domains.',
     'faq.selfHost.q': 'What do I need to self-host?',
     'faq.selfHost.a':
       'Docker and Docker Compose. The stack includes Postgres, a Redis-compatible cache, and S3-compatible object storage — all wired up for you.',
@@ -123,7 +123,7 @@ export const messages = {
 
     // Call to action
     'cta.heading': 'Ship docs your users will love',
-    'cta.body': 'Self-host today. Cloud-hosted Nibleaf is coming soon, with the same ownership-first defaults.',
+    'cta.body': 'Start on Nibleaf Cloud today, then keep the open-source core in reach when you need deeper control.',
     'cta.primary': 'Get started free',
     'cta.secondary': 'View on GitHub',
 
@@ -134,8 +134,8 @@ export const messages = {
     'footer.terms': 'Terms',
     'footer.privacy': 'Privacy',
     'footer.license': 'AGPL-3.0 licensed',
-    'footer.blurb': 'The open-source documentation platform you can self-host today.',
-    'footer.status': 'Self-hostable now · Cloud coming soon',
+    'footer.blurb': 'Managed documentation hosting with an open-source core.',
+    'footer.status': 'Nibleaf Cloud is live',
     'footer.col.product': 'Product',
     'footer.col.resources': 'Resources',
     'footer.col.legal': 'Legal',
@@ -146,9 +146,9 @@ export const messages = {
     'nav.cloud': 'Cloud',
     'nav.switchLanguage': 'Switch language to Arabic',
     'nav.skipToContent': 'Skip to content',
-    'banner.cloud': 'Nibleaf Cloud — fully managed hosting — is on the way.',
-    'banner.cloudCta': 'Join the waitlist',
-    'banner.ariaLabel': 'Nibleaf Cloud waitlist',
+    'banner.cloud': 'Nibleaf Cloud is live on nibleaf.com.',
+    'banner.cloudCta': 'Start writing',
+    'banner.ariaLabel': 'Start on Nibleaf Cloud',
 
     // Self-hosting page
     'selfhost.eyebrow': 'Self-host',
@@ -191,16 +191,16 @@ export const messages = {
     'selfhost.cta.primary': 'Get the source',
     'selfhost.cta.secondary': 'Read the docs',
 
-    // Cloud waitlist page
+    // Cloud page
     'cloud.eyebrow': 'Nibleaf Cloud',
-    'cloud.title': 'Managed Nibleaf is coming soon',
+    'cloud.title': 'Managed Nibleaf for production docs',
     'cloud.lead':
-      'Love Nibleaf but would rather not run the servers? Nibleaf Cloud gives you the same platform, fully managed — automatic upgrades, managed database and storage, and zero ops.',
-    'cloud.badge': 'Coming soon',
+      'Nibleaf Cloud gives your team the full docs workflow without the operations work: hosted dashboard, managed database and storage, automatic upgrades, custom domains, analytics, and Arabic-ready authoring.',
+    'cloud.badge': 'Live now',
     'cloud.form.placeholder': 'you@company.com',
-    'cloud.form.submit': 'Notify me',
-    'cloud.form.note': 'No spam — just one email when Cloud is ready.',
-    'cloud.form.thanks': "You're on the list. We'll be in touch when Cloud launches.",
+    'cloud.form.submit': 'Start on Cloud',
+    'cloud.form.note': 'Create a workspace, write in Markdown, and publish your first docs site from nibleaf.com.',
+    'cloud.form.thanks': "You're ready to start on Nibleaf Cloud.",
     'cloud.form.submitting': 'Joining…',
     'cloud.form.error': 'Something went wrong — please try again.',
     'cloud.feature.managed.title': 'Fully managed',
@@ -209,8 +209,8 @@ export const messages = {
     'cloud.feature.scale.body': 'From one site to hundreds, without touching infrastructure.',
     'cloud.feature.same.title': 'The same Nibleaf',
     'cloud.feature.same.body': 'Identical editor, search, analytics, and Arabic-ready authoring.',
-    'cloud.selfhost.title': "Can't wait? Self-host today",
-    'cloud.selfhost.body': 'Everything in Cloud is available right now — free, open source, on your own infrastructure.',
+    'cloud.selfhost.title': 'Need full control?',
+    'cloud.selfhost.body': 'The open-source edition remains available for teams that need to run Nibleaf inside their own infrastructure.',
     'cloud.selfhost.cta': 'Explore self-hosting',
 
     // About page
@@ -230,13 +230,13 @@ export const messages = {
     'about.value.own.body': "Your content and your readers' data live in your database and storage.",
     'about.value.bilingual.title': 'Bilingual by design',
     'about.value.bilingual.body': 'English and Arabic with full RTL — first-class, not bolted on.',
-    'about.value.selfhost.title': 'Self-host first',
-    'about.value.selfhost.body': 'Runs anywhere Docker does. Cloud is coming for those who prefer managed.',
+    'about.value.selfhost.title': 'Cloud first, source open',
+    'about.value.selfhost.body': 'Use the managed cloud by default, or inspect and run the core yourself when the project requires it.',
     'about.stack.heading': 'Built on a stack you can trust',
     'about.stack.body':
       'Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage — modern, boring-in-a-good-way infrastructure you can run yourself.',
     'about.cta.title': 'Start writing today',
-    'about.cta.body': 'Self-host Nibleaf for free, or join the Cloud waitlist.',
+    'about.cta.body': 'Start on Nibleaf Cloud, or explore the open-source edition.',
 
     // Legal — shared
     'legal.back': 'Back to home',
@@ -246,16 +246,16 @@ export const messages = {
     'terms.title': 'Terms of Service',
     'terms.s1.heading': '1. Acceptance of terms',
     'terms.s1.body':
-      'By accessing or using Nibleaf (the "Service") you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Service. As Nibleaf is self-hosted software, the operator of each deployment should review and adapt these terms with their own legal counsel.',
+      'By accessing or using Nibleaf Cloud or the Nibleaf open-source edition (the "Service") you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Service. Teams running their own deployment should review and adapt these terms with their own legal counsel.',
     'terms.s2.heading': '2. The open-source license',
     'terms.s2.body':
       "Nibleaf is distributed under the GNU Affero General Public License v3.0 (AGPL-3.0). The license that ships with the source code governs your rights to use, copy, modify, and distribute the software, and — under the AGPL's network-use clause — to receive the corresponding source of any modified version offered to you over a network. Nothing in these terms limits the rights granted to you under that open-source license.",
-    'terms.s3.heading': '3. Self-hosted deployments',
+    'terms.s3.heading': '3. Cloud and open-source deployments',
     'terms.s3.body':
-      'When you self-host Nibleaf, you are solely responsible for your own infrastructure, configuration, data, security, and compliance. The Service is provided "as is" without warranties of any kind, to the maximum extent permitted by applicable law.',
+      'For Nibleaf Cloud, your workspace content, account data, and published sites are processed to provide the hosted service. When you run the open-source edition yourself, you are responsible for your own infrastructure, configuration, data, security, and compliance.',
     'terms.s4.heading': '4. Acceptable use',
     'terms.s4.body':
-      'You agree not to use the Service to violate any law, infringe the rights of others, or distribute unlawful, harmful, or malicious content. Replace this section with the specific policies that apply to your deployment.',
+      'You agree not to use the Service to violate any law, infringe the rights of others, or distribute unlawful, harmful, or malicious content.',
     'terms.s5.heading': '5. Limitation of liability',
     'terms.s5.body':
       'To the fullest extent permitted by law, the authors and copyright holders shall not be liable for any claim, damages, or other liability arising from the use of the Service.',
@@ -267,19 +267,18 @@ export const messages = {
     'privacy.title': 'Privacy Policy',
     'privacy.s1.heading': '1. Your data stays yours',
     'privacy.s1.body':
-      "Nibleaf is self-hosted by design. When you run Nibleaf on your own infrastructure, your content and your users' data live in your own database and object storage — not ours. This is placeholder copy; replace it with a policy reviewed by your own legal counsel.",
+      "For Nibleaf Cloud, your content and account data are used to provide hosting, publishing, search, analytics, authentication, and support. If you run the open-source edition on your own infrastructure, your deployment's data lives in the systems you operate.",
     'privacy.s2.heading': '2. What we collect',
     'privacy.s2.body':
-      'The marketing site itself does not use third-party analytics or trackers. Any data processed by your Nibleaf deployment is governed by the privacy policy you publish to your own users, not by this document.',
+      'We collect the information needed to operate Nibleaf Cloud, including account details, workspace metadata, project content, published-site analytics, and support communications. Public marketing pages should avoid third-party trackers unless explicitly configured.',
     'privacy.s3.heading': '3. Built-in analytics',
     'privacy.s3.body':
-      'Nibleaf includes first-party analytics (page views, unique visitors, top pages and searches) that run entirely within your deployment. No data is sent to any external analytics provider unless you configure one.',
+      'Nibleaf includes first-party analytics such as page views, unique visitors, top pages, and searches. These analytics power the product experience and do not require a third-party analytics provider.',
     'privacy.s4.heading': '4. Cookies',
-    'privacy.s4.body':
-      'Authentication uses first-party session cookies issued by your own deployment. Document the specific cookies your instance sets when you adapt this policy for production.',
+    'privacy.s4.body': 'Authentication uses first-party session cookies and related security cookies to keep you signed in and protect your account.',
     'privacy.s5.heading': '5. Data requests',
     'privacy.s5.body':
-      'Because you control the infrastructure, you are the data controller for your deployment. Provide your own contact details and process for handling access, correction, and deletion requests here.',
+      'Contact Nibleaf support for access, correction, export, or deletion requests for Cloud data. If you run the open-source edition yourself, publish your own request process for your users.',
     'privacy.s6.heading': '6. Changes to this policy',
     'privacy.s6.body': 'We may update this policy from time to time. Material changes will be reflected by the "last updated" date above.',
   },
@@ -287,7 +286,7 @@ export const messages = {
     // Nav
     'nav.features': 'المزايا',
     'nav.compare': 'مقارنةً بـ Mintlify',
-    'nav.selfHost': 'الاستضافة الذاتية',
+    'nav.selfHost': 'المصدر المفتوح',
     'nav.pricing': 'الأسعار',
     'nav.signIn': 'تسجيل الدخول',
     'nav.getStarted': 'ابدأ الآن',
@@ -295,17 +294,17 @@ export const messages = {
     'nav.language': 'EN',
 
     // Hero
-    'hero.badge': 'مفتوح المصدر · قابل للاستضافة الذاتية · AGPL-3.0',
+    'hero.badge': 'Nibleaf Cloud متاح الآن · النواة مفتوحة المصدر',
     'hero.headlineLead': 'توثيق أنيق،',
-    'hero.headlineAccent': 'على بنيتك التحتية الخاصة.',
+    'hero.headlineAccent': 'مستضاف لفريقك.',
     'hero.subhead':
-      'Nibleaf منصة توثيق مفتوحة المصدر. اكتب بصيغة Markdown واحصل على موقع سريع وقابل للبحث مع نشر موثّق بالإصدارات ونطاقات مخصصة وتحليلات — واستضفه ذاتيًا بأمر Docker واحد.',
-    'hero.ctaPrimary': 'ابدأ الكتابة — مجانًا',
-    'hero.ctaSecondary': 'أضف نجمة على GitHub',
+      'Nibleaf Cloud منصة توثيق مُدارة للفرق التي تنشر توثيقًا مصقولًا. اكتب بصيغة Markdown، وانشر موقعًا سريعًا قابلًا للبحث، واربط نطاقاتك المخصصة، وتابع احتياجات القراء — بدون إدارة خوادم.',
+    'hero.ctaPrimary': 'ابدأ الكتابة',
+    'hero.ctaSecondary': 'اعرض المصدر',
     'hero.terminal': 'docker compose up -d',
     'palette.label': 'لوحة ألوان Nibleaf',
-    'hero.chip.oneCommand': 'أمر Docker واحد',
-    'hero.chip.ownData': 'بياناتك ملكك',
+    'hero.chip.oneCommand': 'استضافة مُدارة',
+    'hero.chip.ownData': 'نطاقات مخصصة',
     'hero.chip.bilingual': 'جاهز للعربية ويدعم RTL',
     'hero.mock.search': 'ابحث أو اسأل…',
     'hero.mock.badge': 'معاينة حية',
@@ -313,16 +312,16 @@ export const messages = {
     // Section eyebrows
     'eyebrow.features': 'المزايا',
     'eyebrow.compare': 'المقارنة',
-    'eyebrow.selfHost': 'النشر',
+    'eyebrow.selfHost': 'المصدر المفتوح',
     'eyebrow.pricing': 'الأسعار',
     'eyebrow.faq': 'الأسئلة الشائعة',
 
     // Trust strip
-    'trust.prefix': 'مبنية على حزمة تقنية تتحكم بها بالكامل:',
+    'trust.prefix': 'مبنية لفرق التوثيق السحابية:',
 
     // Features
     'features.heading': 'كل ما تحتاجه لنشر توثيقك',
-    'features.subhead': 'إتقان المنصات المُستضافة، مع حرية المصدر المفتوح.',
+    'features.subhead': 'سير عمل توثيق مُدار يحافظ على سرعة التحرير والنشر والبحث.',
     'features.editor.title': 'محرّر Markdown',
     'features.editor.body': 'محرّر مُركّز مع معاينة حية وشجرة صفحات ومجموعات وإعادة ترتيب بالسحب. اكتب بسرعة وانشر أسرع.',
     'features.search.title': 'بحث هجين',
@@ -333,14 +332,14 @@ export const messages = {
     'features.domains.body': 'استخدم نطاقك الخاص مع سجلات DNS موجّهة وتحقّق بنقرة واحدة.',
     'features.analytics.title': 'تحليلات',
     'features.analytics.body': 'اطّلع على مشاهدات الصفحات والزوار الفريدين وأبرز الصفحات وما يبحث عنه الناس — بدون أي متعقّب خارجي.',
-    'features.selfHost.title': 'الاستضافة الذاتية أولًا',
-    'features.selfHost.body': 'Postgres وذاكرة تخزين مؤقت متوافقة مع Redis وتخزين متوافق مع S3. يعمل أينما يعمل Docker. بياناتك تبقى ملكك.',
+    'features.selfHost.title': 'سحابة مُدارة',
+    'features.selfHost.body': 'نحن ندير التطبيق وقاعدة البيانات والتخزين والترقيات، بينما تبقى النواة مفتوحة المصدر للفرق التي تحتاج إلى تحكم أعمق.',
 
     // Comparison
-    'compare.heading': 'البديل مفتوح المصدر لـ Mintlify',
-    'compare.subhead': 'تجربة التأليف الرائعة نفسها — بدون قيود الاحتكار.',
+    'compare.heading': 'منصة توثيق سحابية بلا احتكار',
+    'compare.subhead': 'تجربة مُدارة مصقولة مع نواة مفتوحة المصدر عندما تحتاج إلى المرونة.',
     'compare.colNibleaf': 'Nibleaf',
-    'compare.colHosted': 'مُستضاف',
+    'compare.colHosted': 'SaaS آخر',
     'compare.row.openSource': 'مفتوح المصدر',
     'compare.row.selfHost': 'استضافة ذاتية على بنيتك التحتية',
     'compare.row.ownData': 'ملكية بياناتك وتخزينك',
@@ -350,9 +349,9 @@ export const messages = {
     'compare.row.noLockIn': 'بلا احتكار حسب المقعد',
 
     // Self-host
-    'selfHost.heading': 'استضف ذاتيًا في 90 ثانية',
+    'selfHost.heading': 'النواة مفتوحة المصدر عندما تحتاجها',
     'selfHost.body':
-      'استنسخ المستودع وانسخ ملف البيئة وشغّل الحزمة بالكامل عبر Docker Compose — التطبيق وواجهة API والعامل وPostgres والذاكرة المؤقتة والتخزين الكائني.',
+      'Nibleaf Cloud هي التجربة المُستضافة الافتراضية. وتبقى النواة نفسها متاحة للفرق التي تحتاج إلى فحص المنصة أو توسيعها أو تشغيلها بنفسها.',
     'selfHost.bullet.migrations': 'ترحيلات Postgres وPrisma تُنفَّذ تلقائيًا',
     'selfHost.bullet.worker': 'عامل BullMQ يبني توثيقك المنشور ويفهرسه',
     'selfHost.bullet.storage': 'أي تخزين متوافق مع S3 (maxio أو R2 أو S3 أو B2) للأصول',
@@ -361,7 +360,7 @@ export const messages = {
 
     // Pricing
     'pricing.heading': 'تسعير بسيط وصادق',
-    'pricing.subhead': 'استضف ذاتيًا مجانًا اليوم. النسخة السحابية من Nibleaf قادمة قريبًا.',
+    'pricing.subhead': 'ابدأ على Nibleaf Cloud، مع النسخة مفتوحة المصدر عندما تحتاج إلى تحكم كامل في البنية التحتية.',
     'pricing.popular': 'الأكثر شيوعًا',
     'pricing.selfHosted.name': 'الاستضافة الذاتية',
     'pricing.selfHosted.price': 'مجانًا',
@@ -371,19 +370,19 @@ export const messages = {
     'pricing.selfHosted.feature.search': 'بحث وتحليلات ونطاقات مخصصة',
     'pricing.selfHosted.feature.community': 'دعم المجتمع',
     'pricing.selfHosted.cta': 'احصل على المصدر',
-    'pricing.cloud.name': 'النسخة السحابية',
-    'pricing.cloud.price': 'قريبًا',
-    'pricing.cloud.tagline': 'Nibleaf المُدار ليس متاحًا بعد — انضم إلى قائمة الانتظار.',
-    'pricing.cloud.feature.everything': 'كل ما في الاستضافة الذاتية',
-    'pricing.cloud.feature.managed': 'Postgres وتخزين مُدار',
-    'pricing.cloud.feature.upgrades': 'ترقيات تلقائية',
-    'pricing.cloud.feature.priority': 'دعم بأولوية',
-    'pricing.cloud.cta': 'انضم إلى قائمة الانتظار',
+    'pricing.cloud.name': 'Cloud',
+    'pricing.cloud.price': 'بيتا مجانية',
+    'pricing.cloud.tagline': 'Nibleaf مُدار للفرق التي تنشر توثيق إنتاجي.',
+    'pricing.cloud.feature.everything': 'لوحة تحكم ومواقع توثيق مُستضافة',
+    'pricing.cloud.feature.managed': 'قاعدة بيانات وطوابير وتخزين مُدار',
+    'pricing.cloud.feature.upgrades': 'نشر وترقيات تلقائية',
+    'pricing.cloud.feature.priority': 'نطاقات مخصصة وتحليلات',
+    'pricing.cloud.cta': 'ابدأ على Cloud',
 
     // FAQ
     'faq.heading': 'الأسئلة الشائعة',
-    'faq.free.q': 'هل Nibleaf مجاني فعلًا؟',
-    'faq.free.a': 'نعم. النسخة المُستضافة ذاتيًا مفتوحة المصدر ومجانية للتشغيل على بنيتك التحتية الخاصة، إلى الأبد.',
+    'faq.free.q': 'هل يمكنني استخدام Nibleaf Cloud الآن؟',
+    'faq.free.a': 'نعم. Nibleaf Cloud متاح للفرق التي تريد استضافة توثيق مُدارة وتسجيل دخول ونشرًا وبحثًا ونطاقات مخصصة.',
     'faq.selfHost.q': 'ما الذي أحتاجه للاستضافة الذاتية؟',
     'faq.selfHost.a':
       'Docker وDocker Compose. تتضمن الحزمة Postgres وذاكرة تخزين مؤقت متوافقة مع Redis وتخزينًا كائنيًا متوافقًا مع S3 — كلها مُهيّأة لك مسبقًا.',
@@ -394,7 +393,7 @@ export const messages = {
 
     // Call to action
     'cta.heading': 'انشر توثيقًا سيحبه مستخدموك',
-    'cta.body': 'استضف ذاتيًا اليوم. النسخة السحابية من Nibleaf قادمة قريبًا، وبنفس مبادئ ملكية المحتوى.',
+    'cta.body': 'ابدأ على Nibleaf Cloud اليوم، واحتفظ بالنواة مفتوحة المصدر عندما تحتاج إلى تحكم أعمق.',
     'cta.primary': 'ابدأ مجانًا',
     'cta.secondary': 'استعرض على GitHub',
 
@@ -405,8 +404,8 @@ export const messages = {
     'footer.terms': 'الشروط',
     'footer.privacy': 'الخصوصية',
     'footer.license': 'مُرخّص بـ AGPL-3.0',
-    'footer.blurb': 'منصة التوثيق مفتوحة المصدر التي يمكنك استضافتها ذاتيًا اليوم.',
-    'footer.status': 'متاح للاستضافة الذاتية الآن · النسخة السحابية قريبًا',
+    'footer.blurb': 'استضافة توثيق مُدارة مع نواة مفتوحة المصدر.',
+    'footer.status': 'Nibleaf Cloud متاح الآن',
     'footer.col.product': 'المنتج',
     'footer.col.resources': 'المصادر',
     'footer.col.legal': 'قانوني',
@@ -417,9 +416,9 @@ export const messages = {
     'nav.cloud': 'السحابة',
     'nav.switchLanguage': 'Switch language to English',
     'nav.skipToContent': 'تخطَّ إلى المحتوى',
-    'banner.cloud': 'Nibleaf السحابي — استضافة مُدارة بالكامل — في الطريق.',
-    'banner.cloudCta': 'انضم إلى قائمة الانتظار',
-    'banner.ariaLabel': 'قائمة انتظار Nibleaf Cloud',
+    'banner.cloud': 'Nibleaf Cloud متاح الآن على nibleaf.com.',
+    'banner.cloudCta': 'ابدأ الكتابة',
+    'banner.ariaLabel': 'ابدأ على Nibleaf Cloud',
 
     // Self-hosting page
     'selfhost.eyebrow': 'الاستضافة الذاتية',
@@ -462,16 +461,16 @@ export const messages = {
     'selfhost.cta.primary': 'احصل على المصدر',
     'selfhost.cta.secondary': 'اقرأ التوثيق',
 
-    // Cloud waitlist page
+    // Cloud page
     'cloud.eyebrow': 'Nibleaf السحابي',
-    'cloud.title': 'النسخة السحابية المُدارة من Nibleaf قادمة قريبًا',
+    'cloud.title': 'Nibleaf مُدار لتوثيق الإنتاج',
     'cloud.lead':
-      'تحب Nibleaf لكن تفضّل عدم إدارة الخوادم؟ Nibleaf السحابي يمنحك المنصة نفسها، مُدارة بالكامل — ترقيات تلقائية، وقاعدة بيانات وتخزين مُدارَين، وبلا أي عمليات تشغيل.',
-    'cloud.badge': 'قريبًا',
+      'Nibleaf Cloud يمنح فريقك سير عمل التوثيق كاملًا بدون عمل التشغيل: لوحة تحكم مُستضافة، وقاعدة بيانات وتخزين مُداران، وترقيات تلقائية، ونطاقات مخصصة، وتحليلات، وتأليف جاهز للعربية.',
+    'cloud.badge': 'متاح الآن',
     'cloud.form.placeholder': 'you@company.com',
-    'cloud.form.submit': 'أبلغني',
-    'cloud.form.note': 'بلا إزعاج — رسالة واحدة فقط عندما تصبح النسخة السحابية جاهزة.',
-    'cloud.form.thanks': 'أنت الآن في القائمة. سنتواصل معك عند إطلاق النسخة السحابية.',
+    'cloud.form.submit': 'ابدأ على Cloud',
+    'cloud.form.note': 'أنشئ مساحة عمل وابدأ النشر على nibleaf.com.',
+    'cloud.form.thanks': 'أنت جاهز للبدء على Nibleaf Cloud.',
     'cloud.form.submitting': 'جارٍ الانضمام…',
     'cloud.form.error': 'حدث خطأ ما — يرجى المحاولة مرة أخرى.',
     'cloud.feature.managed.title': 'مُدار بالكامل',
@@ -480,8 +479,8 @@ export const messages = {
     'cloud.feature.scale.body': 'من موقع واحد إلى المئات، بلا لمس البنية التحتية.',
     'cloud.feature.same.title': 'Nibleaf نفسه',
     'cloud.feature.same.body': 'المحرّر والبحث والتحليلات والتأليف الجاهز للعربية — كلها نفسها.',
-    'cloud.selfhost.title': 'لا تريد الانتظار؟ استضف ذاتيًا اليوم',
-    'cloud.selfhost.body': 'كل ما في النسخة السحابية متاح الآن — مجانًا ومفتوح المصدر، على بنيتك التحتية الخاصة.',
+    'cloud.selfhost.title': 'تحتاج إلى تحكم كامل؟',
+    'cloud.selfhost.body': 'تبقى النسخة مفتوحة المصدر متاحة للفرق التي تريد تشغيل Nibleaf على بنيتها الخاصة.',
     'cloud.selfhost.cta': 'استكشف الاستضافة الذاتية',
 
     // About page
@@ -500,12 +499,12 @@ export const messages = {
     'about.value.own.body': 'محتواك وبيانات قرّائك تبقى في قاعدة بياناتك وتخزينك.',
     'about.value.bilingual.title': 'ثنائي اللغة بالتصميم',
     'about.value.bilingual.body': 'الإنجليزية والعربية مع دعم كامل لـ RTL — أصيل لا مُضاف.',
-    'about.value.selfhost.title': 'الاستضافة الذاتية أولًا',
-    'about.value.selfhost.body': 'يعمل أينما يعمل Docker. والنسخة السحابية قادمة لمن يفضّل المُدار.',
+    'about.value.selfhost.title': 'السحابة أولًا، والمصدر مفتوح',
+    'about.value.selfhost.body': 'استخدم السحابة المُدارة افتراضيًا، وافحص النواة أو شغّلها بنفسك عند الحاجة.',
     'about.stack.heading': 'مبني على حزمة تقنية تثق بها',
     'about.stack.body': 'Postgres وHono وTanStack Start وBullMQ وبحث Orama وتخزين متوافق مع S3 — بنية تحتية حديثة وموثوقة يمكنك تشغيلها بنفسك.',
     'about.cta.title': 'ابدأ الكتابة اليوم',
-    'about.cta.body': 'استضف Nibleaf ذاتيًا مجانًا، أو انضم إلى قائمة انتظار النسخة السحابية.',
+    'about.cta.body': 'ابدأ على Nibleaf Cloud، أو استكشف النسخة مفتوحة المصدر.',
 
     // Legal — shared
     'legal.back': 'العودة إلى الرئيسية',
@@ -515,16 +514,15 @@ export const messages = {
     'terms.title': 'شروط الخدمة',
     'terms.s1.heading': '1. قبول الشروط',
     'terms.s1.body':
-      'باستخدامك Nibleaf («الخدمة») أو الوصول إليها، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا لم توافق على هذه الشروط، فلا تستخدم الخدمة. وبما أن Nibleaf برنامج مُستضاف ذاتيًا، ينبغي على مُشغّل كل عملية نشر مراجعة هذه الشروط وتكييفها بالاستعانة بمستشاره القانوني.',
+      'باستخدامك Nibleaf Cloud أو نسخة Nibleaf مفتوحة المصدر («الخدمة») أو الوصول إليها، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا لم توافق على هذه الشروط، فلا تستخدم الخدمة. وينبغي على الفرق التي تشغّل نشرها الخاص مراجعة هذه الشروط وتكييفها بالاستعانة بمستشارها القانوني.',
     'terms.s2.heading': '2. رخصة المصدر المفتوح',
     'terms.s2.body':
       'يُوزَّع Nibleaf بموجب رخصة جنو العمومية العامة أفيرو الإصدار 3.0 (AGPL-3.0). الرخصة المرفقة مع الشيفرة المصدرية تحكم حقوقك في استخدام البرنامج ونسخه وتعديله وتوزيعه، وكذلك — بموجب بند الاستخدام الشبكي في AGPL — في الحصول على الشيفرة المصدرية المقابلة لأي نسخة معدّلة تُقدَّم إليك عبر الشبكة. ولا يحدّ أي بند في هذه الشروط من الحقوق الممنوحة لك بموجب تلك الرخصة مفتوحة المصدر.',
-    'terms.s3.heading': '3. عمليات النشر المُستضافة ذاتيًا',
+    'terms.s3.heading': '3. النشر السحابي ومفتوح المصدر',
     'terms.s3.body':
-      'عند استضافتك Nibleaf ذاتيًا، تتحمل وحدك مسؤولية بنيتك التحتية وإعداداتك وبياناتك وأمنك والامتثال للأنظمة. تُقدَّم الخدمة «كما هي» دون أي ضمانات من أي نوع، إلى أقصى حد يسمح به القانون المعمول به.',
+      'في Nibleaf Cloud، نعالج محتوى مساحة عملك وبيانات حسابك ومواقعك المنشورة لتقديم الخدمة المستضافة. وعند تشغيل النسخة مفتوحة المصدر بنفسك، تتحمل مسؤولية بنيتك التحتية وإعداداتك وبياناتك وأمنك والامتثال للأنظمة.',
     'terms.s4.heading': '4. الاستخدام المقبول',
-    'terms.s4.body':
-      'توافق على عدم استخدام الخدمة لمخالفة أي قانون أو انتهاك حقوق الآخرين أو نشر محتوى غير قانوني أو ضار أو خبيث. استبدل هذا القسم بالسياسات المحددة المنطبقة على عملية نشرك.',
+    'terms.s4.body': 'توافق على عدم استخدام الخدمة لمخالفة أي قانون أو انتهاك حقوق الآخرين أو نشر محتوى غير قانوني أو ضار أو خبيث.',
     'terms.s5.heading': '5. تحديد المسؤولية',
     'terms.s5.body':
       'إلى أقصى حد يسمح به القانون، لا يتحمل المؤلفون وأصحاب حقوق النشر أي مسؤولية عن أي مطالبة أو أضرار أو أي مسؤولية أخرى تنشأ عن استخدام الخدمة.',
@@ -535,19 +533,18 @@ export const messages = {
     'privacy.title': 'سياسة الخصوصية',
     'privacy.s1.heading': '1. بياناتك تبقى ملكك',
     'privacy.s1.body':
-      'صُمِّم Nibleaf للاستضافة الذاتية. عند تشغيله على بنيتك التحتية الخاصة، يبقى محتواك وبيانات مستخدميك في قاعدة بياناتك وتخزينك الكائني — لا لدينا. هذا نص مؤقت؛ استبدله بسياسة راجعها مستشارك القانوني الخاص.',
+      'في Nibleaf Cloud، نستخدم محتواك وبيانات حسابك لتقديم الاستضافة والنشر والبحث والتحليلات والمصادقة والدعم. وإذا شغّلت النسخة مفتوحة المصدر على بنيتك الخاصة، فتبقى بيانات ذلك النشر في الأنظمة التي تديرها.',
     'privacy.s2.heading': '2. ما الذي نجمعه',
     'privacy.s2.body':
-      'لا يستخدم الموقع التسويقي نفسه أي تحليلات أو متعقّبات من جهات خارجية. وأي بيانات يعالجها نشر Nibleaf لديك تخضع لسياسة الخصوصية التي تنشرها لمستخدميك، لا لهذه الوثيقة.',
+      'نجمع المعلومات اللازمة لتشغيل Nibleaf Cloud، بما في ذلك تفاصيل الحساب وبيانات مساحة العمل ومحتوى المشاريع وتحليلات المواقع المنشورة ومراسلات الدعم. وينبغي ألا تستخدم صفحات التسويق العامة متعقبات خارجية ما لم تُهيّأ صراحة.',
     'privacy.s3.heading': '3. التحليلات المدمجة',
     'privacy.s3.body':
-      'يتضمن Nibleaf تحليلات داخلية (مشاهدات الصفحات والزوار الفريدون وأبرز الصفحات وعمليات البحث) تعمل بالكامل داخل عملية نشرك. ولا تُرسَل أي بيانات إلى أي مزوّد تحليلات خارجي ما لم تُهيّئ واحدًا.',
+      'يتضمن Nibleaf تحليلات داخلية مثل مشاهدات الصفحات والزوار الفريدين وأبرز الصفحات وعمليات البحث. تدعم هذه التحليلات تجربة المنتج ولا تتطلب مزوّد تحليلات خارجيًا.',
     'privacy.s4.heading': '4. ملفات تعريف الارتباط',
-    'privacy.s4.body':
-      'تستخدم المصادقة ملفات تعريف ارتباط للجلسة صادرة عن نشرك الخاص. وثّق ملفات تعريف الارتباط المحددة التي تُعيّنها نسختك عند تكييف هذه السياسة للإنتاج.',
+    'privacy.s4.body': 'تستخدم المصادقة ملفات تعريف ارتباط للجلسة وملفات أمان ذات صلة لإبقائك مسجّل الدخول وحماية حسابك.',
     'privacy.s5.heading': '5. طلبات البيانات',
     'privacy.s5.body':
-      'بما أنك تتحكم في البنية التحتية، فأنت المتحكم في البيانات لعملية نشرك. قدّم هنا بيانات التواصل الخاصة بك وإجراءاتك لمعالجة طلبات الوصول والتصحيح والحذف.',
+      'تواصل مع دعم Nibleaf لطلبات الوصول أو التصحيح أو التصدير أو الحذف الخاصة ببيانات Cloud. وإذا شغّلت النسخة مفتوحة المصدر بنفسك، فانشر إجراءاتك الخاصة لمستخدميك.',
     'privacy.s6.heading': '6. التغييرات على هذه السياسة',
     'privacy.s6.body': 'قد نُحدِّث هذه السياسة من حين لآخر. وستنعكس التغييرات الجوهرية في تاريخ «آخر تحديث» أعلاه.',
   },

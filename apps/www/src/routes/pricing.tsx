@@ -3,14 +3,15 @@ import { Check } from 'lucide-react';
 import { BTN_DEFAULT, BTN_OUTLINE, btn, MarketingShell, PageHeader, SZ_DEFAULT } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
-import { canonicalHref, GITHUB_URL } from '@/lib/links';
+import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
 import { breadcrumbLd, hreflangLinks, pageMeta } from '@/lib/seo';
 
 export const Route = createFileRoute('/pricing')({
   head: () => ({
     meta: pageMeta({
       title: 'Pricing — Nibleaf',
-      description: 'Self-host Nibleaf for free, forever. Managed Nibleaf Cloud is coming soon.',
+      description:
+        'Start on Nibleaf Cloud for managed documentation hosting, with the open-source edition available when you need infrastructure control.',
       path: '/pricing',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }, ...hreflangLinks('/pricing')],
@@ -34,6 +35,20 @@ const PLANS: {
   featured?: boolean;
 }[] = [
   {
+    name: 'pricing.cloud.name',
+    price: 'pricing.cloud.price',
+    tagline: 'pricing.cloud.tagline',
+    features: [
+      'pricing.cloud.feature.everything',
+      'pricing.cloud.feature.managed',
+      'pricing.cloud.feature.upgrades',
+      'pricing.cloud.feature.priority',
+    ],
+    cta: 'pricing.cloud.cta',
+    href: appHref('/sign-up'),
+    featured: true,
+  },
+  {
     name: 'pricing.selfHosted.name',
     price: 'pricing.selfHosted.price',
     tagline: 'pricing.selfHosted.tagline',
@@ -45,20 +60,6 @@ const PLANS: {
     ],
     cta: 'pricing.selfHosted.cta',
     href: GITHUB_URL,
-  },
-  {
-    name: 'pricing.cloud.name',
-    price: 'pricing.cloud.price',
-    tagline: 'pricing.cloud.tagline',
-    features: [
-      'pricing.cloud.feature.everything',
-      'pricing.cloud.feature.managed',
-      'pricing.cloud.feature.upgrades',
-      'pricing.cloud.feature.priority',
-    ],
-    cta: 'pricing.cloud.cta',
-    href: '/cloud',
-    featured: true,
   },
 ];
 
