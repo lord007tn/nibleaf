@@ -415,7 +415,10 @@ function SiteChrome() {
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className={cn('nibleaf-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]', siteTheme === 'dark' && 'dark')}
+      className={cn(
+        'nibleaf-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]',
+        siteTheme === 'dark' && 'dark',
+      )}
       style={chromeStyle as CSSProperties}
     >
       {fontCss ? (
