@@ -1,20 +1,25 @@
 # Nibleaf Brand Assets
 
-Nibleaf is the production brand for this project. The identity is built around ink, ivory paper, composed technical publishing, and warm umber/copper accents that work in both Arabic and English UI without a cold cast.
+Nibleaf is the production brand for this project. The UI identity is a true-neutral greyscale — ink on paper — carrying a single warm **terracotta** accent used only for primary actions. It reads calm and editorial in both light and dark, and in Arabic and English UI, with no colour cast anywhere but the accent.
 
 ## Core Palette
 
-| Token | Hex | Use |
-| --- | --- | --- |
-| Paper | `#FBF7EE` | Warm marketing/background surface |
-| Paper 2 | `#EEE4D3` | Secondary surface and quiet bands |
-| Ink | `#181612` | Primary text, dark surfaces, monochrome mark |
-| Ink 2 | `#4E453A` | Softer text |
-| Border | `#DED2C0` | Lines and quiet dividers |
-| Nibleaf Umber | `#8A4B2E` | Primary brand mark and calls to action |
-| Warm Umber | `#D18A54` | Dark-mode primary/accent |
-| Copper | `#B96A3D` | Editorial accent, highlights, social art |
-| Date | `#5D3928` | Warm secondary accent |
+Monochrome neutral grey base (Tailwind `neutral` scale — hue-neutral, no blue/green tint) with one terracotta accent in `primary`. `destructive` is the only other saturated token. The source of truth is the CSS token blocks in `packages/design-system/src/styles/globals.css` (shared by the app, admin, and live docs sites) and `apps/www/src/styles.css` (marketing); keep the two in sync.
+
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| Background | `#FAFAFA` | `#0A0A0A` | Page surface (true-neutral grey) |
+| Foreground | `#171717` | `#FAFAFA` | Primary text / ink, monochrome mark |
+| Card | `#FFFFFF` | `#171717` | Raised surfaces |
+| Muted foreground | `#737373` | `#A3A3A3` | Secondary text |
+| Border | `#E5E5E5` | `#262626` | Lines and quiet dividers |
+| **Primary — Terracotta** | `#C2410C` | `#F97316` | The single accent: buttons, links, focus ring, active states, checks, featured pricing, `chart-1` |
+| Primary foreground | `#FAFAFA` | `#171717` | Text/icon on the terracotta accent |
+| Destructive | `#DC2626` | `#EF4444` | Errors and destructive actions |
+
+Charts use a monochrome grey ramp (`chart-2`…`chart-5`: `#404040`/`#737373`/`#A3A3A3`/`#D4D4D4` in light) with terracotta as `chart-1`, so analytics stay on-brand and calm.
+
+> History: earlier iterations used a warm umber/copper "ink & paper" palette and, briefly, an evergreen and a cool-slate system; the production direction is the neutral grey + terracotta above.
 
 ## Asset Locations
 
@@ -26,10 +31,12 @@ Raster exports live under:
 
 - `apps/www/public/brand/raster`
 
-Root browser/app icon files are written to both public app roots:
+Root browser/app icon files are written to each public app root:
 
 - `apps/www/public`
 - `apps/app/public`
+- `apps/admin/public`
+- `apps/docs/public`
 
 ## SVG Assets
 
@@ -65,8 +72,11 @@ Root browser/app icon files are written to both public app roots:
 
 - SVG assets are source-controlled and deterministic.
 - Raster browser/app icons are generated locally with `scripts/export-brand-raster.ps1`.
+- The source mark geometry is optically centered in the tile and reused by React components, SVG sources, favicon exports, and platform icons.
+- Each app root gets its own `site.webmanifest` name/description while sharing the same canonical icon system.
 - The icon mark is geometric and text-free, so favicons and platform icons do not depend on Arabic font rendering.
 - Arabic wordmarks retain live text in SVG for editability; convert to outlines in Figma/Illustrator before print production.
+- No public `/presskit` route is part of this kit; source and generated assets live in the repository.
 
 ## Raster Export Set
 
