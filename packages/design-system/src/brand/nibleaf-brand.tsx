@@ -17,19 +17,21 @@ export function NibleafMark({
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      {variant === 'tile' ? <rect fill="var(--primary)" height="512" rx="104" width="512" /> : null}
-      <path d="M183 314 309 188c14-14 37-14 51 0l4 4c14 14 14 37 0 51L238 369l-72 18 17-73Z" fill={ink} />
-      <path d="M158 196c34-36 86-44 129-20" fill="none" stroke={ink} strokeLinecap="round" strokeWidth="24" />
-      <circle cx="346" cy="338" fill="var(--brand-copper, #B96A3D)" r="27" />
+      {variant === 'tile' ? (
+        <>
+          <rect fill="var(--primary)" height="512" rx="104" width="512" />
+          <path d="M164 116h184c27 0 48 21 48 48v184c0 27-21 48-48 48H164c-27 0-48-21-48-48V164c0-27 21-48 48-48Z" fill={ink} opacity=".14" />
+          <path d="m282 191 55 55" fill="none" opacity=".28" stroke="var(--foreground)" strokeLinecap="round" strokeWidth="18" />
+        </>
+      ) : null}
+      <path d="M173 300 299 174c14-14 37-14 51 0l4 4c14 14 14 37 0 51L228 355l-72 18 17-73Z" fill={ink} />
+      <path d="M148 182c34-36 86-44 129-20" fill="none" stroke={ink} strokeLinecap="round" strokeWidth="24" />
+      <circle cx="336" cy="324" fill="var(--brand-copper, #B96A3D)" r="27" />
     </svg>
   );
 }
 
-export function NibleafWordmark({
-  className,
-  title = 'Nibleaf',
-  ...props
-}: ComponentProps<'span'> & { title?: string }) {
+export function NibleafWordmark({ className, title = 'Nibleaf', ...props }: ComponentProps<'span'> & { title?: string }) {
   // The brand name is always set in Latin script "Nibleaf", including in
   // Arabic-locale UI (same as how "Mintlify" stays Latin in Arabic copy).
   return (
