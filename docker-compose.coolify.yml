@@ -203,6 +203,10 @@ services:
     pull_policy: always
     command: ["admin"]
     init: true
+    labels:
+      - "traefik.http.routers.http-0-a146ygu2x4z056nnfl3qcoqv-admin.service=admin-a146ygu2x4z056nnfl3qcoqv"
+      - "traefik.http.routers.https-0-a146ygu2x4z056nnfl3qcoqv-admin.service=admin-a146ygu2x4z056nnfl3qcoqv"
+      - "traefik.http.services.admin-a146ygu2x4z056nnfl3qcoqv.loadbalancer.server.port=4315"
     environment:
       <<: *service-env
       PORT: "4315"
