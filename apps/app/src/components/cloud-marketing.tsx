@@ -1,0 +1,428 @@
+import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
+import { ArrowRight, BarChart3, Check, Cloud, FileText, Globe2, Languages, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { GithubIcon } from '@/components/icons/brand';
+import { GITHUB_URL } from '@/lib/links';
+
+const buttonBase =
+  'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+const primaryButton = `${buttonBase} bg-primary text-primary-foreground hover:bg-primary/90`;
+const outlineButton = `${buttonBase} border border-border bg-background hover:bg-muted`;
+
+const navLinks = [
+  { href: '/#features', label: 'Features' },
+  { href: '/cloud', label: 'Cloud' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: GITHUB_URL, label: 'Source', external: true },
+];
+
+const trustItems = ['Managed hosting', 'Custom domains', 'Markdown/MDX', 'Orama search', 'Analytics', 'S3 storage'];
+
+const features = [
+  { icon: FileText, title: 'Markdown workflow', body: 'Author pages, groups, callouts, and rich MDX blocks without fighting the editor.' },
+  { icon: Search, title: 'Fast search', body: 'Published docs include full-text and fuzzy search, with bilingual Arabic-ready indexing.' },
+  { icon: Globe2, title: 'Custom domains', body: 'Connect production docs domains and keep every reader on your brand.' },
+  { icon: BarChart3, title: 'Reader analytics', body: 'See page views, top content, and what people search for without a third-party tracker.' },
+  { icon: Languages, title: 'Arabic-ready', body: 'RTL-first authoring and reading for teams publishing in Arabic and English.' },
+  { icon: Cloud, title: 'Managed cloud', body: 'Nibleaf runs the app, storage, queues, upgrades, and deployment path for you.' },
+];
+
+const cloudPlan = [
+  'Hosted dashboard and docs sites',
+  'Managed database, queues, and storage',
+  'Automatic deploys and upgrades',
+  'Custom domains and analytics',
+];
+
+const openPlan = ['Open-source core', 'Self-hosting path remains available', 'Portable Markdown content', 'AGPL-3.0 licensed'];
+
+export function MarketingShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Announcement />
+      <header className="sticky top-0 z-40 border-border/70 border-b bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
+          <a className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
+            <NibleafMark className="size-8" />
+            <NibleafWordmark />
+          </a>
+          <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                className="transition-colors hover:text-foreground"
+                href={link.href}
+                {...(link.external ? { rel: 'noreferrer', target: '_blank' } : {})}
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+          <div className="ms-auto flex items-center gap-2">
+            <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
+              Sign in
+            </a>
+            <a className={`${primaryButton} h-9 px-3`} href="/sign-up">
+              Get started
+            </a>
+          </div>
+        </div>
+      </header>
+      <main>{children}</main>
+      <footer className="border-border border-t bg-card/30">
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <NibleafMark className="size-6" />
+            <span className="font-medium">Nibleaf</span>
+            <span className="text-muted-foreground">Managed docs hosting with an open-source core.</span>
+          </div>
+          <div className="flex items-center gap-4 text-muted-foreground">
+            <a href="/cloud" className="hover:text-foreground">
+              Cloud
+            </a>
+            <a href="/pricing" className="hover:text-foreground">
+              Pricing
+            </a>
+            <a href={GITHUB_URL} rel="noreferrer" target="_blank" className="hover:text-foreground">
+              GitHub
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export function LandingPage() {
+  return (
+    <MarketingShell>
+      <Hero />
+      <TrustStrip />
+      <Features />
+      <PricingPreview />
+      <FinalCta />
+    </MarketingShell>
+  );
+}
+
+export function CloudPage() {
+  return (
+    <MarketingShell>
+      <section className="relative overflow-hidden border-border border-b">
+        <GridBackground />
+        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+          <Eyebrow>Nibleaf Cloud</Eyebrow>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Managed Nibleaf for production docs</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
+            Hosted dashboard, managed database and storage, automatic upgrades, custom domains, analytics, and Arabic-ready authoring.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <a className={primaryButton} href="/sign-up">
+              Start on Cloud <ArrowRight className="size-4" />
+            </a>
+            <a className={outlineButton} href="/pricing">
+              View pricing
+            </a>
+          </div>
+        </div>
+      </section>
+      <Features />
+      <FinalCta />
+    </MarketingShell>
+  );
+}
+
+export function PricingPage() {
+  return (
+    <MarketingShell>
+      <section className="border-border border-b">
+        <div className="mx-auto max-w-3xl px-6 py-20 text-center">
+          <Eyebrow>Pricing</Eyebrow>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Simple, honest pricing</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
+            Start on Nibleaf Cloud, with the open-source edition available when you need full infrastructure control.
+          </p>
+        </div>
+      </section>
+      <PricingCards />
+    </MarketingShell>
+  );
+}
+
+function Announcement() {
+  return (
+    <a
+      href="/cloud"
+      className="group flex items-center justify-center gap-2 border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
+    >
+      <Sparkles className="size-3.5 text-primary" />
+      <span>Nibleaf Cloud is live on nibleaf.com.</span>
+      <span className="inline-flex items-center gap-1 font-medium text-foreground">
+        Start writing <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </a>
+  );
+}
+
+function Hero() {
+  return (
+    <section className="relative overflow-hidden border-border border-b">
+      <GridBackground />
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-[1fr_0.9fr] lg:py-24">
+        <div>
+          <a
+            className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 font-medium text-primary text-sm"
+            href={GITHUB_URL}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <GithubIcon className="size-4" /> Nibleaf Cloud is live · open-source core
+          </a>
+          <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">Beautiful docs, hosted for your team.</h1>
+          <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
+            Nibleaf Cloud is the managed documentation platform for teams shipping polished docs. Write in Markdown, publish a fast searchable site,
+            connect custom domains, and track what readers need without running servers.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a className={primaryButton} href="/sign-up">
+              Start writing <ArrowRight className="size-4" />
+            </a>
+            <a className={outlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
+              View source
+            </a>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2 text-muted-foreground text-sm">
+            {['Managed hosting', 'Custom domains', 'Arabic-ready RTL'].map((item) => (
+              <span key={item} className="rounded-full border border-border bg-card px-3 py-1">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+        <DocsPreview />
+      </div>
+    </section>
+  );
+}
+
+function TrustStrip() {
+  return (
+    <div className="border-border border-b bg-card/40">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-6 text-muted-foreground text-sm">
+        <span className="font-medium text-foreground">Built for cloud docs teams:</span>
+        {trustItems.map((item) => (
+          <span key={item}>{item}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Features() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20" id="features">
+      <div className="max-w-2xl">
+        <Eyebrow>Features</Eyebrow>
+        <h2 className="mt-3 font-semibold text-3xl tracking-tight">Everything you need to ship docs</h2>
+        <p className="mt-3 text-muted-foreground leading-relaxed">A managed docs workflow with the freedom of an open-source core.</p>
+      </div>
+      <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map(({ icon: Icon, title, body }) => (
+          <div key={title} className="rounded-lg border border-border bg-card p-5">
+            <div className="grid size-10 place-items-center rounded-md bg-primary/10 text-primary">
+              <Icon className="size-5" />
+            </div>
+            <h3 className="mt-4 font-semibold">{title}</h3>
+            <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PricingPreview() {
+  return (
+    <section className="border-border border-y bg-card/35">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <Eyebrow>Pricing</Eyebrow>
+            <h2 className="mt-3 font-semibold text-3xl tracking-tight">Start on Cloud</h2>
+            <p className="mt-3 max-w-xl text-muted-foreground">Free beta for teams publishing production docs.</p>
+          </div>
+          <a className={outlineButton} href="/pricing">
+            View pricing
+          </a>
+        </div>
+        <PricingCards />
+      </div>
+    </section>
+  );
+}
+
+function PricingCards() {
+  return (
+    <section className="mx-auto grid max-w-4xl grid-cols-1 gap-6 px-6 py-16 sm:grid-cols-2">
+      <Plan
+        title="Cloud"
+        price="Free beta"
+        body="Managed Nibleaf for teams publishing production docs."
+        features={cloudPlan}
+        cta="Start on Cloud"
+        href="/sign-up"
+        featured
+      />
+      <Plan
+        title="Open source"
+        price="Free"
+        body="For teams that need to inspect, extend, or run the core themselves."
+        features={openPlan}
+        cta="View source"
+        href={GITHUB_URL}
+      />
+    </section>
+  );
+}
+
+function Plan({
+  title,
+  price,
+  body,
+  features: items,
+  cta,
+  href,
+  featured = false,
+}: {
+  title: string;
+  price: string;
+  body: string;
+  features: string[];
+  cta: string;
+  href: string;
+  featured?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-lg border bg-card p-6 ${featured ? 'border-primary/50 shadow-lg shadow-black/5 ring-1 ring-primary/20' : 'border-border'}`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-semibold text-lg">{title}</h3>
+        {featured ? <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">Popular</span> : null}
+      </div>
+      <p className="mt-3 font-semibold text-3xl tracking-tight">{price}</p>
+      <p className="mt-2 text-muted-foreground text-sm">{body}</p>
+      <ul className="mt-5 space-y-2.5 text-sm">
+        {items.map((item) => (
+          <li key={item} className="flex items-start gap-2">
+            <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+            {item}
+          </li>
+        ))}
+      </ul>
+      <a className={`${featured ? primaryButton : outlineButton} mt-6 w-full`} href={href}>
+        {cta}
+      </a>
+    </div>
+  );
+}
+
+function FinalCta() {
+  return (
+    <section className="mx-auto max-w-5xl px-6 py-20 text-center">
+      <h2 className="text-balance font-semibold text-3xl tracking-tight">Ship docs your users will love</h2>
+      <p className="mx-auto mt-3 max-w-2xl text-muted-foreground leading-relaxed">
+        Start on Nibleaf Cloud today, then keep the open-source core in reach when you need deeper control.
+      </p>
+      <div className="mt-8 flex flex-wrap justify-center gap-3">
+        <a className={primaryButton} href="/sign-up">
+          Get started free <ArrowRight className="size-4" />
+        </a>
+        <a className={outlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
+          View on GitHub
+        </a>
+      </div>
+    </section>
+  );
+}
+
+function DocsPreview() {
+  return (
+    <div className="rounded-lg border border-border bg-card shadow-2xl shadow-black/10">
+      <div className="flex items-center gap-2 border-border border-b px-4 py-3">
+        <span className="size-2.5 rounded-full bg-red-400" />
+        <span className="size-2.5 rounded-full bg-amber-400" />
+        <span className="size-2.5 rounded-full bg-emerald-400" />
+        <span className="ms-auto rounded bg-muted px-2 py-1 font-mono text-muted-foreground text-xs">docs.nibleaf.com</span>
+      </div>
+      <div className="grid min-h-[390px] grid-cols-[150px_1fr] overflow-hidden">
+        <aside className="border-border border-e bg-muted/45 p-4">
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            <NibleafMark className="size-5" />
+            <span className="font-medium">Docs</span>
+          </div>
+          {['Overview', 'Guides', 'API', 'Changelog'].map((item, index) => (
+            <div
+              key={item}
+              className={`mb-2 rounded-md px-2 py-1.5 text-sm ${index === 0 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}
+            >
+              {item}
+            </div>
+          ))}
+        </aside>
+        <div className="p-6">
+          <div className="mb-5 rounded-md border border-border bg-background px-3 py-2 text-muted-foreground text-sm">Search or ask...</div>
+          <div className="mb-3 h-4 w-24 rounded bg-primary/20" />
+          <div className="mb-4 h-8 w-3/4 rounded bg-foreground/10" />
+          <div className="space-y-2">
+            <div className="h-3 w-full rounded bg-muted" />
+            <div className="h-3 w-11/12 rounded bg-muted" />
+            <div className="h-3 w-2/3 rounded bg-muted" />
+          </div>
+          <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4">
+            <div className="mb-3 flex items-center gap-2 font-medium text-sm">
+              <ShieldCheck className="size-4 text-primary" /> Published and indexed
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center text-xs">
+              <div className="rounded-md bg-background p-3">
+                <div className="font-semibold text-lg">24</div>
+                pages
+              </div>
+              <div className="rounded-md bg-background p-3">
+                <div className="font-semibold text-lg">2</div>
+                languages
+              </div>
+              <div className="rounded-md bg-background p-3">
+                <div className="font-semibold text-lg">98%</div>
+                search hit
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 font-medium text-primary text-xs uppercase tracking-[0.16em]">
+      <span className="h-px w-6 bg-primary/40" />
+      {children}
+    </span>
+  );
+}
+
+function GridBackground() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 -z-10 opacity-60"
+      style={{
+        backgroundImage:
+          'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
+        backgroundSize: '44px 44px',
+        maskImage: 'linear-gradient(to bottom, black, transparent 78%)',
+      }}
+    />
+  );
+}

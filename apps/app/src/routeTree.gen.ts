@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -34,6 +36,16 @@ import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/pr
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/projects/$projectId/analytics'
 
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CloudRoute = CloudRouteImport.update({
+  id: '/cloud',
+  path: '/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/app',
   path: '/app',
@@ -163,6 +175,8 @@ const AppProjectsProjectIdAnalyticsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardRouteRouteWithChildren
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
@@ -187,6 +201,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardIndexRoute
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
   '/sign-in': typeof authSignInRoute
@@ -210,6 +226,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(auth)': typeof authRouteRouteWithChildren
   '/app': typeof AppRouteRouteWithChildren
+  '/cloud': typeof CloudRoute
+  '/pricing': typeof PricingRoute
   '/app/(dashboard)': typeof AppdashboardRouteRouteWithChildren
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
@@ -237,6 +255,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/cloud'
+    | '/pricing'
     | '/sites/$projectId'
     | '/forgot-password'
     | '/reset-password'
@@ -261,6 +281,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/app'
+    | '/cloud'
+    | '/pricing'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -283,6 +305,8 @@ export interface FileRouteTypes {
     | '/'
     | '/(auth)'
     | '/app'
+    | '/cloud'
+    | '/pricing'
     | '/app/(dashboard)'
     | '/sites/$projectId'
     | '/(auth)/forgot-password'
@@ -310,12 +334,28 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   authRouteRoute: typeof authRouteRouteWithChildren
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  CloudRoute: typeof CloudRoute
+  PricingRoute: typeof PricingRoute
   SitesProjectIdRouteRoute: typeof SitesProjectIdRouteRouteWithChildren
   AcceptInviteInvitationIdRoute: typeof AcceptInviteInvitationIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cloud': {
+      id: '/cloud'
+      path: '/cloud'
+      fullPath: '/cloud'
+      preLoaderRoute: typeof CloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -579,6 +619,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   authRouteRoute: authRouteRouteWithChildren,
   AppRouteRoute: AppRouteRouteWithChildren,
+  CloudRoute: CloudRoute,
+  PricingRoute: PricingRoute,
   SitesProjectIdRouteRoute: SitesProjectIdRouteRouteWithChildren,
   AcceptInviteInvitationIdRoute: AcceptInviteInvitationIdRoute,
 }
