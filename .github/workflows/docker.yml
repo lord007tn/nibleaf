@@ -92,8 +92,8 @@ jobs:
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
         run: |
           if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" ]]; then
-            echo "::error::Missing COOLIFY_NIBLEAF_DEPLOY_WEBHOOK or COOLIFY_NIBLEAF_API_TOKEN secret"
-            exit 1
+            echo "::warning::Missing COOLIFY_NIBLEAF_DEPLOY_WEBHOOK or COOLIFY_NIBLEAF_API_TOKEN secret; image was published but Coolify deployment was not triggered"
+            exit 0
           fi
 
           curl --fail-with-body \
