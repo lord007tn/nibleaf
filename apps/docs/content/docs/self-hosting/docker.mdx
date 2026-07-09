@@ -5,9 +5,9 @@ icon: Container
 ---
 
 Nibleaf ships with Docker Compose files for local development, production-style
-self-hosting, and Coolify. The standard stack starts the dashboard, API, worker,
-marketing site, and datastores. The Coolify stack runs the docs platform without
-the marketing site.
+self-hosting, and Coolify. The standard self-host stack starts only the product
+services: dashboard/docs app, API, worker, and datastores. The Coolify production
+stack also exposes the internal admin panel on a separate operator domain.
 
 ## Services
 
@@ -16,21 +16,20 @@ the marketing site.
 | `app` | `4310` | Dashboard, editor, live docs routes, and the `/api` proxy |
 | `server` | `4311` | Hono API, auth, project data, publishing endpoints |
 | `worker` | `4312` | BullMQ workers for publishing, search, email, and analytics |
-| `www` | `4313` | Marketing site |
 | `postgres` | `5442 -> 5432` | Primary database for Prisma |
 | `dragonfly` | `6379` | Redis-compatible queue backend |
 | `maxio` | `9300 -> 9000` | S3-compatible object storage for uploads |
 
 ## Coolify stack
 
-Use `docker-compose.coolify.yml` in Coolify when you only want the self-hosted
-docs product.
+Use `docker-compose.coolify.yml` in Coolify for production.
 
 Bind these Coolify domains to services:
 
 | Host binding | Service | Port | Purpose |
 | --- | --- | --- | --- |
 | `app.example.com` | `app` | `4310` | Dashboard, editor, and `/api` proxy |
+| `admin.example.com` | `admin` | `4315` | Internal platform admin panel |
 | `*.docs.example.com` | `app` | `4310` | Free project subdomains |
 | `cname.docs.example.com` | `app` | `4310` | Custom-domain CNAME target |
 | `storage.example.com` | `maxio` | `9000` | Optional public media/storage origin |
@@ -40,8 +39,6 @@ Set `SITE_BASE_DOMAIN` to your wildcard docs domain, for example
 Coolify.
 Set `CUSTOM_DOMAIN_CNAME_TARGET` to the host customers should CNAME to, for
 example `cname.docs.example.com`, then bind that host to the same `app` service.
-If you do not run a separate marketing site, set `WWW_URL` to the same origin as
-`APP_URL`.
 
 Coolify generates the service URL, user, password, and hex secret variables used
 by the compose file. Assign domains first, then set only the product-specific
@@ -54,7 +51,6 @@ specific release tag or digest.
 ```dotenv
 SITE_BASE_DOMAIN=docs.example.com
 CUSTOM_DOMAIN_CNAME_TARGET=cname.docs.example.com
-WWW_URL=https://app.example.com
 ```
 
 The compose file consumes these generated Coolify variables:
@@ -62,6 +58,7 @@ The compose file consumes these generated Coolify variables:
 | Variable | Source |
 | --- | --- |
 | `SERVICE_URL_APP` | Dashboard/app domain assigned to `app:4310`. |
+| `SERVICE_URL_ADMIN` | Admin domain assigned to `admin:4315`. |
 | `SERVICE_URL_MAXIO` | Storage/media domain assigned to `maxio:9000`. |
 | `SERVICE_USER_POSTGRES` | Generated Postgres username. |
 | `SERVICE_PASSWORD_64_POSTGRES` | Generated Postgres password. |
@@ -84,6 +81,7 @@ Create these DNS records before verifying domains in Nibleaf:
 | Name | Type | Value |
 | --- | --- | --- |
 | `app.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
+| `admin.example.com` | `CNAME`, `A`, or `AAAA` | Coolify admin ingress |
 | `*.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
 | `cname.docs.example.com` | `CNAME`, `A`, or `AAAA` | Coolify app ingress |
 

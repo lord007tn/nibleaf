@@ -2,7 +2,7 @@ import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import { ArrowRight, BarChart3, Check, Cloud, FileText, Globe2, Languages, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { GithubIcon } from '@/components/icons/brand';
-import { GITHUB_URL } from '@/lib/links';
+import { GITHUB_STARS, GITHUB_URL } from '@/lib/links';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -176,7 +176,7 @@ function Hero() {
             rel="noreferrer"
             target="_blank"
           >
-            <GithubIcon className="size-4" /> Nibleaf Cloud is live · open-source core
+            <GithubIcon className="size-4" /> Nibleaf Cloud is live · {GITHUB_STARS} stars
           </a>
           <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">Beautiful docs, hosted for your team.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
@@ -188,7 +188,7 @@ function Hero() {
               Start writing <ArrowRight className="size-4" />
             </a>
             <a className={outlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
-              View source
+              <GithubIcon className="size-4" /> View source · {GITHUB_STARS} stars
             </a>
           </div>
           <div className="mt-6 flex flex-wrap gap-2 text-muted-foreground text-sm">
@@ -419,7 +419,7 @@ function GridBackground() {
       className="pointer-events-none absolute inset-0 -z-10 opacity-60"
       style={{
         backgroundImage:
-          'linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)',
+          'linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px)',
         backgroundSize: '44px 44px',
         maskImage: 'linear-gradient(to bottom, black, transparent 78%)',
       }}

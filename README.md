@@ -80,7 +80,7 @@ anchored comments, and one-click publish:
   (owner / admin / editor) via better-auth organizations.
 - **Analytics** — page views, unique visitors, top pages, top searches, plus device and
   language breakdowns.
-- **Platform admin** — an internal operator panel (users, sites, waitlist).
+- **Platform admin** — an internal operator panel for customers, sites, deployments, and roles.
 - **Bring-your-own storage** — any S3-compatible store (maxio, Cloudflare R2, AWS S3,
   Backblaze B2).
 
@@ -97,7 +97,6 @@ echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> .env
 docker compose up -d --build
 # → dashboard  http://localhost:4310   (open /sign-up to create your account)
 # → API        http://localhost:4311/docs
-# → marketing  http://localhost:4313
 ```
 
 > Open **http://localhost:4310/sign-up** and create the first account — it's provisioned
@@ -115,13 +114,13 @@ built on your server:
 
 1. In Coolify, add a **Docker Compose** resource from this repo (a Public or Private-Repo /
    GitHub-App source), pointing at `docker-compose.coolify.yml`.
-2. Assign the dashboard, wildcard-docs, custom-domain-CNAME, and storage domains to the
-   `app` / `maxio` services — Coolify auto-generates the `SERVICE_*` secrets.
+2. Assign the dashboard, admin, wildcard-docs, custom-domain-CNAME, and storage domains to the
+   `app` / `admin` / `maxio` services — Coolify auto-generates the `SERVICE_*` secrets.
 3. Set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`, then **Deploy**. The `migrate`
    service runs database migrations before `server` / `worker` / `app` start.
 
 Pin a specific build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.0`. For a plain Docker
-host, `docker-compose.yml` builds from source and also serves the marketing site. Full
+host, `docker-compose.yml` builds from source and serves only the product stack. Full
 guide (secrets, reverse proxy, TLS, security checklist) in **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ## 🏗️ Architecture

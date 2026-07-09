@@ -11,7 +11,7 @@ const adminRoutes = {
   overview: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],
-    description: 'Platform overview: user / site / deployment / waitlist counts.',
+    description: 'Platform overview: customer, site, and deployment counts.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
   users: createRouteConfig({
@@ -30,18 +30,6 @@ const adminRoutes = {
     guard: adminGuard,
     tags: ['admin'],
     description: 'List every documentation site with owner and counts.',
-    responses: { 200: { description: 'ok' }, ...errorResponses },
-  }),
-  waitlist: createRouteConfig({
-    guard: adminGuard,
-    tags: ['admin'],
-    description: 'List Cloud waitlist signups.',
-    responses: { 200: { description: 'ok' }, ...errorResponses },
-  }),
-  deleteWaitlist: createRouteConfig({
-    guard: adminGuard,
-    tags: ['admin'],
-    description: 'Delete a Cloud waitlist entry.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };

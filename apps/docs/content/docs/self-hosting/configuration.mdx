@@ -25,7 +25,6 @@ cp .env.example .env
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins allowed by the API. |
 | `PUBLIC_APP_URL` | Public dashboard origin. |
 | `PUBLIC_API_URL` | Public API origin. In standard Compose, this is the dashboard origin because `/api` is proxied by `app`. |
-| `PUBLIC_WWW_URL` | Public marketing/root website origin. |
 | `PUBLIC_STORAGE_ENDPOINT` / `STORAGE_PUBLIC_ENDPOINT` | Browser-reachable S3 endpoint used for presigned upload/download URLs. Standard Compose reads the `PUBLIC_*` alias; Coolify/raw S3 env uses `STORAGE_PUBLIC_ENDPOINT`. |
 | `PUBLIC_STORAGE_URL` | Public base URL for uploaded assets. |
 | `SITE_BASE_DOMAIN` | Wildcard docs base for free project subdomains, for example `docs.example.com`. |
@@ -124,7 +123,6 @@ TRUSTED_ORIGINS=https://app.example.com,https://example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com,https://example.com
 PUBLIC_APP_URL=https://app.example.com
 PUBLIC_API_URL=https://app.example.com
-PUBLIC_WWW_URL=https://example.com
 ```
 
 ## Docs domains
@@ -163,6 +161,7 @@ generated passwords, and generated hex secrets:
 | Coolify variable | Purpose |
 | --- | --- |
 | `SERVICE_URL_APP` | Public dashboard/app URL used for auth, CORS, and frontend build args. |
+| `SERVICE_URL_ADMIN` | Public admin panel URL, for example `https://admin.example.com`. |
 | `SERVICE_URL_MAXIO` | Public bundled-storage URL used for browser uploads and asset URLs. |
 | `SERVICE_USER_POSTGRES` | Postgres username. |
 | `SERVICE_PASSWORD_64_POSTGRES` | Postgres password. |
@@ -171,8 +170,8 @@ generated passwords, and generated hex secrets:
 | `SERVICE_HEX_64_NIBLEAF` | Better Auth signing secret. |
 
 Set `SITE_BASE_DOMAIN` and `CUSTOM_DOMAIN_CNAME_TARGET` manually in the Coolify
-environment screen. `WWW_URL` is optional; leave it unset to reuse the dashboard
-origin because the Coolify stack omits the marketing service.
+environment screen. Assign the admin service to its own restricted operator
+domain, for example `admin.example.com`.
 
 Bundled maxio remains the default in Coolify. For external object storage, set
 `STORAGE_PROVIDER`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET`,
@@ -187,13 +186,16 @@ deployments can start without waiting for bundled storage.
 
 ## Email
 
-SMTP is optional. Without SMTP, Nibleaf still runs, but invites, reset-password
-emails, and verification emails will only be logged/queued.
+Postmark is the preferred production sender. SMTP remains a fallback for
+non-Postmark providers. Without either provider, Nibleaf still runs, but invites,
+reset-password emails, and verification emails will only be logged/queued.
 
 | Variable | Purpose |
 | --- | --- |
-| `SMTP_URL` | SMTP connection string. |
 | `EMAIL_FROM` | Default sender address. |
+| `POSTMARK_API_KEY` | Postmark server token used by the worker SDK. |
+| `POSTMARK_MESSAGE_STREAM` | Optional Postmark message stream. |
+| `SMTP_URL` | SMTP fallback connection string for non-Postmark providers. |
 | `REQUIRE_EMAIL_VERIFICATION` | Require users to verify email before sign-in. |
 
 ## Frontend build variables

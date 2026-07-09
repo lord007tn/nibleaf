@@ -32,7 +32,6 @@ TRUSTED_ORIGINS=https://app.example.com,https://example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com,https://example.com
 PUBLIC_APP_URL=https://app.example.com
 PUBLIC_API_URL=https://app.example.com
-PUBLIC_WWW_URL=https://example.com
 PUBLIC_STORAGE_ENDPOINT=https://storage.example.com
 PUBLIC_STORAGE_URL=https://cdn.example.com/nibleaf
 SITE_BASE_DOMAIN=docs.example.com
@@ -95,8 +94,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 ## 4. Terminate TLS at a reverse proxy
 
-Route dashboard and live docs traffic to `app:4310`. Route marketing traffic to
-`www:4313`.
+Route dashboard and live docs traffic to `app:4310`.
 
 ```nginx
 server {
@@ -115,8 +113,8 @@ server {
 }
 ```
 
-If nginx runs outside the Compose network, bind app/www ports to `127.0.0.1` and
-proxy to those local ports instead.
+If nginx runs outside the Compose network, bind the app port to `127.0.0.1` and
+proxy to that local port instead.
 
 ## 5. Run migrations before scaling
 

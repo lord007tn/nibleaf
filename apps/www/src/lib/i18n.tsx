@@ -21,6 +21,7 @@ export const messages = {
     'nav.signIn': 'Sign in',
     'nav.getStarted': 'Get started',
     'nav.github': 'GitHub',
+    'nav.githubStars': '{count} stars',
     'nav.language': 'العربية',
 
     // Hero
@@ -291,6 +292,7 @@ export const messages = {
     'nav.signIn': 'تسجيل الدخول',
     'nav.getStarted': 'ابدأ الآن',
     'nav.github': 'GitHub',
+    'nav.githubStars': '{count} نجوم',
     'nav.language': 'EN',
 
     // Hero

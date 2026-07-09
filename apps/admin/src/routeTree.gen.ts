@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as dashboardRouteRouteImport } from './routes/(dashboard)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as dashboardIndexRouteImport } from './routes/(dashboard)/index'
-import { Route as dashboardWaitlistRouteImport } from './routes/(dashboard)/waitlist'
 import { Route as dashboardUsersRouteImport } from './routes/(dashboard)/users'
 import { Route as dashboardSitesRouteImport } from './routes/(dashboard)/sites'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
@@ -28,11 +27,6 @@ const authRouteRoute = authRouteRouteImport.update({
 const dashboardIndexRoute = dashboardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => dashboardRouteRoute,
-} as any)
-const dashboardWaitlistRoute = dashboardWaitlistRouteImport.update({
-  id: '/waitlist',
-  path: '/waitlist',
   getParentRoute: () => dashboardRouteRoute,
 } as any)
 const dashboardUsersRoute = dashboardUsersRouteImport.update({
@@ -55,14 +49,12 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof authSignInRoute
   '/sites': typeof dashboardSitesRoute
   '/users': typeof dashboardUsersRoute
-  '/waitlist': typeof dashboardWaitlistRoute
   '/': typeof dashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof authSignInRoute
   '/sites': typeof dashboardSitesRoute
   '/users': typeof dashboardUsersRoute
-  '/waitlist': typeof dashboardWaitlistRoute
   '/': typeof dashboardIndexRoute
 }
 export interface FileRoutesById {
@@ -72,14 +64,13 @@ export interface FileRoutesById {
   '/(auth)/sign-in': typeof authSignInRoute
   '/(dashboard)/sites': typeof dashboardSitesRoute
   '/(dashboard)/users': typeof dashboardUsersRoute
-  '/(dashboard)/waitlist': typeof dashboardWaitlistRoute
   '/(dashboard)/': typeof dashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/sign-in' | '/sites' | '/users' | '/waitlist' | '/'
+  fullPaths: '/sign-in' | '/sites' | '/users' | '/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/sign-in' | '/sites' | '/users' | '/waitlist' | '/'
+  to: '/sign-in' | '/sites' | '/users' | '/'
   id:
     | '__root__'
     | '/(auth)'
@@ -87,7 +78,6 @@ export interface FileRouteTypes {
     | '/(auth)/sign-in'
     | '/(dashboard)/sites'
     | '/(dashboard)/users'
-    | '/(dashboard)/waitlist'
     | '/(dashboard)/'
   fileRoutesById: FileRoutesById
 }
@@ -117,13 +107,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof dashboardIndexRouteImport
-      parentRoute: typeof dashboardRouteRoute
-    }
-    '/(dashboard)/waitlist': {
-      id: '/(dashboard)/waitlist'
-      path: '/waitlist'
-      fullPath: '/waitlist'
-      preLoaderRoute: typeof dashboardWaitlistRouteImport
       parentRoute: typeof dashboardRouteRoute
     }
     '/(dashboard)/users': {
@@ -165,14 +148,12 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 interface dashboardRouteRouteChildren {
   dashboardSitesRoute: typeof dashboardSitesRoute
   dashboardUsersRoute: typeof dashboardUsersRoute
-  dashboardWaitlistRoute: typeof dashboardWaitlistRoute
   dashboardIndexRoute: typeof dashboardIndexRoute
 }
 
 const dashboardRouteRouteChildren: dashboardRouteRouteChildren = {
   dashboardSitesRoute: dashboardSitesRoute,
   dashboardUsersRoute: dashboardUsersRoute,
-  dashboardWaitlistRoute: dashboardWaitlistRoute,
   dashboardIndexRoute: dashboardIndexRoute,
 }
 

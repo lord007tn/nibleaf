@@ -1,18 +1,18 @@
-import { Prisma, prisma } from '@nibleaf/database';
+import { prisma } from '@nibleaf/database';
 import { AppError, notFound } from '@/errors';
 
 /** Platform-wide counts + recent activity for the admin overview screen. */
 export async function getAdminOverview() {
-  const [users, admins, sites, deployments, ready, waitlist, recentUsers] = await Promise.all([
+  const [users, admins, sites, deployments, ready, recentUsers, verifiedUsers] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: 'admin' } }),
     prisma.project.count(),
     prisma.deployment.count(),
     prisma.deployment.count({ where: { status: 'READY' } }),
-    prisma.waitlistEntry.count(),
     prisma.user.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+    prisma.user.count({ where: { emailVerified: true } }),
   ]);
-  return { users, admins, sites, deployments, publishedDeployments: ready, waitlist, recentUsers };
+  return { users, admins, sites, deployments, publishedDeployments: ready, recentUsers, verifiedUsers };
 }
 
 /** Every user on the instance, newest first, with workspace-membership count. */
@@ -76,22 +76,4 @@ export async function listAdminSites() {
     deployments: s._count.deployments,
     createdAt: s.createdAt.toISOString(),
   }));
-}
-
-/** Cloud-waitlist signups, newest first. */
-export async function listWaitlist() {
-  const rows = await prisma.waitlistEntry.findMany({ orderBy: { createdAt: 'desc' }, take: 1000 });
-  return rows.map((r) => ({ id: r.id, email: r.email, source: r.source, locale: r.locale, createdAt: r.createdAt.toISOString() }));
-}
-
-export async function deleteWaitlistEntry(id: string) {
-  try {
-    await prisma.waitlistEntry.delete({ where: { id } });
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
-      throw notFound('Waitlist entry', { id });
-    }
-    throw err;
-  }
-  return { ok: true as const };
 }

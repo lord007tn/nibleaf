@@ -25,15 +25,14 @@ export function PlanSection({ project }: { project: Project }) {
         </p>
       </div>
 
-      {/* Honest framing: Cloud beta billing isn't wired up, so don't fake usage
-          limits or working payment actions. */}
+      {/* Billing is intentionally informational while Cloud is in free beta. */}
       <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/30 p-4">
         <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <Info className="size-5" />
         </span>
         <div className="leading-snug">
-          <div className="font-medium text-sm">{t('settings.billing.comingSoon.title')}</div>
-          <p className="mt-0.5 text-muted-foreground text-sm">{t('settings.billing.comingSoon.description')}</p>
+          <div className="font-medium text-sm">{t('settings.billing.notice.title')}</div>
+          <p className="mt-0.5 text-muted-foreground text-sm">{t('settings.billing.notice.description')}</p>
         </div>
       </div>
 

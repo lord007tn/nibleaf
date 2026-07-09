@@ -1,11 +1,11 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
-import { ArrowRight, BarChart3, Boxes, Check, Cloud, FileText, Info, Search, Sparkles, Workflow, X, Zap } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, Check, Cloud, FileText, Info, Search, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
-import { appHref, canonicalHref, GITHUB_URL } from '@/lib/links';
+import { appHref, canonicalHref, GITHUB_STARS, GITHUB_URL } from '@/lib/links';
 import { hreflangLinks } from '@/lib/seo';
 
 const HOME_FAQS: { q: string; a: string }[] = [
@@ -78,7 +78,7 @@ function Hero() {
             rel="noreferrer"
             target="_blank"
           >
-            <Sparkles className="size-3.5 text-primary" /> {t('hero.badge')}
+            <Github className="size-3.5 text-primary" /> {t('hero.badge')} · {GITHUB_STARS} stars
           </a>
           <h1 className="mt-6 text-balance font-semibold text-[2.75rem] leading-[1.05] tracking-tight sm:text-6xl">
             {t('hero.headlineLead')} <span className="text-gradient-brand">{t('hero.headlineAccent')}</span>
@@ -90,7 +90,7 @@ function Hero() {
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
             </a>
             <a className={btn(BTN_OUTLINE, SZ_LG)} href={GITHUB_URL} rel="noreferrer" target="_blank">
-              <Github className="size-4" /> {t('hero.ctaSecondary')}
+              <Github className="size-4" /> {t('hero.ctaSecondary')} · {GITHUB_STARS} stars
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-sm lg:justify-start">

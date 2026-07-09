@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
-import { LayoutDashboard, LogOut, Mailbox, Menu, Server, ShieldCheck, Users } from 'lucide-react';
+import { LayoutDashboard, LogOut, Menu, Server, ShieldCheck, Users } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { useEffect, useState } from 'react';
 import { PageLoader } from '@/components/page-loader';
@@ -57,9 +57,8 @@ function AdminGate() {
 
 const NAV: { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   { to: '/', label: 'Overview', icon: LayoutDashboard },
-  { to: '/users', label: 'Users', icon: Users },
+  { to: '/users', label: 'Customers', icon: Users },
   { to: '/sites', label: 'Sites', icon: Server },
-  { to: '/waitlist', label: 'Waitlist', icon: Mailbox },
 ];
 
 /** Nav links + Sign out, shared by the desktop aside and the mobile drawer. */

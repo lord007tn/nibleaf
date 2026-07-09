@@ -9,7 +9,6 @@ import {
   projectConfigSchema,
   transferOwnershipBody,
   updateProjectBody,
-  waitlistSubmitBody,
 } from './index';
 
 describe('projectConfigSchema', () => {
@@ -148,25 +147,6 @@ describe('paginationQuery', () => {
     expect(ok.success && ok.data.limit).toBe(50);
     expect(paginationQuery.safeParse({ limit: '0' }).success).toBe(false);
     expect(paginationQuery.safeParse({ limit: '201' }).success).toBe(false);
-  });
-});
-
-describe('waitlistSubmitBody', () => {
-  it('normalizes the email (trim + lowercase) so upserts are idempotent', () => {
-    const parsed = waitlistSubmitBody.safeParse({ email: '  Founder@Example.COM ' });
-    expect(parsed.success && parsed.data.email).toBe('founder@example.com');
-  });
-
-  it('accepts optional source/locale and rejects unknown keys (strict)', () => {
-    expect(waitlistSubmitBody.safeParse({ email: 'a@b.com', source: 'cloud-page', locale: 'ar' }).success).toBe(true);
-    expect(waitlistSubmitBody.safeParse({ email: 'a@b.com', spam: true }).success).toBe(false);
-  });
-
-  it('rejects invalid emails and over-long fields', () => {
-    expect(waitlistSubmitBody.safeParse({ email: 'not-an-email' }).success).toBe(false);
-    expect(waitlistSubmitBody.safeParse({ email: `${'x'.repeat(250)}@b.com` }).success).toBe(false);
-    expect(waitlistSubmitBody.safeParse({ email: 'a@b.com', source: 'x'.repeat(65) }).success).toBe(false);
-    expect(waitlistSubmitBody.safeParse({ email: 'a@b.com', locale: 'x'.repeat(9) }).success).toBe(false);
   });
 });
 

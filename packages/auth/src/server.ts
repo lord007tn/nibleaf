@@ -10,7 +10,7 @@ import { keys } from './keys.server';
 const env = keys();
 const log = createLogger({ module: 'auth' });
 
-/** Queue a transactional email; delivery is best-effort (logged without SMTP). */
+/** Queue a transactional email; delivery is best-effort (logged without a sender). */
 const sendMail = (to: string, subject: string, html: string) =>
   createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, subject, html } }).catch(() => undefined);
 
@@ -140,7 +140,6 @@ docker-compose.yml.
 | BETTER_AUTH_URL | Browser-facing dashboard origin. |
 | PUBLIC_APP_URL | Public dashboard origin. |
 | PUBLIC_API_URL | Public API origin, usually the dashboard proxy. |
-| PUBLIC_WWW_URL | Public marketing/root website origin. |
 | STORAGE_PUBLIC_URL | Public asset URL. |
 
 ## Origins
@@ -169,7 +168,7 @@ publishing after upgrades.
 1. Back up Postgres and object storage.
 2. Pull the new source revision or image.
 3. Run migrations.
-4. Restart app, server, worker, and www.
+4. Restart app, server, and worker.
 5. Publish a small docs change to verify queues and search indexing.
 
 ## Publish troubleshooting

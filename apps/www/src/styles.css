@@ -5,9 +5,8 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Mirrors the @nibleaf/design-system (shadcn) token structure so the marketing
- * site shares the product's radius scale + component styling — only the colours
- * differ (a cool, neutral zinc base with the Nibleaf umber kept as the accent). */
+/* Mirrors the @nibleaf/design-system token structure so the marketing site
+ * shares the product's radius scale and the refreshed evergreen palette. */
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
@@ -39,48 +38,48 @@
 :root {
   --radius: 0.625rem;
   --background: #fafafa;
-  --foreground: #18181b;
+  --foreground: #0c1713;
   --card: #ffffff;
-  --card-foreground: #18181b;
+  --card-foreground: #0c1713;
   --popover: #ffffff;
-  --popover-foreground: #18181b;
-  --primary: #8a4b2e;
+  --popover-foreground: #0c1713;
+  --primary: #0f6b4d;
   --primary-foreground: #fafafa;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
+  --secondary: #e8f1ed;
+  --secondary-foreground: #0c1713;
+  --muted: #e8f1ed;
+  --muted-foreground: #5c6d66;
+  --accent: #dff4ef;
+  --accent-foreground: #075e56;
   --destructive: #e5484d;
   --destructive-foreground: #fafafa;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #8a4b2e;
-  --brand-copper: #b96a3d;
+  --border: #d5e2dc;
+  --input: #cbdad4;
+  --ring: #0f6b4d;
+  --brand-copper: #0f8f7b;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #121216;
-  --card-foreground: #fafafa;
-  --popover: #121216;
-  --popover-foreground: #fafafa;
-  --primary: #d18a54;
-  --primary-foreground: #1a1206;
-  --secondary: #27272a;
-  --secondary-foreground: #fafafa;
-  --muted: #27272a;
-  --muted-foreground: #a1a1aa;
-  --accent: #27272a;
-  --accent-foreground: #fafafa;
+  --background: #08110e;
+  --foreground: #f4fbf8;
+  --card: #0d1915;
+  --card-foreground: #f4fbf8;
+  --popover: #0d1915;
+  --popover-foreground: #f4fbf8;
+  --primary: #34d399;
+  --primary-foreground: #052e23;
+  --secondary: #14231e;
+  --secondary-foreground: #f4fbf8;
+  --muted: #14231e;
+  --muted-foreground: #9fb3ac;
+  --accent: #12342e;
+  --accent-foreground: #7dd3c7;
   --destructive: #ff6166;
-  --destructive-foreground: #18181b;
-  --border: #27272a;
-  --input: #27272a;
-  --ring: #d18a54;
-  --brand-copper: #d48a5e;
+  --destructive-foreground: #08110e;
+  --border: #20352f;
+  --input: #20352f;
+  --ring: #34d399;
+  --brand-copper: #22d3ee;
 }
 
 @layer base {
@@ -119,7 +118,7 @@
   mask-image: radial-gradient(ellipse 75% 55% at 50% 0%, #000 35%, transparent 100%);
 }
 
-/* The single warm brand moment: gradient accent word in the headline. */
+/* The single brand moment: evergreen to teal accent word in the headline. */
 .text-gradient-brand {
   background: linear-gradient(120deg, var(--primary) 0%, var(--brand-copper) 70%);
   -webkit-background-clip: text;

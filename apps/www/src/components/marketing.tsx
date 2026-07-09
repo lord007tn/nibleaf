@@ -1,10 +1,10 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
-import { ArrowRight, Languages, Sparkles, Star } from 'lucide-react';
+import { ArrowRight, Languages, Sparkles } from 'lucide-react';
 import type { ReactNode, SVGProps } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import type { MessageKey } from '@/lib/i18n';
 import { useLocale, useT } from '@/lib/i18n';
-import { appHref, GITHUB_URL } from '@/lib/links';
+import { appHref, GITHUB_STARS, GITHUB_URL } from '@/lib/links';
 
 /**
  * Shared marketing chrome — the nav, footer, announcement bar, button styles and
@@ -106,7 +106,7 @@ export function SiteNav() {
             rel="noreferrer"
             target="_blank"
           >
-            <Star className="size-3.5" /> {t('nav.github')}
+            <Github className="size-4" /> {t('nav.githubStars', { count: GITHUB_STARS })}
           </a>
           <LanguageToggle />
           <ThemeToggle />

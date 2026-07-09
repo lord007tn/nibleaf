@@ -3,7 +3,7 @@ name: nibleaf
 # Full self-hosted Nibleaf stack. Quick start:
 #   cp .env.example .env   # (optional — sensible defaults below)
 #   docker compose up -d --build
-# Then open http://localhost:4310  (demo@nibleaf.dev / nibleafdemo123)
+# Then open http://localhost:4310.
 #
 # For production: set strong POSTGRES_PASSWORD / STORAGE_SECRET_KEY /
 # BETTER_AUTH_SECRET and put the apps behind a TLS reverse proxy.
@@ -16,7 +16,7 @@ x-build: &build
   args:
     VITE_API_URL: http://server:4311
     VITE_APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
-    VITE_WWW_URL: ${PUBLIC_WWW_URL:-http://localhost:4313}
+    VITE_WWW_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
     VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-docs.trynibleaf.com}
 
 x-service-env: &service-env
@@ -39,17 +39,19 @@ x-service-env: &service-env
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
   BETTER_AUTH_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
-  TRUSTED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310},${PUBLIC_WWW_URL:-http://localhost:4313}
-  CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310},${PUBLIC_WWW_URL:-http://localhost:4313}
+  TRUSTED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310}
+  CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310}
   API_PORT: "4311"
   API_URL: ${PUBLIC_API_URL:-http://localhost:4311}
   APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.trynibleaf.com}
   WORKER_PORT: "4312"
-  # Email delivery (optional). Without SMTP_URL the worker logs mail instead of
-  # sending it — invite/reset links still work via the copy-able link in the UI.
+  # Email delivery (optional). Postmark is preferred when POSTMARK_API_KEY is set;
+  # SMTP_URL remains a fallback. Without either, the worker logs mail.
   EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
+  POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+  POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   SMTP_URL: ${SMTP_URL:-}
 
 services:
@@ -180,39 +182,6 @@ services:
       timeout: 5s
       retries: 6
       start_period: 20s
-
-  www:
-    image: nibleaf:latest
-    command: ["www"]
-    init: true
-    environment:
-      <<: *service-env
-      PORT: "4313"
-    ports:
-      - "${WWW_PORT:-4313}:4313"
-    restart: unless-stopped
-
-  docs:
-    image: nibleaf:latest
-    command: ["docs"]
-    init: true
-    environment:
-      <<: *service-env
-      PORT: "4314"
-    ports:
-      - "${DOCS_PORT:-4314}:4314"
-    restart: unless-stopped
-
-  admin:
-    image: nibleaf:latest
-    command: ["admin"]
-    init: true
-    environment:
-      <<: *service-env
-      PORT: "4315"
-    ports:
-      - "${ADMIN_PORT:-4315}:4315"
-    restart: unless-stopped
 
 volumes:
   nibleaf-pg:

@@ -1,10 +1,11 @@
 # Nibleaf — Coolify production stack.
 #
-# Use this compose file in Coolify when you want the self-hostable docs
-# platform only. It intentionally omits the marketing/www app.
+# Use this compose file in Coolify for Nibleaf Cloud production. The public
+# product is served by `app`; the internal admin console is a separate service.
 #
 # Assign Coolify domains to:
 #   app   : 4310 -> dashboard + published docs + wildcard docs host
+#   admin : 4315 -> internal platform admin panel
 #   maxio : 9000 -> bundled public storage/media domain, unless using R2/S3
 #
 # Required DNS for free project subdomains:
@@ -56,12 +57,13 @@ x-service-env: &service-env
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
-  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
-  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
+  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify},${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify},${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
   API_PORT: "4311"
   API_URL: http://server:4311
   APP_URL: ${APP_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
   WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
+  ADMIN_URL: ${ADMIN_URL:-${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
   WORKER_PORT: "4312"
@@ -191,6 +193,28 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS -A nibleaf-healthcheck -H \"Host: ${NIBLEAF_HEALTHCHECK_HOST:-app.trynibleaf.com}\" http://127.0.0.1:4310/ >/dev/null && curl -fsS -A nibleaf-healthcheck -H \"Host: ${NIBLEAF_HEALTHCHECK_HOST:-app.trynibleaf.com}\" http://127.0.0.1:4310/api/app/health >/dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  admin:
+    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
+    pull_policy: always
+    command: ["admin"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4315"
+      VITE_API_URL: http://server:4311
+    expose:
+      - "4315"
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4315/sign-in"]
       interval: 30s
       timeout: 5s
       retries: 5

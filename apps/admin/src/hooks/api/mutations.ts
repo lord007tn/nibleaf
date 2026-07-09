@@ -20,22 +20,3 @@ export function useSetUserRole() {
     onError: () => toast.error('Could not update role'),
   });
 }
-
-export function useDeleteWaitlistEntry() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await api.admin.waitlist[':id'].$delete({ param: { id } });
-      if (!res.ok) {
-        throw new Error(String(res.status));
-      }
-      return (await res.json()).data;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'waitlist'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'overview'] });
-      toast.success('Removed from waitlist');
-    },
-    onError: () => toast.error('Could not remove'),
-  });
-}

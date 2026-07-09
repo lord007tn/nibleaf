@@ -15,8 +15,8 @@ function UsersPage() {
   const setRole = useSetUserRole();
   return (
     <div className="mx-auto max-w-5xl px-8 py-8">
-      <h1 className="font-semibold text-2xl tracking-tight">Users</h1>
-      <p className="mt-1 text-muted-foreground text-sm">Everyone with an account on this instance. Grant or revoke platform admin access.</p>
+      <h1 className="font-semibold text-2xl tracking-tight">Customers</h1>
+      <p className="mt-1 text-muted-foreground text-sm">Every customer account on Nibleaf Cloud. Grant or revoke platform admin access.</p>
       <div className="mt-8 overflow-hidden rounded-xl border border-border">
         <Table>
           <TableHeader>

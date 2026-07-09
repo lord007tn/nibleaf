@@ -386,14 +386,3 @@ model AnalyticsEvent {
   @@map("analytics_event")
 }
 
-/// Sign-ups for the managed Nibleaf Cloud waitlist (collected from the marketing
-/// site while Cloud is not yet live). Idempotent by email.
-model WaitlistEntry {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  source    String? // where the signup came from, e.g. "cloud-page"
-  locale    String? // visitor locale at signup (e.g. "en", "ar")
-  createdAt DateTime @default(now())
-
-  @@map("waitlist_entry")
-}
