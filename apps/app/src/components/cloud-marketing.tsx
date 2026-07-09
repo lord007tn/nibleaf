@@ -33,8 +33,6 @@ const navLinks = [
   { href: GITHUB_URL, label: 'Source', external: true },
 ];
 
-const trustItems = ['Managed hosting', 'Custom domains', 'Markdown / MDX', 'Orama search', 'Analytics', 'S3 storage'];
-
 const features: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
   { icon: FileText, title: 'Markdown workflow', body: 'Author pages, groups, callouts, and rich MDX blocks without fighting the editor.' },
   { icon: Search, title: 'Fast search', body: 'Published docs include full-text and fuzzy search, with bilingual Arabic-ready indexing.' },
@@ -48,22 +46,19 @@ const features: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; b
   { icon: Cloud, title: 'Managed cloud', body: 'Nibleaf runs the app, storage, queues, upgrades, and deployment path for you.' },
 ];
 
-const steps: { icon: ComponentType<SVGProps<SVGSVGElement>>; kicker: string; title: string; body: string }[] = [
+const steps: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
   {
     icon: PenLine,
-    kicker: 'Step 1',
     title: 'Write in Markdown',
     body: 'Author pages in a focused editor with live preview, a page tree, and MDX components. No proprietary format — your content stays portable.',
   },
   {
     icon: Rocket,
-    kicker: 'Step 2',
     title: 'Publish a version',
     body: 'Every publish snapshots your docs and rebuilds search. Roll forward safely; readers never see a half-written page.',
   },
   {
     icon: Share2,
-    kicker: 'Step 3',
     title: 'Share your site',
     body: 'Connect a custom domain and ship a fast, searchable, bilingual site — hosted for you, or on your own servers.',
   },
@@ -151,7 +146,6 @@ export function LandingPage() {
   return (
     <MarketingShell>
       <Hero />
-      <TrustStrip />
       <Features />
       <HowItWorks />
       <Comparison />
@@ -268,22 +262,6 @@ function Hero() {
   );
 }
 
-function TrustStrip() {
-  return (
-    <div className="border-border border-b bg-card/40">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-6 py-6 text-sm">
-        <span className="font-medium text-foreground/50 text-xs uppercase tracking-[0.16em]">Everything included</span>
-        {trustItems.map((item) => (
-          <span key={item} className="flex items-center gap-2 text-muted-foreground">
-            <span className="hidden h-1 w-1 rounded-full bg-border sm:inline-block" aria-hidden="true" />
-            <span className="font-mono text-foreground/70 text-xs">{item}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function Features() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24" id="features">
@@ -320,17 +298,14 @@ function HowItWorks() {
             A calm, predictable workflow — write in Markdown, publish a versioned snapshot, share a fast site.
           </p>
         </div>
-        <ol className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
+        <ol className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {steps.map((step, i) => (
-            <li key={step.title} className="relative">
-              {i < steps.length - 1 ? (
-                <span className="absolute top-5 start-11 hidden h-px w-[calc(100%-1.5rem)] bg-border md:block" aria-hidden="true" />
-              ) : null}
-              <div className="flex items-center gap-3">
-                <span className={`${iconTile} size-10 shrink-0`}>
+            <li key={step.title} className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-primary">
                   <step.icon className="size-5" />
                 </span>
-                <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.16em]">{step.kicker}</span>
+                <span className="font-mono font-semibold text-3xl text-muted-foreground/25 leading-none">{`0${i + 1}`}</span>
               </div>
               <h3 className="mt-5 font-semibold text-lg tracking-tight">{step.title}</h3>
               <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{step.body}</p>

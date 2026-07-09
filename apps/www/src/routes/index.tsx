@@ -52,7 +52,6 @@ function LandingPage() {
   return (
     <MarketingShell>
       <Hero />
-      <CapabilityStrip />
       <Features />
       <HowItWorks />
       <Comparison />
@@ -189,25 +188,6 @@ function DocsMock() {
   );
 }
 
-/** Quiet hairline strip reinforcing what ships in the box. */
-function CapabilityStrip() {
-  const t = useT();
-  const items = ['Managed hosting', 'Custom domains', 'Markdown / MDX', 'Orama search', 'Analytics', 'S3 storage'];
-  return (
-    <div className="border-border border-b bg-card/40">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-6 py-6 text-sm">
-        <span className="font-medium text-foreground/50 text-xs uppercase tracking-[0.16em]">{t('trust.prefix')}</span>
-        {items.map((item) => (
-          <span key={item} className="flex items-center gap-2 text-muted-foreground">
-            <span className="hidden h-1 w-1 rounded-full bg-border sm:inline-block" aria-hidden="true" />
-            <span className="font-mono text-foreground/70 text-xs">{item}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const FEATURES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: MessageKey; body: MessageKey }[] = [
   { icon: Zap, title: 'features.editor.title', body: 'features.editor.body' },
   { icon: Search, title: 'features.search.title', body: 'features.search.body' },
@@ -241,10 +221,10 @@ function Features() {
   );
 }
 
-const STEPS: { icon: ComponentType<SVGProps<SVGSVGElement>>; kicker: MessageKey; title: MessageKey; body: MessageKey }[] = [
-  { icon: PenLine, kicker: 'how.step1.kicker', title: 'how.step1.title', body: 'how.step1.body' },
-  { icon: Rocket, kicker: 'how.step2.kicker', title: 'how.step2.title', body: 'how.step2.body' },
-  { icon: Share2, kicker: 'how.step3.kicker', title: 'how.step3.title', body: 'how.step3.body' },
+const STEPS: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: MessageKey; body: MessageKey }[] = [
+  { icon: PenLine, title: 'how.step1.title', body: 'how.step1.body' },
+  { icon: Rocket, title: 'how.step2.title', body: 'how.step2.body' },
+  { icon: Share2, title: 'how.step3.title', body: 'how.step3.body' },
 ];
 
 function HowItWorks() {
@@ -257,18 +237,14 @@ function HowItWorks() {
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('how.heading')}</h2>
           <p className="mt-4 text-lg text-muted-foreground">{t('how.subhead')}</p>
         </div>
-        <ol className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
+        <ol className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
           {STEPS.map((step, i) => (
-            <li key={step.title} className="relative">
-              {/* connector hairline (desktop) */}
-              {i < STEPS.length - 1 ? (
-                <span className="absolute top-5 start-11 hidden h-px w-[calc(100%-1.5rem)] bg-border md:block" aria-hidden="true" />
-              ) : null}
-              <div className="flex items-center gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-foreground">
+            <li key={step.title} className="rounded-xl border border-border bg-card p-6">
+              <div className="flex items-center justify-between">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-primary">
                   <step.icon className="size-5" />
                 </span>
-                <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.16em]">{t(step.kicker)}</span>
+                <span className="font-mono font-semibold text-3xl text-muted-foreground/25 leading-none">{`0${i + 1}`}</span>
               </div>
               <h3 className="mt-5 font-semibold text-lg tracking-tight">{t(step.title)}</h3>
               <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{t(step.body)}</p>
