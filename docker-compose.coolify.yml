@@ -43,34 +43,33 @@ x-service-env: &service-env
   QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
-  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_ENDPOINT for R2/S3}}
+  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-https://storage.nibleaf.com}
   STORAGE_REGION: ${STORAGE_REGION:-auto}
   STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
   STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-${SERVICE_PASSWORD_64_STORAGE:?set STORAGE_SECRET_ACCESS_KEY or SERVICE_PASSWORD_64_STORAGE}}
   STORAGE_BUCKET: ${STORAGE_BUCKET:-nibleaf}
   STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
-  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-${SERVICE_URL_MAXIO:?assign the storage domain to maxio or set STORAGE_PUBLIC_URL for R2/S3}/nibleaf}
-  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
+  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-https://storage.nibleaf.com/nibleaf}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${SERVICE_HEX_64_NIBLEAF:?set SERVICE_HEX_64_NIBLEAF}
-  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://nibleaf.com}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
-  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify},${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
-  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify},${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
+  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   API_PORT: "4311"
   API_URL: http://server:4311
-  APP_URL: ${APP_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
-  WWW_URL: ${WWW_URL:-${SERVICE_URL_APP:?assign the dashboard domain to the app service in Coolify}}
-  ADMIN_URL: ${ADMIN_URL:-${SERVICE_URL_ADMIN:?assign admin.nibleaf.com to the admin service in Coolify}}
-  SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN, for example docs.example.com}
-  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:?set CUSTOM_DOMAIN_CNAME_TARGET, for example cname.docs.example.com}
+  APP_URL: ${APP_URL:-https://nibleaf.com}
+  WWW_URL: ${WWW_URL:-https://nibleaf.com}
+  ADMIN_URL: ${ADMIN_URL:-https://admin.nibleaf.com}
+  SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-nibleaf.com}
   WORKER_PORT: "4312"
-  EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+  EMAIL_FROM: ${EMAIL_FROM:-fariq@nibleaf.com}
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
-  SMTP_URL: ${SMTP_URL:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
 
@@ -185,7 +184,7 @@ services:
     environment:
       <<: *service-env
       PORT: "4310"
-      VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:?set SITE_BASE_DOMAIN}
+      VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
     expose:
       - "4310"
     depends_on:
