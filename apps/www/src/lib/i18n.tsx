@@ -42,13 +42,28 @@ export const messages = {
 
     // Section eyebrows
     'eyebrow.features': 'Features',
+    'eyebrow.how': 'How it works',
     'eyebrow.compare': 'Comparison',
     'eyebrow.selfHost': 'Open source',
     'eyebrow.pricing': 'Pricing',
     'eyebrow.faq': 'FAQ',
 
     // Trust strip
-    'trust.prefix': 'Built for cloud docs teams:',
+    'trust.prefix': 'Everything included',
+
+    // How it works
+    'how.heading': 'From blank page to published in minutes',
+    'how.subhead': 'A calm, predictable workflow — write in Markdown, publish a versioned snapshot, share a fast site.',
+    'how.step1.kicker': 'Step 1',
+    'how.step1.title': 'Write in Markdown',
+    'how.step1.body':
+      'Author pages in a focused editor with live preview, a page tree, and MDX components. No proprietary format — your content stays portable.',
+    'how.step2.kicker': 'Step 2',
+    'how.step2.title': 'Publish a version',
+    'how.step2.body': 'Every publish snapshots your docs and rebuilds search. Roll forward safely; readers never see a half-written page.',
+    'how.step3.kicker': 'Step 3',
+    'how.step3.title': 'Share your site',
+    'how.step3.body': 'Connect a custom domain and ship a fast, searchable, bilingual site — hosted for you, or on your own servers.',
 
     // Features
     'features.heading': 'Everything you need to ship docs',
@@ -313,13 +328,27 @@ export const messages = {
 
     // Section eyebrows
     'eyebrow.features': 'المزايا',
+    'eyebrow.how': 'كيف يعمل',
     'eyebrow.compare': 'المقارنة',
     'eyebrow.selfHost': 'المصدر المفتوح',
     'eyebrow.pricing': 'الأسعار',
     'eyebrow.faq': 'الأسئلة الشائعة',
 
     // Trust strip
-    'trust.prefix': 'مبنية لفرق التوثيق السحابية:',
+    'trust.prefix': 'كل شيء مُضمَّن',
+
+    // How it works
+    'how.heading': 'من صفحة فارغة إلى موقع منشور خلال دقائق',
+    'how.subhead': 'سير عمل هادئ ومتوقّع — اكتب بصيغة Markdown، وانشر لقطة موثّقة بالإصدار، وشارك موقعًا سريعًا.',
+    'how.step1.kicker': 'الخطوة ١',
+    'how.step1.title': 'اكتب بصيغة Markdown',
+    'how.step1.body': 'ألّف صفحاتك في محرّر مُركّز مع معاينة حية وشجرة صفحات ومكوّنات MDX. بلا صيغة احتكارية — يبقى محتواك قابلًا للنقل.',
+    'how.step2.kicker': 'الخطوة ٢',
+    'how.step2.title': 'انشر إصدارًا',
+    'how.step2.body': 'كل عملية نشر تلتقط لقطة من توثيقك وتعيد بناء الفهرس. تقدّم بأمان؛ ولن يرى القرّاء صفحة غير مكتملة أبدًا.',
+    'how.step3.kicker': 'الخطوة ٣',
+    'how.step3.title': 'شارك موقعك',
+    'how.step3.body': 'اربط نطاقًا مخصصًا وانشر موقعًا سريعًا قابلًا للبحث وثنائي اللغة — مُستضافًا لك، أو على خوادمك الخاصة.',
 
     // Features
     'features.heading': 'كل ما تحتاجه لنشر توثيقك',

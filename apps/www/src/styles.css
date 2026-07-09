@@ -38,48 +38,48 @@
 :root {
   --radius: 0.625rem;
   --background: #fafafa;
-  --foreground: #0c1713;
+  --foreground: #171717;
   --card: #ffffff;
-  --card-foreground: #0c1713;
+  --card-foreground: #171717;
   --popover: #ffffff;
-  --popover-foreground: #0c1713;
-  --primary: #0f6b4d;
+  --popover-foreground: #171717;
+  --primary: #c2410c;
   --primary-foreground: #fafafa;
-  --secondary: #e8f1ed;
-  --secondary-foreground: #0c1713;
-  --muted: #e8f1ed;
-  --muted-foreground: #5c6d66;
-  --accent: #dff4ef;
-  --accent-foreground: #075e56;
-  --destructive: #e5484d;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #dc2626;
   --destructive-foreground: #fafafa;
-  --border: #d5e2dc;
-  --input: #cbdad4;
-  --ring: #0f6b4d;
-  --brand-copper: #0f8f7b;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #c2410c;
+  --brand-copper: #c2410c;
 }
 
 .dark {
-  --background: #08110e;
-  --foreground: #f4fbf8;
-  --card: #0d1915;
-  --card-foreground: #f4fbf8;
-  --popover: #0d1915;
-  --popover-foreground: #f4fbf8;
-  --primary: #34d399;
-  --primary-foreground: #052e23;
-  --secondary: #14231e;
-  --secondary-foreground: #f4fbf8;
-  --muted: #14231e;
-  --muted-foreground: #9fb3ac;
-  --accent: #12342e;
-  --accent-foreground: #7dd3c7;
-  --destructive: #ff6166;
-  --destructive-foreground: #08110e;
-  --border: #20352f;
-  --input: #20352f;
-  --ring: #34d399;
-  --brand-copper: #22d3ee;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+  --popover: #171717;
+  --popover-foreground: #fafafa;
+  --primary: #f97316;
+  --primary-foreground: #171717;
+  --secondary: #262626;
+  --secondary-foreground: #fafafa;
+  --muted: #262626;
+  --muted-foreground: #a3a3a3;
+  --accent: #262626;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #262626;
+  --input: #404040;
+  --ring: #f97316;
+  --brand-copper: #f97316;
 }
 
 @layer base {

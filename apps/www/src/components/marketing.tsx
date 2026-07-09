@@ -17,6 +17,10 @@ export const BTN_BASE =
 export const BTN_DEFAULT = 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90';
 export const BTN_OUTLINE = 'border-border bg-background shadow-xs hover:bg-muted hover:text-foreground';
 export const BTN_GHOST = 'hover:bg-muted hover:text-foreground';
+/** Primary button for use on inverted (ink) panels, where BTN_DEFAULT would vanish. */
+export const BTN_INVERT = 'bg-background text-foreground shadow-xs hover:bg-background/90';
+/** Neutral bordered icon tile used across feature/value grids. Add a size util (e.g. `size-11`). */
+export const ICON_TILE = 'grid place-items-center rounded-lg border border-border bg-background text-foreground';
 export const SZ_SM = 'h-8 px-3 text-sm';
 export const SZ_DEFAULT = 'h-9 px-4 text-sm';
 export const SZ_LG = 'h-10 px-6 text-sm';
@@ -33,8 +37,8 @@ export function Github(props: SVGProps<SVGSVGElement>) {
 /** Small uppercase label that sits above a section heading. */
 export function Eyebrow({ children }: { children: string }) {
   return (
-    <span className="inline-flex items-center gap-2 font-medium text-primary text-xs uppercase tracking-[0.16em]">
-      <span className="h-px w-6 bg-primary/40" aria-hidden="true" />
+    <span className="inline-flex items-center gap-2.5 font-medium text-primary text-xs uppercase tracking-[0.18em]">
+      <span className="h-px w-7 bg-primary/40" aria-hidden="true" />
       {children}
     </span>
   );
@@ -106,7 +110,7 @@ export function SiteNav() {
             rel="noreferrer"
             target="_blank"
           >
-            <Github className="size-4" /> {t('nav.githubStars', { count: GITHUB_STARS })}
+            <Github className="size-4" /> {GITHUB_STARS > 0 ? t('nav.githubStars', { count: GITHUB_STARS }) : t('nav.github')}
           </a>
           <LanguageToggle />
           <ThemeToggle />

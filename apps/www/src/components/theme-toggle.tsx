@@ -13,7 +13,9 @@ export function ThemeToggle() {
 
   return (
     <button
-      aria-label={`Switch to ${next} theme`}
+      // Stable label until mounted so the SSR markup matches the first client
+      // render (the resolved theme is only known after hydration).
+      aria-label={mounted ? `Switch to ${next} theme` : 'Toggle theme'}
       className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground"
       onClick={() => setTheme(next)}
       type="button"

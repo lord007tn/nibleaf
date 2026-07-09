@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, Check, Database, HardDrive, Rocket, Server, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, PageHeader, SZ_LG } from '@/components/marketing';
+import { BTN_DEFAULT, btn, Eyebrow, Github, ICON_TILE, MarketingShell, PageHeader, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { canonicalHref, GITHUB_URL } from '@/lib/links';
@@ -63,7 +63,7 @@ function SelfHostingPage() {
         <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {REQUIREMENTS.map((req) => (
             <div key={req.title} className="rounded-xl border border-border bg-card p-5">
-              <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+              <span className={`${ICON_TILE} size-10`}>
                 <req.icon className="size-5" />
               </span>
               <h3 className="mt-4 font-semibold">{t(req.title)}</h3>
@@ -95,9 +95,9 @@ function SelfHostingPage() {
           </div>
           <div className="overflow-hidden rounded-xl border border-border bg-[#0d1117] font-mono text-sm shadow-xl shadow-black/5" dir="ltr">
             <div className="flex items-center gap-1.5 border-white/10 border-b px-4 py-3">
-              <span className="size-2.5 rounded-full bg-red-500/70" />
-              <span className="size-2.5 rounded-full bg-amber-500/70" />
-              <span className="size-2.5 rounded-full bg-green-500/70" />
+              <span className="size-2.5 rounded-full bg-white/20" />
+              <span className="size-2.5 rounded-full bg-white/20" />
+              <span className="size-2.5 rounded-full bg-white/20" />
               <span className="ms-3 text-white/40 text-xs">{t('selfHost.terminal.label')}</span>
             </div>
             <pre className="overflow-x-auto p-5 text-white/90 leading-relaxed">{`# 1 · clone
@@ -123,8 +123,8 @@ docker compose up -d
           <ul className="space-y-4">
             {GET.map((item) => (
               <li key={item} className="flex items-start gap-3 text-[15px]">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <Check className="size-3.5" />
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary/10 text-primary">
+                  <Check className="size-3" />
                 </span>
                 {t(item)}
               </li>
@@ -140,7 +140,7 @@ docker compose up -d
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
             {DEPLOY.map((d) => (
               <div key={d.title} className="rounded-xl border border-border bg-background p-6">
-                <span className="grid size-10 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                <span className={`${ICON_TILE} size-10`}>
                   <d.icon className="size-5" />
                 </span>
                 <h3 className="mt-4 font-semibold text-lg">{t(d.title)}</h3>
@@ -163,8 +163,8 @@ docker compose up -d
                 <Github className="size-4" /> {t('selfhost.cta.primary')}
               </a>
               <a
-                className={btn(BTN_OUTLINE, SZ_LG, 'border-background/25 bg-transparent text-background hover:bg-background/10')}
-                href={GITHUB_URL}
+                className={btn(SZ_LG, 'border-background/25 text-background hover:bg-background/10')}
+                href={`${GITHUB_URL}#readme`}
                 rel="noreferrer"
                 target="_blank"
               >

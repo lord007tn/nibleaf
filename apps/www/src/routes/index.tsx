@@ -1,6 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { createFileRoute } from '@tanstack/react-router';
-import { ArrowRight, BarChart3, Boxes, Check, Cloud, FileText, Info, Search, Workflow, X, Zap } from 'lucide-react';
+import { ArrowRight, BarChart3, Boxes, Check, Cloud, FileText, Info, PenLine, Rocket, Search, Share2, Workflow, X, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, Github, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
@@ -52,8 +52,9 @@ function LandingPage() {
   return (
     <MarketingShell>
       <Hero />
-      <TrustStrip />
+      <CapabilityStrip />
       <Features />
+      <HowItWorks />
       <Comparison />
       <SelfHost />
       <Pricing />
@@ -70,7 +71,7 @@ function Hero() {
     <section className="relative overflow-hidden border-border border-b">
       {/* faint neutral texture — no colour wash */}
       <div className="bg-dotgrid pointer-events-none absolute inset-0 -z-10" aria-hidden="true" />
-      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 pt-20 pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,530px)] lg:pt-24">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-6 pt-16 pb-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,530px)] lg:pt-24">
         <div className="animate-rise text-center lg:text-start">
           <a
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs shadow-xs transition-colors hover:text-foreground"
@@ -78,22 +79,24 @@ function Hero() {
             rel="noreferrer"
             target="_blank"
           >
-            <Github className="size-3.5 text-primary" /> {t('hero.badge')} · {GITHUB_STARS} stars
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            {t('hero.badge')}
           </a>
-          <h1 className="mt-6 text-balance font-semibold text-[2.75rem] leading-[1.05] tracking-tight sm:text-6xl">
+          <h1 className="mt-6 text-balance font-semibold text-[2.75rem] leading-[1.03] tracking-tight sm:text-6xl">
             {t('hero.headlineLead')} <span className="text-gradient-brand">{t('hero.headlineAccent')}</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
+          <p className="mx-auto mt-6 max-w-xl text-balance text-lg text-muted-foreground leading-relaxed lg:mx-0">{t('hero.subhead')}</p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
             <a className={btn(BTN_DEFAULT, SZ_LG, 'group')} href={appHref('/sign-up')}>
               {t('hero.ctaPrimary')}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
             </a>
             <a className={btn(BTN_OUTLINE, SZ_LG)} href={GITHUB_URL} rel="noreferrer" target="_blank">
-              <Github className="size-4" /> {t('hero.ctaSecondary')} · {GITHUB_STARS} stars
+              <Github className="size-4" /> {t('hero.ctaSecondary')}
+              {GITHUB_STARS > 0 ? ` · ${GITHUB_STARS} stars` : ''}
             </a>
           </div>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-sm lg:justify-start">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-muted-foreground text-sm lg:justify-start">
             {chips.map((chip) => (
               <span key={chip} className="flex items-center gap-1.5">
                 <Check className="size-4 text-primary" /> {t(chip)}
@@ -118,13 +121,13 @@ function DocsMock() {
       <div className="absolute -top-3 end-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 font-medium text-xs shadow-md">
         <span className="size-2 rounded-full bg-emerald-500" /> {t('hero.mock.badge')}
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/5 ring-1 ring-black/5">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/[0.06] ring-1 ring-black/5">
         {/* title bar */}
         <div className="flex items-center gap-2 border-border border-b bg-muted/50 px-4 py-3">
           <span className="flex gap-1.5">
-            <span className="size-2.5 rounded-full bg-red-400/70" />
-            <span className="size-2.5 rounded-full bg-amber-400/70" />
-            <span className="size-2.5 rounded-full bg-green-400/70" />
+            <span className="size-2.5 rounded-full bg-border" />
+            <span className="size-2.5 rounded-full bg-border" />
+            <span className="size-2.5 rounded-full bg-border" />
           </span>
           <div className="ms-2 flex flex-1 items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1 text-[11px] text-muted-foreground">
             <Search className="size-3" /> {t('hero.mock.search')}
@@ -174,9 +177,9 @@ function DocsMock() {
                 <span className="font-mono text-[9px] text-white/40">config.mdx</span>
               </div>
               <div className="space-y-1.5 p-2.5 font-mono text-[10px]">
-                <span className="block h-1.5 w-20 rounded bg-emerald-400/50" />
-                <span className="block h-1.5 w-32 rounded bg-sky-400/40" />
-                <span className="block h-1.5 w-24 rounded bg-white/25" />
+                <span className="block h-1.5 w-20 rounded bg-white/40" />
+                <span className="block h-1.5 w-32 rounded bg-white/25" />
+                <span className="block h-1.5 w-24 rounded bg-white/15" />
               </div>
             </div>
           </div>
@@ -186,16 +189,18 @@ function DocsMock() {
   );
 }
 
-function TrustStrip() {
+/** Quiet hairline strip reinforcing what ships in the box. */
+function CapabilityStrip() {
   const t = useT();
-  const items = ['Managed hosting', 'Custom domains', 'Markdown/MDX', 'Orama search', 'Analytics', 'S3 storage'];
+  const items = ['Managed hosting', 'Custom domains', 'Markdown / MDX', 'Orama search', 'Analytics', 'S3 storage'];
   return (
     <div className="border-border border-b bg-card/40">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-6 text-muted-foreground text-sm">
-        <span className="font-medium text-foreground/60 text-xs uppercase tracking-wider">{t('trust.prefix')}</span>
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-3 gap-y-3 px-6 py-6 text-sm">
+        <span className="font-medium text-foreground/50 text-xs uppercase tracking-[0.16em]">{t('trust.prefix')}</span>
         {items.map((item) => (
-          <span key={item} className="font-mono text-foreground/70 text-xs">
-            {item}
+          <span key={item} className="flex items-center gap-2 text-muted-foreground">
+            <span className="hidden h-1 w-1 rounded-full bg-border sm:inline-block" aria-hidden="true" />
+            <span className="font-mono text-foreground/70 text-xs">{item}</span>
           </span>
         ))}
       </div>
@@ -218,22 +223,58 @@ function Features() {
     <section className="mx-auto max-w-6xl px-6 py-24" id="features">
       <div className="max-w-2xl">
         <Eyebrow>{t('eyebrow.features')}</Eyebrow>
-        <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('features.heading')}</h2>
-        <p className="mt-3 text-lg text-muted-foreground">{t('features.subhead')}</p>
+        <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('features.heading')}</h2>
+        <p className="mt-4 text-lg text-muted-foreground">{t('features.subhead')}</p>
       </div>
-      <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map((feature) => (
-          <div
-            key={feature.title}
-            className="card-sheen group relative rounded-xl border border-border bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-black/5"
-          >
-            <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+          <div key={feature.title} className="group relative bg-card p-7 transition-colors hover:bg-muted/40">
+            <span className="grid size-10 place-items-center rounded-lg border border-border bg-background text-foreground transition-colors group-hover:border-primary/30 group-hover:bg-primary group-hover:text-primary-foreground">
               <feature.icon className="size-5" />
             </span>
-            <h3 className="mt-4 font-semibold text-lg">{t(feature.title)}</h3>
-            <p className="mt-1.5 text-muted-foreground text-sm leading-relaxed">{t(feature.body)}</p>
+            <h3 className="mt-5 font-semibold text-base">{t(feature.title)}</h3>
+            <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{t(feature.body)}</p>
           </div>
         ))}
+      </div>
+    </section>
+  );
+}
+
+const STEPS: { icon: ComponentType<SVGProps<SVGSVGElement>>; kicker: MessageKey; title: MessageKey; body: MessageKey }[] = [
+  { icon: PenLine, kicker: 'how.step1.kicker', title: 'how.step1.title', body: 'how.step1.body' },
+  { icon: Rocket, kicker: 'how.step2.kicker', title: 'how.step2.title', body: 'how.step2.body' },
+  { icon: Share2, kicker: 'how.step3.kicker', title: 'how.step3.title', body: 'how.step3.body' },
+];
+
+function HowItWorks() {
+  const t = useT();
+  return (
+    <section className="border-border border-y bg-card/40" id="how">
+      <div className="mx-auto max-w-6xl px-6 py-24">
+        <div className="max-w-2xl">
+          <Eyebrow>{t('eyebrow.how')}</Eyebrow>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('how.heading')}</h2>
+          <p className="mt-4 text-lg text-muted-foreground">{t('how.subhead')}</p>
+        </div>
+        <ol className="mt-14 grid grid-cols-1 gap-8 md:grid-cols-3">
+          {STEPS.map((step, i) => (
+            <li key={step.title} className="relative">
+              {/* connector hairline (desktop) */}
+              {i < STEPS.length - 1 ? (
+                <span className="absolute top-5 start-11 hidden h-px w-[calc(100%-1.5rem)] bg-border md:block" aria-hidden="true" />
+              ) : null}
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-foreground">
+                  <step.icon className="size-5" />
+                </span>
+                <span className="font-medium text-muted-foreground text-xs uppercase tracking-[0.16em]">{t(step.kicker)}</span>
+              </div>
+              <h3 className="mt-5 font-semibold text-lg tracking-tight">{t(step.title)}</h3>
+              <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{t(step.body)}</p>
+            </li>
+          ))}
+        </ol>
       </div>
     </section>
   );
@@ -252,31 +293,32 @@ const COMPARE: { label: MessageKey; nibleaf: boolean; them: boolean }[] = [
 function Comparison() {
   const t = useT();
   return (
-    <section className="border-border border-y bg-card/40" id="compare">
-      <div className="mx-auto max-w-3xl px-6 py-24">
-        <div className="flex flex-col items-center text-center">
-          <Eyebrow>{t('eyebrow.compare')}</Eyebrow>
-          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('compare.heading')}</h2>
-          <p className="mt-3 text-lg text-muted-foreground">{t('compare.subhead')}</p>
+    <section className="mx-auto max-w-3xl px-6 py-24" id="compare">
+      <div className="flex flex-col items-center text-center">
+        <Eyebrow>{t('eyebrow.compare')}</Eyebrow>
+        <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('compare.heading')}</h2>
+        <p className="mt-4 text-lg text-muted-foreground">{t('compare.subhead')}</p>
+      </div>
+      <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+        <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b bg-muted/40 px-6 py-3 font-medium text-sm">
+          <span />
+          <span className="flex items-center justify-center gap-1.5 text-center text-foreground">
+            <NibleafMark className="size-4" />
+            {t('compare.colNibleaf')}
+          </span>
+          <span className="text-center text-muted-foreground">{t('compare.colHosted')}</span>
         </div>
-        <div className="mt-10 overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-          <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 font-medium text-sm">
-            <span />
-            <span className="rounded-md bg-primary/10 py-1 text-center text-primary">{t('compare.colNibleaf')}</span>
-            <span className="text-center text-muted-foreground">{t('compare.colHosted')}</span>
+        {COMPARE.map((row) => (
+          <div key={row.label} className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3.5 text-sm last:border-0">
+            <span>{t(row.label)}</span>
+            <span className="flex h-full items-center justify-center bg-primary/5">
+              {row.nibleaf ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground/50" />}
+            </span>
+            <span className="flex justify-center">
+              {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/40" />}
+            </span>
           </div>
-          {COMPARE.map((row) => (
-            <div key={row.label} className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b px-6 py-3 text-sm last:border-0">
-              <span>{t(row.label)}</span>
-              <span className="flex justify-center bg-primary/5">
-                {row.nibleaf ? <Check className="size-4 text-primary" /> : <X className="size-4 text-muted-foreground" />}
-              </span>
-              <span className="flex justify-center">
-                {row.them ? <Check className="size-4 text-muted-foreground" /> : <X className="size-4 text-muted-foreground/50" />}
-              </span>
-            </div>
-          ))}
-        </div>
+        ))}
       </div>
     </section>
   );
@@ -292,32 +334,32 @@ const SELF_HOST_BULLETS: MessageKey[] = [
 function SelfHost() {
   const t = useT();
   return (
-    <section className="mx-auto max-w-6xl px-6 py-24" id="self-host">
-      <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+    <section className="border-border border-y bg-card/40" id="self-host">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-24 lg:grid-cols-2">
         <div>
           <Eyebrow>{t('eyebrow.selfHost')}</Eyebrow>
-          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('selfHost.heading')}</h2>
-          <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{t('selfHost.body')}</p>
-          <ul className="mt-6 space-y-3 text-sm">
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('selfHost.heading')}</h2>
+          <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{t('selfHost.body')}</p>
+          <ul className="mt-7 space-y-3.5 text-sm">
             {SELF_HOST_BULLETS.map((item) => (
-              <li key={item} className="flex items-start gap-2.5">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                  <Check className="size-3.5" />
+              <li key={item} className="flex items-start gap-3">
+                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground">
+                  <Check className="size-3" />
                 </span>
                 {t(item)}
               </li>
             ))}
           </ul>
-          <a className={btn(BTN_OUTLINE, SZ_DEFAULT, 'mt-7')} href="/self-hosting">
+          <a className={btn(BTN_OUTLINE, SZ_DEFAULT, 'mt-8')} href="/self-hosting">
             {t('eyebrow.selfHost')}
             <ArrowRight className="size-4 rtl:rotate-180" />
           </a>
         </div>
-        <div className="overflow-hidden rounded-xl border border-border bg-[#0d1117] font-mono text-sm shadow-xl shadow-black/5" dir="ltr">
+        <div className="overflow-hidden rounded-xl border border-border bg-[#0d1117] font-mono text-sm shadow-xl shadow-black/[0.06]" dir="ltr">
           <div className="flex items-center gap-1.5 border-white/10 border-b px-4 py-3">
-            <span className="size-2.5 rounded-full bg-red-500/70" />
-            <span className="size-2.5 rounded-full bg-amber-500/70" />
-            <span className="size-2.5 rounded-full bg-green-500/70" />
+            <span className="size-2.5 rounded-full bg-white/20" />
+            <span className="size-2.5 rounded-full bg-white/20" />
+            <span className="size-2.5 rounded-full bg-white/20" />
             <span className="ms-3 text-white/40 text-xs">{t('selfHost.terminal.label')}</span>
           </div>
           <pre className="overflow-x-auto p-5 text-white/90 leading-relaxed">{`# clone & configure
@@ -377,40 +419,40 @@ const PLANS: {
 function Pricing() {
   const t = useT();
   return (
-    <section className="border-border border-y bg-card/40" id="pricing">
-      <div className="mx-auto max-w-4xl px-6 py-24">
-        <div className="flex flex-col items-center text-center">
-          <Eyebrow>{t('eyebrow.pricing')}</Eyebrow>
-          <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('pricing.heading')}</h2>
-          <p className="mt-3 text-lg text-muted-foreground">{t('pricing.subhead')}</p>
-        </div>
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-xl border bg-background p-7 transition-shadow ${plan.featured ? 'border-primary/50 shadow-lg shadow-black/5 ring-1 ring-primary/20' : 'border-border hover:shadow-sm'}`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-lg">{t(plan.name)}</h3>
-                {plan.featured ? (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">{t('pricing.popular')}</span>
-                ) : null}
-              </div>
-              <div className="mt-3 font-semibold text-4xl tracking-tight">{t(plan.price)}</div>
-              <p className="mt-1 text-muted-foreground text-sm">{t(plan.tagline)}</p>
-              <ul className="mt-5 space-y-2.5 text-sm">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {t(f)}
-                  </li>
-                ))}
-              </ul>
-              <a className={btn(plan.featured ? BTN_DEFAULT : BTN_OUTLINE, SZ_DEFAULT, 'mt-6 w-full')} href={plan.href}>
-                {t(plan.cta)}
-              </a>
+    <section className="mx-auto max-w-4xl px-6 py-24" id="pricing">
+      <div className="flex flex-col items-center text-center">
+        <Eyebrow>{t('eyebrow.pricing')}</Eyebrow>
+        <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('pricing.heading')}</h2>
+        <p className="mt-4 text-lg text-muted-foreground">{t('pricing.subhead')}</p>
+      </div>
+      <div className="mt-14 grid grid-cols-1 gap-6 sm:grid-cols-2">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.name}
+            className={`relative rounded-xl border bg-card p-8 transition-shadow ${
+              plan.featured ? 'border-primary/30 shadow-lg shadow-black/[0.06] ring-1 ring-primary/20' : 'border-border hover:shadow-sm'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">{t(plan.name)}</h3>
+              {plan.featured ? (
+                <span className="rounded-full bg-primary px-2.5 py-0.5 font-medium text-primary-foreground text-xs">{t('pricing.popular')}</span>
+              ) : null}
             </div>
-          ))}
-        </div>
+            <div className="mt-4 font-semibold text-4xl tracking-tight">{t(plan.price)}</div>
+            <p className="mt-1.5 text-muted-foreground text-sm">{t(plan.tagline)}</p>
+            <ul className="mt-6 space-y-3 text-sm">
+              {plan.features.map((f) => (
+                <li key={f} className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {t(f)}
+                </li>
+              ))}
+            </ul>
+            <a className={btn(plan.featured ? BTN_DEFAULT : BTN_OUTLINE, SZ_DEFAULT, 'mt-7 w-full')} href={plan.href}>
+              {t(plan.cta)}
+            </a>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -426,21 +468,21 @@ const FAQS: { q: MessageKey; a: MessageKey }[] = [
 function Faq() {
   const t = useT();
   return (
-    <section className="mx-auto max-w-3xl px-6 py-24">
+    <section className="mx-auto max-w-3xl px-6 py-24" id="faq">
       <div className="flex flex-col items-center text-center">
         <Eyebrow>{t('eyebrow.faq')}</Eyebrow>
-        <h2 className="mt-3 font-semibold text-3xl tracking-tight sm:text-4xl">{t('faq.heading')}</h2>
+        <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">{t('faq.heading')}</h2>
       </div>
-      <div className="mt-10 space-y-3">
+      <div className="mt-12 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {FAQS.map((item) => (
-          <details key={item.q} className="group rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/30">
-            <summary className="flex list-none items-center justify-between gap-4 font-medium">
+          <details key={item.q} className="group px-6 py-1 open:bg-muted/30">
+            <summary className="flex list-none items-center justify-between gap-4 py-4 font-medium">
               {t(item.q)}
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition-transform group-open:rotate-45">
+              <span className="grid size-6 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-transform group-open:rotate-45">
                 +
               </span>
             </summary>
-            <p className="mt-3 text-muted-foreground text-sm leading-relaxed">{t(item.a)}</p>
+            <p className="pb-4 text-muted-foreground text-sm leading-relaxed">{t(item.a)}</p>
           </details>
         ))}
       </div>
@@ -456,8 +498,8 @@ function CallToAction() {
         <div className="bg-dotgrid pointer-events-none absolute inset-0 opacity-[0.15]" aria-hidden="true" />
         <div className="relative">
           <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">{t('cta.heading')}</h2>
-          <p className="mx-auto mt-3 max-w-xl text-background/75">{t('cta.body')}</p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
+          <p className="mx-auto mt-4 max-w-xl text-background/70">{t('cta.body')}</p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={btn(BTN_DEFAULT, SZ_LG, 'group')} href={appHref('/sign-up')}>
               {t('cta.primary')}
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
@@ -468,7 +510,7 @@ function CallToAction() {
               rel="noreferrer"
               target="_blank"
             >
-              {t('cta.secondary')}
+              <Github className="size-4" /> {t('cta.secondary')}
             </a>
           </div>
         </div>

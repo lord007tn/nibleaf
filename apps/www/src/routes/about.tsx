@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BookOpen, Globe, Server, Unlock } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { BTN_DEFAULT, BTN_OUTLINE, btn, MarketingShell, PageHeader, SZ_LG } from '@/components/marketing';
+import { BTN_DEFAULT, btn, ICON_TILE, MarketingShell, PageHeader, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { appHref, canonicalHref } from '@/lib/links';
@@ -54,7 +54,7 @@ function AboutPage() {
           <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {VALUES.map((value) => (
               <div key={value.title} className="rounded-xl border border-border bg-background p-6">
-                <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+                <span className={`${ICON_TILE} size-11`}>
                   <value.icon className="size-5" />
                 </span>
                 <h3 className="mt-4 font-semibold text-lg">{t(value.title)}</h3>
@@ -83,7 +83,7 @@ function AboutPage() {
                 {t('cta.primary')}
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </a>
-              <a className={btn(BTN_OUTLINE, SZ_LG, 'border-background/25 bg-transparent text-background hover:bg-background/10')} href="/cloud">
+              <a className={btn(SZ_LG, 'border-background/25 text-background hover:bg-background/10')} href="/cloud">
                 {t('nav.cloud')}
               </a>
             </div>

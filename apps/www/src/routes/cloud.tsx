@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Cloud, Layers, Sparkles } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
+import { BTN_DEFAULT, BTN_OUTLINE, btn, Eyebrow, ICON_TILE, MarketingShell, SZ_DEFAULT, SZ_LG } from '@/components/marketing';
 import type { MessageKey } from '@/lib/i18n';
 import { useT } from '@/lib/i18n';
 import { appHref, canonicalHref } from '@/lib/links';
@@ -71,7 +71,7 @@ function CloudPage() {
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="rounded-xl border border-border bg-card p-6">
-              <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15">
+              <span className={`${ICON_TILE} size-11`}>
                 <feature.icon className="size-5" />
               </span>
               <h3 className="mt-4 font-semibold text-lg">{t(feature.title)}</h3>

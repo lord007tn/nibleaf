@@ -81,24 +81,24 @@ function PricingPage() {
           {PLANS.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-xl border bg-card p-7 transition-shadow ${plan.featured ? 'border-primary/50 shadow-lg shadow-black/5 ring-1 ring-primary/20' : 'border-border hover:shadow-sm'}`}
+              className={`relative rounded-xl border bg-card p-8 transition-shadow ${plan.featured ? 'border-primary/30 shadow-lg shadow-black/[0.06] ring-1 ring-primary/20' : 'border-border hover:shadow-sm'}`}
             >
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-lg">{t(plan.name)}</h3>
                 {plan.featured ? (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary text-xs">{t('pricing.popular')}</span>
+                  <span className="rounded-full bg-primary px-2.5 py-0.5 font-medium text-primary-foreground text-xs">{t('pricing.popular')}</span>
                 ) : null}
               </div>
-              <div className="mt-3 font-semibold text-4xl tracking-tight">{t(plan.price)}</div>
-              <p className="mt-1 text-muted-foreground text-sm">{t(plan.tagline)}</p>
-              <ul className="mt-5 space-y-2.5 text-sm">
+              <div className="mt-4 font-semibold text-4xl tracking-tight">{t(plan.price)}</div>
+              <p className="mt-1.5 text-muted-foreground text-sm">{t(plan.tagline)}</p>
+              <ul className="mt-6 space-y-3 text-sm">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-primary" /> {t(f)}
                   </li>
                 ))}
               </ul>
-              <a className={btn(plan.featured ? BTN_DEFAULT : BTN_OUTLINE, SZ_DEFAULT, 'mt-6 w-full')} href={plan.href}>
+              <a className={btn(plan.featured ? BTN_DEFAULT : BTN_OUTLINE, SZ_DEFAULT, 'mt-7 w-full')} href={plan.href}>
                 {t(plan.cta)}
               </a>
             </div>
@@ -111,10 +111,13 @@ function PricingPage() {
           <h2 className="text-center font-semibold text-3xl tracking-tight">{t('faq.heading')}</h2>
           <div className="mt-10 space-y-3">
             {FAQS.map((item) => (
-              <details key={item.q} className="group rounded-lg border border-border bg-background p-5 transition-colors hover:border-primary/30">
+              <details
+                key={item.q}
+                className="group rounded-lg border border-border bg-background p-5 transition-colors hover:border-foreground/30 open:bg-muted/30"
+              >
                 <summary className="flex list-none items-center justify-between gap-4 font-medium">
                   {t(item.q)}
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground transition-transform group-open:rotate-45">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full border border-border text-muted-foreground transition-transform group-open:rotate-45">
                     +
                   </span>
                 </summary>
