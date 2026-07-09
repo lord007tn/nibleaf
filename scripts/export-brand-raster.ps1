@@ -8,6 +8,8 @@ $BrandDir = Join-Path $Root "apps/www/public/brand"
 $RasterDir = Join-Path $BrandDir "raster"
 $WwwPublic = Join-Path $Root "apps/www/public"
 $AppPublic = Join-Path $Root "apps/app/public"
+$AdminPublic = Join-Path $Root "apps/admin/public"
+$DocsPublic = Join-Path $Root "apps/docs/public"
 
 $Paper = [System.Drawing.ColorTranslator]::FromHtml("#FBF7EE")
 $Paper2 = [System.Drawing.ColorTranslator]::FromHtml("#EEE4D3")
@@ -58,21 +60,21 @@ function New-IconBitmap([int]$size, [switch]$Reverse, [switch]$Monochrome, [swit
   $sx = $size / 512.0
   $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
   $path.AddPolygon([System.Drawing.PointF[]]@(
-      [System.Drawing.PointF]::new(183 * $sx, 314 * $sx),
-      [System.Drawing.PointF]::new(309 * $sx, 188 * $sx),
-      [System.Drawing.PointF]::new(364 * $sx, 243 * $sx),
-      [System.Drawing.PointF]::new(238 * $sx, 369 * $sx),
-      [System.Drawing.PointF]::new(166 * $sx, 387 * $sx)
+      [System.Drawing.PointF]::new(173 * $sx, 300 * $sx),
+      [System.Drawing.PointF]::new(299 * $sx, 174 * $sx),
+      [System.Drawing.PointF]::new(354 * $sx, 229 * $sx),
+      [System.Drawing.PointF]::new(228 * $sx, 355 * $sx),
+      [System.Drawing.PointF]::new(156 * $sx, 373 * $sx)
     ))
   $g.FillPath([System.Drawing.SolidBrush]::new($shape), $path)
 
   $pen = [System.Drawing.Pen]::new($shape, [Math]::Max(2, 24 * $sx))
   $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
   $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-  $g.DrawBezier($pen, 158 * $sx, 196 * $sx, 196 * $sx, 156 * $sx, 244 * $sx, 153 * $sx, 287 * $sx, 176 * $sx)
+  $g.DrawBezier($pen, 148 * $sx, 182 * $sx, 186 * $sx, 142 * $sx, 234 * $sx, 139 * $sx, 277 * $sx, 162 * $sx)
   $pen.Dispose()
 
-  $g.FillEllipse([System.Drawing.SolidBrush]::new($dot), (346 - 27) * $sx, (338 - 27) * $sx, 54 * $sx, 54 * $sx)
+  $g.FillEllipse([System.Drawing.SolidBrush]::new($dot), (336 - 27) * $sx, (324 - 27) * $sx, 54 * $sx, 54 * $sx)
   $g.Dispose()
   return $bmp
 }
@@ -414,11 +416,52 @@ $manifestPath = Join-Path $RasterDir "manifest.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
 ($jobs | ConvertTo-Json -Depth 4) + "`n" | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
-Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $WwwPublic "favicon.svg") -Force
-Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-og-card.svg") -Destination (Join-Path $WwwPublic "og.svg") -Force
-Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $AppPublic "favicon.svg") -Force
+$publicApps = @(
+  @{
+    path = $WwwPublic
+    name = "Nibleaf"
+    shortName = "Nibleaf"
+    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Nibleaf is coming soon."
+    lang = "en"
+    dir = "ltr"
+    copyOg = $true
+  },
+  @{
+    path = $AppPublic
+    name = "Nibleaf"
+    shortName = "Nibleaf"
+    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting."
+    lang = "en"
+    dir = "ltr"
+    copyOg = $false
+  },
+  @{
+    path = $AdminPublic
+    name = "Nibleaf Admin"
+    shortName = "Nibleaf Admin"
+    description = "Internal Nibleaf administration console."
+    lang = "en"
+    dir = "ltr"
+    copyOg = $false
+  },
+  @{
+    path = $DocsPublic
+    name = "Nibleaf Documentation"
+    shortName = "Nibleaf Docs"
+    description = "Documentation for Nibleaf, the open-source, self-hostable documentation platform."
+    lang = "en"
+    dir = "ltr"
+    copyOg = $false
+  }
+)
 
-foreach ($publicDir in @($WwwPublic, $AppPublic)) {
+foreach ($publicApp in $publicApps) {
+  $publicDir = [string]$publicApp.path
+  New-Item -ItemType Directory -Force -Path $publicDir | Out-Null
+  Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $publicDir "favicon.svg") -Force
+  if ([bool]$publicApp.copyOg) {
+    Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-og-card.svg") -Destination (Join-Path $publicDir "og.svg") -Force
+  }
   Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-16.png") -Destination (Join-Path $publicDir "favicon-16x16.png") -Force
   Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-32.png") -Destination (Join-Path $publicDir "favicon-32x32.png") -Force
   Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/apple-touch-icon-180.png") -Destination (Join-Path $publicDir "apple-touch-icon.png") -Force
@@ -432,11 +475,11 @@ foreach ($publicDir in @($WwwPublic, $AppPublic)) {
   ) (Join-Path $publicDir "favicon.ico")
 
   $manifest = [ordered]@{
-    name = "Nibleaf"
-    short_name = "Nibleaf"
-    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Nibleaf is coming soon."
-    lang = "ar"
-    dir = "rtl"
+    name = [string]$publicApp.name
+    short_name = [string]$publicApp.shortName
+    description = [string]$publicApp.description
+    lang = [string]$publicApp.lang
+    dir = [string]$publicApp.dir
     start_url = "/"
     scope = "/"
     display = "standalone"

@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 192" role="img" aria-label="Nibleaf">
   <rect x="520" y="28" width="136" height="136" rx="30" fill="#8A4B2E"/>
-  <path d="M563 110 597 76c7-7 18-7 25 0l2 2c7 7 7 18 0 25l-34 34-28 7 1-34Z" fill="#FBF7EE"/>
-  <path d="M557 75c19-19 46-24 69-11" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="10"/>
-  <circle cx="625" cy="122" r="9" fill="#B96A3D"/>
+  <path d="M555 102 589 68c7-7 18-7 25 0l2 2c7 7 7 18 0 25l-34 34-28 7 1-34Z" fill="#FBF7EE"/>
+  <path d="M549 67c19-19 46-24 69-11" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="10"/>
+  <circle cx="617" cy="114" r="9" fill="#B96A3D"/>
   <text x="486" y="119" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="84" font-weight="800" text-anchor="start">Nibleaf</text>
 </svg>
