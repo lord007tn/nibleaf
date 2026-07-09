@@ -228,6 +228,11 @@ async function createStarterProject(organizationId: string): Promise<void> {
   const language = await prisma.language.create({
     data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
   });
+  // Every project also ships with a default 'main' branch. The editor and every
+  // page-list query scope pages by branch, so seeded pages MUST carry this
+  // branchId — otherwise the starter docs are invisible (the new user sees an
+  // empty "No pages yet" site despite the template).
+  const branch = await prisma.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
   const intro = slugify('Introduction');
   const quick = slugify('Quickstart');
   await prisma.page.createMany({
@@ -235,6 +240,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
       {
         projectId: project.id,
         languageId: language.id,
+        branchId: branch.id,
         title: 'Introduction',
         slug: intro,
         path: joinPath(null, intro),
@@ -245,6 +251,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
       {
         projectId: project.id,
         languageId: language.id,
+        branchId: branch.id,
         title: 'Quickstart',
         slug: quick,
         path: joinPath(null, quick),
@@ -259,6 +266,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
     data: {
       projectId: project.id,
       languageId: language.id,
+      branchId: branch.id,
       kind: 'GROUP',
       title: 'Self-hosting',
       slug: selfHostingSlug,
@@ -275,6 +283,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
       {
         projectId: project.id,
         languageId: language.id,
+        branchId: branch.id,
         parentId: selfHosting.id,
         title: 'Overview',
         slug: overview,
@@ -286,6 +295,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
       {
         projectId: project.id,
         languageId: language.id,
+        branchId: branch.id,
         parentId: selfHosting.id,
         title: 'Configuration',
         slug: configuration,
@@ -297,6 +307,7 @@ async function createStarterProject(organizationId: string): Promise<void> {
       {
         projectId: project.id,
         languageId: language.id,
+        branchId: branch.id,
         parentId: selfHosting.id,
         title: 'Operations',
         slug: operations,
