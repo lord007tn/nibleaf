@@ -14,10 +14,12 @@ function UsersPage() {
   const { data, isPending } = useAdminUsers();
   const setRole = useSetUserRole();
   return (
-    <div className="mx-auto max-w-5xl px-8 py-8">
-      <h1 className="font-semibold text-2xl tracking-tight">Customers</h1>
-      <p className="mt-1 text-muted-foreground text-sm">Every customer account on Nibleaf Cloud. Grant or revoke platform admin access.</p>
-      <div className="mt-8 overflow-hidden rounded-xl border border-border">
+    <div className="space-y-6">
+      <div>
+        <h1 className="font-semibold text-2xl tracking-tight">Customers</h1>
+        <p className="mt-1 text-muted-foreground text-sm">Every customer account on Nibleaf Cloud. Grant or revoke platform admin access.</p>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
