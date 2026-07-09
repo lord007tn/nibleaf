@@ -17,7 +17,7 @@ First-class **English + Arabic, RTL-first**.
 [![CI](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml/badge.svg)](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml)
 [![Docker image](https://github.com/lord007tn/nibleaf/actions/workflows/docker.yml/badge.svg)](https://github.com/lord007tn/nibleaf/pkgs/container/nibleaf)
 
-[Homepage](https://trynibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Deploy](#-deploy-to-production) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
+[Homepage](https://nibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Deploy](#-deploy-to-production) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
 
 <br />
 
@@ -229,4 +229,4 @@ Nibleaf is free software, licensed under the **GNU Affero General Public License
 make your modified source available to its users. Contributions are accepted under the same
 license.
 
-<div align="center"><sub>Built with 🖋️ — <a href="https://trynibleaf.com">trynibleaf.com</a></sub></div>
+<div align="center"><sub>Built with 🖋️ — <a href="https://nibleaf.com">nibleaf.com</a></sub></div>
