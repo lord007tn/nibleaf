@@ -36,7 +36,7 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript-typescript"
-          output: ../codeql-results
+          output: ${{ runner.temp }}/codeql-results
           # Private repositories need GitHub Code Security to accept SARIF.
           # Keep the scan useful without that paid repository feature; when the
           # repository is public, publish results to the code-scanning UI.
@@ -47,6 +47,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: codeql-javascript-typescript
-          path: ../codeql-results/*.sarif
+          path: ${{ runner.temp }}/codeql-results/*.sarif
           if-no-files-found: error
           retention-days: 30
