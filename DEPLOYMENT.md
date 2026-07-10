@@ -363,6 +363,16 @@ retention pruning:
 0 3 * * *  cd /opt/nibleaf && ./scripts/backup.sh >> /var/log/nibleaf-backup.log 2>&1
 ```
 
+For the Coolify compose stack, its deliberately named storage volume is
+`nibleaf-coolify-maxio` (or your `NIBLEAF_MAXIO_VOLUME` override). Pass it
+explicitly so the database **and** uploaded assets are included:
+
+```bash
+COMPOSE_FILE=docker-compose.coolify.yml \
+STORAGE_VOLUME="${NIBLEAF_MAXIO_VOLUME:-nibleaf-coolify-maxio}" \
+./scripts/backup.sh
+```
+
 **b) Sidecar container** — `docker-compose.prod.yml` ships a commented-out
 `pg-backup` service ([`prodrigestivill/postgres-backup-local`](https://github.com/prodrigestivill/docker-postgres-backup-local),
 pinned) that writes rotated dumps to `./backups` on a schedule with
@@ -421,16 +431,23 @@ account is created.
 ## 11. Rate limiting behind a proxy
 
 The API keys its rate-limit buckets on the visitor's IP, read from
-`X-Forwarded-For` using **rightmost-untrusted** parsing: proxies *append* to that
-header, so the leftmost entries are whatever the client sent and are ignored.
-Hops from private-network proxies (nginx, Traefik, the app's own `/api` proxy)
-are skipped automatically.
+`X-Forwarded-For` using **rightmost-untrusted** parsing. This only works when
+the public ingress removes forwarded headers supplied by untrusted clients.
+Private-network proxy hops (nginx, Traefik, the app's own `/api` proxy) are
+skipped automatically.
 
-- Behind private-network proxies only (the default topology): nothing to set.
-- Behind a **public** edge that appends its own address (Cloudflare, a cloud load
-  balancer): set `TRUSTED_PROXY_HOPS` to the number of such hops (usually `1`).
-  Setting it higher than your real proxy depth lets clients forge their identity
-  and evade rate limits.
+- Behind private-network proxies only (the default topology): leave
+  `TRUSTED_PROXY_HOPS=0`.
+- Before trusting Cloudflare headers, prevent direct public access to the origin
+  (Cloudflare Tunnel, Authenticated Origin Pulls, or an origin firewall) and
+  configure the ingress to trust forwarded headers **only** from Cloudflare's
+  published IP ranges. This keeps direct clients from injecting an identity.
+- Capture the resulting production header chain, then set
+  `TRUSTED_PROXY_HOPS` to the number of public hops the ingress appends. A
+  Cloudflare → default-Traefik chain is commonly `visitor, cloudflare-edge`,
+  which needs `1`; do not copy that value to a different topology. Setting it
+  higher than the real proxy depth lets clients forge their identity and evade
+  rate limits.
 
 Published docs pages are rendered server-side by the app, which calls the API
 internally — without help, every visitor would share the app container's bucket.
@@ -456,6 +473,8 @@ Tune `RATE_LIMIT_PUBLIC_PER_MIN` (default `300`) for the public site-serving API
 - [ ] `NIBLEAF_VERSION` pinned; upgrades follow [UPGRADING.md](UPGRADING.md).
 - [ ] `TRUSTED_PROXY_HOPS` matches your real public-proxy depth (section 11) — never higher.
 - [ ] `INTERNAL_API_SECRET` set on both app and server (accurate per-visitor rate limiting).
+- [ ] Public origins are reachable only through the configured edge (Tunnel,
+  Authenticated Origin Pulls, or an allowlist of the edge's published IP ranges).
 
 ## Appendix: Coolify
 
@@ -480,3 +499,9 @@ The compose file reads Coolify-generated values (`SERVICE_USER_POSTGRES`,
 `SERVICE_PASSWORD_64_STORAGE`, `SERVICE_HEX_64_NIBLEAF`). Set
 `SITE_BASE_DOMAIN`, `CUSTOM_DOMAIN_CNAME_TARGET`, `POSTMARK_API_KEY`, and
 `WORKBENCH_USER`/`WORKBENCH_PASS` manually in the Coolify environment screen.
+
+When the Coolify host is behind Cloudflare, configure the host's Traefik proxy
+to trust forwarded headers only from Cloudflare IP ranges before setting
+`TRUSTED_PROXY_HOPS`. For Nibleaf Cloud, also protect the `app` and storage
+routers from direct origin traffic; a Cloudflare WAF cannot protect requests
+that reach the origin IP directly.

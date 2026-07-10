@@ -76,7 +76,9 @@ x-service-env: &service-env
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-}
   RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}
-  # Coolify's Traefik is on the private network, so no public hops by default.
+  # Keep this at 0 unless the public ingress sanitizes X-Forwarded-For and you
+  # have captured the real header chain. Cloudflare -> Traefik commonly needs 1
+  # because Traefik appends Cloudflare's source address; see DEPLOYMENT.md.
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
   # Shared secret letting the app's SSR proxy attribute published-site traffic

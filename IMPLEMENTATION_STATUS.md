@@ -1,6 +1,6 @@
 # Nibleaf Implementation Status
 
-Last updated: 2026-07-01
+Last updated: 2026-07-10
 
 ## Target
 
@@ -18,7 +18,7 @@ search integrations.
 
 ## Mintlify Free-Version Study
 
-Observed with Chrome on the `private-product/private-product` Mintlify workspace:
+Observed during private product research in a Mintlify workspace:
 
 - Dashboard shows project status, preview, live custom domain, activity, deploy
   history, and an editor entry point.

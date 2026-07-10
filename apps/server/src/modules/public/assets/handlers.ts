@@ -3,6 +3,7 @@ import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
 import { isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
+import { publicAssetResponseHeaders } from '@/lib/asset-response';
 import type { HonoEnv } from '@/lib/hono/context';
 import assetRoutes from './routes';
 
@@ -33,7 +34,14 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
     throw notFound('asset', { key });
   }
   const stream = await getObjectStream(key);
-  ctx.header('Content-Type', head.ContentType ?? 'application/octet-stream');
+  const headers = publicAssetResponseHeaders(head.ContentType);
+  ctx.header('Content-Type', headers.contentType);
+  if (headers.contentDisposition) {
+    ctx.header('Content-Disposition', headers.contentDisposition);
+  }
+  if (headers.contentSecurityPolicy) {
+    ctx.header('Content-Security-Policy', headers.contentSecurityPolicy);
+  }
   // Long-lived but NOT immutable: a taken-down asset must become unreachable in
   // caches within a day rather than being pinned for a year.
   ctx.header('Cache-Control', 'public, max-age=86400');

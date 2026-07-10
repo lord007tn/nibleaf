@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   addDomainBody,
   adminSetRoleBody,
+  confirmAssetBody,
   createLanguageBody,
   gitConfigSchema,
+  inferSafeInlineAssetContentType,
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
@@ -102,6 +104,16 @@ describe('presignAssetBody', () => {
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 1024 }).success).toBe(true);
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 0 }).success).toBe(false);
     expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 51 * 1024 * 1024 }).success).toBe(false);
+  });
+
+  it('accepts only inert raster image types and normalizes parameters', () => {
+    const png = presignAssetBody.safeParse({ filename: 'a.png', contentType: 'IMAGE/PNG; charset=binary', size: 1024 });
+    expect(png.success && png.data.contentType).toBe('image/png');
+    expect(presignAssetBody.safeParse({ filename: 'payload.html', contentType: 'text/html', size: 1024 }).success).toBe(false);
+    expect(presignAssetBody.safeParse({ filename: 'payload.svg', contentType: 'image/svg+xml', size: 1024 }).success).toBe(false);
+    expect(confirmAssetBody.safeParse({ key: 'projects/a/assets/file', contentType: 'application/xhtml+xml', size: 1024 }).success).toBe(false);
+    expect(inferSafeInlineAssetContentType('fallback.JPEG')).toBe('image/jpeg');
+    expect(inferSafeInlineAssetContentType('payload.svg')).toBeUndefined();
   });
 });
 

@@ -109,7 +109,9 @@ function SignUpPage() {
   if (signupDisabled) {
     return (
       <AuthLayout subtitle={t('auth.signUp.subtitle')}>
-        <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-center text-muted-foreground text-sm">{t('auth.legal.signupDisabled')}</p>
+        <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-center text-muted-foreground text-sm">
+          {t('auth.legal.signupDisabled')}
+        </p>
         <p className="mt-5 text-center text-muted-foreground text-sm">
           {t('auth.signUp.haveAccount')}{' '}
           <Link className="text-primary hover:underline" to="/sign-in">

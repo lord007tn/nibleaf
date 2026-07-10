@@ -17,6 +17,7 @@ import type {
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
 } from '@nibleaf/validators';
+import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { mutateData } from './client-helpers';
@@ -222,26 +223,30 @@ export const useRevokeApiKey = (projectId: string) => {
   });
 };
 
+/** Browsers occasionally omit File.type for valid images; never infer an active type. */
+const uploadContentType = (file: File): string => file.type.trim() || inferSafeInlineAssetContentType(file.name) || 'application/octet-stream';
+
 /** Presign → PUT bytes → confirm. Returns the recorded asset. */
 export const useUploadAsset = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (file: File): Promise<Asset> => {
+      const contentType = uploadContentType(file);
       const presign = await mutateData<{ key: string; uploadUrl: string }>(
         await api.app.projects[':projectId'].assets.presign.$post({
           param: { projectId },
-          json: { filename: file.name, contentType: file.type || 'application/octet-stream', size: file.size },
+          json: { filename: file.name, contentType, size: file.size },
         }),
         'Could not start the upload.',
       );
-      const put = await fetch(presign.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+      const put = await fetch(presign.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } });
       if (!put.ok) {
         throw new Error('Upload failed.');
       }
       return mutateData<Asset>(
         await api.app.projects[':projectId'].assets.confirm.$post({
           param: { projectId },
-          json: { key: presign.key, contentType: file.type || 'application/octet-stream', size: file.size },
+          json: { key: presign.key, contentType, size: file.size },
         }),
         'Could not finalize the upload.',
       );
