@@ -1,16 +1,22 @@
 import { createDocIndex, type DocIndex, oramaLanguageForCode, type SearchDoc } from '@nibleaf/search';
 import { extractHeadings, type SnapshotPage } from '@nibleaf/shared/site';
+import { LruCache } from './lru';
 
 interface Entry {
   key: string;
   index: DocIndex;
 }
 
+/** Bound on live Orama indexes: they hold full page content, so an instance
+ *  serving many sites/languages must evict cold ones instead of growing forever. */
+const MAX_CACHED_INDEXES = 50;
+
 // One in-memory Orama index per (project, language, docs-version), keyed by the
 // published deployment id so it rebuilds automatically when a new version is
 // published. Including the version in the slot keeps distinct docs versions from
-// evicting each other when a reader switches versions.
-const cache = new Map<string, Entry>();
+// evicting each other when a reader switches versions. LRU-bounded: the least
+// recently searched slot is dropped once the cap is hit.
+const cache = new LruCache<string, Entry>(MAX_CACHED_INDEXES);
 
 const cacheKey = (projectId: string, lang: string, version: string): string => `${projectId}:${lang}:${version}`;
 

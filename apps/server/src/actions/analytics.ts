@@ -1,3 +1,4 @@
+import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
 import type { AnalyticsRange, TrackEventBody } from '@nibleaf/validators';
 import { assertProjectInOrg } from './projects';
@@ -181,20 +182,51 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
   return buckets;
 };
 
+/** How long the hot path waits for the queue before falling back to a direct
+ *  insert. BullMQ buffers commands while redis reconnects (they'd otherwise
+ *  hang the request), so a stalled enqueue must be treated as a failure. */
+const TRACK_ENQUEUE_TIMEOUT_MS = 1_500;
+
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`enqueue timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+
 /** Record a public analytics event (pageview, search, or feedback) for a project. The
  *  optional `meta` carries request-derived dimensions (device class, country)
- *  so the analytics breakdowns aren't permanently empty. */
-export const trackEvent = (projectId: string, body: TrackEventBody, meta?: { country?: string; device?: string }) =>
-  prisma.analyticsEvent.create({
-    data: {
-      projectId,
-      type: body.type,
-      path: body.path ?? null,
-      referrer: body.referrer ?? null,
-      query: body.query ?? null,
-      sessionId: body.sessionId ?? null,
-      country: meta?.country ?? null,
-      device: meta?.device ?? null,
-      language: body.language ?? null,
-    },
-  });
+ *  so the analytics breakdowns aren't permanently empty.
+ *
+ *  The insert happens on the ANALYTICS worker queue so page views never pay a
+ *  DB write in the request path; if enqueueing fails (redis down / slow), we
+ *  fall back to the direct insert so no event is lost. */
+export const trackEvent = async (projectId: string, body: TrackEventBody, meta?: { country?: string; device?: string }): Promise<void> => {
+  const event = {
+    projectId,
+    type: body.type,
+    path: body.path ?? null,
+    referrer: body.referrer ?? null,
+    query: body.query ?? null,
+    sessionId: body.sessionId ?? null,
+    country: meta?.country ?? null,
+    device: meta?.device ?? null,
+    language: body.language ?? null,
+  };
+  try {
+    await withTimeout(
+      createJob(QueueNames.ANALYTICS, { name: 'track-event', data: { kind: 'track-event', ...event, createdAt: new Date().toISOString() } }),
+      TRACK_ENQUEUE_TIMEOUT_MS,
+    );
+  } catch {
+    await prisma.analyticsEvent.create({ data: event });
+  }
+};

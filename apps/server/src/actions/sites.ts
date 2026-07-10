@@ -10,6 +10,7 @@ import {
   projectSlugFromSubdomainHost,
   type SiteSnapshot,
   type SnapshotPage,
+  type SnapshotProject,
   type SnapshotVersion,
 } from '@nibleaf/shared/site';
 import type { TrackEventBody } from '@nibleaf/validators';
@@ -17,6 +18,8 @@ import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
+import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
+import { LruCache, TtlCache } from '@/lib/lru';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 
@@ -61,51 +64,165 @@ const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promis
   }
 };
 
-/** Overlay live, non-versioned site chrome from the Project row onto a snapshot.
- *  Branding, theme, and config (styling, navbar/footer, SEO, visibility,
- *  analytics, variables) reflect the current settings so appearance edits are
- *  live without a re-publish. Content, pages, languages and versions are left
- *  as captured — those are the versioned docs a publish freezes. */
-const overlayLiveChrome = async (projectId: string, snapshot: SiteSnapshot): Promise<void> => {
+/** The live, non-versioned site chrome fields read off the Project row. */
+interface LiveChromeRow {
+  name: string;
+  description: string | null;
+  icon: string | null;
+  color: string;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  theme: unknown;
+  config: unknown;
+  /** Moderation kill switch — a taken-down project must stop serving. */
+  takedownAt: Date | null;
+  /** Best verified domain (isPrimary first, oldest verified as fallback). */
+  domains: { domain: string }[];
+}
+
+/** A snapshot project enriched with the fields the published-site edge needs
+ *  (canonical/301 consolidation in apps/app reads `primaryDomain`). */
+type PublicSnapshotProject = SnapshotProject & { primaryDomain: string | null };
+
+/** Deployment snapshots are immutable per deployment id, so deserializing the
+ *  (potentially large) JSONB once per instance instead of once per page view is
+ *  safe. Bounded LRU: cold sites fall out; a re-publish gets a new deployment
+ *  id and therefore a fresh slot automatically. */
+const snapshotCache = new LruCache<string, SiteSnapshot>(50);
+
+/** Built llms.txt / llms-full.txt bodies are a pure function of the frozen
+ *  snapshot's pages, so memoize them per deployment id — llms-full re-serializes
+ *  every page's full Markdown, making it the most expensive public response to
+ *  rebuild per request. Keyed by (immutable) deployment id, so a re-publish gets
+ *  a fresh slot. Privacy is preserved: the visibility/index gate below returns an
+ *  empty document BEFORE the cache is consulted, so a private site's content is
+ *  never built into, or served from, these caches. */
+const llmsTxtCache = new LruCache<string, string>(50);
+const llmsFullTxtCache = new LruCache<string, string>(50);
+
+/** Live project chrome is NOT frozen — config/appearance edits must show up on
+ *  the live site within seconds, so this cache is TTL-bounded at 15s. */
+const liveChromeCache = new TtlCache<string, LiveChromeRow | null>(200, 15_000);
+
+const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
+  const cached = liveChromeCache.get(projectId);
+  if (cached !== undefined) {
+    return cached;
+  }
   const live = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { name: true, description: true, icon: true, color: true, logoUrl: true, faviconUrl: true, theme: true, config: true },
+    select: {
+      name: true,
+      description: true,
+      icon: true,
+      color: true,
+      logoUrl: true,
+      faviconUrl: true,
+      theme: true,
+      config: true,
+      takedownAt: true,
+      // ONLY an explicitly-designated primary domain may become the canonical /
+      // 301 target. `verified` proves TXT ownership, not that the domain's CNAME
+      // resolves here — consolidating onto a merely-verified domain would 301 a
+      // working site into a host that does not serve it yet.
+      domains: {
+        where: { verified: true, isPrimary: true },
+        orderBy: [{ verifiedAt: 'asc' }, { createdAt: 'asc' }],
+        take: 1,
+        select: { domain: true },
+      },
+    },
   });
-  if (!live || !snapshot.project) {
-    return;
-  }
-  snapshot.project.name = live.name;
-  snapshot.project.description = live.description;
-  snapshot.project.icon = live.icon;
-  snapshot.project.color = live.color;
-  snapshot.project.logoUrl = live.logoUrl;
-  snapshot.project.faviconUrl = live.faviconUrl;
-  snapshot.project.theme = (live.theme as Record<string, unknown> | null) ?? null;
-  snapshot.project.config = (live.config as Record<string, unknown> | null) ?? null;
+  liveChromeCache.set(projectId, live);
+  return live;
 };
 
-const getPublished = async (identifier: string): Promise<PublishedSite> => {
-  const projectId = await resolveProjectId(identifier);
-  const deployment = await prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
-  if (!deployment?.snapshot) {
-    throw notFound('site', { identifier, reason: 'not_published' });
+/** Overlay live, non-versioned site chrome from the Project row onto a snapshot
+ *  project. Branding, theme, and config (styling, navbar/footer, SEO, visibility,
+ *  analytics, variables) reflect the current settings so appearance edits are
+ *  live without a re-publish. Content, pages, languages and versions are left
+ *  as captured — those are the versioned docs a publish freezes. Returns a new
+ *  object so the cached (shared) snapshot is never mutated per-request. */
+const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null): SnapshotProject => {
+  if (!live) {
+    return project;
   }
-  const snapshot = deployment.snapshot as unknown as SiteSnapshot;
-  // Legacy snapshots (captured before the languages feature) have no `languages`
-  // array; normalize it here so every downstream consumer (activeLanguageCode,
-  // defaultLanguage, getSite/getSitePage/searchSite) is safe rather than 500ing.
+  return {
+    ...project,
+    name: live.name,
+    description: live.description,
+    icon: live.icon,
+    color: live.color,
+    logoUrl: live.logoUrl,
+    faviconUrl: live.faviconUrl,
+    theme: (live.theme as Record<string, unknown> | null) ?? null,
+    config: (live.config as Record<string, unknown> | null) ?? null,
+  };
+};
+
+/** Legacy snapshots (captured before the languages/versions features) miss those
+ *  arrays; normalize once at cache-fill so every downstream consumer
+ *  (activeLanguageCode, defaultLanguage, getSite/getSitePage/searchSite) is safe
+ *  rather than 500ing. */
+const normalizeSnapshot = (snapshot: SiteSnapshot): SiteSnapshot => {
   if (snapshot.project && !Array.isArray(snapshot.project.languages)) {
     snapshot.project.languages = [];
   }
   if (snapshot.project && !Array.isArray(snapshot.project.versions)) {
     snapshot.project.versions = [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
   }
+  return snapshot;
+};
+
+/** Moderation gate reusable by public surfaces that never load a snapshot (asset
+ *  proxy, event tracking). Reads through the same 15s live-chrome cache, so a
+ *  takedown stops every public surface within one TTL. */
+export const isProjectTakenDown = async (projectId: string): Promise<boolean> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  return Boolean(live?.takedownAt);
+};
+
+const getPublished = async (identifier: string): Promise<PublishedSite> => {
+  const projectId = await resolveProjectId(identifier);
+  // Live chrome doubles as the moderation gate: a taken-down project stops
+  // serving within the cache TTL (15s). notFound (not forbidden) so a taken
+  // down site's existence is not advertised.
+  const live = await getLiveChrome(projectId);
+  if (live?.takedownAt) {
+    throw notFound('site', { identifier, reason: 'takedown' });
+  }
+  // Cheap metadata-only lookup — the heavy `snapshot` JSONB column is only
+  // fetched (and parsed) on a cache miss for this deployment id.
+  const deployment = await prisma.deployment.findFirst({
+    where: { projectId, status: 'READY' },
+    orderBy: { version: 'desc' },
+    select: { id: true, version: true },
+  });
+  if (!deployment) {
+    throw notFound('site', { identifier, reason: 'not_published' });
+  }
+  let frozen = snapshotCache.get(deployment.id);
+  if (!frozen) {
+    const row = await prisma.deployment.findUnique({ where: { id: deployment.id }, select: { snapshot: true } });
+    if (!row?.snapshot) {
+      throw notFound('site', { identifier, reason: 'not_published' });
+    }
+    frozen = normalizeSnapshot(row.snapshot as unknown as SiteSnapshot);
+    snapshotCache.set(deployment.id, frozen);
+  }
   // Overlay the LIVE site chrome (branding, styling, navbar/footer, SEO,
   // visibility, analytics) over the frozen snapshot so config/appearance edits
-  // apply to the live site immediately — without a re-publish. Page CONTENT and
-  // navigation STRUCTURE stay frozen in the snapshot (those are the versioned
-  // docs that a publish captures); only presentational/config fields are live.
-  await overlayLiveChrome(projectId, snapshot);
+  // apply to the live site within seconds — without a re-publish. Page CONTENT
+  // and navigation STRUCTURE stay frozen in the snapshot (those are the
+  // versioned docs that a publish captures); only presentational/config fields
+  // are live. The copy keeps the shared cached snapshot immutable.
+  // `primaryDomain` rides along so the app edge can consolidate canonicals and
+  // 301 secondary origins onto the verified primary domain.
+  const project: PublicSnapshotProject = {
+    ...overlayLiveChrome(frozen.project, live),
+    primaryDomain: live?.domains[0]?.domain.toLowerCase() ?? null,
+  };
+  const snapshot: SiteSnapshot = { ...frozen, project };
   await assertViewable(projectId, snapshot);
   return { snapshot, version: deployment.version, deploymentId: deployment.id };
 };
@@ -338,6 +455,11 @@ const deviceFromUserAgent = (ua: string | null): string => {
  *  analytics breakdowns are populated. */
 export const recordSiteEvent = async (identifier: string, body: TrackEventBody) => {
   const projectId = await resolveProjectId(identifier);
+  // A taken-down project must not keep accumulating analytics rows — this is the
+  // one public write path that never goes through getPublished's gate.
+  if (await isProjectTakenDown(projectId)) {
+    throw notFound('site', { identifier, reason: 'takedown' });
+  }
   const headers = getContext<HonoEnv>().req.raw.headers;
   const device = deviceFromUserAgent(headers.get('user-agent'));
   const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
@@ -348,19 +470,42 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
 const escapeXml = (value: string): string =>
   value.replace(/[<>&'"]/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[char] ?? char);
 
+/** A public plain-text/XML document for a site. `isPrivate` lets the handler
+ *  decide cacheability: private-site responses vary by session cookie and must
+ *  never get a shared (`public`) Cache-Control. */
+export interface SiteTextDocument {
+  body: string;
+  isPrivate: boolean;
+}
+
+type SiteSeoConfig = { visibility?: string; seo?: { allowIndex?: boolean } } | null;
+
+const seoConfigOf = (snapshot: SiteSnapshot): SiteSeoConfig => snapshot.project.config as SiteSeoConfig;
+
+/** Parse a timestamp defensively — snapshots are user data from arbitrary
+ *  historical builds, so a malformed date must degrade, not 500 the sitemap. */
+const isoOrNull = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
+
 /** XML sitemap of every indexable (non-hidden, non-noindex) page across all
  *  languages of a site. Private/unpublished sites throw notFound (so they stay
  *  out of sitemaps); pages/languages marked noindex are excluded so the sitemap
  *  never contradicts the per-page `<meta robots noindex>` we serve. The default
  *  language emits clean (param-less) URLs to match the page's own canonical. */
-export const getSiteSitemap = async (identifier: string): Promise<string> => {
+export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocument> => {
   const { snapshot } = await getPublished(identifier);
   const base = `${env.APP_URL}/sites/${snapshot.project.id}`;
-  const lastmod = snapshot.generatedAt;
-  const config = snapshot.project.config as { visibility?: string; seo?: { allowIndex?: boolean } } | null;
+  const generatedAt = isoOrNull(snapshot.generatedAt);
+  const config = seoConfigOf(snapshot);
+  const isPrivate = config?.visibility === 'private';
   // A private or index-disabled site has an empty sitemap.
-  if (config?.visibility === 'private' || config?.seo?.allowIndex === false) {
-    return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+  if (isPrivate || config?.seo?.allowIndex === false) {
+    return { body: '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>', isPrivate };
   }
   const defaultCode = defaultLanguage(snapshot.project).code;
   // Languages whose own SEO disallows indexing are excluded entirely.
@@ -374,24 +519,70 @@ export const getSiteSitemap = async (identifier: string): Promise<string> => {
       const pagePath = page.path ? `/${page.path}` : '';
       const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
       const loc = `${base}${versionPath}${pagePath}${langQuery}`;
-      const lastmodTag = lastmod ? `<lastmod>${escapeXml(new Date(lastmod).toISOString())}</lastmod>` : '';
+      // Newer snapshots carry a per-page updatedAt; older ones fall back to the
+      // snapshot's own build time so lastmod is never fabricated per URL.
+      const lastmod = isoOrNull((page as SnapshotPage & { updatedAt?: string }).updatedAt) ?? generatedAt;
+      const lastmodTag = lastmod ? `<lastmod>${escapeXml(lastmod)}</lastmod>` : '';
       return `  <url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;
     });
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`;
+  return {
+    body: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`,
+    isPrivate,
+  };
 };
 
 /** robots.txt for a published site, pointing crawlers at its sitemap. The
  *  sitemap is reachable at the app origin through the same-origin /api proxy
  *  (until per-site custom domains serve it from the domain root). */
-export const getSiteRobots = async (identifier: string): Promise<string> => {
+export const getSiteRobots = async (identifier: string): Promise<SiteTextDocument> => {
   const { snapshot } = await getPublished(identifier);
   const projectId = snapshot.project.id;
-  const config = snapshot.project.config as { visibility?: string; seo?: { allowIndex?: boolean } } | null;
+  const config = seoConfigOf(snapshot);
+  const isPrivate = config?.visibility === 'private';
   // A private or index-disabled site disallows all crawling and omits the sitemap.
-  if (config?.visibility === 'private' || config?.seo?.allowIndex === false) {
-    return 'User-agent: *\nDisallow: /\n';
+  if (isPrivate || config?.seo?.allowIndex === false) {
+    return { body: 'User-agent: *\nDisallow: /\n', isPrivate };
   }
-  return `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`;
+  return { body: `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`, isPrivate };
+};
+
+/** llms.txt for a published site (llmstxt.org): title, description and a
+ *  Markdown link list of every indexable page — so AI assistants can consume
+ *  the docs without scraping. Same privacy rules as the sitemap: anonymous
+ *  visitors of private sites get 404 from getPublished, members get an empty
+ *  document, and noindex pages/languages are excluded. */
+export const getSiteLlmsTxt = async (identifier: string): Promise<SiteTextDocument> => {
+  const { snapshot, deploymentId } = await getPublished(identifier);
+  const config = seoConfigOf(snapshot);
+  const isPrivate = config?.visibility === 'private';
+  if (isPrivate || config?.seo?.allowIndex === false) {
+    return { body: '', isPrivate };
+  }
+  const cached = llmsTxtCache.get(deploymentId);
+  if (cached !== undefined) {
+    return { body: cached, isPrivate };
+  }
+  const body = buildLlmsTxt(snapshot, `${env.APP_URL}/sites/${snapshot.project.id}`);
+  llmsTxtCache.set(deploymentId, body);
+  return { body, isPrivate };
+};
+
+/** llms-full.txt: the concatenated Markdown of every indexable page with
+ *  per-page headers and source URLs. Same privacy rules as llms.txt. */
+export const getSiteLlmsFullTxt = async (identifier: string): Promise<SiteTextDocument> => {
+  const { snapshot, deploymentId } = await getPublished(identifier);
+  const config = seoConfigOf(snapshot);
+  const isPrivate = config?.visibility === 'private';
+  if (isPrivate || config?.seo?.allowIndex === false) {
+    return { body: '', isPrivate };
+  }
+  const cached = llmsFullTxtCache.get(deploymentId);
+  if (cached !== undefined) {
+    return { body: cached, isPrivate };
+  }
+  const body = buildLlmsFullTxt(snapshot, `${env.APP_URL}/sites/${snapshot.project.id}`);
+  llmsFullTxtCache.set(deploymentId, body);
+  return { body, isPrivate };
 };
 
 /** Resolve a request Host (a connected, verified custom domain) to its project

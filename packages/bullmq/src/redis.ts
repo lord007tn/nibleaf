@@ -18,6 +18,23 @@ export const redisConnectionConfig: RedisOptions = {
   maxRetriesPerRequest: null,
 };
 
+/**
+ * Producer (Queue) connections must FAIL FAST rather than buffer.
+ *
+ * ioredis's offline queue silently holds commands while redis is unreachable, so
+ * `queue.add()` returns a promise that never settles instead of rejecting. On a
+ * request path (sign-up's starter publish, per-pageview analytics) that turns a
+ * redis outage into a hung HTTP request — and a command that later flushes on
+ * reconnect, double-writing work the caller already fell back on.
+ *
+ * Workers keep the offline queue: their blocking commands MUST survive a
+ * reconnect or they stop picking up jobs.
+ */
+export const producerConnectionConfig: RedisOptions = {
+  ...redisConnectionConfig,
+  enableOfflineQueue: false,
+};
+
 export function createRedisConnection(): Redis {
   return new Redis(redisConnectionConfig);
 }

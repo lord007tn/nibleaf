@@ -1,14 +1,16 @@
 import { Queue, QueueEvents } from 'bullmq';
 import { QueueNames } from '../constants';
 import { isQueueEnabled } from '../keys';
-import { redisConnectionConfig } from '../redis';
+import { producerConnectionConfig, redisConnectionConfig } from '../redis';
 import type { QueueJobMap } from '../types';
 import { queueLogger } from '../utils/logger';
 import { getQueueName, QUEUE_CONFIGS } from '../utils/queue';
 
 function makeQueue<Q extends QueueNames>(name: Q): Queue<QueueJobMap[Q]['data'], unknown, QueueJobMap[Q]['name']> {
   return new Queue<QueueJobMap[Q]['data'], unknown, QueueJobMap[Q]['name']>(getQueueName(name), {
-    connection: redisConnectionConfig,
+    // Fail fast: an unreachable redis must reject `add()` (so callers can fall
+    // back), never buffer the command into a promise that hangs the request.
+    connection: producerConnectionConfig,
     defaultJobOptions: QUEUE_CONFIGS[name].defaultJobOptions,
   });
 }

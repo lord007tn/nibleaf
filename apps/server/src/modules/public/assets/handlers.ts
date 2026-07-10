@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
+import { isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import assetRoutes from './routes';
@@ -10,6 +11,10 @@ import assetRoutes from './routes';
 // presigned-URL expiry — the server fetches from storage internally and streams.
 const PREFIX = /^\/api\/public\/assets\//;
 
+/** Uploads are stored under `projects/<projectId>/assets/...` (see actions/assets.ts),
+ *  so the owning project is recoverable from the key — required to honour takedowns. */
+const PROJECT_KEY = /^projects\/([^/]+)\/assets\//;
+
 const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // Derive the object key from the path (Hono's wildcard param isn't reliable for
   // multi-segment keys); decode in case the browser percent-encoded segments.
@@ -17,13 +22,21 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (!key) {
     throw notFound('asset');
   }
+  // Moderation: a taken-down project's hosted files (the usual phishing/DMCA
+  // payload) must stop being served, not just its pages.
+  const projectId = PROJECT_KEY.exec(key)?.[1];
+  if (projectId && (await isProjectTakenDown(projectId))) {
+    throw notFound('asset', { key });
+  }
   const head = await headObject(key).catch(() => null);
   if (!head) {
     throw notFound('asset', { key });
   }
   const stream = await getObjectStream(key);
   ctx.header('Content-Type', head.ContentType ?? 'application/octet-stream');
-  ctx.header('Cache-Control', 'public, max-age=31536000, immutable');
+  // Long-lived but NOT immutable: a taken-down asset must become unreachable in
+  // caches within a day rather than being pinned for a year.
+  ctx.header('Cache-Control', 'public, max-age=86400');
   return ctx.body(Readable.toWeb(stream) as ReadableStream);
 });
 
