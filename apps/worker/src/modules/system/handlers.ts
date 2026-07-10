@@ -13,6 +13,11 @@ const app = new Hono()
     workbench({
       queues: Object.values(queues),
       title: 'Nibleaf Queues',
+      // Workbench's optional alert manager creates its own Redis connection at
+      // module load. Nibleaf deliberately disables Redis offline queuing, so
+      // that eager startup can reject before Redis is ready and restart the
+      // whole worker. The dashboard itself remains available without alerts.
+      alerts: { enabled: false },
       ...(workbenchAuth ? { auth: workbenchAuth } : {}),
     }),
   );

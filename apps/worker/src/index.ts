@@ -7,7 +7,7 @@ import { processors } from './processors';
 import { startDeploymentReaper } from './reaper';
 
 process.on('unhandledRejection', (reason) => {
-  logger.error({ reason }, 'unhandled rejection');
+  logger.error({ err: reason instanceof Error ? reason : new Error(String(reason)) }, 'unhandled rejection');
   process.exit(1);
 });
 process.on('uncaughtException', (error) => {
