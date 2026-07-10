@@ -4,7 +4,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
 import { signIn } from '@/lib/auth-client';
@@ -22,8 +22,43 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     invite: typeof search.invite === 'string' ? search.invite : undefined,
     email: typeof search.email === 'string' ? search.email : undefined,
   }),
+  head: () => ({
+    meta: [{ title: 'Sign in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }],
+  }),
   component: SignInPage,
 });
+
+/** Shape of GET /api/public/meta (instance capabilities). */
+interface PublicMeta {
+  providers?: { google?: boolean };
+}
+
+/** Whether the Google provider is configured on this instance. Defensive: if
+ *  /api/public/meta is missing or fails, keep the current behaviour (show it). */
+function useGoogleEnabled() {
+  const [googleEnabled, setGoogleEnabled] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/public/meta');
+        if (!res.ok) {
+          return;
+        }
+        const data = (await res.json()) as PublicMeta;
+        if (!cancelled) {
+          setGoogleEnabled(data.providers?.google === true);
+        }
+      } catch {
+        // Endpoint unavailable — keep the permissive default.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return googleEnabled;
+}
 
 function SignInPage() {
   const t = useT();
@@ -31,6 +66,7 @@ function SignInPage() {
   const search = Route.useSearch();
   const [error, setError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const googleEnabled = useGoogleEnabled();
 
   const afterAuthPath = () => {
     const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
@@ -67,15 +103,32 @@ function SignInPage() {
 
   return (
     <AuthLayout subtitle={t('auth.signIn.subtitle')}>
-      <Button className="mb-4 w-full gap-2" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
-        <GoogleIcon className="size-4" />
-        {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
-      </Button>
-      <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
-        <span className="h-px flex-1 bg-border" />
-        <span>{t('auth.divider.or')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {googleEnabled ? (
+        <>
+          <Button className="mb-2 w-full gap-2" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
+            <GoogleIcon className="size-4" />
+            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+          </Button>
+          {/* Google sign-in registers first-time users, so consent must be
+              obtained here too — /sign-up's checkbox does not cover this path. */}
+          <p className="mb-4 text-center text-muted-foreground text-xs leading-relaxed">
+            {t('auth.legal.socialNoticePrefix')}
+            <Link className="underline hover:text-primary" to="/terms">
+              {t('auth.legal.terms')}
+            </Link>
+            {t('auth.legal.and')}
+            <Link className="underline hover:text-primary" to="/privacy">
+              {t('auth.legal.privacy')}
+            </Link>
+            {t('auth.legal.agreeSuffix')}
+          </p>
+          <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
+            <span className="h-px flex-1 bg-border" />
+            <span>{t('auth.divider.or')}</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      ) : null}
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {

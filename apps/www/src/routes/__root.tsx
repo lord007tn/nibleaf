@@ -62,9 +62,9 @@ export const Route = createRootRoute({
       { name: 'author', content: 'Nibleaf' },
       { name: 'application-name', content: 'Nibleaf' },
       { name: 'robots', content: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1' },
-      // A single brand-umber chrome colour (TanStack dedupes meta by `name`, so
-      // media-scoped light/dark variants would collapse to one anyway).
-      { name: 'theme-color', content: '#8a4b2e' },
+      // A single brand-terracotta chrome colour (TanStack dedupes meta by `name`,
+      // so media-scoped light/dark variants would collapse to one anyway).
+      { name: 'theme-color', content: '#C2410C' },
       // Open Graph
       { property: 'og:type', content: 'website' },
       { property: 'og:site_name', content: 'Nibleaf' },

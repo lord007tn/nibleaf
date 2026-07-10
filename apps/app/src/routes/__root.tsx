@@ -21,7 +21,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Nibleaf Cloud — documentation workspace' },
       { name: 'application-name', content: 'Nibleaf' },
-      { name: 'theme-color', content: '#8a4b2e' },
+      { name: 'theme-color', content: '#C2410C' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },

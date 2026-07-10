@@ -483,8 +483,8 @@ foreach ($publicApp in $publicApps) {
     start_url = "/"
     scope = "/"
     display = "standalone"
-    theme_color = "#8a4b2e"
-    background_color = "#fbf7ee"
+    theme_color = "#C2410C"
+    background_color = "#FAFAFA"
     icons = @(
       [ordered]@{ src = "/favicon.svg"; type = "image/svg+xml"; sizes = "any"; purpose = "any" },
       [ordered]@{ src = "/apple-touch-icon.png"; type = "image/png"; sizes = "180x180"; purpose = "any" },

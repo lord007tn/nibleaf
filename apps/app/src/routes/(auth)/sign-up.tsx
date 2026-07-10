@@ -4,7 +4,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
 import { signIn, signUp } from '@/lib/auth-client';
@@ -22,8 +22,45 @@ export const Route = createFileRoute('/(auth)/sign-up')({
     invite: typeof search.invite === 'string' ? search.invite : undefined,
     email: typeof search.email === 'string' ? search.email : undefined,
   }),
+  head: () => ({
+    meta: [{ title: 'Sign up — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }],
+  }),
   component: SignUpPage,
 });
+
+/** Shape of GET /api/public/meta (instance capabilities). */
+interface PublicMeta {
+  providers?: { google?: boolean };
+  signupDisabled?: boolean;
+}
+
+/** Instance capabilities from /api/public/meta. Defensive: until the endpoint
+ *  answers — or if it's missing/failing — keep the current behaviour (show
+ *  everything, sign-ups open). */
+function usePublicMeta() {
+  const [meta, setMeta] = useState({ googleEnabled: true, signupDisabled: false });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/public/meta');
+        if (!res.ok) {
+          return;
+        }
+        const data = (await res.json()) as PublicMeta;
+        if (!cancelled) {
+          setMeta({ googleEnabled: data.providers?.google === true, signupDisabled: data.signupDisabled === true });
+        }
+      } catch {
+        // Endpoint unavailable — keep the permissive defaults.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return meta;
+}
 
 function SignUpPage() {
   const t = useT();
@@ -32,6 +69,8 @@ function SignUpPage() {
   const lockedEmail = Boolean(search.email);
   const [error, setError] = useState<string | null>(null);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const { googleEnabled, signupDisabled } = usePublicMeta();
 
   const afterAuthPath = () => {
     const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
@@ -67,17 +106,41 @@ function SignUpPage() {
     },
   });
 
+  if (signupDisabled) {
+    return (
+      <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+        <p className="rounded-md border border-border bg-muted/40 px-4 py-3 text-center text-muted-foreground text-sm">{t('auth.legal.signupDisabled')}</p>
+        <p className="mt-5 text-center text-muted-foreground text-sm">
+          {t('auth.signUp.haveAccount')}{' '}
+          <Link className="text-primary hover:underline" to="/sign-in">
+            {t('auth.signIn.submit')}
+          </Link>
+        </p>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout subtitle={t('auth.signUp.subtitle')}>
-      <Button className="mb-4 w-full gap-2" disabled={isGoogleSubmitting || lockedEmail} onClick={signUpWithGoogle} type="button" variant="outline">
-        <GoogleIcon className="size-4" />
-        {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
-      </Button>
-      <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
-        <span className="h-px flex-1 bg-border" />
-        <span>{t('auth.divider.or')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
+      {googleEnabled ? (
+        <>
+          <Button
+            className="mb-4 w-full gap-2"
+            disabled={isGoogleSubmitting || lockedEmail || !agreedToTerms}
+            onClick={signUpWithGoogle}
+            type="button"
+            variant="outline"
+          >
+            <GoogleIcon className="size-4" />
+            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+          </Button>
+          <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
+            <span className="h-px flex-1 bg-border" />
+            <span>{t('auth.divider.or')}</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      ) : null}
       <form
         className="flex flex-col gap-4"
         onSubmit={(event) => {
@@ -142,10 +205,31 @@ function SignUpPage() {
             </div>
           )}
         </form.Field>
+        <label className="flex items-start gap-2.5 text-muted-foreground text-sm" htmlFor="agree-terms">
+          <input
+            checked={agreedToTerms}
+            className="mt-0.5 size-4 shrink-0 accent-primary"
+            id="agree-terms"
+            onChange={(event) => setAgreedToTerms(event.target.checked)}
+            required
+            type="checkbox"
+          />
+          <span>
+            {t('auth.legal.agreePrefix')}
+            <a className="text-primary hover:underline" href="/terms" rel="noreferrer" target="_blank">
+              {t('auth.legal.terms')}
+            </a>
+            {t('auth.legal.and')}
+            <a className="text-primary hover:underline" href="/privacy" rel="noreferrer" target="_blank">
+              {t('auth.legal.privacy')}
+            </a>
+            {t('auth.legal.agreeSuffix')}
+          </span>
+        </label>
         {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
-            <Button className="mt-1 w-full" disabled={isSubmitting} type="submit">
+            <Button className="mt-1 w-full" disabled={isSubmitting || !agreedToTerms} type="submit">
               {isSubmitting ? t('auth.signUp.submitting') : t('auth.signUp.submit')}
             </Button>
           )}

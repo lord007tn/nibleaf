@@ -20,13 +20,13 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
       {/* Brand panel */}
       <div
         className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex"
-        style={{ background: 'linear-gradient(155deg, #1d150d 0%, #14100b 55%, #100c08 100%)' }}
+        style={{ background: 'linear-gradient(155deg, #1c1c1e 0%, #151517 55%, #101012 100%)' }}
       >
-        {/* warm umber glow + faint dot grid for depth */}
+        {/* terracotta glow + faint dot grid for depth (neutral grey + terracotta per brand.md) */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(60% 45% at 82% 8%, rgba(209,138,84,0.22), transparent 60%)' }}
+          style={{ background: 'radial-gradient(60% 45% at 82% 8%, rgba(249,115,22,0.18), transparent 60%)' }}
         />
         <div
           aria-hidden
@@ -46,7 +46,7 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
             {BRAND_POINTS.map((point) => (
               <li key={point.text} className="flex items-center gap-3 text-sm text-white/90">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
-                  <point.icon className="size-3.5 text-[#e6a86f]" />
+                  <point.icon className="size-3.5 text-[#F97316]" />
                 </span>
                 {point.text}
               </li>

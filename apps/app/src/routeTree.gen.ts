@@ -9,11 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SelfHostingRouteImport } from './routes/self-hosting'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as CloudRouteImport } from './routes/cloud'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
+import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
+import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
+import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
+import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
+import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
 import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
@@ -36,6 +46,21 @@ import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/pr
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/projects/$projectId/analytics'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelfHostingRoute = SelfHostingRouteImport.update({
+  id: '/self-hosting',
+  path: '/self-hosting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -44,6 +69,11 @@ const PricingRoute = PricingRouteImport.update({
 const CloudRoute = CloudRouteImport.update({
   id: '/cloud',
   path: '/cloud',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
@@ -58,6 +88,38 @@ const authRouteRoute = authRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareNibleafVsMintlifyRoute =
+  CompareNibleafVsMintlifyRouteImport.update({
+    id: '/compare/nibleaf-vs-mintlify',
+    path: '/compare/nibleaf-vs-mintlify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const CompareNibleafVsGitbookRoute = CompareNibleafVsGitbookRouteImport.update({
+  id: '/compare/nibleaf-vs-gitbook',
+  path: '/compare/nibleaf-vs-gitbook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareNibleafVsDocusaurusRoute =
+  CompareNibleafVsDocusaurusRouteImport.update({
+    id: '/compare/nibleaf-vs-docusaurus',
+    path: '/compare/nibleaf-vs-docusaurus',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
+  id: '/alternatives/readme',
+  path: '/alternatives/readme',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlternativesMintlifyRoute = AlternativesMintlifyRouteImport.update({
+  id: '/alternatives/mintlify',
+  path: '/alternatives/mintlify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlternativesGitbookRoute = AlternativesGitbookRouteImport.update({
+  id: '/alternatives/gitbook',
+  path: '/alternatives/gitbook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptInviteInvitationIdRoute =
@@ -175,8 +237,12 @@ const AppProjectsProjectIdAnalyticsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
+  '/terms': typeof TermsRoute
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
@@ -184,6 +250,12 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof authSignUpRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
+  '/alternatives/gitbook': typeof AlternativesGitbookRoute
+  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
+  '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
+  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
+  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -201,14 +273,24 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardIndexRoute
+  '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
+  '/terms': typeof TermsRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
+  '/alternatives/gitbook': typeof AlternativesGitbookRoute
+  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
+  '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
+  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
+  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
@@ -226,8 +308,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(auth)': typeof authRouteRouteWithChildren
   '/app': typeof AppRouteRouteWithChildren
+  '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/pricing': typeof PricingRoute
+  '/privacy': typeof PrivacyRoute
+  '/self-hosting': typeof SelfHostingRoute
+  '/terms': typeof TermsRoute
   '/app/(dashboard)': typeof AppdashboardRouteRouteWithChildren
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
@@ -236,6 +322,12 @@ export interface FileRoutesById {
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
+  '/alternatives/gitbook': typeof AlternativesGitbookRoute
+  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
+  '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
+  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
+  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
   '/app/(dashboard)/members': typeof AppdashboardMembersRoute
@@ -255,8 +347,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/about'
     | '/cloud'
     | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
     | '/sites/$projectId'
     | '/forgot-password'
     | '/reset-password'
@@ -264,6 +360,12 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/verify-email'
     | '/accept-invite/$invitationId'
+    | '/alternatives/gitbook'
+    | '/alternatives/mintlify'
+    | '/alternatives/readme'
+    | '/compare/nibleaf-vs-docusaurus'
+    | '/compare/nibleaf-vs-gitbook'
+    | '/compare/nibleaf-vs-mintlify'
     | '/app/projects/$projectId'
     | '/app/analytics'
     | '/app/members'
@@ -281,14 +383,24 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/app'
+    | '/about'
     | '/cloud'
     | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/verify-email'
     | '/accept-invite/$invitationId'
+    | '/alternatives/gitbook'
+    | '/alternatives/mintlify'
+    | '/alternatives/readme'
+    | '/compare/nibleaf-vs-docusaurus'
+    | '/compare/nibleaf-vs-gitbook'
+    | '/compare/nibleaf-vs-mintlify'
     | '/app/analytics'
     | '/app/members'
     | '/app/settings'
@@ -305,8 +417,12 @@ export interface FileRouteTypes {
     | '/'
     | '/(auth)'
     | '/app'
+    | '/about'
     | '/cloud'
     | '/pricing'
+    | '/privacy'
+    | '/self-hosting'
+    | '/terms'
     | '/app/(dashboard)'
     | '/sites/$projectId'
     | '/(auth)/forgot-password'
@@ -315,6 +431,12 @@ export interface FileRouteTypes {
     | '/(auth)/sign-up'
     | '/(auth)/verify-email'
     | '/accept-invite/$invitationId'
+    | '/alternatives/gitbook'
+    | '/alternatives/mintlify'
+    | '/alternatives/readme'
+    | '/compare/nibleaf-vs-docusaurus'
+    | '/compare/nibleaf-vs-gitbook'
+    | '/compare/nibleaf-vs-mintlify'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
     | '/app/(dashboard)/members'
@@ -334,14 +456,45 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   authRouteRoute: typeof authRouteRouteWithChildren
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  AboutRoute: typeof AboutRoute
   CloudRoute: typeof CloudRoute
   PricingRoute: typeof PricingRoute
+  PrivacyRoute: typeof PrivacyRoute
+  SelfHostingRoute: typeof SelfHostingRoute
+  TermsRoute: typeof TermsRoute
   SitesProjectIdRouteRoute: typeof SitesProjectIdRouteRouteWithChildren
   AcceptInviteInvitationIdRoute: typeof AcceptInviteInvitationIdRoute
+  AlternativesGitbookRoute: typeof AlternativesGitbookRoute
+  AlternativesMintlifyRoute: typeof AlternativesMintlifyRoute
+  AlternativesReadmeRoute: typeof AlternativesReadmeRoute
+  CompareNibleafVsDocusaurusRoute: typeof CompareNibleafVsDocusaurusRoute
+  CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
+  CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/self-hosting': {
+      id: '/self-hosting'
+      path: '/self-hosting'
+      fullPath: '/self-hosting'
+      preLoaderRoute: typeof SelfHostingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
@@ -354,6 +507,13 @@ declare module '@tanstack/react-router' {
       path: '/cloud'
       fullPath: '/cloud'
       preLoaderRoute: typeof CloudRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -375,6 +535,48 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-mintlify': {
+      id: '/compare/nibleaf-vs-mintlify'
+      path: '/compare/nibleaf-vs-mintlify'
+      fullPath: '/compare/nibleaf-vs-mintlify'
+      preLoaderRoute: typeof CompareNibleafVsMintlifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-gitbook': {
+      id: '/compare/nibleaf-vs-gitbook'
+      path: '/compare/nibleaf-vs-gitbook'
+      fullPath: '/compare/nibleaf-vs-gitbook'
+      preLoaderRoute: typeof CompareNibleafVsGitbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-docusaurus': {
+      id: '/compare/nibleaf-vs-docusaurus'
+      path: '/compare/nibleaf-vs-docusaurus'
+      fullPath: '/compare/nibleaf-vs-docusaurus'
+      preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/readme': {
+      id: '/alternatives/readme'
+      path: '/alternatives/readme'
+      fullPath: '/alternatives/readme'
+      preLoaderRoute: typeof AlternativesReadmeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/mintlify': {
+      id: '/alternatives/mintlify'
+      path: '/alternatives/mintlify'
+      fullPath: '/alternatives/mintlify'
+      preLoaderRoute: typeof AlternativesMintlifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/gitbook': {
+      id: '/alternatives/gitbook'
+      path: '/alternatives/gitbook'
+      fullPath: '/alternatives/gitbook'
+      preLoaderRoute: typeof AlternativesGitbookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/accept-invite/$invitationId': {
@@ -619,10 +821,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   authRouteRoute: authRouteRouteWithChildren,
   AppRouteRoute: AppRouteRouteWithChildren,
+  AboutRoute: AboutRoute,
   CloudRoute: CloudRoute,
   PricingRoute: PricingRoute,
+  PrivacyRoute: PrivacyRoute,
+  SelfHostingRoute: SelfHostingRoute,
+  TermsRoute: TermsRoute,
   SitesProjectIdRouteRoute: SitesProjectIdRouteRouteWithChildren,
   AcceptInviteInvitationIdRoute: AcceptInviteInvitationIdRoute,
+  AlternativesGitbookRoute: AlternativesGitbookRoute,
+  AlternativesMintlifyRoute: AlternativesMintlifyRoute,
+  AlternativesReadmeRoute: AlternativesReadmeRoute,
+  CompareNibleafVsDocusaurusRoute: CompareNibleafVsDocusaurusRoute,
+  CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
+  CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

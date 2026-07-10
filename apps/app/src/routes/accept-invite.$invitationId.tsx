@@ -8,6 +8,11 @@ import { useT } from '@/lib/i18n';
 import { clearPendingInvitation, fetchInvitationInfo, type InvitationInfo, setPendingInvitation } from '@/lib/invitations';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
+  // Not under the (auth) layout, so noindex it directly: the URL carries a live
+  // invitation token that must never be crawled or indexed.
+  head: () => ({
+    meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+  }),
   component: AcceptInvitePage,
 });
 

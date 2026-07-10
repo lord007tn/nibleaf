@@ -14,7 +14,7 @@ export const Route = createRootRoute({
         content: 'Documentation for Nibleaf Cloud and the open-source Nibleaf core.',
       },
       { name: 'application-name', content: 'Nibleaf Documentation' },
-      { name: 'theme-color', content: '#8a4b2e' },
+      { name: 'theme-color', content: '#C2410C' },
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
