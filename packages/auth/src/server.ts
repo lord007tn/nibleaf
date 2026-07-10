@@ -1,9 +1,11 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
+import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError } from 'better-auth/api';
 import { organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
 
@@ -62,119 +64,393 @@ async function reassignOrDeleteOrgs(userId: string): Promise<void> {
   }
 }
 
-const WELCOME_CONTENT = `This is your first page, built with **Nibleaf** — the open-source documentation
-platform you can self-host on your own infrastructure.
+// ─── Starter site template ───────────────────────────────────────────────────
+// A product-docs template for the CUSTOMER's product (not Nibleaf's own docs):
+// each page demonstrates a slice of the editor/MDX toolkit and is written to be
+// replaced. Keep internal links pointing at pages that exist in this template —
+// the publish-time broken-link check runs against the starter too.
 
-## Quick start
+const GETTING_STARTED_CONTENT = `Welcome to your new documentation site. Everything you read here is a regular
+page — edit it, replace it, or delete it. This starter shows what your docs can
+do, so your first edits feel natural.
 
-1. Edit this page in the editor on the left.
-2. Add pages and groups to build out your navigation.
-3. Hit **Publish** to ship a live, searchable documentation site.
+## Edit this page
 
-\`\`\`bash
-# Self-host in one command
-docker compose up -d
-\`\`\`
+1. Click anywhere in the text and start typing — the editor is a Notion-style
+   editor over plain Markdown.
+2. Type \`/\` on an empty line to insert callouts, code blocks, tabs, and more.
+3. Changes save automatically as drafts. Nothing goes live until you publish.
 
-> Tip: pages are written in Markdown/MDX — use headings, code blocks, and callouts to structure your docs.
+## Publish your site
+
+Hit **Publish** in the top bar to ship a snapshot of your docs as a live,
+searchable site. This starter was published for you at sign-up, so your site is
+already live — each publish after this replaces it, and you can roll back to
+any earlier version.
+
+<Note>
+
+Write about **your** product here. A good first edit: rename this page, then
+describe what your product does in one paragraph.
+
+</Note>
+
+## Explore the starter
+
+<CardGroup cols="2">
+
+<Card title="Installation" href="/installation" icon="download">
+
+Show users how to install your product with tabs and step-by-step guides.
+
+</Card>
+
+<Card title="Components tour" href="/components-tour" icon="puzzle">
+
+Steps, tabs, callouts, cards, and accordions — everything in your toolkit.
+
+</Card>
+
+<Card title="API reference" href="/api-reference/create-a-widget" icon="code">
+
+Document endpoints with parameter and response fields.
+
+</Card>
+
+<Card title="FAQ" href="/faq" icon="help-circle">
+
+Answer common questions with accordions.
+
+</Card>
+
+</CardGroup>
 `;
 
-const QUICKSTART_CONTENT = `Get your documentation live in minutes.
+const INSTALLATION_CONTENT = `Replace this page with real installation instructions for your product. It
+demonstrates the two building blocks most install guides need: tabs for
+package managers and steps for a walkthrough.
 
-## Install
+## Install the package
 
-\`\`\`bash
-git clone https://github.com/nibleaf-docs/nibleaf
-cd nibleaf && cp .env.example .env
-docker compose up -d
-\`\`\`
+<Tabs>
 
-## Write
-
-Pages are Markdown/MDX. Organize them into groups, reorder with drag handles,
-and Nibleaf builds the navigation, search index, and table of contents for you.
-`;
-
-const SELF_HOSTING_CONTENT = `Run Nibleaf on infrastructure you control. The standard stack uses Docker Compose
-for the dashboard, API, worker, Postgres, Dragonfly, and S3-compatible object
-storage.
-
-## Local stack
+<Tab title="npm">
 
 \`\`\`bash
-cp .env.example .env
-docker compose -f docker-compose.dev.yml up -d
-pnpm db:deploy
-pnpm db:seed
-pnpm dev
+npm install @acme/sdk
 \`\`\`
 
-Open the dashboard at http://localhost:4310 and sign in with the demo account
-created by the seed command.
+</Tab>
 
-## Production stack
+<Tab title="pnpm">
 
 \`\`\`bash
-cp .env.example .env
-openssl rand -hex 32
-# Put the generated value in BETTER_AUTH_SECRET.
-docker compose up -d --build
+pnpm add @acme/sdk
 \`\`\`
 
-Create the first account at /sign-up. Production mode does not seed demo
-credentials unless you explicitly enable it.
+</Tab>
+
+<Tab title="yarn">
+
+\`\`\`bash
+yarn add @acme/sdk
+\`\`\`
+
+</Tab>
+
+</Tabs>
+
+## Set up your project
+
+<Steps>
+
+<Step title="Grab an API key">
+
+Create a key in your product's dashboard and keep it secret — treat it like a
+password.
+
+</Step>
+
+<Step title="Configure the client">
+
+\`\`\`ts title="acme.ts"
+import { Acme } from '@acme/sdk';
+
+export const acme = new Acme({ apiKey: process.env.ACME_API_KEY });
+\`\`\`
+
+</Step>
+
+<Step title="Make your first call">
+
+\`\`\`ts
+const widget = await acme.widgets.create({ name: 'My first widget' });
+console.log(widget.id);
+\`\`\`
+
+</Step>
+
+</Steps>
+
+<Tip>
+
+Swap \`@acme/sdk\` for your real package name. Code blocks support syntax
+highlighting for dozens of languages, plus a \`title="file.ts"\` header.
+
+</Tip>
+
+Next: document your API in the [API reference](/api-reference/create-a-widget).
 `;
 
-const CONFIGURATION_CONTENT = `Configure Nibleaf with environment variables in the .env file next to
-docker-compose.yml.
+const COMPONENTS_TOUR_CONTENT = `Every component on this page works in the editor today — copy the patterns you
+like into your own pages, then delete this tour.
 
-## Required production values
+## Callouts
 
-| Variable | Purpose |
-| --- | --- |
-| NODE_ENV | Set to production for production deploys. |
-| BETTER_AUTH_SECRET | Strong random auth secret. |
-| POSTGRES_PASSWORD | Password for bundled Postgres. |
-| STORAGE_ACCESS_KEY | Access key for bundled object storage. |
-| STORAGE_SECRET_KEY | Secret key for bundled object storage. |
-| BETTER_AUTH_URL | Browser-facing dashboard origin. |
-| PUBLIC_APP_URL | Public dashboard origin. |
-| PUBLIC_API_URL | Public API origin, usually the dashboard proxy. |
-| STORAGE_PUBLIC_URL | Public asset URL. |
+<Note>
 
-## Origins
+A **Note** for neutral asides. There are also \`<Info>\`, \`<Tip>\`, \`<Check>\`,
+\`<Warning>\`, and \`<Danger>\` variants.
 
-Set TRUSTED_ORIGINS and CORS_ALLOWED_ORIGINS to exact HTTPS origins. Avoid
-wildcards in production.
+</Note>
 
-## Storage
+<Warning>
 
-The bundled stack uses maxio. You can also point Nibleaf at Cloudflare R2, AWS S3,
-Backblaze B2, or another S3-compatible provider.
+A **Warning** for things that break when readers skip them.
+
+</Warning>
+
+## Steps
+
+<Steps>
+
+<Step title="Write">
+
+Draft pages in the editor — plain Markdown underneath, so nothing locks you in.
+
+</Step>
+
+<Step title="Organize">
+
+Drag pages in the sidebar to reorder them, or nest them into groups.
+
+</Step>
+
+<Step title="Publish">
+
+Ship a new version of the live site whenever you are ready.
+
+</Step>
+
+</Steps>
+
+## Tabs
+
+<Tabs>
+
+<Tab title="macOS">
+
+Content per platform, per language, per anything.
+
+</Tab>
+
+<Tab title="Windows">
+
+Each tab holds full Markdown — lists, code blocks, images.
+
+</Tab>
+
+</Tabs>
+
+## Cards
+
+<CardGroup cols="2">
+
+<Card title="Link card" href="/faq" icon="help-circle">
+
+Cards can link to other pages or external URLs.
+
+</Card>
+
+<Card title="Plain card" icon="box">
+
+Or just hold content in a tidy grid.
+
+</Card>
+
+</CardGroup>
+
+## Accordions
+
+<AccordionGroup>
+
+<Accordion title="When should I use an accordion?">
+
+For optional detail readers should not have to scroll past — edge cases,
+advanced configuration, long FAQ answers.
+
+</Accordion>
+
+<Accordion title="Can accordions hold other components?">
+
+Yes — accordions hold full Markdown, including code blocks and callouts.
+
+</Accordion>
+
+</AccordionGroup>
 `;
 
-const OPERATIONS_CONTENT = `Keep Postgres and object storage backed up, monitor worker jobs, and verify
-publishing after upgrades.
+const API_AUTHENTICATION_CONTENT = `Show readers how to authenticate against your API. This example uses a bearer
+token; adapt it to your scheme.
 
-## Health checks
+All requests must include your API key in the \`Authorization\` header:
 
-- API: /health on the server service.
-- Worker: /health on the worker ops service.
-- Jobs: /jobs on the worker ops service.
-- Public docs: open a published site and search for a known page.
+<CodeGroup>
 
-## Upgrade routine
+\`\`\`bash title="cURL"
+curl https://api.example.com/v1/widgets \\
+  -H "Authorization: Bearer $ACME_API_KEY"
+\`\`\`
 
-1. Back up Postgres and object storage.
-2. Pull the new source revision or image.
-3. Run migrations.
-4. Restart app, server, and worker.
-5. Publish a small docs change to verify queues and search indexing.
+\`\`\`ts title="TypeScript"
+const res = await fetch('https://api.example.com/v1/widgets', {
+  headers: { Authorization: \`Bearer \${process.env.ACME_API_KEY}\` },
+});
+\`\`\`
 
-## Publish troubleshooting
+\`\`\`python title="Python"
+import requests
 
-If a publish does not become READY, check worker logs, Dragonfly connectivity,
-Postgres connectivity, and storage credentials.
+res = requests.get(
+    "https://api.example.com/v1/widgets",
+    headers={"Authorization": f"Bearer {API_KEY}"},
+)
+\`\`\`
+
+</CodeGroup>
+
+<Warning>
+
+Never ship API keys in client-side code. Call your API from a server and keep
+keys in environment variables.
+
+</Warning>
+`;
+
+const API_CREATE_WIDGET_CONTENT = `A worked example of an endpoint page. Duplicate it for each endpoint in your
+API, or delete the group if you do not document an API.
+
+## POST /v1/widgets
+
+Creates a widget and returns it.
+
+### Body parameters
+
+<ParamField body="name" type="string" required="true">
+
+A human-readable name, 1-80 characters.
+
+</ParamField>
+
+<ParamField body="color" type="string" default="terracotta">
+
+Any CSS color keyword or hex value.
+
+</ParamField>
+
+<ParamField body="tags" type="string[]">
+
+Up to 10 tags used for filtering in list endpoints.
+
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string" required="true">
+
+Unique identifier, prefixed with \`wid_\`.
+
+</ResponseField>
+
+<ResponseField name="name" type="string" required="true">
+
+The name you supplied.
+
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+
+ISO 8601 creation timestamp.
+
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+\`\`\`bash title="Request"
+curl -X POST https://api.example.com/v1/widgets \\
+  -H "Authorization: Bearer $ACME_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "name": "My first widget" }'
+\`\`\`
+
+\`\`\`json title="Response"
+{
+  "id": "wid_1a2b3c",
+  "name": "My first widget",
+  "createdAt": "2026-07-10T12:00:00Z"
+}
+\`\`\`
+
+</CodeGroup>
+
+See [Authentication](/api-reference/authentication) for how to get a key.
+`;
+
+const FAQ_CONTENT = `A pattern for frequently asked questions — accordions keep long answer lists
+scannable. Replace these with questions about your product.
+
+<AccordionGroup>
+
+<Accordion title="How do I change what visitors see?">
+
+Edit any page, then hit **Publish**. The live site only updates when you
+publish, so drafts stay private.
+
+</Accordion>
+
+<Accordion title="How do I add a page?">
+
+Use the add button in the sidebar. Drag pages to reorder them, or drop one
+onto another to nest it inside a group.
+
+</Accordion>
+
+<Accordion title="Can I write in more than one language?">
+
+Yes — add languages in project settings. Each language keeps its own page
+tree, and right-to-left languages such as Arabic are fully supported.
+
+</Accordion>
+
+<Accordion title="Can I use my own domain?">
+
+Yes — add a custom domain in project settings and follow the DNS
+instructions.
+
+</Accordion>
+
+<Accordion title="Where does this starter content come from?">
+
+Your docs run on Nibleaf, an open-source, self-hostable documentation
+platform — an alternative to Mintlify and GitBook. Source at
+[github.com/lord007tn/nibleaf](https://github.com/lord007tn/nibleaf), hosted
+cloud at [nibleaf.com](https://nibleaf.com).
+
+</Accordion>
+
+</AccordionGroup>
 `;
 
 /** A globally-unique project slug for the starter site. `project.slug` has a
@@ -193,11 +469,13 @@ async function uniqueStarterSlug(): Promise<string> {
   return `docs-${Date.now().toString(36)}`;
 }
 
-/** Create the starter docs site (with two pages) for a freshly created workspace. */
-async function createStarterProject(organizationId: string): Promise<void> {
+/** Create the starter docs site (a customer-product docs template) for a freshly
+ *  created workspace. Returns the project so the caller can auto-publish it, or
+ *  null when the workspace already has one. */
+async function createStarterProject(organizationId: string): Promise<{ id: string } | null> {
   const existing = await prisma.project.findFirst({ where: { organizationId }, select: { id: true } });
   if (existing) {
-    return;
+    return null;
   }
   // `project.slug` is globally unique and `uniqueStarterSlug()` only pre-checks —
   // a concurrent signup can grab the same slug between the check and the create
@@ -233,91 +511,117 @@ async function createStarterProject(organizationId: string): Promise<void> {
   // branchId — otherwise the starter docs are invisible (the new user sees an
   // empty "No pages yet" site despite the template).
   const branch = await prisma.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
-  const intro = slugify('Introduction');
-  const quick = slugify('Quickstart');
+  const base = { projectId: project.id, languageId: language.id, branchId: branch.id };
+  const topLevel: Array<{ title: string; icon: string; content: string; position: number }> = [
+    { title: 'Getting started', icon: 'rocket', content: GETTING_STARTED_CONTENT, position: 0 },
+    { title: 'Installation', icon: 'download', content: INSTALLATION_CONTENT, position: 1 },
+    { title: 'Components tour', icon: 'puzzle', content: COMPONENTS_TOUR_CONTENT, position: 2 },
+  ];
   await prisma.page.createMany({
-    data: [
-      {
-        projectId: project.id,
-        languageId: language.id,
-        branchId: branch.id,
-        title: 'Introduction',
-        slug: intro,
-        path: joinPath(null, intro),
-        icon: 'book-open',
-        content: WELCOME_CONTENT,
-        position: 0,
-      },
-      {
-        projectId: project.id,
-        languageId: language.id,
-        branchId: branch.id,
-        title: 'Quickstart',
-        slug: quick,
-        path: joinPath(null, quick),
-        icon: 'rocket',
-        content: QUICKSTART_CONTENT,
-        position: 1,
-      },
-    ],
+    data: topLevel.map((page) => {
+      const slug = slugify(page.title);
+      return { ...base, title: page.title, slug, path: joinPath(null, slug), icon: page.icon, content: page.content, position: page.position };
+    }),
   });
-  const selfHostingSlug = slugify('Self-hosting');
-  const selfHosting = await prisma.page.create({
+  const apiReferenceSlug = slugify('API reference');
+  const apiReference = await prisma.page.create({
     data: {
-      projectId: project.id,
-      languageId: language.id,
-      branchId: branch.id,
+      ...base,
       kind: 'GROUP',
-      title: 'Self-hosting',
-      slug: selfHostingSlug,
-      path: joinPath(null, selfHostingSlug),
-      icon: 'server',
-      position: 2,
+      title: 'API reference',
+      slug: apiReferenceSlug,
+      path: joinPath(null, apiReferenceSlug),
+      icon: 'code',
+      position: 3,
     },
   });
-  const overview = slugify('Overview');
-  const configuration = slugify('Configuration');
-  const operations = slugify('Operations');
+  const apiChildren: Array<{ title: string; icon: string; content: string; position: number }> = [
+    { title: 'Authentication', icon: 'key', content: API_AUTHENTICATION_CONTENT, position: 0 },
+    { title: 'Create a widget', icon: 'sparkles', content: API_CREATE_WIDGET_CONTENT, position: 1 },
+  ];
   await prisma.page.createMany({
-    data: [
-      {
-        projectId: project.id,
-        languageId: language.id,
-        branchId: branch.id,
-        parentId: selfHosting.id,
-        title: 'Overview',
-        slug: overview,
-        path: joinPath(selfHosting.path, overview),
-        icon: 'container',
-        content: SELF_HOSTING_CONTENT,
-        position: 0,
-      },
-      {
-        projectId: project.id,
-        languageId: language.id,
-        branchId: branch.id,
-        parentId: selfHosting.id,
-        title: 'Configuration',
-        slug: configuration,
-        path: joinPath(selfHosting.path, configuration),
-        icon: 'settings',
-        content: CONFIGURATION_CONTENT,
-        position: 1,
-      },
-      {
-        projectId: project.id,
-        languageId: language.id,
-        branchId: branch.id,
-        parentId: selfHosting.id,
-        title: 'Operations',
-        slug: operations,
-        path: joinPath(selfHosting.path, operations),
-        icon: 'activity',
-        content: OPERATIONS_CONTENT,
-        position: 2,
-      },
-    ],
+    data: apiChildren.map((page) => {
+      const slug = slugify(page.title);
+      return {
+        ...base,
+        parentId: apiReference.id,
+        title: page.title,
+        slug,
+        path: joinPath(apiReference.path, slug),
+        icon: page.icon,
+        content: page.content,
+        position: page.position,
+      };
+    }),
   });
+  const faqSlug = slugify('FAQ');
+  await prisma.page.create({
+    data: { ...base, title: 'FAQ', slug: faqSlug, path: joinPath(null, faqSlug), icon: 'help-circle', content: FAQ_CONTENT, position: 4 },
+  });
+  return project;
+}
+
+/** Fire-and-forget platform product event (activation funnel). Never throws. */
+const logPlatformEvent = (type: string, data: { userId?: string; projectId?: string; metadata?: Record<string, unknown> }) =>
+  prisma.platformEvent
+    .create({
+      data: {
+        type,
+        userId: data.userId ?? null,
+        projectId: data.projectId ?? null,
+        ...(data.metadata ? { metadata: data.metadata as Prisma.InputJsonValue } : {}),
+      },
+    })
+    .catch(() => undefined);
+
+/**
+ * Auto-publish the freshly seeded starter site so "view site" works immediately
+ * after sign-up (instead of a 404 until the user finds the Publish button).
+ * Mirrors createDeployment in apps/server/src/actions/deployments.ts: a unique
+ * (projectId, version) PENDING row, then a PUBLISH job for the worker. Best
+ * effort — a failure logs a warning and never blocks provisioning.
+ */
+/** Sign-up must never wait on the queue. Producer connections reject fast when
+ *  redis is down (packages/bullmq producerConnectionConfig), but a *stalled*
+ *  connected socket could still hang, so cap the wait explicitly. */
+const ENQUEUE_TIMEOUT_MS = 3_000;
+
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`enqueue timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+
+async function publishStarterSite(projectId: string, userId: string): Promise<void> {
+  try {
+    const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
+    const deployment = await prisma.deployment.create({
+      data: {
+        projectId,
+        version: (last._max.version ?? 0) + 1,
+        status: 'PENDING',
+        createdById: userId,
+        commitMessage: 'Publish starter site',
+      },
+    });
+    // `auto: true` marks this as a system publish for the activation funnel —
+    // user-initiated publishes send `auto: false`. The extra fields ride along
+    // in the job payload (cast until PublishDeploymentJobData declares them).
+    const jobData: PublishDeploymentJobData = { deploymentId: deployment.id, projectId, auto: true };
+    await withTimeout(createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData }), ENQUEUE_TIMEOUT_MS);
+    await logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: true } });
+  } catch (error) {
+    log.warn({ error, projectId }, 'starter site auto-publish failed; the user can publish manually');
+  }
 }
 
 /** Auto-provision a workspace + starter project so a new user lands in a usable app. */
@@ -335,7 +639,11 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
       },
     });
     await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
-    await createStarterProject(org.id);
+    await logPlatformEvent('signup_completed', { userId: user.id });
+    const project = await createStarterProject(org.id);
+    if (project) {
+      await publishStarterSite(project.id, user.id);
+    }
   } catch (error) {
     // Never block sign-up on provisioning; the user can create a workspace later.
     // Log it so the failure is diagnosable instead of silently swallowed.
@@ -354,6 +662,9 @@ export const auth = betterAuth({
           google: {
             clientId: env.GOOGLE_CLIENT_ID,
             clientSecret: env.GOOGLE_CLIENT_SECRET,
+            // Honor DISABLE_SIGNUP for social sign-in too: existing users keep
+            // signing in with Google, but no new accounts are created.
+            disableSignUp: env.DISABLE_SIGNUP,
           },
         }
       : undefined,
@@ -370,6 +681,9 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    // DISABLE_SIGNUP=true refuses new email/password accounts while existing
+    // users keep signing in (closed self-hosts, or an emergency cloud brake).
+    disableSignUp: env.DISABLE_SIGNUP,
     // Off by default (private self-host without SMTP); set REQUIRE_EMAIL_VERIFICATION=true
     // for public instances. The verify-email UI + resend then work via the queue below.
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
@@ -407,8 +721,11 @@ export const auth = betterAuth({
   plugins: [
     organization({
       organizationHooks: {
-        afterCreateOrganization: async ({ organization: org }) => {
-          await createStarterProject(org.id).catch(() => undefined);
+        afterCreateOrganization: async ({ organization: org, member }) => {
+          const project = await createStarterProject(org.id).catch(() => null);
+          if (project) {
+            await publishStarterSite(project.id, member.userId);
+          }
         },
         // Someone accepted an invite (members added via the org API → joins). Tell the
         // workspace's existing owners/admins, unless `member_joined` is disabled.
@@ -442,6 +759,17 @@ export const auth = betterAuth({
     // (a new device/location), so routine logins don't spam. Honors `security_login`.
     session: {
       create: {
+        // Suspended accounts must not get new sessions (moderation). Existing
+        // sessions are revoked at suspension time; the API guard is the backstop.
+        before: async (session) => {
+          const target = await prisma.user.findUnique({ where: { id: session.userId }, select: { suspendedAt: true } });
+          if (target?.suspendedAt) {
+            throw new APIError('FORBIDDEN', {
+              message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.',
+            });
+          }
+          return { data: session };
+        },
         after: async (session) => {
           try {
             const known = await prisma.session.count({

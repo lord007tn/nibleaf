@@ -25,6 +25,9 @@ model User {
   /// Platform role for the internal admin panel (apps/admin): "user" | "admin".
   /// Separate from per-workspace Member roles; managed via the grant-admin script.
   role          String   @default("user")
+  /// Moderation: set when a platform admin suspends the account. Suspended users
+  /// cannot sign in and every dashboard API request is rejected by the auth guard.
+  suspendedAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -171,6 +174,10 @@ model Project {
   /// Full site configuration: { visibility, branding, styling, typography,
   /// navbar, footer, banner, seo, search, analytics, redirects, variables }.
   config         Json?
+  /// Moderation: set when a platform admin takes the site down. Taken-down
+  /// projects must not be publicly served and cannot be published.
+  takedownAt     DateTime?
+  takedownReason String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -291,6 +298,9 @@ model Deployment {
   commitMessage String?
   createdById   String?
   error         String?
+  /// Structured per-page check failures for FAILED deployments:
+  /// [{ type: "broken-link" | "grammar", pageTitle, pagePath, detail }].
+  errorDetails  Json?
   createdAt     DateTime         @default(now())
   completedAt   DateTime?
 
@@ -364,6 +374,22 @@ model Comment {
 
   @@index([projectId, pageId])
   @@map("comment")
+}
+
+/// Platform-level product events (activation funnel: signup_completed,
+/// page_edited, publish_clicked, publish_ready, publish_failed). Not tied to a
+/// single site — powers the apps/admin funnel card. userId/projectId are plain
+/// strings (no FK) so events survive user/project deletion.
+model PlatformEvent {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String?
+  projectId String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@map("platform_event")
 }
 
 /// Page views and search queries on published sites (powers the analytics tab).

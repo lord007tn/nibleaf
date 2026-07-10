@@ -1,12 +1,35 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
+import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { badRequest, notFound } from '@/errors';
+import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
 
-export const listDeployments = (projectId: string) => prisma.deployment.findMany({ where: { projectId }, orderBy: { version: 'desc' }, take: 50 });
+/** List columns are explicitly selected so the multi-MB `snapshot` JSONB is
+ *  never shipped for all 50 rows. `errorDetails` IS included — the dashboard's
+ *  failure card reads it off the latest deployment in this list — but it's
+ *  bounded at publish time (see the worker's capIssues), so it can't bloat the
+ *  payload. Fields mirror the app's `Deployment` type. */
+export const listDeployments = (projectId: string) =>
+  prisma.deployment.findMany({
+    where: { projectId },
+    orderBy: { version: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      version: true,
+      status: true,
+      pagesCount: true,
+      commitMessage: true,
+      error: true,
+      errorDetails: true,
+      createdAt: true,
+      completedAt: true,
+    },
+  });
 
 export const getDeployment = async (projectId: string, id: string) => {
   const deployment = await prisma.deployment.findFirst({ where: { id, projectId } });
@@ -328,9 +351,18 @@ async function createWithNextVersion<T>(projectId: string, build: (version: numb
   }
 }
 
+/** Dashboard publish options. `skipGrammarChecks` lets the user publish past the
+ *  grammar linter after reviewing its findings — broken links still block. */
+export interface PublishDeploymentBody extends CreateDeploymentBody {
+  skipGrammarChecks?: boolean;
+}
+
 /** Create a PENDING deployment and enqueue the publish job for the worker to build. */
-export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: CreateDeploymentBody) => {
-  await assertProjectInOrg(organizationId, projectId);
+export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: PublishDeploymentBody) => {
+  const project = await assertProjectInOrg(organizationId, projectId);
+  if (project.takedownAt) {
+    throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
+  }
   const deployment = await createWithNextVersion(projectId, (version) =>
     prisma.deployment.create({
       data: {
@@ -342,13 +374,25 @@ export const createDeployment = async (organizationId: string, projectId: string
       },
     }),
   );
-  await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: { deploymentId: deployment.id, projectId } });
+  // `skipGrammarChecks` / `auto` ride along in the job payload (cast until
+  // PublishDeploymentJobData declares them); the worker reads them defensively.
+  const jobData = {
+    deploymentId: deployment.id,
+    projectId,
+    skipGrammarChecks: body.skipGrammarChecks === true,
+    auto: false,
+  } as PublishDeploymentJobData;
+  await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });
+  logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: false, version: deployment.version } });
   return deployment;
 };
 
 /** Re-publish a previous READY deployment's snapshot as a new deployment. */
 export const rollbackDeployment = async (organizationId: string, projectId: string, deploymentId: string, userId: string) => {
-  await assertProjectInOrg(organizationId, projectId);
+  const project = await assertProjectInOrg(organizationId, projectId);
+  if (project.takedownAt) {
+    throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
+  }
   const target = await prisma.deployment.findFirst({ where: { id: deploymentId, projectId } });
   if (!target) {
     throw notFound('deployment', { id: deploymentId });

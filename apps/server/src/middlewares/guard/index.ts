@@ -7,10 +7,21 @@ import { assertProjectAccess } from '@/actions/projects';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
-/** Require a signed-in dashboard user. */
+/** Require a signed-in dashboard user. Suspended accounts are rejected outright:
+ *  suspension deletes their sessions and blocks new sign-ins, but any session
+ *  that slips through (e.g. a race during suspension) must still be locked out.
+ *  Read fresh from the DB — like `isAdmin` — so the lockout is immediate. */
 export const isAuthenticated: MiddlewareHandler<HonoEnv> = async (ctx, next) => {
-  if (!ctx.get('user')) {
+  const user = ctx.get('user');
+  if (!user) {
     throw new AppError({ code: 'auth:no_user', message: 'Authentication required.' });
+  }
+  const record = await prisma.user.findUnique({ where: { id: user.id }, select: { suspendedAt: true } });
+  if (record?.suspendedAt) {
+    throw new AppError({
+      code: 'auth:invalid_session',
+      message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.',
+    });
   }
   await next();
 };

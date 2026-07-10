@@ -26,10 +26,40 @@ const adminRoutes = {
     description: 'Grant or revoke a user platform admin role.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  suspendUser: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Suspend a user: blocks sign-in and revokes active sessions.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  unsuspendUser: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Lift a user suspension.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
   sites: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],
     description: 'List every documentation site with owner and counts.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  takedownSite: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Take a site down for moderation: stops serving and publishing.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  restoreSite: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Restore a taken-down site.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  funnel: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Activation funnel: signups -> edited -> published -> ready (last 30 days).',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };

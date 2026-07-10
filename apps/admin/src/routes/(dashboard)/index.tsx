@@ -2,10 +2,10 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@nibleaf/design-system/components/ui/chart';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { createFileRoute } from '@tanstack/react-router';
-import { CheckCircle2, FileText, Rocket, ShieldCheck, TrendingUp, UserPlus, Users } from 'lucide-react';
+import { CheckCircle2, FileText, Filter, Rocket, ShieldCheck, TrendingUp, UserPlus, Users } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
-import { type AdminUser, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
+import { type AdminUser, useAdminFunnel, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
 import { fmtDate } from '@/lib/format';
 
 export const Route = createFileRoute('/(dashboard)/')({
@@ -39,6 +39,7 @@ function OverviewPage() {
   const { data, isPending } = useAdminOverview();
   const users = useAdminUsers();
   const sites = useAdminSites();
+  const funnel = useAdminFunnel();
 
   const series = buildSignupSeries(users.data);
   const hasSignups = series.some((d) => d.signups > 0);
@@ -153,6 +154,48 @@ function OverviewPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Activation funnel */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Filter className="size-4 text-muted-foreground" /> Activation funnel
+          </CardTitle>
+          <CardDescription>
+            Last {funnel.data?.days ?? 30} days — sign-up to first successful publish (starter auto-publishes excluded)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {funnel.isPending ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton className="h-16 w-full" key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {(
+                [
+                  { label: 'Signed up', value: funnel.data?.signups ?? 0 },
+                  { label: 'Edited content', value: funnel.data?.edited ?? 0 },
+                  { label: 'Clicked publish', value: funnel.data?.published ?? 0 },
+                  { label: 'Publish ready', value: funnel.data?.ready ?? 0 },
+                ] as const
+              ).map((step) => {
+                const signups = funnel.data?.signups ?? 0;
+                const pct = signups > 0 ? Math.round((step.value / signups) * 100) : 0;
+                return (
+                  <div className="rounded-lg border border-border p-3" key={step.label}>
+                    <p className="text-muted-foreground text-xs">{step.label}</p>
+                    <p className="mt-1 font-semibold text-2xl tabular-nums tracking-tight">{step.value}</p>
+                    <p className="text-muted-foreground text-xs">{step.label === 'Signed up' ? 'baseline' : `${pct}% of sign-ups`}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Secondary stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

@@ -18,7 +18,16 @@ export async function getAdminOverview() {
 /** Every user on the instance, newest first, with workspace-membership count. */
 export async function listAdminUsers() {
   const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, emailVerified: true, createdAt: true, _count: { select: { members: true } } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      emailVerified: true,
+      suspendedAt: true,
+      createdAt: true,
+      _count: { select: { members: true } },
+    },
     orderBy: { createdAt: 'desc' },
     take: 500,
   });
@@ -28,6 +37,7 @@ export async function listAdminUsers() {
     email: u.email,
     role: u.role,
     emailVerified: u.emailVerified,
+    suspendedAt: u.suspendedAt?.toISOString() ?? null,
     workspaces: u._count.members,
     createdAt: u.createdAt.toISOString(),
   }));
@@ -57,6 +67,8 @@ export async function listAdminSites() {
       id: true,
       name: true,
       slug: true,
+      takedownAt: true,
+      takedownReason: true,
       createdAt: true,
       _count: { select: { pages: true, deployments: true } },
       organization: {
@@ -74,6 +86,63 @@ export async function listAdminSites() {
     owner: s.organization?.members[0]?.user.email ?? '—',
     pages: s._count.pages,
     deployments: s._count.deployments,
+    takedownAt: s.takedownAt?.toISOString() ?? null,
+    takedownReason: s.takedownReason,
     createdAt: s.createdAt.toISOString(),
   }));
+}
+
+// ─── Moderation ──────────────────────────────────────────────────────────────
+
+/** Suspend a user: sets `suspendedAt` and revokes every active session, so the
+ *  lockout is immediate (the auth guard also rejects any straggler requests).
+ *  Platform admins can never be suspended — demote them first (`setUserRole`
+ *  keeps its last-admin protection), so the panel can never lock everyone out. */
+export async function suspendUser(userId: string) {
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, suspendedAt: true } });
+  if (!target) {
+    throw notFound('User', { id: userId });
+  }
+  if (target.role === 'admin') {
+    throw new AppError({ code: 'http:conflict', message: 'Platform admins cannot be suspended. Demote them to a regular user first.' });
+  }
+  if (target.suspendedAt) {
+    return { ok: true as const };
+  }
+  await prisma.user.update({ where: { id: userId }, data: { suspendedAt: new Date() } });
+  // Sessions are DB-backed (better-auth Prisma adapter), so deleting the rows
+  // signs the user out everywhere on their next request.
+  await prisma.session.deleteMany({ where: { userId } });
+  return { ok: true as const };
+}
+
+/** Lift a suspension: the user can sign in again. */
+export async function unsuspendUser(userId: string) {
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!target) {
+    throw notFound('User', { id: userId });
+  }
+  await prisma.user.update({ where: { id: userId }, data: { suspendedAt: null } });
+  return { ok: true as const };
+}
+
+/** Take a site down for moderation: the published site must stop being served
+ *  (enforced in the public read path) and new publishes are refused. */
+export async function takedownProject(projectId: string, reason?: string) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!project) {
+    throw notFound('Project', { id: projectId });
+  }
+  await prisma.project.update({ where: { id: projectId }, data: { takedownAt: new Date(), takedownReason: reason?.trim() || null } });
+  return { ok: true as const };
+}
+
+/** Restore a taken-down site: it serves and publishes again. */
+export async function restoreProject(projectId: string) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!project) {
+    throw notFound('Project', { id: projectId });
+  }
+  await prisma.project.update({ where: { id: projectId }, data: { takedownAt: null, takedownReason: null } });
+  return { ok: true as const };
 }

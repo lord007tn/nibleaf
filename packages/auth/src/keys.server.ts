@@ -33,6 +33,13 @@ export const keys = () =>
         .string()
         .optional()
         .transform((value) => value === 'true' || value === '1'),
+      // Optional: refuse ALL new sign-ups (email/password and social). Existing
+      // accounts keep signing in. Useful for closed self-hosted instances and as
+      // an emergency brake on the public cloud. Default off.
+      DISABLE_SIGNUP: z
+        .string()
+        .optional()
+        .transform((value) => value === 'true' || value === '1'),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,

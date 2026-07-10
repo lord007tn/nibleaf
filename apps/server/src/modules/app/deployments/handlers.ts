@@ -1,5 +1,6 @@
 import { createDeploymentBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import {
   createDeployment,
   getDeployment,
@@ -21,6 +22,10 @@ const scope = async (ctx: { req: { param: (k: string) => string } }) => {
   return { organizationId, projectId };
 };
 
+// Dashboard-only publish option on top of the shared createDeploymentBody:
+// `skipGrammarChecks` publishes past the grammar linter (broken links still block).
+const publishDeploymentBody = createDeploymentBody.extend({ skipGrammarChecks: z.boolean().optional() });
+
 const app = new Hono<HonoEnv>()
   .get('/', ...deploymentsRoutes.list, async (ctx) => {
     const { projectId } = await scope(ctx);
@@ -38,7 +43,7 @@ const app = new Hono<HonoEnv>()
     const { projectId } = await scope(ctx);
     return ctx.json({ data: await getDeploymentDiff(projectId, ctx.req.param('id')) }, 200);
   })
-  .post('/', ...deploymentsRoutes.publish, validator('json', createDeploymentBody), async (ctx) => {
+  .post('/', ...deploymentsRoutes.publish, validator('json', publishDeploymentBody), async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
     const user = getContextUserOrThrow();
     return ctx.json({ data: await createDeployment(organizationId, projectId, user.id, ctx.req.valid('json')) }, 201);

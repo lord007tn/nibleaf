@@ -25,6 +25,12 @@ const projectsRoutes = {
     description: 'Retrieve a documentation site.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  export: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember('id')],
+    tags: ['projects'],
+    description: 'Download every page as Markdown in a zip (organized by branch/language/path, with a project.json manifest).',
+    responses: { 200: { description: 'zip archive' }, ...errorResponses },
+  }),
   update: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],
     tags: ['projects'],

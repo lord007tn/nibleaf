@@ -1,5 +1,5 @@
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { prisma } from '@nibleaf/database';
+import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
@@ -10,8 +10,24 @@ const log = createLogger({ processor: 'publish' });
 const siteUrlFor = (projectId: string): string | undefined =>
   process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined;
 
+/** Fire-and-forget platform funnel event (mirrors apps/server platform-events —
+ *  the worker can't import server actions). Never throws into the publish flow. */
+const logPlatformEvent = (type: string, data: { userId?: string | null; projectId?: string; metadata?: Record<string, unknown> }) =>
+  prisma.platformEvent
+    .create({
+      data: {
+        type,
+        userId: data.userId ?? null,
+        projectId: data.projectId ?? null,
+        ...(data.metadata ? { metadata: data.metadata as Prisma.InputJsonValue } : {}),
+      },
+    })
+    .catch(() => undefined);
+
 type ProjectWithConfig = { config: unknown };
 type PublishPage = {
+  id: string;
+  title: string;
   kind: string;
   path: string;
   content: string;
@@ -20,6 +36,25 @@ type PublishPage = {
   branchId?: string | null;
   branch?: { id: string } | null;
 };
+
+/** One structured check failure, persisted as `Deployment.errorDetails` JSON so
+ *  the dashboard can render a per-page failure list. */
+export interface PublishIssue {
+  type: 'broken-link' | 'grammar';
+  pageTitle: string;
+  pagePath: string;
+  detail: string;
+}
+
+/** A check failure that blocks the publish, carrying the structured issues. */
+export class PublishChecksError extends Error {
+  readonly issues: PublishIssue[];
+  constructor(message: string, issues: PublishIssue[]) {
+    super(message);
+    this.name = 'PublishChecksError';
+    this.issues = issues;
+  }
+}
 
 const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -105,12 +140,20 @@ const grammarIssues = (content: string): string[] => {
 /**
  * Publish-time add-on checks. The self-hosted free target treats CI checks as
  * the umbrella toggle and runs concrete local gates without hosted integrations.
+ * Returns structured issues instead of throwing so the caller can persist them
+ * as `Deployment.errorDetails`. Broken links ALWAYS block (when enabled);
+ * `skipGrammarChecks` lets a user publish past the grammar linter only.
  */
-export function validatePublishChecks(project: ProjectWithConfig, pages: PublishPage[]): void {
+export function collectPublishIssues(
+  project: ProjectWithConfig,
+  pages: PublishPage[],
+  options: { skipGrammarChecks?: boolean } = {},
+): PublishIssue[] {
   const addons = objectValue(objectValue(project.config).addons);
   if (addons.ciChecks === false) {
-    return;
+    return [];
   }
+  const issues: PublishIssue[] = [];
 
   if (addons.brokenLinks !== false) {
     const pathsByScope = new Map<string, Set<string>>();
@@ -124,7 +167,6 @@ export function validatePublishChecks(project: ProjectWithConfig, pages: Publish
       pathsByScope.set(scope, set);
     }
 
-    const broken: string[] = [];
     for (const page of pages) {
       if (page.kind !== 'PAGE' || page.hidden) {
         continue;
@@ -138,35 +180,75 @@ export function validatePublishChecks(project: ProjectWithConfig, pages: Publish
           continue;
         }
         if (!scopePaths.has(target)) {
-          broken.push(`${currentPath || '/'} -> ${href}`);
+          issues.push({
+            type: 'broken-link',
+            pageTitle: page.title,
+            pagePath: currentPath || '/',
+            detail: `Link to "${href}" does not match any page.`,
+          });
         }
       }
     }
-
-    if (broken.length > 0) {
-      const sample = broken.slice(0, 8).join('; ');
-      throw new Error(`Broken internal links found (${broken.length}): ${sample}`);
-    }
   }
 
-  if (addons.grammarLinter === true) {
-    const grammar: string[] = [];
+  if (addons.grammarLinter === true && options.skipGrammarChecks !== true) {
     for (const page of pages) {
       if (page.kind !== 'PAGE' || page.hidden) {
         continue;
       }
       const currentPath = normalizedPagePath(page.path);
       for (const issue of grammarIssues(page.content)) {
-        grammar.push(`${currentPath || '/'}: ${issue}`);
+        issues.push({ type: 'grammar', pageTitle: page.title, pagePath: currentPath || '/', detail: issue });
       }
     }
-
-    if (grammar.length > 0) {
-      const sample = grammar.slice(0, 8).join('; ');
-      throw new Error(`Grammar lint issues found (${grammar.length}): ${sample}`);
-    }
   }
+
+  return issues;
 }
+
+/** Human summary for `Deployment.error` (the structured list goes to errorDetails). */
+const summarizeIssues = (issues: PublishIssue[]): string => {
+  const broken = issues.filter((issue) => issue.type === 'broken-link');
+  const grammar = issues.filter((issue) => issue.type === 'grammar');
+  const parts: string[] = [];
+  if (broken.length > 0) {
+    const sample = broken
+      .slice(0, 8)
+      .map((issue) => `${issue.pagePath} -> ${issue.detail}`)
+      .join('; ');
+    parts.push(`Broken internal links found (${broken.length}): ${sample}`);
+  }
+  if (grammar.length > 0) {
+    const sample = grammar
+      .slice(0, 8)
+      .map((issue) => `${issue.pagePath}: ${issue.detail}`)
+      .join('; ');
+    parts.push(`Grammar lint issues found (${grammar.length}): ${sample}`);
+  }
+  return parts.join(' | ');
+};
+
+/** Persisted `errorDetails` is capped so a check failure on a large site can't
+ *  ship a multi-MB JSONB blob to the dashboard (which renders one <li> per
+ *  issue). The array shape the dashboard consumes ([{type,pageTitle,pagePath,
+ *  detail}]) is preserved; when truncated, a final synthetic entry records the
+ *  omitted count. Its `type` mirrors whether any broken link is present so the
+ *  dashboard's grammar-only "Publish anyway" gate stays correct — broken links
+ *  always block, so a truncated set that still contains one must not read as
+ *  grammar-only. */
+const MAX_PERSISTED_ISSUES = 100;
+
+const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
+  if (issues.length <= MAX_PERSISTED_ISSUES) {
+    return issues;
+  }
+  const omitted = issues.length - MAX_PERSISTED_ISSUES;
+  const type: PublishIssue['type'] = issues.some((issue) => issue.type === 'broken-link') ? 'broken-link' : 'grammar';
+  return [
+    ...issues.slice(0, MAX_PERSISTED_ISSUES),
+    { type, pageTitle: 'Additional issues', pagePath: '', detail: `…and ${omitted} more issue${omitted === 1 ? '' : 's'} not shown.` },
+  ];
+};
 
 /**
  * Build an immutable snapshot of the project's docs and mark the deployment
@@ -174,6 +256,9 @@ export function validatePublishChecks(project: ProjectWithConfig, pages: Publish
  */
 export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Promise<{ pages: number }> {
   const { deploymentId, projectId } = job.data;
+  // Optional flags ride along in the job payload (set by createDeployment and
+  // the sign-up starter publish); read defensively until the job type declares them.
+  const { skipGrammarChecks, auto } = job.data as { skipGrammarChecks?: boolean; auto?: boolean };
   log.info({ deploymentId, projectId }, 'building deployment');
 
   await prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
@@ -186,6 +271,11 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (!project) {
       throw new Error(`project ${projectId} not found`);
     }
+    // Moderation backstop: a taken-down site must never build a new deployment,
+    // even if a publish request slipped past the API-side check.
+    if (project.takedownAt) {
+      throw new Error('This site has been taken down by the platform moderators and cannot be published.');
+    }
     // Publish every branch as an addressable docs version. This keeps v1 live
     // while v2 is being authored, and visitors can switch versions on the site.
     const branchIds = project.branches.map((branch) => branch.id);
@@ -195,23 +285,51 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       include: { language: { select: { code: true } }, branch: { select: { id: true, name: true, isDefault: true } } },
     });
     const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
-    validatePublishChecks(project, pageRows);
-    const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
+    const issues = collectPublishIssues(project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
+    if (issues.length > 0) {
+      throw new PublishChecksError(summarizeIssues(issues), issues);
+    }
+    const base = buildSnapshot(project, pageRows, new Date().toISOString());
+    // Carry each page's updatedAt into the snapshot (sitemap <lastmod> reads it).
+    // Additive only, so older snapshot consumers are unaffected.
+    const updatedAtById = new Map(pages.map((page) => [page.id, page.updatedAt.toISOString()]));
+    const snapshot = {
+      ...base,
+      pages: base.pages.map((page) => ({ ...page, updatedAt: updatedAtById.get(page.id) ?? base.generatedAt })),
+    };
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({
       where: { id: deploymentId },
-      data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, completedAt: new Date() },
+      data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, errorDetails: Prisma.DbNull, completedAt: new Date() },
     });
     log.info({ deploymentId, pageCount }, 'deployment ready');
+    await logPlatformEvent('publish_ready', {
+      userId: ready.createdById,
+      projectId,
+      metadata: { auto: auto === true, version: ready.version },
+    });
     await notifyDeployment({ projectId, projectName: project.name, version: ready.version, outcome: 'ready', siteUrl: siteUrlFor(projectId) });
     return { pages: pages.length };
   } catch (error) {
     const failed = await prisma.deployment.update({
       where: { id: deploymentId },
-      data: { status: 'FAILED', error: error instanceof Error ? error.message : String(error) },
+      data: {
+        status: 'FAILED',
+        error: error instanceof Error ? error.message : String(error),
+        // ALWAYS overwrite errorDetails: a retry that fails with a transient
+        // infra error (after attempt 1 recorded check issues) must clear the
+        // stale grammar/link list, or the dashboard offers "Publish anyway" for
+        // a connection failure.
+        errorDetails: error instanceof PublishChecksError ? (capIssues(error.issues) as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
+      },
     });
     const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
+    await logPlatformEvent('publish_failed', {
+      userId: failed.createdById,
+      projectId,
+      metadata: { auto: auto === true, version: failed.version, checksFailed: error instanceof PublishChecksError },
+    });
     await notifyDeployment({
       projectId,
       projectName: proj?.name ?? 'Your site',
