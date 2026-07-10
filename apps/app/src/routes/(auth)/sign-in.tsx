@@ -30,13 +30,12 @@ export const Route = createFileRoute('/(auth)/sign-in')({
 
 /** Shape of GET /api/public/meta (instance capabilities). */
 interface PublicMeta {
-  providers?: { google?: boolean };
+  providers: { google: boolean };
 }
 
-/** Whether the Google provider is configured on this instance. Defensive: if
- *  /api/public/meta is missing or fails, keep the current behaviour (show it). */
+/** Whether the Google provider is configured on this instance. */
 function useGoogleEnabled() {
-  const [googleEnabled, setGoogleEnabled] = useState(true);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -45,12 +44,13 @@ function useGoogleEnabled() {
         if (!res.ok) {
           return;
         }
-        const data = (await res.json()) as PublicMeta;
+        const { data } = (await res.json()) as { data: PublicMeta };
         if (!cancelled) {
-          setGoogleEnabled(data.providers?.google === true);
+          setGoogleEnabled(data.providers.google);
         }
       } catch {
-        // Endpoint unavailable — keep the permissive default.
+        // Fail closed: an unavailable capability endpoint must not expose a
+        // provider button that cannot work.
       }
     })();
     return () => {

@@ -25,7 +25,7 @@ const startHandler = createStartHandler(defaultStreamHandler);
 const SELF = `http://localhost:${process.env.PORT || '4310'}`;
 
 const ownHosts = new Set(
-  [process.env.APP_URL, process.env.PUBLIC_APP_URL, 'localhost:4310', '127.0.0.1:4310'].filter(Boolean).map(
+  [process.env.APP_URL, 'localhost:4310', '127.0.0.1:4310'].filter(Boolean).map(
     (url) =>
       String(url)
         .replace(/^https?:\/\//, '')
@@ -43,7 +43,7 @@ const SKIP = /^\/(api|_|assets|favicon|sites)\b/;
 // APP_URL points at their OWN dashboard, so IS_CLOUD_MARKETING is false for them
 // and they get a minimal, self-referential robots.txt with no marketing docs.
 const MARKETING_HOST = 'nibleaf.com';
-const CONFIGURED_HOST = (process.env.PUBLIC_APP_URL || process.env.APP_URL || '')
+const CONFIGURED_HOST = (process.env.APP_URL || '')
   .replace(/^https?:\/\//, '')
   .split('/')[0]
   ?.toLowerCase();
@@ -185,9 +185,7 @@ async function resolveHost(host: string): Promise<string | null> {
 /** What the edge needs to know about a published site: whether its HTML may be
  *  shared-cached, and which host is its canonical (primary) home. */
 interface SiteMeta {
-  /** Verified primary custom domain, when the public payload exposes one.
-   *  (Read defensively: the field lands server-side separately — until then this
-   *  stays null and no 301 consolidation happens.) */
+  /** Verified primary custom domain, when configured. */
   primaryDomain: string | null;
   isPrivate: boolean;
 }
@@ -208,7 +206,7 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
     const res = await fetch(`${SELF}/api/public/sites/${projectId}`);
     if (res.ok) {
       const json = (await res.json()) as {
-        data?: { project?: { config?: Record<string, unknown> | null; primaryDomain?: string | null } };
+        data?: { project?: { config?: Record<string, unknown> | null; primaryDomain: string | null } };
       };
       const project = json?.data?.project;
       if (project) {

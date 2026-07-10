@@ -2,8 +2,8 @@ import { Prisma, prisma } from '@nibleaf/database';
 import { joinPath, slugify } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, notFound } from '@/errors';
-import { assertBranchInProject, ensureDefaultBranch } from './branches';
-import { assertLanguageInProject, ensureDefaultLanguage } from './languages';
+import { assertBranchInProject, getDefaultBranch } from './branches';
+import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { assertProjectInOrg } from './projects';
 
 const pageListSelect = {
@@ -27,7 +27,7 @@ const pageListSelect = {
  *  given), ordered for tree assembly on the client. Scoped to a single language
  *  when `languageId` is given. */
 export const listPages = async (projectId: string, languageId?: string, branchId?: string) => {
-  const resolvedBranchId = branchId ? (await assertBranchInProject(projectId, branchId)).id : (await ensureDefaultBranch(projectId)).id;
+  const resolvedBranchId = branchId ? (await assertBranchInProject(projectId, branchId)).id : (await getDefaultBranch(projectId)).id;
   if (languageId) {
     await assertLanguageInProject(projectId, languageId);
   }
@@ -51,8 +51,8 @@ export const getPage = async (projectId: string, id: string) => {
  *  can each have e.g. `/introduction`. */
 const uniqueSiblingSlug = async (
   projectId: string,
-  languageId: string | null,
-  branchId: string | null,
+  languageId: string,
+  branchId: string,
   parentId: string | null,
   desired: string,
   excludeId?: string,
@@ -76,7 +76,7 @@ const uniqueSiblingSlug = async (
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
 const PLACEHOLDER_TITLE_RE = /^(?:Untitled|New group)$/;
 
-type PageTreeNode = { id: string; parentId: string | null; branchId: string | null; languageId: string | null };
+type PageTreeNode = { id: string; parentId: string | null; branchId: string; languageId: string };
 
 /** Resolve a parent's path, language, and branch. A child inherits both its
  *  parent's language and branch. */
@@ -132,12 +132,12 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
   const parentId = body.parentId ?? null;
   const parent = await parentInfo(projectId, parentId);
   // A child inherits its parent's branch + language; otherwise use the requested
-  // ones, falling back to the project's defaults (creating them if absent).
+  // ones or the project's required defaults.
   const branchId =
-    parent.branchId ?? (body.branchId ? (await assertBranchInProject(projectId, body.branchId)).id : (await ensureDefaultBranch(projectId)).id);
+    parent.branchId ?? (body.branchId ? (await assertBranchInProject(projectId, body.branchId)).id : (await getDefaultBranch(projectId)).id);
   const languageId =
     parent.languageId ??
-    (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await ensureDefaultLanguage(projectId)).id);
+    (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await getDefaultLanguage(projectId)).id);
   const slug = await uniqueSiblingSlug(projectId, languageId, branchId, parentId, body.slug || body.title);
   const maxPosition = await prisma.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
   return prisma.page.create({

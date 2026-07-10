@@ -15,7 +15,7 @@ export interface StorageTarget {
 const clientCache = new Map<string, S3Client>();
 const cacheKey = (t: StorageTarget): string => `${t.endpoint ?? ''}|${t.region}|${t.forcePathStyle}|${t.accessKeyId}`;
 
-/** The env-configured default target (local MinIO in dev, or the configured cloud bucket). */
+/** The env-configured default target (local maxio in dev, or the configured cloud bucket). */
 export const defaultTarget = (): StorageTarget => {
   const env = keys();
   return {

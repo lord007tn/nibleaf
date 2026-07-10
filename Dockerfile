@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1.7
 # Single image for the whole Nibleaf monorepo. The container command selects the
-# service (server / worker / app / www / migrate) via docker-entrypoint.sh.
+# service (server / worker / app / docs / admin / migrate) via docker-entrypoint.sh.
 #
 # server & worker run their TypeScript directly with tsx (the Prisma driver
-# adapter + workspace packages resolve cleanly that way); app & www run their
-# self-contained Nitro SSR bundles.
+# adapter + workspace packages resolve cleanly that way); app, docs, and admin
+# run their self-contained Nitro SSR bundles.
 
 FROM node:22-alpine AS base
 ENV PNPM_HOME=/pnpm
@@ -22,13 +22,11 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm --filter @nibleaf/database generate
 # Bake the in-cluster API URL so the app's Nitro /api proxy targets the server
 # service. The browser only ever sees the public app origin.
-ARG VITE_APP_URL=https://app.nibleaf.dev
-ARG VITE_WWW_URL=https://nibleaf.dev
-ARG VITE_SITE_BASE_DOMAIN=nibleaf.app
+ARG VITE_APP_URL=https://nibleaf.com
+ARG VITE_SITE_BASE_DOMAIN=nibleaf.com
 ARG VITE_API_URL=http://server:4311
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_URL=$VITE_APP_URL
-ENV VITE_WWW_URL=$VITE_WWW_URL
 ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm exec turbo run build --concurrency=1
@@ -43,6 +41,6 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.version=$VERSION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
-EXPOSE 4310 4311 4312 4313 4314 4315
+EXPOSE 4310 4311 4312 4314 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

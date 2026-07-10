@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { normalizeMdxBlocks, normalizeType } from './mdx-config';
 
 describe('normalizeType', () => {
-  it('maps caution/error to danger', () => {
+  it('maps the GitHub caution keyword to danger', () => {
     expect(normalizeType('caution')).toBe('danger');
-    expect(normalizeType('error')).toBe('danger');
   });
   it('maps important to info, case-insensitively', () => {
     expect(normalizeType('IMPORTANT')).toBe('info');

@@ -23,20 +23,6 @@ export type PaginationQuery = z.infer<typeof paginationQuery>;
 
 const hexColor = z.string().regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, 'Must be a hex color like #5546e8');
 
-// Bounded, strict theme schema. Rejects unknown keys (prevents prototype-pollution
-// and unbounded input) while still serializing cleanly to Prisma JSON.
-const themeSchema = z
-  .object({
-    primaryColor: z
-      .string()
-      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
-      .optional(),
-    font: z.string().max(60).optional(),
-    layout: z.enum(['sidebar', 'centered']).optional(),
-    accentColor: z.string().max(20).optional(),
-  })
-  .strict();
-
 // Reject dangerous URL schemes so config URLs that render as clickable links
 // (navbar/footer/banner/CTA) can't carry a javascript:/data:/vbscript: payload.
 // A blocklist (not an allowlist) keeps http(s)/relative/mailto/tel values valid
@@ -216,30 +202,29 @@ export type PageConfig = z.infer<typeof pageConfigSchema>;
 
 // ─── Project ──────────────────────────────────────────────────────────────—
 
-export const createProjectBody = z.object({
-  name: z.string().min(1).max(120),
-  description: z.string().max(500).optional(),
-  color: hexColor.optional(),
-  icon: z.string().max(64).optional(),
-});
+export const createProjectBody = z
+  .object({
+    name: z.string().min(1).max(120),
+    description: z.string().max(500).optional(),
+    icon: z.string().max(64).optional(),
+  })
+  .strict();
 export type CreateProjectBody = z.infer<typeof createProjectBody>;
 
-export const updateProjectBody = z.object({
-  name: z.string().min(1).max(120).optional(),
-  slug: z
-    .string()
-    .min(1)
-    .max(63)
-    .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.')
-    .optional(),
-  description: z.string().max(500).nullable().optional(),
-  icon: z.string().max(64).nullable().optional(),
-  color: hexColor.optional(),
-  logoUrl: z.string().nullable().optional(),
-  faviconUrl: z.string().nullable().optional(),
-  theme: themeSchema.nullable().optional(),
-  config: projectConfigSchema.optional(),
-});
+export const updateProjectBody = z
+  .object({
+    name: z.string().min(1).max(120).optional(),
+    slug: z
+      .string()
+      .min(1)
+      .max(63)
+      .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.')
+      .optional(),
+    description: z.string().max(500).nullable().optional(),
+    icon: z.string().max(64).nullable().optional(),
+    config: projectConfigSchema.optional(),
+  })
+  .strict();
 export type UpdateProjectBody = z.infer<typeof updateProjectBody>;
 
 // ─── Languages ───────────────────────────────────────────────────────────────

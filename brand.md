@@ -4,7 +4,7 @@ Nibleaf is the production brand for this project. The UI identity is a true-neut
 
 ## Core Palette
 
-Monochrome neutral grey base (Tailwind `neutral` scale — hue-neutral, no blue/green tint) with one terracotta accent in `primary`. `destructive` is the only other saturated token. The source of truth is the CSS token blocks in `packages/design-system/src/styles/globals.css` (shared by the app, admin, and live docs sites) and `apps/www/src/styles.css` (marketing); keep the two in sync.
+Monochrome neutral grey base (Tailwind `neutral` scale — hue-neutral, no blue/green tint) with one terracotta accent in `primary`. `destructive` is the only other saturated token. The source of truth is the CSS token blocks in `packages/design-system/src/styles/globals.css`, shared by the app, admin, and live docs sites.
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
@@ -19,21 +19,18 @@ Monochrome neutral grey base (Tailwind `neutral` scale — hue-neutral, no blue/
 
 Charts use a monochrome grey ramp (`chart-2`…`chart-5`: `#404040`/`#737373`/`#A3A3A3`/`#D4D4D4` in light) with terracotta as `chart-1`, so analytics stay on-brand and calm.
 
-> History: earlier iterations used a warm umber/copper "ink & paper" palette and, briefly, an evergreen and a cool-slate system; the production direction is the neutral grey + terracotta above.
-
 ## Asset Locations
 
-The marketing app owns the full public brand kit:
+The app owns the full public brand kit:
 
-- `apps/www/public/brand`
+- `apps/app/public/brand`
 
 Raster exports live under:
 
-- `apps/www/public/brand/raster`
+- `apps/app/public/brand/raster`
 
 Root browser/app icon files are written to each public app root:
 
-- `apps/www/public`
 - `apps/app/public`
 - `apps/admin/public`
 - `apps/docs/public`

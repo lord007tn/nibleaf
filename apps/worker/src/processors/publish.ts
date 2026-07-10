@@ -32,9 +32,8 @@ type PublishPage = {
   path: string;
   content: string;
   hidden?: boolean | null;
-  languageCode?: string | null;
-  branchId?: string | null;
-  branch?: { id: string } | null;
+  languageCode: string;
+  branchId: string;
 };
 
 /** One structured check failure, persisted as `Deployment.errorDetails` JSON so
@@ -161,7 +160,7 @@ export function collectPublishIssues(
       if (page.kind !== 'PAGE' || page.hidden) {
         continue;
       }
-      const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
+      const scope = `${page.languageCode}:${page.branchId}`;
       const set = pathsByScope.get(scope) ?? new Set<string>();
       set.add(normalizedPagePath(page.path));
       pathsByScope.set(scope, set);
@@ -172,7 +171,7 @@ export function collectPublishIssues(
         continue;
       }
       const currentPath = normalizedPagePath(page.path);
-      const scope = `${page.languageCode ?? ''}:${page.branchId ?? page.branch?.id ?? ''}`;
+      const scope = `${page.languageCode}:${page.branchId}`;
       const scopePaths = pathsByScope.get(scope) ?? new Set<string>();
       for (const href of markdownLinks(page.content)) {
         const target = internalLinkTarget(href, currentPath);
@@ -255,10 +254,7 @@ const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
  * READY. The live site and search index are served from this snapshot.
  */
 export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Promise<{ pages: number }> {
-  const { deploymentId, projectId } = job.data;
-  // Optional flags ride along in the job payload (set by createDeployment and
-  // the sign-up starter publish); read defensively until the job type declares them.
-  const { skipGrammarChecks, auto } = job.data as { skipGrammarChecks?: boolean; auto?: boolean };
+  const { deploymentId, projectId, skipGrammarChecks, auto } = job.data;
   log.info({ deploymentId, projectId }, 'building deployment');
 
   await prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
@@ -280,23 +276,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     // while v2 is being authored, and visitors can switch versions on the site.
     const branchIds = project.branches.map((branch) => branch.id);
     const pages = await prisma.page.findMany({
-      where: { projectId, ...(branchIds.length > 0 ? { branchId: { in: branchIds } } : {}) },
+      where: { projectId, branchId: { in: branchIds } },
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { language: { select: { code: true } }, branch: { select: { id: true, name: true, isDefault: true } } },
+      include: { language: { select: { code: true } } },
     });
-    const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
+    const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
     const issues = collectPublishIssues(project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
     }
-    const base = buildSnapshot(project, pageRows, new Date().toISOString());
-    // Carry each page's updatedAt into the snapshot (sitemap <lastmod> reads it).
-    // Additive only, so older snapshot consumers are unaffected.
-    const updatedAtById = new Map(pages.map((page) => [page.id, page.updatedAt.toISOString()]));
-    const snapshot = {
-      ...base,
-      pages: base.pages.map((page) => ({ ...page, updatedAt: updatedAtById.get(page.id) ?? base.generatedAt })),
-    };
+    const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({

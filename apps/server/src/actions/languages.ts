@@ -15,19 +15,18 @@ export const assertLanguageInProject = async (projectId: string, id: string) => 
 export const listLanguages = (projectId: string) =>
   prisma.language.findMany({ where: { projectId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
 
-/** The project's default language: the `isDefault` one, else the first by position, else null. */
+/** The project's required default language. Missing data is an invariant error. */
 export const getDefaultLanguage = async (projectId: string) => {
-  const byDefault = await prisma.language.findFirst({ where: { projectId, isDefault: true } });
-  if (byDefault) {
-    return byDefault;
+  const defaults = await prisma.language.findMany({ where: { projectId, isDefault: true }, take: 2 });
+  if (defaults.length !== 1 || !defaults[0]) {
+    throw new Error(`Project ${projectId} must have exactly one default language.`);
   }
-  return prisma.language.findFirst({ where: { projectId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+  return defaults[0];
 };
 
 export const createLanguage = async (projectId: string, body: CreateLanguageBody) => {
   const max = await prisma.language.aggregate({ where: { projectId }, _max: { position: true } });
-  const count = await prisma.language.count({ where: { projectId } });
-  const isDefault = body.isDefault === true || count === 0;
+  const isDefault = body.isDefault === true;
   try {
     const created = await prisma.$transaction(async (tx) => {
       if (isDefault) {
@@ -100,15 +99,4 @@ export const deleteLanguage = async (projectId: string, id: string) => {
   }
   await prisma.language.delete({ where: { id } });
   return { id };
-};
-
-/** Ensure the project has a default language, creating an English one if none exist. */
-export const ensureDefaultLanguage = async (projectId: string) => {
-  const existing = await getDefaultLanguage(projectId);
-  if (existing) {
-    return existing;
-  }
-  return prisma.language.create({
-    data: { projectId, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
-  });
 };

@@ -46,6 +46,8 @@ describe('extractHeadings', () => {
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotPage => ({
   parentId: null,
+  versionId: 'v-main',
+  updatedAt: '2026-01-01T00:00:00.000Z',
   languageCode: 'en',
   kind: 'PAGE',
   title: over.id,
@@ -82,12 +84,9 @@ describe('buildNavTree', () => {
     ]);
     expect(tree.map((n) => n.title)).toEqual(['Short', 'Plain']);
   });
-  it('filters by language, treating legacy (no languageCode) pages as the requested language', () => {
-    const tree = buildNavTree(
-      [page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' }), page({ id: 'legacy', languageCode: '' })],
-      'en',
-    );
-    expect(tree.map((n) => n.id).sort()).toEqual(['en1', 'legacy']);
+  it('filters pages strictly by language', () => {
+    const tree = buildNavTree([page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' })], 'en');
+    expect(tree.map((n) => n.id)).toEqual(['en1']);
   });
 });
 
@@ -98,12 +97,9 @@ describe('buildSnapshot', () => {
     slug: 'docs',
     description: null,
     icon: null,
-    color: '#5546e8',
-    logoUrl: null,
-    faviconUrl: null,
-    theme: null,
     config: null,
-    languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true }],
+    languages: [{ code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, config: null }],
+    branches: [{ id: 'branch_main', name: 'main', isDefault: true }],
   };
   const rawPage = {
     id: 'x',
@@ -114,23 +110,29 @@ describe('buildSnapshot', () => {
     icon: null,
     description: null,
     content: '',
+    config: null,
+    languageCode: 'en',
+    branchId: 'branch_main',
+    kind: 'PAGE' as const,
+    updatedAt: '2026-01-01T00:00:00.000Z',
     translationKey: null,
     position: 0,
     hidden: false,
   };
 
-  it('coerces non-GROUP kinds to PAGE and backfills languageCode from the default language', () => {
-    const snap = buildSnapshot(projectRow, [{ ...rawPage, kind: 'WEIRD' }], '2026-01-01');
+  it('preserves the required page language, version, and timestamp', () => {
+    const snap = buildSnapshot(projectRow, [rawPage], '2026-01-01');
     expect(snap.pages[0]?.kind).toBe('PAGE');
     expect(snap.pages[0]?.languageCode).toBe('en');
+    expect(snap.pages[0]?.versionId).toBe('branch_main');
+    expect(snap.pages[0]?.updatedAt).toBe('2026-01-01T00:00:00.000Z');
   });
   it('preserves GROUP kinds', () => {
     const snap = buildSnapshot(projectRow, [{ ...rawPage, kind: 'GROUP' }], '2026-01-01');
     expect(snap.pages[0]?.kind).toBe('GROUP');
   });
-  it('synthesizes an English language when none are provided', () => {
-    const snap = buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01');
-    expect(snap.project.languages).toEqual([{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }]);
+  it('rejects a project without exactly one default language', () => {
+    expect(() => buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01')).toThrow('exactly one default language');
   });
   it('deduplicates branch version slugs while preserving exact version ids on pages', () => {
     const snap = buildSnapshot(
@@ -148,9 +150,9 @@ describe('buildSnapshot', () => {
       '2026-01-01',
     );
     expect(snap.project.versions.map((version) => version.slug)).toEqual(['foo-bar', 'foo-bar-branch_b']);
-    expect(snap.pages.map((page) => [page.id, page.versionId, page.versionSlug])).toEqual([
-      ['a', 'branch_a', 'foo-bar'],
-      ['b', 'branch_b', 'foo-bar-branch_b'],
+    expect(snap.pages.map((page) => [page.id, page.versionId])).toEqual([
+      ['a', 'branch_a'],
+      ['b', 'branch_b'],
     ]);
   });
   it('interpolates {{ variables }} from config into page title/description/content at build time', () => {
@@ -196,13 +198,11 @@ describe('pageDescription and defaultLanguage', () => {
     expect(pageDescription({ description: 'Hi', content: 'x' })).toBe('Hi');
     expect(pageDescription({ description: null, content: '# Title\n\nBody text.' })).toContain('Body text');
   });
-  it('returns the default language, falling back to first then English', () => {
+  it('returns the one configured default language', () => {
     expect(defaultLanguage(proj([{ code: 'ar', label: 'ع', direction: 'RTL', isDefault: true, config: null }])).code).toBe('ar');
-    expect(defaultLanguage(proj([])).code).toBe('en');
   });
-  it('tolerates legacy snapshots with no languages array (no crash, English fallback)', () => {
-    // Snapshots captured before the languages feature have no `languages` key.
-    expect(defaultLanguage({} as unknown as SnapshotProject).code).toBe('en');
+  it('rejects a snapshot without one default language', () => {
+    expect(() => defaultLanguage(proj([]))).toThrow('exactly one default language');
   });
 });
 

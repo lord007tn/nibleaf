@@ -73,12 +73,6 @@ WORKBENCH_USER=<admin-user>
 WORKBENCH_PASS=<strong-password>
 ```
 
-> **Legacy names:** older guides used `PUBLIC_APP_URL` / `PUBLIC_API_URL` /
-> `PUBLIC_STORAGE_ENDPOINT` / `PUBLIC_STORAGE_URL` / `STORAGE_ACCESS_KEY` /
-> `STORAGE_SECRET_KEY`. The source-build `docker-compose.yml` still honors them
-> as aliases, but new deployments should use the canonical names above — they
-> are what the apps themselves read.
-
 ### Using Cloudflare R2 / AWS S3 instead of maxio
 
 Point the `STORAGE_*` variables at your bucket; the bundled `maxio` service is
@@ -364,12 +358,12 @@ retention pruning:
 ```
 
 For the Coolify compose stack, its deliberately named storage volume is
-`nibleaf-coolify-maxio` (or your `NIBLEAF_MAXIO_VOLUME` override). Pass it
-explicitly so the database **and** uploaded assets are included:
+`nibleaf-coolify-maxio`. Pass it explicitly so the database **and** uploaded
+assets are included:
 
 ```bash
 COMPOSE_FILE=docker-compose.coolify.yml \
-STORAGE_VOLUME="${NIBLEAF_MAXIO_VOLUME:-nibleaf-coolify-maxio}" \
+STORAGE_VOLUME=nibleaf-coolify-maxio \
 ./scripts/backup.sh
 ```
 

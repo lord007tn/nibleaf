@@ -1,8 +1,8 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="apps/www/public/brand/nibleaf-logo-horizontal-ltr-reverse.svg" />
-  <img src="apps/www/public/brand/nibleaf-logo-horizontal-ltr.svg" alt="Nibleaf" height="56" />
+  <source media="(prefers-color-scheme: dark)" srcset="apps/app/public/brand/nibleaf-logo-horizontal-ltr-reverse.svg" />
+  <img src="apps/app/public/brand/nibleaf-logo-horizontal-ltr.svg" alt="Nibleaf" height="56" />
 </picture>
 
 ### The open-source Mintlify alternative
@@ -161,8 +161,7 @@ A [Turborepo](https://turbo.build) + [pnpm](https://pnpm.io) monorepo:
 
 ```
 apps/
-  www      Marketing site               TanStack Start (SSR)          :4313
-  app      Dashboard + editor + docs    TanStack Start + Query/Form   :4310
+  app      Marketing + dashboard + docs TanStack Start + Query/Form   :4310
   server   API                          Hono + better-auth            :4311
   worker   Background jobs              BullMQ                         :4312
   admin    Platform admin panel        TanStack Start                 :4315
@@ -207,7 +206,7 @@ docker compose -f docker-compose.dev.yml up -d
 pnpm db:deploy      # or: pnpm db:migrate  (creates a new migration)
 pnpm db:seed
 
-# run server + worker + dashboard (add www/admin with: pnpm dev:full)
+# run server + worker + the app (add admin/docs with: pnpm dev:full)
 pnpm dev
 ```
 
@@ -216,9 +215,8 @@ pnpm dev
 | Dashboard  | http://localhost:4310        |
 | API + docs | http://localhost:4311/docs   |
 | Worker ops | http://localhost:4312/jobs   |
-| Marketing  | http://localhost:4313        |
 
-Demo login (after `pnpm db:seed`): `demo@nibleaf.dev` / `nibleafdemo123`.
+Demo login (after `pnpm db:seed`): `demo@nibleaf.test` / `nibleafdemo123`.
 
 ## 📜 Scripts
 

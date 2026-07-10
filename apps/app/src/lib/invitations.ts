@@ -18,26 +18,14 @@ export const inviteAcceptUrl = (invitationId: string): string => {
   return `${origin}/accept-invite/${invitationId}`;
 };
 
-/** Copy text to the clipboard, with a hidden-textarea fallback for older/insecure contexts. */
+/** Copy text with the standard Clipboard API. */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // fall through to the legacy path
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    return false;
   }
   try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    document.body.appendChild(textarea);
-    textarea.select();
-    const ok = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return ok;
+    await navigator.clipboard.writeText(text);
+    return true;
   } catch {
     return false;
   }

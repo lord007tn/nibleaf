@@ -30,15 +30,13 @@ export const Route = createFileRoute('/(auth)/sign-up')({
 
 /** Shape of GET /api/public/meta (instance capabilities). */
 interface PublicMeta {
-  providers?: { google?: boolean };
-  signupDisabled?: boolean;
+  providers: { google: boolean };
+  signupDisabled: boolean;
 }
 
-/** Instance capabilities from /api/public/meta. Defensive: until the endpoint
- *  answers — or if it's missing/failing — keep the current behaviour (show
- *  everything, sign-ups open). */
+/** Instance capabilities from /api/public/meta. */
 function usePublicMeta() {
-  const [meta, setMeta] = useState({ googleEnabled: true, signupDisabled: false });
+  const [meta, setMeta] = useState({ googleEnabled: false, signupDisabled: true });
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -47,12 +45,13 @@ function usePublicMeta() {
         if (!res.ok) {
           return;
         }
-        const data = (await res.json()) as PublicMeta;
+        const { data } = (await res.json()) as { data: PublicMeta };
         if (!cancelled) {
-          setMeta({ googleEnabled: data.providers?.google === true, signupDisabled: data.signupDisabled === true });
+          setMeta({ googleEnabled: data.providers.google, signupDisabled: data.signupDisabled });
         }
       } catch {
-        // Endpoint unavailable — keep the permissive defaults.
+        // Fail closed: do not open registration when instance policy cannot be
+        // loaded.
       }
     })();
     return () => {

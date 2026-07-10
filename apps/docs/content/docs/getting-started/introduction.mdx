@@ -35,7 +35,7 @@ When you work in Nibleaf, the services cooperate like this:
   </Step>
   <Step>
     The **API** (`@nibleaf/server`, port 4311) persists content to PostgreSQL via
-    Prisma and stores uploaded assets in MinIO/S3.
+    Prisma and stores uploaded assets in maxio or another S3-compatible service.
   </Step>
   <Step>
     When you hit **Publish**, the API enqueues a build job on BullMQ.
@@ -58,7 +58,7 @@ When you work in Nibleaf, the services cooperate like this:
 | API framework | Hono |
 | ORM / database | Prisma + PostgreSQL |
 | Job queue | BullMQ + Redis |
-| Object storage | MinIO (S3-compatible) |
+| Object storage | maxio (S3-compatible) |
 | Search | Orama |
 
 <Callout type="info">

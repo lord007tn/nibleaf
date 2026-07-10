@@ -72,8 +72,8 @@ export const exportProjectMarkdown = async (projectId: string): Promise<ProjectE
     if (page.kind !== 'PAGE') {
       continue;
     }
-    const branch = safeSegment(page.branch?.name ?? 'main');
-    const language = safeSegment(page.language?.code ?? 'en');
+    const branch = safeSegment(page.branch.name);
+    const language = safeSegment(page.language.code);
     let name = `${branch}/${language}/${safePath(page.path || page.slug || page.id)}.md`;
     if (usedNames.has(name)) {
       name = name.replace(/\.md$/, `-${page.id}.md`);

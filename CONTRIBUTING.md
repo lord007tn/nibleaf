@@ -29,7 +29,7 @@ pnpm install
 # Bring up the datastores (Postgres, Dragonfly, maxio):
 docker compose up -d postgres dragonfly maxio
 
-# Apply migrations and seed a local demo account (demo@nibleaf.dev / nibleafdemo123):
+# Apply migrations and seed a local demo account (demo@nibleaf.test / nibleafdemo123):
 pnpm db:deploy
 pnpm db:seed
 
@@ -39,7 +39,6 @@ pnpm dev
 
 - Dashboard: http://localhost:4310
 - API + OpenAPI docs: http://localhost:4311/docs
-- Marketing site: http://localhost:4313
 
 Alternatively, run the whole stack in containers with `docker compose up -d --build`.
 

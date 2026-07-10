@@ -6,7 +6,7 @@ export type CalloutType = 'note' | 'info' | 'tip' | 'check' | 'warning' | 'dange
 /** Normalize an admonition/callout keyword to one of our supported types. */
 export const normalizeType = (raw?: string): CalloutType => {
   const t = (raw ?? 'note').toLowerCase();
-  if (t === 'caution' || t === 'error') return 'danger';
+  if (t === 'caution') return 'danger';
   if (t === 'important') return 'info';
   if (['note', 'info', 'tip', 'check', 'warning', 'danger'].includes(t)) return t as CalloutType;
   return 'note';

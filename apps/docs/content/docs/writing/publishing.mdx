@@ -31,7 +31,7 @@ publish, and every publish produces an immutable version you can roll back to.
   <Step>
     ### Deploy
 
-    The built output is written to object storage (MinIO/S3) and a **deployment**
+    The built output is written to object storage (maxio/S3) and a **deployment**
     record maps the version to your project's domain.
   </Step>
   <Step>
@@ -78,7 +78,7 @@ Map a project to your own domain so readers see your docs at, for example,
   <Step>Nibleaf serves the live deployment on that domain after verification.</Step>
 </Steps>
 
-<Callout type="warn">
+<Callout type="warning">
   DNS changes can take time to propagate. Until they do, your docs remain
   reachable on the default deployment URL.
 </Callout>

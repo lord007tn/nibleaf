@@ -4,6 +4,7 @@ import {
   adminSetRoleBody,
   confirmAssetBody,
   createLanguageBody,
+  createProjectBody,
   gitConfigSchema,
   inferSafeInlineAssetContentType,
   paginationQuery,
@@ -48,6 +49,15 @@ describe('projectConfigSchema', () => {
       }).success,
     ).toBe(true);
     expect(projectConfigSchema.safeParse({ addons: { advancedAiSearch: true } }).success).toBe(false);
+  });
+});
+
+describe('project bodies', () => {
+  it('rejects retired top-level appearance fields', () => {
+    expect(createProjectBody.safeParse({ name: 'Docs', color: '#5546e8' }).success).toBe(false);
+    expect(updateProjectBody.safeParse({ logoUrl: 'https://example.com/logo.svg' }).success).toBe(false);
+    expect(updateProjectBody.safeParse({ faviconUrl: 'https://example.com/favicon.ico' }).success).toBe(false);
+    expect(updateProjectBody.safeParse({ theme: { primaryColor: '#5546e8' } }).success).toBe(false);
   });
 });
 

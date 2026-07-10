@@ -28,6 +28,7 @@ import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import { queryKeys, useAnalytics, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { mutateData } from '@/hooks/api/client-helpers';
+import { api } from '@/lib/api';
 import { useFormatters, viewsTrend } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
@@ -278,18 +279,9 @@ function PublishFailureCard({
   const grammarOnly = issues.length > 0 && issues.every((issue) => issue.type === 'grammar');
 
   const publishAnyway = useMutation({
-    // Plain same-origin fetch (not the typed RPC client): the built
-    // @nibleaf/server rpc types don't carry `skipGrammarChecks` until that
-    // package is rebuilt. The route accepts it (see apps/server
-    // modules/app/deployments/handlers.ts `publishDeploymentBody`).
     mutationFn: async () =>
       mutateData<Deployment>(
-        await fetch(`/api/app/projects/${projectId}/deployments`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ skipGrammarChecks: true }),
-        }),
+        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         t('overview.publishFailed.error'),
       ),
     onSuccess: () => {

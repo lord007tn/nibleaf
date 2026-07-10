@@ -17,19 +17,19 @@ datasource db {
 // ─── Auth (better-auth) ──────────────────────────────────────────────────────
 
 model User {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
+  email         String    @unique
+  emailVerified Boolean   @default(false)
   image         String?
   /// Platform role for the internal admin panel (apps/admin): "user" | "admin".
   /// Separate from per-workspace Member roles; managed via the grant-admin script.
-  role          String   @default("user")
+  role          String    @default("user")
   /// Moderation: set when a platform admin suspends the account. Suspended users
   /// cannot sign in and every dashboard API request is rejected by the auth guard.
   suspendedAt   DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   sessions    Session[]
   accounts    Account[]
@@ -165,12 +165,6 @@ model Project {
   slug           String
   description    String?
   icon           String?
-  // Branding / appearance
-  color          String       @default("#5546e8")
-  logoUrl        String?
-  faviconUrl     String?
-  /// Legacy theme config (superseded by `config`); kept for back-compat.
-  theme          Json?
   /// Full site configuration: { visibility, branding, styling, typography,
   /// navbar, footer, banner, seo, search, analytics, redirects, variables }.
   config         Json?
@@ -244,35 +238,35 @@ model Language {
 /// content; `kind = PAGE` is a renderable MDX page. `path` is the full slug path.
 /// Pages belong to a `Language`; the tree is scoped per (project, language).
 model Page {
-  id          String    @id @default(cuid())
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  languageId  String?
-  language    Language? @relation(fields: [languageId], references: [id], onDelete: Cascade)
-  branchId    String?
-  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  parentId    String?
-  parent      Page?     @relation("PageTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    Page[]    @relation("PageTree")
-  kind        PageKind  @default(PAGE)
-  title       String
-  slug        String
-  path        String
-  icon        String?
-  description String?
-  content     String    @default("")
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  languageId     String
+  language       Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  branchId       String
+  branch         Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  parentId       String?
+  parent         Page?    @relation("PageTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children       Page[]   @relation("PageTree")
+  kind           PageKind @default(PAGE)
+  title          String
+  slug           String
+  path           String
+  icon           String?
+  description    String?
+  content        String   @default("")
   /// Per-page overrides: { seo: { metaTitle, metaDescription, ogImage,
   /// canonicalUrl, noindex }, sidebarTitle, mode: 'default'|'wide'|'center',
   /// hideToc }. Layered over language.config + project.config on the live site.
-  config      Json?
+  config         Json?
   /// Links the same logical page across languages whose slugs differ (e.g. EN
   /// "introduction-merged" ↔ AR "introduction"), so hreflang alternates pair up
   /// even when paths don't match. Shared by all language variants of one page.
   translationKey String?
-  position    Int       @default(0)
-  hidden      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  position       Int      @default(0)
+  hidden         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   comments Comment[]
 
@@ -411,4 +405,3 @@ model AnalyticsEvent {
   @@index([projectId, type])
   @@map("analytics_event")
 }
-

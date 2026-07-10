@@ -24,8 +24,7 @@ This document maps **who** uses the product, **what** they need (user stories), 
 ```mermaid
 flowchart LR
     subgraph Clients
-        Editor["Dashboard & Editor<br/>(app :4310)"]
-        Marketing["Marketing site<br/>(www :4313)"]
+        Editor["Marketing, Dashboard & Editor<br/>(app :4310)"]
         AdminUI["Admin panel<br/>(admin :4315)"]
         LiveSite["Published docs site<br/>(/sites/:id or custom domain)"]
     end
@@ -41,7 +40,6 @@ flowchart LR
     end
 
     Editor -->|same-origin /api proxy| API
-    Marketing --> API
     AdminUI --> API
     LiveSite --> API
     API --> PG
@@ -59,7 +57,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Root["/"] --> WWW["Marketing (www): / , /features, /pricing, /self-hosting, /cloud, /about"]
+    Root["/"] --> Marketing["Marketing (app): /, /pricing, /self-hosting, /cloud, /about"]
 
     subgraph Dashboard["Dashboard app (/app)"]
         Auth["(auth): sign-in, sign-up, forgot-password, reset-password, verify-email"]
@@ -485,10 +483,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    Compose["docker compose up -d"] --> Stack["app + api + worker + www + admin"]
+    Compose["docker compose up -d"] --> Stack["app + api + worker + docs + admin"]
     Stack --> PG[("Postgres")]
     Stack --> DF[("Dragonfly")]
-    Stack --> S3[("S3 / MinIO")]
+    Stack --> S3[("S3 / maxio")]
     Ops["Operator"] --> Health["/health checks"]
     Ops --> Jobs["Worker /jobs dashboard"]
     Ops --> Upgrade["pull -> db:deploy -> restart -> verify publish"]

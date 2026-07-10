@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
-import type { AnalyticsRange, TrackEventBody } from '@nibleaf/validators';
+import type { AnalyticsRange, ProjectConfig, TrackEventBody } from '@nibleaf/validators';
 import { assertProjectInOrg } from './projects';
 
 const RANGE_DAYS: Record<AnalyticsRange, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
@@ -81,11 +81,11 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
   const organizationIds = memberships.map((m) => m.organizationId);
   const projects = await prisma.project.findMany({
     where: { organizationId: { in: organizationIds } },
-    select: { id: true, name: true, color: true },
+    select: { id: true, name: true, config: true },
   });
   const projectIds = projects.map((p) => p.id);
   const nameById = new Map(projects.map((p) => [p.id, p.name]));
-  const colorById = new Map(projects.map((p) => [p.id, p.color]));
+  const colorById = new Map(projects.map((project) => [project.id, (project.config as ProjectConfig | null)?.styling?.primaryColor ?? '#5546e8']));
 
   if (projectIds.length === 0) {
     return {

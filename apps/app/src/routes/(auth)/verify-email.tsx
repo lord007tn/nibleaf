@@ -15,13 +15,6 @@ export const Route = createFileRoute('/(auth)/verify-email')({
   }),
 });
 
-// better-auth's email-verification methods are plugin/proxy-generated and may not be
-// present on every build, so reach for them defensively.
-type VerifyClient = {
-  sendVerificationEmail?: (args: { email: string }) => Promise<unknown>;
-  verifyEmail?: (args: { query: { token: string } }) => Promise<unknown>;
-};
-
 function VerifyEmailPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -41,8 +34,10 @@ function VerifyEmailPage() {
     let cancelled = false;
     (async () => {
       try {
-        const client = authClient as unknown as VerifyClient;
-        await client.verifyEmail?.({ query: { token } });
+        const result = await authClient.verifyEmail({ query: { token } });
+        if (result.error) {
+          throw new Error(result.error.message);
+        }
         if (cancelled) {
           return;
         }
@@ -71,8 +66,10 @@ function VerifyEmailPage() {
     }
     setSending(true);
     try {
-      const client = authClient as unknown as VerifyClient;
-      await client.sendVerificationEmail?.({ email });
+      const result = await authClient.sendVerificationEmail({ email, callbackURL: '/app' });
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
       toast.success(t('auth.verify.sentToast', { email }));
     } catch {
       toast.error(t('auth.verify.sendError'));

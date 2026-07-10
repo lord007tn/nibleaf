@@ -66,10 +66,6 @@ case "$cmd" in
     echo "[nibleaf] starting dashboard on :${PORT:-4310}"
     exec node apps/app/.output/server/index.mjs
     ;;
-  www)
-    echo "[nibleaf] starting marketing site on :${PORT:-4313}"
-    exec node apps/www/.output/server/index.mjs
-    ;;
   docs)
     echo "[nibleaf] starting docs site on :${PORT:-4314}"
     exec node apps/docs/.output/server/index.mjs

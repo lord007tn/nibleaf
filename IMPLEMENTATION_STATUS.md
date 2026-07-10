@@ -185,8 +185,8 @@ Completed on 2026-06-30:
   - `pnpm dev` with Postgres, Dragonfly, and maxio already running.
   - Chrome rendered the authenticated project overview, domain settings, API key
     settings, search settings, and published docs site.
-  - Public resolver returned the seeded project for `docs.nibleaf.app` when
-    `SITE_BASE_DOMAIN=nibleaf.app` was injected.
+  - Public resolver returned the seeded project for `docs.nibleaf.test` when
+    `SITE_BASE_DOMAIN=nibleaf.test` was injected.
   - Public resolver returned the seeded project for a local verified custom
     domain row `docs.example.test`, including a `:443` host header.
   - Public resolver returned `null` for nested and unrelated subdomain hosts.

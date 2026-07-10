@@ -114,7 +114,7 @@ pnpm dev
 ```
 
 Open the dashboard at [http://localhost:4310](http://localhost:4310). The seed
-creates `demo@nibleaf.dev` with password `nibleafdemo123`.
+creates `demo@nibleaf.test` with password `nibleafdemo123`.
 
 ## Production-style stack
 
@@ -194,7 +194,7 @@ Postgres, Dragonfly, and maxio use Docker volumes. Do not run
 `docker compose down -v` unless you intend to delete the database, queue state,
 and stored assets.
 
-<Callout type="warn">
+<Callout type="warning">
   For production, do not publish datastore ports to the public internet. Keep
   Postgres, Dragonfly, and maxio on the internal Docker network and expose only
   your reverse proxy.

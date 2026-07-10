@@ -249,11 +249,12 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
 
   const currentSnapshot = deployment.snapshot as unknown as SiteSnapshot;
   const previousSnapshot = previousDeployment?.snapshot ? (previousDeployment.snapshot as unknown as SiteSnapshot) : null;
-  const previousById = new Map((previousSnapshot?.pages ?? []).map((page) => [page.id, page]));
-  const currentIds = new Set((currentSnapshot.pages ?? []).map((page) => page.id));
+  const previousPages = previousSnapshot ? previousSnapshot.pages : [];
+  const previousById = new Map(previousPages.map((page) => [page.id, page]));
+  const currentIds = new Set(currentSnapshot.pages.map((page) => page.id));
   const changes: DeploymentPageDiff[] = [];
 
-  for (const page of currentSnapshot.pages ?? []) {
+  for (const page of currentSnapshot.pages) {
     const previous = previousById.get(page.id);
     if (!previous) {
       changes.push(pageSummary(page, 'added'));
@@ -261,7 +262,7 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
       changes.push(pageSummary(page, 'modified', previous));
     }
   }
-  for (const page of previousSnapshot?.pages ?? []) {
+  for (const page of previousPages) {
     if (!currentIds.has(page.id)) {
       changes.push(pageSummary(page, 'removed', page));
     }
@@ -285,11 +286,11 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
   }
   const branchIds = project.branches.map((branch) => branch.id);
   const pages = await prisma.page.findMany({
-    where: { projectId, ...(branchIds.length > 0 ? { branchId: { in: branchIds } } : {}) },
+    where: { projectId, branchId: { in: branchIds } },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    include: { language: { select: { code: true } }, branch: { select: { id: true, name: true, isDefault: true } } },
+    include: { language: { select: { code: true } } },
   });
-  const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
+  const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
   const current = buildSnapshot(project, pageRows, new Date().toISOString()).pages;
 
   // No baseline → first publish: every page is new.
@@ -303,7 +304,7 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
   }
 
   const snap = latest.snapshot as unknown as SiteSnapshot;
-  const prevById = new Map((snap.pages ?? []).map((p) => [p.id, p]));
+  const prevById = new Map(snap.pages.map((p) => [p.id, p]));
   const currentIds = new Set(current.map((p) => p.id));
   const changes: PendingChange[] = [];
 
@@ -315,7 +316,7 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
       changes.push(pageSummary(p, 'modified', prev));
     }
   }
-  for (const prev of snap.pages ?? []) {
+  for (const prev of snap.pages) {
     if (!currentIds.has(prev.id)) {
       changes.push(pageSummary(prev, 'removed', prev));
     }
@@ -374,14 +375,12 @@ export const createDeployment = async (organizationId: string, projectId: string
       },
     }),
   );
-  // `skipGrammarChecks` / `auto` ride along in the job payload (cast until
-  // PublishDeploymentJobData declares them); the worker reads them defensively.
-  const jobData = {
+  const jobData: PublishDeploymentJobData = {
     deploymentId: deployment.id,
     projectId,
     skipGrammarChecks: body.skipGrammarChecks === true,
     auto: false,
-  } as PublishDeploymentJobData;
+  };
   await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });
   logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: false, version: deployment.version } });
   return deployment;

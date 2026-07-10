@@ -221,8 +221,7 @@ function SiteChrome() {
   // highlight that page's nav entry rather than leaving the sidebar inert.
   const effectiveCurrentPath = contentPath || firstLeafPath(site?.nav ?? []) || '';
 
-  // Config is a free-form JSON blob server-side; treat every field as optional.
-  const config = (site?.project.config ?? null) as unknown as ProjectConfig | null;
+  const config: ProjectConfig | null = site?.project.config ?? null;
   const languages = site?.languages ?? [];
   const versions = site?.versions ?? [];
   // Resolve the active language: URL param → server-reported active → default → first.
@@ -302,10 +301,10 @@ function SiteChrome() {
     document.documentElement.classList.toggle('dark', siteTheme === 'dark');
   }, [siteTheme]);
 
-  // Apply the project's favicon on the published site.
-  const faviconUrl = site?.project.faviconUrl;
+  // Apply the configured favicon on the published site.
+  const faviconUrl = config?.branding?.favicon || '/favicon.svg';
   useEffect(() => {
-    if (typeof document === 'undefined' || !faviconUrl) {
+    if (typeof document === 'undefined') {
       return;
     }
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
@@ -336,9 +335,8 @@ function SiteChrome() {
     );
   }
 
-  const accent = config?.styling?.primaryColor ?? site?.project.color ?? '#5546e8';
-  // Search is on by default; only an explicit `false` hides it (legacy configs
-  // that never set the field keep search).
+  const accent = config?.styling?.primaryColor ?? '#5546e8';
+  // Search is on by default; only an explicit `false` hides it.
   const showSearch = config?.navbar?.showSearch !== false;
   const searchHotkey = config?.search?.hotkey;
   const navLinks = config?.navbar?.links ?? [];
@@ -348,15 +346,13 @@ function SiteChrome() {
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
   const addons = config?.addons;
-  // "Made with Nibleaf" attribution: on by default, only an explicit config
-  // `false` hides it. Read defensively — the key ships ahead of the validator.
-  const showBadge = (footer as { madeWithBadge?: boolean } | undefined)?.madeWithBadge !== false;
+  // "Made with Nibleaf" attribution is on by default.
+  const showBadge = footer?.madeWithBadge !== false;
   const hasFooterContent = Boolean(footer && (footer.copyright || footer.github || footer.x || footer.linkedin));
 
-  // Branding: a theme-specific logo (config.branding) overrides the legacy
-  // top-level logoUrl, and an optional logoHref points the brand off-site.
+  // Branding can provide a theme-specific logo and an optional off-site link.
   const branding = config?.branding;
-  const logoSrc = (siteTheme === 'dark' ? branding?.logoDark || branding?.logoLight : branding?.logoLight) || site?.project.logoUrl || null;
+  const logoSrc = (siteTheme === 'dark' ? branding?.logoDark || branding?.logoLight : branding?.logoLight) || null;
   const logoHref = branding?.logoHref?.trim() || undefined;
 
   // Apply the configured corner radius + typography. Font names are charset-guarded

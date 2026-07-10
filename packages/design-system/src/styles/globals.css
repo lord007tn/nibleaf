@@ -10,7 +10,7 @@
    Tailwind v4's automatic content detection skips — so classes used ONLY here
    (e.g. the dialog's `top-1/2` / `bg-popover`) would otherwise be missing from
    the generated CSS, leaving those components unstyled. One recursive glob (as
-   in joodcms) covers every component/hook/lib/theme file. Relative to this file
+   in the design-system package) covers every component/hook/lib/theme file. Relative to this file
    (packages/design-system/src/styles/), so `../` is the package `src`. */
 @source "../**/*.{ts,tsx}";
 

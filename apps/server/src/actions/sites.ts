@@ -23,17 +23,13 @@ import { LruCache, TtlCache } from '@/lib/lru';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 
-/** Resolve a published site by project id (preferred) or globally-unique slug. */
+/** Resolve a published site by its canonical project id. */
 const resolveProjectId = async (identifier: string): Promise<string> => {
   const byId = await prisma.project.findUnique({ where: { id: identifier }, select: { id: true } });
-  if (byId) {
-    return byId.id;
-  }
-  const bySlug = await prisma.project.findFirst({ where: { slug: identifier }, select: { id: true }, orderBy: { createdAt: 'asc' } });
-  if (!bySlug) {
+  if (!byId) {
     throw notFound('site', { identifier });
   }
-  return bySlug.id;
+  return byId.id;
 };
 
 interface PublishedSite {
@@ -69,10 +65,6 @@ interface LiveChromeRow {
   name: string;
   description: string | null;
   icon: string | null;
-  color: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  theme: unknown;
   config: unknown;
   /** Moderation kill switch — a taken-down project must stop serving. */
   takedownAt: Date | null;
@@ -115,10 +107,6 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       name: true,
       description: true,
       icon: true,
-      color: true,
-      logoUrl: true,
-      faviconUrl: true,
-      theme: true,
       config: true,
       takedownAt: true,
       // ONLY an explicitly-designated primary domain may become the canonical /
@@ -138,7 +126,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
 };
 
 /** Overlay live, non-versioned site chrome from the Project row onto a snapshot
- *  project. Branding, theme, and config (styling, navbar/footer, SEO, visibility,
+ *  project. Branding and config (styling, navbar/footer, SEO, visibility,
  *  analytics, variables) reflect the current settings so appearance edits are
  *  live without a re-publish. Content, pages, languages and versions are left
  *  as captured — those are the versioned docs a publish freezes. Returns a new
@@ -152,26 +140,8 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
     name: live.name,
     description: live.description,
     icon: live.icon,
-    color: live.color,
-    logoUrl: live.logoUrl,
-    faviconUrl: live.faviconUrl,
-    theme: (live.theme as Record<string, unknown> | null) ?? null,
     config: (live.config as Record<string, unknown> | null) ?? null,
   };
-};
-
-/** Legacy snapshots (captured before the languages/versions features) miss those
- *  arrays; normalize once at cache-fill so every downstream consumer
- *  (activeLanguageCode, defaultLanguage, getSite/getSitePage/searchSite) is safe
- *  rather than 500ing. */
-const normalizeSnapshot = (snapshot: SiteSnapshot): SiteSnapshot => {
-  if (snapshot.project && !Array.isArray(snapshot.project.languages)) {
-    snapshot.project.languages = [];
-  }
-  if (snapshot.project && !Array.isArray(snapshot.project.versions)) {
-    snapshot.project.versions = [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
-  }
-  return snapshot;
 };
 
 /** Moderation gate reusable by public surfaces that never load a snapshot (asset
@@ -207,7 +177,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
     if (!row?.snapshot) {
       throw notFound('site', { identifier, reason: 'not_published' });
     }
-    frozen = normalizeSnapshot(row.snapshot as unknown as SiteSnapshot);
+    frozen = row.snapshot as unknown as SiteSnapshot;
     snapshotCache.set(deployment.id, frozen);
   }
   // Overlay the LIVE site chrome (branding, styling, navbar/footer, SEO,
@@ -236,28 +206,26 @@ const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
   return defaultLanguage(snapshot.project).code;
 };
 
-/** Only the pages belonging to a given language (legacy pages without a code
- *  fall under whichever language is requested). */
-const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => (p.languageCode || lang) === lang);
+/** Only the pages belonging to a given language. */
+const pagesForLanguage = (pages: SnapshotPage[], lang: string): SnapshotPage[] => pages.filter((p) => p.languageCode === lang);
 
-const versionsForSnapshot = (snapshot: SiteSnapshot): SnapshotVersion[] => {
-  const configured = snapshot.project.versions ?? [];
-  if (configured.length > 0) {
-    return configured;
+const defaultVersion = (snapshot: SiteSnapshot): SnapshotVersion => {
+  const defaults = snapshot.project.versions.filter((version) => version.isDefault);
+  if (defaults.length !== 1 || !defaults[0]) {
+    throw new Error(`Snapshot project ${snapshot.project.id} must have exactly one default version.`);
   }
-  return [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
+  return defaults[0];
 };
 
 const activeVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion => {
-  const versions = versionsForSnapshot(snapshot);
   const requested = version?.trim();
   if (requested) {
-    const match = versions.find((v) => v.slug === requested || v.name === requested || v.id === requested);
+    const match = snapshot.project.versions.find((candidate) => candidate.slug === requested);
     if (match) {
       return match;
     }
   }
-  return versions.find((v) => v.isDefault) ?? versions[0] ?? { id: 'main', name: 'main', slug: 'main', isDefault: true };
+  return defaultVersion(snapshot);
 };
 
 const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVersion | undefined => {
@@ -265,18 +233,10 @@ const matchingVersion = (snapshot: SiteSnapshot, version?: string): SnapshotVers
   if (!requested) {
     return undefined;
   }
-  return versionsForSnapshot(snapshot).find((v) => v.slug === requested || v.name === requested || v.id === requested);
+  return snapshot.project.versions.find((candidate) => candidate.slug === requested);
 };
 
-const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => {
-  if (page.versionId) {
-    return page.versionId === version.id;
-  }
-  if (page.versionSlug) {
-    return page.versionSlug === version.slug;
-  }
-  return version.isDefault;
-};
+const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => page.versionId === version.id;
 
 const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): SnapshotPage[] =>
   snapshot.pages.filter((page) => pageBelongsToVersion(page, version));
@@ -290,7 +250,7 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
   return {
     project: snapshot.project,
     languages: snapshot.project.languages,
-    versions: versionsForSnapshot(snapshot),
+    versions: snapshot.project.versions,
     activeLanguage,
     activeVersion: docsVersion.slug,
     nav: buildNavTree(versionPages, activeLanguage),
@@ -331,7 +291,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     throw notFound('page', { path: normalized });
   }
   const { page, pages } = match;
-  const navLanguage = page.languageCode || activeLanguage;
+  const navLanguage = page.languageCode;
 
   const order = flattenNav(buildNavTree(pages, navLanguage));
   const index = order.findIndex((node) => node.path === page.path);
@@ -360,7 +320,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     // ?lang when it fell back) — canonical/og/hreflang are built from this.
     activeLanguage: navLanguage,
     activeVersion: docsVersion.slug,
-    versions: versionsForSnapshot(snapshot),
+    versions: snapshot.project.versions,
     page: {
       id: page.id,
       title: page.title,
@@ -482,14 +442,12 @@ type SiteSeoConfig = { visibility?: string; seo?: { allowIndex?: boolean } } | n
 
 const seoConfigOf = (snapshot: SiteSnapshot): SiteSeoConfig => snapshot.project.config as SiteSeoConfig;
 
-/** Parse a timestamp defensively — snapshots are user data from arbitrary
- *  historical builds, so a malformed date must degrade, not 500 the sitemap. */
-const isoOrNull = (value: string | null | undefined): string | null => {
-  if (!value) {
-    return null;
-  }
+const isoTimestamp = (value: string, label: string): string => {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`Snapshot contains an invalid ${label} timestamp.`);
+  }
+  return date.toISOString();
 };
 
 /** XML sitemap of every indexable (non-hidden, non-noindex) page across all
@@ -500,7 +458,6 @@ const isoOrNull = (value: string | null | undefined): string | null => {
 export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocument> => {
   const { snapshot } = await getPublished(identifier);
   const base = `${env.APP_URL}/sites/${snapshot.project.id}`;
-  const generatedAt = isoOrNull(snapshot.generatedAt);
   const config = seoConfigOf(snapshot);
   const isPrivate = config?.visibility === 'private';
   // A private or index-disabled site has an empty sitemap.
@@ -514,16 +471,16 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
     .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode))
     .map((page) => {
       // Default-language pages use the clean URL (no ?lang) — their canonical.
-      const pageVersion = versionsForSnapshot(snapshot).find((v) => pageBelongsToVersion(page, v));
-      const versionPath = pageVersion && !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
+      const pageVersion = snapshot.project.versions.find((version) => pageBelongsToVersion(page, version));
+      if (!pageVersion) {
+        throw new Error(`Snapshot page ${page.id} references an unknown version.`);
+      }
+      const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
       const pagePath = page.path ? `/${page.path}` : '';
-      const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
+      const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
       const loc = `${base}${versionPath}${pagePath}${langQuery}`;
-      // Newer snapshots carry a per-page updatedAt; older ones fall back to the
-      // snapshot's own build time so lastmod is never fabricated per URL.
-      const lastmod = isoOrNull((page as SnapshotPage & { updatedAt?: string }).updatedAt) ?? generatedAt;
-      const lastmodTag = lastmod ? `<lastmod>${escapeXml(lastmod)}</lastmod>` : '';
-      return `  <url><loc>${escapeXml(loc)}</loc>${lastmodTag}</url>`;
+      const lastmod = isoTimestamp(page.updatedAt, 'page updatedAt');
+      return `  <url><loc>${escapeXml(loc)}</loc><lastmod>${escapeXml(lastmod)}</lastmod></url>`;
     });
   return {
     body: `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>`,

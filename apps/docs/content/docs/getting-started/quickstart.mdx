@@ -17,7 +17,7 @@ publishing your first documentation page.
     The monorepo uses pnpm workspaces.
   </Card>
   <Card title="Docker">
-    For Postgres, Redis, and MinIO during local development.
+    For Postgres, Dragonfly, and maxio during local development.
   </Card>
 </Cards>
 
@@ -36,7 +36,7 @@ publishing your first documentation page.
   <Step>
     ### Start the backing services
 
-    Postgres, Redis, and MinIO come up via Compose:
+    Postgres, Dragonfly, and maxio come up via Compose:
 
     ```bash
     docker compose -f docker-compose.dev.yml up -d
@@ -78,10 +78,9 @@ publishing your first documentation page.
 <Callout type="info">
   Once everything is up, the services listen on these ports:
 
-  - Dashboard — [http://localhost:4310](http://localhost:4310)
+  - App (marketing, dashboard, and published docs) — [http://localhost:4310](http://localhost:4310)
   - API — `http://localhost:4311`
   - Worker — internal, port 4312
-  - Marketing site — [http://localhost:4313](http://localhost:4313)
   - Docs (this site) — [http://localhost:4314](http://localhost:4314)
 </Callout>
 
@@ -106,8 +105,8 @@ publishing your first documentation page.
   </Step>
 </Steps>
 
-<Callout type="warn">
-  Local publishing serves over the development MinIO bucket. For real domains and
+<Callout type="warning">
+  Local publishing serves over the development maxio bucket. For real domains and
   TLS, see [self-hosting](/docs/self-hosting/docker).
 </Callout>
 

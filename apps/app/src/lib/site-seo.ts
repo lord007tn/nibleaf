@@ -10,7 +10,7 @@ export function publicOrigin(): string {
     return window.location.origin;
   }
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  return env?.APP_URL ?? env?.PUBLIC_APP_URL ?? 'http://localhost:4310';
+  return env?.APP_URL ?? 'http://localhost:4310';
 }
 
 /** The free-subdomain base configured for this deployment (`<slug>.<base>`),
@@ -150,7 +150,7 @@ export function sitePageUrl(projectId: string, path: string, lang?: string, opti
   return `${canonicalSiteBase(projectId, options)}${clean}${query}`;
 }
 
-const seoConfig = (config: Record<string, unknown> | null) => (config ?? null) as unknown as ProjectConfig | null;
+const seoConfig = (config: ProjectConfig | null) => config;
 
 /**
  * Site-level <head>: favicon, og:site_name and theme-color. Per-page head()
@@ -162,15 +162,14 @@ export function siteHead(site: SiteShell | null | undefined): Head {
   }
   const config = seoConfig(site.project.config);
   const meta: Tag[] = [{ property: 'og:site_name', content: site.project.name }];
-  const themeColor = config?.styling?.primaryColor ?? site.project.color;
+  const themeColor = config?.styling?.primaryColor;
   if (themeColor) {
     meta.push({ name: 'theme-color', content: themeColor });
   }
-  // Always advertise a favicon: the project's own, the branding override, or a
-  // built-in fallback so the browser tab and link previews are never icon-less.
+  // Always advertise either the configured favicon or the built-in favicon.
   // Also point crawlers at the sitemap (served from the API's public endpoint).
   const links: Tag[] = [
-    { rel: 'icon', href: site.project.faviconUrl || config?.branding?.favicon || '/favicon.svg' },
+    { rel: 'icon', href: config?.branding?.favicon || '/favicon.svg' },
     { rel: 'sitemap', type: 'application/xml', href: `${publicOrigin()}/api/public/sites/${site.project.id}/sitemap.xml` },
     ...fontLinks(config),
   ];
@@ -185,32 +184,26 @@ export function siteHead(site: SiteShell | null | undefined): Head {
  * the project: `page.config.seo` › `languageConfig.seo` › `project.config.seo`.
  * This mirrors Mintlify, where page frontmatter overrides the site defaults.
  */
-export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
+export function pageHead(data: SitePage | null | undefined, projectId: string, _lang?: string, origin?: string): Head {
   if (!data) {
     // A nonexistent page is a soft-404: give it a distinct title and, crucially,
     // a robots noindex so search engines never index the not-found shell.
     return { meta: [{ title: 'Page not found' }, { name: 'robots', content: 'noindex,nofollow' }] };
   }
   const config = seoConfig(data.project.config);
-  // Canonical consolidation inputs. `primaryDomain` is read defensively — the
-  // public site payload gains the field server-side separately; until then it
-  // is undefined and the slug-subdomain / request-origin fallbacks apply.
-  const projectMeta = data.project as SitePage['project'] & { primaryDomain?: string | null };
-  const urlOptions: SiteUrlOptions = { primaryDomain: projectMeta.primaryDomain, slug: projectMeta.slug, requestOrigin: origin };
+  const urlOptions: SiteUrlOptions = { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: origin };
   const langSeo = data.languageConfig?.seo;
   const pageSeo = data.page.config?.seo;
-  const languages = data.languages ?? [];
+  const languages = data.languages;
   const defaultCode = languages.find((l) => l.isDefault)?.code;
   // The language the page actually resolved in (not the requested ?lang, which
   // may have fallen back). The default language uses clean, param-less URLs so a
   // page has exactly one canonical (no /path vs /path?lang=en duplication).
-  const activeLang = data.activeLanguage ?? lang;
-  // Append ?lang only for a known non-default language. When the default is
-  // unknown (legacy snapshots with no Language rows), treat the active language
-  // AS the default so the canonical stays param-less and matches the sitemap.
+  const activeLang = data.activeLanguage;
+  // Append ?lang only for a known non-default language.
   const canonicalLang = activeLang && defaultCode && activeLang !== defaultCode ? activeLang : undefined;
   const activeVersion = data.activeVersion;
-  const activeVersionMeta = data.versions?.find((version) => version.slug === activeVersion);
+  const activeVersionMeta = data.versions.find((version) => version.slug === activeVersion);
   const versionPrefix = activeVersionMeta && !activeVersionMeta.isDefault ? activeVersionMeta.slug : undefined;
   const versionedPath = (path: string) => [versionPrefix, path].filter(Boolean).join('/');
 
@@ -246,8 +239,8 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   if (description) {
     meta.push({ property: 'og:description', content: description }, { name: 'twitter:description', content: description });
   }
-  // Prefer the page card, then the language card, then the site card, then the logo.
-  const ogImage = pageSeo?.ogImage || langSeo?.socialImage || config?.seo?.socialImage || data.project.logoUrl;
+  // Prefer the page card, then the language card, site card, or configured logo.
+  const ogImage = pageSeo?.ogImage || langSeo?.socialImage || config?.seo?.socialImage || config?.branding?.logoLight;
   if (ogImage) {
     meta.push({ property: 'og:image', content: ogImage }, { name: 'twitter:image', content: ogImage });
   }

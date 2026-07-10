@@ -24,7 +24,7 @@ export const keys = () =>
           message: 'BETTER_AUTH_SECRET must be a strong (≥32 char) non-default value in production. Generate one with `openssl rand -hex 32`.',
         }),
       BETTER_AUTH_URL: z.url().default('http://localhost:4310'),
-      TRUSTED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4311,http://localhost:4313,http://localhost:4315').transform(csv),
+      TRUSTED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4311,http://localhost:4315').transform(csv),
       GOOGLE_CLIENT_ID: z.string().optional(),
       GOOGLE_CLIENT_SECRET: z.string().optional(),
       // Optional: require a verified email before sign-in (off by default so a

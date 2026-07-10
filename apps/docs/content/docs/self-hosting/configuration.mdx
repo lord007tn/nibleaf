@@ -18,15 +18,14 @@ cp .env.example .env
 | `NODE_ENV` | Set to `production` for production deployments. |
 | `BETTER_AUTH_SECRET` | Strong random secret used to sign auth state. |
 | `POSTGRES_PASSWORD` | Password for the bundled Postgres user. |
-| `STORAGE_ACCESS_KEY` | Access key for bundled maxio object storage. |
-| `STORAGE_SECRET_KEY` | Secret key for bundled maxio object storage. |
+| `STORAGE_ACCESS_KEY_ID` | Access key for bundled maxio object storage. |
+| `STORAGE_SECRET_ACCESS_KEY` | Secret key for bundled maxio object storage. |
 | `BETTER_AUTH_URL` | Browser-facing dashboard origin, for example `https://app.example.com`. |
 | `TRUSTED_ORIGINS` | Comma-separated origins allowed by Better Auth. |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated origins allowed by the API. |
-| `PUBLIC_APP_URL` | Public dashboard origin. |
-| `PUBLIC_API_URL` | Public API origin. In standard Compose, this is the dashboard origin because `/api` is proxied by `app`. |
-| `PUBLIC_STORAGE_ENDPOINT` / `STORAGE_PUBLIC_ENDPOINT` | Browser-reachable S3 endpoint used for presigned upload/download URLs. Standard Compose reads the `PUBLIC_*` alias; Coolify/raw S3 env uses `STORAGE_PUBLIC_ENDPOINT`. |
-| `PUBLIC_STORAGE_URL` | Public base URL for uploaded assets. |
+| `APP_URL` | Public dashboard origin. The app proxies `/api` to the internal API service. |
+| `STORAGE_PUBLIC_ENDPOINT` | Browser-reachable S3 endpoint used for presigned upload/download URLs. |
+| `STORAGE_PUBLIC_URL` | Public base URL for uploaded assets. |
 | `SITE_BASE_DOMAIN` | Wildcard docs base for free project subdomains, for example `docs.example.com`. |
 | `CUSTOM_DOMAIN_CNAME_TARGET` | Host customers CNAME custom domains to, for example `cname.docs.example.com`. |
 
@@ -35,10 +34,10 @@ Generate secrets with OpenSSL:
 ```bash
 openssl rand -hex 32      # BETTER_AUTH_SECRET
 openssl rand -base64 24   # POSTGRES_PASSWORD
-openssl rand -base64 24   # STORAGE_SECRET_KEY
+openssl rand -base64 24   # STORAGE_SECRET_ACCESS_KEY
 ```
 
-<Callout type="warn">
+<Callout type="warning">
   The production entrypoint refuses to boot with an empty or known demo
   `BETTER_AUTH_SECRET`.
 </Callout>
@@ -118,11 +117,10 @@ standard Compose topology, the dashboard also proxies API calls under `/api`, so
 cookies remain first-party.
 
 ```dotenv
+APP_URL=https://app.example.com
 BETTER_AUTH_URL=https://app.example.com
 TRUSTED_ORIGINS=https://app.example.com,https://example.com
 CORS_ALLOWED_ORIGINS=https://app.example.com,https://example.com
-PUBLIC_APP_URL=https://app.example.com
-PUBLIC_API_URL=https://app.example.com
 ```
 
 ## Docs domains
@@ -207,7 +205,6 @@ Rebuild the image after changing them.
 | --- | --- |
 | `VITE_API_URL` | API URL used by the built client. Standard Compose uses `http://server:4311`. |
 | `VITE_APP_URL` | Dashboard URL. |
-| `VITE_WWW_URL` | Marketing site URL. |
 | `VITE_GITHUB_URL` | Repository link shown in the UI. |
 
 ## Next steps

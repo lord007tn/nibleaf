@@ -17,16 +17,13 @@ const KEYWORD_TO_VARIANT: Record<string, CalloutVariant> = Object.fromEntries(
   Object.entries(CALLOUT_VARIANTS).map(([variant, def]) => [def.keyword, variant as CalloutVariant]),
 );
 
-/** Aliases so foreign callout keywords/types map onto our six variants. */
-const VARIANT_ALIASES: Record<string, CalloutVariant> = { caution: 'danger', error: 'danger', important: 'info', warn: 'warning' };
-
-/** Resolve a callout type/keyword/tag-name (e.g. "warning", "Caution", "Note") to a variant. */
+/** Resolve one of Nibleaf's canonical callout types/tag names to a variant. */
 const normalizeVariant = (raw?: string | null): CalloutVariant => {
   const t = (raw ?? 'note').toLowerCase();
   if (t in CALLOUT_VARIANTS) {
     return t as CalloutVariant;
   }
-  return VARIANT_ALIASES[t] ?? 'note';
+  return 'note';
 };
 
 declare module '@tiptap/core' {

@@ -19,9 +19,8 @@ export interface SnapshotLanguageConfig {
 export interface SnapshotPage {
   id: string;
   parentId: string | null;
-  versionId?: string;
-  version?: string;
-  versionSlug?: string;
+  versionId: string;
+  updatedAt: string;
   languageCode: string;
   kind: 'PAGE' | 'GROUP';
   title: string;
@@ -58,10 +57,6 @@ export interface SnapshotProject {
   slug: string;
   description: string | null;
   icon: string | null;
-  color: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  theme: Record<string, unknown> | null;
   config: Record<string, unknown> | null;
   languages: SnapshotLanguage[];
   versions: SnapshotVersion[];
@@ -85,12 +80,13 @@ export const projectSlugFromSubdomainHost = (host: string, baseDomain?: string |
   return slug && !slug.includes('.') ? slug : null;
 };
 
-/** The default language of a snapshot (or a synthesized English fallback for
- *  legacy snapshots captured before languages existed). */
+/** The one default language required by the snapshot contract. */
 export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
-  // Tolerate legacy snapshots whose project has no `languages` array at all.
-  const languages = project.languages ?? [];
-  return languages.find((l) => l.isDefault) ?? languages[0] ?? { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null };
+  const defaults = project.languages.filter((language) => language.isDefault);
+  if (defaults.length !== 1 || !defaults[0]) {
+    throw new Error(`Snapshot project ${project.id} must have exactly one default language.`);
+  }
+  return defaults[0];
 };
 
 /** A node in the rendered navigation tree (groups contain children). */
@@ -105,11 +101,9 @@ export interface NavNode {
 }
 
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
- *  When `languageCode` is given, only that language's pages are included. Legacy
- *  pages without a languageCode fall under the requested language so old
- *  snapshots still render. */
+ *  When `languageCode` is given, only that language's pages are included. */
 export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavNode[] => {
-  const visible = pages.filter((p) => !p.hidden && (!languageCode || (p.languageCode || languageCode) === languageCode));
+  const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
   const byParent = new Map<string | null, SnapshotPage[]>();
   for (const page of visible) {
     const list = byParent.get(page.parentId) ?? [];
@@ -237,7 +231,7 @@ const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): s
   return candidate;
 };
 
-type LanguageRow = { code: string; label: string; direction: string; isDefault: boolean; config?: unknown };
+type LanguageRow = { code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; config: unknown };
 type BranchRow = { id: string; name: string; isDefault: boolean };
 type ProjectRow = {
   id: string;
@@ -245,54 +239,42 @@ type ProjectRow = {
   slug: string;
   description: string | null;
   icon: string | null;
-  color: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  theme: unknown;
-  config?: unknown;
-  languages?: LanguageRow[];
-  branches?: BranchRow[];
+  config: unknown;
+  languages: LanguageRow[];
+  branches: BranchRow[];
 };
-type PageRow = Omit<SnapshotPage, 'kind' | 'languageCode' | 'config' | 'versionId' | 'version' | 'versionSlug'> & {
-  kind?: string;
-  languageCode?: string;
-  config?: unknown;
-  branchId?: string | null;
-  branch?: BranchRow | null;
+type PageRow = Omit<SnapshotPage, 'config' | 'versionId'> & {
+  config: unknown;
+  branchId: string;
 };
 
 /** Compose an immutable site snapshot from a project + its pages (publish time). */
 export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt: string): SiteSnapshot => {
-  const languages: SnapshotLanguage[] = (project.languages ?? []).map((l) => ({
+  const languages: SnapshotLanguage[] = project.languages.map((l) => ({
     code: l.code,
     label: l.label,
-    direction: l.direction === 'RTL' ? 'RTL' : 'LTR',
+    direction: l.direction,
     isDefault: l.isDefault,
     config: (l.config as SnapshotLanguageConfig | null) ?? null,
   }));
-  const fallbackCode = languages.find((l) => l.isDefault)?.code ?? languages[0]?.code ?? 'en';
-  const branchRows =
-    project.branches && project.branches.length > 0
-      ? project.branches
-      : Array.from(
-          new Map(
-            pages
-              .map((page) => page.branch)
-              .filter((branch): branch is BranchRow => Boolean(branch))
-              .map((branch) => [branch.id, branch]),
-          ).values(),
-        );
+  const defaultLanguages = languages.filter((language) => language.isDefault);
+  if (languages.length === 0 || defaultLanguages.length !== 1) {
+    throw new Error(`Project ${project.id} must have exactly one default language before publishing.`);
+  }
+  const branchRows = project.branches;
+  if (branchRows.length === 0) {
+    throw new Error(`Project ${project.id} must have a branch before publishing.`);
+  }
   const usedVersionSlugs = new Set<string>();
-  const versions: SnapshotVersion[] =
-    branchRows.length > 0
-      ? branchRows.map((branch) => ({
-          id: branch.id,
-          name: branch.name,
-          slug: uniqueVersionSlug(branch.name, branch.id, usedVersionSlugs),
-          isDefault: branch.isDefault,
-        }))
-      : [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
-  const defaultVersion = versions.find((version) => version.isDefault) ?? versions[0] ?? { id: 'main', name: 'main', slug: 'main', isDefault: true };
+  const versions: SnapshotVersion[] = branchRows.map((branch) => ({
+    id: branch.id,
+    name: branch.name,
+    slug: uniqueVersionSlug(branch.name, branch.id, usedVersionSlugs),
+    isDefault: branch.isDefault,
+  }));
+  if (versions.filter((version) => version.isDefault).length !== 1) {
+    throw new Error(`Project ${project.id} must have exactly one default branch before publishing.`);
+  }
   const versionById = new Map(versions.map((version) => [version.id, version]));
   // Resolve Mintlify-style `{{ variables }}` once, then bake the substituted text
   // into the snapshot so the live site, search index and SEO all see final values.
@@ -304,27 +286,34 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
       slug: project.slug,
       description: project.description,
       icon: project.icon,
-      color: project.color,
-      logoUrl: project.logoUrl,
-      faviconUrl: project.faviconUrl,
-      theme: (project.theme as Record<string, unknown> | null) ?? null,
       config: (project.config as Record<string, unknown> | null) ?? null,
-      languages: languages.length ? languages : [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }],
+      languages,
       versions,
     },
-    pages: pages.map((page) => ({
-      ...page,
-      versionId: versionById.get(page.branchId ?? page.branch?.id ?? '')?.id ?? defaultVersion.id,
-      version: versionById.get(page.branchId ?? page.branch?.id ?? '')?.name ?? defaultVersion.name,
-      versionSlug: versionById.get(page.branchId ?? page.branch?.id ?? '')?.slug ?? defaultVersion.slug,
-      kind: page.kind === 'GROUP' ? 'GROUP' : 'PAGE',
-      title: interpolateVariables(page.title, variables),
-      description: page.description ? interpolateVariables(page.description, variables) : page.description,
-      content: interpolateVariables(page.content, variables),
-      languageCode: page.languageCode || fallbackCode,
-      config: (page.config as SnapshotPageConfig | null) ?? null,
-      translationKey: page.translationKey ?? null,
-    })),
+    pages: pages.map((page) => {
+      const version = versionById.get(page.branchId);
+      if (!version) {
+        throw new Error(`Page ${page.id} references a branch outside project ${project.id}.`);
+      }
+      return {
+        id: page.id,
+        parentId: page.parentId,
+        versionId: version.id,
+        updatedAt: page.updatedAt,
+        languageCode: page.languageCode,
+        kind: page.kind,
+        title: interpolateVariables(page.title, variables),
+        slug: page.slug,
+        path: page.path,
+        icon: page.icon,
+        description: page.description ? interpolateVariables(page.description, variables) : page.description,
+        content: interpolateVariables(page.content, variables),
+        config: (page.config as SnapshotPageConfig | null) ?? null,
+        translationKey: page.translationKey,
+        position: page.position,
+        hidden: page.hidden,
+      };
+    }),
     generatedAt,
   };
 };

@@ -36,11 +36,10 @@ body:
     attributes:
       label: Which surface?
       options:
-        - Dashboard / editor (app)
+        - Dashboard / editor / marketing (app)
         - Published docs site
         - API (server)
         - Worker / publish pipeline
-        - Marketing site (www)
         - Self-hosting / Docker
         - Other
     validations:

@@ -8,8 +8,8 @@ import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { GitConfig } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
-import { assertBranchInProject, ensureDefaultBranch } from './branches';
-import { assertLanguageInProject, ensureDefaultLanguage } from './languages';
+import { assertBranchInProject, getDefaultBranch } from './branches';
+import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { createPage } from './pages';
 import { assertProjectInOrg } from './projects';
 
@@ -285,8 +285,8 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     throw badRequest('No Markdown (.md/.mdx) files found at that repo path.');
   }
 
-  const branchRow = git.importBranchId ? await assertBranchInProject(projectId, git.importBranchId) : await ensureDefaultBranch(projectId);
-  const language = git.importLanguageId ? await assertLanguageInProject(projectId, git.importLanguageId) : await ensureDefaultLanguage(projectId);
+  const branchRow = git.importBranchId ? await assertBranchInProject(projectId, git.importBranchId) : await getDefaultBranch(projectId);
+  const language = git.importLanguageId ? await assertLanguageInProject(projectId, git.importLanguageId) : await getDefaultLanguage(projectId);
 
   // Cache the GROUP page id per directory so each folder is created once.
   const groupCache = new Map<string, string | null>();
@@ -379,5 +379,3 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
 
   return summary;
 };
-
-export const importFromGitHub = importFromGitProvider;

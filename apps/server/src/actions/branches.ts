@@ -7,18 +7,13 @@ import { conflict, notFound } from '@/errors';
 export const listBranches = (projectId: string) =>
   prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] });
 
-/** The project's default branch ('main'), creating it if the project has none.
- *  Mirrors ensureDefaultLanguage so older projects self-heal. */
-export const ensureDefaultBranch = async (projectId: string) => {
-  const existing = await prisma.branch.findFirst({ where: { projectId, isDefault: true } });
-  if (existing) {
-    return existing;
+/** The project's required default branch. Missing data is an invariant error. */
+export const getDefaultBranch = async (projectId: string) => {
+  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2 });
+  if (defaults.length !== 1 || !defaults[0]) {
+    throw new Error(`Project ${projectId} must have exactly one default branch.`);
   }
-  const any = await prisma.branch.findFirst({ where: { projectId }, orderBy: { createdAt: 'asc' } });
-  if (any) {
-    return prisma.branch.update({ where: { id: any.id }, data: { isDefault: true } });
-  }
-  return prisma.branch.create({ data: { projectId, name: 'main', isDefault: true } });
+  return defaults[0];
 };
 
 /** Throw unless the branch exists in the project; returns it. */
@@ -39,7 +34,7 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   if (clash) {
     throw conflict('A branch with that name already exists.', { name });
   }
-  const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await ensureDefaultBranch(projectId);
+  const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await getDefaultBranch(projectId);
 
   return prisma.$transaction(async (tx) => {
     const branch = await tx.branch.create({ data: { projectId, name, isDefault: false } });
@@ -82,7 +77,7 @@ export const mergeBranch = async (projectId: string, id: string) => {
   if (branch.isDefault) {
     throw conflict('The default branch cannot be merged into itself.');
   }
-  const main = await ensureDefaultBranch(projectId);
+  const main = await getDefaultBranch(projectId);
   await prisma.$transaction(async (tx) => {
     // Replace main's pages with this branch's pages (which keep their ids + paths
     // + remapped parent links), then drop the emptied branch.

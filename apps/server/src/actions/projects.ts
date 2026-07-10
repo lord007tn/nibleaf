@@ -1,4 +1,4 @@
-import { Prisma, prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@nibleaf/validators';
@@ -82,13 +82,14 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
         name: body.name,
         slug,
         ...(body.description ? { description: body.description } : {}),
-        ...(body.color ? { color: body.color } : {}),
+        ...(body.icon ? { icon: body.icon } : {}),
       },
     });
     // Every project starts with a single default language that owns its page tree.
     await tx.language.create({
       data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
     });
+    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
     return project;
   });
 };
@@ -134,14 +135,10 @@ export const updateProject = async (organizationId: string, id: string, body: Up
   }
 
   let configData: Prisma.InputJsonValue | undefined;
-  let colorFromConfig: string | undefined;
   if (body.config !== undefined) {
     const existing = (project.config as ProjectConfig | null) ?? {};
     const merged = mergeConfig(existing, body.config);
     configData = merged as Prisma.InputJsonValue;
-    if (body.config.styling?.primaryColor) {
-      colorFromConfig = body.config.styling.primaryColor;
-    }
   }
 
   return prisma.project.update({
@@ -151,10 +148,6 @@ export const updateProject = async (organizationId: string, id: string, body: Up
       ...(body.slug === undefined ? {} : { slug: body.slug }),
       ...(body.description === undefined ? {} : { description: body.description }),
       ...(body.icon === undefined ? {} : { icon: body.icon }),
-      ...(colorFromConfig !== undefined ? { color: colorFromConfig } : body.color === undefined ? {} : { color: body.color }),
-      ...(body.logoUrl === undefined ? {} : { logoUrl: body.logoUrl }),
-      ...(body.faviconUrl === undefined ? {} : { faviconUrl: body.faviconUrl }),
-      ...(body.theme === undefined ? {} : { theme: body.theme === null ? Prisma.JsonNull : (body.theme as Prisma.InputJsonValue) }),
       ...(configData === undefined ? {} : { config: configData }),
     },
   });

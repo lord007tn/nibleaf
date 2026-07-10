@@ -25,12 +25,12 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
     name: 'Acme Docs',
     slug: 'acme',
     description: 'Site default description',
-    color: '#5546e8',
-    logoUrl: 'https://cdn/logo.png',
-    faviconUrl: null,
+    primaryDomain: null,
     config: { seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
   },
   activeLanguage: 'en',
+  activeVersion: 'main',
+  versions: [{ id: 'main', name: 'main', slug: 'main', isDefault: true }],
   page: {
     id: 'pg',
     title: 'Quickstart',
@@ -155,21 +155,13 @@ describe('pageHead canonical + hreflang', () => {
     );
     expect(Object.keys(hreflangs(head))).toHaveLength(0);
   });
-
-  it('does not append ?lang=en for a legacy snapshot with no Language rows', () => {
-    // P1-style: the snapshot predates the languages feature → languages: [] →
-    // the default is unknown, so the canonical must stay param-less (matching the
-    // sitemap) instead of emitting a duplicate ?lang=en URL.
-    const head = pageHead(base({ languages: [], activeLanguage: 'en' }), 'p1', 'en');
-    expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');
-  });
 });
 
 describe('canonical consolidation across origins', () => {
   /** A page payload whose project carries a verified primary custom domain. */
   const withPrimary = (over: Partial<SitePage> = {}): SitePage => {
     const data = base(over);
-    (data.project as SitePage['project'] & { primaryDomain?: string | null }).primaryDomain = 'docs.acme.com';
+    data.project.primaryDomain = 'docs.acme.com';
     return data;
   };
 
@@ -301,9 +293,7 @@ describe('siteHead analytics scripts', () => {
       name: 'Acme Docs',
       slug: 'acme',
       description: null,
-      color: '#5546e8',
-      logoUrl: null,
-      faviconUrl: null,
+      primaryDomain: null,
       config,
     },
     nav: [],

@@ -13,7 +13,7 @@ export interface SiteBannerConfig {
  * Dismissible announcement banner shown above the site header. Driven by
  * `config.banner`. Dismissal is remembered per-project (and per-message) in
  * localStorage so it doesn't reappear on every navigation. Renders nothing when
- * the banner is disabled or has no message (legacy snapshots).
+ * the banner is disabled or has no message.
  */
 export function SiteBanner({ projectId, banner }: { projectId: string; banner: SiteBannerConfig | undefined }) {
   const message = banner?.message?.trim();

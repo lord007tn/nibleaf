@@ -1,8 +1,8 @@
 /** Extract a readable error message from a non-2xx response. */
 export async function errorMessage(res: Response, fallback: string): Promise<string> {
   try {
-    const body = (await res.json()) as { error?: { message?: string }; message?: string };
-    return body.error?.message ?? body.message ?? fallback;
+    const body = (await res.json()) as { error?: { message?: string } };
+    return body.error?.message ?? fallback;
   } catch {
     return fallback;
   }

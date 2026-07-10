@@ -17,10 +17,6 @@
 # Set NIBLEAF_HEALTHCHECK_HOST to the dashboard host without a scheme when your
 # app uses host-based routing.
 #
-# When moving an existing Coolify Application to a Service, set
-# NIBLEAF_EXTERNAL_VOLUMES=true and point the NIBLEAF_*_VOLUME variables at the
-# existing Docker volume names before deploying the replacement service.
-
 name: nibleaf-coolify
 
 # Pull-based Coolify stack: it PULLS the prebuilt image published by CI
@@ -64,7 +60,6 @@ x-service-env: &service-env
   API_PORT: "4311"
   API_URL: http://server:4311
   APP_URL: ${APP_URL:-https://nibleaf.com}
-  WWW_URL: ${WWW_URL:-https://nibleaf.com}
   ADMIN_URL: ${ADMIN_URL:-https://admin.nibleaf.com}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-nibleaf.com}
@@ -243,11 +238,8 @@ services:
 
 volumes:
   nibleaf-coolify-pg:
-    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
-    name: ${NIBLEAF_PG_VOLUME:-nibleaf-coolify-pg}
+    name: nibleaf-coolify-pg
   nibleaf-coolify-dragonfly:
-    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
-    name: ${NIBLEAF_DRAGONFLY_VOLUME:-nibleaf-coolify-dragonfly}
+    name: nibleaf-coolify-dragonfly
   nibleaf-coolify-maxio:
-    external: ${NIBLEAF_EXTERNAL_VOLUMES:-false}
-    name: ${NIBLEAF_MAXIO_VOLUME:-nibleaf-coolify-maxio}
+    name: nibleaf-coolify-maxio

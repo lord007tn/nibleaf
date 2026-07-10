@@ -75,15 +75,6 @@ const PROVIDERS: Provider[] = [
   },
 ];
 
-/** Normalise the persisted integrations blob (which may hold legacy booleans). */
-function readConfig(raw: unknown): Record<string, string> {
-  if (raw && typeof raw === 'object') {
-    const obj = raw as { config?: unknown };
-    return obj.config && typeof obj.config === 'object' ? (obj.config as Record<string, string>) : {};
-  }
-  return {};
-}
-
 function NotConnectedPill() {
   const t = useT();
   return (
@@ -95,7 +86,7 @@ function NotConnectedPill() {
 
 function IntegrationDetail({ provider, integrations, onBack }: { provider: Provider; integrations: Record<string, unknown>; onBack: () => void }) {
   const t = useT();
-  const config = readConfig(integrations[provider.id]);
+  const config = (integrations[provider.id] as { config?: Record<string, string> } | undefined)?.config ?? {};
   const Icon = provider.icon;
 
   return (

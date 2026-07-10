@@ -38,8 +38,7 @@ export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
     }));
 
 /** Get (or build) the cached search index for a project's published deployment,
- *  scoped to a single language. Legacy pages without a languageCode are indexed
- *  under whichever language is requested so old snapshots still search. */
+ *  scoped to a single language. */
 export const getCachedIndex = async (projectId: string, key: string, lang: string, pages: SnapshotPage[]): Promise<DocIndex> => {
   // `key` is `${deploymentId}:${versionSlug}` — the slug (no colons) scopes the
   // cache slot per version; the full key still triggers a rebuild on re-publish.
@@ -49,7 +48,7 @@ export const getCachedIndex = async (projectId: string, key: string, lang: strin
   if (existing && existing.key === key) {
     return existing.index;
   }
-  const scoped = pages.filter((page) => (page.languageCode || lang) === lang);
+  const scoped = pages.filter((page) => page.languageCode === lang);
   const index = await createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
   cache.set(mapKey, { key, index });
   return index;

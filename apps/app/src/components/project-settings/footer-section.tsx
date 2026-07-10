@@ -6,15 +6,12 @@ import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
-/** Footer config incl. the "Made with Nibleaf" toggle — the key ships ahead of
- *  the validator (projectConfigSchema.footer gains `madeWithBadge` separately),
- *  so it is layered on here instead of coming from @nibleaf/validators. */
-type FooterConfig = NonNullable<ProjectConfig['footer']> & { madeWithBadge?: boolean };
+type FooterConfig = NonNullable<ProjectConfig['footer']>;
 
 export function FooterSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
-  const footer = (project.config?.footer ?? {}) as FooterConfig;
+  const footer = project.config?.footer ?? {};
 
   const form = useForm({
     defaultValues: {
@@ -22,7 +19,6 @@ export function FooterSection({ project }: { project: Project }) {
       github: footer.github ?? '',
       x: footer.x ?? '',
       linkedin: footer.linkedin ?? '',
-      // Badge default ON — only an explicit `false` hides it on the live site.
       madeWithBadge: footer.madeWithBadge !== false,
     },
     onSubmit: async ({ value }) => {
@@ -31,13 +27,8 @@ export function FooterSection({ project }: { project: Project }) {
         github: value.github.trim() || undefined,
         x: value.x.trim() || undefined,
         linkedin: value.linkedin.trim() || undefined,
+        madeWithBadge: value.madeWithBadge,
       };
-      // Only send the badge key when it deviates from (or reverts to) the
-      // default, so untouched footer saves stay valid on servers whose
-      // validator doesn't know the key yet.
-      if (!value.madeWithBadge || footer.madeWithBadge === false) {
-        payload.madeWithBadge = value.madeWithBadge;
-      }
       await saveConfigSection(update, { footer: payload });
     },
   });

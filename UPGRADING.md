@@ -88,18 +88,6 @@ Nibleaf release does move the postgres major, the release notes will include a
 dump-and-restore procedure (`pg_dumpall` from the old container → restore into
 a fresh volume on the new one). Until then, stay on 17.
 
-## Switching from the source-build stack
-
-`docker-compose.prod.yml` and `docker-compose.yml` use the same project name
-(`nibleaf`) and volume names, so moving from the source-build stack to the
-pull-based one keeps your data:
-
-```bash
-docker compose -f docker-compose.yml down          # containers only; volumes stay
-cp .env.production.example .env                    # re-key your settings into it
-docker compose -f docker-compose.prod.yml up -d
-```
-
 ## Coolify deployments
 
 The Coolify stack (`docker-compose.coolify.yml`) follows

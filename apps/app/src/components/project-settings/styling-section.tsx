@@ -4,7 +4,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
-import { useUpdateProject, useUpdateProjectConfig } from '@/hooks/api';
+import { useUpdateProjectConfig } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
 import { FIELD_MONO, Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
 
@@ -71,11 +71,10 @@ function hslToHex({ h, s, l }: Hsl): string {
 
 export function StylingSection({ project }: { project: Project }) {
   const t = useT();
-  const updateProject = useUpdateProject(project.id);
   const updateConfig = useUpdateProjectConfig(project.id);
   const styling = project.config?.styling ?? {};
 
-  const initial = project.color || styling.primaryColor || '#5546e8';
+  const initial = styling.primaryColor || '#5546e8';
   const [hex, setHex] = useState(initial.toUpperCase());
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(initial) ?? { h: 245, s: 78, l: 59 });
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(styling.theme ?? 'light');
@@ -105,38 +104,12 @@ export function StylingSection({ project }: { project: Project }) {
       return;
     }
     setSaving(true);
-    let pending = 2;
-    let failed = false;
-    const done = () => {
-      pending -= 1;
-      if (pending === 0) {
-        setSaving(false);
-        if (failed) {
-          toast.error(t('settings.saveError'));
-        } else {
-          toast.success(t('common.saved'));
-        }
-      }
-    };
-    // Project.color is canonical; config.styling.primaryColor mirrors it.
-    updateProject.mutate(
-      { color: hex.toLowerCase() },
-      {
-        onSuccess: done,
-        onError: () => {
-          failed = true;
-          done();
-        },
-      },
-    );
     updateConfig.mutate(
       { config: { styling: { primaryColor: hex.toLowerCase(), theme, radius } } },
       {
-        onSuccess: done,
-        onError: () => {
-          failed = true;
-          done();
-        },
+        onSuccess: () => toast.success(t('common.saved')),
+        onError: () => toast.error(t('settings.saveError')),
+        onSettled: () => setSaving(false),
       },
     );
   };

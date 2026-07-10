@@ -1,4 +1,4 @@
-import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage, type SnapshotVersion } from '@nibleaf/shared/site';
+import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
  * Pure builders for a published site's llms.txt / llms-full.txt — the
@@ -12,27 +12,10 @@ import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage,
  * them onto a custom domain with the same regex it uses for sitemap.xml.
  */
 
-const FALLBACK_VERSIONS: SnapshotVersion[] = [{ id: 'main', name: 'main', slug: 'main', isDefault: true }];
-
-const versionsOf = (snapshot: SiteSnapshot): SnapshotVersion[] => {
-  const configured = snapshot.project.versions ?? [];
-  return configured.length > 0 ? configured : FALLBACK_VERSIONS;
-};
-
-const pageBelongsToVersion = (page: SnapshotPage, version: SnapshotVersion): boolean => {
-  if (page.versionId) {
-    return page.versionId === version.id;
-  }
-  if (page.versionSlug) {
-    return page.versionSlug === version.slug;
-  }
-  return version.isDefault;
-};
-
 /** Every AI-consumable page: real pages only, not hidden, not noindex, and not
  *  in a language whose own SEO disallows indexing. Same rules as the sitemap. */
 export const llmsIndexablePages = (snapshot: SiteSnapshot): SnapshotPage[] => {
-  const blockedLangs = new Set((snapshot.project.languages ?? []).filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
+  const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
   return snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode));
 };
 
@@ -40,10 +23,13 @@ export const llmsIndexablePages = (snapshot: SiteSnapshot): SnapshotPage[] => {
  *  the clean (param-less) canonical URL, non-default versions get a path prefix. */
 export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: string): string => {
   const defaultCode = defaultLanguage(snapshot.project).code;
-  const pageVersion = versionsOf(snapshot).find((version) => pageBelongsToVersion(page, version));
-  const versionPath = pageVersion && !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
+  const pageVersion = snapshot.project.versions.find((version) => version.id === page.versionId);
+  if (!pageVersion) {
+    throw new Error(`Snapshot page ${page.id} references an unknown version.`);
+  }
+  const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
   const pagePath = page.path ? `/${page.path}` : '';
-  const langQuery = page.languageCode && page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
+  const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
   return `${base}${versionPath}${pagePath}${langQuery}`;
 };
 
@@ -65,33 +51,19 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string): string => {
   const pages = llmsIndexablePages(snapshot);
   const lines = siteHeader(snapshot);
 
-  const defaultCode = defaultLanguage(snapshot.project).code;
-  const languages = (snapshot.project.languages ?? []).length > 0 ? snapshot.project.languages : [defaultLanguage(snapshot.project)];
-  const listed = new Set<string>();
+  const languages = snapshot.project.languages;
 
   for (const language of languages) {
-    const langPages = pages.filter((page) => (page.languageCode || defaultCode) === language.code);
+    const langPages = pages.filter((page) => page.languageCode === language.code);
     if (langPages.length === 0) {
       continue;
     }
     lines.push('', languages.length > 1 ? `## Docs (${oneLine(language.label)})` : '## Docs', '');
     for (const page of langPages) {
-      listed.add(page.id);
       const description = oneLine(pageDescription(page));
       lines.push(`- [${oneLine(page.title)}](${llmsPageUrl(snapshot, page, base)})${description ? `: ${description}` : ''}`);
     }
   }
-
-  // Legacy pages whose languageCode matches no configured language still get listed.
-  const orphans = pages.filter((page) => !listed.has(page.id));
-  if (orphans.length > 0) {
-    lines.push('', '## Docs', '');
-    for (const page of orphans) {
-      const description = oneLine(pageDescription(page));
-      lines.push(`- [${oneLine(page.title)}](${llmsPageUrl(snapshot, page, base)})${description ? `: ${description}` : ''}`);
-    }
-  }
-
   return `${lines.join('\n')}\n`;
 };
 

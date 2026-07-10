@@ -35,10 +35,9 @@ Nibleaf is a pnpm monorepo split into focused services:
 
 | Service | Package | Port | Role |
 | --- | --- | --- | --- |
-| Dashboard | `@nibleaf/app` | 4310 | Authoring UI: editor, projects, publishing |
+| App | `@nibleaf/app` | 4310 | Public landing pages, authoring UI, and published docs |
 | API | `@nibleaf/server` | 4311 | Hono API, auth, persistence |
 | Worker | `@nibleaf/worker` | 4312 | Background jobs: builds, search indexing |
-| Marketing site | `@nibleaf/www` | 4313 | Public landing pages |
 | Docs | `@nibleaf/docs` | 4314 | This documentation site |
 
 ## Architecture at a glance
@@ -47,7 +46,7 @@ Nibleaf is a pnpm monorepo split into focused services:
 - **API** — [Hono](https://hono.dev) running on Node
 - **Database** — PostgreSQL via [Prisma](https://www.prisma.io)
 - **Background jobs** — [BullMQ](https://docs.bullmq.io) backed by Redis
-- **Object storage** — [MinIO](https://min.io) (S3-compatible) for assets and built sites
+- **Object storage** — [maxio](https://github.com/coollabsio/maxio) (S3-compatible) for assets and built sites
 - **Search** — [Orama](https://orama.com) full-text index
 
 ## Next steps

@@ -4,9 +4,8 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing
 
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$BrandDir = Join-Path $Root "apps/www/public/brand"
+$BrandDir = Join-Path $Root "apps/app/public/brand"
 $RasterDir = Join-Path $BrandDir "raster"
-$WwwPublic = Join-Path $Root "apps/www/public"
 $AppPublic = Join-Path $Root "apps/app/public"
 $AdminPublic = Join-Path $Root "apps/admin/public"
 $DocsPublic = Join-Path $Root "apps/docs/public"
@@ -336,7 +335,7 @@ $jobs = @()
 foreach ($size in @(16, 32, 48, 64)) {
   $path = Join-Path $RasterDir "favicon/favicon-$size.png"
   Save-Png (New-IconBitmap $size) $path
-  $jobs += @{ file = "apps/www/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
+  $jobs += @{ file = "apps/app/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
 }
 
 $appIconSizes = @{ "apple-touch-icon-180" = 180; "mstile-150" = 150; "android-chrome-192" = 192; "android-chrome-512" = 512; "app-icon-1024" = 1024 }
@@ -344,13 +343,13 @@ foreach ($name in $appIconSizes.Keys) {
   $size = [int]$appIconSizes[$name]
   $path = Join-Path $RasterDir "app-icon/$name.png"
   Save-Png (New-IconBitmap $size -AppTile) $path
-  $jobs += @{ file = "apps/www/public/brand/raster/app-icon/$name.png"; width = $size; height = $size; group = "app-icon" }
+  $jobs += @{ file = "apps/app/public/brand/raster/app-icon/$name.png"; width = $size; height = $size; group = "app-icon" }
 }
 
 foreach ($size in @(64, 128, 256, 512, 1024)) {
   $path = Join-Path $RasterDir "icon/nibleaf-icon-$size.png"
   Save-Png (New-IconBitmap $size) $path
-  $jobs += @{ file = "apps/www/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
+  $jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
 }
 Save-Png (New-IconBitmap 512 -Reverse) (Join-Path $RasterDir "icon/nibleaf-icon-reverse-512.png")
 Save-Png (New-IconBitmap 512 -Monochrome) (Join-Path $RasterDir "icon/nibleaf-icon-monochrome-512.png")
@@ -396,7 +395,7 @@ foreach ($job in $logoJobs) {
     Render-BrandSvgPng ([string]$job.source) $path ([int]$job.width) ([int]$job.height)
   }
   $jobs += @{
-    file = "apps/www/public/brand/raster/logo/$name.$ext"
+    file = "apps/app/public/brand/raster/logo/$name.$ext"
     source = [string]$job.source
     width = [int]$job.width
     height = [int]$job.height
@@ -405,12 +404,12 @@ foreach ($job in $logoJobs) {
   }
 }
 
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-social-avatar-512.png"; source = "nibleaf-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-social-avatar-1024.png"; source = "nibleaf-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card.png"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card.jpg"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card-ar.png"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/www/public/brand/raster/social/nibleaf-og-card-ar.jpg"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-512.png"; source = "nibleaf-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-1024.png"; source = "nibleaf-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.png"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.jpg"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.png"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
 
 $manifestPath = Join-Path $RasterDir "manifest.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
@@ -418,22 +417,12 @@ New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
 
 $publicApps = @(
   @{
-    path = $WwwPublic
-    name = "Nibleaf"
-    shortName = "Nibleaf"
-    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting. Cloud-hosted Nibleaf is coming soon."
-    lang = "en"
-    dir = "ltr"
-    copyOg = $true
-  },
-  @{
     path = $AppPublic
     name = "Nibleaf"
     shortName = "Nibleaf"
     description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting."
     lang = "en"
     dir = "ltr"
-    copyOg = $false
   },
   @{
     path = $AdminPublic
@@ -442,7 +431,6 @@ $publicApps = @(
     description = "Internal Nibleaf administration console."
     lang = "en"
     dir = "ltr"
-    copyOg = $false
   },
   @{
     path = $DocsPublic
@@ -451,7 +439,6 @@ $publicApps = @(
     description = "Documentation for Nibleaf, the open-source, self-hostable documentation platform."
     lang = "en"
     dir = "ltr"
-    copyOg = $false
   }
 )
 
@@ -459,9 +446,6 @@ foreach ($publicApp in $publicApps) {
   $publicDir = [string]$publicApp.path
   New-Item -ItemType Directory -Force -Path $publicDir | Out-Null
   Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-favicon.svg") -Destination (Join-Path $publicDir "favicon.svg") -Force
-  if ([bool]$publicApp.copyOg) {
-    Copy-Item -LiteralPath (Join-Path $BrandDir "nibleaf-og-card.svg") -Destination (Join-Path $publicDir "og.svg") -Force
-  }
   Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-16.png") -Destination (Join-Path $publicDir "favicon-16x16.png") -Force
   Copy-Item -LiteralPath (Join-Path $RasterDir "favicon/favicon-32.png") -Destination (Join-Path $publicDir "favicon-32x32.png") -Force
   Copy-Item -LiteralPath (Join-Path $RasterDir "app-icon/apple-touch-icon-180.png") -Destination (Join-Path $publicDir "apple-touch-icon.png") -Force

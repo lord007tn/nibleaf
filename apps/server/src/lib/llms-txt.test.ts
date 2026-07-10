@@ -6,6 +6,8 @@ const BASE = 'https://app.example.com/sites/proj_1';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotPage => ({
   parentId: null,
+  versionId: 'v-main',
+  updatedAt: '2026-07-01T00:00:00.000Z',
   languageCode: 'en',
   kind: 'PAGE',
   title: over.id,
@@ -28,10 +30,6 @@ const snapshot = (pages: SnapshotPage[], over?: Partial<SiteSnapshot['project']>
     slug: 'acme',
     description: 'How to use Acme.',
     icon: null,
-    color: '#111111',
-    logoUrl: null,
-    faviconUrl: null,
-    theme: null,
     config: null,
     languages: [
       { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },

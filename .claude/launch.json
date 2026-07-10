@@ -8,12 +8,6 @@
       "port": 4310
     },
     {
-      "name": "nibleaf-www",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@nibleaf/www", "dev"],
-      "port": 4313
-    },
-    {
       "name": "nibleaf-admin",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@nibleaf/admin", "dev"],

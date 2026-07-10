@@ -22,10 +22,6 @@ export interface Project {
   slug: string;
   description: string | null;
   icon: string | null;
-  color: string;
-  logoUrl: string | null;
-  faviconUrl: string | null;
-  theme: Record<string, unknown> | null;
   config: ProjectConfig | null;
   languages?: Language[];
   createdAt: string;
@@ -283,12 +279,9 @@ export interface SiteShell {
     name: string;
     slug: string;
     description: string | null;
-    color: string;
-    logoUrl: string | null;
-    faviconUrl: string | null;
-    config: Record<string, unknown> | null;
+    config: ProjectConfig | null;
     /** Verified primary custom domain — canonical/301 consolidation target. */
-    primaryDomain?: string | null;
+    primaryDomain: string | null;
   };
   nav: NavNode[];
   languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean }>;
@@ -318,15 +311,15 @@ export interface SitePage {
     config: PageConfig | null;
   };
   /** The language the page actually resolved in (drives canonical/og/hreflang). */
-  activeLanguage?: string;
+  activeLanguage: string;
   /** The docs version the page resolved in. */
-  activeVersion?: string;
-  versions?: SiteShell['versions'];
+  activeVersion: string;
+  versions: SiteShell['versions'];
   /** SEO defaults of the page's language (layered under the page's own SEO). */
   languageConfig: LanguageConfig | null;
   /** hreflang alternates: `path` is the page's URL in that language, or null
    *  when that language has no corresponding page (then it's omitted). */
-  languages?: Array<{ code: string; isDefault: boolean; path?: string | null }>;
+  languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
   breadcrumbs: Array<{ title: string; path: string }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;

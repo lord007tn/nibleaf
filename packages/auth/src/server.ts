@@ -481,12 +481,19 @@ async function createStarterProject(organizationId: string): Promise<{ id: strin
   // a concurrent signup can grab the same slug between the check and the create
   // (TOCTOU). Retry on the unique-constraint violation, re-rolling the slug each
   // time, and fall back to a timestamped slug so provisioning never fails here.
-  const createProjectWithUniqueSlug = async () => {
+  const createProjectWithInvariants = async () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
       try {
-        return await prisma.project.create({
-          data: { organizationId, name: 'Documentation', slug, description: 'Your first documentation site.' },
+        return await prisma.$transaction(async (tx) => {
+          const project = await tx.project.create({
+            data: { organizationId, name: 'Documentation', slug, description: 'Your first documentation site.' },
+          });
+          const language = await tx.language.create({
+            data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
+          });
+          const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+          return { project, language, branch };
         });
       } catch (error) {
         const isSlugConflict =
@@ -501,16 +508,9 @@ async function createStarterProject(organizationId: string): Promise<{ id: strin
     // Unreachable: the final attempt either returns or throws.
     throw new Error('Failed to allocate a unique starter project slug.');
   };
-  const project = await createProjectWithUniqueSlug();
-  // Every project ships with a default English (LTR) language; pages live under it.
-  const language = await prisma.language.create({
-    data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
-  });
-  // Every project also ships with a default 'main' branch. The editor and every
-  // page-list query scope pages by branch, so seeded pages MUST carry this
-  // branchId — otherwise the starter docs are invisible (the new user sees an
-  // empty "No pages yet" site despite the template).
-  const branch = await prisma.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+  // The project and its required default language/branch commit atomically, so
+  // no request can observe a project that violates the page/snapshot contract.
+  const { project, language, branch } = await createProjectWithInvariants();
   const base = { projectId: project.id, languageId: language.id, branchId: branch.id };
   const topLevel: Array<{ title: string; icon: string; content: string; position: number }> = [
     { title: 'Getting started', icon: 'rocket', content: GETTING_STARTED_CONTENT, position: 0 },
@@ -613,9 +613,8 @@ async function publishStarterSite(projectId: string, userId: string): Promise<vo
         commitMessage: 'Publish starter site',
       },
     });
-    // `auto: true` marks this as a system publish for the activation funnel —
-    // user-initiated publishes send `auto: false`. The extra fields ride along
-    // in the job payload (cast until PublishDeploymentJobData declares them).
+    // `auto: true` marks this as a system publish for the activation funnel;
+    // user-initiated publishes send `auto: false`.
     const jobData: PublishDeploymentJobData = { deploymentId: deployment.id, projectId, auto: true };
     await withTimeout(createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData }), ENQUEUE_TIMEOUT_MS);
     await logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: true } });
@@ -703,13 +702,6 @@ export const auth = betterAuth({
   user: {
     changeEmail: {
       enabled: true,
-      sendChangeEmailVerification: async ({ user, newEmail, url }: { user: { email: string }; newEmail: string; url: string }) => {
-        await sendMail(
-          user.email,
-          'Confirm your new Nibleaf email',
-          `<p>Confirm changing your email to <strong>${newEmail}</strong>:</p><p><a href="${url}">${url}</a></p>`,
-        );
-      },
     },
     deleteUser: {
       enabled: true,

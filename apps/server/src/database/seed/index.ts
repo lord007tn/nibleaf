@@ -3,7 +3,7 @@ import { prisma } from '@nibleaf/database';
 import { logger } from '@nibleaf/logger';
 import { buildSnapshot } from '@nibleaf/shared/site';
 
-const DEMO = { email: 'demo@nibleaf.dev', password: 'nibleafdemo123', name: 'Ada Lovelace' };
+const DEMO = { email: 'demo@nibleaf.test', password: 'nibleafdemo123', name: 'Ada Lovelace' };
 
 async function seed() {
   // Guard against clobbering a real environment with demo data.
@@ -29,7 +29,10 @@ async function seed() {
   const project = await prisma.project.findFirst({
     where: { organizationId: member.organizationId },
     orderBy: { createdAt: 'asc' },
-    include: { languages: { orderBy: { position: 'asc' } } },
+    include: {
+      languages: { orderBy: { position: 'asc' } },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+    },
   });
   if (!project) {
     throw new Error('Demo project was not provisioned');
@@ -43,7 +46,7 @@ async function seed() {
       orderBy: { position: 'asc' },
       include: { language: { select: { code: true } } },
     });
-    const pageRows = pages.map(({ language, ...page }) => ({ ...page, languageCode: language?.code }));
+    const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
     const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
     await prisma.deployment.create({
       data: {

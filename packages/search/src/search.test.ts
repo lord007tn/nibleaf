@@ -14,8 +14,8 @@ describe('stripMarkdown (search snippets read as clean prose)', () => {
   });
 
   it('preserves underscores in code-like identifiers', () => {
-    const out = stripMarkdown('| Variable | Purpose |\n| --- | --- |\n| `STORAGE_SECRET_KEY` | Object storage secret. |');
-    expect(out).toContain('STORAGE_SECRET_KEY');
+    const out = stripMarkdown('| Variable | Purpose |\n| --- | --- |\n| `STORAGE_SECRET_ACCESS_KEY` | Object storage secret. |');
+    expect(out).toContain('STORAGE_SECRET_ACCESS_KEY');
   });
 });
 

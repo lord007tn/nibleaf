@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Nibleaf">
-  <rect width="64" height="64" rx="13" fill="#8A4B2E"/>
-  <path d="M20 37 37 20c2-2 5-2 7 0l1 1c2 2 2 5 0 7L28 45l-10 2 2-10Z" fill="#FBF7EE"/>
-  <path d="M18 23c5-6 12-7 18-3" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="5"/>
-  <circle cx="42" cy="41" r="4" fill="#B96A3D"/>
-</svg>
