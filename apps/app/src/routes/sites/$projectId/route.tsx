@@ -3,6 +3,7 @@ import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/
 import { BookOpen, Check, CircleAlert, ExternalLink, Moon, PencilLine, Search, Sun, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
+import { MadeWithBadge } from '@/components/site/made-with-badge';
 import { MobileNav } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { PageIcon } from '@/components/site/page-icon';
@@ -347,6 +348,10 @@ function SiteChrome() {
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
   const addons = config?.addons;
+  // "Made with Nibleaf" attribution: on by default, only an explicit config
+  // `false` hides it. Read defensively — the key ships ahead of the validator.
+  const showBadge = (footer as { madeWithBadge?: boolean } | undefined)?.madeWithBadge !== false;
+  const hasFooterContent = Boolean(footer && (footer.copyright || footer.github || footer.x || footer.linkedin));
 
   // Branding: a theme-specific logo (config.branding) overrides the legacy
   // top-level logoUrl, and an optional logoHref points the brand off-site.
@@ -568,46 +573,53 @@ function SiteChrome() {
         </main>
       </div>
 
-      {footer && (footer.copyright || footer.github || footer.x || footer.linkedin) ? (
+      {hasFooterContent || showBadge ? (
         <footer className="border-border border-t bg-card">
-          <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
-            <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${site?.project.name ?? ''}`.trim()}</span>
-            <div className="flex items-center gap-3">
-              {footer.github ? (
-                <a
-                  href={footer.github}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="GitHub"
-                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <GithubIcon className="size-4" />
-                </a>
-              ) : null}
-              {footer.x ? (
-                <a
-                  href={footer.x}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="X"
-                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <XIcon className="size-4" />
-                </a>
-              ) : null}
-              {footer.linkedin ? (
-                <a
-                  href={footer.linkedin}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="LinkedIn"
-                  className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  <LinkedinIcon className="size-4" />
-                </a>
-              ) : null}
+          {hasFooterContent && footer ? (
+            <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
+              <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${site?.project.name ?? ''}`.trim()}</span>
+              <div className="flex items-center gap-3">
+                {footer.github ? (
+                  <a
+                    href={footer.github}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="GitHub"
+                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <GithubIcon className="size-4" />
+                  </a>
+                ) : null}
+                {footer.x ? (
+                  <a
+                    href={footer.x}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="X"
+                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <XIcon className="size-4" />
+                  </a>
+                ) : null}
+                {footer.linkedin ? (
+                  <a
+                    href={footer.linkedin}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="LinkedIn"
+                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    <LinkedinIcon className="size-4" />
+                  </a>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
+          {showBadge ? (
+            <div className={cn('mx-auto max-w-[1400px] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
+              <MadeWithBadge lang={activeLanguage?.code} />
+            </div>
+          ) : null}
         </footer>
       ) : null}
 

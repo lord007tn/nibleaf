@@ -69,6 +69,14 @@ export interface Branch {
 
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';
 
+/** Structured publish-check failure (Deployment.errorDetails). */
+export interface DeploymentIssue {
+  type: 'broken-link' | 'grammar';
+  pageTitle: string;
+  pagePath: string;
+  detail: string;
+}
+
 export interface Deployment {
   id: string;
   version: number;
@@ -76,6 +84,8 @@ export interface Deployment {
   pagesCount: number;
   commitMessage: string | null;
   error: string | null;
+  /** Per-page publish-check failures on FAILED deployments. */
+  errorDetails?: DeploymentIssue[] | null;
   createdAt: string;
   completedAt: string | null;
 }
@@ -277,6 +287,8 @@ export interface SiteShell {
     logoUrl: string | null;
     faviconUrl: string | null;
     config: Record<string, unknown> | null;
+    /** Verified primary custom domain — canonical/301 consolidation target. */
+    primaryDomain?: string | null;
   };
   nav: NavNode[];
   languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean }>;

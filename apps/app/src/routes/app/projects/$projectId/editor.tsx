@@ -24,6 +24,7 @@ import {
   Settings2,
   SlidersHorizontal,
   Trash2,
+  TriangleAlert,
 } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
+import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { Markdown } from '@/components/markdown';
 import type { Language, PageNode } from '@/hooks/api';
 import {
@@ -56,11 +58,18 @@ import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
+  // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
+  // publish-check issue), `?publish=true` opens the publish flow directly.
+  validateSearch: (search: Record<string, unknown>): { page?: string; publish?: boolean } => ({
+    page: typeof search.page === 'string' && search.page ? search.page : undefined,
+    publish: search.publish === true || search.publish === 'true' || search.publish === '1' ? true : undefined,
+  }),
 });
 
 function EditorPage() {
   const t = useT();
   const { projectId } = Route.useParams();
+  const { page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
 
   // Top-level editor view: writing content vs. configuring the whole site.
@@ -116,7 +125,15 @@ function EditorPage() {
   }, [allPages]);
   const defaultLanguageId = orderedLanguages[0]?.id ?? null;
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(pageParam ?? null);
+  // Follow ?page= deep links even when the editor is already mounted (e.g. a
+  // second publish-issue link). Only reacts to the param changing, so it never
+  // overrides a page the user picked from the tree afterwards.
+  useEffect(() => {
+    if (pageParam) {
+      setSelectedId(pageParam);
+    }
+  }, [pageParam]);
   const firstPageId = useMemo(() => (allPages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [allPages]);
   const selectedNode = useMemo(() => (allPages ?? []).find((p) => p.id === selectedId) ?? null, [allPages, selectedId]);
   const selectedGroup = selectedNode?.kind === 'GROUP' ? selectedNode : null;
@@ -142,6 +159,12 @@ function EditorPage() {
     const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
     return stored === 'markdown' || stored === 'preview' ? stored : 'visual';
   });
+  // Editor safety: JSX-like component tags the visual editor can't round-trip
+  // would be SILENTLY DROPPED on a visual-mode save. When any are present, the
+  // page is locked to Markdown mode (banner below) so nothing is ever lost.
+  const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
+  const visualLocked = unsupportedTags.length > 0;
+  const effectiveMode = visualLocked && editorMode === 'visual' ? 'markdown' : editorMode;
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -401,7 +424,7 @@ function EditorPage() {
           >
             <Eye className="size-3.5" /> {t('project.preview')}
           </Button>
-          {project ? <PublishControl project={project} /> : null}
+          {project ? <PublishControl project={project} initialPublishOpen={publishParam} /> : null}
         </div>
       </header>
 
@@ -620,13 +643,19 @@ function EditorPage() {
                 </Button>
               ) : null}
               <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-                <SegButton active={editorMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
+                <SegButton
+                  active={effectiveMode === 'visual'}
+                  onClick={() => setEditorMode('visual')}
+                  icon={<Pencil className="size-3.5" />}
+                  disabled={visualLocked}
+                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
+                >
                   {t('editor.mode.visual')}
                 </SegButton>
-                <SegButton active={editorMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
+                <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
                   {t('editor.mode.markdown')}
                 </SegButton>
-                <SegButton active={editorMode === 'preview'} onClick={() => setEditorMode('preview')} icon={<Eye className="size-3.5" />}>
+                <SegButton active={effectiveMode === 'preview'} onClick={() => setEditorMode('preview')} icon={<Eye className="size-3.5" />}>
                   {t('editor.mode.preview')}
                 </SegButton>
               </div>
@@ -635,8 +664,12 @@ function EditorPage() {
                 variant={commentMode ? 'secondary' : 'ghost'}
                 aria-pressed={commentMode}
                 className="cursor-pointer"
+                // Comment anchoring works through the visual editor, which is
+                // locked while the page holds unsupported components. (Stays
+                // clickable while ON so the user can always exit comment mode.)
+                disabled={visualLocked && !commentMode}
                 onClick={toggleCommentMode}
-                title={t('editor.comments.mode')}
+                title={visualLocked ? t('editor.unsupportedMdx.commentsDisabled') : t('editor.comments.mode')}
               >
                 <MessageSquare className="size-4" />
               </Button>
@@ -699,10 +732,19 @@ function EditorPage() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-7 py-8">
+              {visualLocked ? (
+                <div
+                  className="mx-auto mb-5 flex max-w-[720px] items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300"
+                  role="status"
+                >
+                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                  <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
+                </div>
+              ) : null}
               {/* Title rendered as the first line of the document column (Mintlify-style),
                 aligned to the same 720px measure as the body. */}
               <div className="mx-auto max-w-[720px]">
-                {editorMode === 'preview' ? (
+                {effectiveMode === 'preview' ? (
                   <h1 className="font-semibold text-[2.1rem] leading-[1.15] tracking-tight" dir={activeLangDir}>
                     {title || t('editor.pageTitlePlaceholder')}
                   </h1>
@@ -717,7 +759,7 @@ function EditorPage() {
                   />
                 )}
               </div>
-              {editorMode === 'visual' ? (
+              {effectiveMode === 'visual' ? (
                 // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
                 // gutter for the block handle — so it is NOT wrapped in a narrow box.
                 <TiptapEditor
@@ -734,7 +776,7 @@ function EditorPage() {
                     setRailTab('comments');
                   }}
                 />
-              ) : editorMode === 'markdown' ? (
+              ) : effectiveMode === 'markdown' ? (
                 <textarea
                   dir={activeLangDir}
                   aria-label={t('editor.markdownPlaceholder')}
@@ -799,14 +841,31 @@ function EditorPage() {
 }
 
 /** A segmented-control button used for the editor mode toggle (Visual / Markdown / Preview). */
-function SegButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+function SegButton({
+  active,
+  onClick,
+  icon,
+  children,
+  disabled = false,
+  title,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  disabled?: boolean;
+  title?: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={cn(
         'flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-[13px] transition-colors',
         active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+        disabled && 'cursor-not-allowed opacity-50 hover:text-muted-foreground',
       )}
     >
       {icon}

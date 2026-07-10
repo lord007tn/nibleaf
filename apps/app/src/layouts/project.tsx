@@ -14,9 +14,10 @@ import type { Deployment, Project } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 
-/** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow. */
-export function PublishControl({ project }: { project: Project }) {
-  const [publishOpen, setPublishOpen] = useState(false);
+/** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
+ *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
+export function PublishControl({ project, initialPublishOpen = false }: { project: Project; initialPublishOpen?: boolean }) {
+  const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
   const [deployOpen, setDeployOpen] = useState(false);
   const t = useT();
 

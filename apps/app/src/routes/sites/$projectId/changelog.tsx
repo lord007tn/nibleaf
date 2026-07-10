@@ -32,7 +32,14 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
     const config = (site?.project.config ?? null) as { seo?: { metaTitle?: string; metaDescription?: string } } | null;
     const name = config?.seo?.metaTitle || site?.project.name || 'Documentation';
     const description = config?.seo?.metaDescription || site?.project.description || `Every update shipped to ${name}.`;
-    const url = sitePageUrl(params.projectId, 'changelog', loaderData?.lang, loaderData?.siteOrigin);
+    // Canonicalize to the site's one base (primary domain › subdomain › self);
+    // primaryDomain is read defensively until the public payload carries it.
+    const project = site?.project as (SiteShell['project'] & { primaryDomain?: string | null }) | undefined;
+    const url = sitePageUrl(params.projectId, 'changelog', loaderData?.lang, {
+      primaryDomain: project?.primaryDomain,
+      slug: project?.slug,
+      requestOrigin: loaderData?.siteOrigin,
+    });
     return {
       meta: [{ title: `Changelog — ${name}` }, { name: 'description', content: description }],
       links: [{ rel: 'canonical', href: url }],

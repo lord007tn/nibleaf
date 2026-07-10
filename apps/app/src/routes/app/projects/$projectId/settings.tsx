@@ -7,12 +7,11 @@ import { AnalyticsSection } from '@/components/project-settings/analytics-sectio
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
 import { DomainSection } from '@/components/project-settings/domain-section';
+import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { MembersSection } from '@/components/project-settings/members-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
-import { ApiKeysTab } from '@/components/settings/api-keys-tab';
-import { ExportsTab } from '@/components/settings/exports-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { NotificationsTab } from '@/components/settings/notifications-tab';
@@ -41,7 +40,9 @@ const SECTIONS = [
   { id: 'addons', group: 'site', icon: '◩' },
   { id: 'git', group: 'deployment', icon: '⎇' },
   { id: 'members', group: 'workspace', icon: '⧉' },
-  { id: 'apiKeys', group: 'workspace', icon: '⌁' },
+  // 'apiKeys' is intentionally hidden: no API route mounts requireApiKey yet, so
+  // keys can't be used anywhere. Restore the entry (and the ApiKeysTab wiring in
+  // ActiveSection) once a content API actually accepts them.
   { id: 'plan', group: 'workspace', icon: '◇' },
   { id: 'usage', group: 'workspace', icon: '▤' },
   { id: 'integrations', group: 'workspace', icon: '⚙' },
@@ -118,12 +119,11 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     addons: <AddonsSection key={`addons-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
-    apiKeys: <ApiKeysTab key={`apiKeys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
-    exports: <ExportsTab key={`exports-${project.id}`} />,
+    exports: <ExportsSection key={`exports-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,
   };
   return sections[section];

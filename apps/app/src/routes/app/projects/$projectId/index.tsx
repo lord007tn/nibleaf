@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -8,18 +9,25 @@ import {
   Eye,
   FileText,
   Globe2,
+  Link2Off,
+  Loader2,
   type LucideIcon,
   PenLine,
   Plug,
   Rocket,
   Settings as SettingsIcon,
+  SpellCheck,
+  TriangleAlert,
   Users,
+  X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
-import type { AnalyticsRange } from '@/hooks/api';
-import { useAnalytics, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import type { AnalyticsRange, Deployment } from '@/hooks/api';
+import { queryKeys, useAnalytics, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import { mutateData } from '@/hooks/api/client-helpers';
 import { useFormatters, viewsTrend } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
@@ -51,6 +59,8 @@ function SiteOverviewPage() {
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
   const latestDeployment = deployments?.[0];
+  const hasReadyDeployment = (deployments ?? []).some((deployment) => deployment.status === 'READY');
+  const publishFailed = latestDeployment?.status === 'FAILED';
   const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verified) ?? domains?.find((domain) => domain.verified);
   const baseDomain = siteBaseDomain();
   // Prefer a verified custom domain; else a configured free-subdomain host; else
@@ -91,6 +101,14 @@ function SiteOverviewPage() {
           </Button>
         </div>
       </div>
+
+      {/* Publish-failure triage: what blocked the last publish, with per-page
+          links into the editor and a grammar-only "Publish anyway" escape hatch. */}
+      {publishFailed && latestDeployment ? <PublishFailureCard projectId={projectId} deployment={latestDeployment} pages={pages ?? []} /> : null}
+
+      {/* First-publish nudge: shown until the site has one READY deployment.
+          Hidden while the latest attempt is FAILED (the failure card leads). */}
+      {deployments && !hasReadyDeployment && !publishFailed ? <PublishNudge projectId={projectId} /> : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
         <div className="rounded-xl border border-border bg-card p-5">
@@ -220,6 +238,216 @@ function SiteOverviewPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** One structured publish-check failure (Deployment.errorDetails entry). Typed
+ *  locally because the client Deployment type doesn't carry the field yet. */
+interface PublishIssue {
+  type: 'broken-link' | 'grammar';
+  pageTitle: string;
+  pagePath: string;
+  detail: string;
+}
+
+const publishIssuesOf = (deployment: Deployment): PublishIssue[] => {
+  const details = (deployment as Deployment & { errorDetails?: unknown }).errorDetails;
+  if (!Array.isArray(details)) {
+    return [];
+  }
+  return details.filter(
+    (issue): issue is PublishIssue =>
+      !!issue && typeof issue === 'object' && ((issue as PublishIssue).type === 'broken-link' || (issue as PublishIssue).type === 'grammar'),
+  );
+};
+
+/** Why the last publish failed: the structured check issues, each linking into
+ *  the editor, plus "Publish anyway" when only the grammar linter is blocking. */
+function PublishFailureCard({
+  projectId,
+  deployment,
+  pages,
+}: {
+  projectId: string;
+  deployment: Deployment;
+  pages: Array<{ id: string; path: string }>;
+}) {
+  const t = useT();
+  const qc = useQueryClient();
+  const issues = publishIssuesOf(deployment);
+  const grammarOnly = issues.length > 0 && issues.every((issue) => issue.type === 'grammar');
+
+  const publishAnyway = useMutation({
+    // Plain same-origin fetch (not the typed RPC client): the built
+    // @nibleaf/server rpc types don't carry `skipGrammarChecks` until that
+    // package is rebuilt. The route accepts it (see apps/server
+    // modules/app/deployments/handlers.ts `publishDeploymentBody`).
+    mutationFn: async () =>
+      mutateData<Deployment>(
+        await fetch(`/api/app/projects/${projectId}/deployments`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ skipGrammarChecks: true }),
+        }),
+        t('overview.publishFailed.error'),
+      ),
+    onSuccess: () => {
+      toast.success(t('overview.publishFailed.queued'));
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : t('overview.publishFailed.error')),
+  });
+
+  // Map a check issue's page path back to the draft page, for an editor deep link.
+  const pageIdFor = (issuePath: string): string | undefined => {
+    const clean = issuePath.replace(/^\/+/, '');
+    return pages.find((page) => page.path === clean)?.id;
+  };
+
+  return (
+    <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5">
+      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-destructive/10 text-destructive">
+          <TriangleAlert className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1 leading-snug">
+          <div className="font-semibold text-sm">{t('overview.publishFailed.title', { version: deployment.version })}</div>
+          <p className="mt-0.5 text-muted-foreground text-sm">
+            {grammarOnly ? t('overview.publishFailed.grammarOnly') : t('overview.publishFailed.body')}
+          </p>
+        </div>
+        {grammarOnly ? (
+          <Button size="sm" disabled={publishAnyway.isPending} onClick={() => publishAnyway.mutate()}>
+            {publishAnyway.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
+            {publishAnyway.isPending ? t('overview.publishFailed.publishing') : t('overview.publishFailed.publishAnyway')}
+          </Button>
+        ) : null}
+      </div>
+      {issues.length > 0 ? (
+        <ul className="divide-y divide-border border-border border-t">
+          {issues.map((issue) => {
+            const pageId = pageIdFor(issue.pagePath);
+            return (
+              <li key={`${issue.type}-${issue.pagePath}-${issue.detail}`} className="flex items-start gap-3 px-5 py-2.5 text-sm">
+                <span className="mt-0.5 shrink-0 text-muted-foreground">
+                  {issue.type === 'broken-link' ? <Link2Off className="size-3.5" /> : <SpellCheck className="size-3.5" />}
+                </span>
+                <div className="min-w-0 flex-1 leading-snug">
+                  {pageId ? (
+                    <Link
+                      className="font-medium hover:underline"
+                      to="/app/projects/$projectId/editor"
+                      params={{ projectId }}
+                      search={{ page: pageId }}
+                    >
+                      {issue.pageTitle || issue.pagePath}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{issue.pageTitle || issue.pagePath}</span>
+                  )}
+                  <span className="ms-2 text-muted-foreground">{issue.detail}</span>
+                </div>
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium text-[10.5px] text-muted-foreground uppercase tracking-wide">
+                  {issue.type === 'broken-link' ? t('overview.publishFailed.type.brokenLink') : t('overview.publishFailed.type.grammar')}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : deployment.error ? (
+        <p className="border-border border-t px-5 py-3 text-muted-foreground text-sm">{deployment.error}</p>
+      ) : null}
+    </div>
+  );
+}
+
+const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
+
+/** First-publish checklist: shown until the site has a READY deployment. */
+function PublishNudge({ projectId }: { projectId: string }) {
+  const t = useT();
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    try {
+      return window.localStorage.getItem(nudgeDismissKey(projectId)) === '1';
+    } catch {
+      return false;
+    }
+  });
+  if (dismissed) {
+    return null;
+  }
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      window.localStorage.setItem(nudgeDismissKey(projectId), '1');
+    } catch {
+      // ignore storage failures (private mode etc.)
+    }
+  };
+
+  return (
+    <div className="relative mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label={t('overview.nudge.dismiss')}
+        title={t('overview.nudge.dismiss')}
+        className="absolute end-3 top-3 cursor-pointer rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <X className="size-4" />
+      </button>
+      <div className="flex items-center gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+          <Rocket className="size-4" />
+        </span>
+        <div className="leading-snug">
+          <div className="font-semibold text-sm">{t('overview.nudge.title')}</div>
+          <p className="mt-0.5 text-muted-foreground text-sm">{t('overview.nudge.body')}</p>
+        </div>
+      </div>
+      <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <NudgeStep n={1} title={t('overview.nudge.step1')} desc={t('overview.nudge.step1Desc')}>
+          <Link className="absolute inset-0" aria-label={t('overview.nudge.step1')} to="/app/projects/$projectId/editor" params={{ projectId }} />
+        </NudgeStep>
+        <NudgeStep n={2} title={t('overview.nudge.step2')} desc={t('overview.nudge.step2Desc')}>
+          <Link
+            className="absolute inset-0"
+            aria-label={t('overview.nudge.step2')}
+            to="/app/projects/$projectId/editor"
+            params={{ projectId }}
+            search={{ publish: true }}
+          />
+        </NudgeStep>
+        <NudgeStep n={3} title={t('overview.nudge.step3')} desc={t('overview.nudge.step3Desc')}>
+          <Link
+            className="absolute inset-0"
+            aria-label={t('overview.nudge.step3')}
+            to="/app/projects/$projectId/settings"
+            params={{ projectId }}
+            search={{ section: 'domain' }}
+          />
+        </NudgeStep>
+      </ol>
+    </div>
+  );
+}
+
+function NudgeStep({ n, title, desc, children }: { n: number; title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <li className="relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors hover:bg-muted/40">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">{n}</span>
+      <div className="min-w-0 leading-snug">
+        <div className="font-medium text-sm">{title}</div>
+        <div className="mt-0.5 text-muted-foreground text-xs">{desc}</div>
+      </div>
+      {children}
+    </li>
   );
 }
 

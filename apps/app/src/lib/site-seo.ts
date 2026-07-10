@@ -13,6 +13,57 @@ export function publicOrigin(): string {
   return env?.APP_URL ?? env?.PUBLIC_APP_URL ?? 'http://localhost:4310';
 }
 
+/** The free-subdomain base configured for this deployment (`<slug>.<base>`),
+ *  cleaned of a wildcard prefix / trailing dot. Prefers the runtime process env
+ *  (SSR container, tests via vi.stubEnv) and falls back to the value Vite baked
+ *  into the bundle at build time (browser). */
+export function siteBaseDomain(): string | undefined {
+  const nodeEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+  const metaEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
+  const raw = nodeEnv?.VITE_SITE_BASE_DOMAIN ?? metaEnv?.VITE_SITE_BASE_DOMAIN;
+  return raw?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
+}
+
+/** Inputs for resolving a site's ONE canonical base URL. */
+export interface SiteUrlOptions {
+  /** The site's verified primary custom domain host (e.g. "docs.acme.com"),
+   *  when known. Wins over every other origin. */
+  primaryDomain?: string | null;
+  /** Project slug, for the free `<slug>.<SITE_BASE_DOMAIN>` subdomain. */
+  slug?: string | null;
+  /** The custom-domain origin the request actually arrived on (stamped by
+   *  src/server.ts as x-nibleaf-site-origin). Used only when neither a primary
+   *  domain nor a subdomain base is known. */
+  requestOrigin?: string;
+  /** Override the configured base domain (tests). `null` disables it. */
+  baseDomain?: string | null;
+}
+
+/**
+ * The single canonical base URL for a published site. Every origin a site is
+ * reachable on (app-origin /sites/:id, slug subdomain, secondary domains)
+ * canonicalizes to the SAME base so search equity isn't split:
+ *   1. the verified primary custom domain,
+ *   2. else the `<slug>.<SITE_BASE_DOMAIN>` subdomain,
+ *   3. else the origin the request arrived on (custom-domain serving),
+ *   4. else the app origin's internal /sites/:id path.
+ */
+export function canonicalSiteBase(projectId: string, options: SiteUrlOptions = {}): string {
+  const primary = options.primaryDomain?.trim().toLowerCase();
+  if (primary) {
+    return `https://${primary}`;
+  }
+  const base = options.baseDomain !== undefined ? (options.baseDomain ?? undefined) : siteBaseDomain();
+  const slug = options.slug?.trim();
+  if (slug && base) {
+    return `https://${slug}.${base}`;
+  }
+  if (options.requestOrigin) {
+    return options.requestOrigin;
+  }
+  return `${publicOrigin()}/sites/${projectId}`;
+}
+
 type Tag = Record<string, string>;
 interface Script {
   type?: string;
@@ -91,16 +142,12 @@ function ogLocale(code?: string): string | undefined {
   return OG_LOCALE[code] ?? OG_LOCALE[base] ?? code.replace('-', '_');
 }
 
-/** Absolute URL of a page within a published site (used for canonical/OG/hreflang).
- *  On a custom domain (origin given) the docs are served at the domain ROOT, so
- *  the internal /sites/:id prefix is dropped and the real origin is used. */
-export function sitePageUrl(projectId: string, path: string, lang?: string, origin?: string): string {
+/** Absolute URL of a page within a published site (used for canonical/OG/hreflang),
+ *  built on the site's ONE canonical base (see canonicalSiteBase). */
+export function sitePageUrl(projectId: string, path: string, lang?: string, options?: SiteUrlOptions): string {
   const clean = path ? `/${path.replace(/^\/+/, '')}` : '';
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-  if (origin) {
-    return `${origin}${clean}${query}`;
-  }
-  return `${publicOrigin()}/sites/${projectId}${clean}${query}`;
+  return `${canonicalSiteBase(projectId, options)}${clean}${query}`;
 }
 
 const seoConfig = (config: Record<string, unknown> | null) => (config ?? null) as unknown as ProjectConfig | null;
@@ -145,6 +192,11 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
     return { meta: [{ title: 'Page not found' }, { name: 'robots', content: 'noindex,nofollow' }] };
   }
   const config = seoConfig(data.project.config);
+  // Canonical consolidation inputs. `primaryDomain` is read defensively — the
+  // public site payload gains the field server-side separately; until then it
+  // is undefined and the slug-subdomain / request-origin fallbacks apply.
+  const projectMeta = data.project as SitePage['project'] & { primaryDomain?: string | null };
+  const urlOptions: SiteUrlOptions = { primaryDomain: projectMeta.primaryDomain, slug: projectMeta.slug, requestOrigin: origin };
   const langSeo = data.languageConfig?.seo;
   const pageSeo = data.page.config?.seo;
   const languages = data.languages ?? [];
@@ -171,7 +223,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // body description; the page body excerpt is the final fallback.
   const description =
     pageSeo?.metaDescription || langSeo?.metaDescription || config?.seo?.metaDescription || data.page.description || data.project.description || '';
-  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, origin);
+  const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, urlOptions);
 
   const meta: Tag[] = [{ title }];
   if (description) {
@@ -216,7 +268,8 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
   // hreflang alternates so search engines associate the per-language versions.
   // Only emit alternates for languages that actually have this page (path set),
   // using the clean URL for the default language. Skip when there's only the one
-  // real version (nothing to relate).
+  // real version (nothing to relate). They share the canonical base with the
+  // canonical URL, so every origin advertises one consistent URL set.
   const realAlternates = languages.filter((l) => l.path != null);
   if (realAlternates.length > 1) {
     for (const language of realAlternates) {
@@ -224,7 +277,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       links.push({
         rel: 'alternate',
         hreflang: language.code,
-        href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, origin),
+        href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, urlOptions),
       });
     }
     const fallback = realAlternates.find((language) => language.isDefault) ?? realAlternates[0];
@@ -232,7 +285,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
       links.push({
         rel: 'alternate',
         hreflang: 'x-default',
-        href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, origin),
+        href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, urlOptions),
       });
     }
   }
@@ -250,7 +303,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
         url,
         ...(ogImage ? { image: ogImage } : {}),
         inLanguage: activeLang,
-        isPartOf: { '@type': 'WebSite', name: data.project.name, url: origin ?? `${publicOrigin()}/sites/${projectId}` },
+        isPartOf: { '@type': 'WebSite', name: data.project.name, url: canonicalSiteBase(projectId, urlOptions) },
       }),
     },
   ];
@@ -265,7 +318,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
           '@type': 'ListItem',
           position: index + 1,
           name: crumb.title,
-          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalLang, origin),
+          item: sitePageUrl(projectId, versionedPath(crumb.path), canonicalLang, urlOptions),
         })),
       }),
     });

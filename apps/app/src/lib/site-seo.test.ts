@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
-import { pageHead, siteHead } from './site-seo';
+import { canonicalSiteBase, pageHead, siteHead } from './site-seo';
+
+// Keep the canonical tests hermetic: a developer's local .env may configure a
+// VITE_SITE_BASE_DOMAIN, which would flip the default canonical to a subdomain.
+beforeEach(() => {
+  vi.stubEnv('VITE_SITE_BASE_DOMAIN', '');
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 /** Find the value of a meta tag emitted by pageHead (matches name or property). */
 const meta = (head: ReturnType<typeof pageHead>, key: string): string | undefined =>
@@ -153,6 +162,84 @@ describe('pageHead canonical + hreflang', () => {
     // sitemap) instead of emitting a duplicate ?lang=en URL.
     const head = pageHead(base({ languages: [], activeLanguage: 'en' }), 'p1', 'en');
     expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');
+  });
+});
+
+describe('canonical consolidation across origins', () => {
+  /** A page payload whose project carries a verified primary custom domain. */
+  const withPrimary = (over: Partial<SitePage> = {}): SitePage => {
+    const data = base(over);
+    (data.project as SitePage['project'] & { primaryDomain?: string | null }).primaryDomain = 'docs.acme.com';
+    return data;
+  };
+
+  it('canonicalizes to the primary custom domain on the app origin', () => {
+    const head = pageHead(withPrimary(), 'p1', 'en');
+    expect(canonical(head)).toBe('https://docs.acme.com/quickstart');
+    expect(meta(head, 'og:url')).toBe('https://docs.acme.com/quickstart');
+  });
+
+  it('canonicalizes to the primary domain even when the request arrived on another origin', () => {
+    // A secondary verified domain still serves the site — its canonical must
+    // point at the primary, not at itself (no split SEO equity).
+    const head = pageHead(withPrimary(), 'p1', 'en', 'https://old-docs.acme.com');
+    expect(canonical(head)).toBe('https://docs.acme.com/quickstart');
+  });
+
+  it('builds hreflang alternates and x-default on the same canonical base', () => {
+    const head = pageHead(
+      withPrimary({
+        activeLanguage: 'ar',
+        languages: [
+          { code: 'en', isDefault: true, path: 'quickstart' },
+          { code: 'ar', isDefault: false, path: 'quickstart' },
+        ],
+      }),
+      'p1',
+      'ar',
+      'https://old-docs.acme.com',
+    );
+    const alts = hreflangs(head);
+    expect(alts.en).toBe('https://docs.acme.com/quickstart');
+    expect(alts.ar).toBe('https://docs.acme.com/quickstart?lang=ar');
+    expect(alts['x-default']).toBe('https://docs.acme.com/quickstart');
+  });
+
+  it('points the TechArticle isPartOf at the canonical base', () => {
+    const head = pageHead(withPrimary(), 'p1');
+    const article = (head.scripts ?? [])
+      .filter((s) => s.type === 'application/ld+json')
+      .map((s) => JSON.parse(s.children ?? '{}') as { '@type'?: string; isPartOf?: { url?: string } })
+      .find((block) => block['@type'] === 'TechArticle');
+    expect(article?.isPartOf?.url).toBe('https://docs.acme.com');
+  });
+
+  it('falls back to the slug subdomain when a base domain is configured and no primary exists', () => {
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', 'nibleaf.site');
+    const head = pageHead(base(), 'p1', 'en');
+    expect(canonical(head)).toBe('https://acme.nibleaf.site/quickstart');
+  });
+
+  it('keeps canonicalizing a custom-domain request to itself when nothing better is known', () => {
+    const head = pageHead(base(), 'p1', 'en', 'https://docs.custom.com');
+    expect(canonical(head)).toBe('https://docs.custom.com/quickstart');
+  });
+});
+
+describe('canonicalSiteBase priority', () => {
+  it('primary domain > slug subdomain > request origin > app origin', () => {
+    expect(
+      canonicalSiteBase('p1', { primaryDomain: 'docs.acme.com', slug: 'acme', baseDomain: 'nibleaf.site', requestOrigin: 'https://x.example' }),
+    ).toBe('https://docs.acme.com');
+    expect(canonicalSiteBase('p1', { slug: 'acme', baseDomain: 'nibleaf.site', requestOrigin: 'https://x.example' })).toBe(
+      'https://acme.nibleaf.site',
+    );
+    expect(canonicalSiteBase('p1', { slug: 'acme', baseDomain: null, requestOrigin: 'https://x.example' })).toBe('https://x.example');
+    expect(canonicalSiteBase('p1', { baseDomain: null })).toBe('http://localhost:4310/sites/p1');
+  });
+
+  it('normalizes the primary domain host', () => {
+    expect(canonicalSiteBase('p1', { primaryDomain: ' Docs.Acme.COM ' })).toBe('https://docs.acme.com');
   });
 });
 

@@ -1,14 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@nibleaf/design-system/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
@@ -31,8 +23,11 @@ export const Route = createFileRoute('/app/(dashboard)/')({
   component: ProjectsPage,
 });
 
-function NewProjectDialog() {
-  const [open, setOpen] = useState(false);
+/** Controlled create dialog so multiple triggers (header button + the empty
+ *  state's CTA) share one instance. Creating a project also mints its own
+ *  workspace (organization) server-side, so this works even for a user whose
+ *  sign-up provisioning failed and who belongs to no workspace at all. */
+function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const create = useCreateProject();
   const t = useT();
 
@@ -46,7 +41,7 @@ function NewProjectDialog() {
             onSuccess: () => {
               toast.success(t('newSite.created'));
               form.reset();
-              setOpen(false);
+              onOpenChange(false);
               resolve();
             },
             onError: (error) => {
@@ -60,14 +55,7 @@ function NewProjectDialog() {
   });
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger
-        render={
-          <Button>
-            <Plus className="size-4" /> {t('dashboard.newProject')}
-          </Button>
-        }
-      />
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent>
         <form
           onSubmit={(event) => {
@@ -116,6 +104,7 @@ function ProjectsPage() {
   const { data: projects, isPending } = useProjects();
   const [range, setRange] = useState<AnalyticsRange>('30d');
   const { data: analytics, isPending: analyticsPending } = useWorkspaceAnalytics(range);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
   const t = useT();
   const navigate = useNavigate();
   const { number } = useFormatters();
@@ -140,7 +129,10 @@ function ProjectsPage() {
           <h1 className="font-semibold text-2xl tracking-tight">{t('dashboard.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('dashboard.subtitle')}</p>
         </div>
-        <NewProjectDialog />
+        <Button onClick={() => setNewProjectOpen(true)}>
+          <Plus className="size-4" /> {t('dashboard.newProject')}
+        </Button>
+        <NewProjectDialog open={newProjectOpen} onOpenChange={setNewProjectOpen} />
       </div>
 
       {/* KPI cards */}
@@ -187,10 +179,15 @@ function ProjectsPage() {
             ))}
           </div>
         ) : (projects ?? []).length === 0 ? (
+          // Also the recovery path for a user whose workspace provisioning
+          // failed at sign-up: creating a project mints a fresh workspace.
           <div className="grid place-items-center py-16 text-center">
             <BookText className="size-7 text-muted-foreground" />
             <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
             <p className="mt-1 max-w-sm text-muted-foreground text-sm">{t('dashboard.empty.body')}</p>
+            <Button className="mt-4" onClick={() => setNewProjectOpen(true)}>
+              <Plus className="size-4" /> {t('dashboard.empty.cta')}
+            </Button>
           </div>
         ) : (
           <Table>
