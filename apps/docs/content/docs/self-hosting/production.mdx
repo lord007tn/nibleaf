@@ -70,27 +70,20 @@ Customer custom domains then point at your CNAME target:
 For apex domains, use Cloudflare CNAME flattening or an `A`/`AAAA` record to the
 same app ingress, and still create the `_nibleaf.<domain>` TXT record.
 
-## 3. Keep datastores private
+## 3. Use the production compose file
 
-The default compose file publishes datastore ports for local convenience. In
-production, remove those host port mappings with an override file.
-
-```yaml
-# docker-compose.prod.yml
-services:
-  postgres:
-    ports: []
-  dragonfly:
-    ports: []
-  maxio:
-    ports: []
-```
-
-Start with both files:
+The repo ships a dedicated pull-based production stack: `docker-compose.prod.yml`
+pulls the prebuilt `ghcr.io/lord007tn/nibleaf` image (no in-container monorepo
+build, no 5–6&nbsp;GB build RAM requirement) and publishes **only** the app port —
+datastores stay private by default.
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+cp .env.production.example .env   # fill in the REQUIRED values
+docker compose -f docker-compose.prod.yml up -d
 ```
+
+The source-build `docker-compose.yml` remains for development and for operators
+who explicitly want to build from source.
 
 ## 4. Terminate TLS at a reverse proxy
 
@@ -118,11 +111,12 @@ proxy to that local port instead.
 
 ## 5. Run migrations before scaling
 
-Run migrations once before scaling app or worker containers.
+Run migrations once before scaling app or worker containers (the `migrate`
+one-shot service also runs automatically on `up`).
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm migrate
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml run --rm migrate
+docker compose -f docker-compose.prod.yml up -d
 ```
 
 Production seeding is disabled unless `NIBLEAF_RUN_SEED=true`. Leave it unset for

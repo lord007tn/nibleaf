@@ -11,10 +11,9 @@ tagged release. Self-hosters should track `main` or the most recent release.
 
 Instead, use one of the following private channels:
 
-- Open a [GitHub security advisory](https://github.com/nibleaf-docs/nibleaf/security/advisories/new)
+- Open a [GitHub security advisory](https://github.com/lord007tn/nibleaf/security/advisories/new)
   (preferred), or
-- Email **security@nibleaf.dev** _(replace with your project's real security contact
-  before publishing the repository)_.
+- Email **security@nibleaf.com**.
 
 Please include:
 

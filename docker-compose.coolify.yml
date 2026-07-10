@@ -56,7 +56,9 @@ x-service-env: &service-env
   BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://nibleaf.com}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
+  # Public-instance default: require a verified email before sign-in. Needs
+  # POSTMARK_API_KEY (or SMTP_URL) configured so the mail can be delivered.
+  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
   TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   API_PORT: "4311"
@@ -67,10 +69,23 @@ x-service-env: &service-env
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-nibleaf.com}
   WORKER_PORT: "4312"
-  EMAIL_FROM: ${EMAIL_FROM:-fariq@nibleaf.com}
+  # nibleaf.com is domain-verified in Postmark, so any sender at the domain works.
+  EMAIL_FROM: ${EMAIL_FROM:-Nibleaf <no-reply@nibleaf.com>}
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-}
+  RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}
+  # Coolify's Traefik is on the private network, so no public hops by default.
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+  DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+  # Shared secret letting the app's SSR proxy attribute published-site traffic
+  # to the real visitor IP for rate limiting (openssl rand -hex 32).
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
+  # Basic auth for the worker's BullMQ dashboard at :4312/jobs — without BOTH
+  # set, /jobs is unauthenticated to anything that can reach the worker.
+  WORKBENCH_USER: ${WORKBENCH_USER:-}
+  WORKBENCH_PASS: ${WORKBENCH_PASS:-}
   NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
 
 services:
@@ -90,7 +105,7 @@ services:
       retries: 10
 
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
     restart: unless-stopped
     command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
     volumes:
@@ -102,7 +117,7 @@ services:
       retries: 10
 
   maxio:
-    image: ghcr.io/coollabsio/maxio:latest
+    image: ghcr.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}
@@ -203,10 +218,10 @@ services:
     pull_policy: always
     command: ["admin"]
     init: true
-    labels:
-      - "traefik.http.routers.http-0-a146ygu2x4z056nnfl3qcoqv-admin.service=admin-a146ygu2x4z056nnfl3qcoqv"
-      - "traefik.http.routers.https-0-a146ygu2x4z056nnfl3qcoqv-admin.service=admin-a146ygu2x4z056nnfl3qcoqv"
-      - "traefik.http.services.admin-a146ygu2x4z056nnfl3qcoqv.loadbalancer.server.port=4315"
+    # Coolify generates the Traefik router/service labels for the domain you
+    # assign to this service. If your Coolify instance routes the admin domain
+    # to the wrong container port, add instance-specific labels in the Coolify
+    # UI (do not commit them — they embed your resource UUID).
     environment:
       <<: *service-env
       PORT: "4315"

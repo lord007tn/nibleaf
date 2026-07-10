@@ -1,0 +1,282 @@
+name: nibleaf
+
+# ── Nibleaf — production self-host stack (pull-based, RECOMMENDED) ──────────
+#
+# This file PULLS the prebuilt image from GHCR instead of building the whole
+# monorepo on your server (an in-container source build needs ~5–6 GB of free
+# RAM and OOMs small VPSes — see docker-compose.yml if you really want it).
+#
+# Quick start:
+#   cp .env.production.example .env
+#   # edit .env — set APP_URL, secrets, and the storage endpoints
+#   docker compose -f docker-compose.prod.yml up -d
+#   # dashboard: http://<host>:4310 (put a TLS reverse proxy in front)
+#
+# Version pinning: NIBLEAF_VERSION defaults to a pinned release tag below so
+# upgrades are deliberate, not accidental. Pick the latest tag from
+# https://github.com/lord007tn/nibleaf/releases and see UPGRADING.md for the
+# upgrade/rollback flow. Avoid ":latest" in production.
+#
+# Only the `app` port is published (default bound to 127.0.0.1 — set
+# NIBLEAF_BIND=0.0.0.0 if your reverse proxy is not on this host). Postgres,
+# Dragonfly, maxio, server, and worker stay on the internal Docker network.
+#
+# The internal admin panel is behind the "admin" profile:
+#   docker compose -f docker-compose.prod.yml --profile admin up -d
+
+x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.1.0}
+
+x-service-env: &service-env
+  NODE_ENV: production
+  POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.production.example)}@postgres:5432/nibleaf
+  REDIS_HOST: dragonfly
+  REDIS_PORT: "6379"
+  QUEUE_CLUSTER: "true"
+  # Object storage. Defaults target the bundled maxio service; point the
+  # STORAGE_* variables at Cloudflare R2 / AWS S3 / Backblaze B2 instead if you
+  # bring your own bucket (see DEPLOYMENT.md).
+  STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
+  STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
+  STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:?Set STORAGE_PUBLIC_ENDPOINT to a browser-reachable storage origin, e.g. https://storage.example.com}
+  STORAGE_REGION: ${STORAGE_REGION:-auto}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?Set STORAGE_ACCESS_KEY_ID in .env}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?Set STORAGE_SECRET_ACCESS_KEY in .env}
+  STORAGE_BUCKET: ${STORAGE_BUCKET:-nibleaf}
+  STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
+  STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${APP_URL:-}}
+  STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env — generate with `openssl rand -hex 32`}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:-${APP_URL:-}}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  # Public-instance defaults: verified email required before sign-in. Needs
+  # POSTMARK_API_KEY or SMTP_URL so the verification mail can be delivered;
+  # set to "false" for a private instance without email.
+  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
+  DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+  TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${APP_URL:-}}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${APP_URL:-}}
+  API_PORT: "4311"
+  API_URL: http://server:4311
+  APP_URL: ${APP_URL:?Set APP_URL to the public dashboard origin, e.g. https://docs.example.com}
+  SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-}
+  WORKER_PORT: "4312"
+  # Email delivery. Postmark is preferred when POSTMARK_API_KEY is set;
+  # SMTP_URL is the generic fallback. Without either, the worker logs mail.
+  EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
+  POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
+  POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
+  SMTP_URL: ${SMTP_URL:-}
+  # Optional AI writing assist (off unless a key is set).
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-}
+  # Per-IP budget for the public site-serving API (requests/minute).
+  RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}
+  # Public proxy hops your edge appends to X-Forwarded-For (1 behind Cloudflare).
+  # Private hops are skipped automatically — see DEPLOYMENT.md section 11.
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+  # Shared secret letting the app's SSR proxy attribute published-site traffic
+  # to the real visitor IP for rate limiting. Optional but recommended:
+  # `openssl rand -hex 32`. Unset = the hint is ignored (safe default).
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
+  # Basic auth for the worker's BullMQ dashboard at :4312/jobs. The port is not
+  # published by this file, but set BOTH values anyway (no default credentials
+  # ship here on purpose) — without them /jobs is unauthenticated inside the
+  # Docker network and to anything you proxy at it.
+  WORKBENCH_USER: ${WORKBENCH_USER:-}
+  WORKBENCH_PASS: ${WORKBENCH_PASS:-}
+  NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
+
+services:
+  postgres:
+    # Pinned to 17: postgres:18 changed the data-directory layout and breaks the
+    # existing volume mount (see UPGRADING.md before attempting a major bump).
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nibleaf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.production.example)}
+      POSTGRES_DB: nibleaf
+    volumes:
+      - nibleaf-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nibleaf -d nibleaf"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Dragonfly — Redis-compatible queue backend for BullMQ. Queue names are
+  # hash-tagged by default, so Dragonfly can keep BullMQ keys grouped.
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
+    restart: unless-stopped
+    command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
+    ulimits:
+      memlock: -1
+    volumes:
+      - nibleaf-dragonfly:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # maxio — bundled S3-compatible object storage. Auto-creates the bucket
+  # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
+  # so published doc assets load by their public URL. If you use R2/S3 instead,
+  # this service is simply unused. Route your STORAGE_PUBLIC_ENDPOINT host to it
+  # at your reverse proxy (or publish the commented port below for a host proxy).
+  maxio:
+    image: ghcr.io/coollabsio/maxio:0.4.2
+    restart: unless-stopped
+    environment:
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:?Set STORAGE_ACCESS_KEY_ID in .env}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:?Set STORAGE_SECRET_ACCESS_KEY in .env}
+      MAXIO_REGION: ${STORAGE_REGION:-auto}
+      MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
+      MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
+      MAXIO_SECURE_COOKIES: ${MAXIO_SECURE_COOKIES:-true}
+    volumes:
+      - nibleaf-maxio:/data
+    # ports:
+    #   - "127.0.0.1:9300:9000"   # only if your reverse proxy runs on the host
+    healthcheck:
+      test: ["CMD", "maxio", "healthcheck", "--url", "http://127.0.0.1:9000/healthz", "--timeout-ms", "2000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: applies Prisma migrations (and seeds only if NIBLEAF_RUN_SEED=true),
+  # then exits. server/worker wait for it to complete successfully.
+  migrate:
+    image: *image
+    command: ["migrate"]
+    environment: *service-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    image: *image
+    command: ["server"]
+    init: true
+    environment: *service-env
+    # ports:
+    #   - "127.0.0.1:4311:4311"   # optional: expose the API directly on the host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4311/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  worker:
+    image: *image
+    command: ["worker"]
+    init: true
+    environment: *service-env
+    # The worker's :4312/jobs BullMQ dashboard is intentionally NOT published.
+    # If you must reach it, set WORKBENCH_USER/WORKBENCH_PASS first, then
+    # publish to loopback only:
+    # ports:
+    #   - "127.0.0.1:4312:4312"
+    depends_on:
+      dragonfly:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4312/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # The only published service: dashboard + editor + published docs sites +
+  # wildcard project subdomains + custom domains. Point your reverse proxy here.
+  app:
+    image: *image
+    command: ["app"]
+    init: true
+    environment:
+      <<: *service-env
+      PORT: "4310"
+      VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
+    ports:
+      - "${NIBLEAF_BIND:-127.0.0.1}:${APP_PORT:-4310}:4310"
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4310/sign-in"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # Internal platform-operator panel. Opt in with:
+  #   docker compose -f docker-compose.prod.yml --profile admin up -d
+  admin:
+    image: *image
+    command: ["admin"]
+    init: true
+    profiles: ["admin"]
+    environment:
+      <<: *service-env
+      PORT: "4315"
+    # ports:
+    #   - "127.0.0.1:4315:4315"   # keep the admin panel loopback/VPN-only
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4315/sign-in"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  # ── Optional: automated Postgres backups (uncomment to enable) ────────────
+  # Maintained pg_dump sidecar; writes rotated dumps to ./backups on the host.
+  # Test your restore path before you need it — see DEPLOYMENT.md "Backups and
+  # restore" and scripts/backup.sh for the manual/cron alternative.
+  # pg-backup:
+  #   image: prodrigestivill/postgres-backup-local:17-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_HOST: postgres
+  #     POSTGRES_DB: nibleaf
+  #     POSTGRES_USER: nibleaf
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+  #     SCHEDULE: "@daily"                # cron or @daily/@hourly
+  #     BACKUP_KEEP_DAYS: "7"
+  #     BACKUP_KEEP_WEEKS: "4"
+  #     BACKUP_KEEP_MONTHS: "6"
+  #     HEALTHCHECK_PORT: "8080"
+  #   volumes:
+  #     - ./backups:/backups
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+# Volume names intentionally match docker-compose.yml (same project name), so
+# you can switch from the source-build stack to this pull-based one — or back —
+# without losing data.
+volumes:
+  nibleaf-pg:
+  nibleaf-dragonfly:
+  nibleaf-maxio:

@@ -1,15 +1,18 @@
 name: Docker
 
+# Production images are GATED ON CI: a push to main builds/publishes only via
+# workflow_run, after the "CI" workflow (typecheck, lint, tests) has completed
+# successfully for that commit. Release tags (v*) build directly — they are
+# cut from an already CI-green main. Pull requests build but never push.
+
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+  push:
     tags:
       - "v*"
-    paths-ignore:
-      - "*.md"
-      - "apps/docs/content/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/PULL_REQUEST_TEMPLATE.md"
   pull_request:
     branches: [main]
     paths-ignore:
@@ -30,9 +33,19 @@ jobs:
   image:
     name: Build self-host image
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
+    # For workflow_run events, build only when CI succeeded for a PUSH to main.
+    # The workflow_run.event guard matters: CI also runs on pull_request, and a
+    # fork PR's head branch can be named anything — including "main".
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
     steps:
       - uses: actions/checkout@v4
+        with:
+          # For workflow_run, build the exact commit CI validated.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
 
       - name: Validate semver tag
         if: startsWith(github.ref, 'refs/tags/')
@@ -42,6 +55,11 @@ jobs:
             echo "Docker release tags must be semantic versions like v0.1.0"
             exit 1
           fi
+
+      # QEMU emulates arm64 so the published image runs on Graviton/Ampere/
+      # Raspberry Pi hosts as well as amd64.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -71,6 +89,10 @@ jobs:
           context: .
           file: ./Dockerfile
           target: runner
+          # PR builds stay amd64-only for fast feedback; published builds are
+          # multi-arch (the arm64 half runs under QEMU and is slow — the buildx
+          # GHA cache below keeps it tolerable).
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -85,8 +107,10 @@ jobs:
           cache-to: |
             type=gha,mode=max,scope=nibleaf-image,ignore-error=true
 
+      # Deploys ONLY after a CI-green main build published above (workflow_run
+      # is filtered to successful CI push runs on main by the job-level if).
       - name: Trigger Coolify deployment
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: github.event_name == 'workflow_run'
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}

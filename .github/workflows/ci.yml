@@ -44,3 +44,8 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      # Advisory for now (continue-on-error) — tighten once the baseline is clean.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+        continue-on-error: true

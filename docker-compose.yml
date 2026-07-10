@@ -1,11 +1,16 @@
 name: nibleaf
 
-# Full self-hosted Nibleaf stack. Quick start:
+# Full self-hosted Nibleaf stack, BUILT FROM SOURCE. Quick start:
 #   cp .env.example .env   # (optional — sensible defaults below)
 #   docker compose up -d --build
 # Then open http://localhost:4310.
 #
-# For production: set strong POSTGRES_PASSWORD / STORAGE_SECRET_KEY /
+# ⚠ RAM WARNING: building the whole monorepo in-container needs ~5–6 GB of
+# free RAM and will OOM small VPSes. For production self-hosting, use the
+# pull-based docker-compose.prod.yml instead (recommended) — it pulls the
+# prebuilt image from ghcr.io/lord007tn/nibleaf and needs no build at all.
+#
+# For production: set strong POSTGRES_PASSWORD / STORAGE_SECRET_ACCESS_KEY /
 # BETTER_AUTH_SECRET and put the apps behind a TLS reverse proxy.
 # Cache = Dragonfly (Redis-compatible); object storage = maxio (S3-compatible).
 
@@ -15,10 +20,14 @@ x-build: &build
   target: runner
   args:
     VITE_API_URL: http://server:4311
-    VITE_APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
-    VITE_WWW_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
+    VITE_APP_URL: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
+    VITE_WWW_URL: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
     VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-docs.nibleaf.com}
 
+# Interpolation reads the canonical .env names (the same ones `pnpm dev` and
+# .env.production.example use). The legacy PUBLIC_APP_URL / PUBLIC_API_URL /
+# PUBLIC_STORAGE_* / STORAGE_ACCESS_KEY / STORAGE_SECRET_KEY aliases still win
+# when set, so existing .env files keep working.
 x-service-env: &service-env
   NODE_ENV: production
   POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:-nibleaf}@postgres:5432/nibleaf
@@ -26,24 +35,27 @@ x-service-env: &service-env
   REDIS_PORT: "6379"
   QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
-  STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
-  STORAGE_PUBLIC_ENDPOINT: ${PUBLIC_STORAGE_ENDPOINT:-http://localhost:9300}
+  # Fixed to the bundled maxio service — a host .env's STORAGE_ENDPOINT (the
+  # `pnpm dev` localhost value) must NOT leak into the containers. Bringing
+  # your own R2/S3? Use docker-compose.prod.yml, which reads STORAGE_ENDPOINT.
+  STORAGE_ENDPOINT: http://maxio:9000
+  STORAGE_PUBLIC_ENDPOINT: ${PUBLIC_STORAGE_ENDPOINT:-${STORAGE_PUBLIC_ENDPOINT:-http://localhost:9300}}
   STORAGE_REGION: ${STORAGE_REGION:-auto}
-  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY:-nibleafadmin}
-  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_KEY:-nibleafadmin123}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY:-${STORAGE_ACCESS_KEY_ID:-nibleafadmin}}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_KEY:-${STORAGE_SECRET_ACCESS_KEY:-nibleafadmin123}}
   STORAGE_BUCKET: ${STORAGE_BUCKET:-nibleaf}
   STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-true}
-  STORAGE_PUBLIC_URL: ${PUBLIC_STORAGE_URL:-http://localhost:9300/nibleaf}
-  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${PUBLIC_APP_URL:-http://localhost:4310}}
+  STORAGE_PUBLIC_URL: ${PUBLIC_STORAGE_URL:-${STORAGE_PUBLIC_URL:-http://localhost:9300/nibleaf}}
+  STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
-  BETTER_AUTH_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
+  BETTER_AUTH_URL: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
   REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
-  TRUSTED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310}
-  CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:4310}
+  TRUSTED_ORIGINS: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
+  CORS_ALLOWED_ORIGINS: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
   API_PORT: "4311"
-  API_URL: ${PUBLIC_API_URL:-http://localhost:4311}
-  APP_URL: ${PUBLIC_APP_URL:-http://localhost:4310}
+  API_URL: ${PUBLIC_API_URL:-${API_URL:-http://localhost:4311}}
+  APP_URL: ${PUBLIC_APP_URL:-${APP_URL:-http://localhost:4310}}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.nibleaf.com}
   WORKER_PORT: "4312"
@@ -53,6 +65,11 @@ x-service-env: &service-env
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   SMTP_URL: ${SMTP_URL:-}
+  # Basic auth for the worker's BullMQ dashboard at :4312/jobs. Set BOTH —
+  # this compose file publishes the worker port, and without credentials the
+  # dashboard is UNAUTHENTICATED.
+  WORKBENCH_USER: ${WORKBENCH_USER:-}
+  WORKBENCH_PASS: ${WORKBENCH_PASS:-}
 
 services:
   postgres:
@@ -75,7 +92,7 @@ services:
   # Dragonfly — Redis-compatible queue backend for BullMQ. Queue names are
   # hash-tagged by default, so Dragonfly can keep BullMQ keys grouped.
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0
     restart: unless-stopped
     command: ["dragonfly", "--cluster_mode=emulated", "--lock_on_hashtags"]
     ulimits:
@@ -92,11 +109,11 @@ services:
   # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
   # so published doc assets load by their public URL. Console at /ui/.
   maxio:
-    image: ghcr.io/coollabsio/maxio:latest
+    image: ghcr.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
-      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-nibleafadmin}
-      MAXIO_SECRET_KEY: ${STORAGE_SECRET_KEY:-nibleafadmin123}
+      MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-${STORAGE_ACCESS_KEY_ID:-nibleafadmin}}
+      MAXIO_SECRET_KEY: ${STORAGE_SECRET_KEY:-${STORAGE_SECRET_ACCESS_KEY:-nibleafadmin123}}
       MAXIO_REGION: auto
       MAXIO_DEFAULT_BUCKETS: nibleaf
       MAXIO_PUBLIC_BUCKETS: nibleaf
