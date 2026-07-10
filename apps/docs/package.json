@@ -12,20 +12,20 @@
     "typecheck": "fumadocs-mdx && tsc --noEmit"
   },
   "dependencies": {
-    "@tanstack/react-router": "^1.167.4",
-    "@tanstack/react-start": "^1.166.15",
-    "fumadocs-core": "^16.9.3",
-    "fumadocs-mdx": "^15.0.10",
-    "fumadocs-ui": "^16.9.3",
-    "lucide-react": "^1.16.0",
+    "@tanstack/react-router": "^1.170.17",
+    "@tanstack/react-start": "^1.168.27",
+    "fumadocs-core": "^16.11.2",
+    "fumadocs-mdx": "^15.1.0",
+    "fumadocs-ui": "^16.11.2",
+    "lucide-react": "^1.24.0",
     "nitro": "3.0.260522-beta",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwindcss": "^4.2.1"
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/mdx": "^2.0.13",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.0",
