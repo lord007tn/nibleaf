@@ -590,6 +590,15 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     return Response.redirect(`https://${MARKETING_HOST}${url.pathname}${url.search}`, 301);
   }
   const isGetLike = request.method === 'GET' || request.method === 'HEAD';
+  // Normalize trailing slashes permanently (/pricing/ → /pricing) — the router
+  // would otherwise answer with a temporary 307, which never consolidates link
+  // equity. Root '/' and the machine files are unaffected; 308 preserves method.
+  if (isGetLike && url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    // Fall back to the request's own scheme so a proxy-less self-host on plain
+    // http does not get bounced onto an https URL it never served.
+    const proto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '') || 'https';
+    return Response.redirect(`${proto}://${host}${url.pathname.replace(/\/+$/, '')}${url.search}`, 308);
+  }
 
   const serve = async (): Promise<Response> => {
     if (!isCustomDomain) {
