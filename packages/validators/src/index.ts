@@ -67,6 +67,10 @@ export const projectConfigSchema = z
         bodyFont: z.string().max(60).optional(),
         codeFont: z.string().max(60).optional(),
         baseSize: z.enum(['14', '15', '16', '17', '18']).optional(),
+        // Reading rhythm (shadcn typeset): line height and block spacing for
+        // rendered doc content. Discrete steps keep every combination readable.
+        leading: z.enum(['1.5', '1.6', '1.75', '1.9', '2']).optional(),
+        flow: z.enum(['0.75', '1', '1.25', '1.5', '2']).optional(),
       })
       .strict()
       .optional(),

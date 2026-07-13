@@ -16,7 +16,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
 import { GripVertical, Plus } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { type CSSProperties, useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
 import { useT } from '@/lib/i18n';
 import { EditorBubbleMenu } from './editor-bubble-menu';
@@ -104,6 +104,9 @@ interface TiptapEditorProps {
   dir?: 'ltr' | 'rtl';
   editable?: boolean;
   className?: string;
+  /** Typography variables (typeset.css contract) so the editor mirrors the
+   *  project's configured reading rhythm — see lib/typography.ts. */
+  style?: CSSProperties;
   /** Comments anchored on this page — their quotes are highlighted in the body. */
   comments?: CommentMarker[];
   /** The focused comment id (drawn stronger). */
@@ -130,6 +133,7 @@ export function TiptapEditor({
   dir = 'ltr',
   editable = true,
   className,
+  style,
   comments,
   activeCommentId,
   commentMode = false,
@@ -306,7 +310,7 @@ export function TiptapEditor({
   }, [comments, activeCommentId, editor]);
 
   return (
-    <div className={cn('pl-editor', commentMode && 'is-comment-mode', className)} dir={dir}>
+    <div className={cn('pl-editor', commentMode && 'is-comment-mode', className)} dir={dir} style={style}>
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       <EditorContent editor={editor} />

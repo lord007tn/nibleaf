@@ -55,6 +55,7 @@ import {
 } from '@/hooks/api';
 import { PublishControl } from '@/layouts/project';
 import { useT } from '@/lib/i18n';
+import { typographyVars } from '@/lib/typography';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
@@ -766,6 +767,7 @@ function EditorPage() {
                   value={content}
                   onChange={setContent}
                   dir={activeLangDir}
+                  style={typographyVars(project?.config?.typography)}
                   onUpload={onUploadImage}
                   comments={commentMarkers}
                   activeCommentId={activeCommentId}

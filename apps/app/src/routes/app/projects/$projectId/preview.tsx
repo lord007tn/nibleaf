@@ -8,6 +8,7 @@ import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
 import type { PageNode } from '@/hooks/api/types';
 import { useT } from '@/lib/i18n';
+import { typographyVars } from '@/lib/typography';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   component: ProjectPreview,
@@ -123,7 +124,9 @@ function ProjectPreview() {
       </aside>
 
       <main className="overflow-y-auto bg-background">
-        <article className="mx-auto max-w-4xl px-10 py-10" dir={contentDir}>
+        {/* Same typography variables the published site sets on its chrome, so
+            the preview reads exactly like production. */}
+        <article className="mx-auto max-w-4xl px-10 py-10" dir={contentDir} style={typographyVars(project?.config?.typography)}>
           {contentPending ? (
             <div className="space-y-4">
               <Skeleton className="h-8 w-64" />

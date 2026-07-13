@@ -1,5 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useForm } from '@tanstack/react-form';
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
@@ -11,6 +13,18 @@ const BODY_FONTS: [string, ...string[]] = ['Geist', 'Inter', 'Source Sans 3', 'S
 const CODE_FONTS: [string, ...string[]] = ['Geist Mono', 'JetBrains Mono', 'IBM Plex Mono', 'Fira Code'];
 
 type BaseSize = '14' | '15' | '16' | '17' | '18';
+type Leading = '1.5' | '1.6' | '1.75' | '1.9' | '2';
+type Flow = '0.75' | '1' | '1.25' | '1.5' | '2';
+
+/** One-click reading styles: each preset is just a (size, leading, flow) triple —
+ *  the stored config always holds the resolved values, never the preset name. */
+const PRESETS = {
+  default: { baseSize: '16', leading: '1.75', flow: '1.25' },
+  compact: { baseSize: '15', leading: '1.6', flow: '1' },
+  relaxed: { baseSize: '16', leading: '1.9', flow: '1.5' },
+  article: { baseSize: '17', leading: '2', flow: '1.5' },
+} as const satisfies Record<string, { baseSize: BaseSize; leading: Leading; flow: Flow }>;
+type PresetName = keyof typeof PRESETS;
 
 function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
   return (
@@ -29,11 +43,65 @@ function FontSelect({ value, onChange, options }: { value: string; onChange: (va
   );
 }
 
+/** Live sample rendered with the exact typeset variables the published site will
+ *  use — same class, same CSS file, updated as the controls change. */
+function RhythmPreview({
+  baseSize,
+  leading,
+  flow,
+  bodyFont,
+  headingFont,
+  codeFont,
+}: {
+  baseSize: BaseSize;
+  leading: Leading;
+  flow: Flow;
+  bodyFont: string;
+  headingFont: string;
+  codeFont: string;
+}) {
+  const t = useT();
+  const style = {
+    fontSize: `${baseSize}px`,
+    '--typeset-leading': leading,
+    '--typeset-flow': `${flow}em`,
+    '--typeset-font-body': `'${bodyFont}', var(--font-sans, system-ui, sans-serif)`,
+    '--typeset-font-heading': `'${headingFont}', var(--font-sans, sans-serif)`,
+    '--typeset-font-mono': `'${codeFont}', var(--font-mono, monospace)`,
+  } as CSSProperties;
+  return (
+    <div className="typeset max-h-72 overflow-y-auto rounded-xl border border-border bg-background p-5" style={style}>
+      <h2>{t('settings.typography.preview.heading')}</h2>
+      <p>{t('settings.typography.preview.body')}</p>
+      <ul>
+        <li>{t('settings.typography.preview.item1')}</li>
+        <li>
+          {t('settings.typography.preview.item2')
+            .split('`')
+            .map((part, i) => (i % 2 === 1 ? <code key={part}>{part}</code> : part))}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 export function TypographySection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const typography = project.config?.typography ?? {};
   const [baseSize, setBaseSize] = useState<BaseSize>((typography.baseSize as BaseSize) ?? '16');
+  const [leading, setLeading] = useState<Leading>((typography.leading as Leading) ?? '1.75');
+  const [flow, setFlow] = useState<Flow>((typography.flow as Flow) ?? '1.25');
+
+  // The preset row highlights whichever preset the current triple matches (if any).
+  const activePreset = (Object.keys(PRESETS) as PresetName[]).find(
+    (name) => PRESETS[name].baseSize === baseSize && PRESETS[name].leading === leading && PRESETS[name].flow === flow,
+  );
+  const applyPreset = (name: PresetName) => {
+    setBaseSize(PRESETS[name].baseSize);
+    setLeading(PRESETS[name].leading);
+    setFlow(PRESETS[name].flow);
+  };
 
   const form = useForm({
     defaultValues: {
@@ -43,7 +111,7 @@ export function TypographySection({ project }: { project: Project }) {
     },
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
-        typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize },
+        typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize, leading, flow },
       });
     },
   });
@@ -56,6 +124,26 @@ export function TypographySection({ project }: { project: Project }) {
       }}
     >
       <SectionHeader icon="T" title={t('settings.typography.title')} />
+
+      <Field hint={t('settings.typography.preset.hint')} label={t('settings.typography.preset.label')}>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(PRESETS) as PresetName[]).map((name) => (
+            <button
+              key={name}
+              type="button"
+              onClick={() => applyPreset(name)}
+              className={cn(
+                'h-8 cursor-pointer rounded-full border px-3.5 font-medium text-[13px] transition-colors',
+                activePreset === name
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
+              )}
+            >
+              {t(`settings.typography.preset.${name}`)}
+            </button>
+          ))}
+        </div>
+      </Field>
 
       <form.Field name="headingFont">
         {(field) => (
@@ -95,6 +183,44 @@ export function TypographySection({ project }: { project: Project }) {
           value={baseSize}
         />
       </Field>
+
+      <Field hint={t('settings.typography.leading.hint')} label={t('settings.typography.leading.label')}>
+        <Segmented
+          className="max-w-[300px]"
+          onChange={setLeading}
+          options={[
+            { value: '1.5', label: '1.5' },
+            { value: '1.6', label: '1.6' },
+            { value: '1.75', label: '1.75' },
+            { value: '1.9', label: '1.9' },
+            { value: '2', label: '2.0' },
+          ]}
+          value={leading}
+        />
+      </Field>
+
+      <Field hint={t('settings.typography.flow.hint')} label={t('settings.typography.flow.label')}>
+        <Segmented
+          className="max-w-[420px]"
+          onChange={setFlow}
+          options={[
+            { value: '0.75', label: t('settings.typography.flow.tight') },
+            { value: '1', label: t('settings.typography.flow.snug') },
+            { value: '1.25', label: t('settings.typography.flow.normal') },
+            { value: '1.5', label: t('settings.typography.flow.roomy') },
+            { value: '2', label: t('settings.typography.flow.airy') },
+          ]}
+          value={flow}
+        />
+      </Field>
+
+      <form.Subscribe selector={(state) => [state.values.headingFont, state.values.bodyFont, state.values.codeFont] as const}>
+        {([headingFont, bodyFont, codeFont]) => (
+          <Field hint={t('settings.typography.preview.hint')} label={t('settings.typography.preview.label')}>
+            <RhythmPreview baseSize={baseSize} bodyFont={bodyFont} codeFont={codeFont} flow={flow} headingFont={headingFont} leading={leading} />
+          </Field>
+        )}
+      </form.Subscribe>
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
     </form>

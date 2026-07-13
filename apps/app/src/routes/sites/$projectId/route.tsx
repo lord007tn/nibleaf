@@ -377,6 +377,18 @@ function SiteChrome() {
   if (baseSize) {
     chromeStyle.fontSize = `${baseSize}px`;
   }
+  // Reading rhythm (typeset.css): line height + block spacing for rendered doc
+  // content. Base size cascades via em (--typeset-size defaults to 1em), so
+  // only these two need explicit wiring. Values come from the enum-validated
+  // config, never free text.
+  const leading = config?.typography?.leading;
+  const flow = config?.typography?.flow;
+  if (leading) {
+    chromeStyle['--typeset-leading'] = leading;
+  }
+  if (flow) {
+    chromeStyle['--typeset-flow'] = `${flow}em`;
+  }
   const fontCss = [
     headingFont ? `.nibleaf-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
     codeFont ? `.nibleaf-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',

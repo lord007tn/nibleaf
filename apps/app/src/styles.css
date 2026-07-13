@@ -1,1 +1,4 @@
 @import "@nibleaf/design-system/globals.css";
+/* Document typography for rendered Markdown (published sites, preview, editor
+ * parity). See the header of typeset.css for provenance and the variable API. */
+@import "./typeset.css";
