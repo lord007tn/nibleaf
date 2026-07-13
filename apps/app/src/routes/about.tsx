@@ -7,9 +7,9 @@ import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, pageMeta } from '@/lib/ma
 export const Route = createFileRoute('/about')({
   head: () => ({
     meta: pageMeta({
-      title: 'About Nibleaf',
+      title: 'About Nibleaf — why we built an open-source docs platform',
       description:
-        'Nibleaf is the open-source Mintlify alternative — a self-hostable, Arabic-first documentation platform for teams who want to own their content and their readers.',
+        'Why Nibleaf exists: an open-source, self-hostable, Arabic-first documentation platform for teams who want to own their content and their readers.',
       path: '/about',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/about') }],

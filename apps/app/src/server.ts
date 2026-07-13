@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { BLOG_ENTRIES } from '@/lib/blog';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -346,27 +347,28 @@ async function serveAppOriginSeo(pathname: string): Promise<Response | null> {
 //    sitemap/llms — a self-hoster must never advertise as "Nibleaf Cloud".
 
 /** Minimal robots.txt for a self-hosted dashboard: no Sitemap line, no marketing
- *  docs, just keep crawlers out of the app/auth/api surfaces. */
-const SELF_HOST_ROBOTS = 'User-agent: *\nDisallow: /app/\nDisallow: /sign-in\nDisallow: /sign-up\nDisallow: /api/\n';
+ *  docs, just keep crawlers out of the app/auth/api surfaces. (`/app$` catches the
+ *  bare dashboard path without also matching e.g. /apple-touch-icon.png.) */
+const SELF_HOST_ROBOTS = 'User-agent: *\nDisallow: /app/\nDisallow: /app$\nDisallow: /sign-in\nDisallow: /sign-up\nDisallow: /api/\n';
 
-/** Marketing routes for the generated sitemap (paths + crawl hints). */
-const MARKETING_SITEMAP: { path: string; changefreq: string; priority: string }[] = [
-  { path: '/', changefreq: 'weekly', priority: '1.0' },
-  { path: '/cloud', changefreq: 'monthly', priority: '0.8' },
-  { path: '/pricing', changefreq: 'monthly', priority: '0.8' },
-  { path: '/self-hosting', changefreq: 'monthly', priority: '0.8' },
-  { path: '/about', changefreq: 'monthly', priority: '0.6' },
-  { path: '/compare/nibleaf-vs-mintlify', changefreq: 'monthly', priority: '0.7' },
-  { path: '/compare/nibleaf-vs-gitbook', changefreq: 'monthly', priority: '0.7' },
-  { path: '/compare/nibleaf-vs-docusaurus', changefreq: 'monthly', priority: '0.7' },
-  { path: '/alternatives/mintlify', changefreq: 'monthly', priority: '0.7' },
-  { path: '/alternatives/gitbook', changefreq: 'monthly', priority: '0.7' },
-  { path: '/alternatives/readme', changefreq: 'monthly', priority: '0.7' },
-  { path: '/terms', changefreq: 'yearly', priority: '0.3' },
-  { path: '/privacy', changefreq: 'yearly', priority: '0.3' },
+/** Static marketing routes for the generated sitemap, each with its own lastmod
+ *  (rolled forward when that page materially changes). Blog URLs are appended
+ *  from the article frontmatter registry — no edit needed per article. */
+const MARKETING_SITEMAP: { path: string; lastmod: string }[] = [
+  { path: '/', lastmod: '2026-07-13' },
+  { path: '/cloud', lastmod: '2026-07-13' },
+  { path: '/pricing', lastmod: '2026-07-13' },
+  { path: '/self-hosting', lastmod: '2026-07-13' },
+  { path: '/about', lastmod: '2026-07-13' },
+  { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-07-13' },
+  { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-07-13' },
+  { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-07-13' },
+  { path: '/alternatives/mintlify', lastmod: '2026-07-13' },
+  { path: '/alternatives/gitbook', lastmod: '2026-07-13' },
+  { path: '/alternatives/readme', lastmod: '2026-07-13' },
+  { path: '/terms', lastmod: '2026-07-10' },
+  { path: '/privacy', lastmod: '2026-07-10' },
 ];
-/** Rolled forward when the marketing routes change. */
-const MARKETING_LASTMOD = '2026-07-10';
 
 /** Full marketing robots.txt: allow crawling, disallow the app/auth/api
  *  surfaces (incl. token-bearing auth utility pages), and point at the sitemap. */
@@ -375,6 +377,7 @@ function marketingRobots(origin: string): string {
     'User-agent: *',
     'Allow: /',
     'Disallow: /app/',
+    'Disallow: /app$',
     'Disallow: /sign-in',
     'Disallow: /sign-up',
     'Disallow: /accept-invite',
@@ -382,17 +385,27 @@ function marketingRobots(origin: string): string {
     'Disallow: /reset-password',
     'Disallow: /verify-email',
     'Disallow: /api/',
+    'Disallow: /cdn-cgi/',
     '',
     `Sitemap: ${origin}/sitemap.xml`,
     '',
   ].join('\n');
 }
 
+/** All marketing sitemap entries: static routes + /blog + one URL per article. */
+function marketingSitemapEntries(): { path: string; lastmod: string }[] {
+  const blogLastmod = BLOG_ENTRIES.reduce((max, entry) => (entry.dateModified > max ? entry.dateModified : max), '2026-07-13');
+  return [
+    ...MARKETING_SITEMAP,
+    { path: '/blog', lastmod: blogLastmod },
+    ...BLOG_ENTRIES.map((entry) => ({ path: `/blog/${entry.slug}`, lastmod: entry.dateModified })),
+  ];
+}
+
 function marketingSitemap(origin: string): string {
-  const urls = MARKETING_SITEMAP.map(
-    (u) =>
-      `  <url>\n    <loc>${origin}${u.path}</loc>\n    <lastmod>${MARKETING_LASTMOD}</lastmod>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`,
-  ).join('\n');
+  const urls = marketingSitemapEntries()
+    .map((u) => `  <url>\n    <loc>${origin}${u.path}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n  </url>`)
+    .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
@@ -430,6 +443,10 @@ function marketingLlms(origin: string): string {
 - [Terms of Service](${origin}/terms)
 - [Privacy Policy](${origin}/privacy)
 - [Source code](https://github.com/lord007tn/nibleaf): GitHub repository
+
+## Blog
+
+${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${origin}/blog/${entry.slug}): ${entry.description}`).join('\n')}
 
 ## Full details
 
@@ -490,6 +507,7 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Cloud: ${origin}/cloud
 - Pricing: ${origin}/pricing
 - Self-hosting: ${origin}/self-hosting
+- Blog: ${origin}/blog
 - About: ${origin}/about
 - Terms of Service: ${origin}/terms
 - Privacy Policy: ${origin}/privacy
@@ -555,27 +573,41 @@ async function withSiteCache(response: Response | Promise<Response>, request: Re
 
 // ─── Request handling ─────────────────────────────────────────────────────────
 
+/** Strip the body for HEAD requests — Node's http server does not do it for us,
+ *  and crawlers routinely probe sitemap/llms URLs with HEAD before fetching. */
+function withoutHeadBody(response: Response, method: string): Response {
+  return method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response;
+}
+
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   const url = new URL(request.url);
   const host = (request.headers.get('host') || url.host).toLowerCase();
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
+  // Consolidate the marketing origin: www.nibleaf.com would otherwise resolve as
+  // an unknown custom domain and serve duplicate 200 content on every path.
+  if (IS_CLOUD_MARKETING && bare === `www.${MARKETING_HOST}`) {
+    return Response.redirect(`https://${MARKETING_HOST}${url.pathname}${url.search}`, 301);
+  }
+  const isGetLike = request.method === 'GET' || request.method === 'HEAD';
 
   const serve = async (): Promise<Response> => {
     if (!isCustomDomain) {
-      if (request.method === 'GET') {
+      if (isGetLike) {
         // App-origin ROOT robots/sitemap/llms: the marketing docs on nibleaf.com,
         // a minimal robots.txt (and 404s) on every self-hosted dashboard.
         const rootSeo = serveRootSeo(url.pathname, host, bare, request);
         if (rootSeo) {
-          return rootSeo;
+          return withoutHeadBody(rootSeo, request.method);
         }
         // App-origin robots/sitemap/llms for a site live under /sites/:id/*; serve
         // them from the API (they're in SKIP so they never reach the site routes).
         const seo = await serveAppOriginSeo(url.pathname);
         if (seo) {
-          return seo;
+          return withoutHeadBody(seo, request.method);
         }
+      }
+      if (request.method === 'GET') {
         const siteMatch = /^\/sites\/([^/]+)(\/.*)?$/.exec(url.pathname);
         // Never consolidate the machine files (robots/sitemap/llms) — they were
         // handled above; a transient proxy failure must not turn into a 301.
@@ -595,14 +627,14 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
 
     // robots/sitemap/llms are served at the domain root (they are not in SKIP,
     // so they'd otherwise be rewritten to a nonexistent /sites/:id route).
-    if (request.method === 'GET' && DOMAIN_SEO_FILE.test(url.pathname)) {
+    if (isGetLike && DOMAIN_SEO_FILE.test(url.pathname)) {
       const projectId = await resolveHost(bare);
       if (projectId) {
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         // Always resolves to a Response (restrictive fallback for a private or
         // unreachable site) — never fall through to the /sites rewrite, which
         // would render the SPA shell as sitemap.xml/robots.txt.
-        return serveDomainSeo(url.pathname, projectId, `${proto}://${host}`);
+        return withoutHeadBody(await serveDomainSeo(url.pathname, projectId, `${proto}://${host}`), request.method);
       }
     }
     if (!SKIP.test(url.pathname)) {

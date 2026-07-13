@@ -24,14 +24,28 @@ export const ENTITY_SENTENCE =
 export const canonicalHref = (path: string) => new URL(path, APP_URL).toString();
 
 /** Title + description + Open Graph + Twitter card meta for one marketing page. */
-export function pageMeta({ title, description, path }: { title: string; description: string; path: string }) {
+export function pageMeta({
+  title,
+  description,
+  path,
+  type = 'website',
+}: {
+  title: string;
+  description: string;
+  path: string;
+  type?: 'website' | 'article';
+}) {
   const url = canonicalHref(path);
   const image = canonicalHref(OG_IMAGE_PATH);
+  // The shared card art plus the page title reads better in link unfurls than a
+  // one-size-fits-all alt (and matches Google's og:image:alt guidance).
+  const imageAlt = title === OG_IMAGE_ALT ? OG_IMAGE_ALT : `${SITE_NAME} — ${title}`;
   return [
     { title },
     { name: 'description', content: description },
-    { property: 'og:type', content: 'website' },
+    { property: 'og:type', content: type },
     { property: 'og:site_name', content: SITE_NAME },
+    { property: 'og:locale', content: 'en_US' },
     { property: 'og:title', content: title },
     { property: 'og:description', content: description },
     { property: 'og:url', content: url },
@@ -39,13 +53,39 @@ export function pageMeta({ title, description, path }: { title: string; descript
     { property: 'og:image:type', content: 'image/png' },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
-    { property: 'og:image:alt', content: OG_IMAGE_ALT },
+    { property: 'og:image:alt', content: imageAlt },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: image },
-    { name: 'twitter:image:alt', content: OG_IMAGE_ALT },
+    { name: 'twitter:image:alt', content: imageAlt },
   ];
+}
+
+/** HowTo JSON-LD `<script>` for step-by-step pages (self-hosting quick start). */
+export function howToLd({
+  name,
+  description,
+  totalTime,
+  steps,
+}: {
+  name: string;
+  description: string;
+  /** ISO-8601 duration, e.g. 'PT10M'. */
+  totalTime?: string;
+  steps: { name: string; text: string }[];
+}) {
+  return {
+    type: 'application/ld+json',
+    children: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'HowTo',
+      name,
+      description,
+      ...(totalTime ? { totalTime } : {}),
+      step: steps.map((step, i) => ({ '@type': 'HowToStep', position: i + 1, name: step.name, text: step.text })),
+    }),
+  };
 }
 
 /** BreadcrumbList JSON-LD `<script>` for a route's `head().scripts`. */

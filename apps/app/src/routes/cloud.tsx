@@ -8,7 +8,7 @@ export const Route = createFileRoute('/cloud')({
     meta: pageMeta({
       title: 'Nibleaf Cloud — hosted documentation sites',
       description:
-        'Nibleaf Cloud runs the open-source Nibleaf platform for you: hosted dashboard, managed database and storage, automatic upgrades, custom domains, and analytics. Free while in beta.',
+        'Managed Nibleaf hosting: dashboard, database, storage, and upgrades handled for you, with custom domains and analytics. Free in beta, no credit card.',
       path: '/cloud',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/cloud') }],

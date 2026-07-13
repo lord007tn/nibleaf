@@ -18,9 +18,11 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
 import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
 import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
 import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
@@ -90,6 +92,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompareNibleafVsMintlifyRoute =
   CompareNibleafVsMintlifyRouteImport.update({
     id: '/compare/nibleaf-vs-mintlify',
@@ -107,6 +114,11 @@ const CompareNibleafVsDocusaurusRoute =
     path: '/compare/nibleaf-vs-docusaurus',
     getParentRoute: () => rootRouteImport,
   } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
   id: '/alternatives/readme',
   path: '/alternatives/readme',
@@ -253,9 +265,11 @@ export interface FileRoutesByFullPath {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -288,9 +302,11 @@ export interface FileRoutesByTo {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
@@ -325,9 +341,11 @@ export interface FileRoutesById {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
   '/app/(dashboard)/members': typeof AppdashboardMembersRoute
@@ -363,9 +381,11 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/blog/'
     | '/app/projects/$projectId'
     | '/app/analytics'
     | '/app/members'
@@ -398,9 +418,11 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/blog'
     | '/app/analytics'
     | '/app/members'
     | '/app/settings'
@@ -434,9 +456,11 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/blog/'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
     | '/app/(dashboard)/members'
@@ -467,9 +491,11 @@ export interface RootRouteChildren {
   AlternativesGitbookRoute: typeof AlternativesGitbookRoute
   AlternativesMintlifyRoute: typeof AlternativesMintlifyRoute
   AlternativesReadmeRoute: typeof AlternativesReadmeRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   CompareNibleafVsDocusaurusRoute: typeof CompareNibleafVsDocusaurusRoute
   CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
   CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
+  BlogIndexRoute: typeof BlogIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -537,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compare/nibleaf-vs-mintlify': {
       id: '/compare/nibleaf-vs-mintlify'
       path: '/compare/nibleaf-vs-mintlify'
@@ -556,6 +589,13 @@ declare module '@tanstack/react-router' {
       path: '/compare/nibleaf-vs-docusaurus'
       fullPath: '/compare/nibleaf-vs-docusaurus'
       preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alternatives/readme': {
@@ -832,9 +872,11 @@ const rootRouteChildren: RootRouteChildren = {
   AlternativesGitbookRoute: AlternativesGitbookRoute,
   AlternativesMintlifyRoute: AlternativesMintlifyRoute,
   AlternativesReadmeRoute: AlternativesReadmeRoute,
+  BlogSlugRoute: BlogSlugRoute,
   CompareNibleafVsDocusaurusRoute: CompareNibleafVsDocusaurusRoute,
   CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
   CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
+  BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

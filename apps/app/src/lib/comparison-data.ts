@@ -222,7 +222,7 @@ export const nibleafVsMintlify: Comparison = {
   competitorUrl: 'https://www.mintlify.com',
   metaTitle: 'Nibleaf vs Mintlify — the open-source alternative, compared',
   metaDescription:
-    'An honest Nibleaf vs Mintlify comparison: pricing, feature matrix, and where each wins. Nibleaf is open source and self-hostable; Mintlify has the more mature API tooling today.',
+    'Nibleaf vs Mintlify, honestly compared: pricing, features, and where each wins. Nibleaf is open source and self-hostable; Mintlify leads on API tooling.',
   heading: 'Nibleaf vs Mintlify',
   breadcrumbName: 'Nibleaf vs Mintlify',
   directAnswer: [
@@ -326,7 +326,7 @@ export const nibleafVsGitbook: Comparison = {
   competitorUrl: 'https://www.gitbook.com',
   metaTitle: 'Nibleaf vs GitBook — pricing and features, honestly compared',
   metaDescription:
-    'Nibleaf vs GitBook: what each costs as of July 2026, a feature matrix, and where each wins. Nibleaf is open source with free self-hosting; GitBook is a polished hosted platform priced per site and per user.',
+    'Nibleaf vs GitBook: current pricing, a feature matrix, and where each wins. Nibleaf is the open-source, self-hostable option with first-class Arabic/RTL.',
   heading: 'Nibleaf vs GitBook',
   breadcrumbName: 'Nibleaf vs GitBook',
   directAnswer: [
@@ -424,7 +424,7 @@ export const nibleafVsDocusaurus: Comparison = {
   competitorUrl: 'https://docusaurus.io',
   metaTitle: 'Nibleaf vs Docusaurus — docs platform vs static site generator',
   metaDescription:
-    'Nibleaf vs Docusaurus: both open source, very different shapes. Docusaurus is a free MIT static site generator for docs-as-code; Nibleaf is a full platform with a WYSIWYG Markdown editor, hosting, search, and analytics.',
+    'Nibleaf vs Docusaurus: both open source, different shapes. Docusaurus is a docs-as-code framework; Nibleaf adds a hosted-style editor and built-in search.',
   heading: 'Nibleaf vs Docusaurus',
   breadcrumbName: 'Nibleaf vs Docusaurus',
   directAnswer: [
@@ -585,7 +585,7 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   competitorUrl: 'https://www.mintlify.com',
   metaTitle: 'The best Mintlify alternatives in 2026 (open source included)',
   metaDescription:
-    'Five real Mintlify alternatives, honestly compared: Nibleaf (open source, self-hostable), Docusaurus, Starlight, Scalar, and GitBook — with current pricing and who each one is actually for.',
+    'Five real Mintlify alternatives compared: Nibleaf (open source), Docusaurus, Starlight, Scalar, and GitBook — with pricing and who each is actually for.',
   heading: 'Mintlify alternatives',
   breadcrumbName: 'Mintlify alternatives',
   directAnswer: [
@@ -621,7 +621,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
   competitorUrl: 'https://www.gitbook.com',
   metaTitle: 'The best GitBook alternatives in 2026 (open source included)',
   metaDescription:
-    'Five real GitBook alternatives, honestly compared: Nibleaf (open source, block editor over Markdown), Docusaurus, Starlight, Scalar, and Mintlify — with current pricing and who each one is for.',
+    'Five real GitBook alternatives compared: Nibleaf (open source), Docusaurus, Starlight, Scalar, and Mintlify — with pricing and who each is actually for.',
   heading: 'GitBook alternatives',
   breadcrumbName: 'GitBook alternatives',
   directAnswer: [
@@ -657,7 +657,7 @@ export const readmeAlternatives: AlternativesRoundup = {
   competitorUrl: 'https://readme.com',
   metaTitle: 'The best ReadMe alternatives in 2026 (open source included)',
   metaDescription:
-    'Five real ReadMe alternatives, honestly compared: Nibleaf (open source, self-hostable), Scalar, Mintlify, Docusaurus, and Starlight — with current pricing and who each one is actually for.',
+    'Five real ReadMe alternatives compared: Nibleaf (open source), Scalar, Mintlify, Docusaurus, and Starlight — with pricing and who each is actually for.',
   heading: 'ReadMe alternatives',
   breadcrumbName: 'ReadMe alternatives',
   directAnswer: [

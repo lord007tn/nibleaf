@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { faqs, PricingPage } from '@/components/cloud-marketing';
+import { faqs } from '@/components/cloud-marketing';
+import { PricingPage } from '@/components/marketing/pricing';
 import { breadcrumbLd, canonicalHref, faqLd, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/pricing')({
@@ -8,7 +9,7 @@ export const Route = createFileRoute('/pricing')({
     meta: pageMeta({
       title: 'Nibleaf pricing — free beta, free self-hosting',
       description:
-        'Nibleaf Cloud is free while in beta, with generous advance notice before any future paid plans. Self-hosting the open-source platform (AGPL-3.0) is free forever.',
+        'Nibleaf Cloud is free while in beta. Self-hosting the open-source platform is free forever under AGPL-3.0 — no feature gates, no per-seat pricing.',
       path: '/pricing',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],

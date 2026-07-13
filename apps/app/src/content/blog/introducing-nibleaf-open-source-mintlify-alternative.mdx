@@ -1,0 +1,116 @@
+---
+title: 'Introducing Nibleaf: The Open-Source Mintlify Alternative'
+description: 'Nibleaf is an open-source, self-hostable Mintlify alternative with a WYSIWYG Markdown editor, versioned publishing, built-in search, and real Arabic support.'
+datePublished: '2026-07-13'
+dateModified: '2026-07-13'
+tags: ['announcement', 'open-source']
+related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl']
+readingMinutes: 7
+faqs:
+  - question: 'Is Nibleaf really free to self-host?'
+    answer: 'Yes. Nibleaf is licensed under AGPL-3.0 and the self-hosted version has no feature gates. Everything in the cloud product ships in the open-source repository.'
+  - question: 'Does Nibleaf lock my content into a proprietary format?'
+    answer: 'No. The editor round-trips plain Markdown. What you see in the WYSIWYG editor is stored as Markdown, so your content stays portable to any other tool.'
+  - question: 'Does Nibleaf support Arabic and right-to-left documentation?'
+    answer: 'Yes, as a first-class feature. Each language gets its own page tree, RTL layout is built into the reader, search uses an Arabic tokenizer, and the UI is localized in English and Arabic.'
+  - question: 'What do I need to run Nibleaf on my own server?'
+    answer: 'Docker and Docker Compose. One compose file starts the dashboard, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. A Coolify one-click config and a prebuilt image on ghcr.io are also available.'
+---
+
+Documentation tooling has quietly turned into rent. Somewhere along the way, publishing a docs site — a folder of Markdown rendered with a search box — became a subscription with per-seat pricing, usage meters, and a dashboard you can never take with you. Your content lives on someone else's servers. Your readers' traffic flows through someone else's analytics. And when pricing changes, your options are pay up or migrate.
+
+We think that trade was never necessary, so we built the alternative. **Nibleaf** is an open-source documentation platform — the polished, hosted-product experience of tools like Mintlify, as software you can actually run yourself. It is [AGPL-3.0 licensed on GitHub](https://github.com/lord007tn/nibleaf), free to self-host forever with no feature gates, and also available as a managed cloud that is free while in beta.
+
+This post covers why we built it and what is in the box.
+
+## Why docs tooling became rent
+
+To be fair to the incumbents: they are good products. Mintlify's source files are MDX in your own Git repository, and its rendering is polished. GitBook has a capable hosted editor. But in both cases the *platform* — the renderer, the search index, the analytics, the publishing pipeline — is closed, hosted-only, and sold as a subscription. You cannot run either one on your own infrastructure, and your readers cannot reach your docs without touching their servers. We break down the trade-offs in [Nibleaf vs GitBook](/compare/nibleaf-vs-gitbook).
+
+The open-source side of the spectrum has the opposite problem. Docusaurus is excellent and MIT-licensed, but it is a static site generator, not a platform: there is no hosted editor for non-developers, search usually means wiring up an external service, and every contributor needs Git and a build pipeline. We compare the trade-offs honestly in [Nibleaf vs Docusaurus](/compare/nibleaf-vs-docusaurus).
+
+Nibleaf's premise is that you should not have to choose. A documentation platform can be a real product — editor, publishing, search, analytics, custom domains — and still be open source you can inspect, fork, and run.
+
+## An editor that writes Markdown, not a format you rent
+
+The core design decision in Nibleaf is the editor. It is a Notion-style WYSIWYG editor — blocks, a slash menu, inline formatting — because most people who write documentation are not developers, and asking a support engineer or product manager to hand-edit MDX in a pull request is how docs go stale.
+
+But WYSIWYG editors have a bad reputation for a reason: most of them persist an internal document format, and your content is only as portable as their export button. Nibleaf's editor round-trips **plain Markdown**. What you type in blocks is stored as Markdown; what is stored as Markdown loads back into blocks. There is no proprietary intermediate format at any point. MDX components — callouts, tabs, code groups, and the rest — are supported inside the same flow.
+
+<Callout title="Why this matters">
+If you ever leave Nibleaf, you leave with a folder of Markdown files that any other tool can read. Portability is not an export feature; it is the storage format.
+</Callout>
+
+Writing is collaborative, too: each site has a team with owner, admin, and editor roles, and reviewers can leave comments anchored to specific blocks instead of pasting screenshots into Slack.
+
+## Publishing is versioned, and readers never see drafts
+
+Nibleaf separates writing from publishing. Every publish produces an **immutable snapshot** of your site: the pages, the navigation tree, the settings, all frozen at that moment. Readers are always served a complete snapshot, never a half-written page — you can edit for a week and nothing changes on the live site until you publish.
+
+Because snapshots are immutable, rollback is trivial: republish a previous snapshot and the live site is instantly back to a known-good state. No cache invalidation dance, no rebuild pipeline to babysit.
+
+## Search that ships in the box
+
+Docs search is where hosted platforms usually earn their subscription and static generators usually send you to a third party. Nibleaf ships search inside the platform: full-text plus fuzzy matching powered by Orama, served from your own instance with the Cmd+K interface readers expect. There is no Algolia account to configure, no crawler to schedule, and no search-as-a-service bill.
+
+Search is also bilingual — it includes an Arabic tokenizer, so Arabic queries actually match Arabic content instead of failing on morphology. Which brings us to the differentiator we care most about.
+
+## Arabic-first, not RTL-as-an-afterthought
+
+Most documentation platforms treat right-to-left languages as a CSS patch: flip the layout with `dir="rtl"` and hope. If you have ever shipped Arabic docs, you know the reality — mirrored icons that should not mirror, code blocks fighting the text direction, search that returns nothing, navigation trees that assume English.
+
+Nibleaf was designed bilingual from the start:
+
+| Capability | How Nibleaf handles it |
+| --- | --- |
+| Content structure | Per-language page trees — Arabic docs are not translations bolted onto an English tree |
+| Layout | First-class RTL rendering in the reader, not a flipped stylesheet |
+| Search | Arabic tokenizer in the built-in index |
+| SEO | `hreflang` annotations generated per language |
+| Product UI | Dashboard and reader localized in English and Arabic |
+
+If your users are in the Middle East and North Africa — or you are a global company that keeps deprioritizing the Arabic docs because the tooling fights you — this is the platform gap Nibleaf exists to close.
+
+## The rest of a real platform
+
+The features that make hosted docs products feel finished are all here, and all open source:
+
+- **Custom domains** with guided DNS verification, plus wildcard project subdomains out of the box.
+- **SEO built in**: server-side rendering, canonical URLs, Open Graph and Twitter cards, JSON-LD, sitemaps, robots controls, and per-page noindex.
+- **First-party analytics**: page views, unique visitors, top pages, top searches, and device and language breakdowns — collected by your instance, with no third-party tracker on your readers.
+- **Bring your own storage**: assets go to any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2) or the bundled storage service.
+
+## Cloud beta or your own server — your call
+
+There are two ways to run Nibleaf, and neither is a lesser version.
+
+**Nibleaf Cloud** is the managed option, currently in free beta — no billing code even exists in the product today. Paid plans will come later, with generous advance notice before anything changes. Details are on the [pricing page](/pricing). If you want the fastest path, [create a workspace](/sign-up) and you will be writing in a couple of minutes.
+
+**Self-hosting** is free forever. One Docker Compose file brings up the entire stack — dashboard, API, background worker, PostgreSQL, a Redis-compatible cache, and S3-compatible object storage:
+
+```bash
+git clone https://github.com/lord007tn/nibleaf.git
+cd nibleaf
+cp .env.example .env   # set your secrets and domain
+docker compose up -d
+```
+
+The app comes up on port 4310; open it and create the first owner account. If you deploy with Coolify, there is a one-click config, and a prebuilt image is published to ghcr.io if you would rather not build from source. The full walkthrough lives in the [self-hosting guide](/self-hosting).
+
+<Note>
+Nibleaf is AGPL-3.0. In short: run it, modify it, host it for your company freely — but if you offer a modified Nibleaf as a service to others, you must share those modifications.
+</Note>
+
+## Where Nibleaf stands today
+
+Nibleaf is in beta, and we would rather be precise than promotional about that. The editor, versioned publishing, search, i18n, domains, SEO, and analytics described above are shipped and running in production. Mintlify has years of head start on breadth, and Docusaurus has an enormous plugin ecosystem; if those strengths are what you need today, the detailed [Nibleaf vs Mintlify comparison](/compare/nibleaf-vs-mintlify) lays out exactly where each tool wins.
+
+What Nibleaf offers now is the thing the incumbents structurally cannot: the full platform, in the open, on your terms. Your content is Markdown. Your search runs on your box. Your analytics never leave your instance. And the price of the software itself is zero, permanently, because you are holding the source code.
+
+## How to start
+
+- **Cloud**: [sign up](/sign-up) for a free beta workspace at nibleaf.com.
+- **Self-hosted**: `git clone`, `cp .env.example .env`, `docker compose up -d`, open port 4310 — the [self-hosting guide](/self-hosting) covers DNS, storage, and upgrades.
+- **Source**: read the code, open issues, or contribute at [github.com/lord007tn/nibleaf](https://github.com/lord007tn/nibleaf).
+
+If you have been paying rent on a folder of Markdown, come take a look.
