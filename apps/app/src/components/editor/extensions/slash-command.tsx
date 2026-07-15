@@ -3,7 +3,7 @@ import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
-import Suggestion, { type SuggestionMount, type SuggestionOptions } from '@tiptap/suggestion';
+import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
   AppWindow,
   Code2,
@@ -534,10 +534,34 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
     },
     render: () => {
       let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
-      let unmount: ReturnType<SuggestionMount> | null = null;
+      let currentProps: SuggestionProps<SlashItem> | null = null;
+      let cleanup: (() => void) | null = null;
+
+      const position = () => {
+        if (!component || !currentProps) return;
+        const anchor = currentProps.clientRect?.();
+        if (!anchor) return;
+
+        const popup = component.element;
+        const gap = 6;
+        const edge = 12;
+        const popupRect = popup.getBoundingClientRect();
+        const left = Math.max(edge, Math.min(anchor.left, window.innerWidth - popupRect.width - edge));
+        const below = anchor.bottom + gap;
+        const top = below + popupRect.height <= window.innerHeight - edge ? below : Math.max(edge, anchor.top - popupRect.height - gap);
+
+        Object.assign(popup.style, {
+          position: 'fixed',
+          left: `${left}px`,
+          top: `${top}px`,
+          width: 'max-content',
+          zIndex: '50',
+        });
+      };
 
       return {
         onStart: (props) => {
+          currentProps = props;
           component = new ReactRenderer(SlashList, {
             editor: props.editor,
             props: {
@@ -545,13 +569,33 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
               command: (item: SlashItem) => props.command(item),
             },
           });
-          unmount = props.mount(component.element);
+          document.body.appendChild(component.element);
+          position();
+
+          const reposition = () => position();
+          const dismiss = (event: PointerEvent) => {
+            const target = event.target;
+            if (target instanceof Node && component && !component.element.contains(target) && !props.editor.view.dom.contains(target)) {
+              exitSuggestion(props.editor.view, slashSuggestionKey);
+            }
+          };
+          window.addEventListener('resize', reposition);
+          window.addEventListener('scroll', reposition, true);
+          document.addEventListener('pointerdown', dismiss, true);
+          cleanup = () => {
+            window.removeEventListener('resize', reposition);
+            window.removeEventListener('scroll', reposition, true);
+            document.removeEventListener('pointerdown', dismiss, true);
+            component?.element.remove();
+          };
         },
         onUpdate: (props) => {
+          currentProps = props;
           component?.updateProps({
             items: props.items,
             command: (item: SlashItem) => props.command(item),
           });
+          requestAnimationFrame(position);
         },
         onKeyDown: (props) => {
           if (props.event.key === 'Escape') {
@@ -560,10 +604,11 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
           return component?.ref?.onKeyDown(props.event) ?? false;
         },
         onExit: () => {
-          unmount?.();
-          unmount = null;
+          cleanup?.();
+          cleanup = null;
           component?.destroy();
           component = null;
+          currentProps = null;
         },
       };
     },
