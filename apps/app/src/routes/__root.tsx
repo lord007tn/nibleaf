@@ -47,16 +47,20 @@ function RootDocument({ children }: { children: ReactNode }) {
   // crawlers + the first paint see e.g. lang="ar" dir="rtl"), updating reactively
   // on ?lang switches. Non-site routes keep the en/ltr default — the dashboard's
   // own DirectionProvider governs its direction.
-  const { lang, dir } = useRouterState({
+  const { lang, dir, siteProjectId } = useRouterState({
     select: (state) => {
       const match = state.matches.find((m) => m.routeId === '/sites/$projectId');
       const site = (match?.loaderData as { site?: SiteShell } | undefined)?.site;
       if (!site) {
-        return { lang: 'en', dir: 'ltr' as const };
+        return { lang: 'en', dir: 'ltr' as const, siteProjectId: undefined };
       }
       const code = (state.location.search as { lang?: string }).lang ?? site.activeLanguage;
       const active = site.languages.find((l) => l.code === code) ?? site.languages.find((l) => l.isDefault) ?? site.languages[0];
-      return { lang: active?.code ?? 'en', dir: active?.direction === 'RTL' ? ('rtl' as const) : ('ltr' as const) };
+      return {
+        lang: active?.code ?? 'en',
+        dir: active?.direction === 'RTL' ? ('rtl' as const) : ('ltr' as const),
+        siteProjectId: (match?.params as { projectId?: string } | undefined)?.projectId,
+      };
     },
   });
   return (
@@ -65,6 +69,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} />
+        {siteProjectId ? <meta name="nibleaf-site-project" content={siteProjectId} /> : null}
         <HeadContent />
       </head>
       <body>
