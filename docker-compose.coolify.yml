@@ -69,7 +69,10 @@ x-service-env: &service-env
   APP_URL: ${APP_URL:-https://nibleaf.com}
   ADMIN_URL: ${ADMIN_URL:-https://admin.nibleaf.com}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
-  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-nibleaf.com}
+  # Dedicated DNS-only ingress target. Do not use the Cloudflare-proxied apex:
+  # third-party hostnames can otherwise be claimed by a former SaaS provider at
+  # the shared edge even after their DNS CNAME is changed.
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.nibleaf.com}
   WORKER_PORT: "4312"
   # nibleaf.com is domain-verified in Postmark, so any sender at the domain works.
   EMAIL_FROM: ${EMAIL_FROM:-Nibleaf <no-reply@nibleaf.com>}
