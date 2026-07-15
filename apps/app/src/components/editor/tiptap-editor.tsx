@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { DragHandle } from '@tiptap/extension-drag-handle-react';
+import { DragHandle, type DragHandleProps } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -40,7 +40,7 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
-import { type CSSProperties, useEffect, useRef } from 'react';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
 import { useT } from '@/lib/i18n';
 import { EditorBubbleMenu } from './editor-bubble-menu';
@@ -74,6 +74,16 @@ const CodeBlock = CodeBlockLowlight.extend({
 function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   const t = useT();
   const posRef = useRef<number | null>(null);
+  // DragHandle registers a ProseMirror plugin and tears it down whenever these
+  // callback/config identities change. Keep them stable across controlled editor
+  // renders so typing cannot destroy the simultaneously-open slash plugin view.
+  const computePositionConfig = useMemo(
+    () => ({ placement: dir === 'rtl' ? 'right' : 'left' }) satisfies DragHandleProps['computePositionConfig'],
+    [dir],
+  );
+  const handleNodeChange = useCallback<NonNullable<DragHandleProps['onNodeChange']>>(({ pos }) => {
+    posRef.current = pos;
+  }, []);
   const insertBelow = () => {
     const pos = posRef.current;
     if (pos === null) {
@@ -89,13 +99,7 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
       .run();
   };
   return (
-    <DragHandle
-      editor={editor}
-      computePositionConfig={{ placement: dir === 'rtl' ? 'right' : 'left' }}
-      onNodeChange={({ pos }) => {
-        posRef.current = pos;
-      }}
-    >
+    <DragHandle editor={editor} computePositionConfig={computePositionConfig} onNodeChange={handleNodeChange}>
       <div className="flex items-center gap-0.5 px-1 text-muted-foreground">
         <button
           type="button"

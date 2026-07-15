@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextSlashSelection, resolveSlashAnchor, shouldHandleSlashTrigger, slashRefreshTarget, slashTriggerOffset } from './extensions/slash-command';
+import { nextSlashSelection, resolveSlashAnchor, shouldHandleSlashTrigger, slashTriggerOffset } from './extensions/slash-command';
 
 describe('slash command keyboard selection', () => {
   it('wraps arrow navigation and supports Home/End', () => {
@@ -38,11 +38,5 @@ describe('slash command keyboard selection', () => {
     };
 
     expect(resolveSlashAnchor(() => null, coordsAtPos, 7)).toEqual(cursor);
-  });
-
-  it('re-triggers the first slash after a controlled editor round-trip', () => {
-    expect(slashRefreshTarget('', 1, 7, true)).toBe(8);
-    expect(slashRefreshTarget('/hea', 11, 7, true)).toBe(11);
-    expect(slashRefreshTarget('', 1, 7, false)).toBeNull();
   });
 });

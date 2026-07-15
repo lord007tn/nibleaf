@@ -1,7 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
@@ -490,20 +490,6 @@ export const slashTriggerOffset = (textBeforeCursor: string): number | null => {
   return textBeforeCursor.lastIndexOf('/');
 };
 
-/** Pick the cursor position that should own a post-commit slash refresh. The
- * current cursor wins when the user already continued typing a query; otherwise
- * restore the cursor just after the slash if a controlled Markdown round-trip
- * replaced the document during the same paint. */
-export const slashRefreshTarget = (
-  textBeforeCursor: string,
-  cursorPosition: number,
-  insertedPosition: number,
-  slashStillPresent: boolean,
-): number | null => {
-  if (slashTriggerOffset(textBeforeCursor) !== null) return cursorPosition;
-  return slashStillPresent ? insertedPosition + 1 : null;
-};
-
 interface SlashAnchorRect {
   left: number;
   right: number;
@@ -731,49 +717,6 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
 };
 
 const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
-const slashInputRefreshKey = new PluginKey('nibleaf-slash-input-refresh');
-
-/** Re-evaluate the suggestion after the slash has committed to the DOM. The
- * editor is controlled by Markdown, so its first input can be normalized and
- * re-seeded in the same paint. That transaction closes Tiptap's Suggestion even
- * though the slash remains; a selection transaction after commit opens it at
- * the first keystroke instead of waiting for the user to move the cursor. */
-const createSlashInputRefresh = () => {
-  let frame: number | null = null;
-  return new Plugin({
-    key: slashInputRefreshKey,
-    props: {
-      handleTextInput: (view, from, _to, text) => {
-        if (text !== '/') return false;
-        const $from = view.state.doc.resolve(from);
-        const previousCharacter = $from.parentOffset === 0 ? '' : $from.parent.textBetween($from.parentOffset - 1, $from.parentOffset, '', '');
-        if (!shouldHandleSlashTrigger(previousCharacter)) return false;
-
-        if (frame !== null) cancelAnimationFrame(frame);
-        frame = requestAnimationFrame(() => {
-          frame = null;
-          if (view.isDestroyed || (slashSuggestionKey.getState(view.state) as { active?: boolean } | undefined)?.active) return;
-
-          const { selection, doc } = view.state;
-          const $cursor = selection.$from;
-          const textBeforeCursor = $cursor.parent.textBetween(0, $cursor.parentOffset, '', '');
-          const slashStillPresent = from < doc.content.size && doc.textBetween(from, from + 1, '', '') === '/';
-          const target = slashRefreshTarget(textBeforeCursor, selection.from, from, slashStillPresent);
-          if (target === null || target > doc.content.size) return;
-
-          const nextSelection = target === selection.from ? selection : TextSelection.near(doc.resolve(target), 1);
-          view.dispatch(view.state.tr.setSelection(nextSelection).setMeta(slashInputRefreshKey, true));
-        });
-        return false;
-      },
-    },
-    view: () => ({
-      destroy: () => {
-        if (frame !== null) cancelAnimationFrame(frame);
-      },
-    }),
-  });
-};
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. */
 export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
@@ -782,7 +725,7 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
     return { onUpload: undefined };
   },
   addProseMirrorPlugins() {
-    return [createSlashInputRefresh(), Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload) })];
+    return [Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload) })];
   },
 });
 
