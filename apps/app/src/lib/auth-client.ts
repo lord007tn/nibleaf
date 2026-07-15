@@ -1,4 +1,4 @@
-import { organizationClient } from 'better-auth/client/plugins';
+import { emailOTPClient, organizationClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
 // Same-origin: auth requests hit the dashboard origin and are proxied to the API
@@ -8,7 +8,7 @@ const API_URL = typeof window === 'undefined' ? 'http://localhost:4310' : window
 export const authClient = createAuthClient({
   baseURL: API_URL,
   basePath: '/api/auth',
-  plugins: [organizationClient()],
+  plugins: [emailOTPClient(), organizationClient()],
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;

@@ -701,6 +701,11 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    // Verification is completed in-app with the email OTP plugin. Creating the
+    // session here lets a newly verified invitee continue without entering the
+    // same password a second time.
+    autoSignInAfterVerification: true,
+    sendOnSignUp: false,
     sendVerificationEmail: async ({ user, url }) => {
       await sendMail(
         user.email,

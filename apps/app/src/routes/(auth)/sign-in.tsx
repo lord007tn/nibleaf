@@ -7,7 +7,8 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
-import { signIn } from '@/lib/auth-client';
+import { isEmailNotVerifiedError } from '@/lib/auth-errors';
+import { authClient, signIn } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -89,6 +90,22 @@ function SignInPage() {
       setError(null);
       const { error: signInError } = await signIn.email({ email: value.email, password: value.password });
       if (signInError) {
+        if (isEmailNotVerifiedError(signInError)) {
+          const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+          const { error: otpError } = await authClient.emailOtp.sendVerificationOtp({
+            email: value.email,
+            type: 'email-verification',
+          });
+          navigate({
+            to: '/verify-email',
+            search: {
+              email: value.email,
+              invite: inviteId,
+              delivery: otpError ? 'failed' : 'sent',
+            },
+          });
+          return;
+        }
         setError(signInError.message ?? t('auth.signIn.error'));
         return;
       }

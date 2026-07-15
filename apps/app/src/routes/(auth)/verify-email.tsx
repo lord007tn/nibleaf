@@ -1,4 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -6,76 +8,107 @@ import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
+import { readPendingInvitation } from '@/lib/invitations';
+
+interface VerifyEmailSearch {
+  email?: string;
+  token?: string;
+  invite?: string;
+  delivery?: 'sent' | 'failed';
+}
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   component: VerifyEmailPage,
-  validateSearch: (s: Record<string, unknown>) => ({
-    email: typeof s.email === 'string' ? s.email : '',
-    token: typeof s.token === 'string' ? s.token : '',
+  validateSearch: (search: Record<string, unknown>): VerifyEmailSearch => ({
+    email: typeof search.email === 'string' ? search.email : undefined,
+    token: typeof search.token === 'string' ? search.token : undefined,
+    invite: typeof search.invite === 'string' ? search.invite : undefined,
+    delivery: search.delivery === 'sent' || search.delivery === 'failed' ? search.delivery : undefined,
   }),
 });
 
 function VerifyEmailPage() {
   const t = useT();
   const navigate = useNavigate();
-  const { email: emailParam, token } = Route.useSearch();
+  const search = Route.useSearch();
   const { data: session } = useSession();
-  const email = emailParam || session?.user?.email || '';
-
+  const email = search.email || session?.user?.email || '';
+  const [otp, setOtp] = useState('');
+  const [error, setError] = useState<string | null>(search.delivery === 'failed' ? t('auth.verify.sendError') : null);
   const [sending, setSending] = useState(false);
-  const [verifying, setVerifying] = useState(Boolean(token));
+  const [verifying, setVerifying] = useState(Boolean(search.token));
   const [verified, setVerified] = useState(false);
 
-  // If we arrived from an email link (?token=…), verify on mount.
+  const continueAfterVerification = () => {
+    const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
+    if (inviteId) {
+      navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
+      return;
+    }
+    navigate({ to: '/app' });
+  };
+
+  // Keep old link-based verification emails valid while new signups use OTP.
   useEffect(() => {
-    if (!token) {
+    if (!search.token) {
       return;
     }
     let cancelled = false;
     (async () => {
-      try {
-        const result = await authClient.verifyEmail({ query: { token } });
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
-        if (cancelled) {
-          return;
-        }
-        setVerified(true);
-        toast.success(t('auth.verify.verifiedToast'));
-        navigate({ to: '/app' });
-      } catch {
-        if (!cancelled) {
-          toast.error(t('auth.verify.invalidLink'));
-        }
-      } finally {
-        if (!cancelled) {
-          setVerifying(false);
-        }
+      const result = await authClient.verifyEmail({ query: { token: search.token ?? '' } });
+      if (cancelled) {
+        return;
       }
+      if (result.error) {
+        setError(t('auth.verify.invalidLink'));
+        setVerifying(false);
+        return;
+      }
+      setVerified(true);
+      toast.success(t('auth.verify.verifiedToast'));
+      continueAfterVerification();
     })();
     return () => {
       cancelled = true;
     };
-  }, [token, navigate, t]);
+    // All search values used by continueAfterVerification are fixed for this route mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.token]);
 
   const resend = async () => {
     if (!email) {
-      toast.error(t('auth.verify.noEmail'));
+      setError(t('auth.verify.noEmail'));
       return;
     }
+    setError(null);
     setSending(true);
-    try {
-      const result = await authClient.sendVerificationEmail({ email, callbackURL: '/app' });
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-      toast.success(t('auth.verify.sentToast', { email }));
-    } catch {
-      toast.error(t('auth.verify.sendError'));
-    } finally {
-      setSending(false);
+    const result = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+    setSending(false);
+    if (result.error) {
+      setError(t('auth.verify.sendError'));
+      return;
     }
+    setOtp('');
+    toast.success(t('auth.verify.sentToast', { email }));
+  };
+
+  const verifyCode = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!email || otp.length !== 6) {
+      setError(t('auth.verify.invalidCode'));
+      return;
+    }
+    setError(null);
+    setVerifying(true);
+    const result = await authClient.emailOtp.verifyEmail({ email, otp });
+    if (result.error) {
+      setError(result.error.message ?? t('auth.verify.invalidCode'));
+      setVerifying(false);
+      return;
+    }
+    setVerified(true);
+    toast.success(t('auth.verify.verifiedToast'));
+    continueAfterVerification();
   };
 
   return (
@@ -100,17 +133,40 @@ function VerifyEmailPage() {
         </p>
       </div>
 
-      <Button className="mt-6 w-full" disabled={sending || verifying} onClick={resend} type="button">
+      {email && !search.token ? (
+        <form className="mt-6 flex flex-col gap-4" onSubmit={verifyCode}>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="verification-code">{t('auth.verify.codeLabel')}</Label>
+            <Input
+              autoComplete="one-time-code"
+              autoFocus
+              className="text-center font-mono text-lg tracking-[0.35em]"
+              id="verification-code"
+              inputMode="numeric"
+              maxLength={6}
+              onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              value={otp}
+            />
+          </div>
+          {error ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p>
+          ) : null}
+          <Button className="w-full" disabled={verifying || otp.length !== 6} type="submit">
+            {verifying ? t('auth.verify.submitting') : t('auth.verify.submit')}
+          </Button>
+        </form>
+      ) : error ? (
+        <p className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p>
+      ) : null}
+
+      <Button className="mt-3 w-full" disabled={sending || verifying || !email} onClick={resend} type="button" variant="outline">
         {sending ? t('auth.verify.resending') : t('auth.verify.resend')}
       </Button>
 
-      <div className="mt-5 flex items-center justify-center gap-4 text-muted-foreground text-sm">
-        <Link className="hover:text-primary hover:underline" to="/sign-in">
+      <div className="mt-5 text-center text-muted-foreground text-sm">
+        <Link className="hover:text-primary hover:underline" search={{ email, invite: search.invite }} to="/sign-in">
           {t('auth.backToSignIn')}
-        </Link>
-        <span className="text-border">·</span>
-        <Link className="hover:text-primary hover:underline" to="/app">
-          {t('auth.verify.continueToApp')}
         </Link>
       </div>
     </AuthLayout>

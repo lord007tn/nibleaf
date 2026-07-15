@@ -7,7 +7,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
-import { signIn, signUp } from '@/lib/auth-client';
+import { authClient, signIn, signUp } from '@/lib/auth-client';
 import { minLength, required, email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -95,13 +95,19 @@ function SignUpPage() {
         setError(signUpError.message ?? t('auth.signUp.error'));
         return;
       }
-      // If they arrived from an invite, send them to the accept page to join.
       const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
-      if (inviteId) {
-        navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
-        return;
-      }
-      navigate({ to: '/app' });
+      const { error: otpError } = await authClient.emailOtp.sendVerificationOtp({
+        email: value.email,
+        type: 'email-verification',
+      });
+      navigate({
+        to: '/verify-email',
+        search: {
+          email: value.email,
+          invite: inviteId,
+          delivery: otpError ? 'failed' : 'sent',
+        },
+      });
     },
   });
 
@@ -244,7 +250,7 @@ function SignUpPage() {
       </p>
       <p className="mt-2 text-center text-muted-foreground text-xs">
         {t('auth.signUp.verifyNotice')}{' '}
-        <Link className="hover:text-primary hover:underline" to="/verify-email" search={{ email: '', token: '' }}>
+        <Link className="hover:text-primary hover:underline" to="/verify-email" search={{}}>
           {t('auth.signUp.verifyLink')}
         </Link>
         {t('auth.signUp.verifyNoticeEnd')}
