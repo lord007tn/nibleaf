@@ -1,5 +1,5 @@
 import { env } from '@/env';
-import type { CloudflareCustomHostname } from './cloudflare-saas-state';
+import { type CloudflareCustomHostname, cloudflareCustomHostnameSsl } from './cloudflare-saas-state';
 
 export { type CloudflareCustomHostname, customHostnameRecords, customHostnameState, type DomainRecord } from './cloudflare-saas-state';
 
@@ -50,9 +50,7 @@ export const createCustomHostname = (hostname: string): Promise<CloudflareCustom
     body: JSON.stringify({
       hostname,
       ssl: {
-        method: 'txt',
-        type: 'dv',
-        bundle_method: 'ubiquitous',
+        ...cloudflareCustomHostnameSsl,
         settings: { min_tls_version: '1.2', tls_1_3: 'on' },
       },
     }),
@@ -64,7 +62,7 @@ export const retryCustomHostname = (id: string): Promise<CloudflareCustomHostnam
   api(`/custom_hostnames/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      ssl: { method: 'txt', type: 'dv', bundle_method: 'ubiquitous' },
+      ssl: cloudflareCustomHostnameSsl,
     }),
   });
 

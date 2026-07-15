@@ -27,6 +27,14 @@ export interface CloudflareCustomHostname {
   nibleafWorkerRouteId?: string;
 }
 
+// HTTP DCV lets a customer finish setup with the routing CNAME alone. Cloudflare
+// serves the validation response at the SaaS edge once the fallback origin is active.
+export const cloudflareCustomHostnameSsl = {
+  method: 'http',
+  type: 'dv',
+  bundle_method: 'ubiquitous',
+} as const;
+
 export const customHostnameRecords = (hostname: CloudflareCustomHostname, cnameTarget: string): DomainRecord[] => {
   const records: DomainRecord[] = [{ type: 'CNAME', name: hostname.hostname, value: cnameTarget, ttl: 3600 }];
   const ownership = hostname.ownership_verification;

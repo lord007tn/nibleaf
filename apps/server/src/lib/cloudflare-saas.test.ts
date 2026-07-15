@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { customHostnameRecords, customHostnameState } from './cloudflare-saas-state';
+import { cloudflareCustomHostnameSsl, customHostnameRecords, customHostnameState } from './cloudflare-saas-state';
 
 describe('Cloudflare for SaaS hostname normalization', () => {
+  it('uses HTTP domain control validation so the customer only needs the routing CNAME', () => {
+    expect(cloudflareCustomHostnameSsl).toMatchObject({ method: 'http', type: 'dv' });
+  });
+
   it('exposes routing, ownership, and certificate validation records without duplicates', () => {
     const records = customHostnameRecords(
       {
