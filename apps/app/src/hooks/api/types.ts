@@ -156,9 +156,13 @@ export interface Domain {
   domain: string;
   verified: boolean;
   isPrimary: boolean;
+  dnsStatus: 'PENDING' | 'VERIFIED' | 'ERROR';
+  sslStatus: 'PENDING' | 'PROVISIONING' | 'ACTIVE' | 'ERROR';
   verificationToken: string;
   createdAt: string;
   verifiedAt: string | null;
+  lastCheckedAt: string | null;
+  lastError: string | null;
   records?: DnsRecord[];
 }
 

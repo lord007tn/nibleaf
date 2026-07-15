@@ -1,8 +1,9 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
+import { PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
-import Suggestion, { type SuggestionOptions } from '@tiptap/suggestion';
+import Suggestion, { type SuggestionMount, type SuggestionOptions } from '@tiptap/suggestion';
 import {
   AppWindow,
   Code2,
@@ -419,6 +420,15 @@ interface SlashListProps {
   command: (item: SlashItem) => void;
 }
 
+export const nextSlashSelection = (selected: number, count: number, key: string): number | null => {
+  if (count <= 0) return null;
+  if (key === 'ArrowUp') return (selected + count - 1) % count;
+  if (key === 'ArrowDown') return (selected + 1) % count;
+  if (key === 'Home') return 0;
+  if (key === 'End') return count - 1;
+  return null;
+};
+
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
   const { t, locale } = useLocale();
   /** Resolve a slash label in the active locale (shared key or inline pair). */
@@ -441,15 +451,15 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
 
   useImperativeHandle(ref, () => ({
     onKeyDown: (event) => {
-      if (event.key === 'ArrowUp') {
-        setSelected((i) => (i + items.length - 1) % items.length);
+      if (items.length === 0) {
+        return false;
+      }
+      const nextSelection = nextSlashSelection(selected, items.length, event.key);
+      if (nextSelection !== null) {
+        setSelected(nextSelection);
         return true;
       }
-      if (event.key === 'ArrowDown') {
-        setSelected((i) => (i + 1) % items.length);
-        return true;
-      }
-      if (event.key === 'Enter') {
+      if (event.key === 'Enter' || event.key === 'Tab') {
         const item = items[selected];
         if (item) {
           command(item);
@@ -482,6 +492,7 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
               aria-selected={index === selected}
               data-index={index}
               onMouseEnter={() => setSelected(index)}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => command(item)}
               className={cn(
                 'flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-start',
@@ -504,21 +515,13 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
 });
 SlashList.displayName = 'SlashList';
 
-/** Position a floating element at the current caret/selection rect. */
-function positionPopup(el: HTMLElement, rect: DOMRect | null | undefined) {
-  if (!rect) {
-    return;
-  }
-  el.style.position = 'absolute';
-  el.style.top = `${window.scrollY + rect.bottom + 6}px`;
-  el.style.left = `${window.scrollX + rect.left}px`;
-}
-
 const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
   const items = createItems(onUpload);
   return {
+    pluginKey: slashSuggestionKey,
     char: '/',
     startOfLine: false,
+    initialItems: items,
     items: ({ query }) => {
       const q = query.toLowerCase().trim();
       if (!q) {
@@ -531,7 +534,7 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
     },
     render: () => {
       let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
-      let wrapper: HTMLDivElement | null = null;
+      let unmount: ReturnType<SuggestionMount> | null = null;
 
       return {
         onStart: (props) => {
@@ -542,33 +545,23 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
               command: (item: SlashItem) => props.command(item),
             },
           });
-          wrapper = document.createElement('div');
-          wrapper.style.position = 'absolute';
-          wrapper.style.zIndex = '50';
-          wrapper.appendChild(component.element);
-          document.body.appendChild(wrapper);
-          positionPopup(wrapper, props.clientRect?.());
+          unmount = props.mount(component.element);
         },
         onUpdate: (props) => {
           component?.updateProps({
             items: props.items,
             command: (item: SlashItem) => props.command(item),
           });
-          if (wrapper) {
-            positionPopup(wrapper, props.clientRect?.());
-          }
         },
         onKeyDown: (props) => {
           if (props.event.key === 'Escape') {
-            wrapper?.remove();
-            wrapper = null;
             return true;
           }
           return component?.ref?.onKeyDown(props.event) ?? false;
         },
         onExit: () => {
-          wrapper?.remove();
-          wrapper = null;
+          unmount?.();
+          unmount = null;
           component?.destroy();
           component = null;
         },
@@ -576,6 +569,8 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
     },
   };
 };
+
+const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. */
 export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({

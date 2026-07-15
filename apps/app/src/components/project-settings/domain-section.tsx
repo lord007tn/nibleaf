@@ -2,7 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -79,35 +79,68 @@ export function DomainSection({ project }: { project: Project }) {
         {list.map((d) => (
           <div className="rounded-xl border border-border p-3.5" key={d.id}>
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="font-medium font-mono text-sm">{d.domain}</span>
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-[12px]',
-                    d.verified ? 'bg-primary/10 text-primary' : 'bg-amber-500/10 text-amber-600',
-                  )}
-                >
-                  <span className={cn('size-1.5 rounded-full', d.verified ? 'bg-primary' : 'bg-amber-500')} />
-                  {d.verified ? t('settings.domain.status.live') : t('settings.domain.status.pending')}
-                </span>
-                {d.isPrimary ? (
-                  <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
-                    {t('settings.domain.status.primary')}
-                  </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <a
+                    className="inline-flex items-center gap-1.5 truncate font-medium font-mono text-sm hover:text-primary"
+                    href={`https://${d.domain}`}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {d.domain} <ExternalLink className="size-3" />
+                  </a>
+                  <StatusBadge
+                    label={
+                      d.dnsStatus === 'VERIFIED'
+                        ? t('settings.domain.status.dnsReady')
+                        : d.dnsStatus === 'ERROR'
+                          ? t('settings.domain.status.dnsError')
+                          : t('settings.domain.status.pending')
+                    }
+                    tone={d.dnsStatus === 'VERIFIED' ? 'ready' : d.dnsStatus === 'ERROR' ? 'error' : 'pending'}
+                  />
+                  <StatusBadge
+                    label={
+                      d.sslStatus === 'ACTIVE'
+                        ? t('settings.domain.status.sslActive')
+                        : d.sslStatus === 'ERROR'
+                          ? t('settings.domain.status.sslError')
+                          : t('settings.domain.status.sslProvisioning')
+                    }
+                    tone={d.sslStatus === 'ACTIVE' ? 'ready' : d.sslStatus === 'ERROR' ? 'error' : 'pending'}
+                  />
+                  {d.isPrimary ? (
+                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
+                      {t('settings.domain.status.primary')}
+                    </span>
+                  ) : null}
+                </div>
+                {d.lastCheckedAt ? (
+                  <p className="mt-1.5 text-muted-foreground text-xs">
+                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString() })}
+                  </p>
                 ) : null}
               </div>
               <div className="flex gap-1.5">
-                {!d.verified ? (
+                {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
-                    onClick={() => verify.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.verified')) })}
+                    disabled={verify.isPending}
+                    onClick={() =>
+                      verify.mutate(d.id, {
+                        onSuccess: (result) =>
+                          toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.toast.provisioning')),
+                        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.domain.toast.verifyError')),
+                      })
+                    }
                     size="sm"
                     variant="outline"
                   >
-                    {t('settings.domain.verifyDns')}
+                    <RefreshCw className={cn('size-3.5', verify.isPending && 'animate-spin')} />
+                    {d.lastCheckedAt ? t('settings.domain.retry') : t('settings.domain.verifyDns')}
                   </Button>
                 ) : null}
-                {d.verified && !d.isPrimary ? (
+                {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
                   <Button
                     className="cursor-pointer"
                     onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
@@ -123,7 +156,11 @@ export function DomainSection({ project }: { project: Project }) {
               </div>
             </div>
 
-            {!d.verified && d.records?.length ? (
+            {d.lastError ? (
+              <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm">{d.lastError}</div>
+            ) : null}
+
+            {d.records?.length ? (
               <div className="mt-4">
                 <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
                   {t('settings.domain.dns.heading')}
@@ -161,7 +198,9 @@ export function DomainSection({ project }: { project: Project }) {
                     );
                   })}
                 </div>
-                <p className="mt-3 text-[13px] text-muted-foreground">{t('settings.domain.dns.propagation')}</p>
+                <p className="mt-3 text-[13px] text-muted-foreground">
+                  {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.dns.propagation')}
+                </p>
               </div>
             ) : null}
           </div>
@@ -169,5 +208,21 @@ export function DomainSection({ project }: { project: Project }) {
         {list.length === 0 ? <p className="text-muted-foreground text-sm">{t('settings.domain.empty')}</p> : null}
       </div>
     </div>
+  );
+}
+
+function StatusBadge({ label, tone }: { label: string; tone: 'ready' | 'pending' | 'error' }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-[12px]',
+        tone === 'ready' && 'bg-primary/10 text-primary',
+        tone === 'pending' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        tone === 'error' && 'bg-destructive/10 text-destructive',
+      )}
+    >
+      <span className={cn('size-1.5 rounded-full', tone === 'ready' ? 'bg-primary' : tone === 'pending' ? 'bg-amber-500' : 'bg-destructive')} />
+      {label}
+    </span>
   );
 }

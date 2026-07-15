@@ -241,17 +241,14 @@ certificate. Nibleaf exposes the domain-resolution lookup at:
 ```
 GET /api/public/domains/resolve?host=<hostname>
 → 200 {"data":{"projectId":"…"}}      # known (verified) custom domain
-→ 200 {"data":{"projectId":null}}     # unknown host
+→ 404 {"data":{"projectId":null}}     # unknown or unverified host
 ```
 
-> **Caveat (as of v0.1.0):** Caddy's `ask` contract is status-code based —
-> 200 allows, anything else denies — and Caddy calls it with `?domain=<host>`.
-> The current endpoint expects `host=` and answers `200` even for unknown
-> hosts, so it is **not yet directly usable** as the ask URL: pointing `ask`
-> at it today denies all requests (missing `host` → 400), which is safe but
-> inert. A Caddy-compatible ask response (`domain=` accepted, non-200 for
-> unknown hosts) is planned; until it ships, keep this section as the target
-> architecture.
+The endpoint also accepts Caddy's native `?domain=<hostname>` query. Its
+status-code contract is fail-closed: only an ownership-verified domain returns
+200, so it is safe to use directly as the `ask` URL. Nibleaf's domain settings
+persist the ownership, routing, and TLS checks separately and owners can retry
+them after DNS propagation.
 
 Caddyfile — dashboard + wildcard subdomains + on-demand custom domains:
 
@@ -495,6 +492,13 @@ CNAME target to the `app` service; the storage host to `maxio`. For example:
 - `*.docs.example.com → app:4310`
 - `cname.docs.example.com → app:4310`
 - `storage.example.com → maxio:9000`
+
+Coolify/Traefik creates routers from the domains attached to a service. When
+using that ingress (instead of the catch-all Caddy configuration above), add
+each verified customer hostname to the `app` service's Domains list as well.
+The Nibleaf UI will keep TLS in **Provisioning** until that router exists and a
+valid certificate is served. Cloudflare records may be proxied after the
+hostname has been added to Coolify; keep SSL/TLS mode at **Full (strict)**.
 
 The compose file reads Coolify-generated values (`SERVICE_USER_POSTGRES`,
 `SERVICE_PASSWORD_64_POSTGRES`, `SERVICE_USER_STORAGE`,

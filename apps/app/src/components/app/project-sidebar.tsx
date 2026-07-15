@@ -16,7 +16,7 @@ import {
   SidebarMenuItem,
 } from '@nibleaf/design-system/components/ui/sidebar';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BarChart3, Boxes, Check, ChevronsUpDown, Eye, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
+import { BarChart3, Boxes, Check, ChevronsUpDown, LayoutDashboard, type LucideIcon, PenLine, Plus, Settings as SettingsIcon } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { useProject, useProjects } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
@@ -33,24 +33,12 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const t = useT();
 
   const base = `/app/projects/${projectId}`;
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const nav: NavItem[] = [
     { labelKey: 'project.overview', to: '/app/projects/$projectId', icon: LayoutDashboard, isActive: pathname === base },
     { labelKey: 'project.editor', to: '/app/projects/$projectId/editor', icon: PenLine, isActive: pathname.startsWith(`${base}/editor`) },
-    ...(previewEnabled
-      ? [
-          {
-            labelKey: 'project.preview' as MessageKey,
-            to: '/app/projects/$projectId/preview',
-            icon: Eye,
-            isActive: pathname.startsWith(`${base}/preview`),
-          },
-        ]
-      : []),
     { labelKey: 'project.analytics', to: '/app/projects/$projectId/analytics', icon: BarChart3, isActive: pathname.startsWith(`${base}/analytics`) },
     { labelKey: 'project.settings', to: '/app/projects/$projectId/settings', icon: SettingsIcon, isActive: pathname.startsWith(`${base}/settings`) },
   ];
-  const multiSite = (projects?.length ?? 0) > 1;
 
   return (
     <Sidebar>
@@ -75,14 +63,13 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 {site.id === projectId ? <Check className="size-3.5 text-primary" /> : null}
               </DropdownMenuItem>
             ))}
-            {multiSite ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate({ to: '/app' })}>
-                  <Boxes className="size-3.5" /> {t('project.allSites')}
-                </DropdownMenuItem>
-              </>
-            ) : null}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate({ to: '/app', search: { newSite: true } })}>
+              <Plus className="size-3.5" /> {t('dashboard.newProject')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: '/app' })}>
+              <Boxes className="size-3.5" /> {t('project.allSites')}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarHeader>

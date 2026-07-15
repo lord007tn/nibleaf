@@ -177,7 +177,9 @@ export const useVerifyDomain = (projectId: string) => {
   return useMutation({
     mutationFn: async (id: string) =>
       mutateData<Domain>(await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }), 'Could not verify.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
+    // Failed checks persist their actionable status before returning an error,
+    // so refresh the row on both success and failure.
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
   });
 };
 

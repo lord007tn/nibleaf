@@ -148,6 +148,19 @@ enum DeploymentStatus {
   FAILED
 }
 
+enum DomainDnsStatus {
+  PENDING
+  VERIFIED
+  ERROR
+}
+
+enum DomainSslStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  ERROR
+}
+
 /// Reading direction for a project language (drives `dir` on the editor + site).
 enum TextDirection {
   LTR
@@ -311,6 +324,10 @@ model Domain {
   verified          Boolean   @default(false)
   verificationToken String
   isPrimary         Boolean   @default(false)
+  dnsStatus         DomainDnsStatus @default(PENDING)
+  sslStatus         DomainSslStatus @default(PENDING)
+  lastCheckedAt     DateTime?
+  lastError         String?
   createdAt         DateTime  @default(now())
   verifiedAt        DateTime?
 

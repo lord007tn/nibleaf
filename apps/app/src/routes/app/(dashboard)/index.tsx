@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
@@ -21,6 +21,8 @@ import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
   component: ProjectsPage,
+  validateSearch: (search: Record<string, unknown>): { newSite?: boolean } =>
+    search.newSite === true || search.newSite === 'true' ? { newSite: true } : {},
 });
 
 /** Controlled create dialog so multiple triggers (header button + the empty
@@ -101,10 +103,11 @@ function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 }
 
 function ProjectsPage() {
+  const { newSite } = Route.useSearch();
   const { data: projects, isPending } = useProjects();
   const [range, setRange] = useState<AnalyticsRange>('30d');
   const { data: analytics, isPending: analyticsPending } = useWorkspaceAnalytics(range);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const [newProjectOpen, setNewProjectOpen] = useState(Boolean(newSite));
   const t = useT();
   const navigate = useNavigate();
   const { number } = useFormatters();
@@ -112,15 +115,6 @@ function ProjectsPage() {
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
   const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
-
-  // Single-site accounts skip the global view and land straight in their site;
-  // the global dashboard is only meaningful for members of more than one site.
-  const soleProjectId = !isPending && projects?.length === 1 ? projects[0]?.id : undefined;
-  useEffect(() => {
-    if (soleProjectId) {
-      navigate({ to: '/app/projects/$projectId', params: { projectId: soleProjectId }, replace: true });
-    }
-  }, [soleProjectId, navigate]);
 
   return (
     <div className="flex flex-col gap-6">
