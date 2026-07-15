@@ -1,7 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
-import { PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
@@ -619,6 +619,60 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
 };
 
 const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
+const slashSuggestionWakeKey = new PluginKey('nibleaf-slash-command-wake');
+
+/**
+ * Tiptap 3.27 can miss Suggestion's inactive -> active renderer transition when
+ * the trigger is introduced by a text-input transaction. A later selection
+ * transaction (leaving and returning to the line) wakes it up. Detect the
+ * newly inserted trigger independently of the keyboard layout/input method,
+ * then replay that selection transition after every plugin has processed the
+ * document transaction.
+ */
+const createSlashSuggestionWakePlugin = () =>
+  new Plugin({
+    key: slashSuggestionWakeKey,
+    view: () => {
+      let pendingCursor: number | null = null;
+      let destroyed = false;
+
+      return {
+        update: (view, previousState) => {
+          if (destroyed || previousState.doc.eq(view.state.doc)) return;
+
+          const { selection } = view.state;
+          if (!selection.empty || selection.from <= 1) return;
+
+          const { $from } = selection;
+          const slashOffset = $from.parentOffset - 1;
+          if (slashOffset < 0 || $from.parent.textBetween(slashOffset, $from.parentOffset) !== '/') return;
+
+          const previousCharacter = slashOffset > 0 ? $from.parent.textBetween(slashOffset - 1, slashOffset) : '';
+          if (!shouldHandleSlashTrigger(previousCharacter)) return;
+
+          const cursor = selection.from;
+          if (pendingCursor === cursor) return;
+          pendingCursor = cursor;
+
+          queueMicrotask(() => {
+            if (destroyed || pendingCursor !== cursor) return;
+            pendingCursor = null;
+
+            const currentSelection = view.state.selection;
+            if (!currentSelection.empty || currentSelection.from !== cursor) return;
+            if (view.state.doc.textBetween(cursor - 1, cursor) !== '/') return;
+
+            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, cursor - 1)));
+            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, cursor)));
+          });
+        },
+        destroy: () => {
+          destroyed = true;
+          pendingCursor = null;
+        },
+      };
+    },
+  });
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. */
 export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
@@ -628,39 +682,12 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
   },
   addProseMirrorPlugins() {
     return [
+      createSlashSuggestionWakePlugin(),
       Suggestion({
         editor: this.editor,
         ...createSuggestion(this.options.onUpload),
       }),
     ];
-  },
-  addKeyboardShortcuts() {
-    return {
-      '/': () => {
-        const { selection } = this.editor.state;
-        if (!selection.empty) return false;
-
-        const { $from } = selection;
-        const previousCharacter = $from.parentOffset > 0 ? $from.parent.textBetween($from.parentOffset - 1, $from.parentOffset) : '';
-        // Mirror Suggestion's default allowedPrefixes: only take over the key at
-        // the start of a text block or after a literal space. Else `/` remains a
-        // normal character (URLs, paths, fractions, and code keep working).
-        if (!shouldHandleSlashTrigger(previousCharacter)) return false;
-
-        const slashPosition = selection.from;
-        this.editor.view.dispatch(this.editor.state.tr.insertText('/', slashPosition, slashPosition));
-
-        // Tiptap 3.27 can miss the renderer's inactive -> active transition when
-        // the trigger is introduced by the same text-input transaction. A later
-        // selection transaction (leaving and returning to the line) wakes it up,
-        // which is the exact production failure this compensates for. Replaying
-        // that selection transition synchronously opens the palette on the first
-        // slash without another document change or an observable cursor jump.
-        this.editor.view.dispatch(this.editor.state.tr.setSelection(TextSelection.create(this.editor.state.doc, slashPosition)));
-        this.editor.view.dispatch(this.editor.state.tr.setSelection(TextSelection.create(this.editor.state.doc, slashPosition + 1)));
-        return true;
-      },
-    };
   },
 });
 
