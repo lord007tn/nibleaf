@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextSlashSelection } from './extensions/slash-command';
+import { nextSlashSelection, shouldHandleSlashTrigger } from './extensions/slash-command';
 
 describe('slash command keyboard selection', () => {
   it('wraps arrow navigation and supports Home/End', () => {
@@ -12,5 +12,12 @@ describe('slash command keyboard selection', () => {
   it('does not select from an empty list or consume unrelated keys', () => {
     expect(nextSlashSelection(0, 0, 'ArrowDown')).toBeNull();
     expect(nextSlashSelection(0, 3, 'Escape')).toBeNull();
+  });
+
+  it('captures slash only where a command palette can start', () => {
+    expect(shouldHandleSlashTrigger('')).toBe(true);
+    expect(shouldHandleSlashTrigger(' ')).toBe(true);
+    expect(shouldHandleSlashTrigger('a')).toBe(false);
+    expect(shouldHandleSlashTrigger('/')).toBe(false);
   });
 });

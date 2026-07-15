@@ -1,7 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
-import { PluginKey } from '@tiptap/pm/state';
+import { PluginKey, TextSelection } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
@@ -429,6 +429,9 @@ export const nextSlashSelection = (selected: number, count: number, key: string)
   return null;
 };
 
+/** Whether `/` should be captured as a command trigger at the cursor. */
+export const shouldHandleSlashTrigger = (previousCharacter: string): boolean => previousCharacter === '' || previousCharacter === ' ';
+
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
   const { t, locale } = useLocale();
   /** Resolve a slash label in the active locale (shared key or inline pair). */
@@ -630,6 +633,34 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
         ...createSuggestion(this.options.onUpload),
       }),
     ];
+  },
+  addKeyboardShortcuts() {
+    return {
+      '/': () => {
+        const { selection } = this.editor.state;
+        if (!selection.empty) return false;
+
+        const { $from } = selection;
+        const previousCharacter = $from.parentOffset > 0 ? $from.parent.textBetween($from.parentOffset - 1, $from.parentOffset) : '';
+        // Mirror Suggestion's default allowedPrefixes: only take over the key at
+        // the start of a text block or after a literal space. Else `/` remains a
+        // normal character (URLs, paths, fractions, and code keep working).
+        if (!shouldHandleSlashTrigger(previousCharacter)) return false;
+
+        const slashPosition = selection.from;
+        this.editor.view.dispatch(this.editor.state.tr.insertText('/', slashPosition, slashPosition));
+
+        // Tiptap 3.27 can miss the renderer's inactive -> active transition when
+        // the trigger is introduced by the same text-input transaction. A later
+        // selection transaction (leaving and returning to the line) wakes it up,
+        // which is the exact production failure this compensates for. Replaying
+        // that selection transition synchronously opens the palette on the first
+        // slash without another document change or an observable cursor jump.
+        this.editor.view.dispatch(this.editor.state.tr.setSelection(TextSelection.create(this.editor.state.doc, slashPosition)));
+        this.editor.view.dispatch(this.editor.state.tr.setSelection(TextSelection.create(this.editor.state.doc, slashPosition + 1)));
+        return true;
+      },
+    };
   },
 });
 
