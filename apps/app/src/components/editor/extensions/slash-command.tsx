@@ -432,6 +432,13 @@ export const nextSlashSelection = (selected: number, count: number, key: string)
 /** Whether `/` should be captured as a command trigger at the cursor. */
 export const shouldHandleSlashTrigger = (previousCharacter: string): boolean => previousCharacter === '' || previousCharacter === ' ';
 
+/** Offset of the slash that owns the active command query, relative to the
+ * current text block, or null when the cursor is not in a command query. */
+export const slashTriggerOffset = (textBeforeCursor: string): number | null => {
+  if (!/(?:^| )\/[^/\s]*$/.test(textBeforeCursor)) return null;
+  return textBeforeCursor.lastIndexOf('/');
+};
+
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
   const { t, locale } = useLocale();
   /** Resolve a slash label in the active locale (shared key or inline pair). */
@@ -625,9 +632,10 @@ const slashSuggestionWakeKey = new PluginKey('nibleaf-slash-command-wake');
  * Tiptap 3.27 can miss Suggestion's inactive -> active renderer transition when
  * the trigger is introduced by a text-input transaction. A later selection
  * transaction (leaving and returning to the line) wakes it up. Detect the
- * newly inserted trigger independently of the keyboard layout/input method,
- * then replay that selection transition after every plugin has processed the
- * document transaction.
+ * active trigger/query independently of the keyboard layout/input method, then
+ * replay that selection transition after every plugin has processed each
+ * document transaction. Replaying for the complete `/query` range also keeps
+ * filtering alive when the same Tiptap edge affects subsequent characters.
  */
 const createSlashSuggestionWakePlugin = () =>
   new Plugin({
@@ -644,13 +652,12 @@ const createSlashSuggestionWakePlugin = () =>
           if (!selection.empty || selection.from <= 1) return;
 
           const { $from } = selection;
-          const slashOffset = $from.parentOffset - 1;
-          if (slashOffset < 0 || $from.parent.textBetween(slashOffset, $from.parentOffset) !== '/') return;
-
-          const previousCharacter = slashOffset > 0 ? $from.parent.textBetween(slashOffset - 1, slashOffset) : '';
-          if (!shouldHandleSlashTrigger(previousCharacter)) return;
+          const textBeforeCursor = $from.parent.textBetween(0, $from.parentOffset);
+          const slashOffset = slashTriggerOffset(textBeforeCursor);
+          if (slashOffset === null) return;
 
           const cursor = selection.from;
+          const slashPosition = cursor - ($from.parentOffset - slashOffset);
           if (pendingCursor === cursor) return;
           pendingCursor = cursor;
 
@@ -660,9 +667,10 @@ const createSlashSuggestionWakePlugin = () =>
 
             const currentSelection = view.state.selection;
             if (!currentSelection.empty || currentSelection.from !== cursor) return;
-            if (view.state.doc.textBetween(cursor - 1, cursor) !== '/') return;
+            const currentTextBeforeCursor = currentSelection.$from.parent.textBetween(0, currentSelection.$from.parentOffset);
+            if (slashTriggerOffset(currentTextBeforeCursor) === null) return;
 
-            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, cursor - 1)));
+            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, slashPosition)));
             view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, cursor)));
           });
         },

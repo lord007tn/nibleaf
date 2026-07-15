@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextSlashSelection, shouldHandleSlashTrigger } from './extensions/slash-command';
+import { nextSlashSelection, shouldHandleSlashTrigger, slashTriggerOffset } from './extensions/slash-command';
 
 describe('slash command keyboard selection', () => {
   it('wraps arrow navigation and supports Home/End', () => {
@@ -19,5 +19,14 @@ describe('slash command keyboard selection', () => {
     expect(shouldHandleSlashTrigger(' ')).toBe(true);
     expect(shouldHandleSlashTrigger('a')).toBe(false);
     expect(shouldHandleSlashTrigger('/')).toBe(false);
+  });
+
+  it('tracks the complete active slash query', () => {
+    expect(slashTriggerOffset('/')).toBe(0);
+    expect(slashTriggerOffset('/hea')).toBe(0);
+    expect(slashTriggerOffset('hello /hea')).toBe(6);
+    expect(slashTriggerOffset('hello/hea')).toBeNull();
+    expect(slashTriggerOffset('/heading one')).toBeNull();
+    expect(slashTriggerOffset('//hea')).toBeNull();
   });
 });
