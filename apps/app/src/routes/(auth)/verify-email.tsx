@@ -3,7 +3,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
@@ -39,14 +39,14 @@ function VerifyEmailPage() {
   const [verifying, setVerifying] = useState(Boolean(search.token));
   const [verified, setVerified] = useState(false);
 
-  const continueAfterVerification = () => {
+  const continueAfterVerification = useCallback(() => {
     const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
     if (inviteId) {
       navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
       return;
     }
     navigate({ to: '/app' });
-  };
+  }, [navigate, search.invite]);
 
   // Keep old link-based verification emails valid while new signups use OTP.
   useEffect(() => {
@@ -71,9 +71,7 @@ function VerifyEmailPage() {
     return () => {
       cancelled = true;
     };
-    // All search values used by continueAfterVerification are fixed for this route mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.token]);
+  }, [search.token, t, continueAfterVerification]);
 
   const resend = async () => {
     if (!email) {
@@ -149,9 +147,7 @@ function VerifyEmailPage() {
               value={otp}
             />
           </div>
-          {error ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p>
-          ) : null}
+          {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
           <Button className="w-full" disabled={verifying || otp.length !== 6} type="submit">
             {verifying ? t('auth.verify.submitting') : t('auth.verify.submit')}
           </Button>
