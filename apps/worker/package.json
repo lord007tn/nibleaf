@@ -22,14 +22,14 @@
     "@t3-oss/env-core": "^0.13.11",
     "bullmq": "^5.77.6",
     "hono": "^4.12.23",
-    "nodemailer": "^6.9.0",
+    "nodemailer": "^9.0.3",
     "postmark": "^5.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
-    "@types/nodemailer": "^6.4.0",
+    "@types/nodemailer": "^8.0.1",
     "dotenv-cli": "^11.0.0",
     "tsdown": "^0.22.3",
     "tsx": "^4.22.3",
