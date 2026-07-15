@@ -53,7 +53,6 @@ export const createCustomHostname = (hostname: string): Promise<CloudflareCustom
         method: 'txt',
         type: 'dv',
         bundle_method: 'ubiquitous',
-        certificate_authority: 'google',
         settings: { min_tls_version: '1.2', tls_1_3: 'on' },
       },
     }),
@@ -65,7 +64,7 @@ export const retryCustomHostname = (id: string): Promise<CloudflareCustomHostnam
   api(`/custom_hostnames/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      ssl: { method: 'txt', type: 'dv', bundle_method: 'ubiquitous', certificate_authority: 'google' },
+      ssl: { method: 'txt', type: 'dv', bundle_method: 'ubiquitous' },
     }),
   });
 
