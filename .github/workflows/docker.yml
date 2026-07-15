@@ -89,10 +89,10 @@ jobs:
           context: .
           file: ./Dockerfile
           target: runner
-          # PR builds stay amd64-only for fast feedback; published builds are
-          # multi-arch (the arm64 half runs under QEMU and is slow — the buildx
-          # GHA cache below keeps it tolerable).
-          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          # PRs and CI-gated main deployments target the amd64 cloud host for
+          # fast delivery. Versioned release tags remain multi-arch so stable
+          # self-host releases also run on ARM servers and Raspberry Pi.
+          platforms: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_run') && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
