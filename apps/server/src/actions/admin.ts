@@ -1,5 +1,6 @@
 import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
+import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { inviteMember } from './members';
 
@@ -11,6 +12,7 @@ type InviteOrganizationInput = {
   ownerEmail: string;
   siteSlug?: string;
   description?: string;
+  delivery: 'email' | 'link';
 };
 
 async function uniqueAdminProjectSlug(desired: string): Promise<string> {
@@ -49,13 +51,21 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   });
 
   try {
-    const invitation = await inviteMember(created.organization.id, adminUserId, 'owner', { email: ownerEmail, role: 'owner' });
+    const invitation = await inviteMember(
+      created.organization.id,
+      adminUserId,
+      'owner',
+      { email: ownerEmail, role: 'owner' },
+      { sendEmail: input.delivery === 'email' },
+    );
     return {
       organizationId: created.organization.id,
       projectId: created.project.id,
       invitationId: invitation.id,
       ownerEmail,
       slug: created.project.slug,
+      invitationUrl: `${env.APP_URL}/accept-invite/${invitation.id}`,
+      delivery: input.delivery,
     };
   } catch (error) {
     // Avoid leaving an ownerless site if invitation creation fails.
@@ -138,7 +148,7 @@ export async function listAdminSites() {
         select: {
           name: true,
           members: { where: { role: 'owner' }, take: 1, select: { user: { select: { email: true } } } },
-          invitations: { where: { role: 'owner', status: 'pending' }, take: 1, select: { email: true } },
+          invitations: { where: { role: 'owner', status: 'pending' }, take: 1, select: { id: true, email: true } },
         },
       },
     },
@@ -152,6 +162,7 @@ export async function listAdminSites() {
     org: s.organization?.name ?? '—',
     owner: s.organization?.members[0]?.user.email ?? s.organization?.invitations[0]?.email ?? '—',
     ownerStatus: s.organization?.members[0] ? ('active' as const) : s.organization?.invitations[0] ? ('invited' as const) : ('missing' as const),
+    ownerInvitationId: s.organization?.invitations[0]?.id ?? null,
     pages: s._count.pages,
     deployments: s._count.deployments,
     takedownAt: s.takedownAt?.toISOString() ?? null,

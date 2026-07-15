@@ -44,7 +44,13 @@ export const listMembers = async (organizationId: string) => {
   return { members, invitations };
 };
 
-export const inviteMember = async (organizationId: string, inviterId: string, actorRole: string, body: InviteMemberBody) => {
+export const inviteMember = async (
+  organizationId: string,
+  inviterId: string,
+  actorRole: string,
+  body: InviteMemberBody,
+  options: { sendEmail?: boolean } = {},
+) => {
   // An actor can never grant a role above their own — this is what stops an
   // admin from inviting someone straight in as an owner.
   if (!canAssignRole(actorRole, body.role)) {
@@ -75,7 +81,7 @@ export const inviteMember = async (organizationId: string, inviterId: string, ac
   // Respect the workspace's "member invited" notification toggle — when off, the
   // invitation is still created (the copy-able accept link is returned), we just
   // don't send the email.
-  if (!notificationEnabled(org?.metadata, 'member_invited')) {
+  if (options.sendEmail === false || !notificationEnabled(org?.metadata, 'member_invited')) {
     return invitation;
   }
   const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;

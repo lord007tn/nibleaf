@@ -85,6 +85,7 @@ export type InviteOrganizationInput = {
   ownerEmail: string;
   siteSlug?: string;
   description?: string;
+  delivery: 'email' | 'link';
 };
 
 export function useInviteOrganization() {
@@ -100,7 +101,7 @@ export function useInviteOrganization() {
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['admin', 'sites'] });
       qc.invalidateQueries({ queryKey: ['admin', 'overview'] });
-      toast.success(`Owner invitation sent to ${input.ownerEmail}`);
+      toast.success(input.delivery === 'email' ? `Owner invitation queued for ${input.ownerEmail}` : 'Owner invitation link created');
     },
     onError: (error) => toast.error(error instanceof Error && !/^\d+$/.test(error.message) ? error.message : 'Could not invite the organization'),
   });

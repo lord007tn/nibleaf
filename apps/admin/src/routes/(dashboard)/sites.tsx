@@ -17,8 +17,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
-import { ExternalLink, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Copy, ExternalLink, Mail, Plus } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useInviteOrganization, useTakedownSite } from '@/hooks/api/mutations';
 import { type AdminSite, useAdminSites } from '@/hooks/api/queries';
@@ -34,126 +34,205 @@ const TAKEDOWN_REASON_MAX = 500;
 
 function InviteOrganizationDialog() {
   const [open, setOpen] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const deliveryRef = useRef<'email' | 'link'>('email');
   const invite = useInviteOrganization();
   const form = useForm({
     defaultValues: { organizationName: '', siteName: '', ownerEmail: '', siteSlug: '', description: '' },
     onSubmit: async ({ value }) => {
-      await invite.mutateAsync({
+      const result = await invite.mutateAsync({
         organizationName: value.organizationName.trim(),
         siteName: value.siteName.trim(),
         ownerEmail: value.ownerEmail.trim().toLowerCase(),
+        delivery: deliveryRef.current,
         ...(value.siteSlug.trim() ? { siteSlug: value.siteSlug.trim().toLowerCase() } : {}),
         ...(value.description.trim() ? { description: value.description.trim() } : {}),
       });
-      setOpen(false);
-      form.reset();
+      if (deliveryRef.current === 'link') {
+        setGeneratedLink(result.invitationUrl);
+        try {
+          await navigator.clipboard.writeText(result.invitationUrl);
+          toast.success('Invitation link copied');
+        } catch {
+          toast.info('Invitation created — use Copy link below');
+        }
+      } else {
+        setOpen(false);
+        form.reset();
+      }
     },
   });
 
+  const closeDialog = () => {
+    setOpen(false);
+    setGeneratedLink(null);
+    form.reset();
+  };
+
+  const copyGeneratedLink = async () => {
+    if (!generatedLink) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(generatedLink);
+      toast.success('Invitation link copied');
+    } catch {
+      toast.error('Could not access the clipboard. Select and copy the link manually.');
+    }
+  };
+
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
+    <Dialog
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setGeneratedLink(null);
+          form.reset();
+        }
+      }}
+      open={open}
+    >
       <DialogTrigger render={<Button size="sm" />}>
         <Plus className="size-4" /> Invite organization
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Invite a new organization</DialogTitle>
-          <DialogDescription>Create its first documentation site and email the owner a seven-day acceptance link.</DialogDescription>
+          <DialogDescription>
+            {generatedLink
+              ? 'The organization is ready. Copy its seven-day owner invitation link.'
+              : 'Create its first documentation site, then send the owner an email or copy their seven-day invitation link.'}
+          </DialogDescription>
         </DialogHeader>
-        <form
-          className="grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            form.handleSubmit();
-          }}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.Field name="organizationName">
-              {(field) => (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="organization-name">Organization name</Label>
-                  <Input
-                    id="organization-name"
-                    maxLength={100}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="Acme"
-                    required
-                    value={field.state.value}
-                  />
-                </div>
-              )}
-            </form.Field>
-            <form.Field name="ownerEmail">
-              {(field) => (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="owner-email">Owner email</Label>
-                  <Input
-                    id="owner-email"
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="owner@acme.com"
-                    required
-                    type="email"
-                    value={field.state.value}
-                  />
-                </div>
-              )}
-            </form.Field>
+        {generatedLink ? (
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="generated-invitation-link">Owner invitation link</Label>
+              <Input id="generated-invitation-link" onFocus={(event) => event.currentTarget.select()} readOnly value={generatedLink} />
+            </div>
+            <DialogFooter>
+              <Button onClick={closeDialog} type="button" variant="outline">
+                Done
+              </Button>
+              <Button onClick={copyGeneratedLink} type="button">
+                <Copy className="size-4" /> Copy link
+              </Button>
+            </DialogFooter>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <form.Field name="siteName">
+        ) : (
+          <form
+            className="grid gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              form.handleSubmit();
+            }}
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="organizationName">
+                {(field) => (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="organization-name">Organization name</Label>
+                    <Input
+                      id="organization-name"
+                      maxLength={100}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      placeholder="Acme"
+                      required
+                      value={field.state.value}
+                    />
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="ownerEmail">
+                {(field) => (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="owner-email">Owner email</Label>
+                    <Input
+                      id="owner-email"
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      placeholder="owner@acme.com"
+                      required
+                      type="email"
+                      value={field.state.value}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="siteName">
+                {(field) => (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="site-name">Site name</Label>
+                    <Input
+                      id="site-name"
+                      maxLength={100}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                      placeholder="Acme Documentation"
+                      required
+                      value={field.state.value}
+                    />
+                  </div>
+                )}
+              </form.Field>
+              <form.Field name="siteSlug">
+                {(field) => (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="site-slug">Deployment slug</Label>
+                    <Input
+                      id="site-slug"
+                      maxLength={63}
+                      onChange={(event) => field.handleChange(event.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())}
+                      placeholder="acme-docs"
+                      value={field.state.value}
+                    />
+                  </div>
+                )}
+              </form.Field>
+            </div>
+            <form.Field name="description">
               {(field) => (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="site-name">Site name</Label>
-                  <Input
-                    id="site-name"
-                    maxLength={100}
+                  <Label htmlFor="site-description">
+                    Description <span className="font-normal text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Textarea
+                    id="site-description"
+                    maxLength={500}
                     onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="Acme Documentation"
-                    required
+                    placeholder="What this documentation site is for"
+                    rows={3}
                     value={field.state.value}
                   />
                 </div>
               )}
             </form.Field>
-            <form.Field name="siteSlug">
-              {(field) => (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="site-slug">Deployment slug</Label>
-                  <Input
-                    id="site-slug"
-                    maxLength={63}
-                    onChange={(event) => field.handleChange(event.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())}
-                    placeholder="acme-docs"
-                    value={field.state.value}
-                  />
-                </div>
-              )}
-            </form.Field>
-          </div>
-          <form.Field name="description">
-            {(field) => (
-              <div className="grid gap-1.5">
-                <Label htmlFor="site-description">
-                  Description <span className="font-normal text-muted-foreground">(optional)</span>
-                </Label>
-                <Textarea
-                  id="site-description"
-                  maxLength={500}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                  placeholder="What this documentation site is for"
-                  rows={3}
-                  value={field.state.value}
-                />
+            <DialogFooter className="sm:justify-between">
+              <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button
+                  disabled={invite.isPending}
+                  onClick={() => {
+                    deliveryRef.current = 'link';
+                  }}
+                  type="submit"
+                  variant="secondary"
+                >
+                  <Copy className="size-4" /> {invite.isPending ? 'Creating…' : 'Create & copy link'}
+                </Button>
+                <Button
+                  disabled={invite.isPending}
+                  onClick={() => {
+                    deliveryRef.current = 'email';
+                  }}
+                  type="submit"
+                >
+                  <Mail className="size-4" /> {invite.isPending ? 'Creating…' : 'Create & send email'}
+                </Button>
               </div>
-            )}
-          </form.Field>
-          <DialogFooter>
-            <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
-            <Button disabled={invite.isPending} type="submit">
-              {invite.isPending ? 'Creating…' : 'Create and send invite'}
-            </Button>
-          </DialogFooter>
-        </form>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -164,6 +243,18 @@ function SitesPage() {
   const takedown = useTakedownSite();
   const confirm = useConfirm();
   const prompt = usePrompt();
+
+  const copyOwnerInvitation = async (site: AdminSite) => {
+    if (!site.ownerInvitationId) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(`${APP_URL}/accept-invite/${site.ownerInvitationId}`);
+      toast.success('Invitation link copied');
+    } catch {
+      toast.error('Could not copy the invitation link');
+    }
+  };
 
   const onTakedown = async (site: AdminSite) => {
     // The server caps the reason at 500 chars (strict); usePrompt has no length
@@ -260,6 +351,11 @@ function SitesPage() {
                   <TableCell className="text-muted-foreground">{fmtDate(site.createdAt)}</TableCell>
                   <TableCell className="text-end">
                     <div className="flex items-center justify-end gap-2">
+                      {site.ownerInvitationId ? (
+                        <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
+                          <Copy className="size-4" /> Copy invite
+                        </Button>
+                      ) : null}
                       <Button
                         disabled={takedown.isPending && takedown.variables?.id === site.id}
                         onClick={() => (site.takedownAt ? onRestore(site) : onTakedown(site))}

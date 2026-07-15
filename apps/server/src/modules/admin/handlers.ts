@@ -35,6 +35,7 @@ const adminInviteOrganizationBody = z
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
       .optional(),
     description: z.string().trim().max(500).optional(),
+    delivery: z.enum(['email', 'link']).default('email'),
   })
   .strict();
 

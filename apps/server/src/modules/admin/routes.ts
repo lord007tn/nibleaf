@@ -47,7 +47,7 @@ const adminRoutes = {
   inviteOrganization: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],
-    description: 'Create a site organization and send its first owner an invitation.',
+    description: 'Create a site organization and either email its first owner or return a copyable invitation link.',
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   takedownSite: createRouteConfig({
