@@ -14,13 +14,18 @@ import remarkMath from 'remark-math';
 import {
   Accordion,
   AccordionGroup,
+  Badge,
+  Banner,
   Callout,
   Card,
   CardGroup,
   CodeGroup,
+  Column,
+  Columns,
   Expandable,
   Frame,
   Icon,
+  MdxButton,
   ParamField,
   ResponseField,
   Step,
@@ -223,6 +228,15 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
       {children}
     </ResponseField>
   ),
+  columns: ({ children }) => <Columns>{children}</Columns>,
+  column: ({ children }) => <Column>{children}</Column>,
+  banner: ({ type, children }) => <Banner type={str(type)}>{children}</Banner>,
+  badge: ({ color, children }) => <Badge color={str(color)}>{children}</Badge>,
+  button: ({ href, variant, children }) => (
+    <MdxButton href={str(href)} variant={str(variant)}>
+      {children}
+    </MdxButton>
+  ),
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
@@ -242,7 +256,12 @@ export function Markdown({ content, className, site }: { content: string; classN
             {children}
           </Card>
         ),
-      }) as Components,
+        button: ({ href, variant, children }: MdxProps) => (
+          <MdxButton href={resolveDocHref(str(href), site)} variant={str(variant)}>
+            {children}
+          </MdxButton>
+        ),
+      }) as unknown as Components,
     [site],
   );
   return (

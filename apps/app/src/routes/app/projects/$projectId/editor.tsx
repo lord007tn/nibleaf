@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   Trash2,
   TriangleAlert,
+  Type as TypeIcon,
 } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
+import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
@@ -153,19 +155,19 @@ function EditorPage() {
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   // How the page body is edited: WYSIWYG, raw Markdown/MDX, or a rendered preview.
   // Content is Markdown end-to-end, so all three share the one `content` string.
-  const [editorMode, setEditorMode] = useState<'visual' | 'markdown' | 'preview'>(() => {
+  const [editorMode, setEditorMode] = useState<'visual' | 'wysiwyg' | 'markdown' | 'preview'>(() => {
     if (typeof window === 'undefined') {
       return 'visual';
     }
     const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
-    return stored === 'markdown' || stored === 'preview' ? stored : 'visual';
+    return stored === 'wysiwyg' || stored === 'markdown' || stored === 'preview' ? stored : 'visual';
   });
   // Editor safety: JSX-like component tags the visual editor can't round-trip
   // would be SILENTLY DROPPED on a visual-mode save. When any are present, the
   // page is locked to Markdown mode (banner below) so nothing is ever lost.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
   const visualLocked = unsupportedTags.length > 0;
-  const effectiveMode = visualLocked && editorMode === 'visual' ? 'markdown' : editorMode;
+  const effectiveMode = visualLocked && (editorMode === 'visual' || editorMode === 'wysiwyg') ? 'markdown' : editorMode;
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -446,7 +448,7 @@ function EditorPage() {
         >
           {!sidebarCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
           {/* Sidebar header: section label + the collapse control (lives ON the sidebar). */}
-          <div className="flex h-11 shrink-0 items-center justify-between border-border border-b ps-3 pe-1.5">
+          <div className="flex h-12 shrink-0 items-center justify-between border-border border-b ps-3 pe-1.5">
             <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
               {view === 'config' ? t('editor.config.heading') : t('editor.pages')}
             </span>
@@ -653,6 +655,15 @@ function EditorPage() {
                 >
                   {t('editor.mode.visual')}
                 </SegButton>
+                <SegButton
+                  active={effectiveMode === 'wysiwyg'}
+                  onClick={() => setEditorMode('wysiwyg')}
+                  icon={<TypeIcon className="size-3.5" />}
+                  disabled={visualLocked}
+                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
+                >
+                  {t('editor.mode.wysiwyg')}
+                </SegButton>
                 <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
                   {t('editor.mode.markdown')}
                 </SegButton>
@@ -661,10 +672,10 @@ function EditorPage() {
                 </SegButton>
               </div>
               <Button
-                size="icon-sm"
+                size="sm"
                 variant={commentMode ? 'secondary' : 'ghost'}
                 aria-pressed={commentMode}
-                className="cursor-pointer"
+                className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
                 // Comment anchoring works through the visual editor, which is
                 // locked while the page holds unsupported components. (Stays
                 // clickable while ON so the user can always exit comment mode.)
@@ -673,6 +684,7 @@ function EditorPage() {
                 title={visualLocked ? t('editor.unsupportedMdx.commentsDisabled') : t('editor.comments.mode')}
               >
                 <MessageSquare className="size-4" />
+                {commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
               </Button>
               <Button
                 nativeButton={false}
@@ -760,7 +772,7 @@ function EditorPage() {
                   />
                 )}
               </div>
-              {effectiveMode === 'visual' ? (
+              {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
                 // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
                 // gutter for the block handle — so it is NOT wrapped in a narrow box.
                 <TiptapEditor
@@ -777,16 +789,15 @@ function EditorPage() {
                     setRailOpen(true);
                     setRailTab('comments');
                   }}
+                  variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
                 />
               ) : effectiveMode === 'markdown' ? (
-                <textarea
+                <MarkdownSourceEditor
                   dir={activeLangDir}
-                  aria-label={t('editor.markdownPlaceholder')}
+                  label={t('editor.markdownPlaceholder')}
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  spellCheck={false}
+                  onChange={setContent}
                   placeholder={t('editor.markdownPlaceholder')}
-                  className="mx-auto mt-4 block min-h-[60vh] w-full max-w-[720px] resize-none rounded-sm bg-transparent font-mono text-[13.5px] text-foreground leading-relaxed outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/30"
                 />
               ) : (
                 // Live preview: the draft rendered through the exact live-site renderer.

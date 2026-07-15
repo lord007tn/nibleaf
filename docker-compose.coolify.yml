@@ -73,6 +73,14 @@ x-service-env: &service-env
   # third-party hostnames can otherwise be claimed by a former SaaS provider at
   # the shared edge even after their DNS CNAME is changed.
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.nibleaf.com}
+  # Cloudflare for SaaS provisions customer hostnames and certificates. Coolify
+  # only owns the three fixed DNS-only origins; it never receives per-customer
+  # domain configuration.
+  CUSTOM_DOMAIN_PROVIDER: ${CUSTOM_DOMAIN_PROVIDER:-ingress}
+  CLOUDFLARE_SAAS_ZONE_ID: ${CLOUDFLARE_SAAS_ZONE_ID:-}
+  CLOUDFLARE_SAAS_API_TOKEN: ${CLOUDFLARE_SAAS_API_TOKEN:-}
+  CLOUDFLARE_SAAS_WORKER_SCRIPT: ${CLOUDFLARE_SAAS_WORKER_SCRIPT:-nibleaf-custom-domain-edge}
+  CUSTOM_DOMAIN_EDGE_SECRET: ${CUSTOM_DOMAIN_EDGE_SECRET:-}
   WORKER_PORT: "4312"
   # nibleaf.com is domain-verified in Postmark, so any sender at the domain works.
   EMAIL_FROM: ${EMAIL_FROM:-Nibleaf <no-reply@nibleaf.com>}

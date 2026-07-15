@@ -103,6 +103,27 @@ const titledNode = (config: { name: string; tag: string; className: string; attr
     addStorage: () => markdownStorage(config.tag, config.attrKeys),
   });
 
+const inlineWrapperNode = (config: { name: string; tag: string; className: string; attrs?: Attributes; attrKeys: string[] }) =>
+  Node.create({
+    name: config.name,
+    group: 'inline',
+    inline: true,
+    content: 'inline*',
+    addAttributes: () => config.attrs ?? {},
+    parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `span[data-mdx="${config.tag}"]` }],
+    renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
+    addStorage: () => ({
+      markdown: {
+        serialize: (state: SerializeState, node: PMNode) => {
+          state.write(`<${config.tag}${attrString(node, config.attrKeys)}>`);
+          state.renderInline(node);
+          state.write(`</${config.tag}>`);
+        },
+        parse: {},
+      } satisfies MarkdownNodeSpec,
+    }),
+  });
+
 // ─── Steps ──────────────────────────────────────────────────────────────────
 export const Steps = containerNode({ name: 'mdxSteps', tag: 'Steps', content: 'mdxStep+', className: 'pl-steps' });
 export const Step = titledNode({ name: 'mdxStep', tag: 'Step', className: 'pl-step', attrs: stringAttr('title'), attrKeys: ['title'] });
@@ -195,6 +216,26 @@ export const ResponseField = containerNode({
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
 export const CodeGroup = containerNode({ name: 'mdxCodeGroup', tag: 'CodeGroup', content: 'block+', className: 'pl-codegroup' });
 
+// ─── Layout and inline UI ────────────────────────────────────────────────────
+export const Columns = containerNode({ name: 'mdxColumns', tag: 'Columns', content: 'mdxColumn+', className: 'pl-columns' });
+export const Column = containerNode({ name: 'mdxColumn', tag: 'Column', content: 'block+', className: 'pl-column' });
+export const Banner = containerNode({
+  name: 'mdxBanner',
+  tag: 'Banner',
+  content: 'block+',
+  className: 'pl-banner',
+  attrs: stringAttrs('type', 'dismissible'),
+  attrKeys: ['type', 'dismissible'],
+});
+export const Badge = inlineWrapperNode({ name: 'mdxBadge', tag: 'Badge', className: 'pl-badge', attrs: stringAttr('color'), attrKeys: ['color'] });
+export const MdxButton = inlineWrapperNode({
+  name: 'mdxButton',
+  tag: 'Button',
+  className: 'pl-button',
+  attrs: stringAttrs('href', 'variant'),
+  attrKeys: ['href', 'variant'],
+});
+
 // ─── Inline: Tooltip ──────────────────────────────────────────────────────────
 // `<Tooltip tip="…">text</Tooltip>` — an inline wrapper whose children stay
 // editable. Serializes with `renderInline` (NOT the block factory's
@@ -260,6 +301,11 @@ export const mdxNodes = [
   ParamField,
   ResponseField,
   CodeGroup,
+  Columns,
+  Column,
+  Banner,
+  Badge,
+  MdxButton,
   Tooltip,
   Icon,
 ];

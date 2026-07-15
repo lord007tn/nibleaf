@@ -6,16 +6,40 @@ import { DragHandle } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
 import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
-import { EditorContent, useEditor } from '@tiptap/react';
+import TextAlign from '@tiptap/extension-text-align';
+import Typography from '@tiptap/extension-typography';
+import Underline from '@tiptap/extension-underline';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
-import { GripVertical, Plus } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  GripVertical,
+  Heading1,
+  Heading2,
+  Italic,
+  List,
+  ListOrdered,
+  MessageSquarePlus,
+  Plus,
+  Quote,
+  Redo2,
+  Strikethrough,
+  Underline as UnderlineIcon,
+  Undo2,
+} from 'lucide-react';
 import { type CSSProperties, useEffect, useRef } from 'react';
 import { Markdown } from 'tiptap-markdown';
 import { useT } from '@/lib/i18n';
@@ -94,6 +118,126 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   );
 }
 
+/** Review-mode selection action. It appears only after the reviewer highlights
+ * text and preserves the precise ProseMirror range for durable anchoring. */
+function CommentSelectionMenu({
+  editor,
+  onAddComment,
+}: {
+  editor: Editor;
+  onAddComment: (anchor: { quote: string; from: number; to: number }) => void;
+}) {
+  const t = useT();
+  return (
+    <BubbleMenu editor={editor} shouldShow={({ editor: current }) => !current.state.selection.empty} options={{ placement: 'top' }}>
+      <button
+        type="button"
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => {
+          const { from, to } = editor.state.selection;
+          const quote = editor.state.doc.textBetween(from, to, ' ').trim();
+          if (quote) onAddComment({ quote, from, to });
+        }}
+        className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 font-medium text-sm shadow-lg hover:bg-muted"
+      >
+        <MessageSquarePlus className="size-4" />
+        {t('editor.comment')}
+      </button>
+    </BubbleMenu>
+  );
+}
+
+function DocumentToolbar({ editor }: { editor: Editor }) {
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      canUndo: current.can().undo(),
+      canRedo: current.can().redo(),
+      heading1: current.isActive('heading', { level: 1 }),
+      heading2: current.isActive('heading', { level: 2 }),
+      bold: current.isActive('bold'),
+      italic: current.isActive('italic'),
+      underline: current.isActive('underline'),
+      strike: current.isActive('strike'),
+      bulletList: current.isActive('bulletList'),
+      orderedList: current.isActive('orderedList'),
+      blockquote: current.isActive('blockquote'),
+      alignLeft: current.isActive({ textAlign: 'left' }),
+      alignCenter: current.isActive({ textAlign: 'center' }),
+      alignRight: current.isActive({ textAlign: 'right' }),
+    }),
+  });
+  const actions = [
+    { label: 'Undo', icon: Undo2, active: false, run: () => editor.chain().focus().undo().run(), disabled: !state.canUndo },
+    { label: 'Redo', icon: Redo2, active: false, run: () => editor.chain().focus().redo().run(), disabled: !state.canRedo },
+    {
+      label: 'Heading 1',
+      icon: Heading1,
+      active: state.heading1,
+      run: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+    },
+    {
+      label: 'Heading 2',
+      icon: Heading2,
+      active: state.heading2,
+      run: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+    },
+    { label: 'Bold', icon: Bold, active: state.bold, run: () => editor.chain().focus().toggleBold().run() },
+    { label: 'Italic', icon: Italic, active: state.italic, run: () => editor.chain().focus().toggleItalic().run() },
+    { label: 'Underline', icon: UnderlineIcon, active: state.underline, run: () => editor.chain().focus().toggleUnderline().run() },
+    { label: 'Strikethrough', icon: Strikethrough, active: state.strike, run: () => editor.chain().focus().toggleStrike().run() },
+    { label: 'Bulleted list', icon: List, active: state.bulletList, run: () => editor.chain().focus().toggleBulletList().run() },
+    {
+      label: 'Numbered list',
+      icon: ListOrdered,
+      active: state.orderedList,
+      run: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    { label: 'Quote', icon: Quote, active: state.blockquote, run: () => editor.chain().focus().toggleBlockquote().run() },
+    {
+      label: 'Align left',
+      icon: AlignLeft,
+      active: state.alignLeft,
+      run: () => editor.chain().focus().setTextAlign('left').run(),
+    },
+    {
+      label: 'Align center',
+      icon: AlignCenter,
+      active: state.alignCenter,
+      run: () => editor.chain().focus().setTextAlign('center').run(),
+    },
+    {
+      label: 'Align right',
+      icon: AlignRight,
+      active: state.alignRight,
+      run: () => editor.chain().focus().setTextAlign('right').run(),
+    },
+  ];
+  return (
+    <div className="sticky top-0 z-10 mb-5 flex min-h-11 items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-sm backdrop-blur">
+      {actions.map(({ label, icon: Icon, active, run, disabled }, index) => (
+        <button
+          key={label}
+          type="button"
+          title={label}
+          aria-label={label}
+          aria-pressed={active}
+          disabled={disabled}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={run}
+          className={cn(
+            'grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40',
+            active && 'bg-muted text-foreground',
+            (index === 2 || index === 4 || index === 8 || index === 11) && 'ms-1 border-border border-s ps-1',
+          )}
+        >
+          <Icon className="size-4" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 interface TiptapEditorProps {
   /** Markdown source — the single source of truth. */
   value: string;
@@ -115,6 +259,8 @@ interface TiptapEditorProps {
   commentMode?: boolean;
   /** Called when a block is clicked in comment mode, with the anchor to attach. */
   onAddComment?: (anchor: { quote: string; from: number; to: number }) => void;
+  /** Notion-like block controls or a persistent document toolbar. */
+  variant?: 'visual' | 'wysiwyg';
 }
 
 /**
@@ -138,6 +284,7 @@ export function TiptapEditor({
   activeCommentId,
   commentMode = false,
   onAddComment,
+  variant = 'visual',
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
   const onChangeRef = useRef(onChange);
@@ -187,6 +334,11 @@ export function TiptapEditor({
       }),
       CodeBlock.configure({ lowlight }),
       Highlight.configure({ multicolor: false }),
+      Underline,
+      Subscript,
+      Superscript,
+      Typography,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Image.configure({ inline: false, allowBase64: true }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -223,27 +375,18 @@ export function TiptapEditor({
       attributes: {
         class: 'focus:outline-none',
       },
-      // Comment mode: clicking a block anchors a new comment to it (its text is
-      // the quote; we hand the block range up so the composer can open).
-      handleClick: (view, pos) => {
-        if (!commentModeRef.current || !onAddCommentRef.current) {
-          return false;
-        }
-        const $pos = view.state.doc.resolve(pos);
-        const depth = $pos.depth;
-        const node = depth > 0 ? $pos.node(depth) : null;
-        if (!node?.isTextblock) {
-          return false;
-        }
-        const quote = node.textContent.trim();
-        if (!quote) {
-          return false;
-        }
-        onAddCommentRef.current({ quote, from: $pos.start(depth), to: $pos.end(depth) });
-        return true;
+      handleTextInput: () => commentModeRef.current,
+      handleKeyDown: (_view, event) => {
+        if (!commentModeRef.current) return false;
+        // Preserve selection/navigation shortcuts while preventing review mode
+        // from mutating the document.
+        if ((event.metaKey || event.ctrlKey) && ['a', 'c'].includes(event.key.toLowerCase())) return false;
+        if (event.shiftKey && event.key.startsWith('Arrow')) return false;
+        return !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Shift'].includes(event.key);
       },
       // Paste or drop an image file → upload and insert the hosted URL.
       handlePaste: (_view, event) => {
+        if (commentModeRef.current) return true;
         const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
         if (files.length === 0 || !onUploadRef.current) {
           return false;
@@ -255,6 +398,7 @@ export function TiptapEditor({
         return true;
       },
       handleDrop: (_view, event) => {
+        if (commentModeRef.current) return true;
         const files = Array.from((event as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
         if (files.length === 0 || !onUploadRef.current) {
           return false;
@@ -285,13 +429,14 @@ export function TiptapEditor({
     }
   }, [value, editor]);
 
-  // Keep editability in sync — comment mode is review-only. Pass emitUpdate=false:
+  // Keep editability in sync. Review mode stays contenteditable so ProseMirror
+  // receives exact text selections; mutation handlers above make it read-only.
   // setEditable() defaults to firing an `update` event, which would call onChange
   // with the editor's (possibly still-empty) markdown and clobber a freshly-seeded
   // value — toggling editability is not a content edit.
   useEffect(() => {
-    editor?.setEditable(editable && !commentMode, false);
-  }, [editable, commentMode, editor]);
+    editor?.setEditable(editable, false);
+  }, [editable, editor]);
 
   // Re-run the comment highlight decorations when the comments / active id change
   // (no doc change occurs, so nudge ProseMirror with an empty transaction). Defer to
@@ -311,8 +456,10 @@ export function TiptapEditor({
 
   return (
     <div className={cn('pl-editor', commentMode && 'is-comment-mode', className)} dir={dir} style={style}>
+      {editor && variant === 'wysiwyg' && !commentMode ? <DocumentToolbar editor={editor} /> : null}
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
-      {editor && !commentMode ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
+      {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
+      {editor && !commentMode && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       <EditorContent editor={editor} />
     </div>
   );

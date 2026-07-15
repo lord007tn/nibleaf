@@ -55,6 +55,11 @@ x-service-env: &service-env
   APP_URL: ${APP_URL:-http://localhost:4310}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.nibleaf.com}
+  CUSTOM_DOMAIN_PROVIDER: ${CUSTOM_DOMAIN_PROVIDER:-ingress}
+  CLOUDFLARE_SAAS_ZONE_ID: ${CLOUDFLARE_SAAS_ZONE_ID:-}
+  CLOUDFLARE_SAAS_API_TOKEN: ${CLOUDFLARE_SAAS_API_TOKEN:-}
+  CLOUDFLARE_SAAS_WORKER_SCRIPT: ${CLOUDFLARE_SAAS_WORKER_SCRIPT:-nibleaf-custom-domain-edge}
+  CUSTOM_DOMAIN_EDGE_SECRET: ${CUSTOM_DOMAIN_EDGE_SECRET:-}
   WORKER_PORT: "4312"
   # Email delivery (optional). Postmark is preferred when POSTMARK_API_KEY is set;
   # SMTP_URL remains a fallback. Without either, the worker logs mail.

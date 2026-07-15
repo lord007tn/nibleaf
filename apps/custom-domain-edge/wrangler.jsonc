@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nibleaf-custom-domain-edge",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-15",
+  "workers_dev": false,
+  "vars": {
+    "APP_ORIGIN": "https://nibleaf.com"
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+}

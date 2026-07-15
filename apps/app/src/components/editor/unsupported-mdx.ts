@@ -30,6 +30,11 @@ const EDITOR_SUPPORTED_TAGS = new Set([
   'paramfield',
   'responsefield',
   'codegroup',
+  'columns',
+  'column',
+  'banner',
+  'badge',
+  'button',
   'tooltip',
   'icon',
   // callout.ts — <Callout type="…"> plus the Mintlify-style variant tags

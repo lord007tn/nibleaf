@@ -15,7 +15,7 @@ interface CommentsPanelProps {
   projectId: string;
   /** Comments are scoped to the currently-selected page. */
   pageId: string | null;
-  /** A block was clicked in comment mode — compose a comment anchored to it. */
+  /** Text was highlighted in comment mode — compose a comment anchored to it. */
   pendingAnchor?: { quote: string; from: number; to: number } | null;
   onClearPending?: () => void;
   /** The focused comment (highlighted here + in the editor). */
@@ -106,7 +106,7 @@ export function CommentsPanel({
         <span className="ms-auto font-mono text-muted-foreground text-xs">{list.length}</span>
       </div>
 
-      {/* Anchored composer — appears when a block was clicked in comment mode. */}
+      {/* Anchored composer — appears when highlighted text is submitted. */}
       {pendingAnchor ? (
         <div className="mb-3 rounded-xl border border-primary/40 bg-primary/5 p-3">
           <p className="mb-2 line-clamp-2 border-amber-400 border-s-2 ps-2 text-muted-foreground text-xs italic">“{pendingAnchor.quote}”</p>

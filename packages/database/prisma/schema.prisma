@@ -323,6 +323,12 @@ model Domain {
   domain            String    @unique
   verified          Boolean   @default(false)
   verificationToken String
+  /// Provisioning backend. Kept as a string so self-hosters can add provider
+  /// adapters without a database enum migration.
+  provider          String    @default("INGRESS")
+  providerHostnameId String?
+  /// Provider-owned status/validation details. Secrets are never stored here.
+  providerData      Json?
   isPrimary         Boolean   @default(false)
   dnsStatus         DomainDnsStatus @default(PENDING)
   sslStatus         DomainSslStatus @default(PENDING)

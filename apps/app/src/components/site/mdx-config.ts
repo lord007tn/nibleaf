@@ -41,13 +41,18 @@ export const COMPONENT_TAGS = [
   'codegroup',
   'icon',
   'update',
+  'columns',
+  'column',
+  'banner',
+  'badge',
+  'button',
   // `<mermaid>` is synthesized by rehypeMermaid from ```mermaid fences.
   'mermaid',
 ] as const;
 
 // Block-level component tags whose inner content should be parsed as Markdown.
 const BLOCK_TAGS =
-  'Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update';
+  'Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner';
 // Matches an opening block tag on its own line — with or without attributes —
 // but not a self-closing tag (`<Frame />`).
 const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
@@ -107,6 +112,9 @@ export const sanitizeSchema = {
     expandable: ['title', 'defaultOpen', 'defaultopen'],
     icon: ['icon', 'name', 'color', 'size'],
     update: ['label', 'description'],
+    banner: ['type', 'dismissible'],
+    badge: ['color'],
+    button: ['href', 'variant'],
     // `dataTitle`/`dataLang` (hast camelCase → data-title/data-lang) carry the
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.

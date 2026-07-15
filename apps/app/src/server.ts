@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
@@ -165,6 +166,26 @@ const ssrClientIp = new AsyncLocalStorage<string>();
 // proxy, which forwards request headers). Must match the API's
 // INTERNAL_API_SECRET; when unset the API simply ignores the hint.
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || '';
+
+// Cloudflare for SaaS terminates customer TLS at the edge and proxies every
+// vanity hostname to one DNS-only origin. Trust the original hostname only
+// when the Worker proves it with a server-only shared secret.
+const CUSTOM_DOMAIN_EDGE_SECRET = process.env.CUSTOM_DOMAIN_EDGE_SECRET || '';
+const safeSecretMatch = (left: string, right: string): boolean => {
+  if (!(left && right)) return false;
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+
+const effectiveRequestHost = (request: Request, url: URL): string => {
+  const edgeSecret = request.headers.get('x-nibleaf-edge-secret') || '';
+  const edgeHost = request.headers.get('x-nibleaf-custom-host')?.trim().toLowerCase() || '';
+  if (safeSecretMatch(edgeSecret, CUSTOM_DOMAIN_EDGE_SECRET) && /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(edgeHost)) {
+    return edgeHost;
+  }
+  return (request.headers.get('host') || url.host).toLowerCase();
+};
 
 // Patch global fetch (the RPC client in src/lib/api.ts uses it) so SSR fetches
 // to our own /api proxy carry the visitor's IP. Requests outside the request
@@ -662,7 +683,7 @@ function withoutHeadBody(response: Response, method: string): Response {
 
 const handleRequestInner: RequestHandler<Register> = async (request, ...rest) => {
   const url = new URL(request.url);
-  const host = (request.headers.get('host') || url.host).toLowerCase();
+  const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
   // Consolidate the marketing origin: www.nibleaf.com would otherwise resolve as

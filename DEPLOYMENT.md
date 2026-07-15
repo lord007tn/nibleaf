@@ -229,7 +229,39 @@ Free project subdomains (`<project>.docs.example.com`) need three things:
    provider module — see the next section, which can replace this nginx setup
    entirely.
 
-## 6. Custom-domain TLS automation (Caddy on-demand TLS)
+## 6. Custom domains
+
+### Cloudflare for SaaS (recommended for Nibleaf Cloud)
+
+Cloudflare for SaaS removes customer hostnames from the application ingress.
+Customers create one DNS record (`docs.customer.com CNAME cname.example.com`),
+the API creates a Cloudflare Custom Hostname, and Cloudflare provisions edge
+TLS. Configure:
+
+```dotenv
+CUSTOM_DOMAIN_PROVIDER=cloudflare-saas
+CUSTOM_DOMAIN_CNAME_TARGET=cname.example.com
+CLOUDFLARE_SAAS_ZONE_ID=<zone id>
+CLOUDFLARE_SAAS_API_TOKEN=<least-privilege server token>
+CLOUDFLARE_SAAS_WORKER_SCRIPT=nibleaf-custom-domain-edge
+CUSTOM_DOMAIN_EDGE_SECRET=<random 32+ byte secret>
+```
+
+Deploy `apps/custom-domain-edge`, set its `EDGE_SECRET` to the same value, and
+point its fixed `APP_ORIGIN` at the app's existing canonical hostname, such as
+`https://docs.example.com`. The API installs an exact
+`<customer-hostname>/*` Worker route when the domain is added (the same proven
+pattern used by JoodCMS Themes), so unrelated zone traffic never enters this
+Worker. The Worker strips spoofed internal headers, stamps the original customer
+hostname plus the secret, and proxies to that one origin. The reverse proxy only
+needs the app's existing canonical hostname; never add customer domains there.
+
+Before enabling the provider, create the Cloudflare fallback origin and confirm
+the Worker route and fixed origins in staging. The domain UI exposes the exact
+ownership/DCV records returned by Cloudflare and collapses them once hostname
+activation and edge TLS are both active.
+
+### Portable/self-hosted: Caddy on-demand TLS
 
 Customers can point their own domains (`docs.customer.com`) at your instance
 via `CUSTOM_DOMAIN_CNAME_TARGET`. Certificates for *arbitrary customer

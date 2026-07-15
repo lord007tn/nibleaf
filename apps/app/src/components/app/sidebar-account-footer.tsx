@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@nibleaf/design-system/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,9 +40,12 @@ export function SidebarAccountFooter() {
                   className="flex h-12 w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md p-2 text-start text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[popup-open]:bg-sidebar-accent [&_svg]:size-4 [&_svg]:shrink-0"
                   type="button"
                 >
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
-                    {initials}
-                  </span>
+                  <Avatar className="size-9 rounded-lg">
+                    {session?.user?.image ? <AvatarImage alt={session.user.name} src={session.user.image} /> : null}
+                    <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="grid flex-1 text-start leading-tight">
                     <span className="truncate font-medium text-sm">{session?.user?.name ?? 'Account'}</span>
                     <span className="truncate text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
@@ -50,8 +54,17 @@ export function SidebarAccountFooter() {
                 </button>
               }
             />
-            <DropdownMenuContent align="end" className="w-56" side="top">
-              <DropdownMenuLabel>{session?.user?.name ?? 'Account'}</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-64" side="top">
+              <DropdownMenuLabel className="flex items-center gap-3 py-2">
+                <Avatar className="size-9 rounded-lg">
+                  {session?.user?.image ? <AvatarImage alt={session.user.name} src={session.user.image} /> : null}
+                  <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                </Avatar>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{session?.user?.name ?? 'Account'}</span>
+                  <span className="block truncate font-normal text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
+                </span>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
                 {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}

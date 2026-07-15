@@ -1,8 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { Check, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -77,7 +78,11 @@ export function DomainSection({ project }: { project: Project }) {
 
       <div className="mt-4 space-y-3">
         {list.map((d) => (
-          <div className="rounded-xl border border-border p-3.5" key={d.id}>
+          <Collapsible
+            className="group rounded-xl border border-border p-3.5"
+            defaultOpen={d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE'}
+            key={d.id}
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
@@ -89,26 +94,18 @@ export function DomainSection({ project }: { project: Project }) {
                   >
                     {d.domain} <ExternalLink className="size-3" />
                   </a>
-                  <StatusBadge
-                    label={
-                      d.dnsStatus === 'VERIFIED'
-                        ? t('settings.domain.status.dnsReady')
-                        : d.dnsStatus === 'ERROR'
-                          ? t('settings.domain.status.dnsError')
-                          : t('settings.domain.status.pending')
-                    }
-                    tone={d.dnsStatus === 'VERIFIED' ? 'ready' : d.dnsStatus === 'ERROR' ? 'error' : 'pending'}
-                  />
-                  <StatusBadge
-                    label={
-                      d.sslStatus === 'ACTIVE'
-                        ? t('settings.domain.status.sslActive')
-                        : d.sslStatus === 'ERROR'
-                          ? t('settings.domain.status.sslError')
-                          : t('settings.domain.status.sslProvisioning')
-                    }
-                    tone={d.sslStatus === 'ACTIVE' ? 'ready' : d.sslStatus === 'ERROR' ? 'error' : 'pending'}
-                  />
+                  {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' ? (
+                    <StatusBadge label={t('settings.domain.status.verified')} tone="ready" />
+                  ) : (
+                    <StatusBadge
+                      label={
+                        d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR'
+                          ? t('settings.domain.status.needsAttention')
+                          : t('settings.domain.status.provisioning')
+                      }
+                      tone={d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR' ? 'error' : 'pending'}
+                    />
+                  )}
                   {d.isPrimary ? (
                     <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
                       {t('settings.domain.status.primary')}
@@ -122,6 +119,12 @@ export function DomainSection({ project }: { project: Project }) {
                 ) : null}
               </div>
               <div className="flex gap-1.5">
+                {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
+                  <CollapsibleTrigger className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 font-medium text-muted-foreground text-xs hover:bg-muted hover:text-foreground">
+                    {t('settings.domain.configuration')}
+                    <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
+                  </CollapsibleTrigger>
+                ) : null}
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
@@ -156,54 +159,56 @@ export function DomainSection({ project }: { project: Project }) {
               </div>
             </div>
 
-            {d.lastError ? (
-              <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm">{d.lastError}</div>
-            ) : null}
+            <CollapsibleContent>
+              {d.lastError ? (
+                <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm">{d.lastError}</div>
+              ) : null}
 
-            {d.records?.length ? (
-              <div className="mt-4">
-                <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
-                  {t('settings.domain.dns.heading')}
-                </div>
-                <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]">
-                  <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
-                    <span>{t('settings.domain.dns.type')}</span>
-                    <span>{t('settings.domain.dns.name')}</span>
-                    <span>{t('settings.domain.dns.value')}</span>
-                    <span className="sr-only">{t('settings.domain.dns.copy')}</span>
+              {d.records?.length ? (
+                <div className="mt-4">
+                  <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
+                    {t('settings.domain.dns.heading')}
                   </div>
-                  {d.records.map((record) => {
-                    const key = `${record.type}:${record.name}:${record.value}`;
-                    return (
-                      <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] items-center gap-2 px-3.5 py-2.5" key={key}>
-                        <span className="font-semibold">{record.type}</span>
-                        <span className="truncate" title={record.name}>
-                          {record.name}
-                        </span>
-                        <span className="truncate text-primary" title={record.value}>
-                          {record.value}
-                        </span>
-                        <Button
-                          aria-label={t('settings.domain.dns.copy')}
-                          className="size-8 cursor-pointer p-0"
-                          onClick={() => void copyRecord(key, `${record.type} ${record.name} ${record.value}`)}
-                          size="sm"
-                          title={t('settings.domain.dns.copy')}
-                          type="button"
-                          variant="ghost"
-                        >
-                          {copiedRecord === key ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                        </Button>
-                      </div>
-                    );
-                  })}
+                  <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]">
+                    <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
+                      <span>{t('settings.domain.dns.type')}</span>
+                      <span>{t('settings.domain.dns.name')}</span>
+                      <span>{t('settings.domain.dns.value')}</span>
+                      <span className="sr-only">{t('settings.domain.dns.copy')}</span>
+                    </div>
+                    {d.records.map((record) => {
+                      const key = `${record.type}:${record.name}:${record.value}`;
+                      return (
+                        <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] items-center gap-2 px-3.5 py-2.5" key={key}>
+                          <span className="font-semibold">{record.type}</span>
+                          <span className="truncate" title={record.name}>
+                            {record.name}
+                          </span>
+                          <span className="truncate text-primary" title={record.value}>
+                            {record.value}
+                          </span>
+                          <Button
+                            aria-label={t('settings.domain.dns.copy')}
+                            className="size-8 cursor-pointer p-0"
+                            onClick={() => void copyRecord(key, `${record.type} ${record.name} ${record.value}`)}
+                            size="sm"
+                            title={t('settings.domain.dns.copy')}
+                            type="button"
+                            variant="ghost"
+                          >
+                            {copiedRecord === key ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-3 text-[13px] text-muted-foreground">
+                    {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.dns.propagation')}
+                  </p>
                 </div>
-                <p className="mt-3 text-[13px] text-muted-foreground">
-                  {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.dns.propagation')}
-                </p>
-              </div>
-            ) : null}
-          </div>
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
         ))}
         {list.length === 0 ? <p className="text-muted-foreground text-sm">{t('settings.domain.empty')}</p> : null}
       </div>

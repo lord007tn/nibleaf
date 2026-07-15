@@ -1,12 +1,14 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
-import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
   AppWindow,
+  Badge as BadgeIcon,
   Code2,
+  Columns3,
   Frame as FrameIcon,
   Heading1,
   Heading2,
@@ -21,6 +23,7 @@ import {
   ListTodo,
   MessageCircle,
   Minus,
+  PanelTop,
   Quote,
   Sparkles,
   Table as TableIcon,
@@ -373,6 +376,54 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
+    titleKey: { en: 'Columns', ar: 'أعمدة' },
+    descKey: { en: 'A responsive two-column layout.', ar: 'تخطيط متجاوب من عمودين.' },
+    icon: Columns3,
+    glyph: '▥',
+    keywords: ['columns', 'layout', 'grid'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxColumns',
+          content: [
+            { type: 'mdxColumn', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'First column' }] }] },
+            { type: 'mdxColumn', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Second column' }] }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    titleKey: { en: 'Banner', ar: 'شريط إعلان' },
+    descKey: { en: 'A prominent announcement block.', ar: 'كتلة إعلان بارزة.' },
+    icon: PanelTop,
+    glyph: '▰',
+    keywords: ['banner', 'announcement'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxBanner', attrs: { type: 'info' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: { en: 'Badge', ar: 'شارة' },
+    descKey: { en: 'A compact inline status label.', ar: 'تسمية حالة مضمّنة.' },
+    icon: BadgeIcon,
+    glyph: '●',
+    keywords: ['badge', 'label', 'status'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxBadge', content: [{ type: 'text', text: 'New' }] })
+        .run(),
+  },
+  {
     titleKey: 'editor.slash.divider.title',
     descKey: 'editor.slash.divider.desc',
     icon: Minus,
@@ -437,6 +488,29 @@ export const shouldHandleSlashTrigger = (previousCharacter: string): boolean => 
 export const slashTriggerOffset = (textBeforeCursor: string): number | null => {
   if (!/(?:^| )\/[^/\s]*$/.test(textBeforeCursor)) return null;
   return textBeforeCursor.lastIndexOf('/');
+};
+
+interface SlashAnchorRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/** Resolve the first visible popup anchor. The suggestion decoration may not
+ * have committed on the slash transaction, while coordsAtPos is already valid. */
+export const resolveSlashAnchor = (
+  decorationRect: (() => SlashAnchorRect | null | undefined) | null | undefined,
+  coordsAtPos: (position: number) => SlashAnchorRect,
+  position: number,
+): SlashAnchorRect | null => {
+  const decorated = decorationRect?.();
+  if (decorated) return decorated;
+  try {
+    return coordsAtPos(position);
+  } catch {
+    return null;
+  }
 };
 
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
@@ -546,10 +620,18 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
       let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
       let currentProps: SuggestionProps<SlashItem> | null = null;
       let cleanup: (() => void) | null = null;
+      let positionFrame: number | null = null;
 
       const position = () => {
         if (!component || !currentProps) return;
-        const anchor = currentProps.clientRect?.();
+        // The decoration is created by the same transaction as the slash. On
+        // that first transaction it can be active before its DOM node exists,
+        // so fall back to the immediately available document position.
+        const anchor = resolveSlashAnchor(
+          currentProps.clientRect,
+          currentProps.editor.view.coordsAtPos.bind(currentProps.editor.view),
+          currentProps.range.from,
+        );
         if (!anchor) return;
 
         const popup = component.element;
@@ -581,6 +663,12 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
           });
           document.body.appendChild(component.element);
           position();
+          // On the insertion transaction the suggestion decoration may not be
+          // in the DOM yet, so clientRect() can legitimately be null. Position
+          // again after ProseMirror commits the decoration; otherwise the menu
+          // exists at the end of <body> and only appears after a later cursor
+          // movement (leaving the line and coming back).
+          positionFrame = requestAnimationFrame(position);
 
           const reposition = () => position();
           const dismiss = (event: PointerEvent) => {
@@ -593,6 +681,8 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
           window.addEventListener('scroll', reposition, true);
           document.addEventListener('pointerdown', dismiss, true);
           cleanup = () => {
+            if (positionFrame !== null) cancelAnimationFrame(positionFrame);
+            positionFrame = null;
             window.removeEventListener('resize', reposition);
             window.removeEventListener('scroll', reposition, true);
             document.removeEventListener('pointerdown', dismiss, true);
@@ -605,7 +695,8 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
             items: props.items,
             command: (item: SlashItem) => props.command(item),
           });
-          requestAnimationFrame(position);
+          if (positionFrame !== null) cancelAnimationFrame(positionFrame);
+          positionFrame = requestAnimationFrame(position);
         },
         onKeyDown: (props) => {
           if (props.event.key === 'Escape') {
@@ -626,61 +717,6 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
 };
 
 const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
-const slashSuggestionWakeKey = new PluginKey('nibleaf-slash-command-wake');
-
-/**
- * Tiptap 3.27 can miss Suggestion's inactive -> active renderer transition when
- * the trigger is introduced by a text-input transaction. A later selection
- * transaction (leaving and returning to the line) wakes it up. Detect the
- * active trigger/query independently of the keyboard layout/input method, then
- * replay that selection transition after every plugin has processed each
- * document transaction. Replaying for the complete `/query` range also keeps
- * filtering alive when the same Tiptap edge affects subsequent characters.
- */
-const createSlashSuggestionWakePlugin = () =>
-  new Plugin({
-    key: slashSuggestionWakeKey,
-    view: () => {
-      let pendingCursor: number | null = null;
-      let destroyed = false;
-
-      return {
-        update: (view, previousState) => {
-          if (destroyed || previousState.doc.eq(view.state.doc)) return;
-
-          const { selection } = view.state;
-          if (!selection.empty || selection.from <= 1) return;
-
-          const { $from } = selection;
-          const textBeforeCursor = $from.parent.textBetween(0, $from.parentOffset);
-          const slashOffset = slashTriggerOffset(textBeforeCursor);
-          if (slashOffset === null) return;
-
-          const cursor = selection.from;
-          const slashPosition = cursor - ($from.parentOffset - slashOffset);
-          if (pendingCursor === cursor) return;
-          pendingCursor = cursor;
-
-          queueMicrotask(() => {
-            if (destroyed || pendingCursor !== cursor) return;
-            pendingCursor = null;
-
-            const currentSelection = view.state.selection;
-            if (!currentSelection.empty || currentSelection.from !== cursor) return;
-            const currentTextBeforeCursor = currentSelection.$from.parent.textBetween(0, currentSelection.$from.parentOffset);
-            if (slashTriggerOffset(currentTextBeforeCursor) === null) return;
-
-            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, slashPosition)));
-            view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, cursor)));
-          });
-        },
-        destroy: () => {
-          destroyed = true;
-          pendingCursor = null;
-        },
-      };
-    },
-  });
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. */
 export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
@@ -689,13 +725,7 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
     return { onUpload: undefined };
   },
   addProseMirrorPlugins() {
-    return [
-      createSlashSuggestionWakePlugin(),
-      Suggestion({
-        editor: this.editor,
-        ...createSuggestion(this.options.onUpload),
-      }),
-    ];
+    return [Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload) })];
   },
 });
 

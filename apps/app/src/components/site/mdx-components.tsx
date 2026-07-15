@@ -304,6 +304,52 @@ export function Update({ label, description, children }: { label?: string; descr
   );
 }
 
+// ─── Layout and inline UI ────────────────────────────────────────────────────
+
+export function Columns({ children }: { children?: ReactNode }) {
+  return <div className="my-5 grid gap-4 md:grid-cols-2">{children}</div>;
+}
+
+export function Column({ children }: { children?: ReactNode }) {
+  return <div className="rounded-xl border border-border bg-card p-5 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div>;
+}
+
+export function Banner({ type, children }: { type?: string; children?: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'my-5 rounded-xl border px-4 py-3 text-sm',
+        type === 'warning' ? 'border-amber-500/35 bg-amber-500/10' : 'border-primary/30 bg-primary/8',
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+export function Badge({ color, children }: { color?: string; children?: ReactNode }) {
+  return (
+    <span data-color={color} className="inline-flex rounded-full bg-muted px-2 py-0.5 font-semibold text-[0.78em] text-foreground align-middle">
+      {children}
+    </span>
+  );
+}
+
+export function MdxButton({ href, variant, children }: { href?: string; variant?: string; children?: ReactNode }) {
+  return (
+    <a
+      href={href}
+      data-variant={variant}
+      className={cn(
+        'inline-flex items-center rounded-lg px-3 py-1.5 font-semibold text-sm no-underline',
+        variant === 'outline' ? 'border border-border bg-card text-foreground' : 'bg-primary text-primary-foreground',
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
 
 type CodeProps = { className?: string; 'data-title'?: string; 'data-lang'?: string };

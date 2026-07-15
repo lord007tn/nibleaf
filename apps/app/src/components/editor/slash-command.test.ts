@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextSlashSelection, shouldHandleSlashTrigger, slashTriggerOffset } from './extensions/slash-command';
+import { nextSlashSelection, resolveSlashAnchor, shouldHandleSlashTrigger, slashTriggerOffset } from './extensions/slash-command';
 
 describe('slash command keyboard selection', () => {
   it('wraps arrow navigation and supports Home/End', () => {
@@ -28,5 +28,15 @@ describe('slash command keyboard selection', () => {
     expect(slashTriggerOffset('hello/hea')).toBeNull();
     expect(slashTriggerOffset('/heading one')).toBeNull();
     expect(slashTriggerOffset('//hea')).toBeNull();
+  });
+
+  it('positions on the first slash transaction before the decoration commits', () => {
+    const cursor = { left: 120, right: 121, top: 240, bottom: 260 };
+    const coordsAtPos = (position: number) => {
+      expect(position).toBe(7);
+      return cursor;
+    };
+
+    expect(resolveSlashAnchor(() => null, coordsAtPos, 7)).toEqual(cursor);
   });
 });

@@ -1,8 +1,9 @@
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@nibleaf/design-system/components/ui/breadcrumb';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
 import { CommandPalette } from '@/components/app/command-palette';
 import { useT } from '@/lib/i18n';
@@ -16,6 +17,9 @@ function titleKeyFromPathname(pathname: string): MessageKey {
   if (pathname.startsWith('/app/settings')) {
     return 'dashboard.header.settings';
   }
+  if (pathname.startsWith('/app/analytics')) return 'nav.analytics';
+  if (pathname.startsWith('/app/sites')) return 'nav.sites';
+  if (pathname === '/app' || pathname === '/app/') return 'nav.overview';
   return 'dashboard.header.projects';
 }
 
@@ -27,13 +31,19 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
       <AppSidebar />
       <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-border border-b bg-background/80 px-4 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/80 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
           <Separator className="me-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-          <span className="font-medium text-sm">{title}</span>
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbPage>{title}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
           <button
             className="ms-auto flex h-8 w-56 items-center gap-2 rounded-lg border border-border bg-card px-3 text-muted-foreground text-sm"
             onClick={() => setPaletteOpen(true)}

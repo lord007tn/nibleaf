@@ -38,6 +38,7 @@ import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$project
 import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
 import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
 import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
+import { Route as AppdashboardSitesRouteImport } from './routes/app/(dashboard)/sites'
 import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
 import { Route as AppdashboardMembersRouteImport } from './routes/app/(dashboard)/members'
 import { Route as AppdashboardAnalyticsRouteImport } from './routes/app/(dashboard)/analytics'
@@ -194,6 +195,11 @@ const SitesProjectIdSplatRoute = SitesProjectIdSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => SitesProjectIdRouteRoute,
 } as any)
+const AppdashboardSitesRoute = AppdashboardSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => AppdashboardRouteRoute,
+} as any)
 const AppdashboardSettingsRoute = AppdashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -274,6 +280,7 @@ export interface FileRoutesByFullPath {
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
+  '/app/sites': typeof AppdashboardSitesRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/': typeof AppdashboardIndexRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
+  '/app/sites': typeof AppdashboardSitesRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/sites/$projectId': typeof SitesProjectIdIndexRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
   '/app/(dashboard)/members': typeof AppdashboardMembersRoute
   '/app/(dashboard)/settings': typeof AppdashboardSettingsRoute
+  '/app/(dashboard)/sites': typeof AppdashboardSitesRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/(dashboard)/': typeof AppdashboardIndexRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/app/analytics'
     | '/app/members'
     | '/app/settings'
+    | '/app/sites'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/app/'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/app/analytics'
     | '/app/members'
     | '/app/settings'
+    | '/app/sites'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/sites/$projectId'
@@ -465,6 +476,7 @@ export interface FileRouteTypes {
     | '/app/(dashboard)/analytics'
     | '/app/(dashboard)/members'
     | '/app/(dashboard)/settings'
+    | '/app/(dashboard)/sites'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/app/(dashboard)/'
@@ -703,6 +715,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitesProjectIdSplatRouteImport
       parentRoute: typeof SitesProjectIdRouteRoute
     }
+    '/app/(dashboard)/sites': {
+      id: '/app/(dashboard)/sites'
+      path: '/sites'
+      fullPath: '/app/sites'
+      preLoaderRoute: typeof AppdashboardSitesRouteImport
+      parentRoute: typeof AppdashboardRouteRoute
+    }
     '/app/(dashboard)/settings': {
       id: '/app/(dashboard)/settings'
       path: '/settings'
@@ -793,6 +812,7 @@ interface AppdashboardRouteRouteChildren {
   AppdashboardAnalyticsRoute: typeof AppdashboardAnalyticsRoute
   AppdashboardMembersRoute: typeof AppdashboardMembersRoute
   AppdashboardSettingsRoute: typeof AppdashboardSettingsRoute
+  AppdashboardSitesRoute: typeof AppdashboardSitesRoute
   AppdashboardIndexRoute: typeof AppdashboardIndexRoute
 }
 
@@ -800,6 +820,7 @@ const AppdashboardRouteRouteChildren: AppdashboardRouteRouteChildren = {
   AppdashboardAnalyticsRoute: AppdashboardAnalyticsRoute,
   AppdashboardMembersRoute: AppdashboardMembersRoute,
   AppdashboardSettingsRoute: AppdashboardSettingsRoute,
+  AppdashboardSitesRoute: AppdashboardSitesRoute,
   AppdashboardIndexRoute: AppdashboardIndexRoute,
 }
 

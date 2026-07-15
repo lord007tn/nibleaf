@@ -6,6 +6,18 @@ import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
+import {
+  type CloudflareCustomHostname,
+  cloudflareSaasEnabled,
+  createCustomHostname,
+  createCustomHostnameRoute,
+  customHostnameRecords,
+  customHostnameState,
+  deleteCustomHostname,
+  deleteCustomHostnameRoute,
+  getCustomHostname,
+  retryCustomHostname,
+} from '@/lib/cloudflare-saas';
 import { type DomainDnsSnapshot, hasOwnershipRecord, isPublicAddress, normalizeDnsName, pointsAtTarget } from '@/lib/domain-checks';
 import { assertProjectInOrg } from './projects';
 
@@ -14,14 +26,19 @@ import { assertProjectInOrg } from './projects';
 const cnameTarget = (): string => normalizeDnsName(env.CUSTOM_DOMAIN_CNAME_TARGET || env.SITE_BASE_DOMAIN || new URL(env.APP_URL).host);
 
 /** DNS records the user must create to point a custom domain at Nibleaf. */
-export const dnsRecords = (domain: Domain) => [
-  { type: 'CNAME', name: domain.domain, value: cnameTarget(), ttl: 3600 },
-  { type: 'TXT', name: `_nibleaf.${domain.domain}`, value: `nibleaf-verify=${domain.verificationToken}`, ttl: 3600 },
-];
+export const dnsRecords = (domain: Domain) =>
+  domain.provider === 'CLOUDFLARE_SAAS' && domain.providerData
+    ? customHostnameRecords(domain.providerData as unknown as CloudflareCustomHostname, cnameTarget())
+    : [
+        { type: 'CNAME' as const, name: domain.domain, value: cnameTarget(), ttl: 3600 },
+        { type: 'TXT' as const, name: `_nibleaf.${domain.domain}`, value: `nibleaf-verify=${domain.verificationToken}`, ttl: 3600 },
+      ];
 
 interface Domain {
   domain: string;
   verificationToken: string;
+  provider: string;
+  providerData?: unknown;
 }
 
 export const listDomains = async (projectId: string) => {
@@ -36,7 +53,47 @@ export const addDomain = async (organizationId: string, projectId: string, body:
   if (existing) {
     throw conflict('That domain is already connected.', { domain });
   }
-  const created = await prisma.domain.create({ data: { projectId, domain, verificationToken: newToken(24) } });
+  if (cloudflareSaasEnabled()) {
+    let provisioned: CloudflareCustomHostname | null = null;
+    let routeId: string | null = null;
+    try {
+      provisioned = await createCustomHostname(domain);
+      const route = await createCustomHostnameRoute(domain);
+      routeId = route.id;
+      provisioned = { ...provisioned, nibleafWorkerRouteId: route.id };
+    } catch (error) {
+      if (routeId) await deleteCustomHostnameRoute(routeId).catch(() => undefined);
+      if (provisioned) await deleteCustomHostname(provisioned.id).catch(() => undefined);
+      throw badRequest(`Cloudflare could not provision ${domain}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`, {
+        domain,
+        stage: 'provisioning',
+      });
+    }
+    if (!provisioned) throw badRequest('Cloudflare returned no custom hostname.', { domain, stage: 'provisioning' });
+    const state = customHostnameState(provisioned);
+    try {
+      const created = await prisma.domain.create({
+        data: {
+          projectId,
+          domain,
+          verificationToken: newToken(24),
+          provider: 'CLOUDFLARE_SAAS',
+          providerHostnameId: provisioned.id,
+          providerData: provisioned as never,
+          ...state,
+          verifiedAt: state.verified ? new Date() : null,
+          lastCheckedAt: new Date(),
+        },
+      });
+      return { ...created, records: dnsRecords(created) };
+    } catch (error) {
+      if (routeId) await deleteCustomHostnameRoute(routeId).catch(() => undefined);
+      await deleteCustomHostname(provisioned.id).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  const created = await prisma.domain.create({ data: { projectId, domain, verificationToken: newToken(24), provider: 'INGRESS' } });
   return { ...created, records: dnsRecords(created) };
 };
 
@@ -150,6 +207,37 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
     throw notFound('domain', { id });
   }
 
+  if (domain.provider === 'CLOUDFLARE_SAAS') {
+    if (!domain.providerHostnameId) {
+      throw badRequest('This domain is missing its Cloudflare hostname identifier. Remove it and add it again.', { id, stage: 'provisioning' });
+    }
+    let current: CloudflareCustomHostname;
+    try {
+      current = await getCustomHostname(domain.providerHostnameId);
+      if (current.status !== 'active' || current.ssl?.status !== 'active') {
+        current = await retryCustomHostname(domain.providerHostnameId);
+      }
+    } catch (error) {
+      const message = `Cloudflare status could not be refreshed: ${error instanceof Error ? error.message : 'Unknown provider error.'}`;
+      await prisma.domain.update({ where: { id }, data: { lastCheckedAt: new Date(), lastError: message } });
+      throw badRequest(message, { domain: domain.domain, stage: 'provider' });
+    }
+    const state = customHostnameState(current);
+    return prisma.domain.update({
+      where: { id },
+      data: {
+        ...state,
+        providerData: {
+          ...current,
+          nibleafWorkerRouteId: (domain.providerData as { nibleafWorkerRouteId?: string } | null)?.nibleafWorkerRouteId,
+        } as never,
+        verifiedAt: state.verified ? (domain.verifiedAt ?? new Date()) : null,
+        isPrimary: state.verified ? domain.isPrimary : false,
+        lastCheckedAt: new Date(),
+      },
+    });
+  }
+
   if (env.NODE_ENV !== 'production') {
     return prisma.domain.update({
       where: { id },
@@ -219,9 +307,22 @@ export const setPrimaryDomain = async (organizationId: string, projectId: string
 
 export const deleteDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
-  const domain = await prisma.domain.findFirst({ where: { id, projectId }, select: { id: true } });
+  const domain = await prisma.domain.findFirst({ where: { id, projectId }, select: { id: true, provider: true, providerHostnameId: true } });
   if (!domain) {
     throw notFound('domain', { id });
+  }
+  if (domain.provider === 'CLOUDFLARE_SAAS' && domain.providerHostnameId) {
+    try {
+      const stored = await prisma.domain.findUnique({ where: { id }, select: { providerData: true } });
+      const routeId = (stored?.providerData as { nibleafWorkerRouteId?: string } | null)?.nibleafWorkerRouteId;
+      if (routeId) await deleteCustomHostnameRoute(routeId);
+      await deleteCustomHostname(domain.providerHostnameId);
+    } catch (error) {
+      throw badRequest(`Cloudflare could not remove this hostname: ${error instanceof Error ? error.message : 'Unknown provider error.'}`, {
+        id,
+        stage: 'provider',
+      });
+    }
   }
   await prisma.domain.delete({ where: { id } });
   return { id };

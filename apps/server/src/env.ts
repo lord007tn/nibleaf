@@ -27,6 +27,12 @@ export const env = createEnv({
     // No SaaS default: a self-hoster must not tell their readers to CNAME to a
     // host they don't control. Falls back to SITE_BASE_DOMAIN in dnsRecords().
     CUSTOM_DOMAIN_CNAME_TARGET: z.string().optional(),
+    /** Provisioning backend. `ingress` keeps the portable/self-hosted DNS + TLS
+     * flow; `cloudflare-saas` provisions Custom Hostnames and edge certificates. */
+    CUSTOM_DOMAIN_PROVIDER: z.enum(['ingress', 'cloudflare-saas']).default('ingress'),
+    CLOUDFLARE_SAAS_ZONE_ID: z.string().optional(),
+    CLOUDFLARE_SAAS_API_TOKEN: z.string().optional(),
+    CLOUDFLARE_SAAS_WORKER_SCRIPT: z.string().default('nibleaf-custom-domain-edge'),
     SERVICE_NAME: z.string().default('nibleaf-api'),
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4315').transform(csv),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),

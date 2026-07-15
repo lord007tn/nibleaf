@@ -1,9 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type CSSProperties, type ReactNode, useState } from 'react';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
@@ -61,11 +62,13 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
       <ProjectSidebar projectId={projectId} />
       <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
+          <Separator className="me-1 data-[orientation=vertical]:h-4" orientation="vertical" />
+          <span className="truncate font-medium text-sm">{project?.name}</span>
           <div className="ms-auto flex items-center gap-2">
             <Button
               nativeButton={false}
