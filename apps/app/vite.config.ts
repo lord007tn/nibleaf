@@ -11,6 +11,16 @@ import viteTsConfigPaths from 'vite-tsconfig-paths';
 
 const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
 
+// Baseline browser hardening for every dashboard, marketing, and published-site
+// response. A full CSP is intentionally deferred: TanStack Start hydration uses
+// inline scripts and needs a nonce-based policy rather than an unsafe blanket.
+const SECURITY_HEADERS = {
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+};
+
 export default defineConfig({
   server: { port: 4310 },
   plugins: [
@@ -26,6 +36,7 @@ export default defineConfig({
     // Custom-domain serving is handled in src/server.ts (request URL rewrite).
     nitro({
       routeRules: {
+        '/**': { headers: SECURITY_HEADERS },
         '/api/**': { proxy: `${API_TARGET}/api/**` },
       },
     }),

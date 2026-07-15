@@ -4,9 +4,15 @@
 # product is served by `app`; the internal admin console is a separate service.
 #
 # Assign Coolify domains to:
-#   app   : 4310 -> dashboard + published docs + wildcard docs host
-#   admin : 4315 -> internal platform admin panel
-#   maxio : 9000 -> bundled public storage/media domain, unless using R2/S3
+#   app   : https://nibleaf.com:4310 -> dashboard + published docs + wildcard docs host
+#   admin : https://admin.nibleaf.com:4315 -> internal platform admin panel
+#   maxio : https://storage.nibleaf.com:9000 -> bundled public storage/media domain,
+#           unless using R2/S3
+#
+# Include the explicit container port in each Coolify domain. Every service uses
+# the same multi-service image, whose Dockerfile exposes several ports; without
+# `:4315`, Coolify can route the admin hostname to the image's first exposed port
+# and return 502 even while the admin container is healthy.
 #
 # Required DNS for free project subdomains:
 #   *.${SITE_BASE_DOMAIN} CNAME/AAAA/A -> the Coolify app ingress
@@ -58,6 +64,7 @@ x-service-env: &service-env
   TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   API_PORT: "4311"
+  SERVER_SHUTDOWN_TIMEOUT_MS: ${SERVER_SHUTDOWN_TIMEOUT_MS:-25000}
   API_URL: http://server:4311
   APP_URL: ${APP_URL:-https://nibleaf.com}
   ADMIN_URL: ${ADMIN_URL:-https://admin.nibleaf.com}
@@ -149,6 +156,7 @@ services:
     pull_policy: always
     command: ["server"]
     init: true
+    stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
     environment: *service-env
     expose:
       - "4311"
@@ -172,6 +180,7 @@ services:
     pull_policy: always
     command: ["worker"]
     init: true
+    stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
     environment: *service-env
     expose:
       - "4312"
@@ -193,6 +202,7 @@ services:
     pull_policy: always
     command: ["app"]
     init: true
+    stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
     environment:
       <<: *service-env
       PORT: "4310"
@@ -215,6 +225,7 @@ services:
     pull_policy: always
     command: ["admin"]
     init: true
+    stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
     # Coolify generates the Traefik router/service labels for the domain you
     # assign to this service. If your Coolify instance routes the admin domain
     # to the wrong container port, add instance-specific labels in the Coolify

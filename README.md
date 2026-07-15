@@ -101,9 +101,17 @@ Want one of these sooner? Open or upvote an issue —
 
 ## 🚀 Quick start
 
-The recommended path **pulls the prebuilt image** from GHCR
-(`ghcr.io/lord007tn/nibleaf`) — nothing is compiled on your server, so it runs
-fine on a small VPS:
+On a Linux server, the guided installer downloads the production Compose file,
+prompts for the public URLs and optional mail provider, generates fresh secrets
+locally, writes a mode-600 `.env`, and starts the stack:
+
+```bash
+curl -fsSL https://nibleaf.com/install.sh | sh
+```
+
+For manual setup, the recommended path below **pulls the prebuilt image** from
+GHCR (`ghcr.io/lord007tn/nibleaf`) — nothing is compiled on your server, so it
+runs fine on a small VPS:
 
 ```bash
 git clone https://github.com/lord007tn/nibleaf
@@ -123,7 +131,8 @@ image tag is **pinned** via `NIBLEAF_VERSION` — upgrades are bump-pull-up, see
 account — it's provisioned with a workspace and a starter docs project
 automatically (no demo credentials are seeded in production). The full production
 guide — reverse proxy, TLS, wildcard subdomains, custom-domain TLS automation,
-and backups — is **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+and backups — is **[DEPLOYMENT.md](DEPLOYMENT.md)**. Operators of the managed
+`nibleaf.com` service should use **[DEPLOY-CLOUD.md](DEPLOY-CLOUD.md)**.
 
 <details>
 <summary><b>Build from source instead</b> (needs ~5–6 GB free RAM)</summary>

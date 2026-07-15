@@ -1,0 +1,44 @@
+name: Dependency vulnerabilities
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/osv.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/osv.yml"
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan lockfiles with OSV
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.8
+    with:
+      scan-args: |-
+        --lockfile=pnpm-lock.yaml
+      # Private repositories without GitHub Code Security cannot accept SARIF.
+      # The workflow still fails and retains its normal logs; once this repository
+      # is public, results also appear in Security > Code scanning automatically.
+      upload-sarif: ${{ !github.event.repository.private }}
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+

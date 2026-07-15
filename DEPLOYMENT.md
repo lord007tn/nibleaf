@@ -19,6 +19,14 @@ see [UPGRADING.md](UPGRADING.md).
 The rest of this guide assumes the pull-based stack:
 
 ```bash
+# Guided setup: prompts for URLs/email, generates secrets, downloads Compose,
+# and starts every service. Run it from an interactive SSH session.
+curl -fsSL https://nibleaf.com/install.sh | sh
+```
+
+Or configure the same stack manually:
+
+```bash
 cp .env.production.example .env    # then edit it — every variable is documented there
 docker compose -f docker-compose.prod.yml up -d
 ```

@@ -6,7 +6,7 @@ import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
-import { organization } from 'better-auth/plugins';
+import { emailOTP, organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
 
 const env = keys();
@@ -630,6 +630,16 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
     if (existing) {
       return;
     }
+    // An invited owner/member already has a destination workspace. Creating an
+    // unrelated starter workspace here would leave them with two sites as soon
+    // as they accept the invitation.
+    const pendingInvitation = await prisma.invitation.findFirst({
+      where: { email: user.email.trim().toLowerCase(), status: 'pending', expiresAt: { gt: new Date() } },
+      select: { id: true },
+    });
+    if (pendingInvitation) {
+      return;
+    }
     const firstName = user.name?.split(' ')[0]?.trim();
     const org = await prisma.organization.create({
       data: {
@@ -711,6 +721,26 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    emailOTP({
+      // Admin sign-in is passwordless. Keep this endpoint account-only so a
+      // mistyped address can never create a customer or admin account.
+      disableSignUp: true,
+      expiresIn: 10 * 60,
+      allowedAttempts: 5,
+      storeOTP: 'hashed',
+      async sendVerificationOTP({ email, otp, type }) {
+        const purpose = type === 'sign-in' ? 'sign in' : type === 'forget-password' ? 'reset your password' : 'verify your email';
+        const subject = type === 'sign-in' ? 'Your Nibleaf Admin sign-in code' : `Your Nibleaf code to ${purpose}`;
+        const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0f172a">
+  <h2 style="font-size:20px;margin:0 0 12px">Your Nibleaf code</h2>
+  <p style="margin:0 0 18px;color:#475569;line-height:1.6">Use this one-time code to ${purpose}. It expires in 10 minutes.</p>
+  <div style="display:inline-block;padding:14px 20px;border-radius:10px;background:#f1f5f9;font:700 28px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0.24em;color:#0f172a">${escapeHtml(otp)}</div>
+  <p style="margin:20px 0 0;color:#94a3b8;font-size:12px;line-height:1.5">If you did not request this code, you can safely ignore this email.</p>
+</div>`;
+        // Do not make the auth response timing depend on the mail provider.
+        void sendMail(email, subject, html);
+      },
+    }),
     organization({
       organizationHooks: {
         afterCreateOrganization: async ({ organization: org, member }) => {

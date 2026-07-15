@@ -1,3 +1,4 @@
+import { emailOTPClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
 // Same-origin: auth requests hit the admin origin and are proxied to the API
@@ -7,6 +8,7 @@ const API_URL = typeof window === 'undefined' ? 'http://localhost:4315' : window
 export const authClient = createAuthClient({
   baseURL: API_URL,
   basePath: '/api/auth',
+  plugins: [emailOTPClient()],
 });
 
-export const { signIn, signOut, useSession } = authClient;
+export const { signOut, useSession } = authClient;

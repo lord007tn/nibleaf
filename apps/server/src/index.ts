@@ -20,6 +20,7 @@ process.on('uncaughtException', (error) => {
 });
 
 let server: ReturnType<typeof serve> | null = null;
+let shuttingDown = false;
 
 app.get(
   '/openapi.json',
@@ -33,7 +34,7 @@ app.get(
 
 app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', title: 'Nibleaf API' }] }));
 
-app.get('/health', (ctx) => ctx.json({ status: 'ok', service: env.SERVICE_NAME }));
+app.get('/health', (ctx) => ctx.json({ status: shuttingDown ? 'shutting_down' : 'ok', service: env.SERVICE_NAME }, shuttingDown ? 503 : 200));
 
 async function main() {
   server = serve({ port: env.API_PORT, fetch: app.fetch }, (info) => {
@@ -54,14 +55,49 @@ async function main() {
   await scheduleAnalyticsRollup().catch((error) => logger.warn({ error }, 'could not schedule analytics rollup'));
 }
 
-function shutdown(signal: string) {
+async function shutdown(signal: string) {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
   logger.info({ signal }, 'shutting down API');
-  server?.close();
+
+  const activeServer = server;
+  if (activeServer) {
+    let timeout: NodeJS.Timeout | undefined;
+    await Promise.race([
+      new Promise<void>((resolve, reject) => {
+        activeServer.close((error) => (error ? reject(error) : resolve()));
+      }),
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(() => {
+          logger.warn({ timeoutMs: env.SERVER_SHUTDOWN_TIMEOUT_MS }, 'API drain timed out; closing active connections');
+          (activeServer as typeof activeServer & { closeAllConnections?: () => void }).closeAllConnections?.();
+          resolve();
+        }, env.SERVER_SHUTDOWN_TIMEOUT_MS);
+        timeout.unref();
+      }),
+    ]).finally(() => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    });
+  }
   process.exit(0);
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => {
+  shutdown('SIGTERM').catch((error) => {
+    logger.error({ error }, 'API shutdown failed');
+    process.exit(1);
+  });
+});
+process.on('SIGINT', () => {
+  shutdown('SIGINT').catch((error) => {
+    logger.error({ error }, 'API shutdown failed');
+    process.exit(1);
+  });
+});
 
 main().catch((error) => {
   logger.error({ error }, 'fatal API startup error');

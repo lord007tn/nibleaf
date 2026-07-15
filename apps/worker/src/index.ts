@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@nibleaf/bullmq/workers';
 import { logger } from '@nibleaf/logger';
 import { env } from './env';
-import systemApp from './modules/system/handlers';
+import systemApp, { setWorkerReady } from './modules/system/handlers';
 import { processors } from './processors';
 import { startDeploymentReaper } from './reaper';
 
@@ -28,10 +28,12 @@ async function main() {
   await bootWorkers(processors);
   // Sweep deployments stranded by a crash mid-build back to FAILED.
   reaperTimer = startDeploymentReaper();
+  setWorkerReady(true);
   logger.info('Queue workers started');
 }
 
 async function cleanup() {
+  setWorkerReady(false);
   if (reaperTimer) {
     clearInterval(reaperTimer);
   }

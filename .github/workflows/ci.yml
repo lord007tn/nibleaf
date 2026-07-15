@@ -17,15 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.30.3
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22.13.0
           cache: pnpm
@@ -45,7 +43,4 @@ jobs:
       - name: Test
         run: pnpm test
 
-      # Advisory for now (continue-on-error) — tighten once the baseline is clean.
-      - name: Audit dependencies
-        run: pnpm audit --audit-level high
-        continue-on-error: true
+      # Dependency vulnerabilities are scanned by the dedicated OSV workflow.

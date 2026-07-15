@@ -25,6 +25,8 @@ const QUICK_START: { title: string; body: string; command: string }[] = [
   { title: 'Create your account', body: 'Open the app and sign up — no demo credentials in production.', command: 'open http://localhost:4310' },
 ];
 
+const INTERACTIVE_INSTALL = 'curl -fsSL https://nibleaf.com/install.sh | sh';
+
 const SELF_HOST_FAQS: { q: string; a: string }[] = [
   {
     q: 'What does self-hosting Nibleaf cost?',
@@ -164,10 +166,32 @@ function SelfHostingPage() {
         <div className="mx-auto max-w-6xl scroll-mt-24 px-6 py-20">
           <div className="max-w-2xl">
             <Eyebrow>Quick start</Eyebrow>
-            <h2 className="mt-3 font-semibold text-3xl tracking-tight">From clone to live in four commands</h2>
+            <h2 className="mt-3 font-semibold text-3xl tracking-tight">Deploy with one guided command</h2>
             <p className="mt-3 text-lg text-muted-foreground">
-              Copy each step. The compose file ships PostgreSQL, cache, and storage — batteries included.
+              Run this on your Linux server. It downloads the production Compose file, prompts for your domains and mail provider, generates strong
+              secrets locally, and starts the stack.
             </p>
+          </div>
+          <div className="mt-8 rounded-xl border border-primary/25 bg-primary/5 p-6">
+            <div className="flex items-start gap-3">
+              <span className={`${iconTile} size-10 shrink-0 border-primary/20 bg-primary/10 text-primary`}>
+                <Rocket className="size-5" />
+              </span>
+              <div>
+                <h3 className="font-semibold">Interactive production installer</h3>
+                <p className="mt-1 text-muted-foreground text-sm leading-relaxed">
+                  Nothing sensitive is sent to Nibleaf. Generated credentials are written only to a permission-restricted <code>.env</code> on your
+                  server.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5">
+              <CopyCommand command={INTERACTIVE_INSTALL} />
+            </div>
+          </div>
+          <div className="mt-12 max-w-2xl">
+            <h3 className="font-semibold text-xl tracking-tight">Or configure it manually</h3>
+            <p className="mt-2 text-muted-foreground">Use the individual commands when you want to inspect or customize every file before launch.</p>
           </div>
           <ol className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-2">
             {QUICK_START.map((step, i) => (
@@ -190,7 +214,7 @@ function SelfHostingPage() {
           <p className="mt-6 text-muted-foreground text-sm">
             Production tip: set <code className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">APP_URL</code> to your domain
             and configure an email provider (or disable email verification) before inviting your team — every variable is documented in{' '}
-            <code className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">.env.example</code>.
+            <code className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">.env.production.example</code>.
           </p>
         </div>
       </section>

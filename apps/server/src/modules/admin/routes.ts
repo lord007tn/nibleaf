@@ -44,6 +44,12 @@ const adminRoutes = {
     description: 'List every documentation site with owner and counts.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  inviteOrganization: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Create a site organization and send its first owner an invitation.',
+    responses: { 201: { description: 'created' }, ...errorResponses },
+  }),
   takedownSite: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],

@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
+import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
+import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -49,6 +51,32 @@ const CONFIGURED_HOST = (process.env.APP_URL || '')
   .split('/')[0]
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
+
+/** Public, version-controlled self-hosting artifacts. Serving these from the
+ * marketing origin keeps the one-command installer usable while the source
+ * repository is private and guarantees the downloaded Compose matches this
+ * deployment's codebase. */
+function serveSelfHostingArtifact(pathname: string, bare: string): Response | null {
+  if (!IS_CLOUD_MARKETING || bare !== MARKETING_HOST) {
+    return null;
+  }
+  const artifacts: Record<string, { body: string; type: string; filename: string }> = {
+    '/install.sh': { body: INSTALL_SCRIPT, type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
+    '/docker-compose.yml': { body: PRODUCTION_COMPOSE, type: 'application/yaml; charset=utf-8', filename: 'docker-compose.yml' },
+  };
+  const artifact = artifacts[pathname];
+  if (!artifact) {
+    return null;
+  }
+  return new Response(artifact.body, {
+    headers: {
+      'cache-control': 'public, max-age=300',
+      'content-disposition': `inline; filename="${artifact.filename}"`,
+      'content-type': artifact.type,
+      'x-content-type-options': 'nosniff',
+    },
+  });
+}
 
 // ─── Visitor IP forwarding for SSR loader fetches ────────────────────────────
 // SSR data loaders fetch the API from THIS process, so without help every page
@@ -520,6 +548,30 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
  *  origin the full marketing documents (URLs built from the request origin); on
  *  any other origin a minimal robots.txt, with the marketing-only files 404ed. */
 function serveRootSeo(pathname: string, host: string, bare: string, request: Request): Response | null {
+  if (pathname === '/.well-known/security.txt') {
+    const isMarketing = IS_CLOUD_MARKETING && (bare === MARKETING_HOST || host === MARKETING_HOST);
+    if (!isMarketing) {
+      return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+    }
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    const origin = `${proto}://${host}`;
+    const expires = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
+    const body = [
+      'Contact: mailto:security@nibleaf.com',
+      `Expires: ${expires}`,
+      `Canonical: ${origin}/.well-known/security.txt`,
+      'Policy: https://github.com/lord007tn/nibleaf/security/policy',
+      'Preferred-Languages: en, ar',
+      '',
+    ].join('\n');
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'cache-control': 'public, max-age=86400',
+        'content-type': 'text/plain; charset=utf-8',
+      },
+    });
+  }
   if (!DOMAIN_SEO_FILE.test(pathname)) {
     return null;
   }
@@ -548,6 +600,35 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
 
 /** Same shared-cache policy the API uses for published-site JSON. */
 const SITE_HTML_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
+
+const APP_SECURITY_HEADERS = {
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+} as const;
+
+/** Custom server responses bypass Nitro route rules, so apply the same baseline
+ *  here as a final wrapper. Preserve any stricter route-specific value. */
+async function withSecurityHeaders(response: Response | Promise<Response>): Promise<Response> {
+  const res = await response;
+  try {
+    for (const [name, value] of Object.entries(APP_SECURITY_HEADERS)) {
+      if (!res.headers.has(name)) {
+        res.headers.set(name, value);
+      }
+    }
+    return res;
+  } catch {
+    const wrapped = new Response(res.body, res);
+    for (const [name, value] of Object.entries(APP_SECURITY_HEADERS)) {
+      if (!wrapped.headers.has(name)) {
+        wrapped.headers.set(name, value);
+      }
+    }
+    return wrapped;
+  }
+}
 
 /** Mark a published-site HTML response shared-cacheable — only when the site is
  *  known to be public, the response is a plain 200 HTML document, and the
@@ -579,7 +660,7 @@ function withoutHeadBody(response: Response, method: string): Response {
   return method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response;
 }
 
-const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
+const handleRequestInner: RequestHandler<Register> = async (request, ...rest) => {
   const url = new URL(request.url);
   const host = (request.headers.get('host') || url.host).toLowerCase();
   const bare = host.split(':')[0] ?? '';
@@ -603,6 +684,10 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   const serve = async (): Promise<Response> => {
     if (!isCustomDomain) {
       if (isGetLike) {
+        const artifact = serveSelfHostingArtifact(url.pathname, bare);
+        if (artifact) {
+          return withoutHeadBody(artifact, request.method);
+        }
         // App-origin ROOT robots/sitemap/llms: the marketing docs on nibleaf.com,
         // a minimal robots.txt (and 404s) on every self-hosted dashboard.
         const rootSeo = serveRootSeo(url.pathname, host, bare, request);
@@ -673,5 +758,7 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   const clientIp = clientIpFromForwardedFor(request.headers.get('x-forwarded-for'));
   return clientIp ? ssrClientIp.run(clientIp, serve) : serve();
 };
+
+const handleRequest: RequestHandler<Register> = async (request, ...rest) => withSecurityHeaders(handleRequestInner(request, ...rest));
 
 export default { fetch: handleRequest };

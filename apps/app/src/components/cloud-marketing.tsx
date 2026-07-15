@@ -1,4 +1,5 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
+import { useTheme } from '@nibleaf/design-system/theme';
 import {
   ArrowRight,
   BarChart3,
@@ -10,6 +11,7 @@ import {
   Globe2,
   History,
   Languages,
+  Moon,
   PenLine,
   Rocket,
   Search,
@@ -17,6 +19,7 @@ import {
   Share2,
   ShieldCheck,
   Sparkles,
+  Sun,
   Users,
   Workflow,
   X,
@@ -139,6 +142,9 @@ export const faqs: { q: string; a: string }[] = [
 ];
 
 export function MarketingShell({ children, stars = 0 }: { children: ReactNode; stars?: number }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Announcement />
@@ -161,6 +167,15 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-2">
+            <button
+              aria-label={`Switch to ${nextTheme} mode`}
+              className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => setTheme(nextTheme)}
+              title={`Switch to ${nextTheme} mode`}
+              type="button"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
             <a className={`${outlineButton} hidden h-9 px-3 text-muted-foreground sm:inline-flex`} href={GITHUB_URL} rel="noreferrer" target="_blank">
               <GithubIcon className="size-4" /> {stars > 0 ? `${stars} stars` : 'GitHub'}
             </a>
@@ -547,7 +562,7 @@ function ChooseYourPath() {
           <p className="mt-1.5 text-muted-foreground text-sm">The entire stack on your infrastructure — your database, your storage, your rules.</p>
           {/* biome-ignore lint/a11y/useSemanticElements: a labelled group of copyable commands, not a list. */}
           <div className="mt-6 space-y-2" role="group" aria-label="Self-hosting quick start">
-            <CopyCommand command="git clone github.com/lord007tn/nibleaf && cd nibleaf" />
+            <CopyCommand command="git clone https://github.com/lord007tn/nibleaf.git && cd nibleaf" />
             <CopyCommand command="docker compose up -d" />
           </div>
           <a className={`${outlineButton} mt-6 w-full`} href="/self-hosting">

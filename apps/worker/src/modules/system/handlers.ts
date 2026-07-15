@@ -3,11 +3,17 @@ import { queues } from '@nibleaf/bullmq/queues';
 import { Hono } from 'hono';
 import { env } from '../../env';
 
+let workerReady = false;
+
+export const setWorkerReady = (ready: boolean): void => {
+  workerReady = ready;
+};
+
 // Workbench — a modern BullMQ dashboard, mounted on the worker's Hono app at /jobs.
 const workbenchAuth = env.WORKBENCH_USER && env.WORKBENCH_PASS ? { username: env.WORKBENCH_USER, password: env.WORKBENCH_PASS } : undefined;
 
 const app = new Hono()
-  .get('/health', (ctx) => ctx.json({ status: 'ok', service: 'worker' }))
+  .get('/health', (ctx) => ctx.json({ status: workerReady ? 'ok' : 'starting', service: 'worker' }, workerReady ? 200 : 503))
   .route(
     '/jobs',
     workbench({

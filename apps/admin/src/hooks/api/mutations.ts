@@ -78,3 +78,30 @@ export function useTakedownSite() {
     },
   });
 }
+
+export type InviteOrganizationInput = {
+  organizationName: string;
+  siteName: string;
+  ownerEmail: string;
+  siteSlug?: string;
+  description?: string;
+};
+
+export function useInviteOrganization() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: InviteOrganizationInput) => {
+      const res = await api.admin.organizations.invite.$post({ json: input });
+      if (!res.ok) {
+        throw new Error((await serverErrorMessage(res)) || String(res.status));
+      }
+      return (await res.json()).data;
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['admin', 'sites'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'overview'] });
+      toast.success(`Owner invitation sent to ${input.ownerEmail}`);
+    },
+    onError: (error) => toast.error(error instanceof Error && !/^\d+$/.test(error.message) ? error.message : 'Could not invite the organization'),
+  });
+}
