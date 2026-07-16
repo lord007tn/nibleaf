@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { AlignLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 type TocHeading = { id: string; text: string; depth: number };
@@ -42,15 +43,22 @@ export function TableOfContents({ headings, label }: { headings: TocHeading[]; l
   }
 
   return (
-    <div className="sticky top-20">
-      <div className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">{label}</div>
-      <ul className="space-y-1.5 border-border border-s ps-3 text-sm">
+    <div className="sticky top-[calc(var(--site-header-h,4rem)+3rem)] max-h-[calc(100vh-var(--site-header-h,4rem)-4rem)] overflow-y-auto">
+      <div className="mb-3 flex items-center gap-2 font-semibold text-foreground text-sm">
+        <AlignLeft className="size-3.5 text-muted-foreground rtl:-scale-x-100" aria-hidden />
+        {label}
+      </div>
+      <ul className="space-y-0.5 text-sm">
         {items.map((heading) => {
           const active = activeId === heading.id;
           return (
-            <li key={heading.id} style={{ paddingInlineStart: (heading.depth - 1) * 8 }}>
+            <li key={heading.id}>
               <a
-                className={cn('block transition-colors', active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'block py-1 leading-snug transition-colors',
+                  active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
+                )}
+                style={{ paddingInlineStart: (heading.depth - 1) * 12 }}
                 href={`#${heading.id}`}
                 aria-current={active ? 'location' : undefined}
               >

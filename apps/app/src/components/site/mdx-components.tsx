@@ -38,17 +38,21 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
   const inner = (
     <>
       {icon ? (
-        <span className="mb-2 grid size-7 place-items-center rounded-lg bg-primary/15 text-primary" aria-hidden>
-          {hasIcon(icon) ? <PageIcon name={icon} className="size-4" /> : <span className="font-mono text-[11px]">{icon[0]?.toUpperCase()}</span>}
+        <span className="mb-3 inline-flex text-primary" aria-hidden>
+          {hasIcon(icon) ? (
+            <PageIcon name={icon} className="size-5" />
+          ) : (
+            <span className="grid size-5 place-items-center rounded-md bg-primary/10 font-mono text-[11px]">{icon[0]?.toUpperCase()}</span>
+          )}
         </span>
       ) : null}
       {title ? <div className="font-semibold">{title}</div> : null}
-      {children ? <div className="mt-1 text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
+      {children ? <div className="mt-1.5 text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
     </>
   );
-  const base = 'block rounded-xl border border-border bg-card p-4 transition-colors';
+  const base = 'block rounded-xl border border-border bg-card p-5 transition-all';
   return href ? (
-    <a href={href} className={cn(base, 'hover:border-primary/50 hover:bg-muted')}>
+    <a href={href} className={cn(base, 'hover:-translate-y-px hover:border-primary/50 hover:shadow-sm')}>
       {inner}
     </a>
   ) : (
@@ -61,10 +65,11 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
 export function Steps({ children }: { children?: ReactNode }) {
   const steps = Children.toArray(children).filter(isValidElement);
   return (
-    <div className="my-5 flex flex-col gap-5 border-border border-s ps-6">
+    <div className="my-5 flex flex-col gap-6 border-border border-s ps-6">
       {steps.map((step, i) => (
         <div key={step.key} className="relative">
-          <span className="-start-[2.45rem] absolute grid size-7 place-items-center rounded-full bg-primary font-semibold text-primary-foreground text-xs">
+          {/* size-6 chip at -start-9 centers exactly on the 1.5rem rail line. */}
+          <span className="-start-9 absolute grid size-6 place-items-center rounded-full border border-border bg-muted font-semibold text-foreground text-xs">
             {i + 1}
           </span>
           {step}

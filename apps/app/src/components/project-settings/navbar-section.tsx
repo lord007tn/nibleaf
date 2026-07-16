@@ -13,6 +13,7 @@ export function NavbarSection({ project }: { project: Project }) {
   const update = useUpdateProjectConfig(project.id);
   const navbar = project.config?.navbar ?? {};
   const [showSearch, setShowSearch] = useState<boolean>(navbar.showSearch ?? true);
+  const [showChangelog, setShowChangelog] = useState<boolean>(navbar.changelog ?? false);
 
   const form = useForm({
     defaultValues: {
@@ -47,6 +48,7 @@ export function NavbarSection({ project }: { project: Project }) {
               external: anchor.external,
             })),
           showSearch,
+          changelog: showChangelog,
         },
       });
     },
@@ -260,6 +262,12 @@ export function NavbarSection({ project }: { project: Project }) {
         hint={t('settings.navbar.showSearch.hint')}
         onCheckedChange={setShowSearch}
         title={t('settings.navbar.showSearch.title')}
+      />
+      <ToggleRow
+        checked={showChangelog}
+        hint={t('settings.navbar.changelog.hint')}
+        onCheckedChange={setShowChangelog}
+        title={t('settings.navbar.changelog.title')}
       />
 
       <div className="mt-4">

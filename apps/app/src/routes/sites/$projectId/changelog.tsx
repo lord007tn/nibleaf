@@ -90,7 +90,8 @@ function SiteChangelog() {
   const groups = groupByMonth(data ?? [], lang);
 
   return (
-    <div className="mx-auto min-h-[560px] max-w-[820px] px-8 py-12">
+    // Horizontal gutters come from the route's content wrapper (px-4 sm:px-6).
+    <div className="mx-auto min-h-[560px] max-w-[820px] py-9 lg:py-12">
       <div className="flex items-center gap-2.5">
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
           <Sparkles className="size-4" />

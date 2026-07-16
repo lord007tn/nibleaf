@@ -34,7 +34,7 @@ export function LanguageSwitcher({
         render={
           <button
             type="button"
-            className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1.5 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground"
+            className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/60 hover:text-foreground"
             aria-label="Change language"
           >
             <Languages className="size-3.5" />

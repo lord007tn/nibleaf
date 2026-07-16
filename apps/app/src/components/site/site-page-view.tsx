@@ -1,10 +1,11 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useEffect } from 'react';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import { Check, ChevronLeft, ChevronRight, CircleAlert, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import { useSitePage } from '@/hooks/api';
-import type { SitePage } from '@/hooks/api/types';
+import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
@@ -21,6 +22,150 @@ const sessionId = (): string => {
   }
   return id;
 };
+
+const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
+  const trimmed = template?.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const pagePath = path.replace(/^\/+/, '');
+  return trimmed
+    .replaceAll('{path}', pagePath)
+    .replaceAll('{encodedPath}', encodeURIComponent(pagePath))
+    .replaceAll('{url}', encodeURIComponent(fallbackUrl));
+};
+
+/** "Was this page helpful?" + edit/issue links, rendered at the end of the
+ *  article so it always aligns with the reading column. */
+function ReaderActions({
+  projectId,
+  path,
+  language,
+  addons,
+}: {
+  projectId: string;
+  path: string;
+  language?: string;
+  addons: NonNullable<ProjectConfig['addons']> | undefined;
+}) {
+  const t = siteT(language);
+  const [sentiment, setSentiment] = useState<'helpful' | 'not_helpful' | null>(null);
+  const [pageUrl, setPageUrl] = useState(() => `/sites/${projectId}/${path}`);
+  useEffect(() => {
+    setPageUrl(window.location.href);
+  }, []);
+  const editUrl = addons?.editSuggestions !== false ? applyUrlTemplate(addons?.editUrl, path, pageUrl) : null;
+  const issueUrl = addons?.issueLinks !== false ? applyUrlTemplate(addons?.issueUrl, path, pageUrl) : null;
+  const showFeedback = addons?.feedback !== false;
+
+  if (!showFeedback && !editUrl && !issueUrl) {
+    return null;
+  }
+
+  const sendFeedback = (query: 'helpful' | 'not_helpful') => {
+    setSentiment(query);
+    api.public.sites[':id'].events
+      .$post({
+        param: { id: projectId },
+        json: {
+          type: 'feedback',
+          path,
+          query,
+          sessionId: sessionId(),
+          referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
+          language,
+        },
+      })
+      .catch(() => undefined);
+  };
+
+  return (
+    <div className="mt-14 flex flex-col gap-4 border-border/70 border-t pt-6 text-sm sm:flex-row sm:items-center sm:justify-between">
+      {showFeedback ? (
+        <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+          {sentiment ? (
+            <span className="inline-flex items-center gap-1.5 text-foreground">
+              <Check className="size-4 text-primary" /> {t('feedbackThanks')}
+            </span>
+          ) : (
+            <>
+              <span>{t('feedbackQuestion')}</span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  onClick={() => sendFeedback('helpful')}
+                  type="button"
+                  aria-label={t('feedbackYes')}
+                >
+                  <ThumbsUp className="size-3.5" />
+                </button>
+                <button
+                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  onClick={() => sendFeedback('not_helpful')}
+                  type="button"
+                  aria-label={t('feedbackNo')}
+                >
+                  <ThumbsDown className="size-3.5" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div />
+      )}
+
+      {editUrl || issueUrl ? (
+        <div className="flex flex-wrap items-center gap-4">
+          {editUrl ? (
+            <a
+              className="inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground"
+              href={editUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <PencilLine className="size-3.5" /> {t('editPage')}
+            </a>
+          ) : null}
+          {issueUrl ? (
+            <a
+              className="inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground"
+              href={issueUrl}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <CircleAlert className="size-3.5" /> {t('raiseIssue')}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Placeholder shapes matching the article layout, shown while a page loads.
+ *  bg-border (not bg-muted) keeps the bars visible on the light background;
+ *  the sr-only label announces the loading state to assistive tech. */
+function PageSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" className="py-9 lg:py-12">
+      <span className="sr-only">{label}</span>
+      <div className="animate-pulse" aria-hidden>
+        <div className="mx-auto w-full max-w-[46rem]">
+          <div className="h-3.5 w-28 rounded-md bg-border" />
+          <div className="mt-5 h-9 w-2/3 rounded-lg bg-border" />
+          <div className="mt-5 h-5 w-full max-w-md rounded-md bg-border" />
+          <div className="mt-10 space-y-3">
+            <div className="h-4 w-full rounded-md bg-border" />
+            <div className="h-4 w-11/12 rounded-md bg-border" />
+            <div className="h-4 w-4/5 rounded-md bg-border" />
+          </div>
+          <div className="mt-8 h-40 rounded-xl bg-border" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function SitePageView({
   projectId,
@@ -64,81 +209,108 @@ export function SitePageView({
   }, [data?.page.path, data?.activeLanguage, lang, projectId]);
 
   if (isPending) {
-    return <div className="px-10 py-12 text-muted-foreground text-sm">{t('loading')}</div>;
+    return <PageSkeleton label={t('loading')} />;
   }
   if (isError || !data) {
-    return <div className="px-10 py-12 text-muted-foreground text-sm">{t('pageUnavailable')}</div>;
+    return <div className="py-12 text-muted-foreground text-sm">{t('pageUnavailable')}</div>;
   }
 
   const { page, breadcrumbs, prev, next } = data;
+  const language = data.activeLanguage ?? lang;
+  // Build links with the RESOLVED version, not the raw first-path-segment
+  // candidate the route passes in: for a page like `getting-started/quickstart`
+  // that candidate is a content segment, and prefixing it onto sibling links
+  // would produce `/getting-started/getting-started/…`.
+  const resolvedVersion = data.versions.find((item) => item.slug === data.activeVersion);
+  const versionPrefix = resolvedVersion && !resolvedVersion.isDefault ? resolvedVersion.slug : undefined;
+  // Article-level chrome strings follow the page's RESOLVED language (which can
+  // differ from the URL param on fallback pages) so labels match the content.
+  const tArticle = siteT(language);
   // Per-page layout behaviour (Mintlify-style `mode`/`hideToc`): `wide` drops the
   // TOC and fills the width, `center` narrows + centers the column.
   const mode = page.config?.mode ?? 'default';
   const showToc = mode === 'default' && !page.config?.hideToc && page.headings.length > 0;
+  const ancestors = breadcrumbs.slice(0, -1);
+  // Whether ReaderActions will render — when it doesn't, the prev/next pager
+  // takes over the article-footer divider it normally provides.
+  const addons = data.project.config?.addons;
+  const hasReaderActions =
+    addons?.feedback !== false ||
+    (addons?.editSuggestions !== false && Boolean(addons?.editUrl?.trim())) ||
+    (addons?.issueLinks !== false && Boolean(addons?.issueUrl?.trim()));
 
-  return (
-    <div
-      className={
-        showToc
-          ? 'grid min-w-0 grid-cols-1 gap-10 px-8 py-10 xl:grid-cols-[1fr_200px]'
-          : mode === 'wide'
-            ? 'min-w-0 px-8 py-10' // full-bleed, reserved for explicit wide mode
-            : mode === 'center'
-              ? 'mx-auto min-w-0 max-w-3xl px-8 py-10'
-              : 'mx-auto min-w-0 max-w-4xl px-8 py-10' // default but no TOC → keep a constrained reading column
-      }
-    >
-      <article className="min-w-0">
-        {breadcrumbs.length > 1 ? (
-          <div className="mb-2 flex flex-wrap items-center gap-1.5 text-muted-foreground text-xs">
-            {breadcrumbs.slice(0, -1).map((crumb) => (
-              <span key={crumb.path} className="flex items-center gap-1.5">
-                <a href={siteHref(projectId, crumb.path, { lang, version })} className="transition-colors hover:text-foreground">
-                  {crumb.title}
-                </a>
-                <span aria-hidden>/</span>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <h1 className="font-semibold text-4xl tracking-tight">{page.title}</h1>
-        {page.description ? <p className="mt-2 text-lg text-muted-foreground">{page.description}</p> : null}
-        <div className="mt-6">
-          <Markdown content={page.content} site={{ projectId, lang, version }} />
+  const article = (
+    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')}>
+      {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
+      {ancestors.length > 0 ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
+          {ancestors.map((crumb, index) => (
+            <span key={crumb.path} className="flex items-center gap-1.5">
+              {index > 0 ? (
+                <span className="text-muted-foreground/60" aria-hidden>
+                  /
+                </span>
+              ) : null}
+              <a href={siteHref(projectId, crumb.path, { lang, version: versionPrefix })} className="transition-opacity hover:opacity-80">
+                {crumb.title}
+              </a>
+            </span>
+          ))}
         </div>
+      ) : null}
+      <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
+      {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
+      <div className="mt-8">
+        <Markdown content={page.content} site={{ projectId, lang, version: versionPrefix }} />
+      </div>
 
-        <div className="mt-12 grid grid-cols-2 gap-3 border-border border-t pt-6">
+      <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />
+
+      {prev || next ? (
+        <nav
+          className={cn('flex items-center justify-between gap-6 text-sm', hasReaderActions ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6')}
+          aria-label={`${tArticle('previous')} / ${tArticle('next')}`}
+        >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang, version })}
-              className="flex flex-col items-start rounded-xl border border-border p-4 hover:bg-muted"
+              href={siteHref(projectId, prev.path, { lang, version: versionPrefix })}
+              className="group inline-flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                <ChevronLeft className="size-3 rtl:-scale-x-100" /> {t('previous')}
-              </span>
-              <span className="mt-1 font-medium">{prev.title}</span>
+              <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
+              <span className="truncate">{prev.title}</span>
             </a>
           ) : (
             <span />
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang, version })}
-              className="flex flex-col items-end rounded-xl border border-border p-4 text-end hover:bg-muted"
+              href={siteHref(projectId, next.path, { lang, version: versionPrefix })}
+              className="group inline-flex min-w-0 items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                {t('next')} <ChevronRight className="size-3 rtl:-scale-x-100" />
-              </span>
-              <span className="mt-1 font-medium">{next.title}</span>
+              <span className="truncate">{next.title}</span>
+              <ChevronRight className="size-4 shrink-0 rtl:-scale-x-100" />
             </a>
           ) : (
             <span />
           )}
-        </div>
-      </article>
+        </nav>
+      ) : null}
+    </article>
+  );
 
-      {/* Table of contents — hidden in wide/center mode or when hideToc is set */}
-      <aside className="hidden xl:block">{showToc ? <TableOfContents headings={page.headings} label={t('onThisPage')} /> : null}</aside>
+  if (mode === 'center') {
+    return <div className="mx-auto min-w-0 max-w-[42rem] py-9 lg:py-12">{article}</div>;
+  }
+  if (!showToc) {
+    return <div className="min-w-0 py-9 lg:py-12">{article}</div>;
+  }
+
+  return (
+    <div className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]">
+      {article}
+      <aside className="hidden xl:block">
+        <TableOfContents headings={page.headings} label={tArticle('onThisPage')} />
+      </aside>
     </div>
   );
 }

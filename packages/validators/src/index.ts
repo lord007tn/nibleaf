@@ -84,6 +84,10 @@ export const projectConfigSchema = z
         tabs: z.array(navLink).max(10).optional(),
         anchors: z.array(navAnchor).max(12).optional(),
         showSearch: z.boolean().optional(),
+        // Opt-in built-in "Changelog" navbar link (localized label, links to the
+        // auto-generated releases page). Off by default — not every product
+        // wants a public changelog.
+        changelog: z.boolean().optional(),
       })
       .strict()
       .optional(),

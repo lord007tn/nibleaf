@@ -280,7 +280,11 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     const langPages = pagesForLanguage(versionPages, langCode);
     const found =
       langPages.find((p) => p.path === normalized && p.kind === 'PAGE' && !p.hidden) ??
-      (normalized === '' ? firstPage(langPages, langCode) : undefined);
+      (normalized === '' ? firstPage(langPages, langCode) : undefined) ??
+      // A group/section prefix (e.g. a navbar tab pointing at `/guides`)
+      // resolves to its first page in nav order, Mintlify-style. Paths with no
+      // pages beneath them still 404.
+      firstPageUnder(langPages, langCode, normalized);
     return found ? { page: found, pages: langPages } : undefined;
   };
 
@@ -344,6 +348,15 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
 
 const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
   const first = flattenNav(buildNavTree(pages, languageCode))[0];
+  return first ? pages.find((p) => p.path === first.path) : undefined;
+};
+
+/** First renderable page whose path sits under `prefix/` — resolves group URLs. */
+const firstPageUnder = (pages: SnapshotPage[], languageCode: string | undefined, prefix: string): SnapshotPage | undefined => {
+  if (!prefix) {
+    return undefined;
+  }
+  const first = flattenNav(buildNavTree(pages, languageCode)).find((node) => node.path.startsWith(`${prefix}/`));
   return first ? pages.find((p) => p.path === first.path) : undefined;
 };
 

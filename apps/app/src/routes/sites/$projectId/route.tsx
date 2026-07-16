@@ -1,12 +1,12 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { BookOpen, Check, CircleAlert, ExternalLink, Moon, PencilLine, Search, Sun, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
 import { MobileNav } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
-import { PageIcon } from '@/components/site/page-icon';
+import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
@@ -28,13 +28,18 @@ export const Route = createFileRoute('/sites/$projectId')({
   }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Fetch the site shell on the server so the chrome (nav, branding) is in the
-  // initial HTML; the result also feeds site-level SEO tags via head().
-  loader: async ({ params, deps }) => {
+  // initial HTML; the result also feeds site-level SEO tags via head(). The
+  // first path segment is passed as a version candidate so versioned URLs
+  // (`/sites/:id/v2/...`) SSR with that version's nav — the server ignores
+  // candidates that aren't real version slugs.
+  loader: async ({ params, deps, location }) => {
     try {
+      const rest = location.pathname.replace(new RegExp(`^/sites/${params.projectId}/?`), '').replace(/\/+$/, '');
+      const candidate = rest && rest !== 'changelog' ? decodeURIComponent(rest).split('/')[0] : undefined;
       const site = await getData<SiteShell>(
         await api.public.sites[':id'].$get({
           param: { id: params.projectId },
-          query: deps.lang ? { lang: deps.lang } : {},
+          query: { ...(deps.lang ? { lang: deps.lang } : {}), ...(candidate ? { version: candidate } : {}) },
         }),
         'site',
       );
@@ -69,135 +74,6 @@ function LinkedinIcon({ className }: { className?: string }) {
   );
 }
 
-const readerSessionId = (): string => {
-  if (typeof window === 'undefined') {
-    return 'ssr';
-  }
-  const key = 'nibleaf.sid';
-  let id = window.localStorage.getItem(key);
-  if (!id) {
-    id = Math.random().toString(36).slice(2);
-    window.localStorage.setItem(key, id);
-  }
-  return id;
-};
-
-const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
-  const trimmed = template?.trim();
-  if (!trimmed) {
-    return null;
-  }
-  const pagePath = path.replace(/^\/+/, '');
-  return trimmed
-    .replaceAll('{path}', pagePath)
-    .replaceAll('{encodedPath}', encodeURIComponent(pagePath))
-    .replaceAll('{url}', encodeURIComponent(fallbackUrl));
-};
-
-function ReaderActions({
-  projectId,
-  path,
-  language,
-  addons,
-}: {
-  projectId: string;
-  path: string;
-  language?: string;
-  addons: NonNullable<ProjectConfig['addons']> | undefined;
-}) {
-  const t = siteT(language);
-  const [sentiment, setSentiment] = useState<'helpful' | 'not_helpful' | null>(null);
-  const [pageUrl, setPageUrl] = useState(() => `/sites/${projectId}/${path}`);
-  useEffect(() => {
-    setPageUrl(window.location.href);
-  }, []);
-  const editUrl = addons?.editSuggestions !== false ? applyUrlTemplate(addons?.editUrl, path, pageUrl) : null;
-  const issueUrl = addons?.issueLinks !== false ? applyUrlTemplate(addons?.issueUrl, path, pageUrl) : null;
-  const showFeedback = addons?.feedback !== false;
-
-  if (!showFeedback && !editUrl && !issueUrl) {
-    return null;
-  }
-
-  const sendFeedback = (query: 'helpful' | 'not_helpful') => {
-    setSentiment(query);
-    api.public.sites[':id'].events
-      .$post({
-        param: { id: projectId },
-        json: {
-          type: 'feedback',
-          path,
-          query,
-          sessionId: readerSessionId(),
-          referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
-          language,
-        },
-      })
-      .catch(() => undefined);
-  };
-
-  return (
-    <div className="mx-auto max-w-4xl px-8 pb-10">
-      <div className="flex flex-col gap-4 border-border border-t pt-5 text-sm sm:flex-row sm:items-center sm:justify-between">
-        {showFeedback ? (
-          <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
-            {sentiment ? (
-              <span className="inline-flex items-center gap-1.5 text-foreground">
-                <Check className="size-4 text-primary" /> {t('feedbackThanks')}
-              </span>
-            ) : (
-              <>
-                <span>{t('feedbackQuestion')}</span>
-                <button
-                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-foreground hover:bg-muted"
-                  onClick={() => sendFeedback('helpful')}
-                  type="button"
-                >
-                  <ThumbsUp className="size-3.5" /> {t('feedbackYes')}
-                </button>
-                <button
-                  className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md border border-border px-2.5 text-foreground hover:bg-muted"
-                  onClick={() => sendFeedback('not_helpful')}
-                  type="button"
-                >
-                  <ThumbsDown className="size-3.5" /> {t('feedbackNo')}
-                </button>
-              </>
-            )}
-          </div>
-        ) : (
-          <div />
-        )}
-
-        {editUrl || issueUrl ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {editUrl ? (
-              <a
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                href={editUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <PencilLine className="size-3.5" /> {t('editPage')}
-              </a>
-            ) : null}
-            {issueUrl ? (
-              <a
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                href={issueUrl}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <CircleAlert className="size-3.5" /> {t('raiseIssue')}
-              </a>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function SiteChrome() {
   const { projectId } = Route.useParams();
   const { lang } = Route.useSearch();
@@ -208,8 +84,16 @@ function SiteChrome() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
   const versionCandidate = currentPath && currentPath !== 'changelog' ? currentPath.split('/')[0] : undefined;
-  // Seed from the server loader so the nav + branding render in the initial HTML.
-  const { data: site, isPending, isError } = useSite(projectId, lang, initialSite ?? undefined, versionCandidate);
+  // Seed from the server loader so the nav + branding render in the initial
+  // HTML — but never seed a query key for a REAL version the loader shell
+  // didn't resolve (e.g. after a client-side navigation across versions), or
+  // the stale shell would render the wrong version's nav and never refetch.
+  const seedShell =
+    initialSite &&
+    (!versionCandidate || initialSite.activeVersion === versionCandidate || !initialSite.versions.some((item) => item.slug === versionCandidate))
+      ? initialSite
+      : undefined;
+  const { data: site, isPending, isError } = useSite(projectId, lang, seedShell, versionCandidate);
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
@@ -345,7 +229,6 @@ function SiteChrome() {
   const ctaLabel = config?.navbar?.ctaLabel;
   const ctaUrl = config?.navbar?.ctaUrl;
   const footer = config?.footer;
-  const addons = config?.addons;
   // "Made with Nibleaf" attribution is on by default.
   const showBadge = footer?.madeWithBadge !== false;
   const hasFooterContent = Boolean(footer && (footer.copyright || footer.github || footer.x || footer.linkedin));
@@ -367,10 +250,13 @@ function SiteChrome() {
   const baseSize = config?.typography?.baseSize;
   const radius = config?.styling?.radius;
   const radiusValue = radius === 'sharp' ? '0px' : radius === 'pill' ? '1rem' : radius === 'rounded' ? '0.5rem' : undefined;
-  const chromeStyle = { '--primary': accent, '--ring': accent } as Record<string, string | number>;
-  if (radiusValue) {
-    chromeStyle['--radius'] = radiusValue;
-  }
+  // --site-header-h drives every sticky offset (sidebar, TOC, heading scroll
+  // margins) so they stay correct whether or not the tab row renders.
+  const headerHeight = navTabs.length > 0 ? '6.75rem' : '4rem';
+  const chromeStyle = {
+    '--site-header-h': headerHeight,
+    '--content-scroll-mt': `calc(${headerHeight} + 1.5rem)`,
+  } as Record<string, string | number>;
   if (bodyFont) {
     chromeStyle.fontFamily = `'${bodyFont}', var(--font-sans, system-ui, sans-serif)`;
   }
@@ -389,7 +275,21 @@ function SiteChrome() {
   if (flow) {
     chromeStyle['--typeset-flow'] = `${flow}em`;
   }
-  const fontCss = [
+  // Accent/radius tokens are set on :root (not the chrome wrapper) so portaled
+  // surfaces — the mobile drawer, search dialog, dropdown menus — pick them up
+  // too. The site route owns the whole document while mounted, and the <style>
+  // element unmounts with it, restoring the dashboard tokens. In dark mode the
+  // configured accent is lightness-lifted via color-mix so accent-colored text
+  // keeps AA contrast on the dark background (falls back to the raw accent on
+  // engines without color-mix, which matches the old behavior).
+  const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(accent) ? accent : '#5546e8';
+  const darkAccent = `color-mix(in oklab,${safeAccent} 72%,white)`;
+  const themeCss = [
+    `:root{--primary:${safeAccent};--ring:${safeAccent};${radiusValue ? `--radius:${radiusValue};` : ''}}`,
+    // Two dark selectors: :root.dark covers portaled surfaces (which inherit
+    // from <html>), while .nibleaf-site-chrome.dark out-specifies the design
+    // system's `.dark` token rule that matches the wrapper's own dark class.
+    `:root.dark,.nibleaf-site-chrome.dark{--primary:${darkAccent};--ring:${darkAccent}}`,
     headingFont ? `.nibleaf-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
     codeFont ? `.nibleaf-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
   ]
@@ -398,11 +298,13 @@ function SiteChrome() {
   const brandInner = (
     <>
       {logoSrc ? (
-        <img src={logoSrc} alt={site?.project.name ?? 'Logo'} className="h-7 w-auto object-contain" />
+        <img src={logoSrc} alt={site?.project.name ?? 'Logo'} className="h-6 w-auto object-contain" />
       ) : (
-        <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">{site?.project.name?.[0] ?? 'D'}</span>
+        <span className="grid size-7 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
+          {site?.project.name?.[0] ?? 'D'}
+        </span>
       )}
-      {site?.project.name ?? 'Documentation'}
+      <span className="truncate">{site?.project.name ?? 'Documentation'}</span>
     </>
   );
 
@@ -423,25 +325,52 @@ function SiteChrome() {
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
   const sitePath = (path = '') => siteHref(projectId, path, { lang, version: activeVersionPrefix });
 
+  // Only configured navigation renders — the chrome imposes no IA of its own.
+  // Root-relative hrefs are site-internal: resolve them to the site base (and
+  // keep the active language/version) so `/guides`-style links work on both
+  // path-based (/sites/:id) and custom-domain serving.
+  const resolveNavHref = (href: string): string =>
+    href.startsWith('/') && !href.startsWith('//') ? siteHref(projectId, href, { lang, version: activeVersionPrefix }) : href;
+  const isNavActive = (href: string): boolean => {
+    if (!href.startsWith('/') || href.startsWith('//')) {
+      return false;
+    }
+    const prefix = href.replace(/^\/+|\/+$/g, '');
+    return prefix !== '' && (effectiveCurrentPath === prefix || effectiveCurrentPath.startsWith(`${prefix}/`));
+  };
+  // The built-in (localized) Changelog link is opt-in via navbar.changelog —
+  // not every product wants its release history in the navbar. The header and
+  // the mobile drawer render the same list.
+  const headerLinks = [
+    ...(config?.navbar?.changelog === true
+      ? [{ label: t('changelog'), href: siteHref(projectId, 'changelog', { lang }), active: isChangelog, external: false }]
+      : []),
+    ...navLinks.map((link) => ({
+      label: link.label,
+      href: resolveNavHref(link.href),
+      active: !link.external && isNavActive(link.href),
+      external: Boolean(link.external),
+    })),
+  ];
+
   return (
     // `dir` flips the whole document tree for RTL languages; code blocks are
     // forced back to LTR via the scoped rule below.
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
       className={cn(
-        'nibleaf-site-chrome min-h-screen bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]',
+        'nibleaf-site-chrome flex min-h-screen flex-col bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]',
         siteTheme === 'dark' && 'dark',
       )}
       style={chromeStyle as CSSProperties}
     >
-      {fontCss ? (
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: scoped font rules; font names are charset-guarded above.
-        <style dangerouslySetInnerHTML={{ __html: fontCss }} />
-      ) : null}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: accent is regex-guarded hex, radius is enum-derived, font names are charset-guarded above. */}
+      <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       <SiteBanner projectId={projectId} banner={config?.banner} />
 
-      <header className="sticky top-0 z-30 border-border border-b bg-background/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-6">
+      {/* Header block (main row + optional tab row) sticks as one unit. */}
+      <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md">
+        <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6">
           <MobileNav
             nodes={site?.nav ?? []}
             projectId={projectId}
@@ -450,116 +379,131 @@ function SiteChrome() {
             version={activeVersionPrefix}
             label={t('docs')}
             isRtl={isRtl}
+            links={headerLinks}
           />
           {logoHref ? (
-            <a href={logoHref} target="_blank" rel="noreferrer" className="flex items-center gap-2 font-semibold tracking-tight">
+            <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
               {brandInner}
             </a>
           ) : (
-            <a href={sitePath()} className="flex items-center gap-2 font-semibold tracking-tight">
+            <a href={sitePath()} className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
               {brandInner}
             </a>
           )}
-          <nav className="ms-4 hidden items-center gap-5 text-muted-foreground text-sm sm:flex">
-            <a href={sitePath()} className={`transition-colors hover:text-foreground ${isChangelog ? '' : 'font-medium text-foreground'}`}>
-              {t('docs')}
-            </a>
-            <a
-              href={siteHref(projectId, 'changelog', { lang })}
-              className={`transition-colors hover:text-foreground ${isChangelog ? 'font-medium text-foreground' : ''}`}
+
+          {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
+          <div className="flex min-w-0 flex-1 justify-center px-2">
+            {showSearch ? (
+              <button
+                className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted sm:flex"
+                onClick={() => setSearchOpen(true)}
+                type="button"
+              >
+                <Search className="size-3.5 shrink-0" />
+                <span className="truncate">{config?.search?.placeholder ?? t('search')}</span>
+                <kbd className="ms-auto hidden shrink-0 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] md:inline-flex">
+                  {searchHotkey === 'slash' ? '/' : '⌘K'}
+                </kbd>
+              </button>
+            ) : null}
+          </div>
+
+          {showSearch ? (
+            <button
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+              onClick={() => setSearchOpen(true)}
+              type="button"
+              aria-label={t('search')}
             >
-              {t('changelog')}
-            </a>
-            {navLinks.map((link) => (
+              <Search className="size-4" />
+            </button>
+          ) : null}
+
+          <nav className="hidden shrink-0 items-center gap-5 text-sm md:flex">
+            {headerLinks.map((link) => (
               <a
                 key={`${link.label}-${link.href}`}
                 href={link.href}
                 target={link.external ? '_blank' : undefined}
                 rel={link.external ? 'noreferrer' : undefined}
-                className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+                aria-current={link.active ? 'page' : undefined}
+                className={cn(
+                  'inline-flex items-center gap-1 transition-colors',
+                  link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
+                )}
               >
                 {link.label}
                 {link.external ? <ExternalLink className="size-3" /> : null}
               </a>
             ))}
           </nav>
-          {showSearch ? (
-            <button
-              className="ms-auto flex h-9 w-64 cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 text-muted-foreground text-sm"
-              onClick={() => setSearchOpen(true)}
-              type="button"
-            >
-              <Search className="size-3.5" />
-              <span className="flex-1 text-start">{config?.search?.placeholder ?? t('search')}</span>
-              <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">{searchHotkey === 'slash' ? '/' : '⌘K'}</kbd>
-            </button>
-          ) : (
-            // A zero-width flex spacer keeps the trailing controls right-aligned
-            // when the search field is hidden (it carried the `ms-auto`).
-            <div className="ms-auto" />
-          )}
-          <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
-          <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} />
-          <button
-            className="cursor-pointer rounded-md p-2 text-muted-foreground hover:bg-muted"
-            onClick={toggleSiteTheme}
-            type="button"
-            aria-label="Toggle theme"
-          >
-            {siteTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-          </button>
-          {ctaLabel && ctaUrl ? (
-            <a
-              href={ctaUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden cursor-pointer items-center rounded-lg bg-primary px-3.5 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 sm:inline-flex"
-            >
-              {ctaLabel}
-            </a>
-          ) : null}
-        </div>
-      </header>
 
-      {navTabs.length > 0 ? (
-        <div className="border-border border-b bg-background">
-          <div className="mx-auto flex h-11 max-w-[1400px] items-center gap-1 overflow-x-auto px-6">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
+            <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} />
+            <button
+              className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={toggleSiteTheme}
+              type="button"
+              aria-label="Toggle theme"
+            >
+              {siteTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </button>
+            {ctaLabel && ctaUrl ? (
+              <a
+                href={ctaUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90 sm:inline-flex"
+              >
+                {ctaLabel}
+              </a>
+            ) : null}
+          </div>
+        </header>
+
+        {navTabs.length > 0 ? (
+          <nav className="mx-auto flex h-11 max-w-[90rem] items-center gap-1 overflow-x-auto px-4 sm:px-6">
             {navTabs.map((tab) => {
-              const prefix = tab.href.replace(/^\/+/, '').replace(/\/+$/, '');
-              const active = !tab.external && prefix !== '' && (effectiveCurrentPath === prefix || effectiveCurrentPath.startsWith(`${prefix}/`));
+              const active = !tab.external && isNavActive(tab.href);
               return (
                 <a
                   key={`${tab.label}-${tab.href}`}
-                  href={tab.href}
+                  href={resolveNavHref(tab.href)}
                   target={tab.external ? '_blank' : undefined}
                   rel={tab.external ? 'noreferrer' : undefined}
+                  aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'inline-flex h-full shrink-0 items-center border-b-2 px-3 text-sm transition-colors',
-                    active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+                    'relative inline-flex h-full shrink-0 items-center px-3 text-sm transition-colors',
+                    active
+                      ? 'font-medium text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
+                      : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   {tab.label}
                 </a>
               );
             })}
-          </div>
-        </div>
-      ) : null}
+          </nav>
+        ) : null}
+      </div>
 
-      <div className="mx-auto grid max-w-[1400px] grid-cols-1 lg:grid-cols-[260px_1fr]">
-        <aside className="hidden border-border border-e lg:block">
-          <div className="sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-4">
+      <div className="mx-auto w-full max-w-[90rem] flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10">
+        <aside className="hidden border-border/60 border-e lg:block">
+          <div className="sticky top-(--site-header-h) max-h-[calc(100vh-var(--site-header-h))] overflow-y-auto pt-7 pb-12 pe-5">
             {navAnchors.length > 0 ? (
-              <ul className="space-y-0.5 border-border border-b py-4">
+              <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
                 {navAnchors.map((anchor) => (
                   <li key={`${anchor.label}-${anchor.href}`}>
                     <a
-                      href={anchor.href}
+                      href={resolveNavHref(anchor.href)}
                       target={anchor.external ? '_blank' : undefined}
                       rel={anchor.external ? 'noreferrer' : undefined}
-                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-foreground/75 text-sm transition-colors hover:bg-muted hover:text-foreground"
+                      className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
                     >
-                      <PageIcon name={anchor.icon} className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                        {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                      </span>
                       <span className="truncate">{anchor.label}</span>
                     </a>
                   </li>
@@ -577,23 +521,22 @@ function SiteChrome() {
           <SitePageAlternatesContext.Provider value={pageAlternatesContext}>
             <Outlet />
           </SitePageAlternatesContext.Provider>
-          {!isChangelog ? <ReaderActions projectId={projectId} path={effectiveCurrentPath} language={activeLanguage?.code} addons={addons} /> : null}
         </main>
       </div>
 
       {hasFooterContent || showBadge ? (
-        <footer className="border-border border-t bg-card">
+        <footer className="mt-auto border-border/60 border-t">
           {hasFooterContent && footer ? (
-            <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
+            <div className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
               <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${site?.project.name ?? ''}`.trim()}</span>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1">
                 {footer.github ? (
                   <a
                     href={footer.github}
                     target="_blank"
                     rel="noreferrer"
                     aria-label="GitHub"
-                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                    className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <GithubIcon className="size-4" />
                   </a>
@@ -604,7 +547,7 @@ function SiteChrome() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="X"
-                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                    className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <XIcon className="size-4" />
                   </a>
@@ -615,7 +558,7 @@ function SiteChrome() {
                     target="_blank"
                     rel="noreferrer"
                     aria-label="LinkedIn"
-                    className="cursor-pointer rounded-md p-1.5 transition-colors hover:bg-muted hover:text-foreground"
+                    className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <LinkedinIcon className="size-4" />
                   </a>
@@ -624,7 +567,7 @@ function SiteChrome() {
             </div>
           ) : null}
           {showBadge ? (
-            <div className={cn('mx-auto max-w-[1400px] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
+            <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
               <MadeWithBadge lang={activeLanguage?.code} />
             </div>
           ) : null}

@@ -92,35 +92,42 @@ function Pre(props: ComponentProps<'pre'>) {
       onClick={copy}
       aria-label={copied ? 'Copied' : 'Copy code'}
       className={cn(
-        'grid size-7 cursor-pointer place-items-center rounded-md border border-white/15 bg-white/10 text-white/70 transition-opacity hover:text-white',
+        // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
+        // matching the force-LTR code content (else it collides with the badge).
+        'grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
         title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
       )}
     >
-      {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+      {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
     </button>
   );
   return (
     // data-not-typeset: this block owns its own chrome (dark panel, header bar,
     // copy button) — typeset must not restyle the <pre> inside. The wrapper's
     // flow margin tracks the configured rhythm.
-    <div className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-border bg-[#0d1117]" data-not-typeset>
+    <div
+      className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-black/20 bg-[#0d1117] shadow-xs dark:border-white/10"
+      data-not-typeset
+    >
       {title ? (
-        <div className="flex items-center justify-between gap-3 border-white/10 border-b bg-white/5 px-4 py-2 [direction:ltr]">
-          <span className="truncate font-mono text-[12px] text-white/70">{title}</span>
+        <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
+          <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
           <div className="flex shrink-0 items-center gap-2">
-            {lang ? <span className="font-mono text-[10px] text-white/35 uppercase">{lang}</span> : null}
+            {lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null}
             {copyButton}
           </div>
         </div>
       ) : (
         <>
           {lang ? (
-            <span className="absolute start-3 top-2.5 z-10 font-mono text-[11px] text-white/40 uppercase tracking-wide [direction:ltr]">{lang}</span>
+            <span className="absolute start-3.5 top-2.5 z-10 font-mono text-[11px] text-white/60 uppercase tracking-wide [direction:ltr]">
+              {lang}
+            </span>
           ) : null}
           {copyButton}
         </>
       )}
-      <pre ref={ref} className={cn('overflow-x-auto p-4 text-sm leading-relaxed [direction:ltr]', !title && lang && 'pt-9')} {...props} />
+      <pre ref={ref} className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && lang && 'pt-9')} {...props} />
     </div>
   );
 }
@@ -130,11 +137,14 @@ function Pre(props: ComponentProps<'pre'>) {
 // behavioural concerns live here: sticky-header scroll margins, the table
 // scroll container, the custom code-block chrome, and image borders. typeset
 // uses zero-specificity :where() selectors, so any class added here wins.
+// Heading scroll margins track the site chrome's sticky header height via
+// --content-scroll-mt (set on the chrome wrapper); the 6rem fallback keeps
+// editor preview and changelog offsets sane.
 const htmlComponents: Components = {
-  h1: (props) => <h1 className="scroll-mt-24" {...props} />,
-  h2: (props) => <h2 className="scroll-mt-24" {...props} />,
-  h3: (props) => <h3 className="scroll-mt-24" {...props} />,
-  h4: (props) => <h4 className="scroll-mt-24" {...props} />,
+  h1: (props) => <h1 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h2: (props) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h3: (props) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h4: (props) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
   table: (props) => (
     <div className="typeset-scroll">
       <table {...props} />
