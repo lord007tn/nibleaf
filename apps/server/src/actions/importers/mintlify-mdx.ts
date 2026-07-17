@@ -10,6 +10,14 @@ const attribute = (tag: string, name: string): string | null => {
   return match?.[2] ?? null;
 };
 
+const unwrappedComponents = new Set(['Steps', 'Step', 'CodeGroup', 'Expandable', 'AccordionGroup', 'Accordion', 'Frame', 'Tabs', 'Tab']);
+
+const componentHeading = (name: string, tag: string): string => {
+  const title = attribute(tag, 'title');
+  if (!title) return '';
+  return `${name === 'Expandable' ? '####' : '###'} ${title}`;
+};
+
 /**
  * Mintlify authors commonly indent Markdown inside JSX components. Standard
  * Markdown treats four leading spaces as a code block, which made component
@@ -32,12 +40,28 @@ export const normalizeMintlifyMdx = (content: string): string => {
     const removable = Math.min(leadingSpaces(rawLine), currentIndent);
     let line = rawLine.slice(removable);
 
+    if (closingName && unwrappedComponents.has(closingName)) {
+      const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
+      if (matchingIndex >= 0) componentIndents.splice(matchingIndex);
+      continue;
+    }
+
+    const name = tagName(trimmed);
+    const isComponentBoundary = name !== null && trimmed.startsWith(`<${name}`) && !trimmed.endsWith('/>') && !trimmed.includes(`</${name}>`);
+    if (isComponentBoundary && unwrappedComponents.has(name)) {
+      const heading = componentHeading(name, trimmed);
+      if (heading) normalized.push(heading);
+      componentIndents.push({ name, childIndent: leadingSpaces(rawLine) + 2 });
+      continue;
+    }
+
     line = line.replace(/<img\b[^>]*\/?>/gi, (imageTag) => {
       const src = attribute(imageTag, 'src');
       if (!src) return imageTag;
       const alt = attribute(imageTag, 'alt') ?? '';
       return `![${alt.replaceAll(']', '\\]')}](${src})`;
     });
+    line = line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1');
     normalized.push(line);
 
     if (closingName) {
@@ -46,9 +70,8 @@ export const normalizeMintlifyMdx = (content: string): string => {
       continue;
     }
 
-    const name = tagName(trimmed);
-    const isComponentBoundary = name !== null && trimmed.startsWith(`<${name}`) && !trimmed.endsWith('/>') && !trimmed.includes(`</${name}>`);
     if (isComponentBoundary) {
+      if (!name) continue;
       componentIndents.push({ name, childIndent: leadingSpaces(rawLine) + 2 });
     }
   }

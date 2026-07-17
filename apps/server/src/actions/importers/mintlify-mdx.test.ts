@@ -18,9 +18,7 @@ describe('normalizeMintlifyMdx', () => {
       '</Steps>',
     ].join('\n');
 
-    expect(normalizeMintlifyMdx(source)).toBe(
-      ['<Steps>', '<Step title="Watch">', 'Intro', '', '- first', '  - nested', '', '```bash', 'echo ready', '```', '</Step>', '</Steps>'].join('\n'),
-    );
+    expect(normalizeMintlifyMdx(source)).toBe(['### Watch', 'Intro', '', '- first', '  - nested', '', '```bash', 'echo ready', '```'].join('\n'));
   });
 
   it('converts migrated MDX images to first-class Markdown images', () => {
@@ -30,8 +28,11 @@ describe('normalizeMintlifyMdx', () => {
       '</Expandable>',
     ].join('\n');
 
-    expect(normalizeMintlifyMdx(source)).toBe(
-      ['<Expandable title="Example">', '![Result](/api/public/assets/result.png)', '</Expandable>'].join('\n'),
-    );
+    expect(normalizeMintlifyMdx(source)).toBe(['#### Example', '![Result](/api/public/assets/result.png)'].join('\n'));
+  });
+
+  it('removes CodeGroup layout and Mintlify-only fence labels', () => {
+    const source = ['<CodeGroup>', '  ```bash Docker (docker run)', '  docker run app', '  ```', '</CodeGroup>'].join('\n');
+    expect(normalizeMintlifyMdx(source)).toBe(['```bash', 'docker run app', '```'].join('\n'));
   });
 });

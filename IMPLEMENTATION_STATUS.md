@@ -474,8 +474,8 @@ Completed on 2026-07-17:
   and moved localized project identity into the new `ProjectTranslation` table.
   The migration preserves existing translations while removing them from JSON.
 - Normalized primary sidebar controls to the same 48px vertical rhythm.
-- Verification passed: full lint; server (107), app (93), validator (34), and
-  shared (68) test suites (302 tests total); all 16 package
+- Verification passed: full lint; server (108), app (93), validator (34), and
+  shared (68) test suites (303 tests total); all 16 package
   typechecks; and the full production build. The build still reports the documented large
   frontend chunk warnings, so bundle splitting remains in the queue above.
 
