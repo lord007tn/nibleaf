@@ -33,7 +33,7 @@ export function VersionSwitcher({
             aria-label="Change docs version"
           >
             <GitBranch className="size-3.5" />
-            <span>{active?.name ?? activeSlug}</span>
+            <span className="max-w-[7rem] truncate">{active?.name ?? activeSlug}</span>
             <ChevronDown className="size-3.5 opacity-60" />
           </button>
         }

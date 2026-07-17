@@ -29,7 +29,7 @@ type PresetName = keyof typeof PRESETS;
 function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
   return (
     <Select onValueChange={(v) => onChange(v ?? options[0])} value={value}>
-      <SelectTrigger className="h-[42px] w-full rounded-[10px]">
+      <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -133,7 +133,7 @@ export function TypographySection({ project }: { project: Project }) {
               type="button"
               onClick={() => applyPreset(name)}
               className={cn(
-                'h-8 cursor-pointer rounded-full border px-3.5 font-medium text-[13px] transition-colors',
+                'h-8 cursor-pointer rounded-full border px-3.5 font-medium text-[13px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
                 activePreset === name
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',

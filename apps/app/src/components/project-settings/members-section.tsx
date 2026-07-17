@@ -199,7 +199,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         )
                       }
                     >
-                      <SelectTrigger className="h-9 w-28">
+                      <SelectTrigger className="w-28" size="sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

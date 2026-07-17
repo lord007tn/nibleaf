@@ -1,8 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { ProjectConfig } from '@nibleaf/validators';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
 import { useT } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
@@ -163,6 +164,114 @@ export function ToggleRow({
       <Switch checked={checked} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
     </div>
   );
+}
+
+/**
+ * "Default + one per extra language" scope switcher used by the scoped sections
+ * (navbar/footer/banner/search/seo): the default scope edits `project.config`,
+ * a language scope edits that language's `config.<section>` override. EVERY
+ * non-default language is listed — disabled languages stay editable (matching
+ * the Languages section's promise) but carry a muted "hidden" suffix since that
+ * scope isn't live on the published site. Renders nothing when the site has no
+ * extra languages. The optional async `guard` runs before a scope switch (the
+ * sections use it for an unsaved-changes confirm) — the switch only applies
+ * when it resolves true.
+ */
+export function LanguageScopePicker({
+  languages,
+  value,
+  onChange,
+  hint,
+  guard,
+}: {
+  languages: Array<{ id: string; label: string; enabled?: boolean }>;
+  value: string;
+  onChange: (value: string) => void;
+  hint: string;
+  guard?: () => boolean | Promise<boolean>;
+}) {
+  const t = useT();
+  if (languages.length === 0) {
+    return null;
+  }
+  const handleChange = async (next: string) => {
+    if (next === value) {
+      return;
+    }
+    if (guard && !(await guard())) {
+      return;
+    }
+    onChange(next);
+  };
+  return (
+    <div className="mb-6">
+      <GroupLabel>{t('settings.chrome.scope.label')}</GroupLabel>
+      <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p>
+      <Segmented
+        onChange={(next) => void handleChange(next)}
+        options={[
+          { value: 'default', label: t('settings.chrome.scope.default') },
+          ...languages.map((language) => ({
+            value: language.id,
+            label:
+              language.enabled === false ? (
+                <span className="inline-flex items-baseline gap-1.5">
+                  {language.label}
+                  <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">
+                    {t('settings.languages.hiddenBadge')}
+                  </span>
+                </span>
+              ) : (
+                language.label
+              ),
+          })),
+        ]}
+        value={languages.some((language) => language.id === value) ? value : 'default'}
+      />
+    </div>
+  );
+}
+
+/**
+ * Mirrors a scope form's dirty flag up to its section parent. Render it from a
+ * `<form.Subscribe selector={(s) => s.isDirty}>` inside the form so only the
+ * flag re-renders; the flag resets to clean when the scope form unmounts
+ * (keyed remount on scope switch).
+ */
+export function DirtyStateReporter({ dirty, onDirtyChange }: { dirty: boolean; onDirtyChange?: (dirty: boolean) => void }) {
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+    return () => onDirtyChange?.(false);
+  }, [dirty, onDirtyChange]);
+  return null;
+}
+
+/**
+ * The scoped sections' unsaved-changes guard. Scope forms report dirtiness
+ * into a ref via `setDirty` (wired through DirtyStateReporter), and `guard` —
+ * passed to LanguageScopePicker — asks to discard (styled confirm) before a
+ * scope switch while that ref is dirty. A ref keeps per-keystroke dirty
+ * updates from re-rendering the section.
+ */
+export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty: (dirty: boolean) => void } {
+  const t = useT();
+  const confirm = useConfirm();
+  const dirtyRef = useRef(false);
+  const setDirty = useCallback((dirty: boolean) => {
+    dirtyRef.current = dirty;
+  }, []);
+  const guard = useCallback(async () => {
+    if (!dirtyRef.current) {
+      return true;
+    }
+    return confirm({
+      title: t('settings.chrome.scope.discardTitle'),
+      description: t('settings.chrome.scope.discardDescription'),
+      confirmLabel: t('settings.chrome.scope.discardConfirm'),
+      destructive: true,
+    });
+  }, [confirm, t]);
+  return { guard, setDirty };
 }
 
 /** The right-aligned Save button row used at the bottom of each form section. */

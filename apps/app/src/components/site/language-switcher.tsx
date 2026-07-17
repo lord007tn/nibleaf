@@ -38,7 +38,9 @@ export function LanguageSwitcher({
             aria-label="Change language"
           >
             <Languages className="size-3.5" />
-            <span dir={active?.direction === 'RTL' ? 'rtl' : 'ltr'}>{active?.label ?? activeCode}</span>
+            <span className="max-w-[7rem] truncate" dir={active?.direction === 'RTL' ? 'rtl' : 'ltr'}>
+              {active?.label ?? activeCode}
+            </span>
             <ChevronDown className="size-3.5 opacity-60" />
           </button>
         }

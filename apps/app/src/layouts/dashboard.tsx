@@ -1,5 +1,4 @@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@nibleaf/design-system/components/ui/breadcrumb';
-import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
@@ -36,7 +35,6 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/80 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
-          <Separator className="me-1 data-[orientation=vertical]:h-4" orientation="vertical" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -45,7 +43,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             </BreadcrumbList>
           </Breadcrumb>
           <button
-            className="ms-auto flex h-8 w-56 items-center gap-2 rounded-lg border border-border bg-card px-3 text-muted-foreground text-sm"
+            className="ms-auto flex h-8 w-56 items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-muted-foreground text-sm shadow-xs outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             onClick={() => setPaletteOpen(true)}
             type="button"
           >

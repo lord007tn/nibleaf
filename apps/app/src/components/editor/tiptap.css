@@ -71,6 +71,28 @@
   line-height: 1.4;
   margin: 1.4em 0 0.2em;
 }
+.pl-editor .ProseMirror h4 {
+  font-family: var(--typeset-font-heading, inherit);
+  font-size: 1.0625em;
+  font-weight: 600;
+  line-height: 1.45;
+  margin: 1.3em 0 0.2em;
+}
+.pl-editor .ProseMirror h5 {
+  font-family: var(--typeset-font-heading, inherit);
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 1.2em 0 0.15em;
+}
+.pl-editor .ProseMirror h6 {
+  font-family: var(--typeset-font-heading, inherit);
+  font-size: 0.9375em;
+  font-weight: 600;
+  line-height: 1.5;
+  margin: 1.2em 0 0.15em;
+  color: var(--color-muted-foreground);
+}
 
 /* Paragraphs */
 .pl-editor .ProseMirror p {
@@ -277,6 +299,17 @@
   border-color: color-mix(in oklch, #16a34a 35%, var(--color-border));
   background: color-mix(in oklch, #16a34a 10%, var(--color-card));
 }
+/* info = primary tint, check = neutral/stone tint — mirrors the live site's
+   callout palette (site/mdx-components.tsx: border-primary/30 bg-primary/10 and
+   border-stone-500/30 bg-stone-500/10). */
+.pl-editor .ProseMirror .pl-callout[data-variant="info"] {
+  border-color: color-mix(in oklch, var(--color-primary) 30%, var(--color-border));
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-card));
+}
+.pl-editor .ProseMirror .pl-callout[data-variant="check"] {
+  border-color: color-mix(in oklch, #78716c 30%, var(--color-border));
+  background: color-mix(in oklch, #78716c 10%, var(--color-card));
+}
 
 /* Tables */
 .pl-editor .ProseMirror table {
@@ -288,6 +321,9 @@
 }
 .pl-editor .ProseMirror th,
 .pl-editor .ProseMirror td {
+  /* position:relative anchors the .selectedCell overlay and the column resize
+     handle (both are absolutely positioned inside the cell). */
+  position: relative;
   border: 1px solid var(--color-border);
   padding: 8px 10px;
   text-align: start;
@@ -306,6 +342,22 @@
 }
 .pl-editor .ProseMirror .tableWrapper {
   overflow-x: auto;
+}
+/* Column resizing (prosemirror-tables): a grab line on the column edge, and a
+   col-resize cursor while hovering/dragging the boundary. */
+.pl-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: -2px;
+  right: -2px;
+  width: 4px;
+  background: var(--color-primary);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 10;
+}
+.pl-editor .ProseMirror.resize-cursor {
+  cursor: col-resize;
 }
 
 /* Images */

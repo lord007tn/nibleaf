@@ -10,7 +10,7 @@ const CALLOUT: Record<CalloutType, { icon: LucideIcon; cls: string }> = {
   note: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
   info: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
   tip: { icon: Lightbulb, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100' },
-  check: { icon: Check, cls: 'border-stone-500/30 bg-stone-500/10 text-stone-950 dark:text-stone-100' },
+  check: { icon: Check, cls: 'border-border bg-muted/50 text-foreground' },
   warning: { icon: AlertTriangle, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100' },
   danger: { icon: OctagonAlert, cls: 'border-red-500/30 bg-red-500/10 text-red-900 dark:text-red-100' },
 };
@@ -104,7 +104,7 @@ export function Tabs({ children }: { children?: ReactNode }) {
             onClick={() => setActive(i)}
             className={cn(
               '-mb-px cursor-pointer border-b-2 px-3 py-2 font-medium text-sm transition-colors',
-              i === active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+              i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             {tab.props.title ?? `Tab ${i + 1}`}
@@ -129,10 +129,11 @@ export function AccordionGroup({ children }: { children?: ReactNode }) {
 export function Accordion({ title, defaultOpen, children }: { title?: string; defaultOpen?: string | boolean; children?: ReactNode }) {
   const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
   return (
-    <div className="border-border [&:not(:first-child)]:border-t">
+    <div>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-start font-medium"
       >
         {title ?? 'Details'}
@@ -385,7 +386,7 @@ export function CodeGroup({ children }: { children?: ReactNode }) {
             onClick={() => setActive(index)}
             className={cn(
               '-mb-px shrink-0 cursor-pointer rounded-t-md border-b-2 px-3 py-1.5 font-mono text-xs transition-colors',
-              index === active ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+              index === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
             {labelFor(block, index)}

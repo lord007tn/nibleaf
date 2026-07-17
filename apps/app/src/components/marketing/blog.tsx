@@ -1,7 +1,7 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
-import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { GithubIcon } from '@/components/icons/brand';
 import { type BlogEntry, type BlogFaq, blogEntry, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
@@ -187,7 +187,7 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
                 Search articles
               </label>
               <input
-                className="h-10 w-full rounded-md border border-border bg-card ps-9 pe-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="h-10 w-full rounded-md border border-input bg-transparent ps-9 pe-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 id="blog-search"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search articles…"
@@ -276,12 +276,7 @@ function BlogCta() {
             <a className={primaryButton} href="/sign-up">
               Get started free <ArrowRight className="size-4" />
             </a>
-            <a
-              className={`${outlineButton} border-background/25 bg-transparent text-background hover:bg-background/10`}
-              href={GITHUB_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
+            <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
               <GithubIcon className="size-4" /> View on GitHub
             </a>
           </div>

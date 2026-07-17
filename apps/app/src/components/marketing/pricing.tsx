@@ -1,6 +1,6 @@
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { CopyCommand, Eyebrow, faqs, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { CopyCommand, Eyebrow, faqs, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 import { GithubIcon } from '@/components/icons/brand';
 import { GITHUB_URL } from '@/lib/links';
 
@@ -169,14 +169,14 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
               <span className="text-center">Self-hosted</span>
             </div>
             {featureGroups.map((group) => (
-              <div key={group.title}>
+              <div key={group.title} className="group">
                 <div className="border-border border-b bg-muted/20 px-6 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wider">
                   {group.title}
                 </div>
                 {group.rows.map((row) => (
                   <div
                     key={row.label}
-                    className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-4 border-border border-b px-6 py-3.5 text-sm last:border-b"
+                    className="grid grid-cols-[1.6fr_1fr_1fr] items-center gap-4 border-border border-b px-6 py-3.5 text-sm group-last:last:border-b-0"
                   >
                     <span>{row.label}</span>
                     <CellValue value={row.cloud} />
@@ -246,12 +246,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
               <a className={primaryButton} href="/sign-up">
                 Get started free <ArrowRight className="size-4" />
               </a>
-              <a
-                className={`${outlineButton} border-background/25 bg-transparent text-background hover:bg-background/10`}
-                href={GITHUB_URL}
-                rel="noreferrer"
-                target="_blank"
-              >
+              <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
                 <GithubIcon className="size-4" /> View on GitHub
               </a>
             </div>

@@ -5,10 +5,14 @@ import {
   buildNavTree,
   defaultLanguage,
   extractHeadings,
+  mergeLanguageChrome,
   type NavNode,
   pageDescription,
   projectSlugFromSubdomainHost,
+  publicLanguages,
+  publicSiteSnapshot,
   type SiteSnapshot,
+  type SnapshotLanguageConfig,
   type SnapshotPage,
   type SnapshotProject,
   type SnapshotVersion,
@@ -22,6 +26,7 @@ import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
+import { stableHash } from './importers/content';
 
 /** Resolve a published site by its canonical project id. */
 const resolveProjectId = async (identifier: string): Promise<string> => {
@@ -70,6 +75,9 @@ interface LiveChromeRow {
   takedownAt: Date | null;
   /** Best verified domain (isPrimary first, oldest verified as fallback). */
   domains: { domain: string }[];
+  /** Live per-language serving toggle + chrome/SEO overrides, so disabling a
+   *  language or editing its localized chrome applies without a re-publish. */
+  languages: { code: string; enabled: boolean; config: unknown }[];
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -119,6 +127,10 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
         take: 1,
         select: { domain: true },
       },
+      languages: {
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        select: { code: true, enabled: true, config: true },
+      },
     },
   });
   liveChromeCache.set(projectId, live);
@@ -135,12 +147,23 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   if (!live) {
     return project;
   }
+  // Overlay each frozen language's live `enabled` flag and config (matched by
+  // code) so disabling a language, or editing its localized chrome/SEO, applies
+  // within the cache TTL without a re-publish. The frozen language LIST stays
+  // authoritative: languages added since the publish have no published pages,
+  // so they never appear publicly until the next publish, and the frozen
+  // label/direction/isDefault keep the exactly-one-default invariant intact.
+  const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
   return {
     ...project,
     name: live.name,
     description: live.description,
     icon: live.icon,
     config: (live.config as Record<string, unknown> | null) ?? null,
+    languages: project.languages.map((language) => {
+      const row = liveByCode.get(language.code);
+      return row ? { ...language, enabled: row.enabled, config: (row.config as SnapshotLanguageConfig | null) ?? null } : language;
+    }),
   };
 };
 
@@ -198,9 +221,11 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
 };
 
 /** Resolve the active language code: the requested `lang` if it exists in the
- *  snapshot, otherwise the project's default language. */
+ *  snapshot AND is enabled, otherwise the project's default language. A request
+ *  for a disabled language therefore falls back to the default instead of
+ *  serving hidden content. */
 const activeLanguageCode = (snapshot: SiteSnapshot, lang?: string): string => {
-  if (lang && snapshot.project.languages.some((l) => l.code === lang)) {
+  if (lang && publicLanguages(snapshot.project.languages).some((l) => l.code === lang)) {
     return lang;
   }
   return defaultLanguage(snapshot.project).code;
@@ -247,12 +272,30 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
   const docsVersion = activeVersion(snapshot, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const versionPages = pagesForVersion(snapshot, docsVersion);
+  // Only enabled languages are exposed publicly (switcher, hreflang, payload).
+  const servedLanguages = publicLanguages(snapshot.project.languages);
+  // The ACTIVE language's config (localized site name/description + per-language
+  // SEO defaults) — sourced from the snapshot exactly like getSitePage's
+  // languageConfig, so the site chrome can localize its brand + description.
+  const shellLanguage = servedLanguages.find((language) => language.code === activeLanguage);
+  // Overlay the active language's chrome overrides (navbar/footer/banner/search)
+  // onto the project config AFTER the live-chrome overlay (done in getPublished),
+  // so the published-site chrome keeps reading `project.config` unchanged.
+  // NEVER for the default language: in the settings model the "Default" scope IS
+  // the project config, so a language later promoted to default must not keep
+  // applying chrome overrides it accumulated while it was secondary.
+  const project = {
+    ...snapshot.project,
+    config: shellLanguage?.isDefault ? snapshot.project.config : mergeLanguageChrome(snapshot.project.config, shellLanguage?.config),
+    languages: servedLanguages,
+  };
   return {
-    project: snapshot.project,
-    languages: snapshot.project.languages,
+    project,
+    languages: servedLanguages,
     versions: snapshot.project.versions,
     activeLanguage,
     activeVersion: docsVersion.slug,
+    languageConfig: shellLanguage?.config ?? null,
     nav: buildNavTree(versionPages, activeLanguage),
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
@@ -301,14 +344,16 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const index = order.findIndex((node) => node.path === page.path);
   const breadcrumbs = breadcrumbTrail(pages, page);
 
-  const pageLanguage = snapshot.project.languages.find((l) => l.code === navLanguage);
+  const servedLanguages = publicLanguages(snapshot.project.languages);
+  const pageLanguage = servedLanguages.find((l) => l.code === navLanguage);
   // hreflang alternates: link this page to its translations. When the page has a
   // `translationKey`, match by that (so languages whose slugs differ — e.g. EN
   // "introduction-merged" ↔ AR "introduction" — still pair up, using each
   // language's OWN path). Otherwise fall back to a same-path match. Languages with
   // no corresponding page get path:null and are omitted from hreflang, so we never
-  // point a crawler at a missing or wrong-language URL.
-  const alternates = snapshot.project.languages.map((l) => {
+  // point a crawler at a missing or wrong-language URL. Disabled languages are
+  // excluded entirely — their pages aren't served, so they must not be linked.
+  const alternates = servedLanguages.map((l) => {
     const sibling = versionPages.find(
       (p) =>
         p.languageCode === l.code &&
@@ -319,7 +364,14 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     return { code: l.code, isDefault: l.isDefault, path: sibling ? sibling.path : null };
   });
   return {
-    project: snapshot.project,
+    // Same per-language chrome merge as getSite, applied for the language the
+    // page actually resolved in (after the live-chrome overlay in getPublished).
+    // Skipped for the default language — its scope IS the project config.
+    project: {
+      ...snapshot.project,
+      config: pageLanguage?.isDefault ? snapshot.project.config : mergeLanguageChrome(snapshot.project.config, pageLanguage?.config),
+      languages: servedLanguages,
+    },
     // The language the page actually resolved in (may differ from the requested
     // ?lang when it fell back) — canonical/og/hreflang are built from this.
     activeLanguage: navLanguage,
@@ -469,7 +521,9 @@ const isoTimestamp = (value: string, label: string): string => {
  *  never contradicts the per-page `<meta robots noindex>` we serve. The default
  *  language emits clean (param-less) URLs to match the page's own canonical. */
 export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocument> => {
-  const { snapshot } = await getPublished(identifier);
+  const { snapshot: published } = await getPublished(identifier);
+  // Disabled languages (and their pages) are not served, so they never appear.
+  const snapshot = publicSiteSnapshot(published);
   const base = `${env.APP_URL}/sites/${snapshot.project.id}`;
   const config = seoConfigOf(snapshot);
   const isPrivate = config?.visibility === 'private';
@@ -521,37 +575,55 @@ export const getSiteRobots = async (identifier: string): Promise<SiteTextDocumen
  *  the docs without scraping. Same privacy rules as the sitemap: anonymous
  *  visitors of private sites get 404 from getPublished, members get an empty
  *  document, and noindex pages/languages are excluded. */
+/** llms bodies vary with the live per-language serving/indexing flags AND the
+ *  live-overlaid project name/description (both overlay the frozen snapshot),
+ *  so the cache key carries them alongside the deployment id — a language
+ *  toggle or a project rename busts the cached document within the live-chrome
+ *  TTL instead of serving a stale one. */
+const llmsCacheKey = (deploymentId: string, snapshot: SiteSnapshot): string => {
+  const flags = snapshot.project.languages
+    .map((l) => `${l.code}=${l.enabled === false ? 0 : 1}${l.config?.seo?.allowIndex === false ? 'n' : 'y'}`)
+    .join(',');
+  const identity = stableHash(`${snapshot.project.name} ${snapshot.project.description ?? ''}`);
+  return `${deploymentId}:${flags}:${identity}`;
+};
+
 export const getSiteLlmsTxt = async (identifier: string): Promise<SiteTextDocument> => {
-  const { snapshot, deploymentId } = await getPublished(identifier);
-  const config = seoConfigOf(snapshot);
+  const { snapshot: published, deploymentId } = await getPublished(identifier);
+  const config = seoConfigOf(published);
   const isPrivate = config?.visibility === 'private';
   if (isPrivate || config?.seo?.allowIndex === false) {
     return { body: '', isPrivate };
   }
-  const cached = llmsTxtCache.get(deploymentId);
+  const cacheKey = llmsCacheKey(deploymentId, published);
+  const cached = llmsTxtCache.get(cacheKey);
   if (cached !== undefined) {
     return { body: cached, isPrivate };
   }
+  // Disabled languages (and their pages) are excluded, mirroring the sitemap.
+  const snapshot = publicSiteSnapshot(published);
   const body = buildLlmsTxt(snapshot, `${env.APP_URL}/sites/${snapshot.project.id}`);
-  llmsTxtCache.set(deploymentId, body);
+  llmsTxtCache.set(cacheKey, body);
   return { body, isPrivate };
 };
 
 /** llms-full.txt: the concatenated Markdown of every indexable page with
  *  per-page headers and source URLs. Same privacy rules as llms.txt. */
 export const getSiteLlmsFullTxt = async (identifier: string): Promise<SiteTextDocument> => {
-  const { snapshot, deploymentId } = await getPublished(identifier);
-  const config = seoConfigOf(snapshot);
+  const { snapshot: published, deploymentId } = await getPublished(identifier);
+  const config = seoConfigOf(published);
   const isPrivate = config?.visibility === 'private';
   if (isPrivate || config?.seo?.allowIndex === false) {
     return { body: '', isPrivate };
   }
-  const cached = llmsFullTxtCache.get(deploymentId);
+  const cacheKey = llmsCacheKey(deploymentId, published);
+  const cached = llmsFullTxtCache.get(cacheKey);
   if (cached !== undefined) {
     return { body: cached, isPrivate };
   }
+  const snapshot = publicSiteSnapshot(published);
   const body = buildLlmsFullTxt(snapshot, `${env.APP_URL}/sites/${snapshot.project.id}`);
-  llmsFullTxtCache.set(deploymentId, body);
+  llmsFullTxtCache.set(cacheKey, body);
   return { body, isPrivate };
 };
 

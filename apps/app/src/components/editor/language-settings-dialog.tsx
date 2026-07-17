@@ -75,11 +75,20 @@ export function LanguageSettingsDialog({
     };
     // Only persist a config when something is actually overridden (allowIndex
     // defaults to true), otherwise clear it so the language stays config-null.
+    // Never send null while the config carries a localized name/description —
+    // the server merge only preserves chrome sections on whole-config null, so
+    // nulling here would delete them (same guard as LanguageSeoForm).
     const hasOverride = [metaTitle, metaDescription, socialImage].some((v) => v.trim() !== '') || allowIndex === false;
+    const keepsName = Boolean(language.config?.name?.trim() || language.config?.description?.trim());
     update.mutate(
       {
         id: language.id,
-        body: { label: label.trim() || language.label, direction, ...(isDefault ? { isDefault: true } : {}), config: hasOverride ? config : null },
+        body: {
+          label: label.trim() || language.label,
+          direction,
+          ...(isDefault ? { isDefault: true } : {}),
+          config: hasOverride || keepsName ? config : null,
+        },
       },
       {
         onSuccess: () => {

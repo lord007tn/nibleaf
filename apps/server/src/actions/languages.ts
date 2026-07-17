@@ -27,6 +27,10 @@ export const getDefaultLanguage = async (projectId: string) => {
 export const createLanguage = async (projectId: string, body: CreateLanguageBody) => {
   const max = await prisma.language.aggregate({ where: { projectId }, _max: { position: true } });
   const isDefault = body.isDefault === true;
+  // The default language always serves — it is every visitor's fallback.
+  if (isDefault && body.enabled === false) {
+    throw conflict("The default language can't be disabled.", { code: body.code });
+  }
   try {
     const created = await prisma.$transaction(async (tx) => {
       if (isDefault) {
@@ -39,6 +43,7 @@ export const createLanguage = async (projectId: string, body: CreateLanguageBody
           label: body.label,
           direction: body.direction ?? 'LTR',
           isDefault,
+          enabled: body.enabled ?? true,
           position: (max._max.position ?? -1) + 1,
         },
       });
@@ -52,17 +57,49 @@ export const createLanguage = async (projectId: string, body: CreateLanguageBody
   }
 };
 
-/** Deep-merge a language-config patch: `seo` merges key-by-key; `null` clears. */
+/** Chrome override sections stored on a language's config. The UI always sends
+ *  a section's FULL override object (or `null` to clear it), so these replace
+ *  wholesale on merge instead of merging key-by-key like `seo`. */
+const CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
+
+const isEmptyObject = (value: unknown): boolean =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0;
+
+/** Deep-merge a language-config patch: top-level keys (`name`, `description`)
+ *  spread over the base, `seo` merges key-by-key, and `null` clears the whole
+ *  config. Omitted keys keep their stored value — the UI sends explicit empty
+ *  strings to clear a single field (consumers treat `''` as no override).
+ *  Chrome sections (navbar/footer/banner/search) replace wholesale; sending
+ *  `null` (or `{}`) for one removes just that override so it falls back to the
+ *  project config. A whole-config `null` clears the name/description/seo
+ *  overrides but PRESERVES stored chrome sections — the settings forms that
+ *  send it (general/SEO) only manage those fields and don't know about chrome
+ *  overrides, so honoring it literally would silently wipe another section's
+ *  data. A config left with no keys is stored as null. */
 const mergeLanguageConfig = (existing: unknown, patch: UpdateLanguageBody['config']): object | null | undefined => {
   if (patch === undefined) {
     return undefined;
   }
   if (patch === null) {
-    return null;
+    const base = (existing ?? {}) as Record<string, unknown>;
+    const kept: Record<string, unknown> = {};
+    for (const section of CHROME_SECTIONS) {
+      if (base[section] !== undefined && base[section] !== null) {
+        kept[section] = base[section];
+      }
+    }
+    return Object.keys(kept).length === 0 ? null : kept;
   }
   const base = (existing ?? {}) as Record<string, unknown>;
   const baseSeo = (base.seo ?? {}) as Record<string, unknown>;
-  return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
+  const merged: Record<string, unknown> = { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
+  for (const section of CHROME_SECTIONS) {
+    const value = (patch as Record<string, unknown>)[section];
+    if (value === null || isEmptyObject(value)) {
+      delete merged[section];
+    }
+  }
+  return Object.keys(merged).length === 0 ? null : merged;
 };
 
 export const updateLanguage = async (projectId: string, id: string, body: UpdateLanguageBody) => {
@@ -70,8 +107,22 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
   if (language.isDefault && body.isDefault === false) {
     throw conflict("Can't unset the default language. Make another language default instead.", { id });
   }
-  const nextConfig = mergeLanguageConfig(language.config, body.config);
+  // The default language always serves: it can't be disabled, and a language
+  // being promoted to default can't be disabled in the same request.
+  if (body.enabled === false && (body.isDefault === true || (language.isDefault && body.isDefault !== false))) {
+    throw conflict("The default language can't be disabled. Make another language default first.", { id });
+  }
   return prisma.$transaction(async (tx) => {
+    // The config merge must not be a read-modify-write race: re-read the row
+    // INSIDE the transaction so the merge base is fresh, not the pre-transaction
+    // snapshot — two concurrent updates would otherwise resurrect each other's
+    // overwritten sections. (The codebase avoids raw SQL, so this is a fresh
+    // re-read rather than a SELECT … FOR UPDATE row lock.)
+    const fresh = await tx.language.findUnique({ where: { id } });
+    if (!fresh || fresh.projectId !== projectId) {
+      throw notFound('language', { id });
+    }
+    const nextConfig = mergeLanguageConfig(fresh.config, body.config);
     if (body.isDefault === true) {
       await tx.language.updateMany({ where: { projectId, isDefault: true }, data: { isDefault: false } });
     }
@@ -82,6 +133,9 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
         ...(body.direction === undefined ? {} : { direction: body.direction }),
         ...(body.position === undefined ? {} : { position: body.position }),
         ...(body.isDefault === undefined ? {} : { isDefault: body.isDefault }),
+        // Promoting a disabled language to default re-enables it (the default
+        // must always serve).
+        ...(body.isDefault === true ? { enabled: true } : body.enabled === undefined ? {} : { enabled: body.enabled }),
         ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
       },
     });

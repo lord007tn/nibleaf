@@ -5,8 +5,12 @@ import {
   defaultLanguage,
   extractHeadings,
   interpolateVariables,
+  mergeLanguageChrome,
   pageDescription,
   projectSlugFromSubdomainHost,
+  publicLanguages,
+  publicSiteSnapshot,
+  type SiteSnapshot,
   type SnapshotLanguage,
   type SnapshotPage,
   type SnapshotProject,
@@ -134,6 +138,23 @@ describe('buildSnapshot', () => {
   it('rejects a project without exactly one default language', () => {
     expect(() => buildSnapshot({ ...projectRow, languages: [] }, [], '2026-01-01')).toThrow('exactly one default language');
   });
+  it('carries each language’s enabled flag, defaulting missing flags to true', () => {
+    const snap = buildSnapshot(
+      {
+        ...projectRow,
+        languages: [
+          { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, config: null },
+          { code: 'ar', label: 'العربية', direction: 'RTL' as const, isDefault: false, enabled: false, config: null },
+        ],
+      },
+      [rawPage],
+      '2026-01-01',
+    );
+    expect(snap.project.languages.map((l) => [l.code, l.enabled])).toEqual([
+      ['en', true],
+      ['ar', false],
+    ]);
+  });
   it('deduplicates branch version slugs while preserving exact version ids on pages', () => {
     const snap = buildSnapshot(
       {
@@ -203,6 +224,126 @@ describe('pageDescription and defaultLanguage', () => {
   });
   it('rejects a snapshot without one default language', () => {
     expect(() => defaultLanguage(proj([]))).toThrow('exactly one default language');
+  });
+});
+
+describe('publicLanguages', () => {
+  const lang = (over: Partial<SnapshotLanguage> & Pick<SnapshotLanguage, 'code'>): SnapshotLanguage => ({
+    label: over.code,
+    direction: 'LTR',
+    isDefault: false,
+    config: null,
+    ...over,
+  });
+
+  it('drops disabled languages and keeps enabled ones', () => {
+    const served = publicLanguages([
+      lang({ code: 'en', isDefault: true, enabled: true }),
+      lang({ code: 'ar', enabled: false }),
+      lang({ code: 'fr', enabled: true }),
+    ]);
+    expect(served.map((l) => l.code)).toEqual(['en', 'fr']);
+  });
+  it('treats a missing enabled flag (pre-toggle snapshots) as enabled', () => {
+    const served = publicLanguages([lang({ code: 'en', isDefault: true }), lang({ code: 'ar' })]);
+    expect(served.map((l) => l.code)).toEqual(['en', 'ar']);
+  });
+  it('always serves the default language, even with a stale disabled flag', () => {
+    const served = publicLanguages([lang({ code: 'en', isDefault: true, enabled: false }), lang({ code: 'ar', enabled: false })]);
+    expect(served.map((l) => l.code)).toEqual(['en']);
+  });
+});
+
+describe('mergeLanguageChrome', () => {
+  const projectConfig = {
+    navbar: { ctaLabel: 'Book a demo', ctaUrl: 'https://acme.dev/demo', links: [{ label: 'Docs', href: '/docs' }], showSearch: true },
+    footer: { copyright: '© Acme', github: 'https://github.com/acme', madeWithBadge: true },
+    banner: { enabled: true, message: 'v3 is here', dismissible: true },
+    search: { placeholder: 'Search…', hotkey: 'cmdk' },
+    styling: { primaryColor: '#5546e8' },
+  };
+
+  it('returns the input config unchanged (same reference) when the language overrides nothing', () => {
+    expect(mergeLanguageChrome(projectConfig, null)).toBe(projectConfig);
+    expect(mergeLanguageChrome(projectConfig, {})).toBe(projectConfig);
+    expect(mergeLanguageChrome(projectConfig, { name: 'وثائق', seo: { metaTitle: 'X' } })).toBe(projectConfig);
+    expect(mergeLanguageChrome(null, null)).toBeNull();
+  });
+
+  it('merges object sections one level deep: language values win per key, the rest fall through', () => {
+    const merged = mergeLanguageChrome(projectConfig, { navbar: { ctaLabel: 'احجز عرضًا' }, footer: { copyright: '© أكمي' } });
+    expect(merged?.navbar).toEqual({
+      ctaLabel: 'احجز عرضًا',
+      ctaUrl: 'https://acme.dev/demo',
+      links: [{ label: 'Docs', href: '/docs' }],
+      showSearch: true,
+    });
+    expect(merged?.footer).toEqual({ copyright: '© أكمي', github: 'https://github.com/acme', madeWithBadge: true });
+    // Untouched sections keep the project values.
+    expect(merged?.search).toBe(projectConfig.search);
+    expect(merged?.styling).toBe(projectConfig.styling);
+  });
+
+  it('replaces arrays wholesale when the language defines them', () => {
+    const merged = mergeLanguageChrome(projectConfig, { navbar: { links: [{ label: 'المستندات', href: '/ar/docs' }] } });
+    expect(merged?.navbar).toMatchObject({ ctaLabel: 'Book a demo', links: [{ label: 'المستندات', href: '/ar/docs' }] });
+  });
+
+  it('treats empty strings, empty arrays, and nulls as no override', () => {
+    const merged = mergeLanguageChrome(projectConfig, { navbar: { ctaLabel: '', links: [] }, footer: null, banner: { message: 'تحديث' } });
+    expect(merged?.navbar).toBe(projectConfig.navbar);
+    expect(merged?.footer).toBe(projectConfig.footer);
+    expect(merged?.banner).toEqual({ enabled: true, message: 'تحديث', dismissible: true });
+  });
+
+  it('creates the section when the project config lacks it, and never mutates inputs', () => {
+    const bare: Record<string, unknown> = {};
+    const merged = mergeLanguageChrome(bare, { search: { placeholder: 'ابحث في المستندات' } });
+    expect(merged?.search).toEqual({ placeholder: 'ابحث في المستندات' });
+    expect(bare).toEqual({});
+    expect(projectConfig.navbar.ctaLabel).toBe('Book a demo');
+  });
+
+  it('lets a language disable/enable the banner independently', () => {
+    const merged = mergeLanguageChrome(projectConfig, { banner: { enabled: false } });
+    expect(merged?.banner).toEqual({ enabled: false, message: 'v3 is here', dismissible: true });
+  });
+});
+
+describe('publicSiteSnapshot', () => {
+  const snapshot: SiteSnapshot = {
+    project: {
+      id: 'p1',
+      name: 'Docs',
+      slug: 'docs',
+      description: null,
+      icon: null,
+      config: null,
+      languages: [
+        { code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null },
+        { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, enabled: false, config: null },
+      ],
+      versions: [{ id: 'v1', name: 'main', slug: 'main', isDefault: true }],
+    },
+    pages: [page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' })],
+    generatedAt: '2026-01-01',
+  };
+
+  it('drops disabled languages and their pages', () => {
+    const served = publicSiteSnapshot(snapshot);
+    expect(served.project.languages.map((l) => l.code)).toEqual(['en']);
+    expect(served.pages.map((p) => p.id)).toEqual(['en1']);
+    // The input snapshot (potentially a shared cache entry) is untouched.
+    expect(snapshot.project.languages).toHaveLength(2);
+    expect(snapshot.pages).toHaveLength(2);
+  });
+
+  it('returns the snapshot unchanged (same reference) when every language serves', () => {
+    const allEnabled: SiteSnapshot = {
+      ...snapshot,
+      project: { ...snapshot.project, languages: snapshot.project.languages.map((l) => ({ ...l, enabled: true })) },
+    };
+    expect(publicSiteSnapshot(allEnabled)).toBe(allEnabled);
   });
 });
 

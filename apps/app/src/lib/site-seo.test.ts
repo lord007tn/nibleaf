@@ -73,6 +73,47 @@ describe('pageHead SEO cascade', () => {
     expect(meta(head, 'og:image')).toBe('https://cdn/lang-og.png');
   });
 
+  it("uses the language's localized site name when no SEO meta title overrides it", () => {
+    const head = pageHead(
+      base({
+        project: { ...base().project, config: { seo: { metaDescription: 'Site SEO desc' } } },
+        languageConfig: { name: 'وثائق أكمي' },
+      }),
+      'p1',
+    );
+    expect(title(head)).toBe('Quickstart — وثائق أكمي');
+  });
+
+  it('lets SEO meta titles (language, then project) win over the localized site name', () => {
+    // Project SEO metaTitle beats the language's localized name…
+    const withProjectSeo = pageHead(base({ languageConfig: { name: 'وثائق أكمي' } }), 'p1');
+    expect(title(withProjectSeo)).toBe('Quickstart — Acme');
+    // …and the language's own SEO metaTitle beats both.
+    const withLangSeo = pageHead(base({ languageConfig: { name: 'وثائق أكمي', seo: { metaTitle: 'Acme AR SEO' } } }), 'p1');
+    expect(title(withLangSeo)).toBe('Quickstart — Acme AR SEO');
+  });
+
+  it("falls back to the language's localized description before the project description", () => {
+    const head = pageHead(
+      base({
+        project: { ...base().project, config: null },
+        page: { ...base().page, description: '' },
+        languageConfig: { description: 'وصف مترجم' },
+      }),
+      'p1',
+    );
+    expect(meta(head, 'description')).toBe('وصف مترجم');
+  });
+
+  it("names the JSON-LD WebSite with the language's localized site name", () => {
+    const head = pageHead(base({ languageConfig: { name: 'وثائق أكمي' } }), 'p1');
+    const article = (head.scripts ?? [])
+      .filter((s) => s.type === 'application/ld+json')
+      .map((s) => JSON.parse(s.children ?? '{}') as { '@type'?: string; isPartOf?: { name?: string } })
+      .find((block) => block['@type'] === 'TechArticle');
+    expect(article?.isPartOf?.name).toBe('وثائق أكمي');
+  });
+
   it('lets the page win over both language and site (title, description, image, canonical)', () => {
     const head = pageHead(
       base({
@@ -287,7 +328,7 @@ describe('pageHead JSON-LD', () => {
 });
 
 describe('siteHead analytics scripts', () => {
-  const shell = (config: SiteShell['project']['config']): SiteShell => ({
+  const shell = (config: SiteShell['project']['config'], languageConfig: SiteShell['languageConfig'] = null): SiteShell => ({
     project: {
       id: 'p1',
       name: 'Acme Docs',
@@ -301,8 +342,16 @@ describe('siteHead analytics scripts', () => {
     versions: [],
     activeLanguage: 'en',
     activeVersion: 'main',
+    languageConfig,
     version: 1,
     generatedAt: '2026-07-01T00:00:00.000Z',
+  });
+
+  it('advertises the project name as og:site_name, localized by the active language', () => {
+    const plain = siteHead(shell(null));
+    expect(plain.meta?.find((m) => m.property === 'og:site_name')?.content).toBe('Acme Docs');
+    const localized = siteHead(shell(null, { name: 'وثائق أكمي' }));
+    expect(localized.meta?.find((m) => m.property === 'og:site_name')?.content).toBe('وثائق أكمي');
   });
 
   it('emits configured analytics scripts when consent is not required', () => {

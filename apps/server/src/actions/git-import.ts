@@ -8,18 +8,16 @@ import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { GitConfig } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
+import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
+import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
+import { githubRawUrl, listGitHubFiles } from './importers/github';
+import { ensureGroupPage, type ImportTarget, upsertLeafPage } from './importers/persistence';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
-import { createPage } from './pages';
 import { assertProjectInOrg } from './projects';
 
 type GitProvider = NonNullable<GitConfig['provider']>;
 const execFileAsync = promisify(execFile);
-
-interface GitTreeItem {
-  path: string;
-  type: 'blob' | 'tree';
-}
 
 interface MarkdownFile {
   path: string;
@@ -34,76 +32,87 @@ export interface GitImportSummary {
 }
 
 /** Hard cap so an accidental import of a huge repo can't fan out unbounded. */
-const MAX_FILES = 250;
+const MAX_FILES = MAX_IMPORT_FILES;
 
-/** Minimal YAML-frontmatter reader: enough for `title`/`sidebarTitle`/`description`/`icon`. */
-function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (!match?.[1]) {
-    return { meta: {}, body: raw };
+const normalizeRemoteUrl = (value: string, label: string): URL => {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw badRequest(`Enter a valid ${label}.`);
   }
-  const meta: Record<string, string> = {};
-  for (const line of match[1].split(/\r?\n/)) {
-    const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (kv?.[1]) {
-      let value = (kv[2] ?? '').trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      meta[kv[1].toLowerCase()] = value;
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw badRequest(`${label} must use http(s).`);
+  }
+  if (url.username || url.password) {
+    throw badRequest(`${label} must not include embedded credentials.`);
+  }
+  return url;
+};
+
+const assertPublicRemoteUrl = async (value: string, label: string): Promise<URL> => {
+  const url = normalizeRemoteUrl(value, label);
+  try {
+    const records = await lookup(url.hostname, { all: true, verbatim: true });
+    if (records.length === 0 || records.some((record) => isPrivateIp(record.address))) {
+      throw badRequest(`${label} must resolve to a public host.`);
     }
+  } catch (error) {
+    if (error instanceof Error && error.message === `${label} must resolve to a public host.`) {
+      throw error;
+    }
+    throw badRequest(`${label} could not be resolved. Check the hostname and try again.`);
   }
-  return { meta, body: raw.slice(match[0].length) };
-}
+  return url;
+};
 
-const humanize = (name: string): string =>
-  name
-    .replace(/[-_]+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Untitled';
-
-function deriveTitle(meta: Record<string, string>, body: string, fallbackName: string): string {
-  if (meta.title) {
-    return meta.title.slice(0, 200);
+const fetchGitLab = async (url: URL | string): Promise<Response> => {
+  try {
+    return await fetch(url, {
+      headers: { 'User-Agent': 'nibleaf-docs' },
+      // A custom GitLab host is user-controlled. Following a redirect could
+      // bypass the public-host DNS check above and reach an internal service.
+      redirect: 'error',
+    });
+  } catch {
+    throw badRequest('Could not reach the public GitLab instance without following a redirect. Check its URL and availability.');
   }
-  if (meta.sidebartitle) {
-    return meta.sidebartitle.slice(0, 200);
-  }
-  const h1 = body.match(/^#\s+(.+)$/m);
-  if (h1?.[1]) {
-    return h1[1].trim().slice(0, 200);
-  }
-  return humanize(fallbackName);
-}
+};
 
 const normalizeInstanceUrl = (value?: string): string => {
   const raw = value?.trim() || 'https://gitlab.com';
-  const url = new URL(raw);
+  const url = normalizeRemoteUrl(raw, 'GitLab instance URL');
   url.pathname = url.pathname.replace(/\/+$/, '');
   url.search = '';
   url.hash = '';
   return url.toString().replace(/\/+$/, '');
 };
 
-const listGitHubFiles = async (owner: string, repo: string, branch: string): Promise<GitTreeItem[]> => {
-  const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`, {
-    headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'nibleaf-docs' },
-  });
-  if (!treeRes.ok) {
-    throw badRequest(
-      treeRes.status === 404
-        ? 'Repository or branch not found. Imports support public GitHub repositories only.'
-        : `GitHub API error (${treeRes.status}). Try again shortly.`,
-    );
+/** Normalize a repository-relative content directory and reject anything that
+ * could escape the temporary clone. This runs even for settings written before
+ * the validator gained the same restriction. */
+export const normalizeGitContentPath = (value?: string): string => {
+  const raw = value?.trim() ?? '';
+  if (!raw) {
+    return '';
   }
-  const tree = (await treeRes.json()) as { tree?: GitTreeItem[] };
-  return tree.tree ?? [];
+  const slashPath = raw.replace(/\\/g, '/');
+  const parts = slashPath.split('/').filter(Boolean);
+  if (slashPath.startsWith('/') || /^[A-Za-z]:/.test(slashPath) || parts.some((part) => part === '.' || part === '..')) {
+    throw badRequest('Git content path must stay inside the repository.');
+  }
+  return parts.join('/');
 };
 
-const listGitLabFiles = async (projectPath: string, branch: string, basePath: string, instanceUrl?: string): Promise<GitTreeItem[]> => {
+const listGitLabFiles = async (
+  projectPath: string,
+  branch: string,
+  basePath: string,
+  instanceUrl?: string,
+): Promise<Array<{ path: string; type: 'blob' | 'tree' }>> => {
   const base = normalizeInstanceUrl(instanceUrl);
   const project = encodeURIComponent(projectPath);
-  const files: GitTreeItem[] = [];
+  const files: Array<{ path: string; type: 'blob' | 'tree' }> = [];
   let page = 1;
 
   while (files.length < MAX_FILES) {
@@ -116,7 +125,7 @@ const listGitLabFiles = async (projectPath: string, branch: string, basePath: st
       url.searchParams.set('path', basePath);
     }
 
-    const res = await fetch(url, { headers: { 'User-Agent': 'nibleaf-docs' } });
+    const res = await fetchGitLab(url);
     if (!res.ok) {
       throw badRequest(
         res.status === 404
@@ -139,7 +148,7 @@ const listGitLabFiles = async (projectPath: string, branch: string, basePath: st
 const rawFileUrl = (provider: GitProvider, repo: string, branch: string, filePath: string, instanceUrl?: string): string => {
   if (provider === 'github') {
     const [owner, name] = repo.split('/');
-    return `https://raw.githubusercontent.com/${owner}/${name}/${encodeURIComponent(branch)}/${filePath.split('/').map(encodeURIComponent).join('/')}`;
+    return githubRawUrl(owner ?? '', name ?? '', branch, filePath);
   }
 
   const base = normalizeInstanceUrl(instanceUrl);
@@ -148,28 +157,8 @@ const rawFileUrl = (provider: GitProvider, repo: string, branch: string, filePat
   return url.toString();
 };
 
-const isPrivateIp = (address: string): boolean =>
-  /^(?:10\.|127\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.|192\.168\.|0\.|::1$|fc00:|fd00:|fe80:)/i.test(address);
-
 const assertSafeCloneUrl = async (value: string): Promise<string> => {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw badRequest('Enter a valid public Git URL.');
-  }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw badRequest('Public Git URL imports only support http(s) clone URLs.');
-  }
-  if (url.username || url.password) {
-    throw badRequest('Public Git URL imports do not accept embedded credentials.');
-  }
-  if (process.env.ALLOW_PRIVATE_GIT_IMPORTS !== 'true') {
-    const records = await lookup(url.hostname, { all: true, verbatim: true });
-    if (records.length === 0 || records.some((record) => isPrivateIp(record.address))) {
-      throw badRequest('Public Git URL imports must resolve to a public host.');
-    }
-  }
+  const url = await assertPublicRemoteUrl(value, 'Public Git URL');
   url.hash = '';
   return url.toString();
 };
@@ -202,14 +191,20 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
       env: {
         ...process.env,
         GIT_TERMINAL_PROMPT: '0',
-        GIT_CONFIG_COUNT: '2',
+        GIT_CONFIG_COUNT: '3',
         GIT_CONFIG_KEY_0: 'protocol.file.allow',
         GIT_CONFIG_VALUE_0: 'never',
         GIT_CONFIG_KEY_1: 'protocol.ssh.allow',
         GIT_CONFIG_VALUE_1: 'never',
+        GIT_CONFIG_KEY_2: 'http.followRedirects',
+        GIT_CONFIG_VALUE_2: 'false',
       },
     });
-    const contentRoot = basePath ? path.join(dir, basePath) : dir;
+    const contentRoot = basePath ? path.resolve(dir, basePath) : dir;
+    const cloneRoot = path.resolve(dir);
+    if (contentRoot !== cloneRoot && !contentRoot.startsWith(`${cloneRoot}${path.sep}`)) {
+      throw badRequest('Git content path must stay inside the repository.');
+    }
     const files = await walkMarkdownFiles(contentRoot);
     const loaded = await Promise.all(
       files.map(async (file) => ({
@@ -247,8 +242,12 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     throw badRequest('Connect a public Git repository first.');
   }
   const branch = git.branch?.trim() || 'main';
-  const basePath = (git.path ?? '').replace(/^\/+|\/+$/g, '');
+  const basePath = normalizeGitContentPath(git.path);
   const prefix = basePath ? `${basePath}/` : '';
+  const safeGitLabInstance =
+    provider === 'gitlab'
+      ? normalizeInstanceUrl((await assertPublicRemoteUrl(git.instanceUrl?.trim() || 'https://gitlab.com', 'GitLab instance URL')).toString())
+      : undefined;
 
   let mdFiles: MarkdownFile[];
   if (provider === 'git') {
@@ -267,16 +266,20 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     const tree =
       provider === 'github'
         ? await listGitHubFiles(repo.split('/')[0] as string, repo.split('/')[1] as string, branch)
-        : await listGitLabFiles(repo, branch, basePath, git.instanceUrl);
+        : await listGitLabFiles(repo, branch, basePath, safeGitLabInstance);
     mdFiles = tree
       .filter((i) => i.type === 'blob' && (i.path.endsWith('.md') || i.path.endsWith('.mdx')) && i.path.startsWith(prefix))
       .slice(0, MAX_FILES)
       .map((file) => ({
         path: file.path,
         read: async () => {
-          const rawRes = await fetch(rawFileUrl(provider, repo, branch, file.path, git.instanceUrl), {
-            headers: { 'User-Agent': 'nibleaf-docs' },
-          });
+          const rawUrl = rawFileUrl(provider, repo, branch, file.path, safeGitLabInstance);
+          const rawRes =
+            provider === 'gitlab'
+              ? await fetchGitLab(rawUrl)
+              : await fetch(rawUrl, {
+                  headers: { 'User-Agent': 'nibleaf-docs' },
+                });
           return rawRes.ok ? rawRes.text() : null;
         },
       }));
@@ -287,6 +290,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
 
   const branchRow = git.importBranchId ? await assertBranchInProject(projectId, git.importBranchId) : await getDefaultBranch(projectId);
   const language = git.importLanguageId ? await assertLanguageInProject(projectId, git.importLanguageId) : await getDefaultLanguage(projectId);
+  const target: ImportTarget = { projectId, branchId: branchRow.id, languageId: language.id };
 
   // Cache the GROUP page id per directory so each folder is created once.
   const groupCache = new Map<string, string | null>();
@@ -304,14 +308,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         parentId = cached;
         continue;
       }
-      const slug = slugify(part);
-      const existing = await prisma.page.findFirst({
-        where: { projectId, branchId: branchRow.id, languageId: language.id, parentId, slug, kind: 'GROUP' },
-        select: { id: true },
-      });
-      const groupId = existing
-        ? existing.id
-        : (await createPage(projectId, { title: humanize(part), kind: 'GROUP', parentId, languageId: language.id, branchId: branchRow.id })).id;
+      const groupId = await ensureGroupPage(target, { parentId, title: humanize(part), slug: slugify(part) });
       groupCache.set(cumulative, groupId);
       parentId = groupId;
     }
@@ -343,34 +340,15 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     const parentId = await ensureGroups(targetDir);
     const title = deriveTitle(meta, body, nameForSlug);
 
-    const found = await prisma.page.findFirst({
-      where: { projectId, branchId: branchRow.id, languageId: language.id, parentId, slug },
-      select: { id: true },
+    const outcome = await upsertLeafPage(target, {
+      parentId,
+      slug,
+      title,
+      content: body,
+      ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
+      ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
     });
-    if (found) {
-      await prisma.page.update({
-        where: { id: found.id },
-        data: {
-          title,
-          content: body,
-          ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-          ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
-        },
-      });
-      summary.updated++;
-    } else {
-      await createPage(projectId, {
-        title,
-        slug,
-        content: body,
-        parentId,
-        languageId: language.id,
-        branchId: branchRow.id,
-        ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-        ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
-      });
-      summary.imported++;
-    }
+    summary[outcome === 'imported' ? 'imported' : 'updated']++;
   }
 
   // Record that this repo is connected + when it last imported.

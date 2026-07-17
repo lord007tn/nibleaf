@@ -232,10 +232,15 @@ model Language {
   label     String
   direction TextDirection @default(LTR)
   isDefault Boolean       @default(false)
+  /// Serving toggle: a disabled language stays fully editable in the dashboard
+  /// but disappears from every public surface of the published site (language
+  /// switcher, hreflang alternates, sitemap, llms.txt, search). The default
+  /// language can never be disabled.
+  enabled   Boolean       @default(true)
   position  Int           @default(0)
-  /// Per-language SEO + behaviour overrides: { seo: { metaTitle, metaDescription,
-  /// socialImage, allowIndex }, behaviour: {...} }. Layered between project.config
-  /// and page.config when rendering the live site.
+  /// Per-language SEO + chrome overrides: { name, description, seo: { metaTitle,
+  /// metaDescription, socialImage, allowIndex }, navbar, footer, banner, search }.
+  /// Layered between project.config and page.config when rendering the live site.
   config    Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

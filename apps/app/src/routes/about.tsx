@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BookOpen, Globe, Server, Unlock } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { Eyebrow, iconTile, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { Eyebrow, iconTile, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/about')({
@@ -102,7 +102,7 @@ function AboutPage() {
                 Get started free
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </a>
-              <a className={`${outlineButton} border-background/25 bg-transparent text-background hover:bg-background/10`} href="/self-hosting">
+              <a className={invertedOutlineButton} href="/self-hosting">
                 Explore self-hosting
               </a>
             </div>

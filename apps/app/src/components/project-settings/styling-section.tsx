@@ -162,7 +162,7 @@ export function StylingSection({ project }: { project: Project }) {
           <button
             aria-label={preset}
             className={cn(
-              'size-[26px] cursor-pointer rounded-full ring-offset-2 ring-offset-card transition-shadow',
+              'size-[26px] cursor-pointer rounded-full outline-none ring-offset-2 ring-offset-card transition-shadow focus-visible:ring-3 focus-visible:ring-ring/50',
               hex.toLowerCase() === preset.toLowerCase() && 'ring-2 ring-foreground/40',
             )}
             key={preset}

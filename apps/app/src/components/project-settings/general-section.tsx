@@ -6,11 +6,11 @@ import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Project } from '@/hooks/api';
-import { useUpdateProject } from '@/hooks/api';
+import type { Language, LanguageConfig, Project } from '@/hooks/api';
+import { useLanguages, useUpdateLanguage, useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 import { useT } from '@/lib/i18n';
-import { FIELD_INPUT, FIELD_TEXTAREA, Field, SaveBar, SectionHeader } from './shared';
+import { FIELD_INPUT, FIELD_TEXTAREA, Field, GroupLabel, SaveBar, SectionHeader } from './shared';
 
 /** A small curated set of emoji icons the project can use as its avatar glyph. */
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
@@ -26,35 +26,77 @@ const deploymentNameError = (value: string, message: string) => {
   return undefined;
 };
 
+/** The localized site name/description draft for one extra language. */
+type TranslationDraft = { name: string; description: string };
+
+const draftOf = (language: Language): TranslationDraft => ({
+  name: language.config?.name ?? '',
+  description: language.config?.description ?? '',
+});
+
+/** True when the language's stored SEO carries an actual override (mirrors the
+ *  language-settings dialog: empty strings and allowIndex:true are defaults). */
+const hasSeoOverride = (config: LanguageConfig | null | undefined): boolean => {
+  const seo = config?.seo;
+  return Boolean(seo && ([seo.metaTitle, seo.metaDescription, seo.socialImage].some((v) => (v ?? '').trim() !== '') || seo.allowIndex === false));
+};
+
 export function GeneralSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProject(project.id);
+  const updateLanguage = useUpdateLanguage(project.id);
+  const { data: languages } = useLanguages(project.id);
   const [icon, setIcon] = useState<string>(project.icon ?? '📘');
   const [iconOpen, setIconOpen] = useState(false);
+  // Localized site name/description per NON-default language (Translations
+  // group below). Drafts are keyed by language id; untouched languages read
+  // straight from their stored config.
+  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const [translations, setTranslations] = useState<Record<string, TranslationDraft>>({});
+  const setTranslation = (language: Language, patch: Partial<TranslationDraft>) =>
+    setTranslations((prev) => ({ ...prev, [language.id]: { ...(prev[language.id] ?? draftOf(language)), ...patch } }));
+
+  /** Persist every edited translation. Empty inputs clear the override (the
+   *  server merge spreads the patch over the stored config, so the SEO keys
+   *  survive); when nothing is overridden anymore the config resets to null,
+   *  matching the language-settings dialog. */
+  const saveTranslations = async () => {
+    for (const language of extraLanguages) {
+      const draft = translations[language.id];
+      if (!draft) {
+        continue;
+      }
+      const stored = draftOf(language);
+      const name = draft.name.trim();
+      const description = draft.description.trim();
+      if (name === stored.name && description === stored.description) {
+        continue;
+      }
+      const config = !name && !description && !hasSeoOverride(language.config) ? null : { name, description };
+      await updateLanguage.mutateAsync({ id: language.id, body: { config } });
+    }
+  };
 
   const form = useForm({
     defaultValues: { name: project.name, slug: project.slug, description: project.description ?? '' },
     onSubmit: async ({ value }) => {
-      await new Promise<void>((resolve) => {
-        update.mutate(
-          {
-            name: value.name.trim(),
-            slug: value.slug.trim(),
-            description: value.description.trim() ? value.description.trim() : null,
-            icon,
-          },
-          {
-            onSuccess: () => {
-              toast.success(t('common.saved'));
-              resolve();
+      try {
+        await new Promise<void>((resolve, reject) => {
+          update.mutate(
+            {
+              name: value.name.trim(),
+              slug: value.slug.trim(),
+              description: value.description.trim() ? value.description.trim() : null,
+              icon,
             },
-            onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('settings.saveError'));
-              resolve();
-            },
-          },
-        );
-      });
+            { onSuccess: () => resolve(), onError: (error) => reject(error) },
+          );
+        });
+        await saveTranslations();
+        toast.success(t('common.saved'));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+      }
     },
   });
 
@@ -101,7 +143,7 @@ export function GeneralSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      <form.Field name="name" validators={{ onChange: ({ value }) => required('Name')(value) }}>
+      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
         {(field) => (
           <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
             <Input
@@ -119,16 +161,16 @@ export function GeneralSection({ project }: { project: Project }) {
       <form.Field name="slug" validators={{ onChange: ({ value }) => deploymentNameError(value, t('settings.general.url.error')) }}>
         {(field) => (
           <Field hint={t('settings.general.url.hint')} htmlFor="set-slug" label={t('settings.general.url.label')}>
-            <div className="flex h-[42px] overflow-hidden rounded-[10px] border border-border bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+            <div className="flex h-9 overflow-hidden rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
               <Input
-                className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 font-mono text-[13px] focus-visible:ring-0"
+                className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-2.5 font-mono text-[13px] focus-visible:ring-0"
                 id="set-slug"
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(slugify(e.target.value))}
                 value={field.state.value}
               />
               {siteBaseDomain ? (
-                <span className="flex shrink-0 items-center border-border border-l bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
+                <span className="flex shrink-0 items-center border-border border-s bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
                   .{siteBaseDomain}
                 </span>
               ) : null}
@@ -154,6 +196,41 @@ export function GeneralSection({ project }: { project: Project }) {
           </Field>
         )}
       </form.Field>
+
+      {extraLanguages.length > 0 ? (
+        <div className="mb-6 border-border border-t pt-5">
+          <GroupLabel>{t('settings.general.translations.title')}</GroupLabel>
+          <p className="mt-1 mb-4 text-[12.5px] text-muted-foreground leading-snug">{t('settings.general.translations.hint')}</p>
+          <div className="flex flex-col gap-4">
+            {extraLanguages.map((language) => {
+              const draft = translations[language.id] ?? draftOf(language);
+              return (
+                <div className="rounded-xl border border-border bg-muted/20 p-4" key={language.id}>
+                  <div className="mb-3 font-medium text-[13px]">{language.label}</div>
+                  <Field className="mb-4" htmlFor={`set-lang-name-${language.id}`} label={t('settings.general.translations.name.label')}>
+                    <Input
+                      className={FIELD_INPUT}
+                      id={`set-lang-name-${language.id}`}
+                      onChange={(e) => setTranslation(language, { name: e.target.value })}
+                      placeholder={project.name}
+                      value={draft.name}
+                    />
+                  </Field>
+                  <Field className="mb-0" htmlFor={`set-lang-desc-${language.id}`} label={t('settings.general.translations.description.label')}>
+                    <Textarea
+                      className={FIELD_TEXTAREA}
+                      id={`set-lang-desc-${language.id}`}
+                      onChange={(e) => setTranslation(language, { description: e.target.value })}
+                      placeholder={project.description ?? undefined}
+                      value={draft.description}
+                    />
+                  </Field>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
     </form>

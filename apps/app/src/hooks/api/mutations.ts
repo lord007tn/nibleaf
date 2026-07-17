@@ -8,6 +8,7 @@ import type {
   CreatePageBody,
   CreateProjectBody,
   InviteMemberBody,
+  MintlifyImportBody,
   ProjectConfig,
   ReorderPagesBody,
   TransferOwnershipBody,
@@ -516,3 +517,44 @@ export const useImportFromGit = (projectId: string) => {
 };
 
 export const useImportFromGitHub = useImportFromGit;
+
+// ─── Content importers (Mintlify / Ghost) ────────────────────────────────────
+
+/** Summary returned by the content importers (Mintlify, Ghost, …). */
+export interface ContentImportSummary {
+  imported: number;
+  updated: number;
+  skipped: number;
+  warnings: string[];
+}
+
+/** One-way import of a public Mintlify GitHub docs repo (docs.json / mint.json). */
+export const useImportFromMintlify = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: MintlifyImportBody) =>
+      mutateData<ContentImportSummary>(
+        await api.app.projects[':projectId'].settings.import.mintlify.$post({ param: { projectId }, json: body }),
+        'Could not import from Mintlify.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+      // The importer may also fill empty project-config keys (branding, navbar, …).
+      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+    },
+  });
+};
+
+/** One-way import of a Ghost JSON export (published posts + pages → Markdown). */
+export const useImportFromGhost = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: Record<string, unknown>) =>
+      mutateData<ContentImportSummary>(
+        await api.app.projects[':projectId'].settings.import.ghost.$post({ param: { projectId }, json: body }),
+        'Could not import from Ghost.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
+  });
+};

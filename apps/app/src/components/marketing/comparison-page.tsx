@@ -1,7 +1,7 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { ArrowRight, Check, ExternalLink, Minus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import type { AlternativesRoundup, Comparison, FaqEntry, FeatureCell, FeatureRow, PickReasons, PricingTable } from '@/lib/comparison-data';
 import { nibleafPricing } from '@/lib/comparison-data';
 import { GITHUB_URL } from '@/lib/links';
@@ -316,7 +316,7 @@ function MarketingCta() {
             <a className={`${primaryButton} group`} href="/sign-up">
               Get started free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a className={`${outlineButton} border-background/25 bg-transparent text-background hover:bg-background/10`} href="/self-hosting">
+            <a className={invertedOutlineButton} href="/self-hosting">
               Self-hosting guide
             </a>
           </div>

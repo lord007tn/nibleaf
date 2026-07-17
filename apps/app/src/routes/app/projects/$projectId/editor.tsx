@@ -338,7 +338,9 @@ function EditorPage() {
     );
   const addGroup = (languageId: string) =>
     createPage.mutate(
-      { title: 'New group', kind: 'GROUP', languageId, ...branchScope },
+      // The display title is localized, but the slug is pinned: deriving it from
+      // a non-Latin title (e.g. Arabic) would strip to a broken 'page' slug.
+      { title: t('editor.newGroup'), kind: 'GROUP', slug: 'new-group', languageId, ...branchScope },
       {
         onSuccess: (created) => {
           setSelectedId(created.id);
@@ -382,9 +384,10 @@ function EditorPage() {
           title={t('editor.backToDashboard')}
         >
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
-          <span className="max-w-[200px] truncate font-medium text-foreground text-sm">{project?.name ?? ''}</span>
+          {project?.name ? <span className="max-w-[200px] truncate font-medium text-foreground text-sm">{project.name}</span> : null}
         </Link>
-        <span className="h-5 w-px bg-border" />
+        {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
+        {project?.name ? <span className="h-5 w-px bg-border" /> : null}
         <BranchSwitcher
           projectId={projectId}
           branches={branches ?? []}

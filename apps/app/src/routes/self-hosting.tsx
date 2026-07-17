@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, Check, Cloud, Database, HardDrive, Lock, Rocket, Server, Workflow, Zap } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { CopyCommand, Eyebrow, iconTile, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { CopyCommand, Eyebrow, iconTile, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 import { GithubIcon } from '@/components/icons/brand';
 import { GITHUB_URL } from '@/lib/links';
 import { breadcrumbLd, canonicalHref, faqLd, howToLd, pageMeta } from '@/lib/marketing-seo';
@@ -372,7 +372,7 @@ function SelfHostingPage() {
               <a className={primaryButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
                 <GithubIcon className="size-4" /> Get the source
               </a>
-              <a className={`${outlineButton} border-background/25 bg-transparent text-background hover:bg-background/10`} href="#quick-start">
+              <a className={invertedOutlineButton} href="#quick-start">
                 Back to quick start
                 <ArrowRight className="size-4 rtl:rotate-180" />
               </a>

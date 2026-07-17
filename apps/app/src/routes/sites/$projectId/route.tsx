@@ -295,16 +295,18 @@ function SiteChrome() {
   ]
     .filter(Boolean)
     .join('');
+  // The active language may localize the site name (brand + footer copyright).
+  const siteName = site?.languageConfig?.name || site?.project.name;
   const brandInner = (
     <>
       {logoSrc ? (
-        <img src={logoSrc} alt={site?.project.name ?? 'Logo'} className="h-6 w-auto object-contain" />
+        <img src={logoSrc} alt={siteName ?? 'Logo'} className="h-6 w-auto object-contain" />
       ) : (
         <span className="grid size-7 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
-          {site?.project.name?.[0] ?? 'D'}
+          {siteName?.[0] ?? 'D'}
         </span>
       )}
-      <span className="truncate">{site?.project.name ?? 'Documentation'}</span>
+      <span className="truncate">{siteName ?? 'Documentation'}</span>
     </>
   );
 
@@ -528,7 +530,7 @@ function SiteChrome() {
         <footer className="mt-auto border-border/60 border-t">
           {hasFooterContent && footer ? (
             <div className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
-              <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${site?.project.name ?? ''}`.trim()}</span>
+              <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
               <div className="flex items-center gap-1">
                 {footer.github ? (
                   <a

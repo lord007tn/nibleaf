@@ -79,7 +79,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
       <p className="text-sm leading-relaxed">{t('analyticsConsentBody')}</p>
       <div className="mt-3 flex justify-end gap-2">
         <button
-          className="rounded-md border border-border px-3 py-1.5 text-muted-foreground text-sm hover:bg-muted"
+          className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted"
           type="button"
           onClick={() => {
             window.localStorage.setItem(consentKey(projectId), 'declined');
@@ -89,7 +89,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
           {t('analyticsConsentDecline')}
         </button>
         <button
-          className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm"
+          className="cursor-pointer rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
           type="button"
           onClick={() => {
             window.localStorage.setItem(consentKey(projectId), 'accepted');

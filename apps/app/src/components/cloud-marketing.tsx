@@ -1,4 +1,5 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useTheme } from '@nibleaf/design-system/theme';
 import {
   ArrowRight,
@@ -33,6 +34,8 @@ const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 export const primaryButton = `${buttonBase} bg-primary text-primary-foreground hover:bg-primary/90`;
 export const outlineButton = `${buttonBase} border border-border bg-background hover:bg-muted`;
+/** Outline button for inverted (bg-foreground) CTA panels: translucent border, hover that stays legible on dark. */
+export const invertedOutlineButton = `${buttonBase} border border-background/25 text-background hover:bg-background/10`;
 /** Neutral bordered icon tile, matching the marketing site. */
 export const iconTile = 'grid place-items-center rounded-lg border border-border bg-background text-foreground';
 
@@ -176,13 +179,18 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             >
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>
-            <a className={`${outlineButton} hidden h-9 px-3 text-muted-foreground sm:inline-flex`} href={GITHUB_URL} rel="noreferrer" target="_blank">
+            <a
+              className={cn(outlineButton, 'hidden h-9 px-3 text-muted-foreground sm:inline-flex')}
+              href={GITHUB_URL}
+              rel="noreferrer"
+              target="_blank"
+            >
               <GithubIcon className="size-4" /> {stars > 0 ? `${stars} stars` : 'GitHub'}
             </a>
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
               Sign in
             </a>
-            <a className={`${primaryButton} h-9 px-3`} href="/sign-up">
+            <a className={cn(primaryButton, 'h-9 px-3')} href="/sign-up">
               Get started
             </a>
           </div>
@@ -310,7 +318,7 @@ function TrustStrip() {
   ];
   return (
     <section className="border-border border-b bg-card/40">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px overflow-hidden px-6 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl grid-cols-2 px-6 lg:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.value} className="flex flex-col gap-1 py-7 text-center">
             <span className="font-semibold text-2xl tracking-tight">{stat.value}</span>
@@ -711,12 +719,7 @@ function FinalCta() {
             <a className={`${primaryButton} group`} href="/sign-up">
               Get started free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a
-              className={`${buttonBase} border border-background/25 text-background hover:bg-background/10`}
-              href={GITHUB_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
+            <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
               <GithubIcon className="size-4" /> View on GitHub
             </a>
           </div>
@@ -851,7 +854,7 @@ function DocsPreview() {
                 <ShieldCheck className="size-4 text-primary" /> Published and indexed
               </div>
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs" aria-hidden="true">
-                <span className="rounded-md bg-background px-2 py-1 font-medium text-foreground">EN</span>
+                <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary">EN</span>
                 <span className="rounded-md bg-background px-2 py-1">عربي</span>
               </div>
             </div>

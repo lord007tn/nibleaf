@@ -1,5 +1,4 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
@@ -67,8 +66,11 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
-          <Separator className="me-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-          <span className="truncate font-medium text-sm">{project?.name}</span>
+          {project?.name ? (
+            <span className="truncate font-medium text-sm">{project.name}</span>
+          ) : (
+            <span className="h-4 w-28 animate-pulse rounded bg-muted" aria-hidden />
+          )}
           <div className="ms-auto flex items-center gap-2">
             <Button
               nativeButton={false}

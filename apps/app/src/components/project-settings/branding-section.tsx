@@ -43,13 +43,7 @@ function UploadField({
         ref={inputRef}
         type="file"
       />
-      <Button
-        className="h-[42px] cursor-pointer rounded-[10px]"
-        disabled={uploading}
-        onClick={() => inputRef.current?.click()}
-        type="button"
-        variant="outline"
-      >
+      <Button className="cursor-pointer" disabled={uploading} onClick={() => inputRef.current?.click()} type="button" variant="outline">
         <Upload className="size-4" /> {t('settings.branding.upload')}
       </Button>
     </div>

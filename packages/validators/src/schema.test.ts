@@ -7,10 +7,12 @@ import {
   createProjectBody,
   gitConfigSchema,
   inferSafeInlineAssetContentType,
+  languageConfigSchema,
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
   transferOwnershipBody,
+  updateLanguageBody,
   updateProjectBody,
 } from './index';
 
@@ -69,6 +71,47 @@ describe('createLanguageBody', () => {
   it('rejects malformed codes', () => {
     expect(createLanguageBody.safeParse({ code: 'EN', label: 'x' }).success).toBe(false);
     expect(createLanguageBody.safeParse({ code: 'english', label: 'x' }).success).toBe(false);
+  });
+  it('accepts the enabled serving toggle', () => {
+    expect(createLanguageBody.safeParse({ code: 'ar', label: 'العربية', enabled: false }).success).toBe(true);
+    expect(updateLanguageBody.safeParse({ enabled: true }).success).toBe(true);
+  });
+});
+
+describe('languageConfigSchema (per-language chrome overrides)', () => {
+  it('accepts localized chrome sections mirroring the project config shapes', () => {
+    expect(
+      languageConfigSchema.safeParse({
+        name: 'وثائق أكمي',
+        navbar: {
+          ctaLabel: 'احجز عرضًا',
+          links: [{ label: 'المستندات', href: '/ar/docs' }],
+          tabs: [],
+          anchors: [{ label: 'المجتمع', href: '/x', icon: 'users' }],
+        },
+        footer: { copyright: '© أكمي ٢٠٢٦' },
+        banner: { enabled: true, message: 'الإصدار الثالث هنا', linkLabel: 'اقرأ المزيد', linkUrl: '/changelog', dismissible: true },
+        search: { placeholder: 'ابحث في المستندات…' },
+      }).success,
+    ).toBe(true);
+  });
+  it('lets a PATCH clear a single chrome override with null', () => {
+    expect(languageConfigSchema.safeParse({ navbar: null, footer: null, banner: null, search: null }).success).toBe(true);
+  });
+  it('stays strict: unknown keys and non-text project fields are rejected', () => {
+    expect(languageConfigSchema.safeParse({ bogus: true }).success).toBe(false);
+    // CTA URL, search/changelog toggles and footer socials stay global.
+    expect(languageConfigSchema.safeParse({ navbar: { ctaUrl: 'https://x.dev' } }).success).toBe(false);
+    expect(languageConfigSchema.safeParse({ navbar: { showSearch: true } }).success).toBe(false);
+    expect(languageConfigSchema.safeParse({ footer: { github: 'https://github.com/acme' } }).success).toBe(false);
+    expect(languageConfigSchema.safeParse({ search: { hotkey: 'cmdk' } }).success).toBe(false);
+  });
+  it('keeps the same array caps as the project navbar', () => {
+    const links = Array.from({ length: 21 }, (_, i) => ({ label: `L${i}`, href: '/x' }));
+    expect(languageConfigSchema.safeParse({ navbar: { links } }).success).toBe(false);
+  });
+  it('rejects dangerous URL schemes in localized links', () => {
+    expect(languageConfigSchema.safeParse({ banner: { linkUrl: 'javascript:alert(1)' } }).success).toBe(false);
   });
 });
 
@@ -160,6 +203,18 @@ describe('gitConfigSchema', () => {
 
   it('rejects repository paths without an owner or group', () => {
     expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'docs' }).success).toBe(false);
+  });
+
+  it('keeps imported content paths inside the repository', () => {
+    expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://git.example.com/acme/docs.git', path: 'docs/guides' }).success).toBe(true);
+    for (const path of ['../../etc', 'docs/../private', '/etc', 'C:\\Windows']) {
+      expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://git.example.com/acme/docs.git', path }).success).toBe(false);
+    }
+  });
+
+  it('rejects non-http repository and GitLab instance URLs', () => {
+    expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'file:///etc/passwd' }).success).toBe(false);
+    expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'acme/docs', instanceUrl: 'file:///srv/gitlab' }).success).toBe(false);
   });
 });
 

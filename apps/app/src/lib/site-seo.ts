@@ -161,7 +161,9 @@ export function siteHead(site: SiteShell | null | undefined): Head {
     return {};
   }
   const config = seoConfig(site.project.config);
-  const meta: Tag[] = [{ property: 'og:site_name', content: site.project.name }];
+  // The active language may localize the site name (og:site_name).
+  const siteName = site.languageConfig?.name || site.project.name;
+  const meta: Tag[] = [{ property: 'og:site_name', content: siteName }];
   const themeColor = config?.styling?.primaryColor;
   if (themeColor) {
     meta.push({ name: 'theme-color', content: themeColor });
@@ -192,7 +194,8 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   }
   const config = seoConfig(data.project.config);
   const urlOptions: SiteUrlOptions = { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: origin };
-  const langSeo = data.languageConfig?.seo;
+  const langCfg = data.languageConfig;
+  const langSeo = langCfg?.seo;
   const pageSeo = data.page.config?.seo;
   const languages = data.languages;
   const defaultCode = languages.find((l) => l.isDefault)?.code;
@@ -207,15 +210,24 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   const versionPrefix = activeVersionMeta && !activeVersionMeta.isDefault ? activeVersionMeta.slug : undefined;
   const versionedPath = (path: string) => [versionPrefix, path].filter(Boolean).join('/');
 
-  // Site name for the "<page> — <site>" title pattern (language can rename it).
-  const siteName = langSeo?.metaTitle || config?.seo?.metaTitle || data.project.name;
+  // Site name for the "<page> — <site>" title pattern: the language's SEO title,
+  // then the project's SEO title, then the language's localized site name, then
+  // the project name.
+  const siteName = langSeo?.metaTitle || config?.seo?.metaTitle || langCfg?.name || data.project.name;
   // A page may override its full document title outright (Mintlify `title`/metaTitle).
   const title = pageSeo?.metaTitle?.trim() || `${data.page.title} — ${siteName}`;
   const ogTitle = pageSeo?.metaTitle?.trim() || data.page.title;
   // Explicit SEO overrides (page › language › project) win over the auto-derived
-  // body description; the page body excerpt is the final fallback.
+  // body description; the language's localized site description sits between the
+  // page body excerpt and the project description as the last fallbacks.
   const description =
-    pageSeo?.metaDescription || langSeo?.metaDescription || config?.seo?.metaDescription || data.page.description || data.project.description || '';
+    pageSeo?.metaDescription ||
+    langSeo?.metaDescription ||
+    config?.seo?.metaDescription ||
+    data.page.description ||
+    langCfg?.description ||
+    data.project.description ||
+    '';
   const url = sitePageUrl(projectId, versionedPath(data.page.path), canonicalLang, urlOptions);
 
   const meta: Tag[] = [{ title }];
@@ -296,7 +308,8 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
         url,
         ...(ogImage ? { image: ogImage } : {}),
         inLanguage: activeLang,
-        isPartOf: { '@type': 'WebSite', name: data.project.name, url: canonicalSiteBase(projectId, urlOptions) },
+        // The language's localized site name also names the WebSite in JSON-LD.
+        isPartOf: { '@type': 'WebSite', name: langCfg?.name || data.project.name, url: canonicalSiteBase(projectId, urlOptions) },
       }),
     },
   ];

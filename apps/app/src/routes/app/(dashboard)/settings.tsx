@@ -45,7 +45,7 @@ function WorkspaceSettingsPage() {
               onClick={() => navigate({ search: { tab: item.value }, replace: true })}
               className={cn(
                 'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors',
-                tab === item.value ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                tab === item.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
             >
               <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>

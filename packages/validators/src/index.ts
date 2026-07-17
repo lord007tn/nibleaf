@@ -161,10 +161,21 @@ export type ProjectConfig = z.infer<typeof projectConfigSchema>;
 
 // ─── Per-language config (SEO + behaviour overrides) ─────────────────────────
 
-/** SEO defaults that apply to every page in one language, overriding the
- *  project-level SEO and overridden in turn by a page's own SEO. */
+/** Per-language site chrome + SEO defaults. `name`/`description` localize the
+ *  published site's name and description for this language; `seo` applies to
+ *  every page in the language, overriding the project-level SEO and overridden
+ *  in turn by a page's own SEO. The chrome sections (`navbar`/`footer`/`banner`/
+ *  `search`) mirror the text-bearing parts of `projectConfigSchema` and override
+ *  it per language on the published site: object sections merge one level deep
+ *  (a language value wins per key), arrays replace wholesale when the language
+ *  defines them. Each chrome section is nullable so a PATCH can clear one
+ *  override without touching the language's other config. */
 export const languageConfigSchema = z
   .object({
+    /** Localized site name (header brand, og:site_name, title suffix). */
+    name: z.string().max(80).optional(),
+    /** Localized site description (SEO description fallback). */
+    description: z.string().max(300).optional(),
     seo: z
       .object({
         metaTitle: z.string().max(160).optional(),
@@ -173,6 +184,45 @@ export const languageConfigSchema = z
         allowIndex: z.boolean().optional(),
       })
       .strict()
+      .optional(),
+    /** Localized navbar labels/links (CTA URL, search + changelog toggles stay global). */
+    navbar: z
+      .object({
+        ctaLabel: z.string().max(60).optional(),
+        links: z.array(navLink).max(20).optional(),
+        tabs: z.array(navLink).max(10).optional(),
+        anchors: z.array(navAnchor).max(12).optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    /** Localized footer copy (social URLs and the badge stay global). */
+    footer: z
+      .object({
+        copyright: z.string().max(200).optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    /** Localized announcement banner. */
+    banner: z
+      .object({
+        enabled: z.boolean().optional(),
+        message: z.string().max(300).optional(),
+        linkLabel: z.string().max(80).optional(),
+        linkUrl: url.optional(),
+        dismissible: z.boolean().optional(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    /** Localized search field copy (provider/hotkey/limits stay global). */
+    search: z
+      .object({
+        placeholder: z.string().max(80).optional(),
+      })
+      .strict()
+      .nullable()
       .optional(),
   })
   .strict();
@@ -249,6 +299,7 @@ export const createLanguageBody = z.object({
   label: z.string().min(1).max(60),
   direction: textDirectionEnum.optional(),
   isDefault: z.boolean().optional(),
+  enabled: z.boolean().optional(),
 });
 export type CreateLanguageBody = z.infer<typeof createLanguageBody>;
 
@@ -256,6 +307,7 @@ export const updateLanguageBody = z.object({
   label: z.string().min(1).max(60).optional(),
   direction: textDirectionEnum.optional(),
   isDefault: z.boolean().optional(),
+  enabled: z.boolean().optional(),
   position: z.number().int().optional(),
   config: languageConfigSchema.nullable().optional(),
 });
@@ -470,10 +522,26 @@ export const gitConfigSchema = z.object({
     .max(120)
     .regex(/^[\w.-]+(?:\/[\w.-]+)+$/, 'Use the form owner/repo or group/project.')
     .optional(),
-  cloneUrl: z.url().max(500).optional(),
-  instanceUrl: z.url().max(200).optional(),
+  cloneUrl: z
+    .url()
+    .max(500)
+    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'Clone URL must use http(s).')
+    .optional(),
+  instanceUrl: z
+    .url()
+    .max(200)
+    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'GitLab instance URL must use http(s).')
+    .optional(),
   branch: z.string().max(120).optional(),
-  path: z.string().max(300).optional(),
+  path: z
+    .string()
+    .max(300)
+    .refine((value) => {
+      const slashPath = value.trim().replace(/\\/g, '/');
+      const parts = slashPath.split('/').filter(Boolean);
+      return !slashPath.startsWith('/') && !/^[A-Za-z]:/.test(slashPath) && parts.every((part) => part !== '.' && part !== '..');
+    }, 'Content path must stay inside the repository.')
+    .optional(),
   importBranchId: z.string().max(120).optional(),
   importLanguageId: z.string().max(120).optional(),
   connected: z.boolean().optional(),
@@ -496,3 +564,26 @@ export type UpdateWorkspaceSettingsBody = z.infer<typeof updateWorkspaceSettings
 /** Set a user's platform role from the internal admin panel. */
 export const adminSetRoleBody = z.object({ role: z.enum(['user', 'admin']) }).strict();
 export type AdminSetRoleBody = z.infer<typeof adminSetRoleBody>;
+
+// ─── Content importers ───────────────────────────────────────────────────────
+// One-way imports from other documentation systems into a project's pages.
+// Each importer source gets its own request schema here; the import summaries
+// they return are plain server responses (not validated request bodies).
+
+/** Import a public Mintlify docs repo from GitHub (docs.json or legacy mint.json). */
+export const mintlifyImportBody = z
+  .object({
+    repo: z
+      .string()
+      .max(120)
+      .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
+    branch: z.string().max(120).optional(),
+  })
+  .strict();
+export type MintlifyImportBody = z.infer<typeof mintlifyImportBody>;
+
+/** A Ghost JSON export posted as the request body. The export is a large,
+ *  loosely-versioned document (`db[0].data.posts` …), so only "is a JSON
+ *  object" is enforced here; the importer validates the actual shape. */
+export const ghostImportBody = z.record(z.string(), z.unknown());
+export type GhostImportBody = z.infer<typeof ghostImportBody>;

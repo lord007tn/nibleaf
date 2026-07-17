@@ -12,6 +12,9 @@ export interface Language {
   label: string;
   direction: 'LTR' | 'RTL';
   isDefault: boolean;
+  /** Serving toggle: disabled languages stay editable but are hidden from the
+   *  published site. Optional for rows fetched before the flag existed. */
+  enabled?: boolean;
   position: number;
 }
 
@@ -288,10 +291,14 @@ export interface SiteShell {
     primaryDomain: string | null;
   };
   nav: NavNode[];
-  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean }>;
+  /** Only ENABLED languages — the server filters disabled ones out. */
+  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean }>;
   versions: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   activeLanguage: string;
   activeVersion: string;
+  /** The ACTIVE language's config (localized site name/description + SEO
+   *  defaults) — lets the chrome and site-level head localize the brand. */
+  languageConfig: LanguageConfig | null;
   version: number;
   generatedAt: string;
 }

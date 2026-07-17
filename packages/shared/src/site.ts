@@ -11,9 +11,29 @@ export interface SnapshotPageConfig {
   hideToc?: boolean;
 }
 
-/** Per-language SEO overrides baked into the snapshot. */
+interface SnapshotNavLink {
+  label: string;
+  href: string;
+  external?: boolean;
+}
+interface SnapshotNavAnchor extends SnapshotNavLink {
+  icon?: string;
+}
+
+/** Per-language overrides baked into the snapshot. Mirrors
+ *  `languageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep).
+ *  The chrome sections override the matching `project.config` sections for
+ *  visitors browsing this language (see `mergeLanguageChrome`). */
 export interface SnapshotLanguageConfig {
+  /** Localized site name (header brand, og:site_name, title suffix). */
+  name?: string;
+  /** Localized site description (SEO description fallback). */
+  description?: string;
   seo?: { metaTitle?: string; metaDescription?: string; socialImage?: string; allowIndex?: boolean };
+  navbar?: { ctaLabel?: string; links?: SnapshotNavLink[]; tabs?: SnapshotNavLink[]; anchors?: SnapshotNavAnchor[] } | null;
+  footer?: { copyright?: string } | null;
+  banner?: { enabled?: boolean; message?: string; linkLabel?: string; linkUrl?: string; dismissible?: boolean } | null;
+  search?: { placeholder?: string } | null;
 }
 
 export interface SnapshotPage {
@@ -41,6 +61,9 @@ export interface SnapshotLanguage {
   label: string;
   direction: 'LTR' | 'RTL';
   isDefault: boolean;
+  /** Serving toggle — a disabled language is hidden from every public surface.
+   *  Optional so snapshots published before the toggle existed read as enabled. */
+  enabled?: boolean;
   config: SnapshotLanguageConfig | null;
 }
 
@@ -87,6 +110,69 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
     throw new Error(`Snapshot project ${project.id} must have exactly one default language.`);
   }
   return defaults[0];
+};
+
+/** The languages a published site serves: enabled ones. The default language
+ *  always serves (it is every visitor's fallback), even if a stale flag says
+ *  otherwise. Disabled languages stay editable in the dashboard but disappear
+ *  from every public surface. */
+export const publicLanguages = (languages: SnapshotLanguage[]): SnapshotLanguage[] =>
+  languages.filter((language) => language.isDefault || language.enabled !== false);
+
+/** Chrome sections a language may override on top of the project config. */
+const LANGUAGE_CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+/**
+ * Overlay the active language's chrome overrides (navbar/footer/banner/search)
+ * onto the project config, mirroring the project-config merge semantics:
+ * object sections merge one level deep (a defined language value wins per key)
+ * and arrays replace wholesale when the language defines them. Empty strings
+ * and empty arrays are treated as "no override". Returns the input config
+ * unchanged (same reference) when the language overrides nothing, and never
+ * mutates its inputs — safe on cached snapshots.
+ */
+export const mergeLanguageChrome = (
+  config: Record<string, unknown> | null,
+  languageConfig: SnapshotLanguageConfig | null | undefined,
+): Record<string, unknown> | null => {
+  if (!languageConfig) {
+    return config;
+  }
+  let merged: Record<string, unknown> | null = null;
+  for (const section of LANGUAGE_CHROME_SECTIONS) {
+    const override = (languageConfig as Record<string, unknown>)[section];
+    if (!isPlainObject(override)) {
+      continue;
+    }
+    const entries = Object.entries(override).filter(
+      ([, value]) => value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0),
+    );
+    if (entries.length === 0) {
+      continue;
+    }
+    merged = merged ?? { ...(config ?? {}) };
+    const base = merged[section];
+    merged[section] = { ...(isPlainObject(base) ? base : {}), ...Object.fromEntries(entries) };
+  }
+  return merged ?? config;
+};
+
+/** A copy of the snapshot narrowed to what the public site serves: disabled
+ *  languages and their pages are dropped (feeds sitemap/llms/robots surfaces).
+ *  Returns the input snapshot unchanged when every language serves. */
+export const publicSiteSnapshot = (snapshot: SiteSnapshot): SiteSnapshot => {
+  const served = publicLanguages(snapshot.project.languages);
+  if (served.length === snapshot.project.languages.length) {
+    return snapshot;
+  }
+  const servedCodes = new Set(served.map((language) => language.code));
+  return {
+    ...snapshot,
+    project: { ...snapshot.project, languages: served },
+    pages: snapshot.pages.filter((page) => servedCodes.has(page.languageCode)),
+  };
 };
 
 /** A node in the rendered navigation tree (groups contain children). */
@@ -231,7 +317,7 @@ const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): s
   return candidate;
 };
 
-type LanguageRow = { code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; config: unknown };
+type LanguageRow = { code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean; config: unknown };
 type BranchRow = { id: string; name: string; isDefault: boolean };
 type ProjectRow = {
   id: string;
@@ -255,6 +341,7 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
     label: l.label,
     direction: l.direction,
     isDefault: l.isDefault,
+    enabled: l.enabled ?? true,
     config: (l.config as SnapshotLanguageConfig | null) ?? null,
   }));
   const defaultLanguages = languages.filter((language) => language.isDefault);

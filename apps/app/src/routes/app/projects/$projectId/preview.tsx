@@ -67,7 +67,8 @@ function ProjectPreview() {
           <div className="mt-4 grid gap-2">
             {branches && branches.length > 1 ? (
               <select
-                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                aria-label={t('settings.git.productionBranch')}
+                className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 onChange={(event) => updateSearch({ branchId: event.target.value, pageId: undefined })}
                 value={activeBranchId}
               >
@@ -80,7 +81,8 @@ function ProjectPreview() {
             ) : null}
             {languages && languages.length > 1 ? (
               <select
-                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                aria-label={t('editor.addLanguage.languageField')}
+                className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 onChange={(event) => updateSearch({ languageId: event.target.value, pageId: undefined })}
                 value={activeLanguageId}
               >
@@ -107,7 +109,7 @@ function ProjectPreview() {
               className={cn(
                 'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
                 item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                item.id === selected?.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 item.hidden && 'opacity-55',
               )}
               disabled={item.kind === 'GROUP'}

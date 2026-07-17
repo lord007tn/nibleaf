@@ -43,7 +43,7 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
           <span className="flex-1">{t('nav.workspace')}</span>
           {!projectId ? <Check className="size-4 text-primary" /> : null}
         </DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {(projects ?? []).length > 0 ? <DropdownMenuSeparator /> : null}
         {(projects ?? []).map((site) => (
           <DropdownMenuItem key={site.id} onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: site.id } })}>
             <NibleafMark className="size-4.5" />

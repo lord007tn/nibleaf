@@ -30,8 +30,16 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
   head: ({ loaderData, params }) => {
     const site = loaderData?.site ?? null;
     const config = (site?.project.config ?? null) as { seo?: { metaTitle?: string; metaDescription?: string } } | null;
-    const name = config?.seo?.metaTitle || site?.project.name || 'Documentation';
-    const description = config?.seo?.metaDescription || site?.project.description || `Every update shipped to ${name}.`;
+    // Same cascade as pageHead: language SEO › project SEO › the language's
+    // localized site name/description › project name/description.
+    const langCfg = site?.languageConfig ?? null;
+    const name = langCfg?.seo?.metaTitle || config?.seo?.metaTitle || langCfg?.name || site?.project.name || 'Documentation';
+    const description =
+      langCfg?.seo?.metaDescription ||
+      config?.seo?.metaDescription ||
+      langCfg?.description ||
+      site?.project.description ||
+      `Every update shipped to ${name}.`;
     // Canonicalize to the site's one base (primary domain › subdomain › self).
     const project = site?.project;
     const url = sitePageUrl(params.projectId, 'changelog', loaderData?.lang, {
@@ -112,10 +120,7 @@ function SiteChangelog() {
                 <h2 className="mb-4 font-semibold text-[11px] text-muted-foreground/80 uppercase tracking-wider">{group.label}</h2>
                 <div className="space-y-2.5">
                   {group.entries.map((entry) => (
-                    <article
-                      key={entry.version}
-                      className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:border-border/80"
-                    >
+                    <article key={entry.version} className="flex items-start gap-4 rounded-xl border border-border bg-card p-4">
                       <div className="flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 leading-none">
                         <span className="font-mono font-bold text-[15px] text-primary">v{entry.version}</span>
                       </div>
