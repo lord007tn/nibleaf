@@ -19,6 +19,7 @@ import {
   SaveBar,
   SectionHeader,
   saveConfigSection,
+  sortLanguagesDefaultFirst,
   ToggleRow,
   useScopeDirtyGuard,
 } from './shared';
@@ -49,7 +50,9 @@ interface NavbarValues {
 export function NavbarSection({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useLanguages(project.id);
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>('default');
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -57,7 +60,14 @@ export function NavbarSection({ project }: { project: Project }) {
   return (
     <div>
       <SectionHeader icon="☰" title={t('settings.navbar.title')} />
-      <LanguageScopePicker guard={guard} hint={t('settings.navbar.scope.hint')} languages={extraLanguages} onChange={setScope} value={scope} />
+      <LanguageScopePicker
+        defaultLanguage={defaultLanguage}
+        guard={guard}
+        hint={t('settings.navbar.scope.hint')}
+        languages={extraLanguages}
+        onChange={setScope}
+        value={scope}
+      />
       {/* Keyed per scope so switching re-seeds the form from that scope's config. */}
       {activeLanguage ? (
         <LanguageNavbarForm key={activeLanguage.id} language={activeLanguage} onDirtyChange={setDirty} project={project} />
@@ -155,6 +165,11 @@ function LanguageNavbarForm({
   return (
     <NavbarScopeForm
       ctaLabelPlaceholder={project.config?.navbar?.ctaLabel || undefined}
+      globalPreview={{
+        ctaUrl: project.config?.navbar?.ctaUrl ?? '',
+        showSearch: project.config?.navbar?.showSearch ?? true,
+        changelog: project.config?.navbar?.changelog ?? false,
+      }}
       onDirtyChange={onDirtyChange}
       initial={{
         ctaLabel: override.ctaLabel ?? '',
@@ -198,13 +213,15 @@ function LanguageNavbarForm({
 
 /** The shared navbar field set (CTA, links, tabs, anchors) with the section's
  *  single SaveBar — one instance per active scope. Global-only fields (CTA URL,
- *  toggles) render only for the project scope. */
+ *  toggles) are editable in the project scope; in a language scope they stay
+ *  visible but disabled (`globalPreview`) so the form always reads complete. */
 function NavbarScopeForm({
   initial,
   onSave,
   showGlobalFields = false,
   extraToggles,
   ctaLabelPlaceholder,
+  globalPreview,
   onDirtyChange,
   extraDirty = false,
 }: {
@@ -213,6 +230,9 @@ function NavbarScopeForm({
   showGlobalFields?: boolean;
   extraToggles?: React.ReactNode;
   ctaLabelPlaceholder?: string;
+  /** Language scopes: the project-level values of the global-only fields,
+   *  shown disabled with a "edit in the Default scope" hint. */
+  globalPreview?: { ctaUrl: string; showSearch: boolean; changelog: boolean };
   onDirtyChange?: (dirty: boolean) => void;
   /** Dirtiness of scope state held outside the form (the project scope's toggles). */
   extraDirty?: boolean;
@@ -258,6 +278,10 @@ function NavbarScopeForm({
             </Field>
           )}
         </form.Field>
+      ) : globalPreview ? (
+        <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.navbar.ctaUrl.label')}>
+          <Input className={FIELD_INPUT} disabled placeholder="https://example.com/demo" value={globalPreview.ctaUrl} />
+        </Field>
       ) : null}
 
       <GroupLabel className="mb-2.5">{t('settings.navbar.links.label')}</GroupLabel>
@@ -429,6 +453,22 @@ function NavbarScopeForm({
       </form.Field>
 
       {extraToggles}
+      {globalPreview ? (
+        <>
+          <ToggleRow
+            checked={globalPreview.showSearch}
+            disabled
+            hint={t('settings.chrome.scope.globalField')}
+            title={t('settings.navbar.showSearch.title')}
+          />
+          <ToggleRow
+            checked={globalPreview.changelog}
+            disabled
+            hint={t('settings.chrome.scope.globalField')}
+            title={t('settings.navbar.changelog.title')}
+          />
+        </>
+      ) : null}
 
       <form.Subscribe selector={(state) => state.isDirty}>
         {(isDirty) => <DirtyStateReporter dirty={isDirty || extraDirty} onDirtyChange={onDirtyChange} />}

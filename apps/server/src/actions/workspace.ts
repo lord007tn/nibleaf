@@ -42,12 +42,29 @@ export const getWorkspaceSettings = async (organizationId: string) => {
   };
 };
 
+/** `metadata.git` fields only the server writes (webhook secret, import/sync
+ *  bookkeeping). A settings PATCH replaces `git` wholesale with the validated
+ *  client shape — which cannot contain these (gitConfigSchema strips them) —
+ *  so carry them over instead of silently wiping them on every save. */
+const SERVER_MANAGED_GIT_FIELDS = ['webhookSecret', 'lastImportedAt', 'lastSyncAt', 'lastSyncStatus', 'lastSyncError'] as const;
+
 export const updateWorkspaceSettings = async (organizationId: string, patch: UpdateWorkspaceSettingsBody) => {
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
   if (!org) {
     throw notFound('organization', { id: organizationId });
   }
-  const merged = { ...parseMetadata(org.metadata), ...patch };
+  const current = parseMetadata(org.metadata);
+  const merged = { ...current, ...patch };
+  if (patch.git) {
+    const previousGit = (current.git ?? {}) as Record<string, unknown>;
+    const nextGit: Record<string, unknown> = { ...patch.git };
+    for (const field of SERVER_MANAGED_GIT_FIELDS) {
+      if (nextGit[field] === undefined && previousGit[field] !== undefined) {
+        nextGit[field] = previousGit[field];
+      }
+    }
+    merged.git = nextGit;
+  }
   await prisma.organization.update({ where: { id: organizationId }, data: { metadata: JSON.stringify(merged) } });
   return getWorkspaceSettings(organizationId);
 };

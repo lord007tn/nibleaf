@@ -155,6 +155,30 @@ describe('buildSnapshot', () => {
       ['ar', false],
     ]);
   });
+  it('layers ProjectTranslation identity into the published language config', () => {
+    const snap = buildSnapshot(
+      {
+        ...projectRow,
+        languages: [
+          {
+            code: 'en',
+            label: 'English',
+            direction: 'LTR' as const,
+            isDefault: true,
+            config: { seo: { allowIndex: false } },
+            projectTranslations: [{ name: 'Localized docs', description: 'Localized description' }],
+          },
+        ],
+      },
+      [rawPage],
+      '2026-01-01',
+    );
+    expect(snap.project.languages[0]?.config).toEqual({
+      name: 'Localized docs',
+      description: 'Localized description',
+      seo: { allowIndex: false },
+    });
+  });
   it('deduplicates branch version slugs while preserving exact version ids on pages', () => {
     const snap = buildSnapshot(
       {

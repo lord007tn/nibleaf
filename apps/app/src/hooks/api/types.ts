@@ -3,12 +3,14 @@
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
+export type PublishedLanguageConfig = LanguageConfig & { name?: string; description?: string };
 
 export interface Language {
   id: string;
   projectId: string;
   code: string;
   config?: LanguageConfig | null;
+  translation?: { id: string; projectId: string; languageId: string; name: string | null; description: string | null } | null;
   label: string;
   direction: 'LTR' | 'RTL';
   isDefault: boolean;
@@ -215,6 +217,30 @@ export interface AnalyticsOverview {
   languages: Array<{ language: string; views: number }>;
 }
 
+/** Real per-site usage counters for the Usage settings tab. */
+export interface ProjectUsage {
+  /** Renderable pages (kind PAGE) on the default branch, across all languages. */
+  pages: number;
+  languages: number;
+  /** Members of the site's own organization. */
+  members: number;
+  deployments: {
+    /** Deployments started this calendar month (UTC). */
+    thisMonth: number;
+    /** Version of the latest READY deployment, or null if never published. */
+    latestVersion: number | null;
+    lastPublishedAt: string | null;
+  };
+  traffic: {
+    pageviews30d: number;
+    searches30d: number;
+  };
+  storage: {
+    bytes: number;
+    assets: number;
+  };
+}
+
 export interface WorkspaceAnalytics {
   range: string;
   totalViews: number;
@@ -268,6 +294,26 @@ export interface AiDraftResult {
   text: string;
 }
 
+// ─── Notifications (bell inbox) ──────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: string;
+  projectId: string | null;
+  type: string;
+  title: string;
+  body: string | null;
+  /** Dashboard-relative link opened when the notification is clicked. */
+  href: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+/** One inbox page, newest first. `nextCursor` is null on the last page. */
+export interface NotificationList {
+  items: NotificationItem[];
+  nextCursor: string | null;
+}
+
 // ─── Public site (live preview) ─────────────────────────────────────────────
 
 export interface NavNode {
@@ -298,7 +344,7 @@ export interface SiteShell {
   activeVersion: string;
   /** The ACTIVE language's config (localized site name/description + SEO
    *  defaults) — lets the chrome and site-level head localize the brand. */
-  languageConfig: LanguageConfig | null;
+  languageConfig: PublishedLanguageConfig | null;
   version: number;
   generatedAt: string;
 }
@@ -327,7 +373,7 @@ export interface SitePage {
   activeVersion: string;
   versions: SiteShell['versions'];
   /** SEO defaults of the page's language (layered under the page's own SEO). */
-  languageConfig: LanguageConfig | null;
+  languageConfig: PublishedLanguageConfig | null;
   /** hreflang alternates: `path` is the page's URL in that language, or null
    *  when that language has no corresponding page (then it's omitted). */
   languages: Array<{ code: string; isDefault: boolean; path: string | null }>;

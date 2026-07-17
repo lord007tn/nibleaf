@@ -1,6 +1,6 @@
 # Nibleaf Implementation Status
 
-Last updated: 2026-07-10
+Last updated: 2026-07-17
 
 ## Target
 
@@ -96,6 +96,21 @@ Observed during private product research in a Mintlify workspace:
   Imports can target the default branch/language or a selected Nibleaf
   branch/language. Saved Git import settings hydrate correctly after an async
   settings load.
+- Signed GitHub/GitLab push webhooks for configured public repositories. A
+  verified push to the configured branch re-runs the one-way import and can
+  optionally publish automatically; the Git settings surface exposes secret
+  rotation and the last synchronization result.
+- Ghost JSON import with HTML-to-Markdown conversion, idempotent page updates,
+  and language-aware routing. Ghost `en`, `ar`, or other locale tag slugs map to
+  project languages through proper `Language` records; imports stop before
+  writing when a tagged language is missing, and the UI explains the required
+  one-language-tag-per-article convention. Remote Ghost images are validated,
+  copied into project object storage, rewritten to stable asset URLs, and reused
+  idempotently on repeated imports.
+- Localized project name and description use an explicit `ProjectTranslation`
+  table with foreign keys to `Project` and `Language` plus a unique
+  `(projectId, languageId)` constraint. Legacy values are migrated out of the
+  language JSON config.
 - Page creation, listing, moving, and reordering validate branch/language scope
   server-side, so Git-style branches and multilingual trees cannot be crossed by
   submitting IDs from another project, branch, or language.
@@ -143,9 +158,9 @@ Observed during private product research in a Mintlify workspace:
 
 ## Partial / Deliberate Limits
 
-- Git integration is currently one-way import from public GitHub, GitLab, or
-  generic http(s) Git repositories. There is no OAuth/private-repo sync, webhook
-  sync, or two-way push yet.
+- Git content remains import-based and public-repository-only. Signed push
+  webhooks can repeat the import automatically, but private-repository OAuth,
+  two-way push, and source-level import rollback are not implemented.
 - Multilingual authoring is manual/structural. There is no automatic translation
   workflow.
 - TLS certificates and wildcard/custom-domain ingress are handled by Coolify or
@@ -156,6 +171,26 @@ Observed during private product research in a Mintlify workspace:
   search is implemented, including configurable result count.
 - The preview deployments add-on is implemented as an authenticated live draft
   preview route, not as immutable public/shareable preview deployment artifacts.
+
+## Next Work Queue
+
+1. Normalize every translatable persisted aggregate into an explicit
+   `<Entity>Translation` table with a required foreign key to `Language` and a
+   unique `(entityId, languageId)` constraint. `ProjectTranslation` is complete;
+   next is a carefully staged `PageTranslation` migration. Today's
+   `Page.languageId` trees are already language-safe, so the page migration must
+   preserve independent localized hierarchy, paths, branches, and
+   `translationKey` alternates without duplicating content.
+2. Add private-repository OAuth for GitHub/GitLab and source-level rollback for
+   imports. The signed push webhook and optional auto-publish path are complete;
+   two-way repository writes remain out of scope until conflict semantics are
+   designed.
+3. Keep Slack, Discord, and Zapier cards as intentional placeholders until
+   their delivery workers and credential lifecycle exist.
+4. Keep API-key settings hidden until API-key-authenticated content routes are
+   implemented and covered by scope/rotation/revocation tests.
+5. Split the remaining large frontend chunks by route/editor capability and
+   track the resulting bundle budget in CI.
 
 ## Deployment Notes
 
@@ -380,8 +415,51 @@ Completed on 2026-07-01:
   - `pnpm --filter @nibleaf/app test`.
   - Code inspection confirmed integrations no longer persist connected-looking
     states or expose connect/save controls in the self-hosted build; existing
-    metadata is displayed read-only and users are directed to the Git settings
-    tab for public repository imports.
+  metadata is displayed read-only and users are directed to the Git settings
+  tab for public repository imports.
+
+Completed on 2026-07-17:
+
+- Exported the legacy `ghost.joodbooking.com` publication (349 total entries,
+  297 published) and preserved the source export plus a reproducible `en`/`ar`
+  split report for the one-time production migration.
+- Imported all 297 published Ghost items into the live JoodBooking project:
+  117 English and 180 Arabic, with 0 skipped. English was restored as the
+  default language, both languages remain enabled, and the Arabic root groups
+  were localized to `المدونة` and `الصفحات`.
+- Published and verified the production deployment at
+  `https://docs.joodbooking.com`: HTTP 200, 298 sitemap URLs (the original
+  Welcome page plus all migrated items), including 180 Arabic URLs and 118
+  English/default URLs.
+- Repaired all migrated Ghost image references in the live English and Arabic
+  documentation and republished. A sampled Arabic guide renders ten screenshots
+  from `ghost.joodbooking.com`, each fully loaded at its natural dimensions.
+- Added safe Ghost asset ownership for future imports: public-host validation,
+  redirect/type/size limits, object-storage persistence, Markdown rewriting,
+  per-import deduplication, and stable reuse across repeated imports.
+- Preserved non-language Ghost tags as published page metadata, kept legacy
+  help-site links intact, omitted the stock Ghost Coming soon post, and fixed
+  generated excerpts so Markdown image syntax and source URLs cannot leak below
+  page headings.
+- Extended the same asset ownership pipeline to Mintlify imports. Relative
+  Markdown and MDX image references resolve against their source file, are
+  copied into project storage, and modern object-style navigation retains page
+  titles, icons, and tags.
+- Added Ghost language-tag parsing, locale preflight validation, multilingual
+  import routing, aggregated warnings for untagged/ambiguous content, focused
+  mapping tests, and a bilingual tagging tutorial in the import UI.
+- Replaced the import cards/wizard with a compact, unnumbered single-workspace
+  flow inspired by Mintlify's source composer, with inline Mintlify/Ghost source
+  settings, a Ghost site URL for image migration, and a collapsed language-tag
+  tutorial.
+- Reworked General settings into a responsive side-by-side translation editor
+  and moved localized project identity into the new `ProjectTranslation` table.
+  The migration preserves existing translations while removing them from JSON.
+- Normalized primary sidebar controls to the same 48px vertical rhythm.
+- Verification passed: full lint; server (102), app (93), validator (34), and
+  shared (68) test suites (297 tests total); all 16 package
+  typechecks; and the full production build. The build still reports the documented large
+  frontend chunk warnings, so bundle splitting remains in the queue above.
 
 ## Pending / External
 

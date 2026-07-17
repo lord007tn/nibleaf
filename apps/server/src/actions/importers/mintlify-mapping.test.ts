@@ -156,6 +156,14 @@ describe('parseMintlifyNavigation', () => {
       { kind: 'page', path: 'setup/install' },
     ]);
   });
+
+  it('preserves modern object page entries and their display metadata', () => {
+    const { nodes, warnings } = parseMintlifyNavigation({
+      navigation: { groups: [{ group: 'Guides', pages: [{ page: '/intro.mdx', label: 'Start here', icon: 'rocket', tag: 'New' }] }] },
+    });
+    expect(warnings).toEqual([]);
+    expect(group(nodes[0] as NavNode).children).toEqual([{ kind: 'page', path: 'intro', title: 'Start here', icon: 'rocket', tag: 'New' }]);
+  });
 });
 
 describe('findMintlifyConfigPath', () => {
@@ -219,6 +227,18 @@ describe('mapMintlifyConfig', () => {
     const stringLogo = mapMintlifyConfig({ logo: '/logo.svg' }, []);
     expect(stringLogo.config.branding).toBeUndefined();
     expect(stringLogo.warnings.filter((w) => w.includes('Settings → Branding'))).toHaveLength(1);
+  });
+
+  it('keeps repo-relative branding when the importer can resolve it to the source repository', () => {
+    const { config, warnings } = mapMintlifyConfig({ logo: '/logo.svg', favicon: './favicon.png' }, [], {
+      resolveRepoAsset: (path) => `https://raw.example${path.startsWith('/') ? path : `/${path.replace(/^\.\//, '')}`}`,
+    });
+    expect(config.branding).toEqual({
+      logoLight: 'https://raw.example/logo.svg',
+      logoDark: 'https://raw.example/logo.svg',
+      favicon: 'https://raw.example/favicon.png',
+    });
+    expect(warnings).toEqual([]);
   });
 
   it('rejects invalid hex colors with a warning instead of failing', () => {

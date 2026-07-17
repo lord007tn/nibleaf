@@ -15,10 +15,12 @@ import type {
   Invitation,
   Language,
   Member,
+  NotificationList,
   Page,
   PageNode,
   PendingChanges,
   Project,
+  ProjectUsage,
   SearchHit,
   SitePage,
   SiteShell,
@@ -200,6 +202,19 @@ export const useAnalytics = (projectId: string | undefined, range: string) =>
       ),
   });
 
+/** Per-site usage counters (content, team, publish activity, traffic, storage)
+ *  rendered as plan-limit meters on the settings Usage tab. */
+export const useProjectUsage = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.usage.forProject(projectId ?? ''),
+    enabled: Boolean(projectId),
+    queryFn: async () =>
+      getData<ProjectUsage>(
+        await api.app.projects[':projectId'].settings.usage.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
+        'usage',
+      ),
+  });
+
 export const useComments = (projectId: string | undefined, pageId?: string) =>
   useQuery({
     queryKey: queryKeys.comments.all(projectId ?? '', pageId),
@@ -306,4 +321,22 @@ export const useSiteChangelog = (id: string | undefined) =>
     retry: false,
     queryFn: async () =>
       getData<ChangelogEntry[]>(await api.public.sites[':id'].changelog.$get({ param: { id: requireQueryValue(id, 'Site ID') } }), 'changelog'),
+  });
+
+// ─── Notifications (bell inbox) ──────────────────────────────────────────────
+
+/** The first inbox page (newest 50). Pass `enabled: false` until the popover opens. */
+export const useNotifications = (options?: { enabled?: boolean }) =>
+  useQuery({
+    queryKey: queryKeys.notifications.list(),
+    enabled: options?.enabled ?? true,
+    queryFn: async () => getData<NotificationList>(await api.app.notifications.$get({ query: {} }), 'notifications'),
+  });
+
+/** Unread badge count for the header bell. Polls every 60s. */
+export const useUnreadNotificationCount = () =>
+  useQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    refetchInterval: 60_000,
+    queryFn: async () => getData<{ count: number }>(await api.app.notifications['unread-count'].$get(), 'notifications'),
   });

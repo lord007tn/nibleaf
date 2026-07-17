@@ -4,9 +4,11 @@ import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
+import { RemoteAssetMigrator } from './ghost-assets';
 import { fetchRawText, getGitHubDefaultBranch, githubRawUrl, listGitHubFiles } from './github';
+import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { findMintlifyConfigPath, mapMintlifyConfig, mergeConfigPreservingExisting, type NavNode, parseMintlifyNavigation } from './mintlify-mapping';
-import { defaultImportTarget, ensureGroupPage, type ImportTarget, upsertLeafPage } from './persistence';
+import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertLeafPage } from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
 
 /**
@@ -59,11 +61,27 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     // Nav page paths are relative to the config file's directory.
     const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
     const target = await defaultImportTarget(projectId);
+    const removedPlaceholders = await removeImportPlaceholders(target);
+    if (removedPlaceholders > 0) {
+      summary.warnings.push(`Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}.`);
+    }
+    const assets = new RemoteAssetMigrator(projectId, 'mintlify');
     const state = { pages: 0, capWarned: false };
-    await importNodes(nodes, null, { owner, name, branch }, baseDir, blobs, target, summary, state);
+    await importNodes(nodes, null, { owner, name, branch }, baseDir, blobs, target, assets, summary, state);
+    summary.assetsImported = assets.migrated;
+    summary.assetsSkipped = assets.skipped;
+    if (assets.skipped > 0) {
+      const reasons = [...assets.failures].slice(0, 3).join('; ');
+      summary.warnings.push(
+        `${assets.skipped} Mintlify image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source references were preserved.`,
+      );
+    }
 
     // Site chrome → project config, but only into keys that are currently empty.
-    const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, nodes);
+    const rawRepoUrl = (path: string) => githubRawUrl(owner, name, branch, path);
+    const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, nodes, {
+      resolveRepoAsset: (path) => resolveMintlifyConfigAsset(path, configPath, blobs, rawRepoUrl),
+    });
     summary.warnings.push(...configWarnings);
     if (Object.keys(patch).length > 0) {
       const existing = (project.config as ProjectConfig | null) ?? {};
@@ -95,6 +113,7 @@ const importNodes = async (
   baseDir: string,
   blobs: Set<string>,
   target: ImportTarget,
+  assets: RemoteAssetMigrator,
   summary: ImportSummary,
   state: { pages: number; capWarned: boolean },
 ): Promise<void> => {
@@ -130,7 +149,7 @@ const importNodes = async (
         ...(node.icon ? { icon: node.icon.slice(0, 64) } : {}),
         position,
       });
-      await importNodes(node.children, groupId, repo, baseDir, blobs, target, summary, state);
+      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, summary, state);
       continue;
     }
 
@@ -152,6 +171,13 @@ const importNodes = async (
     // MDX imports as-is (the editor/renderer handles Mintlify-style components);
     // only the frontmatter is stripped into title/description/icon.
     const { meta, body } = parseFrontmatter(raw);
+    const assetReferences = rewriteMintlifyAssetReferences(body, filePath, blobs, (path) => githubRawUrl(repo.owner, repo.name, repo.branch, path));
+    if (assetReferences.missing.length > 0) {
+      summary.warnings.push(
+        `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
+      );
+    }
+    const content = await assets.rewrite(assetReferences.content);
     const fileBase = node.path.split('/').filter(Boolean).pop() ?? 'page';
     let slug = slugify(fileBase);
     if (!slug) {
@@ -168,10 +194,18 @@ const importNodes = async (
     const outcome = await upsertLeafPage(target, {
       parentId,
       slug,
-      title: deriveTitle(meta, body, fileBase),
-      content: body,
+      title: (node.title ?? deriveTitle(meta, body, fileBase)).slice(0, 200),
+      content,
       ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-      ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+      ...(node.icon || meta.icon ? { icon: (node.icon ?? meta.icon)?.slice(0, 64) } : {}),
+      ...(node.tag || meta.tag
+        ? {
+            config: {
+              tag: (node.tag ?? meta.tag)?.slice(0, 20),
+              tags: [(node.tag ?? meta.tag)?.slice(0, 40)].filter((tag): tag is string => Boolean(tag)),
+            },
+          }
+        : {}),
       position,
     });
     summary[outcome === 'imported' ? 'imported' : 'updated']++;

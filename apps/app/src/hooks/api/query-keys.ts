@@ -34,6 +34,10 @@ export const queryKeys = {
   analytics: {
     overview: (projectId: string, range: string) => ['analytics', projectId, range] as const,
   },
+  usage: {
+    /** Per-site usage counters for the settings Usage tab. */
+    forProject: (projectId: string) => ['usage', projectId] as const,
+  },
   comments: {
     all: (projectId: string, pageId?: string) => ['comments', projectId, pageId ?? null] as const,
   },
@@ -46,6 +50,10 @@ export const queryKeys = {
     all: () => ['members'] as const,
     /** Per-site members + invitations (each site owns its own member list). */
     forProject: (projectId: string) => ['members', projectId] as const,
+  },
+  notifications: {
+    list: () => ['notifications'] as const,
+    unreadCount: () => ['notifications', 'unread-count'] as const,
   },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,

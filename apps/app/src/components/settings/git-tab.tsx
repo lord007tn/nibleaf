@@ -1,16 +1,26 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useForm } from '@tanstack/react-form';
-import { ArrowUpRight, Check, CircleAlert, DownloadCloud, GitBranch, Globe, Hammer, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, GitBranch, Globe, Hammer, Loader2, RefreshCw } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
 import type { Deployment } from '@/hooks/api';
-import { useBranches, useDeployments, useImportFromGit, useLanguages, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import {
+  useBranches,
+  useDeployments,
+  useImportFromGit,
+  useLanguages,
+  useRotateGitWebhookSecret,
+  useUpdateWorkspaceSettings,
+  useWorkspaceSettings,
+} from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { copyToClipboard } from '@/lib/invitations';
 import { SettingsSection } from './section';
 
 interface GitConfig {
@@ -24,9 +34,19 @@ interface GitConfig {
   importBranchId?: string;
   importLanguageId?: string;
   lastImportedAt?: string;
+  /** Publish automatically after each push-webhook sync. */
+  autoPublish?: boolean;
+  // Server-managed (read-only here): the PATCH schema strips them, and the
+  // server carries them over on every save.
+  webhookSecret?: string;
+  lastSyncAt?: string;
+  lastSyncStatus?: 'ok' | 'failed';
+  lastSyncError?: string;
 }
 
-const DEFAULTS: Required<Omit<GitConfig, 'lastImportedAt' | 'connected'>> = {
+const DEFAULTS: Required<
+  Omit<GitConfig, 'lastImportedAt' | 'connected' | 'autoPublish' | 'webhookSecret' | 'lastSyncAt' | 'lastSyncStatus' | 'lastSyncError'>
+> = {
   provider: 'github',
   repo: '',
   cloneUrl: '',
@@ -121,14 +141,28 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
           ? t('settings.git.pipeline.built', { version: latest.version, pages: latest.pagesCount })
           : t('settings.git.pipeline.noBuilds');
 
+  // Prefer the push-webhook sync over the manual import when it is the more
+  // recent of the two (ISO timestamps compare lexicographically). A failed
+  // push sync never updates lastImportedAt, so it stays the latest and shows.
+  const pushSyncIsLatest = Boolean(git.lastSyncAt && (!git.lastImportedAt || git.lastSyncAt >= git.lastImportedAt));
+  const pushSyncFailed = pushSyncIsLatest && git.lastSyncStatus === 'failed';
+  const importTone: StepTone = pushSyncFailed ? 'failed' : git.lastImportedAt || git.lastSyncAt ? 'done' : 'idle';
+  const importDetail = pushSyncFailed
+    ? `${t('settings.git.pipeline.syncFailed', { when: dateTime(git.lastSyncAt ?? '') })}${git.lastSyncError ? ` — ${git.lastSyncError}` : ''}`
+    : pushSyncIsLatest
+      ? t('settings.git.pipeline.lastSync', { when: dateTime(git.lastSyncAt ?? '') })
+      : git.lastImportedAt
+        ? t('settings.git.import.lastImported', { when: dateTime(git.lastImportedAt) })
+        : t('settings.git.import.never');
+
   return (
     <SettingsSection title={t('settings.git.pipeline.title')}>
       <div className="flex flex-col">
         <PipelineStep
-          icon={<DownloadCloud className="size-4" />}
-          tone={git.lastImportedAt ? 'done' : 'idle'}
+          icon={pushSyncFailed ? <CircleAlert className="size-4" /> : <DownloadCloud className="size-4" />}
+          tone={importTone}
           label={t('settings.git.pipeline.import')}
-          detail={git.lastImportedAt ? t('settings.git.import.lastImported', { when: dateTime(git.lastImportedAt) }) : t('settings.git.import.never')}
+          detail={importDetail}
           action={
             <Button size="sm" type="button" variant="outline" disabled={importing} onClick={onImport}>
               {importing ? <Loader2 className="size-3.5 animate-spin" /> : <DownloadCloud className="size-3.5" />}
@@ -181,6 +215,151 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
   );
 }
 
+/** Numbered badge for the webhook setup steps ("done" renders a check). */
+function StepBadge({ done, children }: { done?: boolean; children?: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        'grid size-8 shrink-0 place-items-center rounded-full border font-medium text-xs',
+        done ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border bg-muted/40 text-muted-foreground',
+      )}
+    >
+      {done ? <Check className="size-4" /> : children}
+    </span>
+  );
+}
+
+/**
+ * Push-to-deploy setup, Mintlify-style: Mintlify's GitHub App redeploys docs on
+ * every push to the deployment branch; the self-hosted equivalent is a standard
+ * repository webhook pointed at this project's public webhook URL and signed
+ * with a per-project secret. Steps: connect (done — this card only renders when
+ * connected) → add the webhook → toggle auto-publish.
+ */
+function DeployOnPush({
+  projectId,
+  git,
+  onToggleAutoPublish,
+  togglingAutoPublish,
+}: {
+  projectId: string;
+  git: GitConfig;
+  onToggleAutoPublish: (next: boolean) => void;
+  togglingAutoPublish: boolean;
+}) {
+  const t = useT();
+  const rotateSecret = useRotateGitWebhookSecret(projectId);
+  const [revealed, setRevealed] = useState(false);
+  const webhookUrl = `${window.location.origin}/api/public/git/webhook/${projectId}`;
+  const secret = git.webhookSecret ?? '';
+
+  const copy = async (text: string) => {
+    if (await copyToClipboard(text)) {
+      toast.success(t('settings.git.webhook.copied'));
+    } else {
+      toast.error(t('settings.git.webhook.copyError'));
+    }
+  };
+
+  const rotate = () =>
+    rotateSecret.mutate(undefined, {
+      onSuccess: () => {
+        setRevealed(true);
+        toast.success(t('settings.git.webhook.rotated'));
+      },
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.webhook.rotateError')),
+    });
+
+  const instructions =
+    git.provider === 'gitlab'
+      ? t('settings.git.webhook.instructions.gitlab')
+      : git.provider === 'git'
+        ? t('settings.git.webhook.instructions.git')
+        : t('settings.git.webhook.instructions.github');
+
+  return (
+    <SettingsSection title={t('settings.git.webhook.title')} description={t('settings.git.webhook.description')}>
+      <ol className="flex flex-col gap-6">
+        <li className="flex gap-3">
+          <StepBadge done />
+          <div className="min-w-0 pt-0.5 leading-snug">
+            <div className="font-medium text-sm">{t('settings.git.webhook.stepConnect')}</div>
+            <div className="text-muted-foreground text-xs">{t('settings.git.webhook.stepConnectDone', { branch: git.branch || 'main' })}</div>
+          </div>
+        </li>
+
+        <li className="flex gap-3">
+          <StepBadge done={Boolean(secret)}>2</StepBadge>
+          <div className="min-w-0 flex-1 pt-0.5 leading-snug">
+            <div className="font-medium text-sm">{t('settings.git.webhook.stepWebhook')}</div>
+            <div className="text-muted-foreground text-xs">{t('settings.git.webhook.stepWebhookDetail')}</div>
+            <div className="mt-3 flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="git-webhook-url">{t('settings.git.webhook.url')}</Label>
+                <div className="flex gap-2">
+                  <Input className="font-mono" id="git-webhook-url" readOnly value={webhookUrl} />
+                  <Button aria-label={t('settings.git.webhook.copy')} onClick={() => copy(webhookUrl)} size="icon" type="button" variant="outline">
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="git-webhook-secret">{t('settings.git.webhook.secret')}</Label>
+                {secret ? (
+                  <div className="flex gap-2">
+                    <Input className="font-mono" id="git-webhook-secret" readOnly type={revealed ? 'text' : 'password'} value={secret} />
+                    <Button
+                      aria-label={revealed ? t('settings.git.webhook.hide') : t('settings.git.webhook.reveal')}
+                      onClick={() => setRevealed((value) => !value)}
+                      size="icon"
+                      type="button"
+                      variant="outline"
+                    >
+                      {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    </Button>
+                    <Button aria-label={t('settings.git.webhook.copy')} onClick={() => copy(secret)} size="icon" type="button" variant="outline">
+                      <Copy className="size-4" />
+                    </Button>
+                    <Button disabled={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                      {rotateSecret.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                      {t('settings.git.webhook.rotate')}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Button disabled={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                      {rotateSecret.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                      {t('settings.git.webhook.generate')}
+                    </Button>
+                    <span className="text-muted-foreground text-xs">{t('settings.git.webhook.noSecret')}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-muted-foreground text-xs leading-relaxed">{instructions}</p>
+            </div>
+          </div>
+        </li>
+
+        <li className="flex gap-3">
+          <StepBadge done={git.autoPublish === true}>3</StepBadge>
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pt-0.5">
+            <div className="min-w-0 leading-snug">
+              <div className="font-medium text-sm">{t('settings.git.webhook.stepAutoPublish')}</div>
+              <div className="text-muted-foreground text-xs">{t('settings.git.webhook.autoPublishDetail')}</div>
+            </div>
+            <Switch
+              aria-label={t('settings.git.webhook.stepAutoPublish')}
+              checked={git.autoPublish === true}
+              disabled={togglingAutoPublish}
+              onCheckedChange={(checked) => onToggleAutoPublish(checked)}
+            />
+          </div>
+        </li>
+      </ol>
+    </SettingsSection>
+  );
+}
+
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
   const { data } = useWorkspaceSettings(projectId);
@@ -206,6 +385,10 @@ export function GitTab({ projectId }: { projectId?: string }) {
           path: git.path,
           importBranchId: git.importBranchId,
           importLanguageId: git.importLanguageId,
+          // The PATCH replaces `git` wholesale, so carry the flags a partial
+          // save must not flip (webhook fields are preserved server-side).
+          connected: git.connected,
+          autoPublish: git.autoPublish,
           ...patch,
         },
       },
@@ -491,6 +674,15 @@ export function GitTab({ projectId }: { projectId?: string }) {
       </section>
 
       {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={importFromGit.isPending} /> : null}
+
+      {projectId ? (
+        <DeployOnPush
+          projectId={projectId}
+          git={git}
+          onToggleAutoPublish={(next) => save({ autoPublish: next }, t('settings.git.webhook.autoPublishSaved'))}
+          togglingAutoPublish={update.isPending}
+        />
+      ) : null}
 
       <SettingsSection title={t('settings.git.settingsTitle')} description={t('settings.git.import.description')}>
         {connectForm}

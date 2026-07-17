@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
 import { CommandPalette } from '@/components/app/command-palette';
+import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 
@@ -51,6 +52,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <span className="flex-1 text-start">{t('dashboard.search.placeholder')}</span>
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]">⌘K</kbd>
           </button>
+          <NotificationsPopover />
         </header>
         <main className="mx-auto w-full max-w-[1200px] flex-1 px-6 py-8">{children}</main>
       </SidebarInset>

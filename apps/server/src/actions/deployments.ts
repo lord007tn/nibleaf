@@ -279,7 +279,10 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
   const latest = await getLatestReadyDeployment(projectId);
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    include: { languages: { orderBy: { position: 'asc' } }, branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] } },
+    include: {
+      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+    },
   });
   if (!project) {
     throw notFound('project', { projectId });

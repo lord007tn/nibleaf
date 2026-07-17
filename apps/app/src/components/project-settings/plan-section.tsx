@@ -1,6 +1,8 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Check, Info } from 'lucide-react';
 import type { Project } from '@/hooks/api';
+import { BETA_LIMITS } from '@/lib/beta-limits';
+import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 
@@ -15,6 +17,10 @@ const FEATURES: MessageKey[] = [
 
 export function PlanSection({ project }: { project: Project }) {
   const t = useT();
+  const { number: formatNumber } = useFormatters();
+  // The pages feature quotes the shared beta limit so Plan and Usage never drift.
+  const featureText = (key: MessageKey) =>
+    key === 'settings.plan.selfHosted.feature.pages' ? t(key, { count: formatNumber(BETA_LIMITS.pages) }) : t(key);
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -54,7 +60,7 @@ export function PlanSection({ project }: { project: Project }) {
         <ul className="mt-5 grid gap-2 text-sm sm:grid-cols-2">
           {FEATURES.map((featureKey) => (
             <li key={featureKey} className="flex items-start gap-2 text-muted-foreground">
-              <Check className="mt-0.5 size-3.5 shrink-0 text-primary" /> {t(featureKey)}
+              <Check className="mt-0.5 size-3.5 shrink-0 text-primary" /> {featureText(featureKey)}
             </li>
           ))}
         </ul>

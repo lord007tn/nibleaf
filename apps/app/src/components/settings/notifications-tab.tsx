@@ -1,4 +1,5 @@
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/lib/auth-client';
@@ -105,6 +106,10 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
         {t('settings.notifications.introBefore')}{' '}
         <span className="font-medium text-foreground">{session?.user?.email ?? t('settings.notifications.youFallback')}</span>
         {t('settings.notifications.introAfter')}
+      </p>
+      <p className="-mt-3 flex items-center gap-1.5 text-muted-foreground text-sm">
+        <Bell aria-hidden className="size-3.5" />
+        {t('notifications.settingsHint')}
       </p>
       {GROUPS.map((group) => (
         <SettingsSection key={group.titleKey} title={t(group.titleKey)}>

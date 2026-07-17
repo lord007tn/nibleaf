@@ -110,22 +110,26 @@ export function Segmented<T extends string>({
   onChange,
   options,
   className,
+  disabled = false,
 }: {
   value: T;
   onChange: (value: T) => void;
   options: Array<{ value: T; label: ReactNode }>;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className={cn('inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5', className)}>
+    <div className={cn('inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5', disabled && 'opacity-60', className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
           <button
             className={cn(
-              'h-8 flex-1 cursor-pointer rounded-md px-3 font-medium text-[13px] transition-colors',
-              active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+              'h-8 flex-1 rounded-md px-3 font-medium text-[13px] transition-colors',
+              active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+              disabled ? 'cursor-not-allowed' : cn('cursor-pointer', !active && 'hover:text-foreground'),
             )}
+            disabled={disabled}
             key={option.value}
             onClick={() => onChange(option.value)}
             type="button"
@@ -144,25 +148,50 @@ export function ToggleRow({
   hint,
   checked,
   onCheckedChange,
+  disabled = false,
 }: {
   title: string;
   hint?: string;
   checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   // Associate the visible title with the Switch so assistive tech announces a
   // name (the base-ui switch has no intrinsic label otherwise).
   const titleId = useId();
   return (
     <div className="flex items-center gap-4 border-border border-t py-3.5">
-      <div className="flex-1 leading-snug">
+      <div className={cn('flex-1 leading-snug', disabled && 'opacity-60')}>
         <div id={titleId} className="font-medium text-[13.5px]">
           {title}
         </div>
         {hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
       </div>
-      <Switch checked={checked} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
     </div>
+  );
+}
+
+/**
+ * Canonical ordering for every language list in the settings surfaces:
+ * the default language first, then the configured position.
+ */
+export function sortLanguagesDefaultFirst<T extends { isDefault: boolean; position: number }>(languages: T[]): T[] {
+  return [...languages].sort((a, b) => (b.isDefault ? 1 : 0) - (a.isDefault ? 1 : 0) || a.position - b.position);
+}
+
+/** A language's display label; disabled languages carry the muted "hidden"
+ *  suffix so pickers always signal that the scope isn't live on the site. */
+export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean } }) {
+  const t = useT();
+  if (language.enabled !== false) {
+    return <>{language.label}</>;
+  }
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      {language.label}
+      <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
+    </span>
   );
 }
 
@@ -179,12 +208,16 @@ export function ToggleRow({
  */
 export function LanguageScopePicker({
   languages,
+  defaultLanguage,
   value,
   onChange,
   hint,
   guard,
 }: {
   languages: Array<{ id: string; label: string; enabled?: boolean }>;
+  /** The site's default language — its label annotates the Default segment so
+   *  it's clear which language the global scope actually is. */
+  defaultLanguage?: { label: string } | null;
   value: string;
   onChange: (value: string) => void;
   hint: string;
@@ -210,20 +243,20 @@ export function LanguageScopePicker({
       <Segmented
         onChange={(next) => void handleChange(next)}
         options={[
-          { value: 'default', label: t('settings.chrome.scope.default') },
+          {
+            value: 'default',
+            label: defaultLanguage ? (
+              <span className="inline-flex items-baseline gap-1.5">
+                {t('settings.chrome.scope.default')}
+                <span className="font-normal text-[12px] text-muted-foreground">· {defaultLanguage.label}</span>
+              </span>
+            ) : (
+              t('settings.chrome.scope.default')
+            ),
+          },
           ...languages.map((language) => ({
             value: language.id,
-            label:
-              language.enabled === false ? (
-                <span className="inline-flex items-baseline gap-1.5">
-                  {language.label}
-                  <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">
-                    {t('settings.languages.hiddenBadge')}
-                  </span>
-                </span>
-              ) : (
-                language.label
-              ),
+            label: <LanguageOptionLabel language={language} />,
           })),
         ]}
         value={languages.some((language) => language.id === value) ? value : 'default'}
@@ -293,6 +326,8 @@ export const FIELD_INPUT = 'text-sm';
 export const FIELD_MONO = 'font-mono text-sm';
 export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
 
-/** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter. */
-export const FIELD_COMPACT = 'h-8 rounded-md text-[13px]';
-export const FIELD_COMPACT_MONO = 'h-8 rounded-md font-mono text-[13px]';
+/** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter.
+ *  They always sit inside a bordered list container, so they carry a solid
+ *  background and read as wells instead of border-on-border frames. */
+export const FIELD_COMPACT = 'h-8 rounded-md bg-background text-[13px]';
+export const FIELD_COMPACT_MONO = 'h-8 rounded-md bg-background font-mono text-[13px]';

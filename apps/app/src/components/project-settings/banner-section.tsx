@@ -14,6 +14,7 @@ import {
   SaveBar,
   SectionHeader,
   saveConfigSection,
+  sortLanguagesDefaultFirst,
   ToggleRow,
   useScopeDirtyGuard,
 } from './shared';
@@ -33,7 +34,9 @@ interface BannerValues {
 export function BannerSection({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useLanguages(project.id);
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>('default');
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -42,7 +45,14 @@ export function BannerSection({ project }: { project: Project }) {
     <div>
       <SectionHeader icon="⚑" title={t('settings.banner.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
-      <LanguageScopePicker guard={guard} hint={t('settings.banner.scope.hint')} languages={extraLanguages} onChange={setScope} value={scope} />
+      <LanguageScopePicker
+        defaultLanguage={defaultLanguage}
+        guard={guard}
+        hint={t('settings.banner.scope.hint')}
+        languages={extraLanguages}
+        onChange={setScope}
+        value={scope}
+      />
       {/* Keyed per scope so switching re-seeds the form from that scope's config. */}
       {activeLanguage ? (
         <LanguageBannerForm key={activeLanguage.id} language={activeLanguage} onDirtyChange={setDirty} project={project} />

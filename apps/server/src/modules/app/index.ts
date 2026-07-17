@@ -11,6 +11,7 @@ import domains from './domains/handlers';
 import imports from './imports/handlers';
 import languages from './languages/handlers';
 import members from './members/handlers';
+import notifications from './notifications/handlers';
 import pages from './pages/handlers';
 import projectMembers from './project-members/handlers';
 import projectSettings from './project-settings/handlers';
@@ -34,6 +35,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/settings/import', imports)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)
-  .route('/members', members);
+  .route('/members', members)
+  .route('/notifications', notifications);
 
 export default app;

@@ -23,6 +23,9 @@ export interface NavPageNode {
   kind: 'page';
   /** Repo-relative page path without extension, e.g. `guides/quickstart`. */
   path: string;
+  title?: string;
+  icon?: string;
+  tag?: string;
 }
 
 export type NavNode = NavGroupNode | NavPageNode;
@@ -73,6 +76,24 @@ const parsePagesArray = (entries: unknown, warnings: string[]): NavNode[] => {
       continue;
     }
     if (isDict(entry)) {
+      const page = asString(entry.page) ?? asString(entry.path);
+      if (page) {
+        if (isExternalUrl(page)) {
+          warnings.push(`Skipped external navigation link "${page}".`);
+          continue;
+        }
+        const path = normalizePagePath(page);
+        if (path) {
+          nodes.push({
+            kind: 'page',
+            path,
+            ...(asString(entry.label) || asString(entry.title) ? { title: asString(entry.label) ?? asString(entry.title) } : {}),
+            ...(asString(entry.icon) ? { icon: asString(entry.icon) } : {}),
+            ...(asString(entry.tag) ? { tag: asString(entry.tag) } : {}),
+          });
+        }
+        continue;
+      }
       nodes.push(...parseContainerObject(entry, warnings));
       continue;
     }
@@ -265,13 +286,18 @@ export interface MintlifyConfigMapping {
   warnings: string[];
 }
 
+export interface MintlifyConfigMappingOptions {
+  /** Resolve repo-relative branding paths to a browser-reachable source URL. */
+  resolveRepoAsset?: (path: string) => string | undefined;
+}
+
 /**
  * Map the Mintlify site chrome onto our ProjectConfig:
  * colors.primary → styling.primaryColor; logo/favicon → branding;
  * navbar/topbarLinks/topbarCtaButton → navbar links + CTA; tabs → navbar.tabs;
  * anchors → navbar.anchors; footer/footerSocials → footer; name → seo.metaTitle.
  */
-export const mapMintlifyConfig = (config: Dict, nav: NavNode[]): MintlifyConfigMapping => {
+export const mapMintlifyConfig = (config: Dict, nav: NavNode[], options: MintlifyConfigMappingOptions = {}): MintlifyConfigMapping => {
   const warnings: string[] = [];
   const patch: ProjectConfig = {};
 
@@ -295,8 +321,12 @@ export const mapMintlifyConfig = (config: Dict, nav: NavNode[]): MintlifyConfigM
       return undefined;
     }
     if (!isExternalUrl(value)) {
-      skippedRepoRelativeBranding = true;
-      return undefined;
+      const resolved = options.resolveRepoAsset?.(value);
+      if (!resolved) {
+        skippedRepoRelativeBranding = true;
+        return undefined;
+      }
+      return safeUrl(resolved, warnings, what);
     }
     return safeUrl(value, warnings, what);
   };

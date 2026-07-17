@@ -22,11 +22,11 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
       <DropdownMenuTrigger
         render={
           <button
-            className="flex w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg p-2 text-start hover:bg-sidebar-accent"
+            className="flex h-12 w-full cursor-pointer items-center gap-2.5 overflow-hidden rounded-lg p-2 text-start hover:bg-sidebar-accent"
             type="button"
           >
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-sidebar-border bg-sidebar-primary/10">
-              {selected ? <NibleafMark className="size-6" /> : <LayoutGrid className="size-5 text-sidebar-primary" />}
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-sidebar-border bg-sidebar-primary/10">
+              {selected ? <NibleafMark className="size-5.5" /> : <LayoutGrid className="size-4.5 text-sidebar-primary" />}
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold text-sm">{selected?.name ?? t('project.allSites')}</span>

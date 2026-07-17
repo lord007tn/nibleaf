@@ -161,8 +161,8 @@ export type ProjectConfig = z.infer<typeof projectConfigSchema>;
 
 // ─── Per-language config (SEO + behaviour overrides) ─────────────────────────
 
-/** Per-language site chrome + SEO defaults. `name`/`description` localize the
- *  published site's name and description for this language; `seo` applies to
+/** Per-language site chrome + SEO defaults. Project name/description live in
+ *  ProjectTranslation; `seo` applies to
  *  every page in the language, overriding the project-level SEO and overridden
  *  in turn by a page's own SEO. The chrome sections (`navbar`/`footer`/`banner`/
  *  `search`) mirror the text-bearing parts of `projectConfigSchema` and override
@@ -172,10 +172,6 @@ export type ProjectConfig = z.infer<typeof projectConfigSchema>;
  *  override without touching the language's other config. */
 export const languageConfigSchema = z
   .object({
-    /** Localized site name (header brand, og:site_name, title suffix). */
-    name: z.string().max(80).optional(),
-    /** Localized site description (SEO description fallback). */
-    description: z.string().max(300).optional(),
     seo: z
       .object({
         metaTitle: z.string().max(160).optional(),
@@ -228,6 +224,14 @@ export const languageConfigSchema = z
   .strict();
 export type LanguageConfig = z.infer<typeof languageConfigSchema>;
 
+export const projectTranslationSchema = z
+  .object({
+    name: z.string().max(120).nullable().optional(),
+    description: z.string().max(500).nullable().optional(),
+  })
+  .strict();
+export type ProjectTranslationInput = z.infer<typeof projectTranslationSchema>;
+
 // ─── Per-page config (SEO override + behaviour) ──────────────────────────────
 
 export const pageModeEnum = z.enum(['default', 'wide', 'center']);
@@ -250,6 +254,8 @@ export const pageConfigSchema = z
     sidebarTitle: z.string().max(120).optional(),
     /** A short badge shown next to the nav label (Mintlify `tag`, e.g. "New", "Beta"). */
     tag: z.string().max(20).optional(),
+    /** Source taxonomy retained by importers and shown on the article. */
+    tags: z.array(z.string().min(1).max(40)).max(10).optional(),
     /** Content width on the live site. */
     mode: pageModeEnum.optional(),
     /** Hide the right-hand "On this page" table of contents. */
@@ -310,6 +316,7 @@ export const updateLanguageBody = z.object({
   enabled: z.boolean().optional(),
   position: z.number().int().optional(),
   config: languageConfigSchema.nullable().optional(),
+  translation: projectTranslationSchema.nullable().optional(),
 });
 export type UpdateLanguageBody = z.infer<typeof updateLanguageBody>;
 
@@ -392,17 +399,27 @@ export type AddDomainBody = z.infer<typeof addDomainBody>;
 
 // ─── Members & invitations ───────────────────────────────────────────────────
 
+/** Every role a member can HOLD (display, filters). Do not use for grants. */
 export const memberRoleEnum = z.enum(['owner', 'admin', 'member']);
+
+/** Roles that can be GRANTED via invites and role changes. `owner` is
+ *  deliberately excluded at the schema level: a workspace has exactly one
+ *  owner, and ownership moves only through the transfer-ownership endpoint. */
+export const assignableMemberRoleEnum = z.enum(['admin', 'member']);
 
 export const inviteMemberBody = z.object({
   email: z.email(),
-  role: memberRoleEnum.default('member'),
+  // Invitations can never carry the owner role — see assignableMemberRoleEnum.
+  role: assignableMemberRoleEnum.default('member'),
 });
 export type InviteMemberBody = z.infer<typeof inviteMemberBody>;
 
-export const updateMemberRoleBody = z.object({ role: memberRoleEnum });
+// Role changes can never grant owner — see assignableMemberRoleEnum.
+export const updateMemberRoleBody = z.object({ role: assignableMemberRoleEnum });
 export type UpdateMemberRoleBody = z.infer<typeof updateMemberRoleBody>;
 
+/** The ONLY path to the owner role: an owner-guarded transfer that atomically
+ *  promotes the target admin and demotes the previous owner(s) to admin. */
 export const transferOwnershipBody = z.object({ memberId: z.string().min(1) });
 export type TransferOwnershipBody = z.infer<typeof transferOwnershipBody>;
 
@@ -546,6 +563,8 @@ export const gitConfigSchema = z.object({
   importLanguageId: z.string().max(120).optional(),
   connected: z.boolean().optional(),
   lastImportedAt: z.string().max(40).optional(),
+  /** Publish a new deployment automatically after a push-webhook import. */
+  autoPublish: z.boolean().optional(),
 });
 export type GitConfig = z.infer<typeof gitConfigSchema>;
 
@@ -558,6 +577,22 @@ export const updateWorkspaceSettingsBody = z
   })
   .strict();
 export type UpdateWorkspaceSettingsBody = z.infer<typeof updateWorkspaceSettingsBody>;
+
+// ─── Notifications (in-app bell inbox) ───────────────────────────────────────
+
+/** Cursor pagination for the notification inbox (`cursor` = last row id). */
+export const notificationsListQuery = z.object({ cursor: z.string().max(64).optional() });
+export type NotificationsListQuery = z.infer<typeof notificationsListQuery>;
+
+/** Mark specific notifications read (`ids`) or the whole inbox (`all: true`). */
+export const markNotificationsReadBody = z
+  .object({
+    ids: z.array(z.string().max(64)).max(100).optional(),
+    all: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => value.all === true || (value.ids?.length ?? 0) > 0, { message: 'Provide notification ids or all: true.' });
+export type MarkNotificationsReadBody = z.infer<typeof markNotificationsReadBody>;
 
 // ─── Admin panel ────────────────────────────────────────────────────────────
 
@@ -587,3 +622,29 @@ export type MintlifyImportBody = z.infer<typeof mintlifyImportBody>;
  *  object" is enforced here; the importer validates the actual shape. */
 export const ghostImportBody = z.record(z.string(), z.unknown());
 export type GhostImportBody = z.infer<typeof ghostImportBody>;
+
+// ─── Git push-to-deploy webhook ──────────────────────────────────────────────
+// Public endpoint: POST /api/public/git/webhook/:projectId. GitHub requests are
+// verified via `X-Hub-Signature-256` (HMAC-SHA256 of the raw body), GitLab via
+// the `X-Gitlab-Token` secret header. The secret and sync bookkeeping live in
+// the org metadata `git` blob NEXT TO the client-editable GitConfig, but are
+// deliberately absent from `gitConfigSchema` so a settings PATCH can never set
+// or clear them — the admin-only rotate endpoint and the webhook sync runner
+// are the only writers.
+
+export const gitWebhookParams = z.object({ projectId: z.string().min(1).max(120) });
+export type GitWebhookParams = z.infer<typeof gitWebhookParams>;
+
+export type GitSyncStatus = 'ok' | 'failed';
+
+/** Full stored shape of `metadata.git`: client-editable fields + server-managed
+ *  webhook fields. */
+export interface GitConfigStored extends GitConfig {
+  /** Hex secret used to verify webhook deliveries. Server-generated only. */
+  webhookSecret?: string;
+  /** Last push-webhook sync attempt (set on success AND failure). */
+  lastSyncAt?: string;
+  lastSyncStatus?: GitSyncStatus;
+  /** Present only when the last push sync failed. */
+  lastSyncError?: string;
+}

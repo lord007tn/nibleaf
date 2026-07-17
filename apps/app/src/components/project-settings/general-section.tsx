@@ -1,16 +1,27 @@
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Language, LanguageConfig, Project } from '@/hooks/api';
+import type { Language, Project } from '@/hooks/api';
 import { useLanguages, useUpdateLanguage, useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 import { useT } from '@/lib/i18n';
-import { FIELD_INPUT, FIELD_TEXTAREA, Field, GroupLabel, SaveBar, SectionHeader } from './shared';
+import {
+  FIELD_INPUT,
+  FIELD_TEXTAREA,
+  Field,
+  GroupLabel,
+  LanguageOptionLabel,
+  SaveBar,
+  SectionHeader,
+  Segmented,
+  sortLanguagesDefaultFirst,
+} from './shared';
 
 /** A small curated set of emoji icons the project can use as its avatar glyph. */
 const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'];
@@ -30,16 +41,9 @@ const deploymentNameError = (value: string, message: string) => {
 type TranslationDraft = { name: string; description: string };
 
 const draftOf = (language: Language): TranslationDraft => ({
-  name: language.config?.name ?? '',
-  description: language.config?.description ?? '',
+  name: language.translation?.name ?? '',
+  description: language.translation?.description ?? '',
 });
-
-/** True when the language's stored SEO carries an actual override (mirrors the
- *  language-settings dialog: empty strings and allowIndex:true are defaults). */
-const hasSeoOverride = (config: LanguageConfig | null | undefined): boolean => {
-  const seo = config?.seo;
-  return Boolean(seo && ([seo.metaTitle, seo.metaDescription, seo.socialImage].some((v) => (v ?? '').trim() !== '') || seo.allowIndex === false));
-};
 
 export function GeneralSection({ project }: { project: Project }) {
   const t = useT();
@@ -49,9 +53,13 @@ export function GeneralSection({ project }: { project: Project }) {
   const [icon, setIcon] = useState<string>(project.icon ?? '📘');
   const [iconOpen, setIconOpen] = useState(false);
   // Localized site name/description per NON-default language (Translations
-  // group below). Drafts are keyed by language id; untouched languages read
-  // straight from their stored config.
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  // group below). Drafts are keyed by language id and survive switching the
+  // selected language; untouched languages read straight from their stored config.
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
+  const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>({});
   const setTranslation = (language: Language, patch: Partial<TranslationDraft>) =>
     setTranslations((prev) => ({ ...prev, [language.id]: { ...(prev[language.id] ?? draftOf(language)), ...patch } }));
@@ -72,8 +80,7 @@ export function GeneralSection({ project }: { project: Project }) {
       if (name === stored.name && description === stored.description) {
         continue;
       }
-      const config = !name && !description && !hasSeoOverride(language.config) ? null : { name, description };
-      await updateLanguage.mutateAsync({ id: language.id, body: { config } });
+      await updateLanguage.mutateAsync({ id: language.id, body: { translation: name || description ? { name, description } : null } });
     }
   };
 
@@ -120,7 +127,7 @@ export function GeneralSection({ project }: { project: Project }) {
         </button>
       </div>
       {iconOpen ? (
-        <div className="mb-5 flex flex-wrap gap-2 rounded-xl border border-border bg-muted/40 p-3.5">
+        <div className="mb-5 flex flex-wrap gap-2 rounded-xl bg-muted/30 p-3.5">
           {ICON_CHOICES.map((choice) => {
             const active = choice === icon;
             return (
@@ -143,20 +150,146 @@ export function GeneralSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
-        {(field) => (
-          <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
-            <Input
-              className={FIELD_INPUT}
-              id="set-name"
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              value={field.state.value}
+      {selectedLanguage ? (
+        <div className="mb-6 border-border border-t pt-5">
+          <div className="mb-4">
+            <GroupLabel>{t('settings.general.translations.title')}</GroupLabel>
+            <p className="mt-1 text-[12.5px] text-muted-foreground leading-snug">{t('settings.general.translations.hint')}</p>
+          </div>
+
+          {extraLanguages.length <= 3 ? (
+            <Segmented
+              className="mb-4"
+              onChange={setSelectedLanguageId}
+              options={extraLanguages.map((language) => ({ value: language.id, label: <LanguageOptionLabel language={language} /> }))}
+              value={selectedLanguage.id}
             />
-            <FieldError errors={field.state.meta.errors} />
-          </Field>
-        )}
-      </form.Field>
+          ) : (
+            <div className="mb-4">
+              <Select onValueChange={(value) => setSelectedLanguageId((value as string) ?? undefined)} value={selectedLanguage.id}>
+                <SelectTrigger aria-label={t('settings.chrome.scope.label')} className="w-full bg-background sm:w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {extraLanguages.map((language) => (
+                    <SelectItem key={language.id} value={language.id}>
+                      <LanguageOptionLabel language={language} />
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="grid grid-cols-1 border-border border-b bg-muted/35 sm:grid-cols-2 sm:divide-x sm:divide-border rtl:sm:divide-x-reverse">
+              <div className="flex min-h-11 items-center gap-2 px-4 py-2.5">
+                <span className="font-semibold text-[13px]">{defaultLanguage?.label ?? t('settings.chrome.scope.default')}</span>
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
+                  {t('settings.languages.defaultBadge')}
+                </span>
+              </div>
+              <div className="flex min-h-11 items-center px-4 py-2.5 font-semibold text-[13px]">
+                <LanguageOptionLabel language={selectedLanguage} />
+              </div>
+            </div>
+
+            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
+              {(field) => {
+                const draft = translations[selectedLanguage.id] ?? draftOf(selectedLanguage);
+                return (
+                  <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:gap-6">
+                    <Field className="mb-0" hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
+                      <Input
+                        className={FIELD_INPUT}
+                        id="set-name"
+                        onBlur={field.handleBlur}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        value={field.state.value}
+                      />
+                      <FieldError errors={field.state.meta.errors} />
+                    </Field>
+                    <Field className="mb-0" htmlFor="set-lang-name" label={t('settings.general.translations.name.label')}>
+                      <Input
+                        className={FIELD_INPUT}
+                        id="set-lang-name"
+                        onChange={(e) => setTranslation(selectedLanguage, { name: e.target.value })}
+                        placeholder={field.state.value}
+                        value={draft.name}
+                      />
+                    </Field>
+                  </div>
+                );
+              }}
+            </form.Field>
+
+            <div className="border-border border-t">
+              <form.Field name="description">
+                {(field) => {
+                  const draft = translations[selectedLanguage.id] ?? draftOf(selectedLanguage);
+                  return (
+                    <div className="grid grid-cols-1 gap-5 p-4 sm:grid-cols-2 sm:gap-6">
+                      <Field
+                        className="mb-0"
+                        hint={t('settings.general.description.hint')}
+                        htmlFor="set-desc"
+                        label={t('settings.general.description.label')}
+                      >
+                        <Textarea
+                          className={FIELD_TEXTAREA}
+                          id="set-desc"
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          value={field.state.value}
+                        />
+                      </Field>
+                      <Field className="mb-0" htmlFor="set-lang-desc" label={t('settings.general.translations.description.label')}>
+                        <Textarea
+                          className={FIELD_TEXTAREA}
+                          id="set-lang-desc"
+                          onChange={(e) => setTranslation(selectedLanguage, { description: e.target.value })}
+                          placeholder={field.state.value || undefined}
+                          value={draft.description}
+                        />
+                      </Field>
+                    </div>
+                  );
+                }}
+              </form.Field>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
+            {(field) => (
+              <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
+                <Input
+                  className={FIELD_INPUT}
+                  id="set-name"
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  value={field.state.value}
+                />
+                <FieldError errors={field.state.meta.errors} />
+              </Field>
+            )}
+          </form.Field>
+          <form.Field name="description">
+            {(field) => (
+              <Field hint={t('settings.general.description.hint')} htmlFor="set-desc" label={t('settings.general.description.label')}>
+                <Textarea
+                  className={FIELD_TEXTAREA}
+                  id="set-desc"
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  value={field.state.value}
+                />
+              </Field>
+            )}
+          </form.Field>
+        </>
+      )}
 
       <form.Field name="slug" validators={{ onChange: ({ value }) => deploymentNameError(value, t('settings.general.url.error')) }}>
         {(field) => (
@@ -182,55 +315,6 @@ export function GeneralSection({ project }: { project: Project }) {
           </Field>
         )}
       </form.Field>
-
-      <form.Field name="description">
-        {(field) => (
-          <Field hint={t('settings.general.description.hint')} htmlFor="set-desc" label={t('settings.general.description.label')}>
-            <Textarea
-              className={FIELD_TEXTAREA}
-              id="set-desc"
-              onBlur={field.handleBlur}
-              onChange={(e) => field.handleChange(e.target.value)}
-              value={field.state.value}
-            />
-          </Field>
-        )}
-      </form.Field>
-
-      {extraLanguages.length > 0 ? (
-        <div className="mb-6 border-border border-t pt-5">
-          <GroupLabel>{t('settings.general.translations.title')}</GroupLabel>
-          <p className="mt-1 mb-4 text-[12.5px] text-muted-foreground leading-snug">{t('settings.general.translations.hint')}</p>
-          <div className="flex flex-col gap-4">
-            {extraLanguages.map((language) => {
-              const draft = translations[language.id] ?? draftOf(language);
-              return (
-                <div className="rounded-xl border border-border bg-muted/20 p-4" key={language.id}>
-                  <div className="mb-3 font-medium text-[13px]">{language.label}</div>
-                  <Field className="mb-4" htmlFor={`set-lang-name-${language.id}`} label={t('settings.general.translations.name.label')}>
-                    <Input
-                      className={FIELD_INPUT}
-                      id={`set-lang-name-${language.id}`}
-                      onChange={(e) => setTranslation(language, { name: e.target.value })}
-                      placeholder={project.name}
-                      value={draft.name}
-                    />
-                  </Field>
-                  <Field className="mb-0" htmlFor={`set-lang-desc-${language.id}`} label={t('settings.general.translations.description.label')}>
-                    <Textarea
-                      className={FIELD_TEXTAREA}
-                      id={`set-lang-desc-${language.id}`}
-                      onChange={(e) => setTranslation(language, { description: e.target.value })}
-                      placeholder={project.description ?? undefined}
-                      value={draft.description}
-                    />
-                  </Field>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
     </form>

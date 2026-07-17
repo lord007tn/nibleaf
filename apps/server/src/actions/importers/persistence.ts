@@ -1,4 +1,5 @@
 import { prisma } from '@nibleaf/database';
+import type { PageConfig } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
 import { createPage } from '../pages';
@@ -19,6 +20,33 @@ export interface ImportTarget {
 export const defaultImportTarget = async (projectId: string): Promise<ImportTarget> => {
   const [branch, language] = await Promise.all([getDefaultBranch(projectId), getDefaultLanguage(projectId)]);
   return { projectId, branchId: branch.id, languageId: language.id };
+};
+
+/** Remove only untouched product/Ghost placeholder pages before a real import.
+ * The content signatures keep a customized page with the same title safe. */
+export const removeImportPlaceholders = async (target: ImportTarget): Promise<number> => {
+  const rows = await prisma.page.findMany({
+    where: {
+      projectId: target.projectId,
+      branchId: target.branchId,
+      languageId: target.languageId,
+      parentId: null,
+      kind: 'PAGE',
+      slug: { in: ['welcome', 'getting-started', 'coming-soon'] },
+    },
+    select: { id: true, slug: true, content: true },
+  });
+  const ids = rows
+    .filter((page) => {
+      const content = page.content.toLowerCase();
+      if (page.slug === 'getting-started') return content.includes('welcome to your new documentation site');
+      if (page.slug === 'coming-soon') return content.includes('brand new site') || content.includes('up and running here shortly');
+      return page.slug === 'welcome' && (!content.trim() || content.includes('welcome to your new documentation'));
+    })
+    .map((page) => page.id);
+  if (ids.length === 0) return 0;
+  const result = await prisma.page.deleteMany({ where: { id: { in: ids } } });
+  return result.count;
 };
 
 /**
@@ -69,7 +97,16 @@ export type UpsertOutcome = 'imported' | 'updated';
  */
 export const upsertLeafPage = async (
   target: ImportTarget,
-  page: { parentId: string | null; slug: string; title: string; content: string; description?: string; icon?: string; position?: number },
+  page: {
+    parentId: string | null;
+    slug: string;
+    title: string;
+    content: string;
+    description?: string;
+    icon?: string;
+    config?: PageConfig;
+    position?: number;
+  },
 ): Promise<UpsertOutcome> => {
   const { projectId, branchId, languageId } = target;
   // Scoped to kind PAGE so a leaf import can never overwrite a sibling GROUP
@@ -77,9 +114,10 @@ export const upsertLeafPage = async (
   // uniqueSiblingSlug in createPage) suffixes the slug instead.
   const found = await prisma.page.findFirst({
     where: { projectId, branchId, languageId, parentId: page.parentId, slug: page.slug, kind: 'PAGE' },
-    select: { id: true },
+    select: { id: true, config: true },
   });
   if (found) {
+    const existingConfig = found.config && typeof found.config === 'object' && !Array.isArray(found.config) ? (found.config as PageConfig) : {};
     await prisma.page.update({
       where: { id: found.id },
       data: {
@@ -87,6 +125,7 @@ export const upsertLeafPage = async (
         content: page.content,
         ...(page.description !== undefined ? { description: page.description } : {}),
         ...(page.icon !== undefined ? { icon: page.icon } : {}),
+        ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
         ...(page.position !== undefined ? { position: page.position } : {}),
       },
     });
@@ -101,6 +140,7 @@ export const upsertLeafPage = async (
     branchId,
     ...(page.description !== undefined ? { description: page.description } : {}),
     ...(page.icon !== undefined ? { icon: page.icon } : {}),
+    ...(page.config !== undefined ? { config: page.config } : {}),
     ...(page.position !== undefined ? { position: page.position } : {}),
   });
   return 'imported';

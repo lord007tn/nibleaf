@@ -40,7 +40,12 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
           <SidebarMenu>
             {nav.map((item) => (
               <SidebarMenuItem key={item.labelKey}>
-                <SidebarMenuButton isActive={item.isActive} render={<Link params={{ projectId }} to={item.to} />} tooltip={t(item.labelKey)}>
+                <SidebarMenuButton
+                  isActive={item.isActive}
+                  render={<Link params={{ projectId }} to={item.to} />}
+                  size="lg"
+                  tooltip={t(item.labelKey)}
+                >
                   <item.icon className="size-5" />
                   <span>{t(item.labelKey)}</span>
                 </SidebarMenuButton>

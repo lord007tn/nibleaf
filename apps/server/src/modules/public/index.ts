@@ -4,6 +4,7 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { rateLimit } from '@/middlewares/rate-limit';
 import assets from './assets/handlers';
 import domains from './domains/handlers';
+import git from './git/handlers';
 import invitations from './invitations/handlers';
 import meta from './meta/handlers';
 import sites from './sites/handlers';
@@ -27,6 +28,7 @@ const app = new Hono<HonoEnv>()
   .use('*', (ctx, next) => (LOW_COST_PATH.test(ctx.req.path) ? lowCostLimiter(ctx, next) : standardLimiter(ctx, next)))
   .route('/sites', sites)
   .route('/domains', domains)
+  .route('/git', git)
   .route('/invitations', invitations)
   .route('/assets', assets)
   .route('/meta', meta);

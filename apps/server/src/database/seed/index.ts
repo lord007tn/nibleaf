@@ -30,7 +30,7 @@ async function seed() {
     where: { organizationId: member.organizationId },
     orderBy: { createdAt: 'asc' },
     include: {
-      languages: { orderBy: { position: 'asc' } },
+      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
     },
   });

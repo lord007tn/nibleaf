@@ -99,13 +99,19 @@ export const getProject = async (organizationId: string, id: string) => {
     where: { id, organizationId },
     include: {
       _count: { select: { pages: true, deployments: true, domains: true } },
-      languages: { orderBy: [{ position: 'asc' }] },
+      languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
     },
   });
   if (!project) {
     throw notFound('project', { id });
   }
-  return project;
+  return {
+    ...project,
+    languages: project.languages.map(({ projectTranslations, ...language }) => ({
+      ...language,
+      translation: projectTranslations[0] ?? null,
+    })),
+  };
 };
 
 /** Deep-merge an incoming config patch into the existing config, section by section.

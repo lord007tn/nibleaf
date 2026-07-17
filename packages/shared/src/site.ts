@@ -7,6 +7,7 @@ export interface SnapshotPageConfig {
   seo?: { metaTitle?: string; metaDescription?: string; ogImage?: string; canonicalUrl?: string; noindex?: boolean };
   sidebarTitle?: string;
   tag?: string;
+  tags?: string[];
   mode?: 'default' | 'wide' | 'center';
   hideToc?: boolean;
 }
@@ -317,7 +318,15 @@ const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): s
   return candidate;
 };
 
-type LanguageRow = { code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean; config: unknown };
+type LanguageRow = {
+  code: string;
+  label: string;
+  direction: 'LTR' | 'RTL';
+  isDefault: boolean;
+  enabled?: boolean;
+  config: unknown;
+  projectTranslations?: { name: string | null; description: string | null }[];
+};
 type BranchRow = { id: string; name: string; isDefault: boolean };
 type ProjectRow = {
   id: string;
@@ -336,14 +345,23 @@ type PageRow = Omit<SnapshotPage, 'config' | 'versionId'> & {
 
 /** Compose an immutable site snapshot from a project + its pages (publish time). */
 export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt: string): SiteSnapshot => {
-  const languages: SnapshotLanguage[] = project.languages.map((l) => ({
-    code: l.code,
-    label: l.label,
-    direction: l.direction,
-    isDefault: l.isDefault,
-    enabled: l.enabled ?? true,
-    config: (l.config as SnapshotLanguageConfig | null) ?? null,
-  }));
+  const languages: SnapshotLanguage[] = project.languages.map((l) => {
+    const translation = l.projectTranslations?.[0];
+    const base = (l.config as SnapshotLanguageConfig | null) ?? {};
+    const config = {
+      ...base,
+      ...(translation?.name ? { name: translation.name } : {}),
+      ...(translation?.description ? { description: translation.description } : {}),
+    };
+    return {
+      code: l.code,
+      label: l.label,
+      direction: l.direction,
+      isDefault: l.isDefault,
+      enabled: l.enabled ?? true,
+      config: Object.keys(config).length > 0 ? config : null,
+    };
+  });
   const defaultLanguages = languages.filter((language) => language.isDefault);
   if (languages.length === 0 || defaultLanguages.length !== 1) {
     throw new Error(`Project ${project.id} must have exactly one default language before publishing.`);

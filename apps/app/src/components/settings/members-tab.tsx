@@ -26,15 +26,22 @@ import type { MessageKey } from '@/lib/i18n/messages';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { GradientAvatar, SettingsSection } from './section';
 
-type Role = 'owner' | 'admin' | 'member';
+/** Grantable roles — `owner` is intentionally absent: a workspace has exactly
+ *  one owner, and ownership only moves via the transfer-ownership flow. */
+type AssignableRole = 'admin' | 'member';
 
-const ROLE_OPTIONS: Array<{ value: Role; labelKey: MessageKey }> = [
+const ROLE_OPTIONS: Array<{ value: AssignableRole; labelKey: MessageKey }> = [
   { value: 'member', labelKey: 'settings.members.role.member' },
   { value: 'admin', labelKey: 'settings.members.role.admin' },
-  { value: 'owner', labelKey: 'settings.members.role.owner' },
 ];
 
-const roleLabelKey = (role: string): MessageKey => ROLE_OPTIONS.find((r) => r.value === role)?.labelKey ?? 'settings.members.role.member';
+const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
+  owner: 'settings.members.role.owner',
+  admin: 'settings.members.role.admin',
+  member: 'settings.members.role.member',
+};
+
+const roleLabelKey = (role: string): MessageKey => ROLE_LABEL_KEYS[role] ?? 'settings.members.role.member';
 
 function InviteDialog() {
   const t = useT();
@@ -42,7 +49,7 @@ function InviteDialog() {
   const invite = useInviteMember();
 
   const form = useForm({
-    defaultValues: { email: '', role: 'member' as Role },
+    defaultValues: { email: '', role: 'member' as AssignableRole },
     onSubmit: async ({ value }) => {
       const invited = value.email.trim();
       await new Promise<void>((resolve) => {
@@ -103,7 +110,7 @@ function InviteDialog() {
             {(field) => (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="invite-role">{t('settings.members.roleLabel')}</Label>
-                <Select onValueChange={(v) => field.handleChange((v ?? 'member') as Role)} value={field.state.value}>
+                <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
                   <SelectTrigger className="w-full" id="invite-role">
                     <SelectValue />
                   </SelectTrigger>
@@ -153,7 +160,7 @@ function MemberRow({ member }: { member: Member }) {
           value={member.role}
           onValueChange={(v) =>
             updateRole.mutate(
-              { id: member.id, body: { role: (v ?? 'member') as Role } },
+              { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
               {
                 onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
                 onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.roleError')),

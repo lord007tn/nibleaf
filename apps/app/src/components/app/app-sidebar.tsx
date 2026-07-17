@@ -42,7 +42,7 @@ export function AppSidebar() {
               const label = t(item.labelKey);
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton isActive={active} render={<Link to={item.to} />} tooltip={label}>
+                  <SidebarMenuButton isActive={active} render={<Link to={item.to} />} size="lg" tooltip={label}>
                     <item.icon className="size-5" />
                     <span>{label}</span>
                   </SidebarMenuButton>

@@ -15,6 +15,7 @@ import {
   SaveBar,
   SectionHeader,
   saveConfigSection,
+  sortLanguagesDefaultFirst,
   ToggleRow,
   useScopeDirtyGuard,
 } from './shared';
@@ -27,7 +28,9 @@ type FooterConfig = NonNullable<ProjectConfig['footer']>;
 export function FooterSection({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useLanguages(project.id);
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>('default');
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -35,7 +38,14 @@ export function FooterSection({ project }: { project: Project }) {
   return (
     <div>
       <SectionHeader icon="▭" title={t('settings.footer.title')} />
-      <LanguageScopePicker guard={guard} hint={t('settings.footer.scope.hint')} languages={extraLanguages} onChange={setScope} value={scope} />
+      <LanguageScopePicker
+        defaultLanguage={defaultLanguage}
+        guard={guard}
+        hint={t('settings.footer.scope.hint')}
+        languages={extraLanguages}
+        onChange={setScope}
+        value={scope}
+      />
       {/* Keyed per scope so switching re-seeds the form from that scope's config. */}
       {activeLanguage ? (
         <LanguageFooterForm key={activeLanguage.id} language={activeLanguage} onDirtyChange={setDirty} project={project} />
@@ -166,6 +176,7 @@ function LanguageFooterForm({
 }) {
   const t = useT();
   const update = useUpdateLanguage(project.id);
+  const projectFooter = project.config?.footer ?? {};
 
   const form = useForm({
     defaultValues: { copyright: language.config?.footer?.copyright ?? '' },
@@ -193,12 +204,30 @@ function LanguageFooterForm({
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}
-              placeholder={project.config?.footer?.copyright || t('settings.footer.copyright.placeholder')}
+              placeholder={projectFooter.copyright || t('settings.footer.copyright.placeholder')}
               value={field.state.value}
             />
           </Field>
         )}
       </form.Field>
+
+      {/* Global-only fields: visible but disabled so the language scope still
+          reads as the complete footer form. */}
+      <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.github.label')}>
+        <Input className={FIELD_MONO} disabled placeholder="https://github.com/acme" value={projectFooter.github ?? ''} />
+      </Field>
+      <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.x.label')}>
+        <Input className={FIELD_MONO} disabled placeholder="https://x.com/acme" value={projectFooter.x ?? ''} />
+      </Field>
+      <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.linkedin.label')}>
+        <Input className={FIELD_MONO} disabled placeholder="https://linkedin.com/company/acme" value={projectFooter.linkedin ?? ''} />
+      </Field>
+      <ToggleRow
+        checked={projectFooter.madeWithBadge !== false}
+        disabled
+        hint={t('settings.chrome.scope.globalField')}
+        title={t('settings.footer.badge.title')}
+      />
 
       <form.Subscribe selector={(state) => state.isDirty}>
         {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}

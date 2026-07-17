@@ -14,6 +14,7 @@ import {
   SectionHeader,
   Segmented,
   saveConfigSection,
+  sortLanguagesDefaultFirst,
   useScopeDirtyGuard,
 } from './shared';
 
@@ -25,7 +26,9 @@ type Hotkey = 'cmdk' | 'slash';
 export function SearchSection({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useLanguages(project.id);
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>('default');
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -33,7 +36,14 @@ export function SearchSection({ project }: { project: Project }) {
   return (
     <div>
       <SectionHeader icon="⌕" title={t('settings.search.title')} />
-      <LanguageScopePicker guard={guard} hint={t('settings.search.scope.hint')} languages={extraLanguages} onChange={setScope} value={scope} />
+      <LanguageScopePicker
+        defaultLanguage={defaultLanguage}
+        guard={guard}
+        hint={t('settings.search.scope.hint')}
+        languages={extraLanguages}
+        onChange={setScope}
+        value={scope}
+      />
       {/* Keyed per scope so switching re-seeds the form from that scope's config. */}
       {activeLanguage ? (
         <LanguageSearchForm key={activeLanguage.id} language={activeLanguage} onDirtyChange={setDirty} project={project} />
@@ -138,6 +148,7 @@ function LanguageSearchForm({
 }) {
   const t = useT();
   const update = useUpdateLanguage(project.id);
+  const projectSearch = project.config?.search ?? {};
 
   const form = useForm({
     defaultValues: { placeholder: language.config?.search?.placeholder ?? '' },
@@ -165,12 +176,30 @@ function LanguageSearchForm({
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}
-              placeholder={project.config?.search?.placeholder || t('settings.search.placeholder.input')}
+              placeholder={projectSearch.placeholder || t('settings.search.placeholder.input')}
               value={field.state.value}
             />
           </Field>
         )}
       </form.Field>
+
+      {/* Global-only fields: visible but disabled so the language scope still
+          reads as the complete search form. */}
+      <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.search.maxResults.label')}>
+        <Input className={FIELD_INPUT} disabled type="number" value={String(projectSearch.maxResults ?? 6)} />
+      </Field>
+      <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.search.hotkey.label')}>
+        <Segmented
+          className="max-w-[200px] font-mono"
+          disabled
+          onChange={() => undefined}
+          options={[
+            { value: 'cmdk', label: '⌘K' },
+            { value: 'slash', label: '/' },
+          ]}
+          value={(projectSearch.hotkey as Hotkey) ?? 'cmdk'}
+        />
+      </Field>
 
       <form.Subscribe selector={(state) => state.isDirty}>
         {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}

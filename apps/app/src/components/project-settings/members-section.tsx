@@ -1,10 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, Link2, Mail, Trash2 } from 'lucide-react';
+import { Check, Copy, Crown, Link2, Mail, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { GradientAvatar } from '@/components/settings/section';
@@ -13,8 +14,10 @@ import {
   useInviteProjectMember,
   useProjectMembers,
   useRemoveProjectMember,
+  useTransferProjectOwnership,
   useUpdateProjectMemberRole,
 } from '@/hooks/api';
+import { useSession } from '@/lib/auth-client';
 import { email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
@@ -47,7 +50,9 @@ function CopyLinkButton({ link, label }: { link: string; label: string }) {
   );
 }
 
-type Role = 'owner' | 'admin' | 'member';
+/** Grantable roles — `owner` is intentionally absent: there is exactly one
+ *  owner, and ownership only moves via the transfer-ownership flow. */
+type AssignableRole = 'admin' | 'member';
 const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
   owner: 'settings.members.role.owner',
   admin: 'settings.members.role.admin',
@@ -61,13 +66,19 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const remove = useRemoveProjectMember(projectId);
   const updateRole = useUpdateProjectMemberRole(projectId);
   const cancelInvite = useCancelProjectInvitation(projectId);
+  const transfer = useTransferProjectOwnership(projectId);
+  const confirm = useConfirm();
+  const { data: session } = useSession();
 
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
+  // The transfer action is only offered to the current owner (server-enforced too).
+  const currentUserId = session?.user?.id;
+  const isCurrentOwner = members.some((member) => member.user.id === currentUserId && member.role === 'owner');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
 
   const form = useForm({
-    defaultValues: { email: '', role: 'member' as Role },
+    defaultValues: { email: '', role: 'member' as AssignableRole },
     onSubmit: async ({ value }) => {
       const invited = value.email.trim();
       await new Promise<void>((resolve) => {
@@ -95,7 +106,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
       <SectionHeader icon="⧉" title={t('settings.members.title')} description={t('settings.members.description')} />
 
       <form
-        className="mb-5 flex items-end gap-2.5 rounded-xl border border-border bg-card p-3.5"
+        className="mb-5 flex items-end gap-2.5 rounded-xl bg-muted/30 p-3.5"
         onSubmit={(event) => {
           event.preventDefault();
           form.handleSubmit();
@@ -106,6 +117,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
             <div className="flex flex-1 flex-col gap-1.5">
               <span className="font-medium text-[13px]">{t('settings.members.inviteByEmail')}</span>
               <Input
+                className="bg-background"
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="teammate@company.com"
@@ -118,14 +130,14 @@ export function MembersSection({ projectId }: { projectId: string }) {
         </form.Field>
         <form.Field name="role">
           {(field) => (
-            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as Role)} value={field.state.value}>
-              <SelectTrigger className="w-32">
+            // No `owner` option: invitations can never carry the owner role.
+            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
+              <SelectTrigger className="w-32 bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
                 <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
-                <SelectItem value="owner">{t('settings.members.role.owner')}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -182,16 +194,48 @@ export function MembersSection({ projectId }: { projectId: string }) {
               </div>
               <div className="ms-auto flex items-center gap-1.5">
                 {member.role === 'owner' ? (
-                  <span className="rounded-md border border-border px-2.5 py-1 text-[12px] text-muted-foreground">
+                  // The single owner: a badge, never a role select — ownership
+                  // only moves via the explicit transfer action below.
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-[12px] text-primary">
+                    <Crown className="size-3.5" />
                     {t('settings.members.role.owner')}
                   </span>
                 ) : (
                   <>
+                    {isCurrentOwner && member.role === 'admin' ? (
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t('settings.members.transferOwnership')}
+                        title={t('settings.members.transferOwnership')}
+                        disabled={transfer.isPending}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: t('settings.members.transferOwnership'),
+                            description: t('settings.members.transferConfirm', { name: member.user.name || member.user.email }),
+                            confirmLabel: t('settings.members.transferOwnership'),
+                            destructive: true,
+                          });
+                          if (!ok) {
+                            return;
+                          }
+                          transfer.mutate(
+                            { memberId: member.id },
+                            {
+                              onSuccess: () => toast.success(t('settings.members.toast.ownershipTransferred')),
+                              onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.transferError')),
+                            },
+                          );
+                        }}
+                      >
+                        <Crown className="size-4" />
+                      </Button>
+                    ) : null}
                     <Select
                       value={member.role}
                       onValueChange={(v) =>
                         updateRole.mutate(
-                          { id: member.id, body: { role: (v ?? 'member') as Role } },
+                          { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
                           {
                             onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
                             onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.roleError')),
@@ -202,10 +246,10 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       <SelectTrigger className="w-28" size="sm">
                         <SelectValue />
                       </SelectTrigger>
+                      {/* No `owner` option: role changes can never grant ownership. */}
                       <SelectContent>
                         <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
                         <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
-                        <SelectItem value="owner">{t('settings.members.role.owner')}</SelectItem>
                       </SelectContent>
                     </Select>
                     <Button

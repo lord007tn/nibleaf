@@ -13,7 +13,13 @@ export const assertLanguageInProject = async (projectId: string, id: string) => 
 
 /** Every language of a project, ordered for the language switcher. */
 export const listLanguages = (projectId: string) =>
-  prisma.language.findMany({ where: { projectId }, orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] });
+  prisma.language
+    .findMany({
+      where: { projectId },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      include: { projectTranslations: { where: { projectId }, take: 1 } },
+    })
+    .then((languages) => languages.map(({ projectTranslations, ...language }) => ({ ...language, translation: projectTranslations[0] ?? null })));
 
 /** The project's required default language. Missing data is an invariant error. */
 export const getDefaultLanguage = async (projectId: string) => {
@@ -65,15 +71,14 @@ const CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
 const isEmptyObject = (value: unknown): boolean =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0;
 
-/** Deep-merge a language-config patch: top-level keys (`name`, `description`)
- *  spread over the base, `seo` merges key-by-key, and `null` clears the whole
+/** Deep-merge a language-config patch: `seo` merges key-by-key, and `null` clears the whole
  *  config. Omitted keys keep their stored value — the UI sends explicit empty
  *  strings to clear a single field (consumers treat `''` as no override).
  *  Chrome sections (navbar/footer/banner/search) replace wholesale; sending
  *  `null` (or `{}`) for one removes just that override so it falls back to the
- *  project config. A whole-config `null` clears the name/description/seo
- *  overrides but PRESERVES stored chrome sections — the settings forms that
- *  send it (general/SEO) only manage those fields and don't know about chrome
+ *  project config. A whole-config `null` clears SEO overrides but PRESERVES
+ *  stored chrome sections — the settings forms that send it only manage SEO
+ *  and don't know about chrome
  *  overrides, so honoring it literally would silently wipe another section's
  *  data. A config left with no keys is stored as null. */
 const mergeLanguageConfig = (existing: unknown, patch: UpdateLanguageBody['config']): object | null | undefined => {
@@ -126,7 +131,20 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
     if (body.isDefault === true) {
       await tx.language.updateMany({ where: { projectId, isDefault: true }, data: { isDefault: false } });
     }
-    return tx.language.update({
+    if (body.translation !== undefined) {
+      const name = body.translation?.name?.trim() || null;
+      const description = body.translation?.description?.trim() || null;
+      if (!(name || description)) {
+        await tx.projectTranslation.deleteMany({ where: { projectId, languageId: id } });
+      } else {
+        await tx.projectTranslation.upsert({
+          where: { projectId_languageId: { projectId, languageId: id } },
+          create: { projectId, languageId: id, name, description },
+          update: { name, description },
+        });
+      }
+    }
+    const updated = await tx.language.update({
       where: { id },
       data: {
         ...(body.label === undefined ? {} : { label: body.label }),
@@ -139,6 +157,8 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
         ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
       },
     });
+    const translation = await tx.projectTranslation.findUnique({ where: { projectId_languageId: { projectId, languageId: id } } });
+    return { ...updated, translation };
   });
 };
 

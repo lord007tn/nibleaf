@@ -18,6 +18,7 @@ import {
   SaveBar,
   SectionHeader,
   saveConfigSection,
+  sortLanguagesDefaultFirst,
   ToggleRow,
   useScopeDirtyGuard,
 } from './shared';
@@ -36,7 +37,9 @@ interface SeoValues {
 export function SeoSection({ project }: { project: Project }) {
   const t = useT();
   const { data: languages } = useLanguages(project.id);
-  const extraLanguages = (languages ?? []).filter((language) => !language.isDefault);
+  const orderedLanguages = sortLanguagesDefaultFirst(languages ?? []);
+  const defaultLanguage = orderedLanguages.find((language) => language.isDefault);
+  const extraLanguages = orderedLanguages.filter((language) => !language.isDefault);
   const [scope, setScope] = useState<string>('default');
   const activeLanguage = extraLanguages.find((language) => language.id === scope);
   const { guard, setDirty } = useScopeDirtyGuard();
@@ -45,7 +48,14 @@ export function SeoSection({ project }: { project: Project }) {
     <div>
       <SectionHeader icon="◎" title={t('settings.seo.title')} />
 
-      <LanguageScopePicker guard={guard} hint={t('settings.seo.scope.hint')} languages={extraLanguages} onChange={setScope} value={scope} />
+      <LanguageScopePicker
+        defaultLanguage={defaultLanguage}
+        guard={guard}
+        hint={t('settings.seo.scope.hint')}
+        languages={extraLanguages}
+        onChange={setScope}
+        value={scope}
+      />
 
       {/* Keyed per scope so switching re-seeds the form from that scope's config. */}
       {activeLanguage ? (
@@ -93,9 +103,15 @@ function LanguageSeoForm({ project, language, onDirtyChange }: { project: Projec
   const t = useT();
   const update = useUpdateLanguage(project.id);
   const seo = language.config?.seo ?? {};
+  const projectSeo = project.config?.seo ?? {};
   return (
     <SeoScopeForm
       onDirtyChange={onDirtyChange}
+      placeholders={{
+        metaTitle: projectSeo.metaTitle || undefined,
+        metaDescription: projectSeo.metaDescription || undefined,
+        socialImage: projectSeo.socialImage || undefined,
+      }}
       initial={{
         metaTitle: seo.metaTitle ?? '',
         metaDescription: seo.metaDescription ?? '',
@@ -104,18 +120,16 @@ function LanguageSeoForm({ project, language, onDirtyChange }: { project: Projec
       }}
       onSave={async (value) => {
         const hasOverride = [value.metaTitle, value.metaDescription, value.socialImage].some((v) => v.trim() !== '') || value.allowIndex === false;
-        const keepsName = Boolean(language.config?.name?.trim() || language.config?.description?.trim());
-        const config =
-          hasOverride || keepsName
-            ? {
-                seo: {
-                  metaTitle: value.metaTitle.trim(),
-                  metaDescription: value.metaDescription.trim(),
-                  socialImage: value.socialImage.trim(),
-                  allowIndex: value.allowIndex,
-                },
-              }
-            : null;
+        const config = hasOverride
+          ? {
+              seo: {
+                metaTitle: value.metaTitle.trim(),
+                metaDescription: value.metaDescription.trim(),
+                socialImage: value.socialImage.trim(),
+                allowIndex: value.allowIndex,
+              },
+            }
+          : null;
         try {
           await update.mutateAsync({ id: language.id, body: { config } });
           toast.success(t('common.saved'));
@@ -134,11 +148,15 @@ function SeoScopeForm({
   project,
   initial,
   onSave,
+  placeholders,
   onDirtyChange,
 }: {
   project: Project;
   initial: SeoValues;
   onSave: (value: SeoValues) => Promise<void>;
+  /** Language scopes: the default scope's effective values, shown as
+   *  placeholders so the form always reads complete. */
+  placeholders?: { metaTitle?: string; metaDescription?: string; socialImage?: string };
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   const t = useT();
@@ -173,7 +191,7 @@ function SeoScopeForm({
             <Input
               className={FIELD_INPUT}
               onChange={(e) => field.handleChange(e.target.value)}
-              placeholder={project.name}
+              placeholder={placeholders?.metaTitle ?? project.name}
               value={field.state.value}
             />
           </Field>
@@ -186,7 +204,7 @@ function SeoScopeForm({
             <Textarea
               className={FIELD_TEXTAREA}
               onChange={(e) => field.handleChange(e.target.value)}
-              placeholder={project.description ?? undefined}
+              placeholder={placeholders?.metaDescription ?? project.description ?? undefined}
               value={field.state.value}
             />
           </Field>
@@ -200,7 +218,7 @@ function SeoScopeForm({
               <Input
                 className={`${FIELD_MONO} flex-1`}
                 onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="/og/cover.png"
+                placeholder={placeholders?.socialImage ?? '/og/cover.png'}
                 value={field.state.value}
               />
               <input

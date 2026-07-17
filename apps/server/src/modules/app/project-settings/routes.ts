@@ -27,6 +27,18 @@ const projectSettingsRoutes = {
     description: 'Import Markdown pages from the configured public Git repository.',
     responses: ok,
   }),
+  gitWebhookSecret: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['projects'],
+    description: 'Generate or rotate the push-to-deploy webhook secret for this site.',
+    responses: ok,
+  }),
+  usage: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember()],
+    tags: ['projects'],
+    description: "Get a site's usage counters (pages, languages, members, deployments, traffic, storage) for the Usage tab.",
+    responses: ok,
+  }),
 };
 
 export default projectSettingsRoutes;

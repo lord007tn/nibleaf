@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
+import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
@@ -72,6 +73,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             <span className="h-4 w-28 animate-pulse rounded bg-muted" aria-hidden />
           )}
           <div className="ms-auto flex items-center gap-2">
+            <NotificationsPopover />
             <Button
               nativeButton={false}
               render={

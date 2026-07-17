@@ -33,8 +33,42 @@ function emailLayout(opts: { heading: string; body: string; cta?: { label: strin
 </div>`;
 }
 
+/** Fan a deployment outcome out as one in-app notification (the dashboard bell)
+ *  per org member. Mirrors createNotificationsForOrgMembers in apps/server —
+ *  the worker can't import server actions, and the insert is a single createMany. */
+async function createDeploymentNotifications(
+  organizationId: string,
+  opts: { projectId: string; projectName: string; version: number; outcome: 'ready' | 'failed'; error?: string },
+): Promise<void> {
+  const members = await prisma.member.findMany({ where: { organizationId }, select: { userId: true } });
+  if (members.length === 0) {
+    return;
+  }
+  const payload =
+    opts.outcome === 'ready'
+      ? {
+          type: 'deploy_ready',
+          title: `${opts.projectName} published`,
+          body: `Version v${opts.version} is live.`,
+        }
+      : {
+          type: 'deploy_failed',
+          title: `${opts.projectName} publish failed`,
+          body: `Version v${opts.version} did not publish.${opts.error ? ` ${opts.error.slice(0, 300)}` : ''}`,
+        };
+  await prisma.notification.createMany({
+    data: members.map((member) => ({
+      userId: member.userId,
+      projectId: opts.projectId,
+      ...payload,
+      href: `/app/projects/${opts.projectId}`,
+    })),
+  });
+}
+
 /** Email a project's org admins/owners about a deployment outcome, when the relevant
- *  notification toggle is enabled. Best-effort — never throws into the publish flow. */
+ *  notification toggle is enabled. Also drops an in-app notification (the dashboard
+ *  bell) for every org member. Best-effort — never throws into the publish flow. */
 export async function notifyDeployment(opts: {
   projectId: string;
   projectName: string;
@@ -53,6 +87,7 @@ export async function notifyDeployment(opts: {
     if (!notificationEnabled(org?.metadata, notificationId)) {
       return;
     }
+    await createDeploymentNotifications(project.organizationId, opts).catch(() => undefined);
     const members = await prisma.member.findMany({
       where: { organizationId: project.organizationId, role: { in: ['owner', 'admin'] } },
       select: { user: { select: { email: true } } },

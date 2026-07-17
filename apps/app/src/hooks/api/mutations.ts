@@ -8,6 +8,7 @@ import type {
   CreatePageBody,
   CreateProjectBody,
   InviteMemberBody,
+  MarkNotificationsReadBody,
   MintlifyImportBody,
   ProjectConfig,
   ReorderPagesBody,
@@ -325,7 +326,7 @@ export const useTransferProjectOwnership = (projectId: string) => {
   return useMutation({
     mutationFn: async (body: TransferOwnershipBody) =>
       mutateData<unknown>(
-        await api.app.projects[':projectId'].members['transfer-owner'].$post({ param: { projectId }, json: body }),
+        await api.app.projects[':projectId'].members['transfer-ownership'].$post({ param: { projectId }, json: body }),
         'Could not transfer ownership.',
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
@@ -518,6 +519,20 @@ export const useImportFromGit = (projectId: string) => {
 
 export const useImportFromGitHub = useImportFromGit;
 
+/** Generate or rotate the push-to-deploy webhook secret (admin only). The
+ *  secret is server-generated; the settings PATCH can never set it. */
+export const useRotateGitWebhookSecret = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      mutateData<{ webhookSecret: string }>(
+        await api.app.projects[':projectId'].settings.git['webhook-secret'].$post({ param: { projectId } }),
+        'Could not rotate the webhook secret.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) }),
+  });
+};
+
 // ─── Content importers (Mintlify / Ghost) ────────────────────────────────────
 
 /** Summary returned by the content importers (Mintlify, Ghost, …). */
@@ -525,6 +540,8 @@ export interface ContentImportSummary {
   imported: number;
   updated: number;
   skipped: number;
+  assetsImported?: number;
+  assetsSkipped?: number;
   warnings: string[];
 }
 
@@ -556,5 +573,20 @@ export const useImportFromGhost = (projectId: string) => {
         'Could not import from Ghost.',
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
+  });
+};
+
+// ─── Notifications (bell inbox) ──────────────────────────────────────────────
+
+/** Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`. */
+export const useMarkNotificationsRead = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: MarkNotificationsReadBody) =>
+      mutateData<{ updated: number }>(await api.app.notifications.read.$post({ json: body }), 'Could not update notifications.'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+    },
   });
 };

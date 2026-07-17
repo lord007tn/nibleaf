@@ -16,6 +16,10 @@ export interface ImportSummary {
   imported: number;
   updated: number;
   skipped: number;
+  /** Remote media copied into project storage by importers that support it. */
+  assetsImported?: number;
+  /** Remote media left at its source URL because it could not be migrated. */
+  assetsSkipped?: number;
   /** Non-fatal issues (unmatched nav entries, unparseable files, config keys kept). */
   warnings: string[];
 }

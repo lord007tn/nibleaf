@@ -16,7 +16,9 @@ export const Route = createFileRoute('/app/(dashboard)/members')({
   component: MembersPage,
 });
 
-type Role = 'owner' | 'admin' | 'member';
+/** Grantable roles — `owner` is intentionally absent: a workspace has exactly
+ *  one owner, and ownership only moves via the transfer-ownership flow. */
+type AssignableRole = 'admin' | 'member';
 
 /** Map a role value to its localized label key (editor = member). */
 const roleLabelKey = (role: string | null | undefined): MessageKey => {
@@ -37,7 +39,7 @@ function MembersPage() {
   const updateRole = useUpdateMemberRole();
 
   const form = useForm({
-    defaultValues: { email: '', role: 'member' as Role },
+    defaultValues: { email: '', role: 'member' as AssignableRole },
     onSubmit: async ({ value }) => {
       const invited = value.email.trim();
       await new Promise<void>((resolve) => {
@@ -90,14 +92,14 @@ function MembersPage() {
         </form.Field>
         <form.Field name="role">
           {(field) => (
-            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as Role)} value={field.state.value}>
+            // No `owner` option: invitations can never carry the owner role.
+            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
               <SelectTrigger className="w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="member">{t('members.role.editor')}</SelectItem>
                 <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
-                <SelectItem value="owner">{t('members.role.owner')}</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -140,7 +142,7 @@ function MembersPage() {
                         value={member.role}
                         onValueChange={(v) =>
                           updateRole.mutate(
-                            { id: member.id, body: { role: (v ?? 'member') as Role } },
+                            { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
                             {
                               onSuccess: () => toast.success(t('members.toast.roleUpdated')),
                               onError: (error) => toast.error(error instanceof Error ? error.message : t('members.toast.roleUpdateError')),
@@ -151,10 +153,10 @@ function MembersPage() {
                         <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>
+                        {/* No `owner` option: role changes can never grant ownership. */}
                         <SelectContent>
                           <SelectItem value="member">{t('members.role.editor')}</SelectItem>
                           <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
-                          <SelectItem value="owner">{t('members.role.owner')}</SelectItem>
                         </SelectContent>
                       </Select>
                     )}

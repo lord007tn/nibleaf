@@ -7,12 +7,15 @@ import {
   createProjectBody,
   gitConfigSchema,
   inferSafeInlineAssetContentType,
+  inviteMemberBody,
   languageConfigSchema,
+  pageConfigSchema,
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
   transferOwnershipBody,
   updateLanguageBody,
+  updateMemberRoleBody,
   updateProjectBody,
 } from './index';
 
@@ -54,6 +57,13 @@ describe('projectConfigSchema', () => {
   });
 });
 
+describe('pageConfigSchema', () => {
+  it('accepts a bounded imported taxonomy and rejects oversized tag sets', () => {
+    expect(pageConfigSchema.safeParse({ tag: 'Guide', tags: ['Guide', 'First steps'] }).success).toBe(true);
+    expect(pageConfigSchema.safeParse({ tags: Array.from({ length: 11 }, (_, index) => `tag-${index}`) }).success).toBe(false);
+  });
+});
+
 describe('project bodies', () => {
   it('rejects retired top-level appearance fields', () => {
     expect(createProjectBody.safeParse({ name: 'Docs', color: '#5546e8' }).success).toBe(false);
@@ -82,7 +92,6 @@ describe('languageConfigSchema (per-language chrome overrides)', () => {
   it('accepts localized chrome sections mirroring the project config shapes', () => {
     expect(
       languageConfigSchema.safeParse({
-        name: 'وثائق أكمي',
         navbar: {
           ctaLabel: 'احجز عرضًا',
           links: [{ label: 'المستندات', href: '/ar/docs' }],
@@ -100,6 +109,7 @@ describe('languageConfigSchema (per-language chrome overrides)', () => {
   });
   it('stays strict: unknown keys and non-text project fields are rejected', () => {
     expect(languageConfigSchema.safeParse({ bogus: true }).success).toBe(false);
+    expect(languageConfigSchema.safeParse({ name: 'Stored in ProjectTranslation' }).success).toBe(false);
     // CTA URL, search/changelog toggles and footer socials stay global.
     expect(languageConfigSchema.safeParse({ navbar: { ctaUrl: 'https://x.dev' } }).success).toBe(false);
     expect(languageConfigSchema.safeParse({ navbar: { showSearch: true } }).success).toBe(false);
@@ -112,6 +122,13 @@ describe('languageConfigSchema (per-language chrome overrides)', () => {
   });
   it('rejects dangerous URL schemes in localized links', () => {
     expect(languageConfigSchema.safeParse({ banner: { linkUrl: 'javascript:alert(1)' } }).success).toBe(false);
+  });
+});
+
+describe('project translation input', () => {
+  it('accepts localized project identity through the language update body', () => {
+    expect(updateLanguageBody.safeParse({ translation: { name: 'وثائق أكمي', description: 'دليل المنتج' } }).success).toBe(true);
+    expect(updateLanguageBody.safeParse({ translation: null }).success).toBe(true);
   });
 });
 
@@ -149,6 +166,19 @@ describe('transferOwnershipBody', () => {
   it('requires a target member id', () => {
     expect(transferOwnershipBody.safeParse({ memberId: 'member_123' }).success).toBe(true);
     expect(transferOwnershipBody.safeParse({ memberId: '' }).success).toBe(false);
+  });
+});
+
+describe('member role grants exclude owner at the schema level', () => {
+  it('inviteMemberBody accepts admin/member but never owner', () => {
+    expect(inviteMemberBody.safeParse({ email: 'a@b.co', role: 'admin' }).success).toBe(true);
+    expect(inviteMemberBody.safeParse({ email: 'a@b.co', role: 'member' }).success).toBe(true);
+    expect(inviteMemberBody.safeParse({ email: 'a@b.co', role: 'owner' }).success).toBe(false);
+  });
+  it('updateMemberRoleBody accepts admin/member but never owner', () => {
+    expect(updateMemberRoleBody.safeParse({ role: 'admin' }).success).toBe(true);
+    expect(updateMemberRoleBody.safeParse({ role: 'member' }).success).toBe(true);
+    expect(updateMemberRoleBody.safeParse({ role: 'owner' }).success).toBe(false);
   });
 });
 

@@ -189,6 +189,7 @@ model Project {
   updatedAt      DateTime     @updatedAt
 
   languages       Language[]
+  translations    ProjectTranslation[]
   branches        Branch[]
   pages           Page[]
   deployments     Deployment[]
@@ -238,18 +239,38 @@ model Language {
   /// language can never be disabled.
   enabled   Boolean       @default(true)
   position  Int           @default(0)
-  /// Per-language SEO + chrome overrides: { name, description, seo: { metaTitle,
+  /// Per-language SEO + chrome overrides: { seo: { metaTitle,
   /// metaDescription, socialImage, allowIndex }, navbar, footer, banner, search }.
   /// Layered between project.config and page.config when rendering the live site.
   config    Json?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  pages Page[]
+  pages               Page[]
+  projectTranslations ProjectTranslation[]
 
   @@unique([projectId, code])
   @@index([projectId])
   @@map("language")
+}
+
+/// Localized identity for a project. Content that needs translation belongs in
+/// an explicit translation table, linked to a real Language row, rather than in
+/// an untyped JSON config blob.
+model ProjectTranslation {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  languageId  String
+  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+  name        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, languageId])
+  @@index([languageId])
+  @@map("project_translation")
 }
 
 /// A node in a project's documentation tree. `kind = GROUP` is a folder with no
@@ -322,25 +343,25 @@ model Deployment {
 }
 
 model Domain {
-  id                String    @id @default(cuid())
-  projectId         String
-  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  domain            String    @unique
-  verified          Boolean   @default(false)
-  verificationToken String
+  id                 String          @id @default(cuid())
+  projectId          String
+  project            Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  domain             String          @unique
+  verified           Boolean         @default(false)
+  verificationToken  String
   /// Provisioning backend. Kept as a string so self-hosters can add provider
   /// adapters without a database enum migration.
-  provider          String    @default("INGRESS")
+  provider           String          @default("INGRESS")
   providerHostnameId String?
   /// Provider-owned status/validation details. Secrets are never stored here.
-  providerData      Json?
-  isPrimary         Boolean   @default(false)
-  dnsStatus         DomainDnsStatus @default(PENDING)
-  sslStatus         DomainSslStatus @default(PENDING)
-  lastCheckedAt     DateTime?
-  lastError         String?
-  createdAt         DateTime  @default(now())
-  verifiedAt        DateTime?
+  providerData       Json?
+  isPrimary          Boolean         @default(false)
+  dnsStatus          DomainDnsStatus @default(PENDING)
+  sslStatus          DomainSslStatus @default(PENDING)
+  lastCheckedAt      DateTime?
+  lastError          String?
+  createdAt          DateTime        @default(now())
+  verifiedAt         DateTime?
 
   @@index([projectId])
   @@map("domain")
@@ -412,6 +433,26 @@ model PlatformEvent {
 
   @@index([type, createdAt])
   @@map("platform_event")
+}
+
+/// A per-user in-app notification (the bell inbox in the dashboard header).
+/// userId/projectId are plain strings (no FK) — mirroring PlatformEvent — so
+/// rows stay cheap to insert from the worker and survive project deletion.
+/// `type` is a free-form tag ("deploy_ready", "member_joined", "import", …).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  projectId String?
+  type      String
+  title     String
+  body      String?
+  /// Dashboard-relative link opened when the notification is clicked.
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@map("notification")
 }
 
 /// Page views and search queries on published sites (powers the analytics tab).

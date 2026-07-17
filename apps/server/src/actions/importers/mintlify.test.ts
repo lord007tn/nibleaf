@@ -32,6 +32,7 @@ vi.mock('./github', () => ({
 }));
 vi.mock('./persistence', () => ({
   defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang' }),
+  removeImportPlaceholders: async () => 0,
   ensureGroupPage: async (_target: unknown, group: { parentId: string | null; title: string; slug: string }) => {
     const found =
       mem.rows.find((row) => row.kind === 'GROUP' && row.parentId === group.parentId && row.slug === group.slug) ??
@@ -68,6 +69,15 @@ beforeEach(() => {
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('imports modern object page entries with their label, icon, and tag metadata', async () => {
+    setNavigation([{ group: 'Docs', pages: [{ page: 'guides/intro', label: 'Start here', icon: 'rocket', tag: 'New' }] }]);
+    mem.repoFiles.set('guides/intro.mdx', '# Ignored heading');
+
+    const summary = await runImport();
+    expect(summary.imported).toBe(1);
+    expect(mem.rows.find((row) => row.kind === 'PAGE')?.title).toBe('Start here');
+  });
+
   it('imports sibling pages sharing a basename as two distinct pages, stable across re-imports', async () => {
     setNavigation([{ group: 'Docs', pages: ['sdk/overview', 'api/overview'] }]);
     mem.repoFiles.set('sdk/overview.mdx', '# SDK overview');

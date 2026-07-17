@@ -260,6 +260,15 @@ export function SitePageView({
       ) : null}
       <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
+      {page.config?.tags?.length ? (
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Tags">
+          {page.config.tags.map((tag) => (
+            <li className="rounded-full border border-border bg-muted/45 px-2.5 py-1 font-medium text-muted-foreground text-xs" key={tag}>
+              {tag}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="mt-8">
         <Markdown content={page.content} site={{ projectId, lang, version: versionPrefix }} />
       </div>

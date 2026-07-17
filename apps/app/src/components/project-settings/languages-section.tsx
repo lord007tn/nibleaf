@@ -9,7 +9,7 @@ import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
 import { useT } from '@/lib/i18n';
-import { SectionHeader } from './shared';
+import { SectionHeader, sortLanguagesDefaultFirst } from './shared';
 
 /** A small uppercase chip (direction / default / hidden badges). */
 function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'primary' | 'warning' }) {
@@ -39,7 +39,8 @@ export function LanguagesSection({ project }: { project: Project }) {
   const remove = useDeleteLanguage(project.id);
   const [addOpen, setAddOpen] = useState(false);
 
-  const rows = languages ?? [];
+  // Default language always first, then by configured position.
+  const rows = sortLanguagesDefaultFirst(languages ?? []);
 
   const save = async (id: string, body: { enabled?: boolean; isDefault?: boolean }) => {
     try {

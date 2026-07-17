@@ -3,10 +3,13 @@ import {
   byPublishedAt,
   convertGhostHtml,
   GhostExportError,
+  ghostImportSourceUrl,
   ghostItemSlug,
   ghostItemToMarkdown,
   htmlToPlainText,
+  isGhostPlaceholder,
   parseGhostExport,
+  resolveGhostLanguage,
 } from './ghost-mapping';
 
 const post = (over: Record<string, unknown>) => ({
@@ -24,12 +27,19 @@ const fullExport = {
       meta: { exported_on: 1721000000000, version: '5.82.0' },
       data: {
         posts: [
-          post({ slug: 'first', published_at: '2024-01-01T00:00:00.000Z' }),
+          post({ id: 'post-1', slug: 'first', published_at: '2024-01-01T00:00:00.000Z' }),
           post({ slug: 'draft', status: 'draft' }),
           post({ slug: 'about', type: 'page', published_at: '2024-02-01T00:00:00.000Z' }),
           post({ slug: 'legacy-page', page: 1 }),
         ],
-        tags: [{ name: 'news' }],
+        tags: [
+          { id: 'tag-news', name: 'News', slug: 'news' },
+          { id: 'tag-en', name: 'English', slug: 'en' },
+        ],
+        posts_tags: [
+          { post_id: 'post-1', tag_id: 'tag-news' },
+          { post_id: 'post-1', tag_id: 'tag-en' },
+        ],
         users: [{ name: 'author' }],
       },
     },
@@ -40,6 +50,7 @@ describe('parseGhostExport', () => {
   it('reads db[0].data, keeps only published items, and splits posts from pages', () => {
     const { posts, pages } = parseGhostExport(fullExport);
     expect(posts.map((p) => p.slug)).toEqual(['first']);
+    expect(posts[0]?.tags).toEqual(['news', 'en']);
     expect(pages.map((p) => p.slug)).toEqual(['about', 'legacy-page']);
   });
 
@@ -64,6 +75,32 @@ describe('parseGhostExport', () => {
     });
     expect(posts[0]?.description).toBe('The summary');
     expect(posts[0]?.featureImage).toBe('/content/images/x.png');
+  });
+});
+
+describe('ghostImportSourceUrl', () => {
+  it('reads and normalizes the dashboard metadata without trusting credentials or non-http schemes', () => {
+    expect(ghostImportSourceUrl({ __nibleafImport: { ghostUrl: 'https://ghost.example.com/some/path' } })).toBe('https://ghost.example.com');
+    expect(ghostImportSourceUrl({ __nibleafImport: { ghostUrl: 'file:///tmp/ghost' } })).toBeUndefined();
+    expect(ghostImportSourceUrl({ __nibleafImport: { ghostUrl: 'https://user:secret@example.com' } })).toBeUndefined();
+  });
+});
+
+describe('resolveGhostLanguage', () => {
+  const item = (tags: string[], title = 'English title') => ({ tags, title, plaintext: null, html: null });
+
+  it('uses an exact language tag and supports a base tag for one regional locale', () => {
+    expect(resolveGhostLanguage(item(['news', 'ar']), ['en', 'ar'], 'en')).toEqual({ code: 'ar', reason: 'tag' });
+    expect(resolveGhostLanguage(item(['pt']), ['en', 'pt-BR'], 'en')).toEqual({ code: 'pt-BR', reason: 'tag' });
+  });
+
+  it('uses Arabic script to disambiguate items carrying both ar and en tags', () => {
+    expect(resolveGhostLanguage(item(['ar', 'en'], 'إدارة الحجوزات'), ['en', 'ar'], 'en')).toEqual({ code: 'ar', reason: 'ambiguous-tags' });
+    expect(resolveGhostLanguage(item(['ar', 'en']), ['en', 'ar'], 'en')).toEqual({ code: 'en', reason: 'ambiguous-tags' });
+  });
+
+  it('falls back to the project default when no configured language tag exists', () => {
+    expect(resolveGhostLanguage(item(['news']), ['en', 'ar'], 'en')).toEqual({ code: 'en', reason: 'default' });
   });
 });
 
@@ -92,8 +129,21 @@ describe('byPublishedAt', () => {
       { publishedAt: '2024-03-01T00:00:00.000Z' as string | null, slug: 'c' },
       { publishedAt: null, slug: 'undated' },
       { publishedAt: '2024-01-01T00:00:00.000Z', slug: 'a' },
-    ].map((over) => ({ title: '', html: null, plaintext: null, status: null, featureImage: null, description: null, ...over }));
+    ].map((over) => ({ id: '', tags: [], title: '', html: null, plaintext: null, status: null, featureImage: null, description: null, ...over }));
     expect([...items].sort(byPublishedAt).map((i) => i.slug)).toEqual(['a', 'c', 'undated']);
+  });
+});
+
+describe('isGhostPlaceholder', () => {
+  it('recognizes the stock Ghost Coming soon post without hiding a real similarly titled article', () => {
+    expect(
+      isGhostPlaceholder({
+        title: 'Coming soon',
+        slug: 'coming-soon',
+        plaintext: "This is Acme, a brand new site that's just getting started. Things will be up and running here shortly.",
+      }),
+    ).toBe(true);
+    expect(isGhostPlaceholder({ title: 'Coming soon', slug: 'coming-soon', plaintext: 'A real product launch announcement.' })).toBe(false);
   });
 });
 
@@ -122,6 +172,17 @@ describe('convertGhostHtml', () => {
     expect(hadGhostUrls).toBe(true);
     expect(markdown).toBe('![a](/content/images/a.png)');
   });
+
+  it('resolves __GHOST_URL__ placeholders against the source publication when provided', () => {
+    const { markdown, hadGhostUrls } = convertGhostHtml('<img src="__GHOST_URL__/content/images/a.png" alt="a">', 'https://ghost.example.com');
+    expect(hadGhostUrls).toBe(true);
+    expect(markdown).toBe('![a](https://ghost.example.com/content/images/a.png)');
+  });
+
+  it('preserves legacy help-site links exactly', () => {
+    const { markdown } = convertGhostHtml('<p><a href="http://help.joodbooking.com/en/getting-started/">Return to setup</a></p>');
+    expect(markdown).toBe('[Return to setup](http://help.joodbooking.com/en/getting-started/)');
+  });
 });
 
 describe('htmlToPlainText (conversion fallback)', () => {
@@ -135,11 +196,29 @@ describe('htmlToPlainText (conversion fallback)', () => {
 });
 
 describe('ghostItemToMarkdown', () => {
-  const base = { title: 'Post', slug: 'post', plaintext: null, status: 'published', featureImage: null, description: null, publishedAt: null };
+  const base = {
+    id: 'post',
+    tags: [],
+    title: 'Post',
+    slug: 'post',
+    plaintext: null,
+    status: 'published',
+    featureImage: null,
+    description: null,
+    publishedAt: null,
+  };
 
   it('prepends the feature image as a leading Markdown image', () => {
     const { markdown } = ghostItemToMarkdown({ ...base, html: '<p>Body</p>', featureImage: '__GHOST_URL__/content/images/hero.png' });
     expect(markdown).toBe('![Post](/content/images/hero.png)\n\nBody');
+  });
+
+  it('resolves feature-image placeholders using the source publication URL', () => {
+    const { markdown } = ghostItemToMarkdown(
+      { ...base, html: '<p>Body</p>', featureImage: '__GHOST_URL__/content/images/hero.png' },
+      'https://ghost.example.com',
+    );
+    expect(markdown).toBe('![Post](https://ghost.example.com/content/images/hero.png)\n\nBody');
   });
 
   it('falls back to plaintext when there is no html', () => {

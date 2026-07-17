@@ -14,8 +14,25 @@ const GHOST_URL_PLACEHOLDER = '__GHOST_URL__';
 
 export class GhostExportError extends Error {}
 
+/** Optional Nibleaf metadata added beside the untouched Ghost export by the
+ * dashboard. Ghost's JSON does not contain the publication URL, but that URL
+ * is required to resolve `__GHOST_URL__/content/images/...` placeholders. */
+export const ghostImportSourceUrl = (input: unknown): string | undefined => {
+  if (!isDict(input) || !isDict(input.__nibleafImport)) return undefined;
+  const raw = str(input.__nibleafImport.ghostUrl);
+  if (!raw) return undefined;
+  try {
+    const url = new URL(raw);
+    if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password) return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
+};
+
 /** The subset of a Ghost `posts` row the importer consumes. */
 export interface GhostContentItem {
+  id: string;
   title: string;
   slug: string;
   html: string | null;
@@ -24,19 +41,22 @@ export interface GhostContentItem {
   featureImage: string | null;
   description: string | null;
   publishedAt: string | null;
+  /** Normalized Ghost tag slugs, in the order stored by Ghost. */
+  tags: string[];
 }
 
 type Dict = Record<string, unknown>;
 const isDict = (value: unknown): value is Dict => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const str = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value : null);
 
-const toItem = (row: Dict): GhostContentItem | null => {
+const toItem = (row: Dict, tagsByPostId: ReadonlyMap<string, string[]>): GhostContentItem | null => {
   const title = str(row.title);
   const slug = str(row.slug);
   if (!title && !slug) {
     return null;
   }
   return {
+    id: str(row.id) ?? `${slug ?? title}`,
     title: title ?? (slug as string),
     slug: slug ?? '',
     html: str(row.html),
@@ -45,6 +65,7 @@ const toItem = (row: Dict): GhostContentItem | null => {
     featureImage: str(row.feature_image),
     description: str(row.custom_excerpt) ?? str(row.excerpt),
     publishedAt: str(row.published_at),
+    tags: tagsByPostId.get(str(row.id) ?? '') ?? [],
   };
 };
 
@@ -78,6 +99,24 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
     throw new GhostExportError('Not a Ghost export — no posts or pages collection found.');
   }
 
+  const tagById = new Map<string, string>();
+  for (const row of Array.isArray(data.tags) ? data.tags : []) {
+    if (!isDict(row)) continue;
+    const id = str(row.id);
+    const slug = str(row.slug) ?? str(row.name);
+    if (id && slug) tagById.set(id, slug.trim().toLowerCase());
+  }
+  const tagsByPostId = new Map<string, string[]>();
+  for (const row of Array.isArray(data.posts_tags) ? data.posts_tags : []) {
+    if (!isDict(row)) continue;
+    const postId = str(row.post_id);
+    const tag = tagById.get(str(row.tag_id) ?? '');
+    if (!(postId && tag)) continue;
+    const current = tagsByPostId.get(postId) ?? [];
+    if (!current.includes(tag)) current.push(tag);
+    tagsByPostId.set(postId, current);
+  }
+
   const posts: GhostContentItem[] = [];
   const pages: GhostContentItem[] = [];
   // Ghost stores static pages in the posts table (type: 'page' / legacy page: 1);
@@ -86,7 +125,7 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
     if (!isDict(row)) {
       continue;
     }
-    const item = toItem(row);
+    const item = toItem(row, tagsByPostId);
     if (item && isPublished(item)) {
       (isGhostPage(row) ? pages : posts).push(item);
     }
@@ -95,12 +134,55 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
     if (!isDict(row)) {
       continue;
     }
-    const item = toItem(row);
+    const item = toItem(row, tagsByPostId);
     if (item && isPublished(item)) {
       pages.push(item);
     }
   }
   return { posts, pages };
+};
+
+export type GhostLanguageResolution = {
+  code: string;
+  reason: 'tag' | 'ambiguous-tags' | 'default';
+};
+
+const primaryLanguage = (code: string): string => code.toLowerCase().split('-')[0] ?? code.toLowerCase();
+const hasArabicScript = (value: string): boolean => /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/u.test(value);
+
+/** Resolve one Ghost item to a configured project language. Exact language
+ * tags win (`en`, `ar`, `pt-br`). A base tag may target one regional locale.
+ * When an item accidentally carries multiple language tags, Arabic script is
+ * used only to disambiguate between those tagged choices; otherwise the first
+ * tag wins deterministically. Untagged content goes to the project default and
+ * is reported by the importer so editors can fix the Ghost data and re-import. */
+export const resolveGhostLanguage = (
+  item: Pick<GhostContentItem, 'tags' | 'title' | 'plaintext' | 'html'>,
+  languageCodes: readonly string[],
+  defaultCode: string,
+): GhostLanguageResolution => {
+  const byCode = new Map(languageCodes.map((code) => [code.toLowerCase(), code]));
+  const byPrimary = new Map<string, string[]>();
+  for (const code of languageCodes) {
+    const primary = primaryLanguage(code);
+    byPrimary.set(primary, [...(byPrimary.get(primary) ?? []), code]);
+  }
+  const matches: string[] = [];
+  for (const tag of item.tags) {
+    const normalized = tag.toLowerCase();
+    const exact = byCode.get(normalized);
+    const regional = byPrimary.get(normalized);
+    const match = exact ?? (regional?.length === 1 ? regional[0] : undefined);
+    if (match && !matches.includes(match)) matches.push(match);
+  }
+  if (matches.length === 1 && matches[0]) return { code: matches[0], reason: 'tag' };
+  if (matches.length > 1) {
+    const sample = `${item.title}\n${item.plaintext ?? ''}\n${item.html ?? ''}`;
+    const arabic = matches.find((code) => primaryLanguage(code) === 'ar');
+    const nonArabic = matches.find((code) => primaryLanguage(code) !== 'ar');
+    return { code: hasArabicScript(sample) && arabic ? arabic : (nonArabic ?? matches[0] ?? defaultCode), reason: 'ambiguous-tags' };
+  }
+  return { code: defaultCode, reason: 'default' };
 };
 
 export interface GhostSlugResult {
@@ -127,6 +209,19 @@ export const byPublishedAt = (a: GhostContentItem, b: GhostContentItem): number 
     return a.publishedAt ? -1 : b.publishedAt ? 1 : 0;
   }
   return a.publishedAt.localeCompare(b.publishedAt);
+};
+
+/** Ghost ships a default placeholder post on new publications. It is not
+ * documentation and should never displace real imported content. */
+export const isGhostPlaceholder = (item: Pick<GhostContentItem, 'title' | 'slug' | 'plaintext'>): boolean => {
+  const title = item.title.trim().toLowerCase();
+  const slug = item.slug.trim().toLowerCase();
+  const content = (item.plaintext ?? '').toLowerCase();
+  return (
+    title === 'coming soon' &&
+    /^coming-soon(?:-\d+)?$/.test(slug) &&
+    (content.includes('brand new site') || content.includes('up and running here shortly'))
+  );
 };
 
 let turndown: TurndownService | null = null;
@@ -163,10 +258,12 @@ export interface GhostHtmlConversion {
 }
 
 /** Convert Ghost HTML to Markdown, falling back to plain text when turndown fails. */
-export const convertGhostHtml = (html: string): GhostHtmlConversion => {
+export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHtmlConversion => {
   const hadGhostUrls = html.includes(GHOST_URL_PLACEHOLDER);
-  // Make placeholder media URLs site-relative so the Markdown stays valid.
-  const prepared = html.replaceAll(GHOST_URL_PLACEHOLDER, '');
+  // Resolve placeholders to the source publication so the asset migrator can
+  // download them. Legacy/direct API calls without a source URL retain the old
+  // site-relative fallback and receive an explicit importer warning.
+  const prepared = html.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
   try {
     return { markdown: getTurndown().turndown(prepared).trim(), usedFallback: false, hadGhostUrls };
   } catch {
@@ -175,11 +272,13 @@ export const convertGhostHtml = (html: string): GhostHtmlConversion => {
 };
 
 /** Full page body for one Ghost item: optional leading feature image + converted HTML. */
-export const ghostItemToMarkdown = (item: GhostContentItem): GhostHtmlConversion => {
+export const ghostItemToMarkdown = (item: GhostContentItem, ghostSourceUrl?: string): GhostHtmlConversion => {
   const source = item.html ?? '';
-  const conversion = source ? convertGhostHtml(source) : { markdown: item.plaintext?.trim() ?? '', usedFallback: false, hadGhostUrls: false };
+  const conversion = source
+    ? convertGhostHtml(source, ghostSourceUrl)
+    : { markdown: item.plaintext?.trim() ?? '', usedFallback: false, hadGhostUrls: false };
   if (item.featureImage) {
-    const image = item.featureImage.replaceAll(GHOST_URL_PLACEHOLDER, '');
+    const image = item.featureImage.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
     const alt = item.title.replace(/[[\]\n]/g, ' ').trim();
     const hadGhostUrls = conversion.hadGhostUrls || item.featureImage.includes(GHOST_URL_PLACEHOLDER);
     return { ...conversion, hadGhostUrls, markdown: `![${alt}](${image})\n\n${conversion.markdown}`.trim() };

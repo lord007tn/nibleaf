@@ -51,12 +51,14 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   });
 
   try {
+    // `bootstrapOwner`: the one sanctioned owner-invitation — this org was
+    // created empty above, so accepting it yields exactly one owner.
     const invitation = await inviteMember(
       created.organization.id,
       adminUserId,
       'owner',
       { email: ownerEmail, role: 'owner' },
-      { sendEmail: input.delivery === 'email' },
+      { sendEmail: input.delivery === 'email', bootstrapOwner: true },
     );
     return {
       organizationId: created.organization.id,

@@ -748,6 +748,18 @@ export const auth = betterAuth({
     }),
     organization({
       organizationHooks: {
+        // Single-owner invariant, enforced even through better-auth's OWN
+        // update-member-role endpoint: `owner` can never be granted here, and
+        // the current owner's role can only change via the dedicated
+        // transfer-ownership endpoint (which swaps roles atomically).
+        beforeUpdateMemberRole: async ({ member, newRole }) => {
+          if (newRole.split(',').some((role) => role.trim() === 'owner')) {
+            throw new APIError('BAD_REQUEST', { message: 'Ownership is granted only via transfer-ownership.' });
+          }
+          if (member.role === 'owner') {
+            throw new APIError('BAD_REQUEST', { message: 'The owner role can only change via transfer-ownership.' });
+          }
+        },
         afterCreateOrganization: async ({ organization: org, member }) => {
           const project = await createStarterProject(org.id).catch(() => null);
           if (project) {
@@ -761,11 +773,33 @@ export const auth = betterAuth({
             if (!notificationEnabled((org as { metadata?: string | null }).metadata, 'member_joined')) {
               return;
             }
+            const who = user.name || user.email || 'A new member';
+            // In-app bell: every existing member sees the join (the email below stays
+            // admin-only). Each site owns its org 1:1, so the org's project is the link target.
+            try {
+              const [project, others] = await Promise.all([
+                prisma.project.findFirst({ where: { organizationId: org.id }, select: { id: true } }),
+                prisma.member.findMany({ where: { organizationId: org.id, userId: { not: member.userId } }, select: { userId: true } }),
+              ]);
+              if (others.length > 0) {
+                await prisma.notification.createMany({
+                  data: others.map((existing) => ({
+                    userId: existing.userId,
+                    projectId: project?.id ?? null,
+                    type: 'member_joined',
+                    title: `${who} joined ${org.name}`,
+                    body: 'They accepted their invitation and can now collaborate on the docs.',
+                    href: project ? `/app/projects/${project.id}/settings?section=members` : null,
+                  })),
+                });
+              }
+            } catch {
+              // in-app inbox is best-effort; fall through to the email
+            }
             const admins = await prisma.member.findMany({
               where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: member.userId } },
               select: { user: { select: { email: true } } },
             });
-            const who = user.name || user.email || 'A new member';
             const subject = `${who} joined ${org.name}`;
             const html = `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New teammate in ${escapeHtml(org.name)}</h2><p style="margin:0;color:#475569;line-height:1.6"><strong>${escapeHtml(who)}</strong> just joined <strong>${escapeHtml(org.name)}</strong>.</p></div>`;
             await Promise.all(admins.map((a) => (a.user.email ? sendMail(a.user.email, subject, html) : undefined)));

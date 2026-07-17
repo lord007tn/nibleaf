@@ -24,7 +24,9 @@ const app = new Hono<HonoEnv>()
     const { role } = getContextMembershipOrThrow();
     return ctx.json({ data: await updateMemberRole(organizationId, ctx.req.param('id'), role, ctx.req.valid('json')) }, 200);
   })
-  .post('/transfer-owner', ...projectMembersRoutes.transferOwner, validator('json', transferOwnershipBody), async (ctx) => {
+  // OWNER-guarded (see routes.transferOwner); the action re-validates and also
+  // repairs legacy multi-owner data so the ending state is exactly one owner.
+  .post('/transfer-ownership', ...projectMembersRoutes.transferOwner, validator('json', transferOwnershipBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();
     return ctx.json({ data: await transferOwnership(organizationId, user.id, ctx.req.valid('json').memberId) }, 200);

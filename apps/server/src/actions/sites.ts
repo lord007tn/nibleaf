@@ -27,6 +27,7 @@ import { LruCache, TtlCache } from '@/lib/lru';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 import { stableHash } from './importers/content';
+import { createNotificationsForOrgMembers } from './notifications';
 
 /** Resolve a published site by its canonical project id. */
 const resolveProjectId = async (identifier: string): Promise<string> => {
@@ -77,7 +78,12 @@ interface LiveChromeRow {
   domains: { domain: string }[];
   /** Live per-language serving toggle + chrome/SEO overrides, so disabling a
    *  language or editing its localized chrome applies without a re-publish. */
-  languages: { code: string; enabled: boolean; config: unknown }[];
+  languages: {
+    code: string;
+    enabled: boolean;
+    config: unknown;
+    projectTranslations: { name: string | null; description: string | null }[];
+  }[];
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -129,7 +135,12 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
       languages: {
         orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-        select: { code: true, enabled: true, config: true },
+        select: {
+          code: true,
+          enabled: true,
+          config: true,
+          projectTranslations: { where: { projectId }, take: 1, select: { name: true, description: true } },
+        },
       },
     },
   });
@@ -162,7 +173,15 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
     config: (live.config as Record<string, unknown> | null) ?? null,
     languages: project.languages.map((language) => {
       const row = liveByCode.get(language.code);
-      return row ? { ...language, enabled: row.enabled, config: (row.config as SnapshotLanguageConfig | null) ?? null } : language;
+      if (!row) return language;
+      const translation = row.projectTranslations[0];
+      const base = (row.config as SnapshotLanguageConfig | null) ?? {};
+      const config = {
+        ...base,
+        ...(translation?.name ? { name: translation.name } : {}),
+        ...(translation?.description ? { description: translation.description } : {}),
+      };
+      return { ...language, enabled: row.enabled, config: Object.keys(config).length > 0 ? config : null };
     }),
   };
 };
@@ -475,6 +494,40 @@ const deviceFromUserAgent = (ua: string | null): string => {
   return 'desktop';
 };
 
+/** How long one feedback notification "covers" a project: while an UNREAD
+ *  feedback notification younger than this exists, further feedback events
+ *  don't fan out again (a burst of reader votes → one bell entry). */
+const FEEDBACK_NOTIFICATION_WINDOW_MS = 60 * 60 * 1000;
+
+/** Fan a reader-feedback event out to the org's bell inboxes, throttled per
+ *  project. Best-effort: the public track endpoint must never fail on this. */
+const notifyFeedback = async (projectId: string, body: TrackEventBody): Promise<void> => {
+  try {
+    const recentUnread = await prisma.notification.findFirst({
+      where: {
+        projectId,
+        type: 'feedback',
+        readAt: null,
+        createdAt: { gt: new Date(Date.now() - FEEDBACK_NOTIFICATION_WINDOW_MS) },
+      },
+      select: { id: true },
+    });
+    if (recentUnread) {
+      return;
+    }
+    const sentiment = body.query === 'helpful' ? 'helpful' : body.query === 'not_helpful' ? 'not helpful' : null;
+    const page = body.path ? `"${body.path.slice(0, 120)}"` : 'a page';
+    await createNotificationsForOrgMembers(projectId, {
+      type: 'feedback',
+      title: 'New reader feedback',
+      body: sentiment ? `A reader marked ${page} as ${sentiment}.` : `A reader left feedback on ${page}.`,
+      href: `/app/projects/${projectId}/analytics`,
+    });
+  } catch {
+    // never fail the public event write over the inbox
+  }
+};
+
 /** Record a public pageview for a published site. Derives the device class from
  *  the User-Agent (and country from a CDN geo header, when present) so the
  *  analytics breakdowns are populated. */
@@ -489,6 +542,9 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
   const device = deviceFromUserAgent(headers.get('user-agent'));
   const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
   await trackEvent(projectId, body, { device, country }).catch(() => undefined);
+  if (body.type === 'feedback') {
+    await notifyFeedback(projectId, body);
+  }
   return { ok: true };
 };
 

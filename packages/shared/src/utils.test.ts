@@ -33,6 +33,10 @@ describe('excerpt', () => {
     expect(out).toContain('the docs');
     expect(out).not.toContain('https://x');
   });
+  it('removes Markdown images instead of leaking image syntax or URLs', () => {
+    const out = excerpt('Add the company settings\n\n![](https://ghost.example.com/content/images/steps.jpg)\n\nThen continue.');
+    expect(out).toBe('Add the company settings Then continue.');
+  });
   it('truncates past the max with an ellipsis', () => {
     const out = excerpt('a '.repeat(200), 20);
     expect(out.length).toBeLessThanOrEqual(20);
