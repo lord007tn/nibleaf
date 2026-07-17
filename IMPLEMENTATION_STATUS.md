@@ -454,6 +454,10 @@ Completed on 2026-07-17:
   Markdown and MDX links are rewritten to the imported grouped routes, and
   valid linked source pages omitted from Mintlify navigation are discovered and
   imported under an `Additional pages` group so publish validation stays strict.
+- Mintlify component indentation is normalized before persistence, preventing
+  Markdown nested in JSX components from becoming accidental code blocks. MDX
+  `<img>` tags are converted to first-class Markdown images after asset
+  migration so imported screenshots render instead of exposing source markup.
 - Production Ghost QA imported one tagged article, intentionally skipped the
   stock Coming soon placeholder, copied its image into project-owned storage,
   published the visible `First Steps` tag, and preserved its legacy HTTP help
@@ -470,8 +474,8 @@ Completed on 2026-07-17:
   and moved localized project identity into the new `ProjectTranslation` table.
   The migration preserves existing translations while removing them from JSON.
 - Normalized primary sidebar controls to the same 48px vertical rhythm.
-- Verification passed: full lint; server (105), app (93), validator (34), and
-  shared (68) test suites (300 tests total); all 16 package
+- Verification passed: full lint; server (107), app (93), validator (34), and
+  shared (68) test suites (302 tests total); all 16 package
   typechecks; and the full production build. The build still reports the documented large
   frontend chunk warnings, so bundle splitting remains in the queue above.
 

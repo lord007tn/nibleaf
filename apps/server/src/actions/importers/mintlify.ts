@@ -9,6 +9,7 @@ import { fetchRawText, getGitHubDefaultBranch, githubRawUrl, listGitHubFiles } f
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import { findMintlifyConfigPath, mapMintlifyConfig, mergeConfigPreservingExisting, type NavNode, parseMintlifyNavigation } from './mintlify-mapping';
+import { normalizeMintlifyMdx } from './mintlify-mdx';
 import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertLeafPage } from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
 
@@ -70,7 +71,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         children: linkedPages.map((path) => ({ kind: 'page', path })),
       });
       summary.warnings.push(
-        `Imported ${linkedPages.length} linked page${linkedPages.length === 1 ? '' : 's'} that were not listed in Mintlify navigation.`,
+        `Imported ${linkedPages.length} linked page${linkedPages.length === 1 ? ' that was' : 's that were'} not listed in Mintlify navigation.`,
       );
     }
     const target = await defaultImportTarget(projectId);
@@ -238,7 +239,7 @@ const importNodes = async (
         `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,
       );
     }
-    const content = await assets.rewrite(assetReferences.content);
+    const content = normalizeMintlifyMdx(await assets.rewrite(assetReferences.content));
     const fileBase = node.path.split('/').filter(Boolean).pop() ?? 'page';
     let slug = slugify(fileBase);
     if (!slug) {
