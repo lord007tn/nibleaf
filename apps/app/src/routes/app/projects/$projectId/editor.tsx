@@ -460,6 +460,7 @@ function EditorPage() {
               variant="ghost"
               className="cursor-pointer"
               onClick={() => setSidebarCollapsed(true)}
+              aria-label={t('editor.hideSidebar')}
               title={t('editor.hideSidebar')}
             >
               <PanelLeftClose className="size-3.5" />
@@ -510,6 +511,7 @@ function EditorPage() {
                             variant="ghost"
                             className="cursor-pointer"
                             onClick={() => setLangSettings(lang)}
+                            aria-label={t('editor.langSettings.settings')}
                             title={t('editor.langSettings.settings')}
                           >
                             <Settings2 className="size-3" />
@@ -522,6 +524,7 @@ function EditorPage() {
                               expandLang(lang.id);
                               addGroup(lang.id);
                             }}
+                            aria-label={t('editor.newGroup')}
                             title={t('editor.newGroup')}
                           >
                             <FolderPlus className="size-3" />
@@ -534,6 +537,7 @@ function EditorPage() {
                               expandLang(lang.id);
                               addPage(null, lang.id);
                             }}
+                            aria-label={t('editor.newPage')}
                             title={t('editor.newPage')}
                           >
                             <Plus className="size-3" />
@@ -643,6 +647,7 @@ function EditorPage() {
                   variant="ghost"
                   className="cursor-pointer"
                   onClick={() => setSidebarCollapsed(false)}
+                  aria-label={t('editor.showSidebar')}
                   title={t('editor.showSidebar')}
                 >
                   <PanelLeftOpen className="size-4" />
@@ -712,6 +717,7 @@ function EditorPage() {
                 variant="ghost"
                 className="cursor-pointer"
                 onClick={() => activeId && setSettingsForId(activeId)}
+                aria-label={t('editor.pageSettings.title')}
                 title={t('editor.pageSettings.title')}
               >
                 <Settings2 className="size-4" />
@@ -720,6 +726,7 @@ function EditorPage() {
                 size="icon-sm"
                 variant="ghost"
                 className="cursor-pointer"
+                aria-label={t('editor.deletePage')}
                 title={t('editor.deletePage')}
                 onClick={async () => {
                   const ok = await confirm({
@@ -736,6 +743,7 @@ function EditorPage() {
                 <Trash2 className="size-4" />
               </Button>
               <Button
+                aria-label={railOpen ? t('editor.hideRail') : t('editor.showRail')}
                 aria-pressed={railOpen}
                 className="hidden cursor-pointer xl:inline-flex"
                 onClick={() => setRailOpen((v) => !v)}

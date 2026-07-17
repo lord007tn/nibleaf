@@ -353,7 +353,7 @@ function RowPresentation({
       className={cn(
         'group/row flex items-center gap-1 rounded-md pe-1',
         overlay && 'bg-card shadow-lg ring-1 ring-border',
-        !overlay && active && 'bg-primary/10 font-medium text-foreground',
+        !overlay && active && 'bg-primary/10 font-medium text-primary',
         !overlay && !active && 'text-foreground/80 hover:bg-muted hover:text-foreground',
       )}
       style={{ marginInlineStart: depth * INDENT }}

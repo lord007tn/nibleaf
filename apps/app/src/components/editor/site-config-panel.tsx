@@ -47,7 +47,7 @@ export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionI
           onClick={() => onSelect(section.id)}
           className={cn(
             'flex h-9 w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-            active === section.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            active === section.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
           <span className="inline-flex w-[18px] justify-center text-[13px]">{section.icon}</span>

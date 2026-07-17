@@ -580,7 +580,7 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
               onClick={() => command(item)}
               className={cn(
                 'flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-start',
-                index === selected ? 'bg-muted' : 'bg-transparent',
+                index === selected ? 'bg-primary/10' : 'bg-transparent',
               )}
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[13px]">

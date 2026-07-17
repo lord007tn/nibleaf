@@ -178,8 +178,8 @@ export function CommentsPanel({
                     >
                       {initials(comment.user.name)}
                     </span>
-                    <span className="font-semibold text-sm">{comment.user.name}</span>
-                    <span className="ms-auto text-muted-foreground text-xs">{relativeTime(comment.createdAt)}</span>
+                    <span className="min-w-0 truncate font-semibold text-sm">{comment.user.name}</span>
+                    <span className="ms-auto shrink-0 text-muted-foreground text-xs">{relativeTime(comment.createdAt)}</span>
                   </div>
                   <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
                     {comment.body}

@@ -160,7 +160,7 @@ export function PageSettingsDialog({
                   onClick={() => setSection(item.id)}
                   className={cn(
                     'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-                    section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    section === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
                   <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>

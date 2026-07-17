@@ -52,7 +52,14 @@ export function LanguageTabs({ projectId, languages, activeLanguageId, onSelect,
         </div>
       ) : null}
 
-      <Button size="icon-xs" variant="ghost" className="cursor-pointer" onClick={() => setDialogOpen(true)} title={t('editor.addLanguage')}>
+      <Button
+        aria-label={t('editor.addLanguage')}
+        size="icon-xs"
+        variant="ghost"
+        className="cursor-pointer"
+        onClick={() => setDialogOpen(true)}
+        title={t('editor.addLanguage')}
+      >
         <Plus className="size-3.5" />
       </Button>
 
