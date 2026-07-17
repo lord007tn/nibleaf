@@ -449,6 +449,16 @@ Completed on 2026-07-17:
   Root-relative images now resolve from the directory containing `docs.json`
   (Mintlify's project root) rather than incorrectly assuming the Git repository
   root.
+- The production Mintlify fixture imported 27 configured pages and copied 23
+  images into project-owned storage with no source-image fallbacks. Internal
+  Markdown and MDX links are rewritten to the imported grouped routes, and
+  valid linked source pages omitted from Mintlify navigation are discovered and
+  imported under an `Additional pages` group so publish validation stays strict.
+- Production Ghost QA imported one tagged article, intentionally skipped the
+  stock Coming soon placeholder, copied its image into project-owned storage,
+  published the visible `First Steps` tag, and preserved its legacy HTTP help
+  link exactly. The live JoodBooking deployment was also cleaned and
+  republished without the Welcome and Coming soon placeholders.
 - Added Ghost language-tag parsing, locale preflight validation, multilingual
   import routing, aggregated warnings for untagged/ambiguous content, focused
   mapping tests, and a bilingual tagging tutorial in the import UI.
@@ -460,22 +470,16 @@ Completed on 2026-07-17:
   and moved localized project identity into the new `ProjectTranslation` table.
   The migration preserves existing translations while removing them from JSON.
 - Normalized primary sidebar controls to the same 48px vertical rhythm.
-- Verification passed: full lint; server (102), app (93), validator (34), and
-  shared (68) test suites (297 tests total); all 16 package
+- Verification passed: full lint; server (105), app (93), validator (34), and
+  shared (68) test suites (300 tests total); all 16 package
   typechecks; and the full production build. The build still reports the documented large
   frontend chunk warnings, so bundle splitting remains in the queue above.
 
 ## Pending / External
 
-- GitHub push target is `lord007tn/nibleaf` on branch `main`.
-- Coolify repo readiness is implemented; creating the live Coolify app, assigning
-  domains, and setting DNS records remain external deployment steps.
-- Cloudflare DNS setup remains out of the active work target unless requested.
-
-Known verification caveat:
-
-- Full `pnpm lint` currently fails on broad pre-existing formatting/import
-  diagnostics across the dirty worktree; touched files pass focused Biome checks.
-- Chrome profile extensions can block direct navigation to some local settings
-  URLs or add hydration warnings; authenticated in-app settings screens were
-  still verified after a clean dev-server restart.
+- Production deploys from `lord007tn/nibleaf` branch `main` through Coolify.
+- Cloudflare DNS changes remain outside the active work target unless requested.
+- Chrome file upload requires the ChatGPT Chrome extension's optional
+  `file://` access. Production Ghost QA therefore used the authenticated page's
+  same-origin import endpoint with the prepared local fixture; no browser
+  credentials were copied or exposed.
