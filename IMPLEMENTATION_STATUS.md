@@ -445,6 +445,10 @@ Completed on 2026-07-17:
   Markdown and MDX image references resolve against their source file, are
   copied into project storage, and modern object-style navigation retains page
   titles, icons, and tags.
+- Production-tested the Mintlify importer against a nested public docs project.
+  Root-relative images now resolve from the directory containing `docs.json`
+  (Mintlify's project root) rather than incorrectly assuming the Git repository
+  root.
 - Added Ghost language-tag parsing, locale preflight validation, multilingual
   import routing, aggregated warnings for untagged/ambiguous content, focused
   mapping tests, and a bilingual tagging tutorial in the import UI.

@@ -171,7 +171,13 @@ const importNodes = async (
     // MDX imports as-is (the editor/renderer handles Mintlify-style components);
     // only the frontmatter is stripped into title/description/icon.
     const { meta, body } = parseFrontmatter(raw);
-    const assetReferences = rewriteMintlifyAssetReferences(body, filePath, blobs, (path) => githubRawUrl(repo.owner, repo.name, repo.branch, path));
+    const assetReferences = rewriteMintlifyAssetReferences(
+      body,
+      filePath,
+      blobs,
+      (path) => githubRawUrl(repo.owner, repo.name, repo.branch, path),
+      baseDir,
+    );
     if (assetReferences.missing.length > 0) {
       summary.warnings.push(
         `Page "${node.path}" references ${assetReferences.missing.length} image${assetReferences.missing.length === 1 ? '' : 's'} not found in the repository: ${assetReferences.missing.slice(0, 3).join(', ')}.`,

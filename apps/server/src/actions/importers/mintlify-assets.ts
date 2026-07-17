@@ -12,10 +12,12 @@ const cleanReference = (value: string): string => {
   }
 };
 
-const repoPathForReference = (reference: string, sourceFile: string): string | null => {
+const repoPathForReference = (reference: string, sourceFile: string, projectRoot = ''): string | null => {
   if (/^(?:https?:|data:|blob:|#)/i.test(reference)) return null;
   const clean = cleanReference(reference).replace(/\\/g, '/');
-  const path = posix.normalize(clean.startsWith('/') ? clean.slice(1) : posix.join(posix.dirname(sourceFile), clean));
+  // In Mintlify, a leading slash is relative to the docs project root (the
+  // directory containing docs.json/mint.json), not necessarily the Git repo.
+  const path = posix.normalize(clean.startsWith('/') ? posix.join(projectRoot, clean.slice(1)) : posix.join(posix.dirname(sourceFile), clean));
   return !path || path === '.' || path.startsWith('../') ? null : path;
 };
 
@@ -34,12 +36,13 @@ export const rewriteMintlifyAssetReferences = (
   sourceFile: string,
   blobs: ReadonlySet<string>,
   rawUrl: (path: string) => string,
+  projectRoot = '',
 ): MintlifyAssetRewriteResult => {
   const resolved = new Set<string>();
   const missing = new Set<string>();
   const resolve = (reference: string): string => {
     if (/^https?:\/\//i.test(reference)) return reference;
-    const path = repoPathForReference(reference, sourceFile);
+    const path = repoPathForReference(reference, sourceFile, projectRoot);
     if (!path) return reference;
     if (!blobs.has(path)) {
       missing.add(reference);
@@ -67,6 +70,7 @@ export const resolveMintlifyConfigAsset = (
   rawUrl: (path: string) => string,
 ): string | undefined => {
   if (/^https?:\/\//i.test(reference)) return reference;
-  const path = repoPathForReference(reference, configPath);
+  const projectRoot = posix.dirname(configPath) === '.' ? '' : posix.dirname(configPath);
+  const path = repoPathForReference(reference, configPath, projectRoot);
   return path && blobs.has(path) ? rawUrl(path) : undefined;
 };
