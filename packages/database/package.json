@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@prisma/adapter-pg": "6.19.3",
-    "@prisma/client": "6.19.3",
+    "@prisma/client": "7.8.0",
     "@t3-oss/env-core": "^0.13.11",
     "zod": "^4.4.3"
   },
