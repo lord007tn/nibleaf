@@ -1,6 +1,6 @@
 # Nibleaf Implementation Status
 
-Last updated: 2026-07-17
+Last updated: 2026-07-18
 
 ## Target
 
@@ -120,6 +120,17 @@ Observed during private product research in a Mintlify workspace:
   page trees, fallback, language switcher, and hreflang alternates. The server
   enforces that a project cannot directly unset its current default language;
   another language must be promoted instead.
+- Published navigation supports URL-safe virtual categories: flat imported page
+  collections can be grouped, ordered, and icon-labelled without re-parenting
+  content or breaking existing links. Inactive imported categories start
+  collapsed while the active category stays open.
+- Page settings expose imported article tags plus sidebar category, icon, and
+  order metadata. Saving unrelated settings preserves that taxonomy.
+- Article headers show localized reading time, screenshot count, and last-updated
+  metadata, while category-aware breadcrumbs link to each section's first guide.
+- The visual editor's slash palette includes dedicated callout variants,
+  standalone cards and buttons, 2/3/4-card grids, and responsive 2/3/4-column
+  layouts, based on the component patterns observed in Mintlify's editor.
 - The published-site language switcher uses each page's translated alternate
   path when a `translationKey` sibling exists, so switching languages can move
   from `/introduction` to `/ar/introduction`-style translated slugs instead of

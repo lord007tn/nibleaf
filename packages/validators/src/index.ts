@@ -256,6 +256,12 @@ export const pageConfigSchema = z
     tag: z.string().max(20).optional(),
     /** Source taxonomy retained by importers and shown on the article. */
     tags: z.array(z.string().min(1).max(40)).max(10).optional(),
+    /** Virtual navigation section. Groups sibling pages without changing URLs. */
+    category: z.string().max(80).optional(),
+    /** Optional icon shown on the virtual category in the published sidebar. */
+    categoryIcon: z.string().max(64).optional(),
+    /** Stable ordering for virtual categories (lower values appear first). */
+    categoryOrder: z.number().int().min(0).max(999).optional(),
     /** Content width on the live site. */
     mode: pageModeEnum.optional(),
     /** Hide the right-hand "On this page" table of contents. */

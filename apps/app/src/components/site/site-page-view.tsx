@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { Check, ChevronLeft, ChevronRight, CircleAlert, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
@@ -238,6 +238,13 @@ export function SitePageView({
     addons?.feedback !== false ||
     (addons?.editSuggestions !== false && Boolean(addons?.editUrl?.trim())) ||
     (addons?.issueLinks !== false && Boolean(addons?.issueUrl?.trim()));
+  const readableText = page.content
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/[`#*_>[\](){}|~-]/g, ' ');
+  const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
+  const imageCount = (page.content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
+  const updatedLabel = new Intl.DateTimeFormat(language || 'en', { dateStyle: 'medium' }).format(new Date(page.updatedAt));
 
   const article = (
     <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')}>
@@ -260,6 +267,19 @@ export function SitePageView({
       ) : null}
       <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
+      <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label="Article details">
+        <li className="inline-flex items-center gap-1.5">
+          <Clock3 className="size-3.5" aria-hidden /> {readingMinutes} {tArticle('minRead')}
+        </li>
+        {imageCount > 0 ? (
+          <li className="inline-flex items-center gap-1.5">
+            <Image className="size-3.5" aria-hidden /> {imageCount} {tArticle(imageCount === 1 ? 'screenshot' : 'screenshots')}
+          </li>
+        ) : null}
+        <li className="inline-flex items-center gap-1.5">
+          <CalendarClock className="size-3.5" aria-hidden /> {tArticle('updated')} {updatedLabel}
+        </li>
+      </ul>
       {page.config?.tags?.length ? (
         <ul className="mt-4 flex flex-wrap gap-2" aria-label="Tags">
           {page.config.tags.map((tag) => (

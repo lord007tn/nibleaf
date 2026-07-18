@@ -451,6 +451,15 @@
   gap: 1rem;
   margin: 1.25rem 0;
 }
+.pl-editor .pl-cardgroup[data-cols="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pl-editor .pl-cardgroup[data-cols="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.pl-editor .pl-cardgroup[data-cols="4"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .pl-editor .pl-card {
   border: 1px solid var(--color-border);
   border-radius: 0.75rem;
@@ -489,6 +498,11 @@
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
   gap: 1rem;
   margin: 1.25rem 0;
+}
+@media (max-width: 720px) {
+  .pl-editor .pl-cardgroup {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .pl-editor .pl-column,
 .pl-editor .pl-banner {

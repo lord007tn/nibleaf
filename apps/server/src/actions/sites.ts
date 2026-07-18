@@ -362,6 +362,19 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const order = flattenNav(buildNavTree(pages, navLanguage));
   const index = order.findIndex((node) => node.path === page.path);
   const breadcrumbs = breadcrumbTrail(pages, page);
+  const category = page.config?.category?.trim();
+  if (category && breadcrumbs.at(-2)?.title !== category) {
+    const categoryLanding = pages
+      .filter(
+        (candidate) =>
+          candidate.kind === 'PAGE' &&
+          candidate.parentId === page.parentId &&
+          candidate.languageCode === page.languageCode &&
+          candidate.config?.category?.trim() === category,
+      )
+      .sort((a, b) => a.position - b.position)[0];
+    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path });
+  }
 
   const servedLanguages = publicLanguages(snapshot.project.languages);
   const pageLanguage = servedLanguages.find((l) => l.code === navLanguage);
@@ -398,6 +411,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     versions: snapshot.project.versions,
     page: {
       id: page.id,
+      updatedAt: page.updatedAt,
       title: page.title,
       description: pageDescription(page),
       icon: page.icon,

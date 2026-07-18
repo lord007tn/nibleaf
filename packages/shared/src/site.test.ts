@@ -92,6 +92,24 @@ describe('buildNavTree', () => {
     const tree = buildNavTree([page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' })], 'en');
     expect(tree.map((n) => n.id)).toEqual(['en1']);
   });
+  it('groups categorized siblings without changing their paths', () => {
+    const tree = buildNavTree([
+      page({ id: 'billing', path: 'blog/billing', position: 0, config: { category: 'Accounting', categoryOrder: 2 } }),
+      page({ id: 'hotel', path: 'blog/hotel', position: 1, config: { category: 'Hotels', categoryIcon: 'hotel', categoryOrder: 1 } }),
+      page({ id: 'room', path: 'blog/room', position: 2, config: { category: 'Hotels', categoryOrder: 1 } }),
+    ]);
+    expect(tree.map((node) => node.title)).toEqual(['Hotels', 'Accounting']);
+    expect(tree[0]).toMatchObject({ kind: 'GROUP', icon: 'hotel' });
+    expect(tree[0]?.children.map((node) => node.path)).toEqual(['blog/hotel', 'blog/room']);
+  });
+  it('keeps real groups ahead of virtual categories and uncategorized pages last', () => {
+    const tree = buildNavTree([
+      page({ id: 'loose', position: 0 }),
+      page({ id: 'guides', kind: 'GROUP', position: 1 }),
+      page({ id: 'setup', position: 2, config: { category: 'Start', categoryOrder: 0 } }),
+    ]);
+    expect(tree.map((node) => node.title)).toEqual(['guides', 'Start', 'loose']);
+  });
 });
 
 describe('buildSnapshot', () => {

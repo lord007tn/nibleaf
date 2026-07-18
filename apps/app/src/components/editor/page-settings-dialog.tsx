@@ -59,6 +59,10 @@ export function PageSettingsDialog({
   const [hidden, setHidden] = useState(page.hidden);
   const [sidebarTitle, setSidebarTitle] = useState(page.config?.sidebarTitle ?? '');
   const [tag, setTag] = useState(page.config?.tag ?? '');
+  const [tags, setTags] = useState((page.config?.tags ?? []).join(', '));
+  const [category, setCategory] = useState(page.config?.category ?? '');
+  const [categoryIcon, setCategoryIcon] = useState(page.config?.categoryIcon ?? '');
+  const [categoryOrder, setCategoryOrder] = useState(page.config?.categoryOrder?.toString() ?? '');
   // SEO
   const [metaTitle, setMetaTitle] = useState(page.config?.seo?.metaTitle ?? '');
   const [metaDescription, setMetaDescription] = useState(page.config?.seo?.metaDescription ?? '');
@@ -84,6 +88,10 @@ export function PageSettingsDialog({
     setHidden(page.hidden);
     setSidebarTitle(page.config?.sidebarTitle ?? '');
     setTag(page.config?.tag ?? '');
+    setTags((page.config?.tags ?? []).join(', '));
+    setCategory(page.config?.category ?? '');
+    setCategoryIcon(page.config?.categoryIcon ?? '');
+    setCategoryOrder(page.config?.categoryOrder?.toString() ?? '');
     setMetaTitle(page.config?.seo?.metaTitle ?? '');
     setMetaDescription(page.config?.seo?.metaDescription ?? '');
     setOgImage(page.config?.seo?.ogImage ?? '');
@@ -99,9 +107,22 @@ export function PageSettingsDialog({
     // (empty strings/false read as "no override" via the SEO fallback chain, and
     // blanking a field clears it). When nothing is overridden, send null so the
     // page's config stays null instead of bloating with an empty object.
+    const parsedTags = [
+      ...new Set(
+        tags
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+    ].slice(0, 10);
+    const parsedCategoryOrder = categoryOrder.trim() === '' ? undefined : Number(categoryOrder);
     const config: PageConfig = {
       sidebarTitle: sidebarTitle.trim(),
       tag: tag.trim(),
+      tags: parsedTags,
+      category: category.trim(),
+      categoryIcon: categoryIcon.trim(),
+      ...(Number.isInteger(parsedCategoryOrder) ? { categoryOrder: parsedCategoryOrder } : {}),
       mode,
       hideToc,
       seo: {
@@ -115,6 +136,10 @@ export function PageSettingsDialog({
     const hasOverride =
       sidebarTitle.trim() !== '' ||
       tag.trim() !== '' ||
+      parsedTags.length > 0 ||
+      category.trim() !== '' ||
+      categoryIcon.trim() !== '' ||
+      Number.isInteger(parsedCategoryOrder) ||
       mode !== 'default' ||
       hideToc ||
       [metaTitle, metaDescription, ogImage, canonicalUrl].some((v) => v.trim() !== '') ||
@@ -205,6 +230,28 @@ export function PageSettingsDialog({
                   </Field>
                   <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
                     <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
+                  </Field>
+                  <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
+                    <Input id="page-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Getting started, Guide" />
+                  </Field>
+                  <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-3">
+                    <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
+                      <Input id="page-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Getting started" />
+                    </Field>
+                    <Field label={t('editor.pageSettings.categoryOrder')} htmlFor="page-category-order">
+                      <Input
+                        id="page-category-order"
+                        type="number"
+                        min={0}
+                        max={999}
+                        value={categoryOrder}
+                        onChange={(e) => setCategoryOrder(e.target.value)}
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
+                  <Field label={t('editor.pageSettings.categoryIcon')} hint={t('editor.pageSettings.categoryIconHint')} htmlFor="page-category-icon">
+                    <Input id="page-category-icon" value={categoryIcon} onChange={(e) => setCategoryIcon(e.target.value)} placeholder="rocket" />
                   </Field>
                   <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
                     <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />

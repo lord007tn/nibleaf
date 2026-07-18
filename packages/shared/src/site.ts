@@ -8,6 +8,9 @@ export interface SnapshotPageConfig {
   sidebarTitle?: string;
   tag?: string;
   tags?: string[];
+  category?: string;
+  categoryIcon?: string;
+  categoryOrder?: number;
   mode?: 'default' | 'wide' | 'center';
   hideToc?: boolean;
 }
@@ -197,19 +200,60 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
     list.push(page);
     byParent.set(page.parentId, list);
   }
-  const build = (parentId: string | null): NavNode[] =>
-    (byParent.get(parentId) ?? [])
-      .sort((a, b) => a.position - b.position)
-      .map((page) => ({
-        id: page.id,
-        kind: page.kind,
-        // Mintlify-style: a short sidebar label overrides the full page title in nav.
-        title: page.config?.sidebarTitle?.trim() || page.title,
-        path: page.path,
-        icon: page.icon,
-        tag: page.config?.tag?.trim() || null,
-        children: build(page.id),
+  const build = (parentId: string | null): NavNode[] => {
+    const siblings = (byParent.get(parentId) ?? []).sort((a, b) => a.position - b.position);
+    const toNode = (page: SnapshotPage): NavNode => ({
+      id: page.id,
+      kind: page.kind,
+      // Mintlify-style: a short sidebar label overrides the full page title in nav.
+      title: page.config?.sidebarTitle?.trim() || page.title,
+      path: page.path,
+      icon: page.icon,
+      tag: page.config?.tag?.trim() || null,
+      children: build(page.id),
+    });
+
+    // Categories are deliberately virtual: imported flat collections can gain
+    // an ergonomic, collapsible sidebar without re-parenting pages or breaking
+    // any existing URL. Real groups remain first; uncategorized pages follow the
+    // explicitly ordered category sections.
+    const plain: NavNode[] = [];
+    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: SnapshotPage[] }>();
+    for (const page of siblings) {
+      const title = page.kind === 'PAGE' ? page.config?.category?.trim() : '';
+      if (!title) {
+        plain.push(toNode(page));
+        continue;
+      }
+      const existing = categories.get(title);
+      if (existing) {
+        existing.pages.push(page);
+        existing.order = Math.min(existing.order, page.config?.categoryOrder ?? existing.order);
+      } else {
+        categories.set(title, {
+          title,
+          icon: page.config?.categoryIcon?.trim() || null,
+          order: page.config?.categoryOrder ?? 999,
+          firstPosition: page.position,
+          pages: [page],
+        });
+      }
+    }
+    const grouped = [...categories.values()]
+      .sort((a, b) => a.order - b.order || a.firstPosition - b.firstPosition || a.title.localeCompare(b.title))
+      .map<NavNode>((category) => ({
+        id: `category:${parentId ?? 'root'}:${category.title}`,
+        kind: 'GROUP',
+        title: category.title,
+        path: category.pages[0]?.path ?? '',
+        icon: category.icon,
+        tag: null,
+        children: category.pages.sort((a, b) => a.position - b.position).map(toNode),
       }));
+    const realGroups = plain.filter((node) => node.kind === 'GROUP');
+    const uncategorizedPages = plain.filter((node) => node.kind === 'PAGE');
+    return [...realGroups, ...grouped, ...uncategorizedPages];
+  };
   return build(null);
 };
 

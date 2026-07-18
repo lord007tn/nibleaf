@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { ChevronRight } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
 import type { NavNode } from '@/hooks/api';
 import { siteHref } from '@/lib/site-paths';
@@ -19,6 +19,9 @@ export function firstLeafPath(nodes: NavNode[]): string | undefined {
   }
   return undefined;
 }
+
+const containsPath = (node: NavNode, path: string): boolean =>
+  node.kind === 'PAGE' ? node.path === path : node.children.some((child) => containsPath(child, path));
 
 function NavLink({ node, projectId, currentPath, lang, version, depth, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
   const active = currentPath === node.path;
@@ -83,7 +86,15 @@ function NavSection({ node, projectId, currentPath, lang, version, depth }: NavI
 
 /** Nested groups render as collapsible rows styled like items. */
 function NavSubGroup({ node, projectId, currentPath, lang, version, depth }: NavItemProps & { node: NavNode }) {
-  const [open, setOpen] = useState(true);
+  // Imported taxonomies can contain hundreds of pages. Keep only the active
+  // virtual category expanded so the sidebar is scannable on first load; hand-
+  // authored nested groups preserve their existing expanded behaviour.
+  const [open, setOpen] = useState(() => !node.id.startsWith('category:') || containsPath(node, currentPath));
+  useEffect(() => {
+    if (containsPath(node, currentPath)) {
+      setOpen(true);
+    }
+  }, [currentPath, node]);
   return (
     <li>
       <button
@@ -93,6 +104,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth }: Nav
         className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground"
       >
         <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} />
+        {node.icon ? <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground/80" /> : null}
         <span className="truncate">{node.title}</span>
       </button>
       {open && node.children.length > 0 ? (

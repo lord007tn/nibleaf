@@ -359,6 +359,7 @@ export interface SitePage {
   project: SiteShell['project'];
   page: {
     id: string;
+    updatedAt: string;
     title: string;
     description: string;
     icon: string | null;

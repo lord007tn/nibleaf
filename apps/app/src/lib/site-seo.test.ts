@@ -33,6 +33,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
   versions: [{ id: 'main', name: 'main', slug: 'main', isDefault: true }],
   page: {
     id: 'pg',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     title: 'Quickstart',
     description: 'Page own description',
     icon: null,

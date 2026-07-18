@@ -313,7 +313,9 @@ export function Update({ label, description, children }: { label?: string; descr
 // ─── Layout and inline UI ────────────────────────────────────────────────────
 
 export function Columns({ children }: { children?: ReactNode }) {
-  return <div className="my-5 grid gap-4 md:grid-cols-2">{children}</div>;
+  const count = Math.min(4, Math.max(1, Children.toArray(children).filter(isValidElement).length));
+  const colsClass = { 1: 'md:grid-cols-1', 2: 'md:grid-cols-2', 3: 'md:grid-cols-3', 4: 'md:grid-cols-4' }[count];
+  return <div className={cn('my-5 grid grid-cols-1 gap-4', colsClass)}>{children}</div>;
 }
 
 export function Column({ children }: { children?: ReactNode }) {

@@ -7,6 +7,7 @@ import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProp
 import {
   AppWindow,
   Badge as BadgeIcon,
+  CircleCheck,
   Code2,
   Columns3,
   Frame as FrameIcon,
@@ -14,6 +15,7 @@ import {
   Heading2,
   Heading3,
   Image as ImageIcon,
+  Info,
   LayoutGrid,
   Lightbulb,
   List,
@@ -23,10 +25,13 @@ import {
   ListTodo,
   MessageCircle,
   Minus,
+  MousePointerClick,
+  OctagonAlert,
   PanelTop,
   Quote,
   Sparkles,
   Table as TableIcon,
+  TriangleAlert,
   Type,
   Workflow,
 } from 'lucide-react';
@@ -59,6 +64,19 @@ interface SlashItem {
 
 /** Uploads a picked image and returns its hosted URL (or null on failure). */
 type UploadFn = (file: File) => Promise<string | null>;
+
+const cardContent = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    type: 'mdxCard',
+    attrs: { title: `Card ${index + 1}` },
+    content: [{ type: 'paragraph' }],
+  }));
+
+const columnContent = (count: number) =>
+  Array.from({ length: count }, (_, index) => ({
+    type: 'mdxColumn',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: `Column ${index + 1}` }] }],
+  }));
 
 /** Open a native file picker, upload the chosen image, and insert it. Falls back
  *  to a URL prompt when no uploader is wired. */
@@ -173,12 +191,52 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run(),
   },
   {
-    titleKey: 'editor.slash.callout.title',
-    descKey: 'editor.slash.callout.desc',
+    titleKey: { en: 'Note', ar: 'ملاحظة' },
+    descKey: { en: 'A neutral informational note.', ar: 'ملاحظة معلوماتية محايدة.' },
     icon: Lightbulb,
     glyph: '!',
     keywords: ['note', 'admonition', 'warning', 'info'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
+  },
+  {
+    titleKey: { en: 'Info', ar: 'معلومة' },
+    descKey: { en: 'Helpful context for the reader.', ar: 'سياق مفيد للقارئ.' },
+    icon: Info,
+    glyph: 'i',
+    keywords: ['callout', 'information', 'important'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'info' }).run(),
+  },
+  {
+    titleKey: { en: 'Tip', ar: 'نصيحة' },
+    descKey: { en: 'A practical recommendation.', ar: 'توصية عملية.' },
+    icon: Lightbulb,
+    glyph: '✦',
+    keywords: ['callout', 'hint', 'recommendation'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'tip' }).run(),
+  },
+  {
+    titleKey: { en: 'Check', ar: 'تم' },
+    descKey: { en: 'A successful or verified outcome.', ar: 'نتيجة ناجحة أو تم التحقق منها.' },
+    icon: CircleCheck,
+    glyph: '✓',
+    keywords: ['callout', 'success', 'done'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'check' }).run(),
+  },
+  {
+    titleKey: { en: 'Warning', ar: 'تحذير' },
+    descKey: { en: 'Something the reader should avoid.', ar: 'أمر ينبغي للقارئ تجنبه.' },
+    icon: TriangleAlert,
+    glyph: '△',
+    keywords: ['callout', 'caution', 'alert'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'warning' }).run(),
+  },
+  {
+    titleKey: { en: 'Danger', ar: 'خطر' },
+    descKey: { en: 'A destructive or high-risk action.', ar: 'إجراء مدمر أو عالي المخاطر.' },
+    icon: OctagonAlert,
+    glyph: '!',
+    keywords: ['callout', 'danger', 'destructive'],
+    command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'danger' }).run(),
   },
   {
     titleKey: 'editor.slash.steps.title',
@@ -201,6 +259,20 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
+    titleKey: { en: 'Card', ar: 'بطاقة' },
+    descKey: { en: 'A linkable card for a related resource.', ar: 'بطاقة قابلة للربط بمورد ذي صلة.' },
+    icon: LayoutGrid,
+    glyph: '□',
+    keywords: ['card', 'link', 'resource'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxCard', attrs: { title: 'Card title', href: '' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
     titleKey: 'editor.slash.cardGroup.title',
     descKey: 'editor.slash.cardGroup.desc',
     icon: LayoutGrid,
@@ -214,13 +286,26 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxCardGroup',
           attrs: { cols: '2' },
-          content: [
-            { type: 'mdxCard', attrs: { title: 'First card' }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxCard', attrs: { title: 'Second card' }, content: [{ type: 'paragraph' }] },
-          ],
+          content: cardContent(2),
         })
         .run(),
   },
+  ...([3, 4] as const).map(
+    (count): SlashItem => ({
+      titleKey: { en: `${count}-card grid`, ar: `شبكة من ${count} بطاقات` },
+      descKey: { en: `A responsive grid with ${count} cards.`, ar: `شبكة متجاوبة تضم ${count} بطاقات.` },
+      icon: LayoutGrid,
+      glyph: `▦${count}`,
+      keywords: ['card', 'cards', 'grid', 'tiles'],
+      command: ({ editor, range }) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({ type: 'mdxCardGroup', attrs: { cols: String(count) }, content: cardContent(count) })
+          .run(),
+    }),
+  ),
   {
     titleKey: 'editor.slash.tabs.title',
     descKey: 'editor.slash.tabs.desc',
@@ -376,7 +461,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Columns', ar: 'أعمدة' },
+    titleKey: { en: '2 columns', ar: 'عمودان' },
     descKey: { en: 'A responsive two-column layout.', ar: 'تخطيط متجاوب من عمودين.' },
     icon: Columns3,
     glyph: '▥',
@@ -388,13 +473,26 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .deleteRange(range)
         .insertContent({
           type: 'mdxColumns',
-          content: [
-            { type: 'mdxColumn', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'First column' }] }] },
-            { type: 'mdxColumn', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Second column' }] }] },
-          ],
+          content: columnContent(2),
         })
         .run(),
   },
+  ...([3, 4] as const).map(
+    (count): SlashItem => ({
+      titleKey: { en: `${count} columns`, ar: `${count} أعمدة` },
+      descKey: { en: `A responsive ${count}-column layout.`, ar: `تخطيط متجاوب من ${count} أعمدة.` },
+      icon: Columns3,
+      glyph: `▥${count}`,
+      keywords: ['columns', 'layout', 'grid'],
+      command: ({ editor, range }) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({ type: 'mdxColumns', content: columnContent(count) })
+          .run(),
+    }),
+  ),
   {
     titleKey: { en: 'Banner', ar: 'شريط إعلان' },
     descKey: { en: 'A prominent announcement block.', ar: 'كتلة إعلان بارزة.' },
@@ -421,6 +519,20 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .focus()
         .deleteRange(range)
         .insertContent({ type: 'mdxBadge', content: [{ type: 'text', text: 'New' }] })
+        .run(),
+  },
+  {
+    titleKey: { en: 'Button', ar: 'زر' },
+    descKey: { en: 'An inline action linking to another page.', ar: 'إجراء مضمّن يربط بصفحة أخرى.' },
+    icon: MousePointerClick,
+    glyph: '↗',
+    keywords: ['button', 'cta', 'link', 'action'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxButton', attrs: { href: '', variant: 'default' }, content: [{ type: 'text', text: 'Button' }] })
         .run(),
   },
   {
