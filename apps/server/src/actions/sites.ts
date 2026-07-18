@@ -11,6 +11,7 @@ import {
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
+  resolvePageCategory,
   type SiteSnapshot,
   type SnapshotLanguageConfig,
   type SnapshotPage,
@@ -362,16 +363,11 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   const order = flattenNav(buildNavTree(pages, navLanguage));
   const index = order.findIndex((node) => node.path === page.path);
   const breadcrumbs = breadcrumbTrail(pages, page);
-  const category = page.config?.category?.trim();
+  const siblingPages = pages.filter((candidate) => candidate.kind === 'PAGE' && candidate.parentId === page.parentId);
+  const category = resolvePageCategory(page, siblingPages.length)?.title;
   if (category && breadcrumbs.at(-2)?.title !== category) {
-    const categoryLanding = pages
-      .filter(
-        (candidate) =>
-          candidate.kind === 'PAGE' &&
-          candidate.parentId === page.parentId &&
-          candidate.languageCode === page.languageCode &&
-          candidate.config?.category?.trim() === category,
-      )
+    const categoryLanding = siblingPages
+      .filter((candidate) => candidate.languageCode === page.languageCode && resolvePageCategory(candidate, siblingPages.length)?.title === category)
       .sort((a, b) => a.position - b.position)[0];
     breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path });
   }

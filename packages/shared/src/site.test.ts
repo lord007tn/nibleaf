@@ -10,6 +10,7 @@ import {
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
+  resolvePageCategory,
   type SiteSnapshot,
   type SnapshotLanguage,
   type SnapshotPage,
@@ -109,6 +110,31 @@ describe('buildNavTree', () => {
       page({ id: 'setup', position: 2, config: { category: 'Start', categoryOrder: 0 } }),
     ]);
     expect(tree.map((node) => node.title)).toEqual(['guides', 'Start', 'loose']);
+  });
+  it('auto-organizes oversized flat English imports while explicit categories win', () => {
+    const pages = Array.from({ length: 24 }, (_, index) =>
+      page({
+        id: `p${index}`,
+        title: index === 0 ? 'Add New Hotel' : index === 1 ? 'Reservation Report' : `Miscellaneous guide ${index}`,
+        position: index,
+        ...(index === 2 ? { config: { category: 'Essentials', categoryOrder: 0 } } : {}),
+      }),
+    );
+    const tree = buildNavTree(pages);
+    expect(tree.map((node) => node.title)).toEqual(['Essentials', 'Hotels & rooms', 'Reports & operations', 'More guides']);
+    expect(tree.flatMap((node) => node.children)).toHaveLength(24);
+  });
+});
+
+describe('resolvePageCategory', () => {
+  it('does not infer taxonomy for small hand-authored trees', () => {
+    expect(resolvePageCategory(page({ id: 'hotel', title: 'Add Hotel' }), 3)).toBeNull();
+  });
+  it('uses localized Arabic workflow labels for large imports', () => {
+    expect(resolvePageCategory(page({ id: 'ar-hotel', title: 'إضافة فندق جديد', languageCode: 'ar' }), 30)).toMatchObject({
+      title: 'الفنادق والغرف',
+      order: 1,
+    });
   });
 });
 

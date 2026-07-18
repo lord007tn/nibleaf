@@ -122,8 +122,10 @@ Observed during private product research in a Mintlify workspace:
   another language must be promoted instead.
 - Published navigation supports URL-safe virtual categories: flat imported page
   collections can be grouped, ordered, and icon-labelled without re-parenting
-  content or breaking existing links. Inactive imported categories start
-  collapsed while the active category stays open.
+  content or breaking existing links. Oversized flat English/Arabic help-center
+  imports also receive conservative workflow categories when explicit metadata
+  is absent. Inactive imported categories start collapsed while the active
+  category stays open.
 - Page settings expose imported article tags plus sidebar category, icon, and
   order metadata. Saving unrelated settings preserves that taxonomy.
 - Article headers show localized reading time, screenshot count, and last-updated

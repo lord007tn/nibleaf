@@ -190,6 +190,108 @@ export interface NavNode {
   children: NavNode[];
 }
 
+export interface ResolvedPageCategory {
+  title: string;
+  icon: string | null;
+  order: number;
+}
+
+const LARGE_FLAT_COLLECTION = 24;
+
+/** Resolve an explicit category, or infer a conservative workflow category for
+ *  very large flat help-center imports. Explicit author metadata always wins;
+ *  small hand-authored trees are never classified automatically. */
+export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number): ResolvedPageCategory | null => {
+  const explicit = page.config?.category?.trim();
+  if (explicit) {
+    return {
+      title: explicit,
+      icon: page.config?.categoryIcon?.trim() || null,
+      order: page.config?.categoryOrder ?? 999,
+    };
+  }
+  if (page.kind !== 'PAGE' || siblingPageCount < LARGE_FLAT_COLLECTION) {
+    return null;
+  }
+
+  const haystack = `${page.title} ${page.slug}`.toLocaleLowerCase(page.languageCode);
+  const ar = page.languageCode.toLowerCase().startsWith('ar');
+  const rules: Array<{ title: string; icon: string; order: number; keywords: string[] }> = ar
+    ? [
+        { title: 'ابدأ هنا', icon: 'rocket', order: 0, keywords: ['ابدأ', 'مقدمة', 'الخطوات الأولى', 'إعداد', 'تجربة المنصة', 'لوحة التحكم'] },
+        {
+          title: 'التقارير والعمليات',
+          icon: 'chart-no-axes-column',
+          order: 6,
+          keywords: ['تقرير', 'تقارير', 'إحصائ', 'عمليات', 'تتبع', 'مراجعة الحجوزات'],
+        },
+        {
+          title: 'المحاسبة والفوترة',
+          icon: 'receipt-text',
+          order: 5,
+          keywords: ['محاسب', 'فاتور', 'دفع', 'دفعات', 'سداد', 'مالي', 'بنك', 'زكاة', 'ضريب', 'zatca', 'رصيد'],
+        },
+        { title: 'الفنادق والغرف', icon: 'hotel', order: 1, keywords: ['فندق', 'فنادق', 'غرفة', 'غرف', 'تسكين', 'الوصول', 'المغادرة', 'إتاحة'] },
+        {
+          title: 'العقود والأسعار',
+          icon: 'badge-dollar-sign',
+          order: 3,
+          keywords: ['عقد', 'عقود', 'سعر', 'أسعار', 'عرض', 'عروض', 'برومو', 'خدمة', 'خصم'],
+        },
+        { title: 'الحجوزات', icon: 'calendar-check', order: 2, keywords: ['حجز', 'حجوزات', 'ضيف', 'نقل', 'مواصلات'] },
+        { title: 'العملاء والوكالات', icon: 'users-round', order: 4, keywords: ['عميل', 'عملاء', 'وكالة', 'وكالات', 'وكيل', 'مورد', 'شركة'] },
+        {
+          title: 'المستخدمون والصلاحيات',
+          icon: 'shield-check',
+          order: 7,
+          keywords: ['مستخدم', 'مستخدمين', 'صلاحية', 'صلاحيات', 'دور', 'أدوار', 'مجموعة'],
+        },
+        { title: 'التواصل', icon: 'messages-square', order: 8, keywords: ['رسالة', 'رسائل', 'بريد', 'واتساب', 'إشعار', 'موقع إلكتروني'] },
+        { title: 'التكاملات', icon: 'blocks', order: 9, keywords: ['تكامل', 'ربط', 'channel manager', 'pms', 'stc', 'hyperpay'] },
+      ]
+    : [
+        {
+          title: 'Getting started',
+          icon: 'rocket',
+          order: 0,
+          keywords: ['getting started', 'first step', 'introduction', 'setup your', 'dashboard', 'trial platform'],
+        },
+        {
+          title: 'Reports & operations',
+          icon: 'chart-no-axes-column',
+          order: 6,
+          keywords: ['report', 'statistics', 'operation', 'tracking', 'audit'],
+        },
+        {
+          title: 'Accounting & invoicing',
+          icon: 'receipt-text',
+          order: 5,
+          keywords: ['account', 'invoice', 'payment', 'receipt', 'financial', 'bank', 'tax', 'zatca', 'balance'],
+        },
+        {
+          title: 'Hotels & rooms',
+          icon: 'hotel',
+          order: 1,
+          keywords: ['hotel', 'room', 'check-in', 'check in', 'check-out', 'check out', 'arrival', 'departure', 'accommodation', 'availability'],
+        },
+        {
+          title: 'Contracts & pricing',
+          icon: 'badge-dollar-sign',
+          order: 3,
+          keywords: ['contract', 'price', 'pricing', 'promo', 'offer', 'service', 'discount'],
+        },
+        { title: 'Reservations', icon: 'calendar-check', order: 2, keywords: ['reservation', 'booking', 'guest', 'transportation'] },
+        { title: 'Customers & agencies', icon: 'users-round', order: 4, keywords: ['client', 'customer', 'agency', 'agent', 'provider', 'company'] },
+        { title: 'Users & access', icon: 'shield-check', order: 7, keywords: ['user', 'role', 'permission', 'access', 'group'] },
+        { title: 'Communications', icon: 'messages-square', order: 8, keywords: ['sms', 'e-mail', 'email', 'whatsapp', 'notification', 'website'] },
+        { title: 'Integrations', icon: 'blocks', order: 9, keywords: ['integration', 'channel manager', 'pms', 'stc', 'hyperpay'] },
+      ];
+  const match = rules.find((rule) => rule.keywords.some((keyword) => haystack.includes(keyword)));
+  return match
+    ? { title: match.title, icon: match.icon, order: match.order }
+    : { title: ar ? 'أدلة إضافية' : 'More guides', icon: 'book-open', order: 10 };
+};
+
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
  *  When `languageCode` is given, only that language's pages are included. */
 export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavNode[] => {
@@ -202,6 +304,7 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
   }
   const build = (parentId: string | null): NavNode[] => {
     const siblings = (byParent.get(parentId) ?? []).sort((a, b) => a.position - b.position);
+    const siblingPageCount = siblings.filter((page) => page.kind === 'PAGE').length;
     const toNode = (page: SnapshotPage): NavNode => ({
       id: page.id,
       kind: page.kind,
@@ -220,20 +323,21 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
     const plain: NavNode[] = [];
     const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: SnapshotPage[] }>();
     for (const page of siblings) {
-      const title = page.kind === 'PAGE' ? page.config?.category?.trim() : '';
-      if (!title) {
+      const resolvedCategory = resolvePageCategory(page, siblingPageCount);
+      if (!resolvedCategory) {
         plain.push(toNode(page));
         continue;
       }
+      const { title } = resolvedCategory;
       const existing = categories.get(title);
       if (existing) {
         existing.pages.push(page);
-        existing.order = Math.min(existing.order, page.config?.categoryOrder ?? existing.order);
+        existing.order = Math.min(existing.order, resolvedCategory.order);
       } else {
         categories.set(title, {
           title,
-          icon: page.config?.categoryIcon?.trim() || null,
-          order: page.config?.categoryOrder ?? 999,
+          icon: resolvedCategory.icon,
+          order: resolvedCategory.order,
           firstPosition: page.position,
           pages: [page],
         });
