@@ -130,6 +130,12 @@ describe('resolvePageCategory', () => {
   it('does not infer taxonomy for small hand-authored trees', () => {
     expect(resolvePageCategory(page({ id: 'hotel', title: 'Add Hotel' }), 3)).toBeNull();
   });
+  it('recognizes a renamed get-started landing page', () => {
+    expect(resolvePageCategory(page({ id: 'start', title: 'Get started with JoodBooking', slug: 'setup-your-joodbooking' }), 30)).toMatchObject({
+      title: 'Getting started',
+      order: 0,
+    });
+  });
   it('uses localized Arabic workflow labels for large imports', () => {
     expect(resolvePageCategory(page({ id: 'ar-hotel', title: 'إضافة فندق جديد', languageCode: 'ar' }), 30)).toMatchObject({
       title: 'الفنادق والغرف',

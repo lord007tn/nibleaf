@@ -254,7 +254,7 @@ export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number
           title: 'Getting started',
           icon: 'rocket',
           order: 0,
-          keywords: ['getting started', 'first step', 'introduction', 'setup your', 'dashboard', 'trial platform'],
+          keywords: ['getting started', 'get started', 'first step', 'introduction', 'setup your', 'setup-your', 'dashboard', 'trial platform'],
         },
         {
           title: 'Reports & operations',
