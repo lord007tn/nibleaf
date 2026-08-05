@@ -258,10 +258,15 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+# These production volumes are external so a source-backed Coolify Application
+# can attach existing data. Pre-create them or set the three volume-name variables.
 volumes:
   nibleaf-coolify-pg:
-    name: nibleaf-coolify-pg
+    name: ${NIBLEAF_POSTGRES_VOLUME_NAME:-nibleaf-coolify-pg}
+    external: true
   nibleaf-coolify-dragonfly:
-    name: nibleaf-coolify-dragonfly
+    name: ${NIBLEAF_DRAGONFLY_VOLUME_NAME:-nibleaf-coolify-dragonfly}
+    external: true
   nibleaf-coolify-maxio:
-    name: nibleaf-coolify-maxio
+    name: ${NIBLEAF_MAXIO_VOLUME_NAME:-nibleaf-coolify-maxio}
+    external: true
