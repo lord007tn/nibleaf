@@ -8,7 +8,7 @@
 ### The open-source Mintlify alternative
 
 Nibleaf is an open-source, self-hostable documentation platform — an alternative
-to Mintlify and GitBook — with a Notion-style WYSIWYG editor over plain Markdown,
+to Mintlify and GitBook — with a rich-text editor over Markdown/MDX,
 first-class Arabic/RTL support, custom domains, and a free cloud beta at
 [nibleaf.com](https://nibleaf.com).
 
@@ -36,7 +36,7 @@ Compose, or use the hosted beta. It's the docs platform you can operate end to e
 no per-seat pricing for the self-hosted edition, no proprietary content format, and
 your content stays in your database.
 
-- 🖋️ **WYSIWYG _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
+- 🖋️ **Rich text _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
 - 🌍 **Bilingual & RTL-first** — genuine Arabic + English with per-language page trees,
   right-to-left layout, and fully translated chrome.
@@ -52,14 +52,15 @@ table of contents:
 
 <img src=".github/assets/docs-en.png" alt="A published Nibleaf documentation site" width="840" />
 
-**The editor** — Visual / Markdown / Preview modes, a drag-and-drop page tree, branches,
+**The editor** — Visual, Rich text, and full-canvas Markdown editing, plus a preview action
+that opens the saved draft in a separate tab, a drag-and-drop page tree, branches,
 anchored comments, and one-click publish:
 
 <img src=".github/assets/editor.png" alt="The Nibleaf editor" width="840" />
 
 ## ✨ Features
 
-- **Rich editor** — WYSIWYG *and* raw Markdown/MDX modes with live preview, a Notion-style
+- **Rich editor** — rich-text and raw Markdown/MDX editing with draft preview in a separate tab, a Notion-style
   block handle + slash menu, and a drag-and-drop, nestable page tree.
 - **MDX components** — callouts, cards, steps, tabs, code groups, accordions,
   param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid — all
@@ -90,12 +91,15 @@ anchored comments, and one-click publish:
 Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
 - **OpenAPI playground / API "try it"** — no interactive API-reference console yet.
-- **Two-way git sync & PR previews** — public repo *import* exists, but docs don't
-  round-trip to a git repo and there are no per-PR preview deployments.
+- **Two-way git sync & PR previews** — public repo import and one-way webhook sync
+  exist, but browser edits do not push back to Git and there are no per-PR preview deployments.
 - **Reader auth / personalization** — sites are either public or visible to
   workspace members only; there are no dedicated end-reader accounts, JWT/SSO
   hand-off, or per-audience content.
 - **SSO / SAML** — email/password + Google OAuth only; no enterprise SSO.
+- **PDF / static-site export** — Markdown archive export works; PDF and static HTML jobs are not enabled.
+- **Arabic stemming** — Arabic tokenization and conservative spelling normalization work;
+  stemming remains disabled to avoid silently broadening matches without language-specific evaluation.
 
 Want one of these sooner? Open or upvote an issue —
 [github.com/lord007tn/nibleaf/issues](https://github.com/lord007tn/nibleaf/issues).
