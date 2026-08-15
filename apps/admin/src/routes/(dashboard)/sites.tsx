@@ -327,7 +327,7 @@ function SitesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.map((site) => (
+              data?.map((site: AdminSite) => (
                 <TableRow key={site.id}>
                   <TableCell className="font-medium">{site.name}</TableCell>
                   <TableCell className="text-muted-foreground">

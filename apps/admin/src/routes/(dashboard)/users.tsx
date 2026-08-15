@@ -67,7 +67,7 @@ function UsersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.map((user) => (
+              data?.map((user: AdminUser) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>
