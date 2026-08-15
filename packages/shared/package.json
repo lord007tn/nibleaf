@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "github-slugger": "^2.0.0",
-    "nanoid": "^5.1.14"
+    "nanoid": "^5.1.16"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
