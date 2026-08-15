@@ -113,9 +113,11 @@ jobs:
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
+          COOLIFY_CF_ACCESS_CLIENT_ID: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_ID }}
+          COOLIFY_CF_ACCESS_CLIENT_SECRET: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_SECRET }}
         run: |
-          if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" ]]; then
-            echo "::warning::Missing COOLIFY_NIBLEAF_DEPLOY_WEBHOOK or COOLIFY_NIBLEAF_API_TOKEN secret; image was published but Coolify deployment was not triggered"
+          if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" || -z "$COOLIFY_CF_ACCESS_CLIENT_ID" || -z "$COOLIFY_CF_ACCESS_CLIENT_SECRET" ]]; then
+            echo "::warning::Missing a Coolify deployment or Cloudflare Access secret; image was published but Coolify deployment was not triggered"
             exit 0
           fi
 
@@ -125,6 +127,8 @@ jobs:
             --request POST \
             --header "Accept: application/json" \
             --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
+            --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
+            --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
             "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK")
 
           printf '%s\n' "$response"
