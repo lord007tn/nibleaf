@@ -12,8 +12,8 @@ import viteTsConfigPaths from 'vite-tsconfig-paths';
 const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
-// response. A full CSP is intentionally deferred: TanStack Start hydration uses
-// inline scripts and needs a nonce-based policy rather than an unsafe blanket.
+// response. The custom server entry adds the per-response nonce-based CSP to
+// HTML after TanStack Start has created its streaming response.
 const SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',

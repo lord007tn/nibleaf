@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { type ComponentType, type ReactNode, type SVGProps, useState } from 'react';
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
+import { marketingFaqs } from '@/lib/marketing-faqs';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -111,34 +112,6 @@ const compareLinks = [
   { href: '/compare/nibleaf-vs-gitbook', label: 'Nibleaf vs GitBook' },
   { href: '/compare/nibleaf-vs-docusaurus', label: 'Nibleaf vs Docusaurus' },
   { href: '/alternatives/mintlify', label: 'Mintlify alternatives' },
-];
-
-/** Marketing FAQ — exported so route files can emit matching FAQPage JSON-LD. */
-export const faqs: { q: string; a: string }[] = [
-  {
-    q: 'Can I use Nibleaf Cloud now?',
-    a: 'Yes. Nibleaf Cloud is live and free while in beta — managed docs hosting, sign-in, publishing, search, and custom domains.',
-  },
-  {
-    q: 'Is Nibleaf open source?',
-    a: 'The codebase is licensed under AGPL-3.0. Public source and container access are currently unavailable, so anonymous self-hosting is paused.',
-  },
-  {
-    q: 'What happens after the beta?',
-    a: 'Paid cloud plans will come later, announced with generous advance notice, and beta workspaces will get preferential treatment. Self-hosting availability is tracked separately.',
-  },
-  {
-    q: 'Are there limits during the beta?',
-    a: 'The beta runs on a fair-use basis rather than hard plan limits. If a workspace is unusually heavy on resources, we will reach out before anything changes.',
-  },
-  {
-    q: 'Can I use my own object storage?',
-    a: 'Absolutely. Nibleaf speaks the S3 API, so it works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).',
-  },
-  {
-    q: 'How does search work?',
-    a: 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.',
-  },
 ];
 
 export function MarketingShell({ children }: { children: ReactNode; stars?: number }) {
@@ -669,7 +642,7 @@ function Faq() {
         <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Frequently asked</h2>
       </div>
       <div className="mt-12 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-        {faqs.map((item) => (
+        {marketingFaqs.map((item) => (
           <details key={item.q} className="group px-6 py-1 open:bg-muted/30">
             <summary className="flex list-none items-center justify-between gap-4 py-4 font-medium">
               {item.q}

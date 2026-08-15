@@ -1,5 +1,5 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { translateStandalone as t } from '@/lib/i18n';
+import { translateStandalone as t } from '@/lib/i18n/standalone';
 
 /**
  * Full-screen branded loading state shown during route transitions that fetch

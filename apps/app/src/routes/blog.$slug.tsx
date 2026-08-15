@@ -1,7 +1,8 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { ArticlePage, articleHead, articleMdxComponents } from '@/components/marketing/blog';
+import { ArticlePage, articleMdxComponents } from '@/components/marketing/blog';
 import { blogEntry, blogLanguage } from '@/lib/blog';
 import { blogComponent } from '@/lib/blog-components';
+import { articleHead } from '@/lib/blog-seo';
 import { getGithubStars } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/blog/$slug')({

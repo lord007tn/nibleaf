@@ -12,13 +12,17 @@ const readConsent = (projectId: string): 'pending' | 'accepted' | 'declined' => 
   return stored === 'accepted' || stored === 'declined' ? stored : 'pending';
 };
 
-function appendAnalyticsScript(projectId: string, index: number, script: ReturnType<typeof analyticsScripts>[number]) {
+export function appendAnalyticsScript(projectId: string, index: number, script: ReturnType<typeof analyticsScripts>[number]) {
   const id = `nibleaf-analytics-${projectId}-${index}`;
   if (document.getElementById(id)) {
     return;
   }
   const el = document.createElement('script');
   el.id = id;
+  const nonce = document.querySelector<HTMLMetaElement>('meta[property="csp-nonce"]')?.content;
+  if (nonce) {
+    el.nonce = nonce;
+  }
   if (script.src) {
     el.src = script.src;
   }

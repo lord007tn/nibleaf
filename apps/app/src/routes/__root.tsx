@@ -1,6 +1,6 @@
 import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouterState } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { SiteShell } from '@/hooks/api/types';
 import appCss from '@/styles.css?url';
@@ -38,6 +38,7 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const nonce = useRouter().options.ssr?.nonce;
   // Reflect a published site's active language on <html lang/dir> during SSR (so
   // crawlers + the first paint see e.g. lang="ar" dir="rtl"), updating reactively
   // on ?lang switches. Non-site routes keep the en/ltr default — the dashboard's
@@ -68,7 +69,8 @@ function RootDocument({ children }: { children: ReactNode }) {
       <head>
         {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} />
+        {nonce ? <meta property="csp-nonce" content={nonce} /> : null}
         {siteProjectId ? <meta name="nibleaf-site-project" content={siteProjectId} /> : null}
         <HeadContent />
       </head>

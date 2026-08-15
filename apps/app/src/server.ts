@@ -1,8 +1,9 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
+import { contentSecurityPolicy } from '@/lib/content-security-policy';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -19,7 +20,15 @@ import { BLOG_ENTRIES } from '@/lib/blog';
  *    so the API rate-limiter doesn't key every SSR render on this container.
  */
 
-const startHandler = createStartHandler(defaultStreamHandler);
+const ssrNonce = new AsyncLocalStorage<string>();
+
+const startHandler = createStartHandler((context) => {
+  const nonce = ssrNonce.getStore();
+  if (nonce) {
+    context.router.update({ ssr: { ...context.router.options.ssr, nonce } });
+  }
+  return defaultStreamHandler(context);
+});
 
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in
@@ -603,11 +612,6 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
   return new Response(body, { status: 200, headers: { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' } });
 }
 
-// ─── Published-site HTML cacheability ─────────────────────────────────────────
-
-/** Same shared-cache policy the API uses for published-site JSON. */
-const SITE_HTML_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
-
 const APP_SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
@@ -617,13 +621,19 @@ const APP_SECURITY_HEADERS = {
 
 /** Custom server responses bypass Nitro route rules, so apply the same baseline
  *  here as a final wrapper. Preserve any stricter route-specific value. */
-async function withSecurityHeaders(response: Response | Promise<Response>): Promise<Response> {
+async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string): Promise<Response> {
   const res = await response;
   try {
     for (const [name, value] of Object.entries(APP_SECURITY_HEADERS)) {
       if (!res.headers.has(name)) {
         res.headers.set(name, value);
       }
+    }
+    if ((res.headers.get('content-type') || '').includes('text/html')) {
+      res.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      // A CSP nonce must be unique each time the policy is transmitted. Never
+      // allow an intermediary to replay HTML and its nonce from a shared cache.
+      res.headers.set('cache-control', 'private, no-store');
     }
     return res;
   } catch {
@@ -633,28 +643,10 @@ async function withSecurityHeaders(response: Response | Promise<Response>): Prom
         wrapped.headers.set(name, value);
       }
     }
-    return wrapped;
-  }
-}
-
-/** Mark a published-site HTML response shared-cacheable — only when the site is
- *  known to be public, the response is a plain 200 HTML document, and the
- *  request carried no cookies (a cookie-bearing render may be session-shaped:
- *  private sites render member-only, and we never want that in a shared cache). */
-async function withSiteCache(response: Response | Promise<Response>, request: Request, meta: SiteMeta | null): Promise<Response> {
-  const res = await response;
-  if (!meta || meta.isPrivate || request.method !== 'GET' || res.status !== 200 || request.headers.has('cookie')) {
-    return res;
-  }
-  if (!(res.headers.get('content-type') || '').includes('text/html') || res.headers.has('cache-control')) {
-    return res;
-  }
-  try {
-    res.headers.set('cache-control', SITE_HTML_CACHE);
-    return res;
-  } catch {
-    const wrapped = new Response(res.body, res);
-    wrapped.headers.set('cache-control', SITE_HTML_CACHE);
+    if ((wrapped.headers.get('content-type') || '').includes('text/html')) {
+      wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      wrapped.headers.set('cache-control', 'private, no-store');
+    }
     return wrapped;
   }
 }
@@ -720,7 +712,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
           if (meta?.primaryDomain && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
           }
-          return withSiteCache(startHandler(request, ...rest), request, meta);
+          return startHandler(request, ...rest);
         }
       }
       return startHandler(request, ...rest);
@@ -754,7 +746,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         const rewritten = new Request(url, request);
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         rewritten.headers.set('x-nibleaf-site-origin', `${proto}://${host}`);
-        return withSiteCache(startHandler(rewritten, ...rest), request, meta);
+        return startHandler(rewritten, ...rest);
       }
     }
     return startHandler(request, ...rest);
@@ -766,6 +758,9 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
   return clientIp ? ssrClientIp.run(clientIp, serve) : serve();
 };
 
-const handleRequest: RequestHandler<Register> = async (request, ...rest) => withSecurityHeaders(handleRequestInner(request, ...rest));
+const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
+  const nonce = randomBytes(18).toString('base64');
+  return ssrNonce.run(nonce, () => withSecurityHeaders(handleRequestInner(request, ...rest), nonce));
+};
 
 export default { fetch: handleRequest };

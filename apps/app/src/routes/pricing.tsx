@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { faqs } from '@/components/cloud-marketing';
 import { PricingPage } from '@/components/marketing/pricing';
+import { marketingFaqs } from '@/lib/marketing-faqs';
 import { breadcrumbLd, canonicalHref, faqLd, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/pricing')({
@@ -14,7 +14,7 @@ export const Route = createFileRoute('/pricing')({
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],
     scripts: [
-      faqLd(faqs),
+      faqLd(marketingFaqs),
       breadcrumbLd([
         { name: 'Home', path: '/' },
         { name: 'Pricing', path: '/pricing' },

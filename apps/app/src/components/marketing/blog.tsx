@@ -3,77 +3,10 @@ import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { type BlogEntry, type BlogFaq, blogEntry, blogLanguage, blogReadingMinutes } from '@/lib/blog';
-import { breadcrumbLd, canonicalHref, faqLd, pageMeta } from '@/lib/marketing-seo';
+import { canonicalHref } from '@/lib/marketing-seo';
 
 const dateFormatter = (entry: BlogEntry) =>
   new Intl.DateTimeFormat(blogLanguage(entry) === 'ar' ? 'ar' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
-
-/**
- * Standard <head> payload for a blog article: SEO meta with og:type article,
- * Article JSON-LD with real dates, breadcrumbs, and — when the frontmatter has
- * FAQs — FAQPage schema built from the same data the page renders.
- */
-export function articleHead(entry: BlogEntry) {
-  const path = `/blog/${entry.slug}`;
-  const language = blogLanguage(entry);
-  const arabic = language === 'ar';
-  const translation = entry.translationOf ? blogEntry(entry.translationOf) : undefined;
-  const imagePath = arabic ? '/brand/raster/social/nibleaf-og-card-ar.png' : '/brand/raster/social/nibleaf-og-card.png';
-  const scripts = [
-    {
-      type: 'application/ld+json',
-      children: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'Article',
-        headline: entry.title,
-        description: entry.description,
-        datePublished: entry.datePublished,
-        dateModified: entry.dateModified,
-        inLanguage: language,
-        mainEntityOfPage: canonicalHref(path),
-        image: canonicalHref(imagePath),
-        author: { '@type': 'Organization', name: 'Nibleaf', url: canonicalHref('/about') },
-        publisher: {
-          '@type': 'Organization',
-          name: 'Nibleaf',
-          logo: { '@type': 'ImageObject', url: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png') },
-        },
-      }),
-    },
-    breadcrumbLd([
-      { name: arabic ? 'الرئيسية' : 'Home', path: '/' },
-      { name: arabic ? 'المدونة' : 'Blog', path: '/blog' },
-      { name: entry.title, path },
-    ]),
-    ...(entry.faqs && entry.faqs.length > 0 ? [faqLd(entry.faqs.map((f) => ({ q: f.question, a: f.answer })))] : []),
-  ];
-  return {
-    meta: pageMeta({
-      title: entry.metaTitle ?? `${entry.title} | Nibleaf`,
-      description: entry.description,
-      path,
-      type: 'article',
-      locale: arabic ? 'ar_AR' : 'en_US',
-      imagePath,
-      imageAlt: arabic ? `Nibleaf: ${entry.title}` : undefined,
-    }),
-    links: [
-      { rel: 'canonical', href: canonicalHref(path) },
-      ...(translation
-        ? [
-            { rel: 'alternate', hreflang: language, href: canonicalHref(path) },
-            { rel: 'alternate', hreflang: blogLanguage(translation), href: canonicalHref(`/blog/${translation.slug}`) },
-            {
-              rel: 'alternate',
-              hreflang: 'x-default',
-              href: canonicalHref(`/blog/${language === 'en' ? entry.slug : translation.slug}`),
-            },
-          ]
-        : []),
-    ],
-    scripts,
-  };
-}
 
 /** Deterministic soft gradient per article — no cover-art pipeline, never a broken <img>. */
 const GRADIENTS = [

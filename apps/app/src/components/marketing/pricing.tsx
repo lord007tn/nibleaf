@@ -1,6 +1,7 @@
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { Eyebrow, faqs, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { Eyebrow, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { marketingFaqs } from '@/lib/marketing-faqs';
 
 /** A comparison cell: `true` renders a check, a string renders as explanatory text. */
 type Cell = true | string;
@@ -86,7 +87,8 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Clear status for self-hosting.</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf Cloud is available now with no credit card. The AGPL-licensed deployment path is paused until public distribution access is restored.
+            Nibleaf Cloud is available now with no credit card. The AGPL-licensed deployment path is paused until public distribution access is
+            restored.
           </p>
         </div>
       </section>
@@ -210,7 +212,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Frequently asked</h2>
         </div>
         <div className="mt-12 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          {faqs.map((item) => (
+          {marketingFaqs.map((item) => (
             <details key={item.q} className="group px-6 py-1 open:bg-muted/30">
               <summary className="flex list-none items-center justify-between gap-4 py-4 font-medium">
                 {item.q}

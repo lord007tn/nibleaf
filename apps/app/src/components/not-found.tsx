@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { translateStandalone as t } from '@/lib/i18n';
+import { translateStandalone as t } from '@/lib/i18n/standalone';
 
 export function NotFound() {
   return (
