@@ -111,7 +111,7 @@ services:
   # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
   # so published doc assets load by their public URL. Console at /ui/.
   maxio:
-    image: ghcr.io/coollabsio/maxio:0.4.2
+    image: docker.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-nibleafadmin}

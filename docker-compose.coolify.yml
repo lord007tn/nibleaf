@@ -132,7 +132,7 @@ services:
       retries: 10
 
   maxio:
-    image: ghcr.io/coollabsio/maxio:0.4.2
+    image: docker.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-${SERVICE_USER_STORAGE:?set STORAGE_ACCESS_KEY_ID or SERVICE_USER_STORAGE}}

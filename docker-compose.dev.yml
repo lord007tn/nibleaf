@@ -38,7 +38,7 @@ services:
   # serves it with anonymous read so doc assets load by their public URL.
   # Console: http://localhost:9300/ui/
   maxio:
-    image: ghcr.io/coollabsio/maxio:0.4.2
+    image: docker.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
       MAXIO_ACCESS_KEY: nibleafadmin

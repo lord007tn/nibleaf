@@ -136,7 +136,7 @@ services:
   # this service is simply unused. Route your STORAGE_PUBLIC_ENDPOINT host to it
   # at your reverse proxy (or publish the commented port below for a host proxy).
   maxio:
-    image: ghcr.io/coollabsio/maxio:0.4.2
+    image: docker.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
     environment:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:?Set STORAGE_ACCESS_KEY_ID in .env}
