@@ -30,7 +30,7 @@ const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; bod
   {
     icon: Server,
     title: 'Cloud available',
-    body: 'Use the free cloud beta now. Self-hosting resumes when anonymous distribution access is restored.',
+    body: 'Use the free cloud beta now, or run the public AGPL-3.0 release on your own infrastructure.',
   },
 ];
 
@@ -85,8 +85,8 @@ function AboutPage() {
       <section className="mx-auto max-w-3xl px-6 py-20">
         <h2 className="font-semibold text-3xl tracking-tight">Built on a stack you can trust</h2>
         <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-          Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage form the deployment architecture. Public installation waits
-          on anonymous source and image access.
+          Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage form the deployment architecture. The public release uses a
+          pinned container and guided Docker Compose installer.
         </p>
         <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
           We document those boundaries plainly. Product pages should distinguish shipped behavior from planned work, comparisons should point to

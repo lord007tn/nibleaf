@@ -9,7 +9,7 @@ related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-do
 readingMinutes: 7
 faqs:
   - question: 'Is Nibleaf available as a hosted product?'
-    answer: 'Yes. Nibleaf Cloud is available in beta. Public self-hosting should be treated as ready only after the repository and container image are anonymously accessible.'
+    answer: 'Yes. Nibleaf Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.'
   - question: 'Does Nibleaf lock content into a proprietary format?'
     answer: 'Pages are stored as Markdown in the database and can be exported as Markdown. The live source is not a directory in Git unless the team exports and commits it.'
   - question: 'Does Nibleaf support Arabic and right-to-left documentation?'
@@ -18,7 +18,7 @@ faqs:
 
 Documentation tooling has quietly turned into rent. Somewhere along the way, publishing a docs site — a folder of Markdown rendered with a search box — became a subscription with per-seat pricing, usage meters, and a dashboard you can never take with you. Your content lives on someone else's servers. Your readers' traffic flows through someone else's analytics. And when pricing changes, your options are pay up or migrate.
 
-We built Nibleaf to combine a browser editor, Markdown content, publishing, search, and Arabic support in one product. The codebase is AGPL-3.0 licensed and the managed cloud is available in beta. The public repository and container image are currently inaccessible anonymously, so we are not presenting self-hosting as ready until that distribution issue is fixed.
+We built Nibleaf to combine a browser editor, Markdown content, publishing, search, and Arabic support in one product. The codebase is AGPL-3.0 licensed, the repository and container release are public, and the managed cloud is available in beta.
 
 This post covers why we built it and what is in the box.
 
@@ -28,7 +28,7 @@ To be fair to the incumbents: they are good products. Mintlify's source files ar
 
 The open-source side of the spectrum has the opposite problem. Docusaurus is excellent and MIT-licensed, but it is a static site generator, not a platform: there is no hosted editor for non-developers, search usually means wiring up an external service, and every contributor needs Git and a build pipeline. We compare the trade-offs honestly in [Nibleaf vs Docusaurus](/compare/nibleaf-vs-docusaurus).
 
-Nibleaf's premise is that you should not have to choose. A documentation platform can combine an editor, publishing, search, analytics, and custom domains while keeping content portable and its codebase under an open-source license. Public source distribution is a separate readiness gate, and it is not open today.
+Nibleaf's premise is that you should not have to choose. A documentation platform can combine an editor, publishing, search, analytics, and custom domains while keeping content portable and its codebase under an open-source license.
 
 ## An editor that writes Markdown, not a format you rent
 
@@ -79,21 +79,21 @@ The features that make hosted docs products feel finished are present in the man
 - **Product analytics**: page views, unique visitors, top pages, top searches, and device and language breakdowns are collected by the Nibleaf application. The hosted service also runs behind Cloudflare, which processes delivery and security telemetry as described in the privacy policy.
 - **Bring your own storage**: assets go to any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2) or the bundled storage service.
 
-## Cloud beta and self-hosting status
+## Cloud beta and self-hosting
 
 **Nibleaf Cloud** is the usable option today. It is in free beta, with no paid plan currently offered. Details are on the [pricing page](/pricing), and you can [create a workspace](/sign-up) to evaluate the editor and publishing workflow.
 
-The codebase is licensed under AGPL-3.0 and includes a Docker Compose deployment design. However, the public repository and container package reject anonymous access as of this review. That makes the public installation path unusable even though the deployment code exists. We will call self-hosting ready only after a new user can fetch both artifacts without private credentials and complete a documented restore test. The [self-hosting status page](/self-hosting) records that boundary.
+The codebase is licensed under AGPL-3.0. The public repository, pinned GHCR release, and guided Docker Compose installer can be fetched without private credentials. The [self-hosting guide](/self-hosting) covers the operational work that remains yours: TLS, DNS, backups, monitoring, and restore testing.
 
 ## Where Nibleaf stands today
 
 Nibleaf is in beta, and we would rather be precise than promotional about that. The editor, versioned publishing, search, i18n, domains, SEO, and analytics described above are shipped and running in production. Mintlify has years of head start on breadth, and Docusaurus has an enormous plugin ecosystem; if those strengths are what you need today, the detailed [Nibleaf vs Mintlify comparison](/compare/nibleaf-vs-mintlify) lays out exactly where each tool wins.
 
-What Nibleaf offers now is a browser editor over Markdown, versioned publishing, built-in search, multilingual sites, and a managed beta. Content can be exported as Markdown. Public self-hosting remains a release task, not a promise we want readers to discover is false after following an install link.
+What Nibleaf offers now is a browser editor over Markdown, versioned publishing, built-in search, multilingual sites, a managed beta, and a public self-hosted release. Content can be exported as Markdown.
 
 ## How to start
 
 - **Cloud**: [sign up](/sign-up) for a free beta workspace at nibleaf.com.
-- **Self-hosting**: review the [current distribution status](/self-hosting) before planning a deployment.
+- **Self-hosting**: follow the [deployment guide](/self-hosting), then test DNS, backups, and restoration on a disposable server.
 
 If you have been paying rent on a folder of Markdown, come take a look.

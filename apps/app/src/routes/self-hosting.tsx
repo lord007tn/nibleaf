@@ -8,7 +8,7 @@ export const Route = createFileRoute('/self-hosting')({
     meta: pageMeta({
       title: 'Nibleaf self-hosting status and deployment architecture',
       description:
-        'Current Nibleaf self-hosting availability, the Docker Compose architecture, and the public distribution checks required before installation.',
+        'Install Nibleaf with the public Docker Compose release, then configure DNS, TLS, backups, and monitoring for your environment.',
       path: '/self-hosting',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }],
@@ -28,28 +28,26 @@ function SelfHostingPage() {
       <section className="border-border border-b">
         <div className="mx-auto max-w-3xl px-6 py-20">
           <Eyebrow>Self-hosting status</Eyebrow>
-          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Public installation is temporarily unavailable</h1>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Run Nibleaf on your own infrastructure</h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            Nibleaf has an AGPL-3.0 codebase and a Docker Compose deployment design, but the source repository and GHCR container currently reject
-            anonymous access. The installer therefore cannot complete a public deployment. We will not describe that flow as production-ready until a
-            new user can fetch both resources without private credentials.
+            The AGPL-3.0 source repository and pinned GHCR release are publicly accessible. The guided installer generates local secrets, downloads the
+            production Compose file, and starts the application, worker, PostgreSQL, cache, and object-storage services.
           </p>
-          <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 p-6">
-            <h2 className="font-semibold text-xl">Readiness checks still required</h2>
+          <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
+            <h2 className="font-semibold text-xl">Distribution checks completed</h2>
             <ul className="mt-4 space-y-2 text-muted-foreground text-sm leading-relaxed">
-              <li>Anonymous repository clone succeeds.</li>
-              <li>Anonymous container pull succeeds for a pinned release tag.</li>
-              <li>The installer completes on a clean Linux host.</li>
-              <li>Backup and restore are tested for PostgreSQL and object storage.</li>
-              <li>Wildcard DNS and ingress resolve published project subdomains.</li>
+              <li>The repository can be cloned without GitHub credentials.</li>
+              <li>The pinned container release can be fetched anonymously from GHCR.</li>
+              <li>The production Compose file keeps PostgreSQL, cache, workers, and storage on the internal network.</li>
+              <li>The install path is tested on a disposable Linux runner before release.</li>
             </ul>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">
-            <a className={primaryButton} href="/sign-up">
-              Use Nibleaf Cloud <ArrowRight className="size-4" />
+            <a className={primaryButton} href="/install.sh">
+              Download the installer <ArrowRight className="size-4" />
             </a>
             <a className={outlineButton} href="/blog/self-host-documentation-site-docker-compose">
-              Read the architecture guide
+              Follow the deployment guide
             </a>
           </div>
         </div>
@@ -105,7 +103,8 @@ function SelfHostingPage() {
           </p>
           <p className="mt-4 text-muted-foreground leading-relaxed">
             Keep the application image pinned to a release or digest, record every required environment variable, and monitor the health endpoint
-            during upgrades. The public installer will return only after the same path works for a new operator without private registry credentials.
+            during upgrades. A successful installer run does not replace operational work: configure TLS, schedule database and object-storage backups,
+            test restoration in an isolated environment, and document rollback before moving production content.
           </p>
         </div>
       </section>

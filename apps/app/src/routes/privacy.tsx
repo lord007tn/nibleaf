@@ -25,7 +25,7 @@ const LAST_UPDATED = 'August 15, 2026';
 const SECTIONS: { heading: string; body: string }[] = [
   {
     heading: '1. Your data stays yours',
-    body: "For Nibleaf Cloud, your content and account data are used only to provide hosting, publishing, search, analytics, authentication, and support. We do not sell your data or use it for advertising. A separately operated deployment would be governed by its operator's privacy practices; the public self-hosting distribution is currently unavailable.",
+    body: "For Nibleaf Cloud, your content and account data are used only to provide hosting, publishing, search, analytics, authentication, and support. We do not sell your data or use it for advertising. A separately operated self-hosted deployment is governed by its operator's privacy practices.",
   },
   {
     heading: '2. What we collect',

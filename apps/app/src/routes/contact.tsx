@@ -9,7 +9,7 @@ const CONTACTS = [
     title: 'Product support',
     address: 'support@nibleaf.com',
     linkLabel: 'Email product support',
-    body: 'Questions about Nibleaf Cloud, publishing, workspaces, imports, billing during beta, or the current distribution status.',
+    body: 'Questions about Nibleaf Cloud, publishing, workspaces, imports, billing during beta, or self-hosted deployment.',
   },
   {
     icon: LockKeyhole,
@@ -151,11 +151,11 @@ function ContactPage() {
       <section className="mx-auto max-w-4xl px-6 py-20 text-center">
         <h2 className="font-semibold text-3xl tracking-tight">Checking self-hosting availability?</h2>
         <p className="mx-auto mt-4 max-w-2xl text-muted-foreground leading-relaxed">
-          The codebase is AGPL-licensed, but anonymous source and container distribution are currently unavailable. Review the live status before
-          planning an installation or migration.
+          The codebase is AGPL-licensed with a public source repository and container release. Review the deployment guide before planning an
+          installation, migration, backup policy, or DNS change.
         </p>
         <a className={`${primaryButton} mt-7`} href="/self-hosting">
-          View distribution status <ArrowRight aria-hidden="true" className="size-4" />
+          View self-hosting guide <ArrowRight aria-hidden="true" className="size-4" />
         </a>
       </section>
     </MarketingShell>

@@ -241,7 +241,7 @@ function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
           <p className="mx-auto mt-3 max-w-xl text-background/75">
             {arabic
               ? 'جرّب Nibleaf Cloud مجانًا، أو شغّل المنصة مفتوحة المصدر على خادمك.'
-              : 'Start free on Nibleaf Cloud, and check the distribution status before planning self-hosting.'}
+              : 'Start free on Nibleaf Cloud, or run the public AGPL release on your own infrastructure.'}
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">

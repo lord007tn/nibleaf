@@ -38,7 +38,7 @@ Neither model is better. A five-person infra startup and a forty-person team wit
 | **Fumadocs** | Git + MDX inside your app | Orama in-browser index; Algolia swappable | i18n with per-locale search tokenizers | Deploys with your Next.js app | Docs embedded in a Next.js product |
 | **BookStack** | Web editor (WYSIWYG or Markdown), database | Built-in cross-book search | UI translations; no linked translations, RTL rough edges | Self-host (PHP + MySQL) | Internal knowledge bases and team wikis |
 | **Wiki.js** | Web editors, database, optional git sync | Built-in, with pluggable engines | UI translations, locale namespacing | Self-host (Node.js) | Existing installs; v3 has no ETA |
-| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama full-text + fuzzy, Arabic tokenizer | Per-language page trees, first-class RTL, hreflang | Free cloud beta; public self-host distribution is currently unavailable | Mixed teams with non-developer writers; Arabic/English docs |
+| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama full-text + fuzzy, Arabic tokenizer | Per-language page trees, first-class RTL, hreflang | Free cloud beta or public Docker Compose release | Mixed teams with non-developer writers; Arabic/English docs |
 
 ## The docs-as-code generators
 
@@ -74,11 +74,11 @@ Nibleaf is our project, so read the next section with that in mind. The competit
 
 ### Nibleaf
 
-Nibleaf is an AGPL-3.0 codebase for teams stuck between the two models: they want the web-editor experience so non-developers can contribute, but they also need Markdown export. Its public repository currently rejects anonymous access, so evaluate the managed beta and verify the [self-hosting status](/self-hosting) before treating it as a deployable open-source option. The editor is a Notion-style block editor with a slash menu that round-trips Markdown stored in the database. Publishing creates immutable snapshots, so readers do not see in-progress edits.
+Nibleaf is an AGPL-3.0 project for teams stuck between the two models: they want the web-editor experience so non-developers can contribute, but they also need Markdown export. Its public repository and pinned container release can be installed with Docker Compose. The editor is a Notion-style block editor with a slash menu that round-trips Markdown stored in the database. Publishing creates immutable snapshots, so readers do not see in-progress edits.
 
 Search is built in with Orama full-text and fuzzy matching behind a Cmd+K UI, so it does not require an Algolia account. Arabic projects select an Arabic tokenizer, and the i18n model uses per-language page trees with RTL layout, hreflang, and an English and Arabic interface. Nibleaf also includes custom-domain verification, SSR metadata, sitemaps, product analytics, team roles, and anchored review comments. The hosted service runs behind Cloudflare, whose delivery and security processing is described in the privacy policy.
 
-The deployment design includes the app, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. Anonymous source and container access must be restored before that design becomes a working public installation path. The managed cloud is available in [free beta](/pricing) at nibleaf.com.
+The deployment design includes the app, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. The public repository, pinned container release, and guided installer provide an anonymous installation path. The managed cloud is available in [free beta](/pricing) at nibleaf.com.
 
 ## How to choose
 
@@ -87,7 +87,7 @@ The deployment design includes the app, API, worker, PostgreSQL, a Redis-compati
 - **You're a Python shop already on MkDocs** → stay on **Material**, and watch Zensical for new projects.
 - **You need an internal team wiki, not public product docs** → **BookStack**.
 - **You're already running Wiki.js** → keep it patched, but don't start there today.
-- **Non-developers need to contribute or you're shipping Arabic/RTL docs** → evaluate **Nibleaf Cloud**, then check its [public distribution status](/self-hosting) if self-hosting is required. If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
+- **Non-developers need to contribute or you're shipping Arabic/RTL docs** → evaluate **Nibleaf Cloud** or follow the [self-hosting guide](/self-hosting). If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
 
 <Note>
 Competitor claims were checked against official documentation and release announcements, with the page re-reviewed on August 15, 2026. Corrections can be sent to support@nibleaf.com.

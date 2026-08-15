@@ -4,6 +4,8 @@ import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
+import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
+import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -60,22 +62,26 @@ const CONFIGURED_HOST = (process.env.APP_URL || '')
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
 
-/** Keep previously advertised installer URLs explicit while distribution is
- * unavailable. A 503 prevents a broken script from being mistaken for a ready
- * installation path and gives clients a safe retry signal. */
+/** Public, version-controlled self-hosting artifacts. The installer and Compose
+ * file are served from the marketing origin so the documented command always
+ * downloads files from the same release as the product site. */
 function serveSelfHostingArtifact(pathname: string, bare: string): Response | null {
   if (!IS_CLOUD_MARKETING || bare !== MARKETING_HOST) {
     return null;
   }
-  if (pathname !== '/install.sh' && pathname !== '/docker-compose.yml') {
+  const artifacts: Record<string, { body: string; type: string; filename: string }> = {
+    '/install.sh': { body: INSTALL_SCRIPT, type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
+    '/docker-compose.yml': { body: PRODUCTION_COMPOSE, type: 'application/yaml; charset=utf-8', filename: 'docker-compose.yml' },
+  };
+  const artifact = artifacts[pathname];
+  if (!artifact) {
     return null;
   }
-  return new Response('Nibleaf public self-hosting distribution is temporarily unavailable. See https://nibleaf.com/self-hosting for status.\n', {
-    status: 503,
+  return new Response(artifact.body, {
     headers: {
-      'cache-control': 'no-store',
-      'content-type': 'text/plain; charset=utf-8',
-      'retry-after': '86400',
+      'cache-control': 'public, max-age=300',
+      'content-disposition': `inline; filename="${artifact.filename}"`,
+      'content-type': artifact.type,
       'x-content-type-options': 'nosniff',
     },
   });
@@ -468,13 +474,13 @@ function marketingLlms(origin: string): string {
 
 ## Key facts
 
-- Codebase licensed under AGPL-3.0; anonymous source and container distribution is currently unavailable
-- Docker Compose architecture for the app, API, worker, database, cache, and object storage; check the public distribution status before planning an installation
+- Public AGPL-3.0 source repository with an anonymously accessible pinned GHCR container release
+- Guided Docker Compose installer for the app, API, worker, database, cache, and object storage
 - Notion-style WYSIWYG editor over plain Markdown/MDX - content round-trips losslessly, no proprietary format
 - First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
 - Versioned publishing: every publish is an immutable snapshot, rollback is atomic
 - Built-in full-text + fuzzy search (Orama), bilingual including an Arabic tokenizer - no external search service
-- Custom-domain and project-subdomain workflows are implemented; production DNS readiness must be verified on the intended hostname
+- Custom-domain and project-subdomain workflows are active; operators must still verify their own DNS and TLS configuration
 - First-party reader analytics (page views, top pages, top searches); the hosted service also uses Cloudflare for delivery, security, and web analytics
 - Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
 - Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta
@@ -483,8 +489,8 @@ function marketingLlms(origin: string): string {
 
 - [Home](${origin}/): overview and features
 - [Nibleaf Cloud](${origin}/cloud): hosted documentation sites, free during beta
-- [Pricing](${origin}/pricing): free cloud beta and current self-hosting status
-- [Self-hosting status](${origin}/self-hosting): distribution readiness and deployment architecture
+- [Pricing](${origin}/pricing): free cloud beta and self-hosting requirements
+- [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
 - [About](${origin}/about): mission and stack
 - [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
 - [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
@@ -534,9 +540,9 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns. Nibleaf Cloud also uses Cloudflare for delivery, security, and web analytics.
 - Bring-your-own storage: any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).
 
-## Self-hosting status
+## Self-hosting
 
-The codebase is licensed under AGPL-3.0 and contains a Docker Compose architecture for the app, API, worker, PostgreSQL, cache, and object storage. As of August 15, 2026, the public repository and container package reject anonymous access, so a new public user cannot complete an installation. See ${origin}/self-hosting for the current distribution checks and architecture notes.
+The codebase is licensed under AGPL-3.0. Its public repository, pinned GHCR release, guided installer, and production Docker Compose file are anonymously accessible. The stack contains the app, API, worker, PostgreSQL, cache, and object storage. Operators remain responsible for DNS, TLS, backups, monitoring, and restore testing; see ${origin}/self-hosting for the verified installation path and production checklist.
 
 ## Nibleaf Cloud
 
@@ -749,7 +755,15 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         return startHandler(rewritten, ...rest);
       }
     }
-    return startHandler(request, ...rest);
+    return new Response('Published site not found.\n', {
+      status: 404,
+      headers: {
+        'cache-control': 'no-store',
+        'content-type': 'text/plain; charset=utf-8',
+        'x-content-type-options': 'nosniff',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    });
   };
 
   // Run inside the visitor-IP context so SSR loader fetches are attributed to

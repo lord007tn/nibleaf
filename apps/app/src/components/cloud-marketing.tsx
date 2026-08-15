@@ -42,7 +42,7 @@ const navLinks = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/blog', label: 'Blog' },
-  { href: '/self-hosting', label: 'Distribution status' },
+  { href: '/self-hosting', label: 'Self-hosting' },
 ];
 
 const features: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
@@ -145,7 +145,7 @@ export function MarketingShell({ children }: { children: ReactNode; stars?: numb
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>
             <a className={cn(outlineButton, 'hidden h-9 px-3 text-muted-foreground sm:inline-flex')} href="/self-hosting">
-              Distribution status
+              Self-hosting
             </a>
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
               Sign in
@@ -219,7 +219,7 @@ function Announcement() {
       className="group flex items-center justify-center gap-2 border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
     >
       <Sparkles className="size-3.5 text-primary" />
-      <span>Free beta. Nibleaf Cloud is available now; self-hosting is paused while public distribution access is restored.</span>
+      <span>Free cloud beta or self-host with the public AGPL-3.0 release.</span>
       <span className="inline-flex items-center gap-1 font-medium text-foreground">
         Learn more <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -242,15 +242,14 @@ function Hero() {
           <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The visual Markdown alternative to Mintlify.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
             Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and
-            first-class Arabic/RTL. The cloud beta is available now; public self-hosting is paused until anonymous source and image access is
-            restored.
+            first-class Arabic/RTL. Use the free cloud beta or install the public AGPL-3.0 release on your own infrastructure.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
               Start writing — it's free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <a className={outlineButton} href="/self-hosting">
-              <Server className="size-4" /> Self-hosting status
+              <Server className="size-4" /> Self-host Nibleaf
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
@@ -489,9 +488,9 @@ function ChooseYourPath() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Eyebrow>Two ways to run it</Eyebrow>
-          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta, transparent self-hosting status</h2>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta or self-hosted</h2>
           <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Cloud is available now. Public self-hosting waits on anonymous repository and image access.
+            Start on the managed beta or run the published Docker Compose stack yourself.
           </p>
         </div>
         <a className={outlineButton} href="/pricing">
@@ -529,14 +528,14 @@ function ChooseYourPath() {
           <h3 className="flex items-center gap-2 font-semibold text-lg">
             <Server className="size-5 text-primary" /> Self-hosted
           </h3>
-          <p className="mt-4 font-semibold text-4xl tracking-tight">Paused</p>
+          <p className="mt-4 font-semibold text-4xl tracking-tight">AGPL-3.0</p>
           <p className="mt-1.5 text-muted-foreground text-sm">
-            The full-stack design is documented, but the public repository and container are not anonymously accessible.
+            Public source, a pinned GHCR image, and a guided Docker Compose installer for your own infrastructure.
           </p>
           <a className={`${outlineButton} mt-6 w-full`} href="/self-hosting">
-            Check self-hosting status <ArrowRight className="size-4" />
+            View self-hosting guide <ArrowRight className="size-4" />
           </a>
-          <p className="mt-3 text-center text-muted-foreground text-xs">AGPL-3.0 codebase · distribution access required</p>
+          <p className="mt-3 text-center text-muted-foreground text-xs">You manage DNS, TLS, backups, and upgrades.</p>
         </div>
       </div>
     </section>
@@ -550,7 +549,7 @@ function Comparison() {
         <div className="flex flex-col items-center text-center">
           <Eyebrow>Comparison</Eyebrow>
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">A docs platform without lock-in</h2>
-          <p className="mt-4 text-lg text-muted-foreground">A hosted product with Markdown export and a clearly documented distribution status.</p>
+          <p className="mt-4 text-lg text-muted-foreground">A hosted product with Markdown export and a public self-hosted release.</p>
         </div>
         <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
           <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b bg-muted/40 px-6 py-3 font-medium text-sm">
@@ -673,14 +672,14 @@ function FinalCta() {
         <div className="relative">
           <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">Ship docs your users will love</h2>
           <p className="mx-auto mt-4 max-w-2xl text-background/70 leading-relaxed">
-            Start free on Nibleaf Cloud today. Check the self-hosting status before planning an infrastructure migration.
+            Start free on Nibleaf Cloud today, or review the infrastructure checklist before self-hosting.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
               Get started free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <a className={invertedOutlineButton} href="/self-hosting">
-              <Server className="size-4" /> Self-hosting status
+              <Server className="size-4" /> Self-hosting guide
             </a>
           </div>
         </div>
@@ -715,7 +714,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
     links: [
       { href: '/blog', label: 'Blog' },
       { href: '/about', label: 'About' },
-      { href: '/self-hosting', label: 'Distribution status' },
+      { href: '/self-hosting', label: 'Self-hosting' },
       { href: '/contact', label: 'Contact' },
     ],
   },

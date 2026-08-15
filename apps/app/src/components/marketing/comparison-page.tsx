@@ -215,7 +215,7 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
       <p className="mt-4 text-muted-foreground text-xs leading-relaxed">
         Items marked “Not yet” are documented gaps without a committed delivery date. Review the current{' '}
         <a className="underline underline-offset-2 hover:text-foreground" href="/self-hosting">
-          distribution status
+          self-hosting guide
         </a>
         . “—” means the vendor’s pricing page does not state it either way; check its documentation.
       </p>
@@ -329,7 +329,7 @@ function MarketingCta() {
         <div className="relative">
           <h2 className="font-semibold text-3xl tracking-tight">Try Nibleaf for yourself</h2>
           <p className="mx-auto mt-3 max-w-xl text-background/75">
-            Start free on Nibleaf Cloud with no credit card. Check public distribution status before planning a self-hosted deployment.
+            Start free on Nibleaf Cloud with no credit card, or review the deployment checklist before self-hosting.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">

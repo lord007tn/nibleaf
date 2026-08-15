@@ -46,7 +46,7 @@ const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: 
       { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres, any S3-compatible store' },
       { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new image; migrations run themselves' },
       { label: 'Data ownership', cloud: 'Exportable Markdown, always', self: 'Everything stays on your infra' },
-      { label: 'Support', cloud: 'support@nibleaf.com', self: 'Available after public distribution resumes' },
+      { label: 'Support', cloud: 'support@nibleaf.com', self: 'Community support and your own operations' },
     ],
   },
 ];
@@ -65,7 +65,7 @@ const betaPromises: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: strin
   {
     icon: ShieldCheck,
     title: 'Generous notice before paid plans',
-    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. Self-hosting availability is tracked separately.',
+    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. The AGPL-3.0 self-hosted release remains separate.',
   },
 ];
 
@@ -85,10 +85,10 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <div className="flex justify-center">
             <Eyebrow>Pricing</Eyebrow>
           </div>
-          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Clear status for self-hosting.</h1>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Self-host when you prefer.</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf Cloud is available now with no credit card. The AGPL-licensed deployment path is paused until public distribution access is
-            restored.
+            Nibleaf Cloud is available now with no credit card. The public AGPL-3.0 release includes a pinned container and guided Docker Compose
+            installer for teams that operate their own infrastructure.
           </p>
         </div>
       </section>
@@ -127,15 +127,15 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <h2 className="flex items-center gap-2 font-semibold text-lg">
             <Server className="size-5 text-primary" /> Self-hosted
           </h2>
-          <p className="mt-4 font-semibold text-4xl tracking-tight">Paused</p>
-          <p className="mt-1 text-muted-foreground text-sm">AGPL-3.0 codebase, public image unavailable</p>
+          <p className="mt-4 font-semibold text-4xl tracking-tight">$0</p>
+          <p className="mt-1 text-muted-foreground text-sm">AGPL-3.0 source and public container release</p>
           <ul className="mt-6 space-y-3 text-sm">
             {[
-              'Full-stack deployment design',
+              'Guided Docker Compose installer',
               'PostgreSQL and S3-compatible storage',
               'Docker Compose and Coolify configurations',
-              'Requires anonymous source and image access',
-              'Do not plan production from the current installer',
+              'Pinned GHCR release and public source',
+              'You manage DNS, TLS, backups, and upgrades',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -144,7 +144,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             ))}
           </ul>
           <a className={`${outlineButton} mt-4`} href="/self-hosting">
-            Check self-hosting status <ArrowRight className="size-4" />
+            View self-hosting guide <ArrowRight className="size-4" />
           </a>
         </div>
       </section>
@@ -156,7 +156,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <Eyebrow>What's included</Eyebrow>
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Every feature, both plans</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              The table describes the intended full-stack deployment. Public installation is currently unavailable.
+              The same product features are available in Cloud and the self-hosted stack; operational responsibility differs.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -237,14 +237,14 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <div className="relative">
             <h2 className="font-semibold text-3xl tracking-tight">Start with the free Cloud beta.</h2>
             <p className="mx-auto mt-3 max-w-xl text-background/75">
-              Evaluate the editor and publishing workflow now. Check the distribution status before planning self-hosted infrastructure.
+              Evaluate the editor and publishing workflow now, or review the deployment checklist for your own infrastructure.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={primaryButton} href="/sign-up">
                 Get started free <ArrowRight className="size-4" />
               </a>
               <a className={invertedOutlineButton} href="/self-hosting">
-                Check distribution status
+                Self-hosting guide
               </a>
             </div>
           </div>

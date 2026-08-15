@@ -43,3 +43,6 @@ test-results
 # dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
 dogfood-output
 output
+
+# cross-skill SEO evidence cache (local only)
+.seo-cache/

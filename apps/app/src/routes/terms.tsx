@@ -30,7 +30,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '2. Free beta',
-    body: 'Nibleaf Cloud is currently in a free beta. During the beta the Service is provided as-is and as-available: features may change, and while we work hard to keep your content safe and the service up, we do not yet offer uptime or support guarantees. There are no paid plans today. Public self-hosting distribution is currently unavailable.',
+    body: 'Nibleaf Cloud is currently in a free beta. During the beta the Service is provided as-is and as-available: features may change, and while we work hard to keep your content safe and the service up, we do not yet offer uptime or support guarantees. There are no paid plans today. The separately operated self-hosted release is governed by its AGPL-3.0 license and your own infrastructure terms.',
   },
   {
     heading: '3. Your content',

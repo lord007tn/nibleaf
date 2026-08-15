@@ -1,0 +1,73 @@
+name: Installer smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Install the public release on a clean Linux runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install expect
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes expect
+
+      - name: Run the public guided installer
+        env:
+          INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
+          NIBLEAF_INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
+          NIBLEAF_APP_URL: http://127.0.0.1:4310
+          NIBLEAF_STORAGE_PUBLIC_ENDPOINT: http://127.0.0.1:9300
+          NIBLEAF_VERSION: v0.1.0
+        run: |
+          cat >"$RUNNER_TEMP/run-installer.exp" <<'EXPECT'
+          set timeout 1500
+          log_user 1
+          spawn sh -c {curl -fsSL https://nibleaf.com/install.sh | sh}
+          expect "Base domain for published sites (optional)"
+          send "\r"
+          expect "CNAME target for customer domains (optional)"
+          send "\r"
+          expect "Nibleaf image tag"
+          send "\r"
+          expect "Enable email verification and invitation delivery?"
+          send "n\r"
+          expect eof
+          catch wait result
+          exit [lindex $result 3]
+          EXPECT
+          expect "$RUNNER_TEMP/run-installer.exp"
+
+      - name: Verify the installed stack
+        env:
+          INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
+        run: |
+          test "$(stat -c '%a' "$INSTALL_DIR/.env")" = "600"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:4310/sign-in >/dev/null; then
+              break
+            fi
+            if [ "$attempt" = 60 ]; then
+              docker compose --project-directory "$INSTALL_DIR" ps
+              docker compose --project-directory "$INSTALL_DIR" logs --tail=200
+              exit 1
+            fi
+            sleep 5
+          done
+          docker compose --project-directory "$INSTALL_DIR" ps
+          unhealthy=$(docker compose --project-directory "$INSTALL_DIR" ps --format json | jq -s '[.[] | select(.Health == "unhealthy")] | length')
+          test "$unhealthy" = "0"
+
+      - name: Clean up
+        if: always()
+        env:
+          INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
+        run: |
+          if [ -f "$INSTALL_DIR/docker-compose.yml" ]; then
+            docker compose --project-directory "$INSTALL_DIR" down --volumes --remove-orphans
+          fi

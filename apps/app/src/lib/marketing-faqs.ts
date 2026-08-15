@@ -6,11 +6,11 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'Is Nibleaf open source?',
-    a: 'The codebase is licensed under AGPL-3.0. Public source and container access are currently unavailable, so anonymous self-hosting is paused.',
+    a: 'Yes. The source repository is public under AGPL-3.0, and the self-hosted release includes a pinned GHCR image and guided Docker Compose installer.',
   },
   {
     q: 'What happens after the beta?',
-    a: 'Paid cloud plans will come later, announced with generous advance notice, and beta workspaces will get preferential treatment. Self-hosting availability is tracked separately.',
+    a: 'Paid cloud plans will come later, announced with generous advance notice, and beta workspaces will get preferential treatment. Self-hosting remains available under AGPL-3.0.',
   },
   {
     q: 'Are there limits during the beta?',

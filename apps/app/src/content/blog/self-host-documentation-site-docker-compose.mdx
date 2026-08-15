@@ -19,10 +19,10 @@ faqs:
 
 Self-hosting a documentation platform is not mainly a Docker problem. The containers are the easy part. The work is deciding where state lives, which hostnames must resolve, how upgrades are pinned, and whether a backup can be restored after the original server is gone.
 
-This guide gives you a production checklist for a Compose-based docs stack. It uses Nibleaf's architecture as the concrete example, but it does not pretend the current public installation path works.
+This guide gives you a production checklist for a Compose-based docs stack. It uses Nibleaf's architecture as the concrete example, including its public repository, pinned container release, and guided installer.
 
-<Callout title="Current Nibleaf distribution status">
-The Nibleaf repository and GHCR container reject anonymous access as of August 15, 2026. The deployment design exists, but a new public user cannot fetch the required artifacts. Treat this as an architecture guide, not an install command. The shorter [self-hosting status page](/self-hosting) will be updated when both resources are publicly retrievable.
+<Callout title="Nibleaf installer">
+The public repository, pinned GHCR release, and guided installer are anonymously accessible. Start with the [self-hosting guide](/self-hosting), then use this article to plan DNS, backups, upgrades, and recovery before moving production content.
 </Callout>
 
 ## Draw the stack before renting a server
@@ -132,4 +132,4 @@ Compose fits a small team that wants one understandable deployment on one host a
 
 If engineers alone maintain a small set of Markdown files, a static generator may be simpler. The [Nibleaf and Docusaurus comparison](/compare/nibleaf-vs-docusaurus) explains that trade-off. If the team needs a visual editor today and does not want to operate the stack, [Nibleaf Cloud is in free beta](/pricing).
 
-For Nibleaf specifically, do not schedule a migration until the [public distribution checks](/self-hosting) pass. The right next step is to verify artifact access first, then perform this checklist on a disposable server before moving real documentation.
+For Nibleaf specifically, run the [guided installer](/self-hosting) on a disposable server first. Complete this checklist there, including a restore rehearsal, before moving real documentation.
