@@ -1,3 +1,4 @@
+import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
@@ -493,32 +494,40 @@ function SiteChrome() {
 
       <div className="mx-auto w-full max-w-[90rem] flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10">
         <aside className="hidden border-border/60 border-e lg:block">
-          <div className="sticky top-(--site-header-h) max-h-[calc(100vh-var(--site-header-h))] overflow-y-auto pt-7 pb-12 pe-5">
-            {navAnchors.length > 0 ? (
-              <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                {navAnchors.map((anchor) => (
-                  <li key={`${anchor.label}-${anchor.href}`}>
-                    <a
-                      href={resolveNavHref(anchor.href)}
-                      target={anchor.external ? '_blank' : undefined}
-                      rel={anchor.external ? 'noreferrer' : undefined}
-                      className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                    >
-                      <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                        {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                      </span>
-                      <span className="truncate">{anchor.label}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {isPending ? (
-              <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
-            ) : (
-              <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
-            )}
-          </div>
+          <ScrollArea className="sticky top-(--site-header-h) h-[calc(100vh-var(--site-header-h))]">
+            <div className="pt-7 pb-12 pe-5">
+              {navAnchors.length > 0 ? (
+                <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                  {navAnchors.map((anchor) => (
+                    <li key={`${anchor.label}-${anchor.href}`}>
+                      <a
+                        href={resolveNavHref(anchor.href)}
+                        target={anchor.external ? '_blank' : undefined}
+                        rel={anchor.external ? 'noreferrer' : undefined}
+                        className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                      >
+                        <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                          {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                        </span>
+                        <span className="truncate">{anchor.label}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {isPending ? (
+                <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
+              ) : (
+                <SiteNav
+                  nodes={site?.nav ?? []}
+                  projectId={projectId}
+                  currentPath={effectiveCurrentPath}
+                  lang={lang}
+                  version={activeVersionPrefix}
+                />
+              )}
+            </div>
+          </ScrollArea>
         </aside>
         <main className="min-w-0">
           <SitePageAlternatesContext.Provider value={pageAlternatesContext}>
