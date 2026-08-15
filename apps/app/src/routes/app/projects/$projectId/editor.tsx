@@ -350,7 +350,13 @@ function EditorPage() {
       },
     );
 
-  const showRail = view === 'content' && railOpen && Boolean(activeId && page);
+  // Raw Markdown is a focused workspace: the source editor gets the entire
+  // application canvas while the page tree and comments/AI rail temporarily
+  // disappear. Their persisted open/collapsed state is left untouched so the
+  // previous layout returns when the author switches back to a visual mode.
+  const markdownFocused = view === 'content' && effectiveMode === 'markdown' && Boolean(activeId && page);
+  const navigationCollapsed = sidebarCollapsed || markdownFocused;
+  const showRail = view === 'content' && railOpen && !markdownFocused && Boolean(activeId && page);
 
   // Comments on the active page — anchored highlights in the editor + the rail.
   const { data: pageComments } = useComments(projectId, activeId ?? undefined);
@@ -443,13 +449,17 @@ function EditorPage() {
           'grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[var(--editor-sidebar)_1fr]',
           showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
         )}
-        style={{ '--editor-sidebar': sidebarCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
+        style={{ '--editor-sidebar': navigationCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
       >
         <aside
-          className={cn('relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40', sidebarCollapsed && 'border-e-0')}
-          aria-hidden={sidebarCollapsed}
+          className={cn(
+            'relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40',
+            navigationCollapsed && 'invisible pointer-events-none border-e-0 max-lg:hidden',
+          )}
+          aria-hidden={navigationCollapsed}
+          inert={navigationCollapsed}
         >
-          {!sidebarCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
+          {!navigationCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
           {/* Sidebar header: section label + the collapse control (lives ON the sidebar). */}
           <div className="flex h-12 shrink-0 items-center justify-between border-border border-b ps-3 pe-1.5">
             <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
@@ -641,7 +651,7 @@ function EditorPage() {
             {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
             <div className="flex h-12 items-center gap-2 border-border border-b px-4">
-              {sidebarCollapsed ? (
+              {sidebarCollapsed && !markdownFocused ? (
                 <Button
                   size="icon-sm"
                   variant="ghost"
@@ -742,17 +752,19 @@ function EditorPage() {
               >
                 <Trash2 className="size-4" />
               </Button>
-              <Button
-                aria-label={railOpen ? t('editor.hideRail') : t('editor.showRail')}
-                aria-pressed={railOpen}
-                className="hidden cursor-pointer xl:inline-flex"
-                onClick={() => setRailOpen((v) => !v)}
-                size="icon-sm"
-                title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
-                variant={railOpen ? 'secondary' : 'ghost'}
-              >
-                <PanelRight className="size-4" />
-              </Button>
+              {!markdownFocused ? (
+                <Button
+                  aria-label={railOpen ? t('editor.hideRail') : t('editor.showRail')}
+                  aria-pressed={railOpen}
+                  className="hidden cursor-pointer xl:inline-flex"
+                  onClick={() => setRailOpen((v) => !v)}
+                  size="icon-sm"
+                  title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
+                  variant={railOpen ? 'secondary' : 'ghost'}
+                >
+                  <PanelRight className="size-4" />
+                </Button>
+              ) : null}
             </div>
 
             <div className={cn('min-h-0 flex-1', effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-7 py-8')}>
