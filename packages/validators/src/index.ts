@@ -93,7 +93,12 @@ const redirectsSchema = z
     for (const [index, rule] of redirects.entries()) {
       const from = normalizeRedirectPath(rule.from);
       const to = rule.to.trim();
-      if (!rule.from.trim() || !to) {
+      const rawFrom = rule.from.trim();
+      if (!rawFrom && !to) {
+        continue;
+      }
+      if (!rawFrom || !to) {
+        ctx.addIssue({ code: 'custom', message: 'A redirect must have both a source and a target.', path: [index, rawFrom ? 'to' : 'from'] });
         continue;
       }
       const duplicate = seen.get(from);

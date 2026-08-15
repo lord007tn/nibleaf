@@ -8,7 +8,7 @@
 ### The open-source Mintlify alternative
 
 Nibleaf is an open-source, self-hostable documentation platform — an alternative
-to Mintlify and GitBook — with a rich-text editor over plain Markdown,
+to Mintlify and GitBook — with a rich-text editor over Markdown/MDX,
 first-class Arabic/RTL support, custom domains, and a free cloud beta at
 [nibleaf.com](https://nibleaf.com).
 

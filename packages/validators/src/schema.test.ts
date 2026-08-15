@@ -77,6 +77,12 @@ describe('projectConfigSchema', () => {
     ).toBe(false);
   });
 
+  it('rejects half-filled redirect rows but permits an untouched empty row', () => {
+    expect(projectConfigSchema.safeParse({ redirects: [{ from: '/old', to: ' ' }] }).success).toBe(false);
+    expect(projectConfigSchema.safeParse({ redirects: [{ from: ' ', to: '/new' }] }).success).toBe(false);
+    expect(projectConfigSchema.safeParse({ redirects: [{ from: ' ', to: ' ' }] }).success).toBe(true);
+  });
+
   it('accepts redirect chains and resolves them to one final hop', () => {
     const redirects = [
       { from: '/old', to: '/renamed' },
