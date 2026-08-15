@@ -13,6 +13,7 @@ import {
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
+  resolveRedirectTarget,
   transferOwnershipBody,
   updateLanguageBody,
   updateMemberRoleBody,
@@ -54,6 +55,38 @@ describe('projectConfigSchema', () => {
       }).success,
     ).toBe(true);
     expect(projectConfigSchema.safeParse({ addons: { advancedAiSearch: true } }).success).toBe(false);
+  });
+
+  it('rejects duplicate redirect sources, self redirects, and cycles', () => {
+    expect(projectConfigSchema.safeParse({ redirects: [{ from: '/old', to: '/old' }] }).success).toBe(false);
+    expect(
+      projectConfigSchema.safeParse({
+        redirects: [
+          { from: '/old', to: '/new' },
+          { from: 'old/', to: '/newer' },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      projectConfigSchema.safeParse({
+        redirects: [
+          { from: '/a', to: '/b' },
+          { from: '/b', to: '/a' },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts redirect chains and resolves them to one final hop', () => {
+    const redirects = [
+      { from: '/old', to: '/renamed' },
+      { from: '/renamed', to: '/current' },
+    ];
+    expect(projectConfigSchema.safeParse({ redirects }).success).toBe(true);
+    expect(resolveRedirectTarget(redirects, '/old')).toBe('/current');
+    expect(resolveRedirectTarget([...redirects, { from: '/current', to: 'https://example.com/docs' }], '/old')).toBe('https://example.com/docs');
+    expect(resolveRedirectTarget([{ from: '/', to: '/start' }], '/')).toBe('/start');
+    expect(resolveRedirectTarget(redirects, '/missing')).toBeNull();
   });
 });
 

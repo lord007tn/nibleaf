@@ -33,7 +33,75 @@ const url = z
   .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
-const redirectPair = z.object({ from: z.string().max(300), to: z.string().max(300) }).strict();
+export type RedirectPair = { from: string; to: string };
+
+const cleanRedirectPath = (path: string): string => path.trim().replace(/^\/+|\/+$/g, '');
+const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(target);
+
+/**
+ * Resolve an internal redirect chain to one final target. Returning `null`
+ * means no rule matched or the stored rules contain a cycle. Keeping this
+ * helper in the shared validator package makes save-time validation and the
+ * public-site redirect behavior follow exactly the same path semantics.
+ */
+export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: string): string | null => {
+  const rules = new Map<string, string>();
+  for (const rule of redirects) {
+    const from = cleanRedirectPath(rule.from);
+    const to = rule.to.trim();
+    if (rule.from.trim() && to && !rules.has(from)) {
+      rules.set(from, to);
+    }
+  }
+
+  let current = cleanRedirectPath(path);
+  const first = current;
+  const visited = new Set<string>();
+  while (true) {
+    if (visited.has(current)) {
+      return null;
+    }
+    visited.add(current);
+
+    const target = rules.get(current);
+    if (!target) {
+      return current === first ? null : `/${current}`;
+    }
+    if (isExternalRedirect(target)) {
+      return target;
+    }
+    current = cleanRedirectPath(target);
+  }
+};
+
+const redirectsSchema = z
+  .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
+  .max(100)
+  .superRefine((redirects, ctx) => {
+    const seen = new Map<string, number>();
+    for (const [index, rule] of redirects.entries()) {
+      const from = cleanRedirectPath(rule.from);
+      const to = rule.to.trim();
+      if (!rule.from.trim() || !to) {
+        continue;
+      }
+      const duplicate = seen.get(from);
+      if (duplicate !== undefined) {
+        ctx.addIssue({ code: 'custom', message: `Duplicate redirect source (also used in row ${duplicate + 1}).`, path: [index, 'from'] });
+      } else {
+        seen.set(from, index);
+      }
+      if (!isExternalRedirect(to) && cleanRedirectPath(to) === from) {
+        ctx.addIssue({ code: 'custom', message: 'A redirect cannot point to itself.', path: [index, 'to'] });
+      }
+    }
+
+    for (const [index, rule] of redirects.entries()) {
+      if (rule.from.trim() && rule.to.trim() && resolveRedirectTarget(redirects, rule.from) === null) {
+        ctx.addIssue({ code: 'custom', message: 'Redirect cycle detected.', path: [index, 'to'] });
+      }
+    }
+  });
 const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) }).strict();
 
 /**
@@ -153,7 +221,7 @@ export const projectConfigSchema = z
       })
       .strict()
       .optional(),
-    redirects: z.array(redirectPair).max(100).optional(),
+    redirects: redirectsSchema.optional(),
     variables: z.array(kvPair).max(100).optional(),
   })
   .strict();

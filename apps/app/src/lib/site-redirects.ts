@@ -1,3 +1,4 @@
+import { resolveRedirectTarget } from '@nibleaf/validators';
 import { redirect } from '@tanstack/react-router';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';
@@ -24,19 +25,18 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
     return; // site itself is unavailable — let the caller render its not-found state
   }
   const redirects = (shell?.project.config as { redirects?: Array<{ from?: string; to?: string }> } | null)?.redirects ?? [];
-  const match = redirects.find((rule) => typeof rule?.from === 'string' && clean(rule.from) === from);
-  const to = match?.to?.trim();
+  const validRedirects = redirects.filter(
+    (rule): rule is { from: string; to: string } => typeof rule?.from === 'string' && typeof rule?.to === 'string',
+  );
+  const to = resolveRedirectTarget(validRedirects, from);
   if (!to) {
     return;
   }
-  // External target: redirect verbatim.
+  // External targets, including the final target of an internal chain, redirect verbatim.
   if (/^https?:\/\//i.test(to)) {
     throw redirect({ href: to, statusCode: 308 });
   }
   const target = clean(to);
-  if (target === from) {
-    return; // self-redirect — avoid a loop
-  }
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
   // On a custom domain the docs live at the root; on the app origin under /sites/:id.
   const href = isCustomDomainSite(projectId) ? `/${target}${query}` : `/sites/${projectId}${target ? `/${target}` : ''}${query}`;
