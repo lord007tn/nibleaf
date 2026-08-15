@@ -119,7 +119,16 @@ jobs:
             exit 0
           fi
 
-          curl --fail-with-body \
+          response=$(curl --fail-with-body --silent --show-error \
+            --location \
+            --proto-redir '=https' \
             --request POST \
+            --header "Accept: application/json" \
             --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
-            "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK"
+            "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK")
+
+          printf '%s\n' "$response"
+          if ! printf '%s' "$response" | jq --exit-status . >/dev/null; then
+            echo "::error::Coolify deploy webhook did not return JSON"
+            exit 1
+          fi
