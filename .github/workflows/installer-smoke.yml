@@ -29,6 +29,8 @@ jobs:
           set timeout 1500
           log_user 1
           spawn sh -c {curl -fsSL https://nibleaf.com/install.sh | sh}
+          expect "Install directory"
+          send "\r"
           expect "Base domain for published sites (optional)"
           send "\r"
           expect "CNAME target for customer domains (optional)"
