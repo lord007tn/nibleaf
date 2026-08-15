@@ -47,6 +47,11 @@ describe('extractHeadings', () => {
     const [img] = extractHeadings('## Logo ![alt](/logo.png) here');
     expect(img?.text).toBe('Logo  here');
   });
+  it('handles long inline markup without regex backtracking', () => {
+    const label = 'guide'.repeat(20_000);
+    const [heading] = extractHeadings(`## [${label}](/guide) ###`);
+    expect(heading?.text).toBe(label);
+  });
 });
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id'>): SnapshotPage => ({

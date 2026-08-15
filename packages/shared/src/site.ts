@@ -1,5 +1,5 @@
 import GithubSlugger from 'github-slugger';
-import { excerpt } from './utils';
+import { excerpt, stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
  *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
@@ -361,8 +361,6 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
   return build(null);
 };
 
-const HEADING = /^(#{1,4})\s+(.+?)\s*#*$/;
-
 export interface Heading {
   depth: number;
   text: string;
@@ -375,14 +373,27 @@ export interface Heading {
  *  `## The _fast_ path` gets a different id than the anchor, breaking the TOC and
  *  deep links. */
 const stripInlineMarkdown = (text: string): string =>
-  text
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images render as <img> — no text content
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links → their text
+  stripMarkdownLinks(text)
     .replace(/`([^`]+)`/g, '$1') // inline code
     .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
     .replace(/(\*|_)(.*?)\1/g, '$2') // italic
     .replace(/~~(.*?)~~/g, '$2') // strikethrough
     .trim();
+
+const parseHeading = (line: string): { depth: number; text: string } | null => {
+  let depth = 0;
+  while (line[depth] === '#') {
+    depth += 1;
+  }
+  if (depth < 1 || depth > 4 || !/\s/.test(line[depth] ?? '')) {
+    return null;
+  }
+  let text = line.slice(depth).trim();
+  while (text.endsWith('#')) {
+    text = text.slice(0, -1).trimEnd();
+  }
+  return text ? { depth, text } : null;
+};
 
 /** Extract markdown headings (h1–h4) with slug ids — powers search + the TOC.
  *  Ids are produced with github-slugger, the same slugger rehype-slug uses to
@@ -400,11 +411,11 @@ export const extractHeadings = (markdown: string): Heading[] => {
     if (inFence) {
       continue;
     }
-    const match = HEADING.exec(line);
-    if (match) {
-      const text = stripInlineMarkdown(match[2]?.trim() ?? '');
+    const heading = parseHeading(line);
+    if (heading) {
+      const text = stripInlineMarkdown(heading.text);
       headings.push({
-        depth: match[1]?.length ?? 1,
+        depth: heading.depth,
         text,
         id: slugger.slug(text),
       });
@@ -442,12 +453,26 @@ const variablesFromConfig = (config: unknown): Record<string, string> => {
 };
 
 const versionSlug = (name: string, fallback: string): string => {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-  return slug || fallback;
+  let slug = '';
+  let separatorPending = false;
+  for (const char of name.trim().toLowerCase()) {
+    const code = char.charCodeAt(0);
+    const allowed = (code >= 97 && code <= 122) || (code >= 48 && code <= 57) || char === '.' || char === '_' || char === '-';
+    if (allowed) {
+      if (separatorPending && slug) {
+        slug += '-';
+      }
+      slug += char;
+      separatorPending = false;
+    } else if (slug) {
+      separatorPending = true;
+    }
+  }
+  let start = 0;
+  let end = slug.length;
+  while (start < end && slug[start] === '-') start += 1;
+  while (end > start && slug[end - 1] === '-') end -= 1;
+  return slug.slice(start, end) || fallback;
 };
 
 const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): string => {

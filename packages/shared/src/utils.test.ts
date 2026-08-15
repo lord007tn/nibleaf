@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { excerpt, joinPath, plural, slugify } from './utils';
+import { excerpt, joinPath, plural, slugify, stripMarkdownLinks } from './utils';
 
 describe('slugify', () => {
   it('lowercases and dashes non-alphanumerics', () => {
@@ -9,6 +9,9 @@ describe('slugify', () => {
   it('trims leading/trailing dashes and handles empty results', () => {
     expect(slugify('--Foo--')).toBe('foo');
     expect(slugify('@@@')).toBe('');
+  });
+  it('handles long separator runs without regex backtracking', () => {
+    expect(slugify(`start${'-'.repeat(100_000)}end`)).toBe('start-end');
   });
 });
 
@@ -21,6 +24,20 @@ describe('joinPath', () => {
   it('joins parent and slug, trimming surrounding slashes', () => {
     expect(joinPath('guides', 'intro')).toBe('guides/intro');
     expect(joinPath('/guides/', 'intro')).toBe('guides/intro');
+  });
+  it('trims long slash runs in linear time', () => {
+    expect(joinPath(`${'/'.repeat(100_000)}guides${'/'.repeat(100_000)}`, 'intro')).toBe('guides/intro');
+  });
+});
+
+describe('stripMarkdownLinks', () => {
+  it('keeps link labels and removes images', () => {
+    expect(stripMarkdownLinks('Read [the guide](/guide) ![logo](/logo.png).')).toBe('Read the guide .');
+  });
+  it('preserves malformed markup and handles long labels', () => {
+    const label = 'x'.repeat(100_000);
+    expect(stripMarkdownLinks(`[${label}](/x)`)).toBe(label);
+    expect(stripMarkdownLinks('[unfinished')).toBe('[unfinished');
   });
 });
 

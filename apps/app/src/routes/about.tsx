@@ -24,7 +24,7 @@ export const Route = createFileRoute('/about')({
 });
 
 const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
-  { icon: Unlock, title: 'Licensed source', body: 'The codebase uses AGPL-3.0. Public repository and image access are currently being restored.' },
+  { icon: Unlock, title: 'Licensed source', body: 'The public codebase and container release use AGPL-3.0.' },
   { icon: BookOpen, title: 'Portable content', body: 'Pages are stored as Markdown in the database and can be exported as Markdown.' },
   { icon: Globe, title: 'Bilingual by design', body: 'English and Arabic with full RTL — first-class, not bolted on.' },
   {
@@ -106,7 +106,7 @@ function AboutPage() {
           <div className="relative">
             <h2 className="font-semibold text-3xl tracking-tight">Start writing today</h2>
             <p className="mx-auto mt-3 max-w-xl text-background/75">
-              Start free on Nibleaf Cloud. Check the self-hosting status before planning a deployment.
+              Start free on Nibleaf Cloud, or use the public self-hosted release on your own infrastructure.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={`${primaryButton} group`} href="/sign-up">
@@ -114,7 +114,7 @@ function AboutPage() {
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </a>
               <a className={invertedOutlineButton} href="/self-hosting">
-                Self-hosting status
+                Self-hosting guide
               </a>
             </div>
           </div>

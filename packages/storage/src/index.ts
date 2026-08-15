@@ -113,15 +113,28 @@ export const presignGetUrl = ({ key, expiresInSeconds = DEFAULT_EXPIRES_IN_SECON
   return getSignedUrl(getS3Client(signTarget), new GetObjectCommand({ Bucket: getBucket(signTarget), Key: key }), { expiresIn: expiresInSeconds });
 };
 
-const TRAILING_SLASHES = /\/+$/;
-const LEADING_SLASHES = /^\/+/;
+const trimTrailingSlashes = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') {
+    end -= 1;
+  }
+  return value.slice(0, end);
+};
+
+const trimLeadingSlashes = (value: string): string => {
+  let start = 0;
+  while (start < value.length && value[start] === '/') {
+    start += 1;
+  }
+  return value.slice(start);
+};
 
 export const buildPublicUrl = (key: string, target?: StorageTarget): string => {
   const base = getPublicBaseUrl(target);
   if (!base) {
     throw new Error('No public base URL configured (set STORAGE_PUBLIC_URL or CDN_URL)');
   }
-  return `${base.replace(TRAILING_SLASHES, '')}/${key.replace(LEADING_SLASHES, '')}`;
+  return `${trimTrailingSlashes(base)}/${trimLeadingSlashes(key)}`;
 };
 
 export interface CorsRuleInput {

@@ -31,14 +31,15 @@ first-class Arabic/RTL support, custom domains, and a free cloud beta at
 
 Nibleaf lets you write documentation in Markdown/MDX, organize it into a navigable tree,
 and publish a fast, searchable, multilingual site — with versioned deploys, custom
-domains, per-site teams, and analytics — **all self-hosted with one Docker command**.
-It's the docs platform you own end to end: no per-seat pricing, no vendor lock-in, and
+domains, per-site teams, and analytics. Run it with the guided installer or Docker
+Compose, or use the hosted beta. It's the docs platform you can operate end to end:
+no per-seat pricing for the self-hosted edition, no proprietary content format, and
 your content stays in your database.
 
 - 🖋️ **WYSIWYG _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
 - 🌍 **Bilingual & RTL-first** — genuine Arabic + English with per-language page trees,
-  right-to-left layout, and fully translated chrome. Almost no docs platform does this.
+  right-to-left layout, and fully translated chrome.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
 - 🏠 **Self-hosted** — Docker Compose or Coolify, bring-your-own Postgres + S3-compatible
@@ -143,7 +144,7 @@ quick start above unless you're modifying the code.
 
 ```bash
 cp .env.example .env
-echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> .env
+sed -i "s/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=$(openssl rand -hex 32)/" .env
 docker compose up -d --build
 # → dashboard  http://localhost:4310   (open /sign-up to create your account)
 # → API        http://localhost:4311/docs
@@ -258,6 +259,7 @@ When `NODE_ENV=production`, the container entrypoint refuses to start (`exit 1`)
 
 ## 💬 Support & community
 
+- **Support guide** — [SUPPORT.md](SUPPORT.md)
 - **Questions & ideas** — [GitHub Discussions](https://github.com/lord007tn/nibleaf/discussions)
 - **Bugs** — [GitHub Issues](https://github.com/lord007tn/nibleaf/issues)
 - **Email** — [support@nibleaf.com](mailto:support@nibleaf.com)
@@ -265,14 +267,14 @@ When `NODE_ENV=production`, the container entrypoint refuses to start (`exit 1`)
 
 ## 🤝 Contributing
 
-Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** to get set up, and
-please open an issue to discuss substantial changes first. Found a vulnerability? See
-**[SECURITY.md](SECURITY.md)**.
+Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** to get set up,
+**[GOVERNANCE.md](GOVERNANCE.md)** for how decisions are made, and open an issue to
+discuss substantial changes first. Found a vulnerability? See **[SECURITY.md](SECURITY.md)**.
 
 ## 📄 License
 
-Nibleaf is free software, licensed under the **GNU Affero General Public License v3.0**
-(AGPL-3.0) — see [LICENSE](LICENSE) for the full text. Because the AGPL includes the
+Nibleaf is free software, licensed under the **GNU Affero General Public License v3.0 only**
+(`AGPL-3.0-only`) — see [LICENSE](LICENSE) for the full text. Because the AGPL includes the
 “network use” clause, if you run a modified version of Nibleaf as a network service you must
 make your modified source available to its users. Contributions are accepted under the same
 license. The “Nibleaf” name and logo are **not** covered by the AGPL — see

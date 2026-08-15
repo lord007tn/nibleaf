@@ -6,12 +6,12 @@ and the conventions we follow.
 
 ## Licensing of contributions
 
-Nibleaf is licensed under the **GNU Affero General Public License v3.0**
-([LICENSE](LICENSE)). By submitting a contribution (a pull request, patch, or any
-other change) you agree that your contribution is licensed under the AGPL-3.0,
-the same license as the project. We do not require a separate CLA; the
-[Developer Certificate of Origin](https://developercertificate.org/) (DCO) is
-implied — only submit work you have the right to contribute.
+Nibleaf is licensed under the **GNU Affero General Public License v3.0 only**
+(`AGPL-3.0-only`; see [LICENSE](LICENSE)). By submitting a contribution (a pull
+request, patch, or any other change), you agree that it is licensed under the
+same `AGPL-3.0-only` terms as the project and certify that you have the right to
+submit it. Nibleaf does not require a separate contributor license agreement or
+Developer Certificate of Origin sign-off.
 
 ## Development setup
 
@@ -19,15 +19,15 @@ Requirements: **Node ≥ 22.13**, **pnpm ≥ 10**, and **Docker** (for Postgres,
 cache, and S3-compatible storage).
 
 ```bash
-git clone https://github.com/nibleaf-docs/nibleaf
+git clone https://github.com/lord007tn/nibleaf.git
 cd nibleaf
 cp .env.example .env
-echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> .env
 
 pnpm install
+pnpm db:generate
 
 # Bring up the datastores (Postgres, Dragonfly, maxio):
-docker compose up -d postgres dragonfly maxio
+docker compose -f docker-compose.dev.yml up -d
 
 # Apply migrations and seed a local demo account (demo@nibleaf.test / nibleafdemo123):
 pnpm db:deploy
@@ -40,17 +40,18 @@ pnpm dev
 - Dashboard: http://localhost:4310
 - API + OpenAPI docs: http://localhost:4311/docs
 
-Alternatively, run the whole stack in containers with `docker compose up -d --build`.
+For a production-style installation, use the pinned-image path in
+[DEPLOYMENT.md](DEPLOYMENT.md) instead of the development stack above.
 
 ## Before you open a PR
 
 Run the same checks CI runs and make sure they pass:
 
 ```bash
+pnpm format      # biome format --write . (auto-fix formatting)
 pnpm typecheck   # turbo run typecheck
 pnpm lint        # biome check .
 pnpm test        # vitest across the workspace
-pnpm format      # biome format --write . (auto-fix formatting)
 ```
 
 ## Conventions
@@ -70,4 +71,5 @@ pnpm format      # biome format --write . (auto-fix formatting)
 ## Reporting bugs & requesting features
 
 Use the GitHub issue templates. For security issues, **do not** open a public
-issue — see [SECURITY.md](SECURITY.md).
+issue — see [SECURITY.md](SECURITY.md). For support and community questions, see
+[SUPPORT.md](SUPPORT.md).

@@ -10,6 +10,12 @@ import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
 
+const randomSessionId = (): string => {
+  const words = new Uint32Array(4);
+  window.crypto.getRandomValues(words);
+  return Array.from(words, (value) => value.toString(36)).join('.');
+};
+
 const sessionId = (): string => {
   if (typeof window === 'undefined') {
     return 'ssr';
@@ -17,7 +23,7 @@ const sessionId = (): string => {
   const key = 'nibleaf.sid';
   let id = window.localStorage.getItem(key);
   if (!id) {
-    id = Math.random().toString(36).slice(2);
+    id = randomSessionId();
     window.localStorage.setItem(key, id);
   }
   return id;

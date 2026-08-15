@@ -69,7 +69,7 @@ const assertPublicRemoteUrl = async (value: string, label: string): Promise<URL>
 const fetchGitLab = async (url: URL | string): Promise<Response> => {
   try {
     return await fetch(url, {
-      headers: { 'User-Agent': 'nibleaf-docs' },
+      headers: { 'User-Agent': 'nibleaf' },
       // A custom GitLab host is user-controlled. Following a redirect could
       // bypass the public-host DNS check above and reach an internal service.
       redirect: 'error',
@@ -278,7 +278,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
             provider === 'gitlab'
               ? await fetchGitLab(rawUrl)
               : await fetch(rawUrl, {
-                  headers: { 'User-Agent': 'nibleaf-docs' },
+                  headers: { 'User-Agent': 'nibleaf' },
                 });
           return rawRes.ok ? rawRes.text() : null;
         },

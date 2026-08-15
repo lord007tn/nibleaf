@@ -235,17 +235,24 @@ const getTurndown = (): TurndownService => {
 };
 
 /** Last-resort conversion: strip tags and collapse whitespace. */
+const decodeHtmlEntity = (entity: string): string => {
+  const entities: Record<string, string> = {
+    '&nbsp;': ' ',
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#39;': "'",
+  };
+  return entities[entity.toLowerCase()] ?? entity;
+};
+
 export const htmlToPlainText = (html: string): string =>
   html
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
+    .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, decodeHtmlEntity)
     .replace(/[ \t]+/g, ' ')
     .replace(/\s*\n\s*/g, '\n')
     .trim();

@@ -2,9 +2,8 @@ Nibleaf — open-source, self-hostable documentation platform
 Copyright (C) 2026 The Nibleaf authors
 
 This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version.
+the terms of version 3 only of the GNU Affero General Public License as
+published by the Free Software Foundation (`AGPL-3.0-only`).
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -17,8 +16,12 @@ The full license text is in the LICENSE file at the root of this repository.
 
 ----------------------------------------------------------------------------
 
-This product bundles third-party open-source software. Their licenses are
-permissive (MIT, Apache-2.0, BSD, ISC, MPL-2.0) and compatible with the AGPL-3.0.
-Notable dependencies include: React, Hono, TanStack Start/Query/Form, better-auth,
-Prisma, BullMQ, Orama, and TipTap. See each package's entry in the dependency
-tree for its individual license.
+This product uses third-party open-source software. Each component remains
+subject to its own license and notice requirements. Package metadata and license
+files in the installed dependency tree identify those terms for the exact
+versions in use; `pnpm licenses list` produces an inventory from a completed
+installation. Redistributors are responsible for preserving all notices that
+apply to the form they distribute.
+
+Notable dependencies include React, Hono, TanStack Start/Query/Form,
+better-auth, Prisma, BullMQ, Orama, and TipTap.

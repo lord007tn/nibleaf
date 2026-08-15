@@ -193,6 +193,10 @@ describe('htmlToPlainText (conversion fallback)', () => {
     expect(text).toContain('Line & one');
     expect(text).toContain('Line two');
   });
+
+  it('decodes each original HTML entity only once', () => {
+    expect(htmlToPlainText('&amp;lt;script&amp;gt;')).toBe('&lt;script&gt;');
+  });
 });
 
 describe('ghostItemToMarkdown', () => {

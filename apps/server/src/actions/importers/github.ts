@@ -10,7 +10,7 @@ export interface GitTreeItem {
   type: 'blob' | 'tree';
 }
 
-const GITHUB_HEADERS = { Accept: 'application/vnd.github+json', 'User-Agent': 'nibleaf-docs' } as const;
+const GITHUB_HEADERS = { Accept: 'application/vnd.github+json', 'User-Agent': 'nibleaf' } as const;
 
 /** Recursive tree listing of a public GitHub repository at a branch. */
 export const listGitHubFiles = async (owner: string, repo: string, branch: string): Promise<GitTreeItem[]> => {
@@ -48,6 +48,6 @@ export const githubRawUrl = (owner: string, repo: string, branch: string, filePa
 
 /** Fetch a raw file; `null` on any non-2xx so callers can warn-and-skip. */
 export const fetchRawText = async (url: string): Promise<string | null> => {
-  const res = await fetch(url, { headers: { 'User-Agent': 'nibleaf-docs' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'nibleaf' } });
   return res.ok ? res.text() : null;
 };

@@ -14,14 +14,14 @@
   },
   "dependencies": {
     "@getworkbench/hono": "^0.9.1",
-    "@hono/node-server": "^2.0.4",
+    "@hono/node-server": "^2.1.1",
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "bullmq": "^5.77.6",
-    "hono": "^4.12.23",
+    "hono": "^4.13.2",
     "nodemailer": "^9.0.3",
     "postmark": "^5.0.0",
     "zod": "^4.4.3"
