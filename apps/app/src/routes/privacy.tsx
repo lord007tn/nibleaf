@@ -5,8 +5,8 @@ import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
 export const Route = createFileRoute('/privacy')({
   head: () => ({
     meta: pageMeta({
-      title: 'Privacy Policy — Nibleaf',
-      description: 'How Nibleaf Cloud handles your data: what we collect, where it lives, our subprocessors, and how to request deletion.',
+      title: 'Nibleaf Cloud Privacy Policy and Data Practices',
+      description: 'How Nibleaf Cloud handles account and documentation data, analytics, subprocessors, retention, security, and deletion requests.',
       path: '/privacy',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/privacy') }],

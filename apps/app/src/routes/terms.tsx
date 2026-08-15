@@ -5,8 +5,9 @@ import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
 export const Route = createFileRoute('/terms')({
   head: () => ({
     meta: pageMeta({
-      title: 'Terms of Service — Nibleaf',
-      description: 'The terms governing your use of Nibleaf Cloud and the Nibleaf open-source edition.',
+      title: 'Nibleaf Cloud Terms of Service and Acceptable Use',
+      description:
+        'Read the terms governing Nibleaf Cloud accounts, acceptable use, subscriptions, content ownership, service availability, and liability.',
       path: '/terms',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/terms') }],

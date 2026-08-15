@@ -166,7 +166,9 @@ export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; fea
         <CoverPanel className="aspect-[16/9] w-full shrink-0" entry={entry} />
         <div className="flex flex-1 flex-col p-6">
           <TagChips entry={entry} />
-          <h3 className="font-semibold text-lg leading-snug tracking-tight transition-colors group-hover:text-primary rtl:tracking-normal">{entry.title}</h3>
+          <h3 className="font-semibold text-lg leading-snug tracking-tight transition-colors group-hover:text-primary rtl:tracking-normal">
+            {entry.title}
+          </h3>
           <p className="mt-2 mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{entry.description}</p>
           <CardMeta entry={entry} />
         </div>
@@ -202,10 +204,12 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
           <Eyebrow>Blog</Eyebrow>
           <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Product documentation, search, and ownership</h1>
+              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">
+                Product documentation, search, and ownership
+              </h1>
               <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-                Guides and notes from building Nibleaf: deployment architecture, Markdown, bilingual documentation, and source-backed looks at the docs tooling
-                landscape.
+                Guides and notes from building Nibleaf: deployment architecture, Markdown, bilingual documentation, and source-backed looks at the
+                docs tooling landscape.
               </p>
             </div>
             <div className="relative w-full md:w-72">
@@ -417,26 +421,51 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
   const arabic = language === 'ar';
   return (
     <MarketingShell stars={stars}>
-      <article className="mx-auto max-w-3xl px-6 pt-12 pb-20" dir={arabic ? 'rtl' : 'ltr'} lang={language}>
+      <article
+        className="mx-auto max-w-3xl px-6 pt-12 pb-20"
+        dir={arabic ? 'rtl' : 'ltr'}
+        itemScope
+        itemType="https://schema.org/BlogPosting"
+        lang={language}
+      >
         <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/blog">
           <ArrowLeft className="size-4 rtl:rotate-180" /> {arabic ? 'كل المقالات' : 'All articles'}
         </a>
         <header className="mt-6">
           <TagChips entry={entry} />
-          <h1 className={`text-pretty font-semibold text-4xl leading-[1.15] sm:text-[44px] ${arabic ? '' : 'tracking-tight'}`}>{entry.title}</h1>
-          <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">{entry.description}</p>
+          <h1 className={`text-pretty font-semibold text-4xl leading-[1.15] sm:text-[44px] ${arabic ? '' : 'tracking-tight'}`} itemProp="headline">
+            {entry.title}
+          </h1>
+          <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed" itemProp="description">
+            {entry.description}
+          </p>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-border border-y py-4">
             <p className="text-muted-foreground text-sm">
-              <time dateTime={entry.dateModified}>
-                {arabic ? 'آخر تحديث' : 'Updated'} {dateFormatter(entry).format(new Date(entry.dateModified))}
+              <time className="datePublished" dateTime={entry.datePublished} itemProp="datePublished">
+                {arabic ? 'نُشر' : 'Published'} {dateFormatter(entry).format(new Date(entry.datePublished))}
               </time>
+              {entry.dateModified !== entry.datePublished ? (
+                <>
+                  {' · '}
+                  <time dateTime={entry.dateModified} itemProp="dateModified">
+                    {arabic ? 'آخر تحديث' : 'Updated'} {dateFormatter(entry).format(new Date(entry.dateModified))}
+                  </time>
+                </>
+              ) : null}
               {' · '}
-              {arabic ? `${blogReadingMinutes(entry)} دقائق قراءة · فريق Nibleaf` : `${blogReadingMinutes(entry)} min read · The Nibleaf team`}
+              {arabic ? `${blogReadingMinutes(entry)} دقائق قراءة` : `${blogReadingMinutes(entry)} min read`}
+              {' · '}
+              {arabic ? 'بقلم ' : 'By '}
+              <a className="author font-medium text-foreground hover:underline" href="/about" rel="author">
+                {arabic ? 'فريق Nibleaf' : 'The Nibleaf team'}
+              </a>
             </p>
             <ShareRow entry={entry} />
           </div>
         </header>
-        <div className={`mt-10 ${proseClass}`}>{children}</div>
+        <div className={`mt-10 ${proseClass}`} itemProp="articleBody">
+          {children}
+        </div>
         {entry.faqs && entry.faqs.length > 0 ? <ArticleFaqSection faqs={entry.faqs} language={language} /> : null}
       </article>
       {related.length > 0 ? (

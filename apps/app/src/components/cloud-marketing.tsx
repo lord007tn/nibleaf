@@ -219,8 +219,8 @@ export function CloudPage(_props: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Hosted documentation sites, free during beta</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics,
-            and Arabic-ready authoring.
+            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics, and Arabic-ready
+            authoring.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
@@ -269,7 +269,8 @@ function Hero() {
           <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The visual Markdown alternative to Mintlify.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
             Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and
-            first-class Arabic/RTL. The cloud beta is available now; public self-hosting is paused until anonymous source and image access is restored.
+            first-class Arabic/RTL. The cloud beta is available now; public self-hosting is paused until anonymous source and image access is
+            restored.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
@@ -423,7 +424,9 @@ function Features() {
       <div className="max-w-2xl">
         <Eyebrow>Features</Eyebrow>
         <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Everything else you'd expect — included</h2>
-        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">The full docs workflow in one managed product, with portable Markdown content.</p>
+        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+          The full docs workflow in one managed product, with portable Markdown content.
+        </p>
       </div>
       <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {features.map(({ icon: Icon, title, body }) => (
@@ -514,7 +517,9 @@ function ChooseYourPath() {
         <div>
           <Eyebrow>Two ways to run it</Eyebrow>
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta, transparent self-hosting status</h2>
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">Cloud is available now. Public self-hosting waits on anonymous repository and image access.</p>
+          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
+            Cloud is available now. Public self-hosting waits on anonymous repository and image access.
+          </p>
         </div>
         <a className={outlineButton} href="/pricing">
           Compare in detail <ArrowRight className="size-4" />
@@ -552,7 +557,9 @@ function ChooseYourPath() {
             <Server className="size-5 text-primary" /> Self-hosted
           </h3>
           <p className="mt-4 font-semibold text-4xl tracking-tight">Paused</p>
-          <p className="mt-1.5 text-muted-foreground text-sm">The full-stack design is documented, but the public repository and container are not anonymously accessible.</p>
+          <p className="mt-1.5 text-muted-foreground text-sm">
+            The full-stack design is documented, but the public repository and container are not anonymously accessible.
+          </p>
           <a className={`${outlineButton} mt-6 w-full`} href="/self-hosting">
             Check self-hosting status <ArrowRight className="size-4" />
           </a>
@@ -736,7 +743,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
       { href: '/blog', label: 'Blog' },
       { href: '/about', label: 'About' },
       { href: '/self-hosting', label: 'Distribution status' },
-      { href: 'mailto:support@nibleaf.com', label: 'Support' },
+      { href: '/contact', label: 'Contact' },
     ],
   },
   {
@@ -761,8 +768,8 @@ function SiteFooter() {
             <p className="mt-3 max-w-[28ch] text-muted-foreground text-sm leading-relaxed">
               A visual Markdown editor for publishing searchable, multilingual product documentation.
             </p>
-            <a className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground" href="mailto:support@nibleaf.com">
-              Contact support
+            <a className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/contact">
+              Contact Nibleaf
             </a>
           </div>
           {footerColumns.map((column) => (

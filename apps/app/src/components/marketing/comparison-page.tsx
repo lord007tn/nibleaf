@@ -51,7 +51,7 @@ export function AlternativesPage({ data, stars = 0 }: { data: AlternativesRoundu
                   <a
                     className="inline-flex items-center gap-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
                     href={alt.url}
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     target="_blank"
                   >
                     {alt.url.replace(/^https?:\/\//, '')} <ExternalLink className="size-3" />
@@ -139,7 +139,9 @@ function PricingTableView({ table }: { table: PricingTable }) {
       <h3 className="font-semibold text-lg tracking-tight">{table.productName}</h3>
       <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
         <table className="w-full min-w-[26rem] text-start text-sm">
-          <caption className="sr-only">{table.productName} plans and pricing as of {table.asOf}</caption>
+          <caption className="sr-only">
+            {table.productName} plans and pricing as of {table.asOf}
+          </caption>
           <thead>
             <tr className="border-border border-b bg-muted/40 text-muted-foreground">
               <th className="px-4 py-3 text-start font-medium">Plan</th>
@@ -164,7 +166,7 @@ function PricingTableView({ table }: { table: PricingTable }) {
         <a
           className="underline underline-offset-2 hover:text-foreground"
           href={table.sourceUrl}
-          {...(external ? { rel: 'noreferrer', target: '_blank' } : {})}
+          {...(external ? { rel: 'noopener noreferrer', target: '_blank' } : {})}
         >
           {table.sourceLabel}
         </a>

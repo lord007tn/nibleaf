@@ -402,6 +402,7 @@ const MARKETING_SITEMAP: { path: string; lastmod: string }[] = [
   { path: '/pricing', lastmod: '2026-07-13' },
   { path: '/self-hosting', lastmod: '2026-07-13' },
   { path: '/about', lastmod: '2026-07-13' },
+  { path: '/contact', lastmod: '2026-08-15' },
   { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-07-13' },
   { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-07-13' },
   { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-07-13' },
@@ -476,6 +477,7 @@ function marketingLlms(origin: string): string {
 - [Pricing](${origin}/pricing): free cloud beta and current self-hosting status
 - [Self-hosting status](${origin}/self-hosting): distribution readiness and deployment architecture
 - [About](${origin}/about): mission and stack
+- [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
 - [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
 - [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
 - [Nibleaf vs Docusaurus](${origin}/compare/nibleaf-vs-docusaurus)

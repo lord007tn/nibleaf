@@ -114,7 +114,8 @@ export const nibleafPricing: PricingTable = {
     {
       plan: 'Self-hosted distribution',
       price: 'Currently unavailable publicly',
-      includes: 'AGPL-3.0 codebase and full-stack Compose design. Anonymous repository and container access must be restored before installation works.',
+      includes:
+        'AGPL-3.0 codebase and full-stack Compose design. Anonymous repository and container access must be restored before installation works.',
     },
   ],
   note: 'No paid cloud plan is currently offered. Check the self-hosting status page before planning infrastructure.',
@@ -426,7 +427,7 @@ export const nibleafVsDocusaurus: Comparison = {
   path: '/compare/nibleaf-vs-docusaurus',
   competitorName: 'Docusaurus',
   competitorUrl: 'https://docusaurus.io',
-  metaTitle: 'Nibleaf vs Docusaurus — docs platform vs static site generator',
+  metaTitle: 'Nibleaf vs Docusaurus: docs platform vs static site',
   metaDescription:
     'Nibleaf vs Docusaurus: browser-based docs platform versus static docs-as-code, compared on editing, search, hosting, Arabic/RTL, and ownership.',
   heading: 'Nibleaf vs Docusaurus',
@@ -587,9 +588,8 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   path: '/alternatives/mintlify',
   competitorName: 'Mintlify',
   competitorUrl: 'https://www.mintlify.com',
-  metaTitle: 'Mintlify alternatives: 5 hosted and open-source options (2026)',
-  metaDescription:
-    'Compare five Mintlify alternatives by editor, API workflow, hosting, Arabic/RTL, pricing, and verified public availability.',
+  metaTitle: 'Mintlify alternatives: 5 hosted and open-source tools (2026)',
+  metaDescription: 'Compare five Mintlify alternatives by editor, API workflow, hosting, Arabic/RTL, pricing, and verified public availability.',
   heading: 'Mintlify alternatives',
   breadcrumbName: 'Mintlify alternatives',
   directAnswer: [
@@ -623,9 +623,8 @@ export const gitbookAlternatives: AlternativesRoundup = {
   path: '/alternatives/gitbook',
   competitorName: 'GitBook',
   competitorUrl: 'https://www.gitbook.com',
-  metaTitle: 'GitBook alternatives: 5 open-source and hosted options (2026)',
-  metaDescription:
-    'Compare five GitBook alternatives by editor, Git workflow, hosting, custom domains, pricing, and verified public availability.',
+  metaTitle: 'GitBook alternatives: 5 open-source and hosted tools (2026)',
+  metaDescription: 'Compare five GitBook alternatives by editor, Git workflow, hosting, custom domains, pricing, and verified public availability.',
   heading: 'GitBook alternatives',
   breadcrumbName: 'GitBook alternatives',
   directAnswer: [
@@ -660,8 +659,7 @@ export const readmeAlternatives: AlternativesRoundup = {
   competitorName: 'ReadMe',
   competitorUrl: 'https://readme.com',
   metaTitle: 'ReadMe alternatives: 5 API and product-docs options (2026)',
-  metaDescription:
-    'Compare five ReadMe alternatives by API tooling, editor, product guides, hosting, pricing, and verified public availability.',
+  metaDescription: 'Compare five ReadMe alternatives by API tooling, editor, product guides, hosting, pricing, and verified public availability.',
   heading: 'ReadMe alternatives',
   breadcrumbName: 'ReadMe alternatives',
   directAnswer: [
