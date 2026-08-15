@@ -82,7 +82,7 @@ STORAGE_PUBLIC_ENDPOINT=${STORAGE_PUBLIC_ENDPOINT%/}
 
 SITE_BASE_DOMAIN=$(prompt 'Base domain for published sites (optional)' '')
 CUSTOM_DOMAIN_CNAME_TARGET=$(prompt 'CNAME target for customer domains (optional)' "$SITE_BASE_DOMAIN")
-NIBLEAF_VERSION=$(prompt 'Nibleaf image tag' "${NIBLEAF_VERSION:-v0.1.0}")
+NIBLEAF_VERSION=$(prompt 'Nibleaf image tag' "${NIBLEAF_VERSION:-v0.1.1}")
 
 EMAIL_FROM='nibleaf@localhost'
 POSTMARK_API_KEY=''

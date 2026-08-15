@@ -32,7 +32,7 @@ ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN pnpm exec turbo run build --concurrency=1
 
 FROM base AS runner
-ARG VERSION=0.1.0
+ARG VERSION=0.1.1
 ENV NODE_ENV=production
 LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.description="Self-hosted documentation platform" \

@@ -23,7 +23,7 @@ jobs:
           NIBLEAF_INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
           NIBLEAF_APP_URL: http://127.0.0.1:4310
           NIBLEAF_STORAGE_PUBLIC_ENDPOINT: http://127.0.0.1:9300
-          NIBLEAF_VERSION: v0.1.0
+          NIBLEAF_VERSION: v0.1.1
         run: |
           cat >"$RUNNER_TEMP/run-installer.exp" <<'EXPECT'
           set timeout 1500

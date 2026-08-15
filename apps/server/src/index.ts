@@ -26,7 +26,7 @@ app.get(
   '/openapi.json',
   openAPIRouteHandler(app, {
     documentation: {
-      info: { title: 'Nibleaf API', version: '0.1.0', description: 'Open-source documentation platform.' },
+      info: { title: 'Nibleaf API', version: '0.1.1', description: 'Open-source documentation platform.' },
       servers: [{ url: env.API_URL, description: 'Nibleaf API' }],
     },
   }),

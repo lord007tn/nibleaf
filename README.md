@@ -161,7 +161,7 @@ docker compose up -d --build
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
   `SERVICE_*` secrets), set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`,
-  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.0`.
+  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.1`.
 - **Nibleaf Cloud** — don't want to run servers? The hosted beta at
   [nibleaf.com](https://nibleaf.com) is free while in beta.
 

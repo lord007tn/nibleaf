@@ -49,7 +49,7 @@ missing. The shape, with `example.com` standing in for your domain:
 
 ```dotenv
 # Image — pin a tag from https://github.com/lord007tn/nibleaf/releases
-NIBLEAF_VERSION=v0.1.0
+NIBLEAF_VERSION=v0.1.1
 
 # The browser-facing dashboard origin. The app proxies /api to the server
 # internally, so cookies stay first-party and this is the only web origin
@@ -510,7 +510,7 @@ Tune `RATE_LIMIT_PUBLIC_PER_MIN` (default `300`) for the public site-serving API
 ## Appendix: Coolify
 
 Use `docker-compose.coolify.yml` when deploying to Coolify. It pulls
-`ghcr.io/lord007tn/nibleaf:latest` by default (pin with `NIBLEAF_IMAGE=…:v0.1.0`)
+`ghcr.io/lord007tn/nibleaf:latest` by default (pin with `NIBLEAF_IMAGE=…:v0.1.1`)
 and exposes:
 
 - `app:4310` — dashboard, editor, published docs, project subdomains, custom domains.
