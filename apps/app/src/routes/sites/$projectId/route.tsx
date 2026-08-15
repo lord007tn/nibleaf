@@ -518,13 +518,7 @@ function SiteChrome() {
               {isPending ? (
                 <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
               ) : (
-                <SiteNav
-                  nodes={site?.nav ?? []}
-                  projectId={projectId}
-                  currentPath={effectiveCurrentPath}
-                  lang={lang}
-                  version={activeVersionPrefix}
-                />
+                <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
               )}
             </div>
           </ScrollArea>

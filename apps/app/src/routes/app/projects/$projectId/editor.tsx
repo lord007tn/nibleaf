@@ -349,8 +349,7 @@ function EditorPage() {
     });
 
     try {
-      const draftIsCurrent =
-        page && synced.current?.id === page.id && synced.current.title === title && synced.current.content === content;
+      const draftIsCurrent = page && synced.current?.id === page.id && synced.current.title === title && synced.current.content === content;
       if (page && !draftIsCurrent) {
         setStatus('saving');
         await updatePage.mutateAsync({ pageId: page.id, body: { title, content } });
@@ -459,13 +458,7 @@ function EditorPage() {
           >
             <SlidersHorizontal className="size-3.5" /> {t('editor.mode.configuration')}
           </Button>
-          <Button
-            aria-label={t('project.preview')}
-            onClick={() => void openDraftPreview()}
-            size="sm"
-            variant="outline"
-            className="cursor-pointer"
-          >
+          <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
             <Eye className="size-3.5" /> {t('project.preview')}
           </Button>
           {project ? <PublishControl project={project} initialPublishOpen={publishParam} /> : null}
@@ -517,107 +510,107 @@ function EditorPage() {
                 <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
               ) : (
                 <>
-                {orderedLanguages.map((lang) => {
-                  const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
-                  const langPages = pagesByLanguage.get(lang.id) ?? [];
-                  const langCollapsed = collapsedLangs.has(lang.id);
-                  return (
-                    <div key={lang.id} className="mb-2">
-                      {/* Language section header — click the label to collapse/expand */}
-                      <div className="group flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-muted/40">
-                        <button
-                          type="button"
-                          onClick={() => toggleLang(lang.id)}
-                          aria-expanded={!langCollapsed}
-                          title={langCollapsed ? t('editor.expand') : t('editor.collapse')}
-                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 font-semibold text-[12.5px] text-foreground"
-                          dir={dir}
-                        >
-                          <ChevronRight
-                            className={cn(
-                              'size-3.5 shrink-0 text-muted-foreground transition-transform',
-                              langCollapsed ? 'rtl:rotate-180' : 'rotate-90',
-                            )}
-                          />
-                          <Languages className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{lang.label}</span>
-                          <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
-                          {lang.isDefault ? (
-                            <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">
-                              {t('editor.default')}
-                            </span>
-                          ) : null}
-                        </button>
-                        <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            className="cursor-pointer"
-                            onClick={() => setLangSettings(lang)}
-                            aria-label={t('editor.langSettings.settings')}
-                            title={t('editor.langSettings.settings')}
+                  {orderedLanguages.map((lang) => {
+                    const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
+                    const langPages = pagesByLanguage.get(lang.id) ?? [];
+                    const langCollapsed = collapsedLangs.has(lang.id);
+                    return (
+                      <div key={lang.id} className="mb-2">
+                        {/* Language section header — click the label to collapse/expand */}
+                        <div className="group flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-muted/40">
+                          <button
+                            type="button"
+                            onClick={() => toggleLang(lang.id)}
+                            aria-expanded={!langCollapsed}
+                            title={langCollapsed ? t('editor.expand') : t('editor.collapse')}
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 font-semibold text-[12.5px] text-foreground"
+                            dir={dir}
                           >
-                            <Settings2 className="size-3" />
-                          </Button>
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            className="cursor-pointer"
-                            onClick={() => {
-                              expandLang(lang.id);
-                              addGroup(lang.id);
-                            }}
-                            aria-label={t('editor.newGroup')}
-                            title={t('editor.newGroup')}
-                          >
-                            <FolderPlus className="size-3" />
-                          </Button>
-                          <Button
-                            size="icon-xs"
-                            variant="ghost"
-                            className="cursor-pointer"
-                            onClick={() => {
-                              expandLang(lang.id);
-                              addPage(null, lang.id);
-                            }}
-                            aria-label={t('editor.newPage')}
-                            title={t('editor.newPage')}
-                          >
-                            <Plus className="size-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* This language's page tree — Notion-style drag-and-drop */}
-                      {langCollapsed ? null : (
-                        <div className="space-y-0.5" dir={dir}>
-                          {langPages.length === 0 ? (
-                            <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
-                          ) : (
-                            <SortablePageTree
-                              pages={langPages}
-                              activeId={activeTreeId}
-                              treeKey={lang.id}
-                              onSelect={setSelectedId}
-                              onAddChild={(parentId) => addPage(parentId, lang.id)}
-                              onSettings={(id) => setSettingsForId(id)}
-                              onMove={(items) => reorderPages.mutate({ items })}
+                            <ChevronRight
+                              className={cn(
+                                'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                                langCollapsed ? 'rtl:rotate-180' : 'rotate-90',
+                              )}
                             />
-                          )}
+                            <Languages className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{lang.label}</span>
+                            <span className="font-mono text-[10px] text-muted-foreground">({lang.code})</span>
+                            {lang.isDefault ? (
+                              <span className="rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">
+                                {t('editor.default')}
+                              </span>
+                            ) : null}
+                          </button>
+                          <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              className="cursor-pointer"
+                              onClick={() => setLangSettings(lang)}
+                              aria-label={t('editor.langSettings.settings')}
+                              title={t('editor.langSettings.settings')}
+                            >
+                              <Settings2 className="size-3" />
+                            </Button>
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              className="cursor-pointer"
+                              onClick={() => {
+                                expandLang(lang.id);
+                                addGroup(lang.id);
+                              }}
+                              aria-label={t('editor.newGroup')}
+                              title={t('editor.newGroup')}
+                            >
+                              <FolderPlus className="size-3" />
+                            </Button>
+                            <Button
+                              size="icon-xs"
+                              variant="ghost"
+                              className="cursor-pointer"
+                              onClick={() => {
+                                expandLang(lang.id);
+                                addPage(null, lang.id);
+                              }}
+                              aria-label={t('editor.newPage')}
+                              title={t('editor.newPage')}
+                            >
+                              <Plus className="size-3" />
+                            </Button>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
 
-                {/* Add a language */}
-                <button
-                  type="button"
-                  onClick={() => setAddLangOpen(true)}
-                  className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
-                >
-                  <Plus className="size-3.5" /> {t('editor.addLanguage')}
-                </button>
+                        {/* This language's page tree — Notion-style drag-and-drop */}
+                        {langCollapsed ? null : (
+                          <div className="space-y-0.5" dir={dir}>
+                            {langPages.length === 0 ? (
+                              <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
+                            ) : (
+                              <SortablePageTree
+                                pages={langPages}
+                                activeId={activeTreeId}
+                                treeKey={lang.id}
+                                onSelect={setSelectedId}
+                                onAddChild={(parentId) => addPage(parentId, lang.id)}
+                                onSettings={(id) => setSettingsForId(id)}
+                                onMove={(items) => reorderPages.mutate({ items })}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Add a language */}
+                  <button
+                    type="button"
+                    onClick={() => setAddLangOpen(true)}
+                    className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+                  >
+                    <Plus className="size-3.5" /> {t('editor.addLanguage')}
+                  </button>
                 </>
               )}
             </div>
