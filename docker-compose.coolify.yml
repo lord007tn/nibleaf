@@ -25,17 +25,18 @@
 #
 name: nibleaf-coolify
 
-# Pull-based Coolify stack: it PULLS the prebuilt image published by CI
-# (.github/workflows/docker.yml -> ghcr.io/lord007tn/nibleaf:latest) instead of
-# building on the Coolify server. Building the whole monorepo in-container needs
-# ~5-6GB free RAM and OOMs on smaller/shared servers, so pulling the CI image is
-# both faster and more reliable. Override the tag with NIBLEAF_IMAGE if needed.
-# To build from source instead, use docker-compose.yml (which keeps `build:`).
-#
-# NOTE: the published image bakes CI's generic VITE_* client URLs. The published
-# docs site (SSR) and same-origin /api use the RUNTIME APP_URL / SERVICE_URL_APP
-# you assign in Coolify, so it is functionally correct; only the dashboard's
-# client-side URL previews reflect the build-time defaults.
+# Coolify builds one shared application image from this checkout. This keeps the
+# deployment independent from external registry visibility and bakes the current
+# public origins into the client bundle. The build needs roughly 5-6 GB free RAM.
+
+x-build: &build
+  context: .
+  dockerfile: Dockerfile
+  target: runner
+  args:
+    VITE_API_URL: http://server:4311
+    VITE_APP_URL: ${APP_URL:-https://nibleaf.com}
+    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
 
 x-service-env: &service-env
   NODE_ENV: production
@@ -153,8 +154,8 @@ services:
       start_period: 10s
 
   migrate:
-    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
-    pull_policy: always
+    build: *build
+    image: nibleaf:coolify
     command: ["migrate"]
     environment: *service-env
     depends_on:
@@ -163,8 +164,7 @@ services:
     restart: "no"
 
   server:
-    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
-    pull_policy: always
+    image: nibleaf:coolify
     command: ["server"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -187,8 +187,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
-    pull_policy: always
+    image: nibleaf:coolify
     command: ["worker"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -209,8 +208,7 @@ services:
     restart: unless-stopped
 
   app:
-    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
-    pull_policy: always
+    image: nibleaf:coolify
     command: ["app"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -232,8 +230,7 @@ services:
     restart: unless-stopped
 
   admin:
-    image: "${NIBLEAF_IMAGE:-ghcr.io/lord007tn/nibleaf:latest}"
-    pull_policy: always
+    image: nibleaf:coolify
     command: ["admin"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
