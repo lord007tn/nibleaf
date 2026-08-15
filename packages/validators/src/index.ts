@@ -35,7 +35,18 @@ const navLink = z.object({ label: z.string().max(80), href: url, external: z.boo
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
 export type RedirectPair = { from: string; to: string };
 
-const cleanRedirectPath = (path: string): string => path.trim().replace(/^\/+|\/+$/g, '');
+export const normalizeRedirectPath = (path: string): string => {
+  const value = path.trim();
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === '/') {
+    start++;
+  }
+  while (end > start && value[end - 1] === '/') {
+    end--;
+  }
+  return value.slice(start, end);
+};
 const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(target);
 
 /**
@@ -47,14 +58,14 @@ const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(tar
 export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: string): string | null => {
   const rules = new Map<string, string>();
   for (const rule of redirects) {
-    const from = cleanRedirectPath(rule.from);
+    const from = normalizeRedirectPath(rule.from);
     const to = rule.to.trim();
     if (rule.from.trim() && to && !rules.has(from)) {
       rules.set(from, to);
     }
   }
 
-  let current = cleanRedirectPath(path);
+  let current = normalizeRedirectPath(path);
   const first = current;
   const visited = new Set<string>();
   while (true) {
@@ -70,7 +81,7 @@ export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: 
     if (isExternalRedirect(target)) {
       return target;
     }
-    current = cleanRedirectPath(target);
+    current = normalizeRedirectPath(target);
   }
 };
 
@@ -80,7 +91,7 @@ const redirectsSchema = z
   .superRefine((redirects, ctx) => {
     const seen = new Map<string, number>();
     for (const [index, rule] of redirects.entries()) {
-      const from = cleanRedirectPath(rule.from);
+      const from = normalizeRedirectPath(rule.from);
       const to = rule.to.trim();
       if (!rule.from.trim() || !to) {
         continue;
@@ -91,7 +102,7 @@ const redirectsSchema = z
       } else {
         seen.set(from, index);
       }
-      if (!isExternalRedirect(to) && cleanRedirectPath(to) === from) {
+      if (!isExternalRedirect(to) && normalizeRedirectPath(to) === from) {
         ctx.addIssue({ code: 'custom', message: 'A redirect cannot point to itself.', path: [index, 'to'] });
       }
     }
