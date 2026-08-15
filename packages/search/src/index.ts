@@ -48,7 +48,11 @@ const ARABIC_ALEF_VARIANTS = /[\u0622\u0623\u0625\u0671]/g;
  * queries. It removes vocalization/tatweel and folds common alef/ya variants,
  * but deliberately does not stem words or conflate ta marbuta with ha. */
 export const normalizeArabicSearchText = (value: string): string =>
-  value.replace(ARABIC_DIACRITICS, '').replace(/\u0640/g, '').replace(ARABIC_ALEF_VARIANTS, '\u0627').replace(/\u0649/g, '\u064a');
+  value
+    .replace(ARABIC_DIACRITICS, '')
+    .replace(/\u0640/g, '')
+    .replace(ARABIC_ALEF_VARIANTS, '\u0627')
+    .replace(/\u0649/g, '\u064a');
 
 /** Map a language code (e.g. 'ar', 'ar-SA', 'en-US') to an Orama tokenizer
  *  language, defaulting to English for codes Orama doesn't tokenize. */

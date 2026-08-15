@@ -176,12 +176,12 @@
   padding: 0.1em 0.35em;
 }
 
-.pl-editor[dir='rtl'] .ProseMirror h1,
-.pl-editor[dir='rtl'] .ProseMirror h2,
-.pl-editor[dir='rtl'] .ProseMirror h3,
-.pl-editor[dir='rtl'] .ProseMirror h4,
-.pl-editor[dir='rtl'] .ProseMirror h5,
-.pl-editor[dir='rtl'] .ProseMirror h6 {
+.pl-editor[dir="rtl"] .ProseMirror h1,
+.pl-editor[dir="rtl"] .ProseMirror h2,
+.pl-editor[dir="rtl"] .ProseMirror h3,
+.pl-editor[dir="rtl"] .ProseMirror h4,
+.pl-editor[dir="rtl"] .ProseMirror h5,
+.pl-editor[dir="rtl"] .ProseMirror h6 {
   letter-spacing: normal;
 }
 

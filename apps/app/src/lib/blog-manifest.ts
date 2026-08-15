@@ -158,7 +158,8 @@ export const BLOG_MANIFEST = [
     faqs: [
       {
         question: 'Is Nibleaf available as a hosted product?',
-        answer: 'Yes. Nibleaf Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.',
+        answer:
+          'Yes. Nibleaf Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.',
       },
       {
         question: 'Does Nibleaf lock content into a proprietary format?',

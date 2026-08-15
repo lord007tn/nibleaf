@@ -489,9 +489,7 @@ function ChooseYourPath() {
         <div>
           <Eyebrow>Two ways to run it</Eyebrow>
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta or self-hosted</h2>
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-            Start on the managed beta or run the published Docker Compose stack yourself.
-          </p>
+          <p className="mt-4 max-w-xl text-lg text-muted-foreground">Start on the managed beta or run the published Docker Compose stack yourself.</p>
         </div>
         <a className={outlineButton} href="/pricing">
           Compare in detail <ArrowRight className="size-4" />

@@ -39,8 +39,9 @@ export interface BlogEntry {
 }
 
 /** All articles, newest first. */
-export const BLOG_ENTRIES: BlogEntry[] = [...BLOG_MANIFEST]
-  .sort((a, b) => b.datePublished.localeCompare(a.datePublished) || a.slug.localeCompare(b.slug));
+export const BLOG_ENTRIES: BlogEntry[] = [...BLOG_MANIFEST].sort(
+  (a, b) => b.datePublished.localeCompare(a.datePublished) || a.slug.localeCompare(b.slug),
+);
 
 const entriesBySlug = new Map(BLOG_ENTRIES.map((entry) => [entry.slug, entry]));
 

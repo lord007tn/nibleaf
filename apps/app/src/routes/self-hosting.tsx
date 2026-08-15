@@ -7,8 +7,7 @@ export const Route = createFileRoute('/self-hosting')({
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf self-hosting status and deployment architecture',
-      description:
-        'Install Nibleaf with the public Docker Compose release, then configure DNS, TLS, backups, and monitoring for your environment.',
+      description: 'Install Nibleaf with the public Docker Compose release, then configure DNS, TLS, backups, and monitoring for your environment.',
       path: '/self-hosting',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }],
@@ -30,8 +29,8 @@ function SelfHostingPage() {
           <Eyebrow>Self-hosting status</Eyebrow>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Run Nibleaf on your own infrastructure</h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            The AGPL-3.0 source repository and pinned GHCR release are publicly accessible. The guided installer generates local secrets, downloads the
-            production Compose file, and starts the application, worker, PostgreSQL, cache, and object-storage services.
+            The AGPL-3.0 source repository and pinned GHCR release are publicly accessible. The guided installer generates local secrets, downloads
+            the production Compose file, and starts the application, worker, PostgreSQL, cache, and object-storage services.
           </p>
           <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
             <h2 className="font-semibold text-xl">Distribution checks completed</h2>
@@ -103,8 +102,8 @@ function SelfHostingPage() {
           </p>
           <p className="mt-4 text-muted-foreground leading-relaxed">
             Keep the application image pinned to a release or digest, record every required environment variable, and monitor the health endpoint
-            during upgrades. A successful installer run does not replace operational work: configure TLS, schedule database and object-storage backups,
-            test restoration in an isolated environment, and document rollback before moving production content.
+            during upgrades. A successful installer run does not replace operational work: configure TLS, schedule database and object-storage
+            backups, test restoration in an isolated environment, and document rollback before moving production content.
           </p>
         </div>
       </section>
