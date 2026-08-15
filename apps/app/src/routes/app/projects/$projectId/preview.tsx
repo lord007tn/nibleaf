@@ -1,3 +1,4 @@
+import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
@@ -58,8 +59,8 @@ function ProjectPreview() {
 
   return (
     <div className="grid h-[calc(100vh-3.5rem)] grid-cols-[280px_1fr] overflow-hidden">
-      <aside className="border-border border-e bg-card/40">
-        <div className="border-border border-b p-4">
+      <aside className="flex min-h-0 flex-col border-border border-e bg-card/40">
+        <div className="shrink-0 border-border border-b p-4">
           <div className="flex items-center gap-2 font-semibold text-sm">
             <Eye className="size-4 text-muted-foreground" /> {t('preview.title')}
           </div>
@@ -96,33 +97,35 @@ function ProjectPreview() {
           </div>
         </div>
 
-        <div className="h-[calc(100%-8rem)] overflow-y-auto p-3">
-          {pagesPending ? (
-            <div className="space-y-2 p-2">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-10/12" />
-              <Skeleton className="h-8 w-8/12" />
-            </div>
-          ) : null}
-          {(pages ?? []).map((item) => (
-            <button
-              className={cn(
-                'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
-                item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
-                item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                item.hidden && 'opacity-55',
-              )}
-              disabled={item.kind === 'GROUP'}
-              key={item.id}
-              onClick={() => updateSearch({ pageId: item.id })}
-              style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
-              type="button"
-            >
-              {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
-              <span className="truncate">{item.title}</span>
-            </button>
-          ))}
-        </div>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="p-3">
+            {pagesPending ? (
+              <div className="space-y-2 p-2">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-10/12" />
+                <Skeleton className="h-8 w-8/12" />
+              </div>
+            ) : null}
+            {(pages ?? []).map((item) => (
+              <button
+                className={cn(
+                  'mb-1 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm transition-colors',
+                  item.kind === 'GROUP' && 'font-semibold text-muted-foreground text-xs uppercase tracking-wide',
+                  item.id === selected?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  item.hidden && 'opacity-55',
+                )}
+                disabled={item.kind === 'GROUP'}
+                key={item.id}
+                onClick={() => updateSearch({ pageId: item.id })}
+                style={{ paddingInlineStart: `${8 + item.path.split('/').length * 8}px` }}
+                type="button"
+              >
+                {item.kind === 'GROUP' ? <FileText className="size-3.5" /> : <PageIcon className="size-3.5" name={item.icon} />}
+                <span className="truncate">{item.title}</span>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
       </aside>
 
       <main className="overflow-y-auto bg-background">

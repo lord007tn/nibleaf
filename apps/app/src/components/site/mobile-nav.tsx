@@ -1,3 +1,4 @@
+import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { ExternalLink, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -55,29 +56,31 @@ export function MobileNav({
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>
-        <div className="h-full overflow-y-auto px-4 pt-12 pb-8">
-          {links.length > 0 ? (
-            <ul className="mb-4 space-y-0.5 border-border/60 border-b pb-4">
-              {links.map((link) => (
-                <li key={`${link.label}-${link.href}`}>
-                  <a
-                    href={link.href}
-                    target={link.external ? '_blank' : undefined}
-                    rel={link.external ? 'noreferrer' : undefined}
-                    aria-current={link.active ? 'page' : undefined}
-                    className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-sm transition-colors ${
-                      link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    }`}
-                  >
-                    {link.label}
-                    {link.external ? <ExternalLink className="size-3" /> : null}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          <SiteNav nodes={nodes} projectId={projectId} currentPath={currentPath} lang={lang} version={version} />
-        </div>
+        <ScrollArea className="h-full">
+          <div className="px-4 pt-12 pb-8">
+            {links.length > 0 ? (
+              <ul className="mb-4 space-y-0.5 border-border/60 border-b pb-4">
+                {links.map((link) => (
+                  <li key={`${link.label}-${link.href}`}>
+                    <a
+                      href={link.href}
+                      target={link.external ? '_blank' : undefined}
+                      rel={link.external ? 'noreferrer' : undefined}
+                      aria-current={link.active ? 'page' : undefined}
+                      className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-sm transition-colors ${
+                        link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                      }`}
+                    >
+                      {link.label}
+                      {link.external ? <ExternalLink className="size-3" /> : null}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <SiteNav nodes={nodes} projectId={projectId} currentPath={currentPath} lang={lang} version={version} />
+          </div>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
