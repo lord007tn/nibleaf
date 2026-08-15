@@ -293,7 +293,12 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
     include: { language: { select: { code: true } } },
   });
-  const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
+  const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
+    ...page,
+    languageCode: language.code,
+    createdAt: createdAt.toISOString(),
+    updatedAt: updatedAt.toISOString(),
+  }));
   const current = buildSnapshot(project, pageRows, new Date().toISOString()).pages;
 
   // No baseline → first publish: every page is new.

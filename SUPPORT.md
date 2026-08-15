@@ -6,7 +6,7 @@ you need:
 - Ask setup and usage questions in [GitHub Discussions](https://github.com/lord007tn/nibleaf/discussions).
 - Report reproducible bugs with the [bug report template](https://github.com/lord007tn/nibleaf/issues/new?template=bug_report.yml).
 - Propose features with the [feature request template](https://github.com/lord007tn/nibleaf/issues/new?template=feature_request.yml).
-- Read [DEPLOYMENT.md](DEPLOYMENT.md) before operating Nibleaf in production.
+- Read the [production checklist](https://docs.nibleaf.com/self-hosting/production) before operating Nibleaf in production.
 
 Support is best-effort. The project does not currently promise response or
 resolution times for public support requests.

@@ -12,11 +12,19 @@ import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage 
  * them onto a custom domain with the same regex it uses for sitemap.xml.
  */
 
-/** Every AI-consumable page: real pages only, not hidden, not noindex, and not
- *  in a language whose own SEO disallows indexing. Same rules as the sitemap. */
+/** Every AI-consumable page: real pages only, not hidden, not noindex, not
+ *  externally canonicalized, and not in a language whose own SEO disallows
+ *  indexing. Same rules as the sitemap. */
 export const llmsIndexablePages = (snapshot: SiteSnapshot): SnapshotPage[] => {
   const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
-  return snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode));
+  return snapshot.pages.filter(
+    (page) =>
+      page.kind === 'PAGE' &&
+      !page.hidden &&
+      !page.config?.seo?.noindex &&
+      !page.config?.seo?.canonicalUrl?.trim() &&
+      !blockedLangs.has(page.languageCode),
+  );
 };
 
 /** Absolute URL of a page, matching the sitemap's shape: default language gets

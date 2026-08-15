@@ -17,7 +17,6 @@ on:
     branches: [main]
     paths-ignore:
       - "*.md"
-      - "apps/docs/content/**"
       - ".github/ISSUE_TEMPLATE/**"
       - ".github/PULL_REQUEST_TEMPLATE.md"
 

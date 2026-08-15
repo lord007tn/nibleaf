@@ -156,7 +156,7 @@ const seoConfig = (config: ProjectConfig | null) => config;
  * Site-level <head>: favicon, og:site_name and theme-color. Per-page head()
  * layers title + description + canonical on top of these.
  */
-export function siteHead(site: SiteShell | null | undefined): Head {
+export function siteHead(site: SiteShell | null | undefined, requestOrigin?: string): Head {
   if (!site) {
     return {};
   }
@@ -169,10 +169,16 @@ export function siteHead(site: SiteShell | null | undefined): Head {
     meta.push({ name: 'theme-color', content: themeColor });
   }
   // Always advertise either the configured favicon or the built-in favicon.
-  // Also point crawlers at the sitemap (served from the API's public endpoint).
+  // Point crawlers at the sitemap on the same canonical site origin, including
+  // custom domains, instead of leaking the app-origin API endpoint.
+  const canonicalBase = canonicalSiteBase(site.project.id, {
+    primaryDomain: site.project.primaryDomain,
+    slug: site.project.slug,
+    requestOrigin,
+  });
   const links: Tag[] = [
     { rel: 'icon', href: config?.branding?.favicon || '/favicon.svg' },
-    { rel: 'sitemap', type: 'application/xml', href: `${publicOrigin()}/api/public/sites/${site.project.id}/sitemap.xml` },
+    { rel: 'sitemap', type: 'application/xml', href: `${canonicalBase}/sitemap.xml` },
     ...fontLinks(config),
   ];
   const scripts = config?.analytics?.cookieConsent ? [] : analyticsScripts(config);
@@ -217,14 +223,14 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   // A page may override its full document title outright (Mintlify `title`/metaTitle).
   const title = pageSeo?.metaTitle?.trim() || `${data.page.title} — ${siteName}`;
   const ogTitle = pageSeo?.metaTitle?.trim() || data.page.title;
-  // Explicit SEO overrides (page › language › project) win over the auto-derived
-  // body description; the language's localized site description sits between the
-  // page body excerpt and the project description as the last fallbacks.
+  // An explicit page SEO override wins first. The page's own authored summary is
+  // next so a project/language default cannot stamp the same description onto
+  // every URL. Site-wide descriptions are fallbacks for pages without a summary.
   const description =
     pageSeo?.metaDescription ||
+    data.page.description ||
     langSeo?.metaDescription ||
     config?.seo?.metaDescription ||
-    data.page.description ||
     langCfg?.description ||
     data.project.description ||
     '';
@@ -297,6 +303,13 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
 
   // Structured data: a TechArticle for the page + a BreadcrumbList for its trail,
   // so search engines/AI can read the doc title, description and hierarchy.
+  const canonicalBase = canonicalSiteBase(projectId, urlOptions);
+  const organization = {
+    '@type': 'Organization',
+    name: data.project.name,
+    url: canonicalBase,
+    ...(config?.branding?.logoLight ? { logo: { '@type': 'ImageObject', url: config.branding.logoLight } } : {}),
+  };
   const scripts: Script[] = [
     {
       type: 'application/ld+json',
@@ -307,9 +320,14 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
         ...(description ? { description } : {}),
         url,
         ...(ogImage ? { image: ogImage } : {}),
+        datePublished: data.page.createdAt,
+        dateModified: data.page.updatedAt,
+        author: organization,
+        publisher: organization,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': url },
         inLanguage: activeLang,
         // The language's localized site name also names the WebSite in JSON-LD.
-        isPartOf: { '@type': 'WebSite', name: langCfg?.name || data.project.name, url: canonicalSiteBase(projectId, urlOptions) },
+        isPartOf: { '@type': 'WebSite', name: langCfg?.name || data.project.name, url: canonicalBase },
       }),
     },
   ];

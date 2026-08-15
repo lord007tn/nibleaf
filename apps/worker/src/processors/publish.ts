@@ -283,7 +283,12 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
       include: { language: { select: { code: true } } },
     });
-    const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
+    const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
+      ...page,
+      languageCode: language.code,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    }));
     const issues = collectPublishIssues(project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
