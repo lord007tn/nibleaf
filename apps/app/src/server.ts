@@ -4,6 +4,7 @@ import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
+import { marketingSitemap } from '@/lib/marketing-sitemap';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -408,26 +409,6 @@ async function serveAppOriginSeo(pathname: string): Promise<Response | null> {
  *  bare dashboard path without also matching e.g. /apple-touch-icon.png.) */
 const SELF_HOST_ROBOTS = 'User-agent: *\nDisallow: /app/\nDisallow: /app$\nDisallow: /sign-in\nDisallow: /sign-up\nDisallow: /api/\n';
 
-/** Static marketing routes for the generated sitemap, each with its own lastmod
- *  (rolled forward when that page materially changes). Blog URLs are appended
- *  from the article frontmatter registry — no edit needed per article. */
-const MARKETING_SITEMAP: { path: string; lastmod: string }[] = [
-  { path: '/', lastmod: '2026-07-13' },
-  { path: '/cloud', lastmod: '2026-07-13' },
-  { path: '/pricing', lastmod: '2026-07-13' },
-  { path: '/self-hosting', lastmod: '2026-07-13' },
-  { path: '/about', lastmod: '2026-07-13' },
-  { path: '/contact', lastmod: '2026-08-15' },
-  { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-07-13' },
-  { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-07-13' },
-  { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-07-13' },
-  { path: '/alternatives/mintlify', lastmod: '2026-07-13' },
-  { path: '/alternatives/gitbook', lastmod: '2026-07-13' },
-  { path: '/alternatives/readme', lastmod: '2026-07-13' },
-  { path: '/terms', lastmod: '2026-07-10' },
-  { path: '/privacy', lastmod: '2026-07-10' },
-];
-
 /** Full marketing robots.txt: allow crawling, disallow the app/auth/api
  *  surfaces (incl. token-bearing auth utility pages), and point at the sitemap. */
 function marketingRobots(origin: string): string {
@@ -448,23 +429,6 @@ function marketingRobots(origin: string): string {
     `Sitemap: ${origin}/sitemap.xml`,
     '',
   ].join('\n');
-}
-
-/** All marketing sitemap entries: static routes + /blog + one URL per article. */
-function marketingSitemapEntries(): { path: string; lastmod: string }[] {
-  const blogLastmod = BLOG_ENTRIES.reduce((max, entry) => (entry.dateModified > max ? entry.dateModified : max), '2026-07-13');
-  return [
-    ...MARKETING_SITEMAP,
-    { path: '/blog', lastmod: blogLastmod },
-    ...BLOG_ENTRIES.map((entry) => ({ path: `/blog/${entry.slug}`, lastmod: entry.dateModified })),
-  ];
-}
-
-function marketingSitemap(origin: string): string {
-  const urls = marketingSitemapEntries()
-    .map((u) => `  <url>\n    <loc>${origin}${u.path}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n  </url>`)
-    .join('\n');
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
 function marketingLlms(origin: string): string {
