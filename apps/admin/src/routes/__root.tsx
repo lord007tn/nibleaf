@@ -2,7 +2,7 @@ import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import appCss from '@/styles.css?url';
 
@@ -41,12 +41,13 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const nonce = useRouter().options.ssr?.nonce;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} />
         <HeadContent />
       </head>
       <body>
