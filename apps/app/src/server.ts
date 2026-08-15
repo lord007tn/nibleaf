@@ -5,6 +5,7 @@ import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { marketingSitemap } from '@/lib/marketing-sitemap';
+import { acceptsHtml, isDocumentPath, notAcceptableHtmlResponse } from '@/lib/request-negotiation';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -354,7 +355,11 @@ async function proxySeoDocument(projectId: string, file: string, origin?: string
 function seoUnavailableResponse(file: string): Response {
   if (file === 'robots.txt') {
     return new Response('User-agent: *\nDisallow: /\n', {
-      headers: { 'content-type': 'text/plain; charset=utf-8' },
+      headers: {
+        'cache-control': 'no-store',
+        'content-type': 'text/plain; charset=utf-8',
+        'x-robots-tag': 'noindex, nofollow',
+      },
     });
   }
   return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -650,6 +655,14 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
     return Response.redirect(`${proto}://${host}${url.pathname.replace(/\/+$/, '')}${url.search}`, 308);
   }
 
+  const renderHtml = (documentRequest: Request): Promise<Response> | Response => {
+    const documentUrl = new URL(documentRequest.url);
+    if (isGetLike && isDocumentPath(documentUrl.pathname) && !acceptsHtml(documentRequest.headers.get('accept'))) {
+      return notAcceptableHtmlResponse();
+    }
+    return startHandler(documentRequest, ...rest);
+  };
+
   const serve = async (): Promise<Response> => {
     if (!isCustomDomain) {
       if (isGetLike) {
@@ -682,10 +695,10 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
           if (meta?.primaryDomain && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
           }
-          return startHandler(request, ...rest);
+          return renderHtml(request);
         }
       }
-      return startHandler(request, ...rest);
+      return renderHtml(request);
     }
 
     // robots/sitemap/llms are served at the domain root (they are not in SKIP,
@@ -716,7 +729,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         const rewritten = new Request(url, request);
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         rewritten.headers.set('x-nibleaf-site-origin', `${proto}://${host}`);
-        return startHandler(rewritten, ...rest);
+        return renderHtml(rewritten);
       }
     }
     return new Response('Published site not found.\n', {

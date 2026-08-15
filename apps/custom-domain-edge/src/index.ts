@@ -20,6 +20,10 @@ export const proxyRequest = (request: Request, env: Env): Request => {
     method: request.method,
     headers,
     body: request.body,
+    // Every customer hostname is proxied through the same app origin URL.
+    // Bypass Cloudflare's subrequest cache so one site's robots, sitemap, or
+    // HTML can never be replayed to a different hostname.
+    cache: 'no-store',
     redirect: 'manual',
   });
 };

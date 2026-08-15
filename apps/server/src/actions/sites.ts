@@ -410,6 +410,9 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     versions: snapshot.project.versions,
     page: {
       id: page.id,
+      // Snapshots published before this field was introduced still get a
+      // truthful lower-bound publication date from their last modification.
+      createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
       title: page.title,
       description: pageDescription(page),

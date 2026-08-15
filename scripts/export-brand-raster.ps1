@@ -8,7 +8,6 @@ $BrandDir = Join-Path $Root "apps/app/public/brand"
 $RasterDir = Join-Path $BrandDir "raster"
 $AppPublic = Join-Path $Root "apps/app/public"
 $AdminPublic = Join-Path $Root "apps/admin/public"
-$DocsPublic = Join-Path $Root "apps/docs/public"
 
 $Paper = [System.Drawing.ColorTranslator]::FromHtml("#FBF7EE")
 $Paper2 = [System.Drawing.ColorTranslator]::FromHtml("#EEE4D3")
@@ -429,14 +428,6 @@ $publicApps = @(
     name = "Nibleaf Admin"
     shortName = "Nibleaf Admin"
     description = "Internal Nibleaf administration console."
-    lang = "en"
-    dir = "ltr"
-  },
-  @{
-    path = $DocsPublic
-    name = "Nibleaf Documentation"
-    shortName = "Nibleaf Docs"
-    description = "Documentation for the Nibleaf documentation publishing platform."
     lang = "en"
     dir = "ltr"
   }

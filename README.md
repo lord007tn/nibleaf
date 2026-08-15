@@ -17,7 +17,7 @@ first-class Arabic/RTL support, custom domains, and a free cloud beta at
 [![CI](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml/badge.svg)](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml)
 [![Docker image](https://github.com/lord007tn/nibleaf/actions/workflows/docker.yml/badge.svg)](https://github.com/lord007tn/nibleaf/pkgs/container/nibleaf)
 
-[Homepage](https://nibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Deploy](DEPLOYMENT.md) · [Upgrade](UPGRADING.md) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
+[Homepage](https://nibleaf.com) · [Documentation](https://docs.nibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Self-host](https://docs.nibleaf.com/getting-started/self-hosted) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
 
 <br />
 
@@ -127,13 +127,14 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Database migrations run automatically (the one-shot `migrate` service), and the
-image tag is **pinned** via `NIBLEAF_VERSION` — upgrades are bump-pull-up, see
-**[UPGRADING.md](UPGRADING.md)**. Open **`$APP_URL/sign-up`** and create the first
+image tag is **pinned** via `NIBLEAF_VERSION`. Read the
+**[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
+before changing it. Open **`$APP_URL/sign-up`** and create the first
 account — it's provisioned with a workspace and a starter docs project
 automatically (no demo credentials are seeded in production). The full production
 guide — reverse proxy, TLS, wildcard subdomains, custom-domain TLS automation,
-and backups — is **[DEPLOYMENT.md](DEPLOYMENT.md)**. Operators of the managed
-`nibleaf.com` service should use **[DEPLOY-CLOUD.md](DEPLOY-CLOUD.md)**.
+backups, and restore testing — is in the
+**[Nibleaf documentation](https://docs.nibleaf.com/self-hosting/production)**.
 
 <details>
 <summary><b>Build from source instead</b> (needs ~5–6 GB free RAM)</summary>
@@ -155,8 +156,8 @@ docker compose up -d --build
 ## 🐳 Deploy to production
 
 - **Docker Compose (recommended)** — the quick start above *is* the production
-  path; harden it with **[DEPLOYMENT.md](DEPLOYMENT.md)** (secrets, reverse
-  proxy + TLS, wildcard docs subdomains, backups, security checklist).
+  path; harden it with the **[production checklist](https://docs.nibleaf.com/self-hosting/production)**
+  (secrets, reverse proxy + TLS, wildcard docs subdomains, backups, security checklist).
 - **[Coolify](https://coolify.io)** — add a **Docker Compose** resource pointing
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
@@ -216,7 +217,7 @@ docker compose -f docker-compose.dev.yml up -d
 pnpm db:deploy      # or: pnpm db:migrate  (creates a new migration)
 pnpm db:seed
 
-# run server + worker + the app (add admin/docs with: pnpm dev:full)
+# run server + worker + the app (add the admin app with: pnpm dev:full)
 pnpm dev
 ```
 
@@ -250,12 +251,14 @@ and [`.env.example`](.env.example) (local dev / source build). Storage is
 S3-compatible, so swap **maxio** for Cloudflare R2, AWS S3, or Backblaze B2 by
 changing the `STORAGE_*` variables. For production, set strong values for
 `BETTER_AUTH_SECRET`, `POSTGRES_PASSWORD`, and `STORAGE_SECRET_ACCESS_KEY`, and
-serve the apps behind a TLS-terminating reverse proxy.
+serve the apps behind a TLS-terminating reverse proxy. The
+[configuration reference](https://docs.nibleaf.com/self-hosting/configuration)
+documents every production setting.
 
 When `NODE_ENV=production`, the container entrypoint refuses to start (`exit 1`) if
 `BETTER_AUTH_SECRET` is empty or left at a known demo default — generate one with
-`openssl rand -hex 32`. Implementation parity and open gaps are tracked in
-**[IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md)**.
+`openssl rand -hex 32`. Current product boundaries are documented in
+**[Known limitations](https://docs.nibleaf.com/reference/known-limitations)**.
 
 ## 💬 Support & community
 

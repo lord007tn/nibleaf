@@ -22,7 +22,7 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
         className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex"
         style={{ background: 'linear-gradient(155deg, #1c1c1e 0%, #151517 55%, #101012 100%)' }}
       >
-        {/* terracotta glow + faint dot grid for depth (neutral grey + terracotta per brand.md) */}
+        {/* Terracotta glow and a faint dot grid using the shared design-system tokens. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"

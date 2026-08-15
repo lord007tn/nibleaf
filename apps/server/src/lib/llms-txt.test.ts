@@ -46,13 +46,14 @@ const snapshot = (pages: SnapshotPage[], over?: Partial<SiteSnapshot['project']>
 });
 
 describe('llmsIndexablePages', () => {
-  it('excludes groups, hidden pages, noindex pages, and blocked languages', () => {
+  it('excludes groups, hidden pages, noindex pages, external canonicals, and blocked languages', () => {
     const snap = snapshot(
       [
         page({ id: 'keep' }),
         page({ id: 'group', kind: 'GROUP' }),
         page({ id: 'hidden', hidden: true }),
         page({ id: 'noindex', config: { seo: { noindex: true } } }),
+        page({ id: 'external-canonical', config: { seo: { canonicalUrl: 'https://example.com/original' } } }),
         page({ id: 'blocked-lang', languageCode: 'ar' }),
       ],
       {

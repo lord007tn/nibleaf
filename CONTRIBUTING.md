@@ -40,8 +40,9 @@ pnpm dev
 - Dashboard: http://localhost:4310
 - API + OpenAPI docs: http://localhost:4311/docs
 
-For a production-style installation, use the pinned-image path in
-[DEPLOYMENT.md](DEPLOYMENT.md) instead of the development stack above.
+For a production-style installation, use the pinned-image path in the
+[self-hosted quickstart](https://docs.nibleaf.com/getting-started/self-hosted)
+instead of the development stack above.
 
 ## Before you open a PR
 

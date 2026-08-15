@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 # Single image for the whole Nibleaf monorepo. The container command selects the
-# service (server / worker / app / docs / admin / migrate) via docker-entrypoint.sh.
+# service (server / worker / app / admin / migrate) via docker-entrypoint.sh.
 #
 # server & worker run their TypeScript directly with tsx (the Prisma driver
-# adapter + workspace packages resolve cleanly that way); app, docs, and admin
+# adapter + workspace packages resolve cleanly that way); app and admin
 # run their self-contained Nitro SSR bundles.
 
 FROM node:22-alpine AS base
@@ -41,6 +41,6 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.version=$VERSION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
-EXPOSE 4310 4311 4312 4314 4315
+EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

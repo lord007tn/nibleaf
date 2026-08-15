@@ -19,7 +19,7 @@ require_prod_secret() {
     echo "[nibleaf] FATAL: BETTER_AUTH_SECRET is unset or a known weak default while NODE_ENV=production." >&2
     echo "[nibleaf] Generate a strong secret and set it in your environment:" >&2
     echo "[nibleaf]     openssl rand -hex 32" >&2
-    echo "[nibleaf] See DEPLOYMENT.md for the full production checklist." >&2
+    echo "[nibleaf] See https://docs.nibleaf.com/self-hosting/production for the production checklist." >&2
     exit 1
   fi
 }
@@ -65,10 +65,6 @@ case "$cmd" in
   app)
     echo "[nibleaf] starting dashboard on :${PORT:-4310}"
     exec node apps/app/.output/server/index.mjs
-    ;;
-  docs)
-    echo "[nibleaf] starting docs site on :${PORT:-4314}"
-    exec node apps/docs/.output/server/index.mjs
     ;;
   admin)
     echo "[nibleaf] starting admin panel on :${PORT:-4315}"

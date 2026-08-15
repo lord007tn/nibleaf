@@ -114,7 +114,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-07-13',
+    dateModified: '2026-08-15',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',

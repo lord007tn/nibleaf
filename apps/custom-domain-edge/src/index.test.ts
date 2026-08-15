@@ -12,6 +12,7 @@ describe('custom-domain edge proxy', () => {
     expect(result.url).toBe('https://nibleaf.com/guides/start?q=1');
     expect(result.headers.get('x-nibleaf-custom-host')).toBe('docs.customer.com');
     expect(result.headers.get('x-nibleaf-edge-secret')).toBe(env.EDGE_SECRET);
+    expect(result.cache).toBe('no-store');
   });
 
   it('overwrites spoofed edge headers', () => {

@@ -28,6 +28,6 @@ disclosure.
 
 ## Hardening your deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for the production security checklist —
+See the [production security checklist](https://docs.nibleaf.com/self-hosting/production) for
 generating a strong `BETTER_AUTH_SECRET`, keeping datastore ports private, and
 serving behind a TLS-terminating reverse proxy.

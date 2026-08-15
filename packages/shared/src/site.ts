@@ -44,6 +44,8 @@ export interface SnapshotPage {
   id: string;
   parentId: string | null;
   versionId: string;
+  /** Optional for snapshots created before publication dates were preserved. */
+  createdAt?: string;
   updatedAt: string;
   languageCode: string;
   kind: 'PAGE' | 'GROUP';
@@ -577,6 +579,7 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
         id: page.id,
         parentId: page.parentId,
         versionId: version.id,
+        createdAt: page.createdAt,
         updatedAt: page.updatedAt,
         languageCode: page.languageCode,
         kind: page.kind,

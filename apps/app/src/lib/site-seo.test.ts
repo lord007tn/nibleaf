@@ -33,6 +33,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
   versions: [{ id: 'main', name: 'main', slug: 'main', isDefault: true }],
   page: {
     id: 'pg',
+    createdAt: '2025-12-15T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     title: 'Quickstart',
     description: 'Page own description',
@@ -51,22 +52,24 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('pageHead SEO cascade', () => {
-  it('uses the explicit site SEO title/description/image when nothing overrides', () => {
+  it('uses the page-authored description before the project-wide default', () => {
     const head = pageHead(base(), 'p1');
     expect(title(head)).toBe('Quickstart — Acme');
-    // Explicit project SEO description wins over the auto-derived body excerpt.
-    expect(meta(head, 'description')).toBe('Site SEO desc');
+    expect(meta(head, 'description')).toBe('Page own description');
     expect(meta(head, 'og:image')).toBe('https://cdn/site-og.png');
   });
 
-  it('falls back to the page body description only when no SEO override exists', () => {
-    const head = pageHead(base({ project: { ...base().project, config: { seo: { metaTitle: 'Acme' } } } }), 'p1');
-    expect(meta(head, 'description')).toBe('Page own description');
+  it('falls back to the project SEO description when the page has no summary', () => {
+    const head = pageHead(base({ page: { ...base().page, description: '' } }), 'p1');
+    expect(meta(head, 'description')).toBe('Site SEO desc');
   });
 
   it('lets the language override the site name, social image, and description', () => {
     const head = pageHead(
-      base({ languageConfig: { seo: { metaTitle: 'Acme Docs AR', metaDescription: 'Lang desc', socialImage: 'https://cdn/lang-og.png' } } }),
+      base({
+        page: { ...base().page, description: '' },
+        languageConfig: { seo: { metaTitle: 'Acme Docs AR', metaDescription: 'Lang desc', socialImage: 'https://cdn/lang-og.png' } },
+      }),
       'p1',
     );
     expect(title(head)).toBe('Quickstart — Acme Docs AR');
@@ -310,6 +313,10 @@ describe('pageHead JSON-LD', () => {
     expect(article).toBeDefined();
     expect(article?.headline).toBe('Quickstart');
     expect(article?.url).toBe('http://localhost:4310/sites/p1/quickstart');
+    expect(article?.datePublished).toBe('2025-12-15T00:00:00.000Z');
+    expect(article?.dateModified).toBe('2026-01-01T00:00:00.000Z');
+    expect(article?.author).toMatchObject({ '@type': 'Organization', name: 'Acme Docs' });
+    expect(article?.publisher).toMatchObject({ '@type': 'Organization', name: 'Acme Docs' });
   });
 
   it('emits a BreadcrumbList when breadcrumbs exist, and omits it otherwise', () => {
@@ -355,6 +362,12 @@ describe('siteHead analytics scripts', () => {
     expect(plain.meta?.find((m) => m.property === 'og:site_name')?.content).toBe('Acme Docs');
     const localized = siteHead(shell(null, { name: 'وثائق أكمي' }));
     expect(localized.meta?.find((m) => m.property === 'og:site_name')?.content).toBe('وثائق أكمي');
+  });
+
+  it('advertises the sitemap on the canonical custom domain', () => {
+    const site = shell(null);
+    site.project.primaryDomain = 'docs.acme.com';
+    expect(siteHead(site).links?.find((link) => link.rel === 'sitemap')?.href).toBe('https://docs.acme.com/sitemap.xml');
   });
 
   it('emits configured analytics scripts when consent is not required', () => {

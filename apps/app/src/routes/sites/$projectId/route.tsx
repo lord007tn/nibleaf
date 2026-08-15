@@ -17,6 +17,7 @@ import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
 
@@ -43,12 +44,12 @@ export const Route = createFileRoute('/sites/$projectId')({
         }),
         'site',
       );
-      return { site };
+      return { site, siteOrigin: customDomainOrigin() };
     } catch {
-      return { site: null };
+      return { site: null, siteOrigin: customDomainOrigin() };
     }
   },
-  head: ({ loaderData }) => siteHead(loaderData?.site ?? null),
+  head: ({ loaderData }) => siteHead(loaderData?.site ?? null, loaderData?.siteOrigin),
 });
 
 // Brand glyphs as inline SVG — lucide-react no longer ships GitHub/X/LinkedIn icons.

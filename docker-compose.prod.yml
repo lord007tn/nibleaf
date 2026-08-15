@@ -14,8 +14,8 @@ name: nibleaf
 #
 # Version pinning: NIBLEAF_VERSION defaults to a pinned release tag below so
 # upgrades are deliberate, not accidental. Pick the latest tag from
-# https://github.com/lord007tn/nibleaf/releases and see UPGRADING.md for the
-# upgrade/rollback flow. Avoid ":latest" in production.
+# https://github.com/lord007tn/nibleaf/releases and read the upgrade guide at
+# https://docs.nibleaf.com/self-hosting/backups-upgrades. Avoid ":latest" in production.
 #
 # Only the `app` port is published (default bound to 127.0.0.1 — set
 # NIBLEAF_BIND=0.0.0.0 if your reverse proxy is not on this host). Postgres,
@@ -34,7 +34,7 @@ x-service-env: &service-env
   QUEUE_CLUSTER: "true"
   # Object storage. Defaults target the bundled maxio service; point the
   # STORAGE_* variables at Cloudflare R2 / AWS S3 / Backblaze B2 instead if you
-  # bring your own bucket (see DEPLOYMENT.md).
+  # bring your own bucket (https://docs.nibleaf.com/self-hosting/configuration).
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
   STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:?Set STORAGE_PUBLIC_ENDPOINT to a browser-reachable storage origin, e.g. https://storage.example.com}
@@ -82,7 +82,8 @@ x-service-env: &service-env
   # Per-IP budget for the public site-serving API (requests/minute).
   RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}
   # Public proxy hops your edge appends to X-Forwarded-For (1 behind Cloudflare).
-  # Private hops are skipped automatically — see DEPLOYMENT.md section 11.
+  # Private hops are skipped automatically. See the production checklist:
+  # https://docs.nibleaf.com/self-hosting/production
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   # Shared secret letting the app's SSR proxy attribute published-site traffic
   # to the real visitor IP for rate limiting. Optional but recommended:
@@ -99,7 +100,8 @@ x-service-env: &service-env
 services:
   postgres:
     # Pinned to 17: postgres:18 changed the data-directory layout and breaks the
-    # existing volume mount (see UPGRADING.md before attempting a major bump).
+    # existing volume mount. Read the upgrade guide before a major bump:
+    # https://docs.nibleaf.com/self-hosting/backups-upgrades
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
@@ -263,8 +265,8 @@ services:
 
   # ── Optional: automated Postgres backups (uncomment to enable) ────────────
   # Maintained pg_dump sidecar; writes rotated dumps to ./backups on the host.
-  # Test your restore path before you need it — see DEPLOYMENT.md "Backups and
-  # restore" and scripts/backup.sh for the manual/cron alternative.
+  # Test your restore path before you need it. See:
+  # https://docs.nibleaf.com/self-hosting/backups-upgrades
   # pg-backup:
   #   image: prodrigestivill/postgres-backup-local:17-alpine
   #   restart: unless-stopped

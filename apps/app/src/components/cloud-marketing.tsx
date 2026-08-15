@@ -41,6 +41,7 @@ export const iconTile = 'grid place-items-center rounded-lg border border-border
 const navLinks = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
+  { href: 'https://docs.nibleaf.com', label: 'Docs' },
   { href: '/blog', label: 'Blog' },
   { href: '/self-hosting', label: 'Self-hosting' },
 ];
@@ -435,7 +436,7 @@ function HowItWorks() {
                 <span className="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-background text-primary">
                   <step.icon className="size-5" />
                 </span>
-                <span className="font-mono font-semibold text-3xl text-muted-foreground/25 leading-none">{`0${i + 1}`}</span>
+                <span className="font-mono font-semibold text-3xl text-muted-foreground/60 leading-none">{`0${i + 1}`}</span>
               </div>
               <h3 className="mt-5 font-semibold text-lg tracking-tight">{step.title}</h3>
               <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{step.body}</p>
@@ -711,6 +712,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
     title: 'Resources',
     links: [
       { href: '/blog', label: 'Blog' },
+      { href: 'https://docs.nibleaf.com', label: 'Documentation', external: true },
       { href: '/about', label: 'About' },
       { href: '/self-hosting', label: 'Self-hosting' },
       { href: '/contact', label: 'Contact' },

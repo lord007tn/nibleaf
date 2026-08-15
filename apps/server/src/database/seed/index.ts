@@ -46,7 +46,12 @@ async function seed() {
       orderBy: { position: 'asc' },
       include: { language: { select: { code: true } } },
     });
-    const pageRows = pages.map(({ language, updatedAt, ...page }) => ({ ...page, languageCode: language.code, updatedAt: updatedAt.toISOString() }));
+    const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
+      ...page,
+      languageCode: language.code,
+      createdAt: createdAt.toISOString(),
+      updatedAt: updatedAt.toISOString(),
+    }));
     const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
     await prisma.deployment.create({
       data: {
