@@ -120,6 +120,6 @@ jobs:
           fi
 
           curl --fail-with-body \
-            --request GET \
+            --request POST \
             --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
             "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK"
