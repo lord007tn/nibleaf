@@ -755,12 +755,7 @@ function EditorPage() {
               </Button>
             </div>
 
-            <div
-              className={cn(
-                'min-h-0 flex-1',
-                effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-7 py-8',
-              )}
-            >
+            <div className={cn('min-h-0 flex-1', effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-7 py-8')}>
               {visualLocked ? (
                 <div
                   className={cn(
@@ -776,11 +771,7 @@ function EditorPage() {
               {/* Title rendered as the first line of the document column (Mintlify-style),
                 aligned to the reading measure except in Markdown mode, where the
                 title and source editor use the full canvas. */}
-              <div
-                className={cn(
-                  effectiveMode === 'markdown' ? 'w-full shrink-0 border-border border-b px-6 py-4' : 'mx-auto max-w-[720px]',
-                )}
-              >
+              <div className={cn(effectiveMode === 'markdown' ? 'w-full shrink-0 border-border border-b px-6 py-4' : 'mx-auto max-w-[720px]')}>
                 {effectiveMode === 'preview' ? (
                   <h1 className="font-semibold text-[2.1rem] leading-[1.15] tracking-tight" dir={activeLangDir}>
                     {title || t('editor.pageTitlePlaceholder')}
