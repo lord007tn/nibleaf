@@ -3,8 +3,6 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
-import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
-import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -53,27 +51,22 @@ const CONFIGURED_HOST = (process.env.APP_URL || '')
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
 
-/** Public, version-controlled self-hosting artifacts. Serving these from the
- * marketing origin keeps the one-command installer usable while the source
- * repository is private and guarantees the downloaded Compose matches this
- * deployment's codebase. */
+/** Keep previously advertised installer URLs explicit while distribution is
+ * unavailable. A 503 prevents a broken script from being mistaken for a ready
+ * installation path and gives clients a safe retry signal. */
 function serveSelfHostingArtifact(pathname: string, bare: string): Response | null {
   if (!IS_CLOUD_MARKETING || bare !== MARKETING_HOST) {
     return null;
   }
-  const artifacts: Record<string, { body: string; type: string; filename: string }> = {
-    '/install.sh': { body: INSTALL_SCRIPT, type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
-    '/docker-compose.yml': { body: PRODUCTION_COMPOSE, type: 'application/yaml; charset=utf-8', filename: 'docker-compose.yml' },
-  };
-  const artifact = artifacts[pathname];
-  if (!artifact) {
+  if (pathname !== '/install.sh' && pathname !== '/docker-compose.yml') {
     return null;
   }
-  return new Response(artifact.body, {
+  return new Response('Nibleaf public self-hosting distribution is temporarily unavailable. See https://nibleaf.com/self-hosting for status.\n', {
+    status: 503,
     headers: {
-      'cache-control': 'public, max-age=300',
-      'content-disposition': `inline; filename="${artifact.filename}"`,
-      'content-type': artifact.type,
+      'cache-control': 'no-store',
+      'content-type': 'text/plain; charset=utf-8',
+      'retry-after': '86400',
       'x-content-type-options': 'nosniff',
     },
   });
@@ -461,27 +454,27 @@ function marketingSitemap(origin: string): string {
 function marketingLlms(origin: string): string {
   return `# Nibleaf
 
-> Nibleaf is an open-source, self-hostable documentation platform - an alternative to Mintlify and GitBook - with a Notion-style WYSIWYG editor over plain Markdown, first-class Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
+> Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
 ## Key facts
 
-- Open source under AGPL-3.0; source at https://github.com/lord007tn/nibleaf
-- Self-host the entire stack (app, API, worker, database, cache, object storage) with one docker compose
+- Codebase licensed under AGPL-3.0; anonymous source and container distribution is currently unavailable
+- Docker Compose architecture for the app, API, worker, database, cache, and object storage; check the public distribution status before planning an installation
 - Notion-style WYSIWYG editor over plain Markdown/MDX - content round-trips losslessly, no proprietary format
 - First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
 - Versioned publishing: every publish is an immutable snapshot, rollback is atomic
 - Built-in full-text + fuzzy search (Orama), bilingual including an Arabic tokenizer - no external search service
-- Custom domains with guided DNS verification, plus wildcard project subdomains
-- First-party reader analytics (page views, top pages, top searches) - no third-party tracker required
+- Custom-domain and project-subdomain workflows are implemented; production DNS readiness must be verified on the intended hostname
+- First-party reader analytics (page views, top pages, top searches); the hosted service also uses Cloudflare for delivery, security, and web analytics
 - Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
-- Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta; self-hosting is free forever
+- Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta
 
 ## Pages
 
 - [Home](${origin}/): overview and features
 - [Nibleaf Cloud](${origin}/cloud): hosted documentation sites, free during beta
-- [Pricing](${origin}/pricing): free beta, free self-hosting
-- [Self-hosting guide](${origin}/self-hosting): requirements and one-command Docker setup
+- [Pricing](${origin}/pricing): free cloud beta and current self-hosting status
+- [Self-hosting status](${origin}/self-hosting): distribution readiness and deployment architecture
 - [About](${origin}/about): mission and stack
 - [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
 - [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
@@ -491,7 +484,6 @@ function marketingLlms(origin: string): string {
 - [ReadMe alternatives](${origin}/alternatives/readme)
 - [Terms of Service](${origin}/terms)
 - [Privacy Policy](${origin}/privacy)
-- [Source code](https://github.com/lord007tn/nibleaf): GitHub repository
 
 ## Blog
 
@@ -506,15 +498,15 @@ ${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${origin}/blog/${entry.slug}):
 function marketingLlmsFull(origin: string): string {
   return `# Nibleaf - full description
 
-Nibleaf is an open-source, self-hostable documentation platform - an alternative to Mintlify and GitBook - with a Notion-style WYSIWYG editor over plain Markdown, first-class Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
+Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
-Nibleaf lets you write documentation in Markdown/MDX, organize it into a navigable tree, and publish a fast, searchable, multilingual site - with versioned deploys, custom domains, per-site teams, and analytics. You can run all of it yourself with one docker compose, or use the managed cloud at nibleaf.com (free while in beta).
+Nibleaf lets teams write documentation in Markdown/MDX, organize it into a navigable tree, and publish a searchable, multilingual site with versioned deploys, per-site teams, custom domains, and analytics. The managed cloud at nibleaf.com is free while in beta.
 
 ## What is Nibleaf?
 
-Documentation tooling has largely become something you rent: your content, search index, analytics, and readers live on someone else's servers behind per-seat pricing. Nibleaf is the alternative - the same polished authoring experience, open source (AGPL-3.0) and yours to run. Content is plain Markdown end-to-end, so you are never locked into a proprietary format.
+Nibleaf combines a browser editor, Markdown content, publishing, search, analytics, and multilingual reader sites. Pages are stored as Markdown in the database and can be exported as Markdown, so the content format is portable even though the live source is not a Git directory.
 
-Nibleaf was built Arabic-first: full right-to-left support and bilingual (English + Arabic) authoring are core features, not afterthoughts. Almost no documentation platform does this.
+Nibleaf was built with English and Arabic authoring as core features, including right-to-left layout and per-language page trees.
 
 ## Features
 
@@ -525,26 +517,19 @@ Nibleaf was built Arabic-first: full right-to-left support and bilingual (Englis
 - Anchored comments: review comments pinned to the exact block, Figma-style.
 - Hybrid search: full-text + fuzzy search powered by Orama, bilingual (including an Arabic tokenizer), built into every published site and available via Cmd+K. No external search service.
 - Bilingual and RTL: per-language page trees, RTL layout, hreflang, and localized dashboard/editor/site chrome in English and Arabic.
-- Custom domains and subdomains: guided DNS setup and verification, wildcard project subdomains, and host-based published-site routing.
+- Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
 - SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
 - Per-site teams: each site is its own workspace with role-based members (owner/admin/editor).
-- Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns - no third-party tracker required.
+- Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns. Nibleaf Cloud also uses Cloudflare for delivery, security, and web analytics.
 - Bring-your-own storage: any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).
 
-## Self-hosting
+## Self-hosting status
 
-The entire stack - app, API, worker, PostgreSQL, cache, and object storage - runs from one docker compose:
-
-1. Clone the repository: git clone https://github.com/lord007tn/nibleaf
-2. Configure: cp .env.example .env and set your domain and secrets.
-3. Bring it up: docker compose up -d (database migrations run automatically).
-4. Open the app and create the first owner account.
-
-A Coolify-ready compose file (docker-compose.coolify.yml) pulls the prebuilt image ghcr.io/lord007tn/nibleaf, so nothing is built on your server. Plain containers also work on Kubernetes, Nomad, or bare metal. Self-hosting is free forever, with no feature gates.
+The codebase is licensed under AGPL-3.0 and contains a Docker Compose architecture for the app, API, worker, PostgreSQL, cache, and object storage. As of August 15, 2026, the public repository and container package reject anonymous access, so a new public user cannot complete an installation. See ${origin}/self-hosting for the current distribution checks and architecture notes.
 
 ## Nibleaf Cloud
 
-Nibleaf Cloud (${origin}) is the managed instance run by the Nibleaf team: hosted dashboard, managed database, queues and storage, automatic upgrades, custom domains, and analytics. It is free while in beta. Paid cloud plans may come later and will be announced with generous advance notice; self-hosting stays free.
+Nibleaf Cloud (${origin}) is the managed instance run by the Nibleaf team: hosted dashboard, managed database, queues and storage, automatic upgrades, custom domains, and analytics. It is free while in beta. No paid plan is currently offered.
 
 ## License
 
@@ -560,7 +545,6 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - About: ${origin}/about
 - Terms of Service: ${origin}/terms
 - Privacy Policy: ${origin}/privacy
-- Source code: https://github.com/lord007tn/nibleaf
 - Support: support@nibleaf.com
 `;
 }
@@ -581,7 +565,7 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
       'Contact: mailto:security@nibleaf.com',
       `Expires: ${expires}`,
       `Canonical: ${origin}/.well-known/security.txt`,
-      'Policy: https://github.com/lord007tn/nibleaf/security/policy',
+      'Policy: mailto:security@nibleaf.com',
       'Preferred-Languages: en, ar',
       '',
     ].join('\n');

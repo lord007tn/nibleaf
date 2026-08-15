@@ -14,11 +14,11 @@ import { APP_URL, GITHUB_URL } from '@/lib/links';
 
 const SITE_NAME = 'Nibleaf';
 const OG_IMAGE_PATH = '/brand/raster/social/nibleaf-og-card.png';
-const OG_IMAGE_ALT = 'Nibleaf — the open-source Mintlify alternative';
+const OG_IMAGE_ALT = 'Nibleaf documentation publishing with Markdown and Arabic/RTL support';
 
 /** One-line product description reused across metadata and structured data. */
 export const ENTITY_SENTENCE =
-  'Nibleaf is an open-source, self-hostable documentation platform — an alternative to Mintlify and GitBook — with a Notion-style WYSIWYG editor over plain Markdown, first-class Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.';
+  'Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, Arabic and RTL support, custom domains, search, analytics, and a free cloud beta at nibleaf.com.';
 
 /** Absolute URL for a marketing path (https://nibleaf.com/<path> in production). */
 export const canonicalHref = (path: string) => new URL(path, APP_URL).toString();
@@ -29,23 +29,29 @@ export function pageMeta({
   description,
   path,
   type = 'website',
+  locale = 'en_US',
+  imagePath = OG_IMAGE_PATH,
+  imageAlt,
 }: {
   title: string;
   description: string;
   path: string;
   type?: 'website' | 'article';
+  locale?: 'ar_AR' | 'en_US';
+  imagePath?: string;
+  imageAlt?: string;
 }) {
   const url = canonicalHref(path);
-  const image = canonicalHref(OG_IMAGE_PATH);
+  const image = canonicalHref(imagePath);
   // The shared card art plus the page title reads better in link unfurls than a
   // one-size-fits-all alt (and matches Google's og:image:alt guidance).
-  const imageAlt = title === OG_IMAGE_ALT ? OG_IMAGE_ALT : `${SITE_NAME} — ${title}`;
+  const resolvedImageAlt = imageAlt ?? (title === OG_IMAGE_ALT ? OG_IMAGE_ALT : `${SITE_NAME} — ${title}`);
   return [
     { title },
     { name: 'description', content: description },
     { property: 'og:type', content: type },
     { property: 'og:site_name', content: SITE_NAME },
-    { property: 'og:locale', content: 'en_US' },
+    { property: 'og:locale', content: locale },
     { property: 'og:title', content: title },
     { property: 'og:description', content: description },
     { property: 'og:url', content: url },
@@ -53,12 +59,12 @@ export function pageMeta({
     { property: 'og:image:type', content: 'image/png' },
     { property: 'og:image:width', content: '1200' },
     { property: 'og:image:height', content: '630' },
-    { property: 'og:image:alt', content: imageAlt },
+    { property: 'og:image:alt', content: resolvedImageAlt },
     { name: 'twitter:card', content: 'summary_large_image' },
     { name: 'twitter:title', content: title },
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: image },
-    { name: 'twitter:image:alt', content: imageAlt },
+    { name: 'twitter:image:alt', content: resolvedImageAlt },
   ];
 }
 
@@ -133,8 +139,7 @@ export function marketingLd() {
           '@id': `${APP_URL}/#organization`,
           name: SITE_NAME,
           url: APP_URL,
-          logo: { '@type': 'ImageObject', url: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png') },
-          sameAs: [GITHUB_URL],
+          logo: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png'),
         },
         {
           '@type': 'WebSite',
@@ -156,7 +161,6 @@ export function marketingLd() {
           image: canonicalHref(OG_IMAGE_PATH),
           inLanguage: ['en', 'ar'],
           license: 'https://www.gnu.org/licenses/agpl-3.0.html',
-          downloadUrl: GITHUB_URL,
           isAccessibleForFree: true,
           publisher: { '@id': `${APP_URL}/#organization` },
           offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: canonicalHref('/sign-up') },

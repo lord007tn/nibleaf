@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
 import { SitePageView } from '@/components/site/site-page-view';
-import { getData } from '@/hooks/api/client-helpers';
+import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
-import { customDomainOrigin, setSsrStatus } from '@/lib/site-origin';
+import { customDomainOrigin } from '@/lib/site-origin';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
 
@@ -21,15 +21,18 @@ export const Route = createFileRoute('/sites/$projectId/')({
         'page',
       );
       return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
-    } catch {
+    } catch (error) {
+      if (!(error instanceof ApiResponseError) || error.status !== 404) {
+        throw error;
+      }
       // Honor a configured redirect for the site root before the not-found
       // state. Mark the SSR response 404 so this soft-404 returns the right
       // status (the head also carries robots noindex).
       await redirectIfConfigured(params.projectId, '', deps.lang);
-      // Return a real 404 for SSR (no-ops on client navigation); the head also
-      // carries robots noindex so crawlers don't index this dead URL.
-      setSsrStatus(404);
-      return { page: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
+      // Throw the router's not-found sentinel so TanStack owns the final HTTP
+      // status. Mutating the response from inside this streamed loader produced
+      // a soft 200 in production.
+      throw notFound();
     }
   },
   head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang, loaderData?.siteOrigin),

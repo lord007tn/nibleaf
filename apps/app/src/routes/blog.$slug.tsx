@@ -1,15 +1,16 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { ArticlePage, articleHead, articleMdxComponents } from '@/components/marketing/blog';
-import { blogEntry } from '@/lib/blog';
+import { blogEntry, blogLanguage } from '@/lib/blog';
 import { blogComponent } from '@/lib/blog-components';
 import { getGithubStars } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/blog/$slug')({
   loader: async ({ params }) => {
-    if (!blogEntry(params.slug)) {
+    const entry = blogEntry(params.slug);
+    if (!entry) {
       throw notFound();
     }
-    return { stars: await getGithubStars() };
+    return { language: blogLanguage(entry), stars: await getGithubStars() };
   },
   head: ({ params }) => {
     const entry = blogEntry(params.slug);

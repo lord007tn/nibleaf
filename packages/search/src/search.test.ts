@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDocIndex, oramaLanguageForCode, type SearchDoc, searchDocs, stripMarkdown } from './index';
+import { createDocIndex, normalizeArabicSearchText, oramaLanguageForCode, type SearchDoc, searchDocs, stripMarkdown } from './index';
 
 describe('stripMarkdown (search snippets read as clean prose)', () => {
   it('removes headings, emphasis, inline + fenced code, links and component tags', () => {
@@ -101,6 +101,28 @@ describe('Arabic search (regression: language-aware tokenizer)', () => {
     const hits = await searchDocs(arIndex, 'تثبيت', { tolerance: 1 });
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0]?.id).toBe('1');
+  });
+
+  it('matches common alef, alef maqsura, diacritic, and tatweel variants', async () => {
+    const delayedMatch = `${'مقدمة عامة '.repeat(30)}إِعْدَادَات الحساب بالتفصيل`;
+    const docs: SearchDoc[] = [
+      {
+        id: 'settings',
+        title: 'الإعدادات الأولى',
+        path: 'settings',
+        description: '',
+        headings: '',
+        content: `اضبط الحساب من لوحة التحكــم. ${delayedMatch}`,
+      },
+    ];
+    const index = await createDocIndex(docs, 'arabic');
+
+    expect((await searchDocs(index, 'الاعدادات', { tolerance: 0 }))[0]?.id).toBe('settings');
+    expect((await searchDocs(index, 'التحكم', { tolerance: 0 }))[0]?.id).toBe('settings');
+    expect((await searchDocs(index, 'اعدادات', { tolerance: 0 }))[0]?.snippet).toContain('إِعْدَادَات الحساب');
+    expect(normalizeArabicSearchText('إِلَى')).toBe('الي');
+    expect(normalizeArabicSearchText('إدارة')).toBe('ادارة');
+    expect(normalizeArabicSearchText('إدارة')).not.toBe('اداره');
   });
 });
 

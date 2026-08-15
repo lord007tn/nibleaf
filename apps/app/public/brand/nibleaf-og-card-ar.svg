@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Nibleaf — منصة توثيق مفتوحة المصدر">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Nibleaf لنشر وثائق المنتج">
   <rect width="1200" height="630" fill="#FBF7EE"/>
   <path d="M0 502c150-48 290-60 420-36 137 25 247 14 331-34 108-61 238-74 449-40v238H0Z" fill="#EEE4D3"/>
   <rect x="1018" y="84" width="96" height="96" rx="22" fill="#8A4B2E"/>
@@ -8,6 +8,6 @@
   <text x="990" y="151" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="54" font-weight="800" text-anchor="start">Nibleaf</text>
   <text x="1114" y="296" direction="rtl" fill="#181612" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="62" font-weight="800" text-anchor="start">وثائق تظل</text>
   <text x="1114" y="376" direction="rtl" fill="#8A4B2E" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="62" font-weight="800" text-anchor="start">بين يديك.</text>
-  <text x="1114" y="474" direction="rtl" fill="#4E453A" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="31" text-anchor="start">Nibleaf Cloud متاح الآن لفرق توثيق الإنتاج.</text>
-  <text x="1114" y="552" direction="rtl" fill="#B96A3D" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="25" text-anchor="start">AGPL-3.0 · استضافة ذاتية</text>
+  <text x="1114" y="474" direction="rtl" fill="#4E453A" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="31" text-anchor="start">Nibleaf Cloud متاح في نسخة تجريبية مجانية.</text>
+  <text x="1114" y="552" direction="rtl" fill="#B96A3D" font-family="Tahoma, Arial, system-ui, sans-serif" font-size="25" text-anchor="start">Markdown · العربية و RTL</text>
 </svg>

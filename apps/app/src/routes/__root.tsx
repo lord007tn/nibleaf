@@ -52,6 +52,11 @@ function RootDocument({ children }: { children: ReactNode }) {
       const match = state.matches.find((m) => m.routeId === '/sites/$projectId');
       const site = (match?.loaderData as { site?: SiteShell } | undefined)?.site;
       if (!site) {
+        const articleMatch = state.matches.find((m) => m.routeId === '/blog/$slug');
+        const language = (articleMatch?.loaderData as { language?: 'ar' | 'en' } | undefined)?.language ?? 'en';
+        if (language === 'ar') {
+          return { lang: 'ar', dir: 'rtl' as const, siteProjectId: undefined };
+        }
         return { lang: 'en', dir: 'ltr' as const, siteProjectId: undefined };
       }
       const code = (state.location.search as { lang?: string }).lang ?? site.activeLanguage;

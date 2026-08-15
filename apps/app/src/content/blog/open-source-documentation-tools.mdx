@@ -1,20 +1,19 @@
 ---
 title: 'Open-source documentation tools in 2026: how to choose'
-description: 'An honest comparison of Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf: authoring, search, i18n/RTL, hosting.'
+metaTitle: '7 open-source documentation tools compared (2026)'
+description: 'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.'
 datePublished: '2026-07-13'
-dateModified: '2026-07-13'
+dateModified: '2026-08-15'
 tags: ['comparison', 'open-source']
 related: ['self-host-documentation-site-docker-compose', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
 readingMinutes: 7
 faqs:
-  - question: 'What is the best open-source alternative to Mintlify?'
-    answer: 'It depends on who writes your docs. Teams that live in git are usually happiest with Docusaurus or Starlight. Teams that want a hosted-editor experience with non-developer contributors, plus the option to self-host, should look at Nibleaf.'
-  - question: 'Is Material for MkDocs still maintained in 2026?'
-    answer: 'It is in maintenance mode. Version 9.7.0 (November 2025) was the last feature release, with critical bug and security fixes promised for at least 12 months while the team builds Zensical, its successor. Existing sites keep working, but new features land in Zensical.'
+  - question: 'What is the best open-source documentation tool?'
+    answer: 'It depends on the writing workflow. Git-centered teams often prefer Docusaurus or Starlight. Teams that need a browser editor should compare BookStack, Wiki.js, and Nibleaf, then verify each public installation path.'
   - question: 'Which open-source documentation tools support Arabic and RTL?'
-    answer: 'Starlight and Docusaurus both support RTL locales in their i18n systems. Nibleaf goes further with first-class RTL layout, per-language page trees, an Arabic search tokenizer, and a UI localized in Arabic. BookStack has known RTL rough edges.'
-  - question: 'Can non-developers contribute to docs-as-code tools like Docusaurus?'
-    answer: 'Yes, but with friction: they need to edit Markdown through a git web UI or a CMS layer, then wait for a pull request to merge and a build to deploy. Web-editor platforms like BookStack, Wiki.js, and Nibleaf remove the git requirement entirely.'
+    answer: 'Starlight and Docusaurus support RTL locales. Nibleaf adds per-language page trees, an Arabic tokenizer, and an Arabic interface. Test search, bidirectional code, and fonts in any candidate.'
+  - question: 'Can non-developers contribute to docs-as-code tools?'
+    answer: 'Yes, through a Git web UI or CMS layer, but the review and build workflow still uses Git. Browser-editor platforms remove that requirement for routine edits.'
 ---
 
 There are more good open-source documentation tools today than at any point in the last decade, and most comparison posts do you the disservice of pretending they compete head-to-head. They mostly don't. The real decision is upstream of any feature checklist: **who writes your docs, and where do they live?**
@@ -39,7 +38,7 @@ Neither model is better. A five-person infra startup and a forty-person team wit
 | **Fumadocs** | Git + MDX inside your app | Orama in-browser index; Algolia swappable | i18n with per-locale search tokenizers | Deploys with your Next.js app | Docs embedded in a Next.js product |
 | **BookStack** | Web editor (WYSIWYG or Markdown), database | Built-in cross-book search | UI translations; no linked translations, RTL rough edges | Self-host (PHP + MySQL) | Internal knowledge bases and team wikis |
 | **Wiki.js** | Web editors, database, optional git sync | Built-in, with pluggable engines | UI translations, locale namespacing | Self-host (Node.js) | Existing installs; v3 has no ETA |
-| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama full-text + fuzzy, Arabic tokenizer | Per-language page trees, first-class RTL, hreflang | Docker compose self-host, or free cloud beta | Mixed teams with non-developer writers; Arabic/English docs |
+| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama full-text + fuzzy, Arabic tokenizer | Per-language page trees, first-class RTL, hreflang | Free cloud beta; public self-host distribution is currently unavailable | Mixed teams with non-developer writers; Arabic/English docs |
 
 ## The docs-as-code generators
 
@@ -75,11 +74,11 @@ Nibleaf is our project, so read the next section with that in mind. The competit
 
 ### Nibleaf
 
-Nibleaf (AGPL-3.0, [github.com/lord007tn/nibleaf](https://github.com/lord007tn/nibleaf)) exists for teams stuck between the two models: they want the web-editor experience so non-developers can contribute, but they refuse the lock-in that usually comes with it. The editor is a Notion-style block editor with a slash menu that **round-trips plain Markdown** — content is never stored in a proprietary format — with MDX components (callouts, tabs, code groups) on top. Publishing is versioned: every publish is an immutable snapshot, readers never see half-written pages, and rollback is instant.
+Nibleaf is an AGPL-3.0 codebase for teams stuck between the two models: they want the web-editor experience so non-developers can contribute, but they also need Markdown export. Its public repository currently rejects anonymous access, so evaluate the managed beta and verify the [self-hosting status](/self-hosting) before treating it as a deployable open-source option. The editor is a Notion-style block editor with a slash menu that round-trips Markdown stored in the database. Publishing creates immutable snapshots, so readers do not see in-progress edits.
 
-Search is built in — Orama-powered full-text and fuzzy matching behind a Cmd+K UI, with no Algolia account required — and it's bilingual, including an Arabic tokenizer. The i18n model is per-language page trees with first-class Arabic/RTL layout, hreflang, and a UI localized in English and Arabic; as the comparison above shows, that combination doesn't exist elsewhere in this list. You also get custom domains with guided DNS verification, SSR with sitemaps and JSON-LD, first-party analytics with no third-party tracker, and per-site teams with roles and anchored review comments.
+Search is built in with Orama full-text and fuzzy matching behind a Cmd+K UI, so it does not require an Algolia account. Arabic projects select an Arabic tokenizer, and the i18n model uses per-language page trees with RTL layout, hreflang, and an English and Arabic interface. Nibleaf also includes custom-domain verification, SSR metadata, sitemaps, product analytics, team roles, and anchored review comments. The hosted service runs behind Cloudflare, whose delivery and security processing is described in the privacy policy.
 
-[Self-hosting](/self-hosting) is a single `docker compose up -d` that brings up the whole stack — app, API, worker, PostgreSQL, Redis-compatible cache, and S3-compatible storage — and it's free forever with no feature gates. There's also a managed cloud in [free beta](/pricing) at nibleaf.com.
+The deployment design includes the app, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. Anonymous source and container access must be restored before that design becomes a working public installation path. The managed cloud is available in [free beta](/pricing) at nibleaf.com.
 
 ## How to choose
 
@@ -88,8 +87,8 @@ Search is built in — Orama-powered full-text and fuzzy matching behind a Cmd+K
 - **You're a Python shop already on MkDocs** → stay on **Material**, and watch Zensical for new projects.
 - **You need an internal team wiki, not public product docs** → **BookStack**.
 - **You're already running Wiki.js** → keep it patched, but don't start there today.
-- **Non-developers need to contribute, you want to self-host, or you're shipping Arabic/RTL docs** → **Nibleaf**. If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
+- **Non-developers need to contribute or you're shipping Arabic/RTL docs** → evaluate **Nibleaf Cloud**, then check its [public distribution status](/self-hosting) if self-hosting is required. If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
 
 <Note>
-All competitor claims were verified against official docs and release announcements in July 2026. If we got something wrong, open an issue on the Nibleaf repo and we'll correct it.
+Competitor claims were checked against official documentation and release announcements, with the page re-reviewed on August 15, 2026. Corrections can be sent to support@nibleaf.com.
 </Note>

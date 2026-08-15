@@ -20,7 +20,7 @@ export const Route = createFileRoute('/terms')({
   component: TermsPage,
 });
 
-const LAST_UPDATED = 'July 10, 2026';
+const LAST_UPDATED = 'August 15, 2026';
 
 const SECTIONS: { heading: string; body: string }[] = [
   {
@@ -29,7 +29,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '2. Free beta',
-    body: 'Nibleaf Cloud is currently in a free beta. During the beta the Service is provided as-is and as-available: features may change, and while we work hard to keep your content safe and the service up, we do not yet offer uptime or support guarantees. There are no paid plans today. If paid cloud plans are introduced in the future, we will announce them with reasonable advance notice, and self-hosting the open-source edition will remain free.',
+    body: 'Nibleaf Cloud is currently in a free beta. During the beta the Service is provided as-is and as-available: features may change, and while we work hard to keep your content safe and the service up, we do not yet offer uptime or support guarantees. There are no paid plans today. Public self-hosting distribution is currently unavailable.',
   },
   {
     heading: '3. Your content',

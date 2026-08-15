@@ -168,10 +168,21 @@
 .pl-editor .ProseMirror code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.85em;
+  direction: ltr;
+  unicode-bidi: isolate;
   background: var(--color-muted);
   border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.1em 0.35em;
+}
+
+.pl-editor[dir='rtl'] .ProseMirror h1,
+.pl-editor[dir='rtl'] .ProseMirror h2,
+.pl-editor[dir='rtl'] .ProseMirror h3,
+.pl-editor[dir='rtl'] .ProseMirror h4,
+.pl-editor[dir='rtl'] .ProseMirror h5,
+.pl-editor[dir='rtl'] .ProseMirror h6 {
+  letter-spacing: normal;
 }
 
 /* Mark / highlight */

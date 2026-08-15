@@ -1,7 +1,7 @@
 {
   "name": "Nibleaf Documentation",
   "short_name": "Nibleaf Docs",
-  "description": "Documentation for Nibleaf, the open-source, self-hostable documentation platform.",
+  "description": "Documentation for the Nibleaf documentation publishing platform.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

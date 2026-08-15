@@ -374,6 +374,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
 
   const servedLanguages = publicLanguages(snapshot.project.languages);
   const pageLanguage = servedLanguages.find((l) => l.code === navLanguage);
+  const currentPageIndexable = page.config?.seo?.noindex !== true && pageLanguage?.config?.seo?.allowIndex !== false;
   // hreflang alternates: link this page to its translations. When the page has a
   // `translationKey`, match by that (so languages whose slugs differ — e.g. EN
   // "introduction-merged" ↔ AR "introduction" — still pair up, using each
@@ -387,9 +388,11 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
         p.languageCode === l.code &&
         p.kind === 'PAGE' &&
         !p.hidden &&
+        p.config?.seo?.noindex !== true &&
         (page.translationKey ? p.translationKey === page.translationKey : p.path === page.path),
     );
-    return { code: l.code, isDefault: l.isDefault, path: sibling ? sibling.path : null };
+    const languageIndexable = l.config?.seo?.allowIndex !== false;
+    return { code: l.code, isDefault: l.isDefault, path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null };
   });
   return {
     // Same per-language chrome merge as getSite, applied for the language the
@@ -601,7 +604,14 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
   // Languages whose own SEO disallows indexing are excluded entirely.
   const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
   const urls = snapshot.pages
-    .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex && !blockedLangs.has(page.languageCode))
+    .filter(
+      (page) =>
+        page.kind === 'PAGE' &&
+        !page.hidden &&
+        !page.config?.seo?.noindex &&
+        !page.config?.seo?.canonicalUrl?.trim() &&
+        !blockedLangs.has(page.languageCode),
+    )
     .map((page) => {
       // Default-language pages use the clean URL (no ?lang) — their canonical.
       const pageVersion = snapshot.project.versions.find((version) => pageBelongsToVersion(page, version));

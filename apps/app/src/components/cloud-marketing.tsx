@@ -26,9 +26,7 @@ import {
   X,
 } from 'lucide-react';
 import { type ComponentType, type ReactNode, type SVGProps, useState } from 'react';
-import { GithubIcon } from '@/components/icons/brand';
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
-import { GITHUB_URL } from '@/lib/links';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -42,9 +40,8 @@ export const iconTile = 'grid place-items-center rounded-lg border border-border
 const navLinks = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/self-hosting', label: 'Self-hosting' },
   { href: '/blog', label: 'Blog' },
-  { href: GITHUB_URL, label: 'Source', external: true },
+  { href: '/self-hosting', label: 'Distribution status' },
 ];
 
 const features: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
@@ -56,7 +53,7 @@ const features: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; b
   {
     icon: BarChart3,
     title: 'First-party analytics',
-    body: 'Page views, unique visitors, top pages, and what readers search for — no third-party tracker, no cookie banner.',
+    body: 'Page views, unique visitors, top pages, and reader searches are built into the product. Hosted traffic is delivered through Cloudflare.',
   },
   {
     icon: ShieldCheck,
@@ -124,11 +121,11 @@ export const faqs: { q: string; a: string }[] = [
   },
   {
     q: 'Is Nibleaf open source?',
-    a: 'Yes. The platform is open source under AGPL-3.0, and self-hosting the whole stack with one docker compose is free forever.',
+    a: 'The codebase is licensed under AGPL-3.0. Public source and container access are currently unavailable, so anonymous self-hosting is paused.',
   },
   {
     q: 'What happens after the beta?',
-    a: 'Paid cloud plans will come later, announced with generous advance notice — and beta workspaces will get preferential treatment. Self-hosting stays free forever.',
+    a: 'Paid cloud plans will come later, announced with generous advance notice, and beta workspaces will get preferential treatment. Self-hosting availability is tracked separately.',
   },
   {
     q: 'Are there limits during the beta?',
@@ -144,7 +141,7 @@ export const faqs: { q: string; a: string }[] = [
   },
 ];
 
-export function MarketingShell({ children, stars = 0 }: { children: ReactNode; stars?: number }) {
+export function MarketingShell({ children }: { children: ReactNode; stars?: number }) {
   const { resolvedTheme, setTheme } = useTheme();
   const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
 
@@ -159,12 +156,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
           </a>
           <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
             {navLinks.map((link) => (
-              <a
-                key={link.href}
-                className="transition-colors hover:text-foreground"
-                href={link.href}
-                {...(link.external ? { rel: 'noreferrer', target: '_blank' } : {})}
-              >
+              <a key={link.href} className="transition-colors hover:text-foreground" href={link.href}>
                 {link.label}
               </a>
             ))}
@@ -179,13 +171,8 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             >
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>
-            <a
-              className={cn(outlineButton, 'hidden h-9 px-3 text-muted-foreground sm:inline-flex')}
-              href={GITHUB_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <GithubIcon className="size-4" /> {stars > 0 ? `${stars} stars` : 'GitHub'}
+            <a className={cn(outlineButton, 'hidden h-9 px-3 text-muted-foreground sm:inline-flex')} href="/self-hosting">
+              Distribution status
             </a>
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
               Sign in
@@ -202,9 +189,9 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
   );
 }
 
-export function LandingPage({ stars = 0 }: { stars?: number }) {
+export function LandingPage(_props: { stars?: number }) {
   return (
-    <MarketingShell stars={stars}>
+    <MarketingShell>
       <Hero />
       <TrustStrip />
       <ShowcaseEditor />
@@ -221,9 +208,9 @@ export function LandingPage({ stars = 0 }: { stars?: number }) {
   );
 }
 
-export function CloudPage({ stars = 0 }: { stars?: number }) {
+export function CloudPage(_props: { stars?: number }) {
   return (
-    <MarketingShell stars={stars}>
+    <MarketingShell>
       <section className="relative overflow-hidden border-border border-b">
         <GridBackground />
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
@@ -232,7 +219,7 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Hosted documentation sites, free during beta</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            The same open-source Nibleaf, run for you: hosted dashboard, managed database and storage, automatic upgrades, custom domains, analytics,
+            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics,
             and Arabic-ready authoring.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
@@ -259,7 +246,7 @@ function Announcement() {
       className="group flex items-center justify-center gap-2 border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs transition-colors hover:text-foreground"
     >
       <Sparkles className="size-3.5 text-primary" />
-      <span>Free beta — Nibleaf Cloud is free while in beta, self-hosting is free forever.</span>
+      <span>Free beta. Nibleaf Cloud is available now; self-hosting is paused while public distribution access is restored.</span>
       <span className="inline-flex items-center gap-1 font-medium text-foreground">
         Learn more <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
@@ -275,27 +262,25 @@ function Hero() {
         <div>
           <a
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs shadow-xs transition-colors hover:text-foreground"
-            href={GITHUB_URL}
-            rel="noreferrer"
-            target="_blank"
+            href="/self-hosting"
           >
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> Free cloud beta · AGPL-3.0 open source
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" /> Free cloud beta · AGPL-3.0 codebase
           </a>
-          <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The open-source Mintlify alternative.</h1>
+          <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The visual Markdown alternative to Mintlify.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf is a self-hostable documentation platform: a Notion-style editor over plain Markdown, versioned publishing, built-in search and
-            analytics, and first-class Arabic/RTL — free on our cloud beta, or on your servers with one docker compose.
+            Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and
+            first-class Arabic/RTL. The cloud beta is available now; public self-hosting is paused until anonymous source and image access is restored.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
               Start writing — it's free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <a className={outlineButton} href="/self-hosting">
-              <Server className="size-4" /> Self-host in minutes
+              <Server className="size-4" /> Self-hosting status
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
-            {['No credit card required', 'Your content stays Markdown', 'docker compose up -d'].map((item) => (
+            {['No credit card required', 'Your content stays Markdown', 'English and Arabic'].map((item) => (
               <span key={item} className="flex items-center gap-1.5">
                 <Check className="size-4 text-primary" /> {item}
               </span>
@@ -311,10 +296,10 @@ function Hero() {
 /** Quiet, honest numbers — no fabricated logos or testimonials. */
 function TrustStrip() {
   const stats = [
-    { value: 'AGPL-3.0', label: 'open source, source on GitHub' },
-    { value: '1 command', label: 'to self-host the whole stack' },
+    { value: 'AGPL-3.0', label: 'licensed codebase' },
+    { value: 'Beta', label: 'cloud access available' },
     { value: '2 languages', label: 'English & Arabic, full RTL' },
-    { value: '0 trackers', label: 'first-party analytics only' },
+    { value: 'Built in', label: 'product analytics' },
   ];
   return (
     <section className="border-border border-b bg-card/40">
@@ -384,7 +369,7 @@ function ShowcaseEditor() {
     <ShowcaseRow
       eyebrow="The editor"
       title="Write like Notion. Own it like Markdown."
-      body="Blocks, a slash menu, live preview, and rich MDX components — with one crucial difference: everything round-trips to plain Markdown files you can grep, diff, and take anywhere."
+      body="Blocks, a slash menu, live preview, and rich MDX components, with one crucial difference: pages are stored as Markdown and can be exported for use elsewhere."
       bullets={[
         'Slash menu with callouts, tabs, code groups, tables, and media',
         'Content is stored as Markdown — never a proprietary JSON format',
@@ -438,7 +423,7 @@ function Features() {
       <div className="max-w-2xl">
         <Eyebrow>Features</Eyebrow>
         <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Everything else you'd expect — included</h2>
-        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">The full docs workflow, open source — hosted for you or run by you.</p>
+        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">The full docs workflow in one managed product, with portable Markdown content.</p>
       </div>
       <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
         {features.map(({ icon: Icon, title, body }) => (
@@ -528,8 +513,8 @@ function ChooseYourPath() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Eyebrow>Two ways to run it</Eyebrow>
-          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta, free self-hosting</h2>
-          <p className="mt-4 max-w-xl text-lg text-muted-foreground">Same open-source platform either way. No feature gates, no per-seat pricing.</p>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Free beta, transparent self-hosting status</h2>
+          <p className="mt-4 max-w-xl text-lg text-muted-foreground">Cloud is available now. Public self-hosting waits on anonymous repository and image access.</p>
         </div>
         <a className={outlineButton} href="/pricing">
           Compare in detail <ArrowRight className="size-4" />
@@ -566,17 +551,12 @@ function ChooseYourPath() {
           <h3 className="flex items-center gap-2 font-semibold text-lg">
             <Server className="size-5 text-primary" /> Self-hosted
           </h3>
-          <p className="mt-4 font-semibold text-4xl tracking-tight">Free forever</p>
-          <p className="mt-1.5 text-muted-foreground text-sm">The entire stack on your infrastructure — your database, your storage, your rules.</p>
-          {/* biome-ignore lint/a11y/useSemanticElements: a labelled group of copyable commands, not a list. */}
-          <div className="mt-6 space-y-2" role="group" aria-label="Self-hosting quick start">
-            <CopyCommand command="git clone https://github.com/lord007tn/nibleaf.git && cd nibleaf" />
-            <CopyCommand command="docker compose up -d" />
-          </div>
+          <p className="mt-4 font-semibold text-4xl tracking-tight">Paused</p>
+          <p className="mt-1.5 text-muted-foreground text-sm">The full-stack design is documented, but the public repository and container are not anonymously accessible.</p>
           <a className={`${outlineButton} mt-6 w-full`} href="/self-hosting">
-            Read the self-hosting guide <ArrowRight className="size-4" />
+            Check self-hosting status <ArrowRight className="size-4" />
           </a>
-          <p className="mt-3 text-center text-muted-foreground text-xs">AGPL-3.0 · no feature gates · unlimited everything</p>
+          <p className="mt-3 text-center text-muted-foreground text-xs">AGPL-3.0 codebase · distribution access required</p>
         </div>
       </div>
     </section>
@@ -590,7 +570,7 @@ function Comparison() {
         <div className="flex flex-col items-center text-center">
           <Eyebrow>Comparison</Eyebrow>
           <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">A docs platform without lock-in</h2>
-          <p className="mt-4 text-lg text-muted-foreground">The polish of a hosted product, with the freedom of open source when you need it.</p>
+          <p className="mt-4 text-lg text-muted-foreground">A hosted product with Markdown export and a clearly documented distribution status.</p>
         </div>
         <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
           <div className="grid grid-cols-[1fr_5rem_5rem] items-center gap-4 border-border border-b bg-muted/40 px-6 py-3 font-medium text-sm">
@@ -642,7 +622,7 @@ function BlogTeaser() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Eyebrow>From the blog</Eyebrow>
-          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Docs, open source, and ownership</h2>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Notes on documentation and ownership</h2>
         </div>
         <a className={outlineButton} href="/blog">
           All articles <ArrowRight className="size-4" />
@@ -713,14 +693,14 @@ function FinalCta() {
         <div className="relative">
           <h2 className="font-semibold text-3xl tracking-tight sm:text-4xl">Ship docs your users will love</h2>
           <p className="mx-auto mt-4 max-w-2xl text-background/70 leading-relaxed">
-            Start free on Nibleaf Cloud today, or self-host the same open-source platform on your own servers.
+            Start free on Nibleaf Cloud today. Check the self-hosting status before planning an infrastructure migration.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
               Get started free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
-              <GithubIcon className="size-4" /> View on GitHub
+            <a className={invertedOutlineButton} href="/self-hosting">
+              <Server className="size-4" /> Self-hosting status
             </a>
           </div>
         </div>
@@ -755,7 +735,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
     links: [
       { href: '/blog', label: 'Blog' },
       { href: '/about', label: 'About' },
-      { href: GITHUB_URL, label: 'GitHub', external: true },
+      { href: '/self-hosting', label: 'Distribution status' },
       { href: 'mailto:support@nibleaf.com', label: 'Support' },
     ],
   },
@@ -779,15 +759,10 @@ function SiteFooter() {
               <span>Nibleaf</span>
             </a>
             <p className="mt-3 max-w-[28ch] text-muted-foreground text-sm leading-relaxed">
-              The open-source Mintlify alternative — write in Markdown, publish beautiful docs, own everything.
+              A visual Markdown editor for publishing searchable, multilingual product documentation.
             </p>
-            <a
-              className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
-              href={GITHUB_URL}
-              rel="noreferrer"
-              target="_blank"
-            >
-              <GithubIcon className="size-4" /> Star on GitHub
+            <a className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground" href="mailto:support@nibleaf.com">
+              Contact support
             </a>
           </div>
           {footerColumns.map((column) => (

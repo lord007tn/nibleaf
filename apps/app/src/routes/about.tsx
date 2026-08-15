@@ -7,9 +7,9 @@ import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, pageMeta } from '@/lib/ma
 export const Route = createFileRoute('/about')({
   head: () => ({
     meta: pageMeta({
-      title: 'About Nibleaf — why we built an open-source docs platform',
+      title: 'About Nibleaf: documentation ownership and Arabic support',
       description:
-        'Why Nibleaf exists: an open-source, self-hostable, Arabic-first documentation platform for teams who want to own their content and their readers.',
+        'Why Nibleaf exists: a Markdown-based, Arabic-ready documentation platform for teams that want portable content and a clear publishing workflow.',
       path: '/about',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/about') }],
@@ -24,10 +24,10 @@ export const Route = createFileRoute('/about')({
 });
 
 const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
-  { icon: Unlock, title: 'Open source', body: 'AGPL-3.0, developed in the open. Read it, fork it, extend it.' },
-  { icon: BookOpen, title: 'You own everything', body: "Your content is plain Markdown, and your readers' data lives in your database and storage." },
+  { icon: Unlock, title: 'Licensed source', body: 'The codebase uses AGPL-3.0. Public repository and image access are currently being restored.' },
+  { icon: BookOpen, title: 'Portable content', body: 'Pages are stored as Markdown in the database and can be exported as Markdown.' },
   { icon: Globe, title: 'Bilingual by design', body: 'English and Arabic with full RTL — first-class, not bolted on.' },
-  { icon: Server, title: 'Cloud or your servers', body: 'Use the free cloud beta, or self-host the same platform with one docker compose.' },
+  { icon: Server, title: 'Cloud available', body: 'Use the free cloud beta now. Self-hosting resumes when anonymous distribution access is restored.' },
 ];
 
 function AboutPage() {
@@ -50,7 +50,7 @@ function AboutPage() {
         <div className="mt-6 space-y-5 text-lg text-muted-foreground leading-relaxed">
           <p>
             Great docs tooling had become something you rent. Your content, search index, analytics, and readers all lived on someone else's servers,
-            behind a per-seat bill. Nibleaf is the alternative: the same polished authoring experience, open source and yours to run.
+            behind a per-seat bill. Nibleaf focuses on portable Markdown content, a browser editor, and a publishing workflow that teams can inspect.
           </p>
           <p>
             It was built Arabic-first — full right-to-left support and bilingual authoring are core, not an afterthought — so teams working across
@@ -81,8 +81,8 @@ function AboutPage() {
       <section className="mx-auto max-w-3xl px-6 py-20">
         <h2 className="font-semibold text-3xl tracking-tight">Built on a stack you can trust</h2>
         <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-          Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage — modern, boring-in-a-good-way infrastructure you can run
-          yourself.
+          Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage form the deployment architecture. Public installation waits
+          on anonymous source and image access.
         </p>
       </section>
 
@@ -96,14 +96,14 @@ function AboutPage() {
           />
           <div className="relative">
             <h2 className="font-semibold text-3xl tracking-tight">Start writing today</h2>
-            <p className="mx-auto mt-3 max-w-xl text-background/75">Start free on Nibleaf Cloud, or self-host the open-source platform.</p>
+            <p className="mx-auto mt-3 max-w-xl text-background/75">Start free on Nibleaf Cloud. Check the self-hosting status before planning a deployment.</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={`${primaryButton} group`} href="/sign-up">
                 Get started free
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </a>
               <a className={invertedOutlineButton} href="/self-hosting">
-                Explore self-hosting
+                Self-hosting status
               </a>
             </div>
           </div>

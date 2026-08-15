@@ -260,6 +260,8 @@
       background-color: var(--muted, color-mix(in oklab, currentColor 8%, transparent));
       font-family: var(--typeset-font-mono);
       font-size: 0.85em;
+      direction: ltr;
+      unicode-bidi: isolate;
       border-radius: min(calc(var(--radius, 0.5em) * 0.6), 0.35em);
       padding: 0.125em 0.3em;
     }
@@ -442,5 +444,12 @@
       figure > picture > img
     ):not(:where(.not-typeset, [data-not-typeset], .not-typeset *, [data-not-typeset] *)) {
     margin-block-start: 0;
+  }
+}
+
+@layer components {
+  [dir='rtl'] .typeset :where(h1, h2, h3, h4, h5, h6) {
+    letter-spacing: normal;
+    text-transform: none;
   }
 }

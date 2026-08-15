@@ -1,6 +1,6 @@
 ---
 title: 'Your Docs Should Live in Plain Markdown (Even With a Visual Editor)'
-description: 'Why plain Markdown is the portability contract for documentation — greppable, diffable, AI-ready — and how a visual editor can round-trip it cleanly.'
+description: 'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.'
 datePublished: '2026-07-13'
 dateModified: '2026-07-13'
 tags: ['markdown', 'content-ownership']
@@ -10,11 +10,11 @@ faqs:
   - question: 'Can a WYSIWYG editor really store plain Markdown?'
     answer: 'Yes. The editor parses Markdown into an in-memory document model for editing, then serializes back to Markdown on every save. As long as nothing editor-internal is ever persisted, the stored format stays plain Markdown.'
   - question: 'Is Markdown expressive enough for a real documentation site?'
-    answer: 'Standard Markdown covers most documentation. For richer layouts — tabs, callouts, code groups — MDX components fill the gap while keeping the file plain text you can read, grep, and version.'
+    answer: 'Standard Markdown covers most documentation. For richer layouts, MDX components fill the gap while keeping the content plain text.'
   - question: 'Why does Markdown matter for AI tools and RAG pipelines?'
-    answer: 'LLM tooling consumes Markdown natively. Conventions like llms.txt serve Markdown to models, and heading structure gives RAG pipelines clean chunk boundaries without an extraction step.'
+    answer: 'LLM tooling consumes Markdown directly, and heading structure gives retrieval pipelines useful chunk boundaries without a proprietary extraction step.'
   - question: 'How do I migrate docs off a platform that stores content as JSON blocks?'
-    answer: 'You depend on the vendor''s exporter or API, and fidelity varies by block type. With a Markdown-based platform, migration is copying files — the content renders anywhere Markdown is understood.'
+    answer: 'You depend on the vendor’s exporter or API, and fidelity varies by block type. A Markdown-based platform can provide a portable Markdown export, but database-backed products still require an export step.'
 ---
 
 There is one question that tells you almost everything about a documentation platform: **if you leave next year, what do you walk away with?**
@@ -71,9 +71,9 @@ Contrast this with editors that persist their internal JSON and offer Markdown o
 
 ## What you gain when Markdown is the storage format
 
-**Export is `cp -r`.** There is no exporter to trust because there is nothing to convert. Your docs directory is the deliverable. Point Docusaurus, Astro, Hugo, or a different platform at it and most content renders immediately.
+**Separate file-based storage from Markdown storage.** A docs-as-code project can make its repository the live source, so copying the directory is the migration. Nibleaf instead stores Markdown in PostgreSQL and exports pages as a Markdown ZIP. That still requires an export, but it avoids converting a proprietary block schema before another Markdown tool can read the content.
 
-**Your existing tools work.** `git diff` shows exactly what changed in a review. `grep -r "deprecated-endpoint"` finds every reference in milliseconds. CI can lint prose, check links, and block merges — the whole docs-as-code toolchain applies because docs are, in fact, code-shaped.
+**Your existing tools work after export or in a file-based workflow.** `git diff` and `grep` apply directly when Markdown lives in a repository. With Nibleaf, export the Markdown ZIP and commit it before using those repository tools. Do not confuse a portable serialization format with a live Git source of truth.
 
 **LLMs read it natively.** This matters more every quarter. The llms.txt convention exists specifically to serve Markdown to models. RAG pipelines chunk Markdown cleanly along heading boundaries with no HTML-stripping or block-JSON flattening step. Coding agents can read, cite, and patch your docs the same way they handle source files. Content trapped in a block database needs an extraction pipeline before any of this works — and extraction pipelines lose structure, drift out of date, and break silently.
 
@@ -101,11 +101,11 @@ Credit where due — several platforms get this right, each with different trade
 
 ## How Nibleaf implements the contract
 
-Nibleaf is an open-source (AGPL-3.0) documentation platform built around exactly this invariant. The editor is Notion-style — blocks, slash menu, the authoring experience non-developers expect — and it round-trips plain Markdown on every save. MDX components (callouts, tabs, code groups) cover the layouts Markdown alone cannot express. Nothing proprietary is ever persisted.
+Nibleaf is an AGPL-3.0 codebase built around this invariant. The editor uses blocks and a slash menu, then stores the result as Markdown in the database. MDX components such as callouts, tabs, and code groups cover layouts that Markdown alone cannot express. Teams can export the content as Markdown, but the live source is not a folder in Git unless they export and commit it.
 
 Because storage is Markdown, the rest of the system composes on top of it: built-in Orama full-text and fuzzy search (with a dedicated Arabic tokenizer) indexes your actual content, publishing produces immutable snapshots so readers never see half-written pages and you can roll back to any previous snapshot, and per-language page trees keep translations as parallel Markdown, including Arabic and RTL layout.
 
-You can [self-host the entire stack](/self-hosting) — app, API, worker, PostgreSQL, cache, and S3-compatible storage — with one `docker compose up`; the open-source release is the full platform, not a feature-gated tier. Or use the managed cloud, currently in [free beta](/sign-up).
+The managed cloud is in [free beta](/sign-up). A full-stack Compose design also exists, but its public repository and container package currently reject anonymous access. Check the [distribution status](/self-hosting) before planning a self-hosted deployment.
 
 ## The test to run before you commit
 

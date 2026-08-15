@@ -20,12 +20,12 @@ export const Route = createFileRoute('/privacy')({
   component: PrivacyPage,
 });
 
-const LAST_UPDATED = 'July 10, 2026';
+const LAST_UPDATED = 'August 15, 2026';
 
 const SECTIONS: { heading: string; body: string }[] = [
   {
     heading: '1. Your data stays yours',
-    body: "For Nibleaf Cloud, your content and account data are used only to provide hosting, publishing, search, analytics, authentication, and support. We do not sell your data or use it for advertising. If you run the open-source edition on your own infrastructure, your deployment's data lives entirely in the systems you operate and this policy does not apply to it.",
+    body: "For Nibleaf Cloud, your content and account data are used only to provide hosting, publishing, search, analytics, authentication, and support. We do not sell your data or use it for advertising. A separately operated deployment would be governed by its operator's privacy practices; the public self-hosting distribution is currently unavailable.",
   },
   {
     heading: '2. What we collect',
@@ -37,7 +37,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '4. Subprocessors',
-    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where all application data is stored), Postmark / ActiveCampaign (delivery of transactional email such as sign-in verification and invitations), and OpenAI (processes document text only when a user explicitly invokes the AI writing assistant; content is not used for this otherwise). We will update this list before adding a new subprocessor.',
+    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where application data is stored), Cloudflare (DNS, traffic delivery, security, and aggregate web telemetry), Postmark / ActiveCampaign (transactional email such as sign-in verification and invitations), and OpenAI (processes document text only when a user explicitly invokes the AI writing assistant). We will update this list before adding a new subprocessor.',
   },
   {
     heading: '5. Built-in analytics',

@@ -4,7 +4,6 @@ import type { ReactNode } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import type { AlternativesRoundup, Comparison, FaqEntry, FeatureCell, FeatureRow, PickReasons, PricingTable } from '@/lib/comparison-data';
 import { nibleafPricing } from '@/lib/comparison-data';
-import { GITHUB_URL } from '@/lib/links';
 
 /**
  * Shared page templates for the /compare/nibleaf-vs-* and /alternatives/*
@@ -16,6 +15,7 @@ export function ComparePage({ data, stars = 0 }: { data: Comparison; stars?: num
   return (
     <MarketingShell stars={stars}>
       <PageHero eyebrow="Comparison" heading={data.heading} paragraphs={data.directAnswer} asOf={data.competitorPricing.asOf} />
+      {data.slug === 'nibleaf-vs-gitbook' || data.slug === 'nibleaf-vs-mintlify' ? <GitbookMintlifyGuideLink /> : null}
       <PricingSection competitor={data.competitorPricing} />
       <FeatureMatrix competitorName={data.competitorName} rows={data.features} />
       <WhenToPick pickCompetitor={data.pickCompetitor} pickNibleaf={data.pickNibleaf} />
@@ -30,6 +30,7 @@ export function AlternativesPage({ data, stars = 0 }: { data: AlternativesRoundu
   return (
     <MarketingShell stars={stars}>
       <PageHero eyebrow="Alternatives" heading={data.heading} paragraphs={data.directAnswer} asOf={data.competitorPricing.asOf} />
+      {data.slug === 'gitbook' || data.slug === 'mintlify' ? <GitbookMintlifyGuideLink /> : null}
       <section className="mx-auto max-w-4xl px-6 py-20">
         <h2 className="font-semibold text-3xl tracking-tight">The alternatives, honestly</h2>
         <ol className="mt-10 space-y-6">
@@ -69,6 +70,20 @@ export function AlternativesPage({ data, stars = 0 }: { data: AlternativesRoundu
       <FaqSection faqs={data.faqs} />
       <MarketingCta />
     </MarketingShell>
+  );
+}
+
+function GitbookMintlifyGuideLink() {
+  return (
+    <aside className="mx-auto mt-8 max-w-3xl px-6" aria-label="Related comparison">
+      <p className="rounded-xl border border-border bg-card px-5 py-4 text-muted-foreground text-sm leading-relaxed">
+        Comparing the two hosted products directly? Read the source-backed{' '}
+        <a className="font-medium text-foreground underline underline-offset-2" href="/blog/gitbook-vs-mintlify">
+          GitBook vs Mintlify guide
+        </a>
+        .
+      </p>
+    </aside>
   );
 }
 
@@ -124,6 +139,7 @@ function PricingTableView({ table }: { table: PricingTable }) {
       <h3 className="font-semibold text-lg tracking-tight">{table.productName}</h3>
       <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
         <table className="w-full min-w-[26rem] text-start text-sm">
+          <caption className="sr-only">{table.productName} plans and pricing as of {table.asOf}</caption>
           <thead>
             <tr className="border-border border-b bg-muted/40 text-muted-foreground">
               <th className="px-4 py-3 text-start font-medium">Plan</th>
@@ -167,6 +183,7 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
       </div>
       <div className="mt-10 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
         <table className="w-full min-w-[34rem] text-sm">
+          <caption className="sr-only">Nibleaf and {competitorName} feature comparison</caption>
           <thead>
             <tr className="border-border border-b bg-muted/40">
               <th className="px-5 py-3 text-start font-medium text-muted-foreground">Feature</th>
@@ -194,11 +211,11 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
         </table>
       </div>
       <p className="mt-4 text-muted-foreground text-xs leading-relaxed">
-        Items marked “Not yet” are on the Nibleaf roadmap — follow progress on{' '}
-        <a className="underline underline-offset-2 hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">
-          GitHub
+        Items marked “Not yet” are documented gaps without a committed delivery date. Review the current{' '}
+        <a className="underline underline-offset-2 hover:text-foreground" href="/self-hosting">
+          distribution status
         </a>
-        . “—” means the vendor’s pricing page doesn’t state it either way; check their docs.
+        . “—” means the vendor’s pricing page does not state it either way; check its documentation.
       </p>
     </section>
   );
@@ -310,7 +327,7 @@ function MarketingCta() {
         <div className="relative">
           <h2 className="font-semibold text-3xl tracking-tight">Try Nibleaf for yourself</h2>
           <p className="mx-auto mt-3 max-w-xl text-background/75">
-            Start free on Nibleaf Cloud — no credit card — or run the same open-source platform on your own servers.
+            Start free on Nibleaf Cloud with no credit card. Check public distribution status before planning a self-hosted deployment.
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">

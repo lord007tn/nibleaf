@@ -307,16 +307,16 @@ function Draw-SocialCard([string]$path, [switch]$Arabic, [switch]$Jpeg) {
     $g.DrawString("Nibleaf", [System.Drawing.Font]::new("Tahoma", 52, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(650, 98, 340, 72), $format)
     $g.DrawString("وثائق تظل", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), [System.Drawing.RectangleF]::new(500, 244, 614, 82), $format)
     $g.DrawString("بين يديك.", [System.Drawing.Font]::new("Tahoma", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), [System.Drawing.RectangleF]::new(500, 328, 614, 82), $format)
-    $g.DrawString("منصة توثيق مفتوحة المصدر، جاهزة للعربية، للنشر والبحث والاستضافة الذاتية.", [System.Drawing.Font]::new("Tahoma", 27), [System.Drawing.SolidBrush]::new($Ink2), [System.Drawing.RectangleF]::new(124, 448, 990, 50), $format)
-    $g.DrawString("AGPL-3.0 · استضافة ذاتية · docker compose up -d", [System.Drawing.Font]::new("Tahoma", 24), [System.Drawing.SolidBrush]::new($Copper), [System.Drawing.RectangleF]::new(124, 536, 990, 42), $format)
+    $g.DrawString("منصة لنشر وثائق المنتج مع تحرير عربي وبحث مدمج.", [System.Drawing.Font]::new("Tahoma", 27), [System.Drawing.SolidBrush]::new($Ink2), [System.Drawing.RectangleF]::new(124, 448, 990, 50), $format)
+    $g.DrawString("Markdown · العربية و RTL", [System.Drawing.Font]::new("Tahoma", 24), [System.Drawing.SolidBrush]::new($Copper), [System.Drawing.RectangleF]::new(124, 536, 990, 42), $format)
     $format.Dispose()
   } else {
     $g.DrawImage($icon, 86, 84, 96, 96)
     $g.DrawString("Nibleaf", [System.Drawing.Font]::new("Arial", 54, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 206, 98)
     $g.DrawString("Docs that stay", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Ink), 86, 232)
     $g.DrawString("in your hands.", [System.Drawing.Font]::new("Arial", 70, [System.Drawing.FontStyle]::Bold), [System.Drawing.SolidBrush]::new($Umber), 86, 316)
-    $g.DrawString("Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting.", [System.Drawing.Font]::new("Arial", 28), [System.Drawing.SolidBrush]::new($Ink2), 86, 448)
-    $g.DrawString("AGPL-3.0 · self-hostable · docker compose up -d", [System.Drawing.Font]::new("Consolas", 24), [System.Drawing.SolidBrush]::new($Copper), 86, 536)
+    $g.DrawString("Documentation publishing with Arabic-ready authoring and search.", [System.Drawing.Font]::new("Arial", 28), [System.Drawing.SolidBrush]::new($Ink2), 86, 448)
+    $g.DrawString("Markdown · Arabic and RTL", [System.Drawing.Font]::new("Consolas", 24), [System.Drawing.SolidBrush]::new($Copper), 86, 536)
   }
   $icon.Dispose()
   $g.Dispose()
@@ -413,14 +413,14 @@ $jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg";
 
 $manifestPath = Join-Path $RasterDir "manifest.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
-($jobs | ConvertTo-Json -Depth 4) + "`n" | Set-Content -LiteralPath $manifestPath -Encoding utf8
+($jobs | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
 $publicApps = @(
   @{
     path = $AppPublic
     name = "Nibleaf"
     shortName = "Nibleaf"
-    description = "Open-source documentation publishing with Arabic-ready authoring, search, and self-hosting."
+    description = "Documentation publishing with Arabic-ready authoring, search, and versioned releases."
     lang = "en"
     dir = "ltr"
   },
@@ -436,7 +436,7 @@ $publicApps = @(
     path = $DocsPublic
     name = "Nibleaf Documentation"
     shortName = "Nibleaf Docs"
-    description = "Documentation for Nibleaf, the open-source, self-hostable documentation platform."
+    description = "Documentation for the Nibleaf documentation publishing platform."
     lang = "en"
     dir = "ltr"
   }
@@ -476,7 +476,7 @@ foreach ($publicApp in $publicApps) {
       [ordered]@{ src = "/android-chrome-512x512.png"; type = "image/png"; sizes = "512x512"; purpose = "any maskable" }
     )
   }
-  ($manifest | ConvertTo-Json -Depth 8) + "`n" | Set-Content -LiteralPath (Join-Path $publicDir "site.webmanifest") -Encoding utf8
+  ($manifest | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $publicDir "site.webmanifest") -Encoding utf8
 }
 
 Write-Host "Exported Nibleaf brand raster assets to $RasterDir"

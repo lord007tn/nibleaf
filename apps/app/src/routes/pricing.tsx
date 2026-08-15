@@ -7,9 +7,9 @@ export const Route = createFileRoute('/pricing')({
   loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
-      title: 'Nibleaf pricing — free beta, free self-hosting',
+      title: 'Nibleaf pricing: free cloud beta and self-hosting status',
       description:
-        'Nibleaf Cloud is free while in beta. Self-hosting the open-source platform is free forever under AGPL-3.0 — no feature gates, no per-seat pricing.',
+        'Nibleaf Cloud is free while in beta. The AGPL-3.0 codebase is designed for self-hosting, which resumes when public source and image access are restored.',
       path: '/pricing',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],

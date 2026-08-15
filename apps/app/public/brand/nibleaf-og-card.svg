@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Nibleaf — open-source documentation platform">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Nibleaf documentation publishing">
   <rect width="1200" height="630" fill="#FBF7EE"/>
   <path d="M0 502c150-48 290-60 420-36 137 25 247 14 331-34 108-61 238-74 449-40v238H0Z" fill="#EEE4D3"/>
   <rect x="86" y="84" width="96" height="96" rx="22" fill="#8A4B2E"/>
@@ -8,6 +8,6 @@
   <text x="206" y="151" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="54" font-weight="760">Nibleaf</text>
   <text x="86" y="304" fill="#181612" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="72" font-weight="760">Docs that stay</text>
   <text x="86" y="386" fill="#8A4B2E" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="72" font-weight="760">in your hands.</text>
-  <text x="86" y="476" fill="#4E453A" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="30">Nibleaf Cloud is live for production docs teams.</text>
-  <text x="86" y="552" fill="#B96A3D" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">nibleaf.com · open-source core</text>
+  <text x="86" y="476" fill="#4E453A" font-family="Geist Variable, Inter, system-ui, sans-serif" font-size="30">Nibleaf Cloud is available in free beta.</text>
+  <text x="86" y="552" fill="#B96A3D" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">Markdown · Arabic and RTL</text>
 </svg>

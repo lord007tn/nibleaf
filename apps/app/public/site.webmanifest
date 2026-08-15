@@ -1,7 +1,7 @@
 {
   "name": "Nibleaf",
   "short_name": "Nibleaf",
-  "description": "Nibleaf Cloud documentation publishing with Arabic-ready authoring, search, analytics, and custom domains.",
+  "description": "Documentation publishing with Arabic-ready authoring, search, and versioned releases.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

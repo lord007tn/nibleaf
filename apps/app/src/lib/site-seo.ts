@@ -275,7 +275,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   // using the clean URL for the default language. Skip when there's only the one
   // real version (nothing to relate). They share the canonical base with the
   // canonical URL, so every origin advertises one consistent URL set.
-  const realAlternates = languages.filter((l) => l.path != null);
+  const realAlternates = noindex || pageSeo?.canonicalUrl?.trim() ? [] : languages.filter((l) => l.path != null);
   if (realAlternates.length > 1) {
     for (const language of realAlternates) {
       const altLang = language.isDefault ? undefined : language.code;

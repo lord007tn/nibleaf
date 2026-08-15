@@ -1,8 +1,6 @@
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { CopyCommand, Eyebrow, faqs, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
-import { GithubIcon } from '@/components/icons/brand';
-import { GITHUB_URL } from '@/lib/links';
+import { Eyebrow, faqs, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 
 /** A comparison cell: `true` renders a check, a string renders as explanatory text. */
 type Cell = true | string;
@@ -30,7 +28,7 @@ const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: 
     rows: [
       { label: 'Built-in full-text + fuzzy search (Orama)', cloud: true, self: true },
       { label: 'SSR, canonicals, JSON-LD, sitemaps, hreflang', cloud: true, self: true },
-      { label: 'First-party analytics (no trackers)', cloud: true, self: true },
+      { label: 'Product analytics; Cloudflare also processes hosted traffic', cloud: true, self: true },
     ],
   },
   {
@@ -47,7 +45,7 @@ const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: 
       { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres, any S3-compatible store' },
       { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new image; migrations run themselves' },
       { label: 'Data ownership', cloud: 'Exportable Markdown, always', self: 'Everything stays on your infra' },
-      { label: 'Support', cloud: 'support@nibleaf.com', self: 'GitHub issues & community' },
+      { label: 'Support', cloud: 'support@nibleaf.com', self: 'Available after public distribution resumes' },
     ],
   },
 ];
@@ -66,7 +64,7 @@ const betaPromises: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: strin
   {
     icon: ShieldCheck,
     title: 'Generous notice before paid plans',
-    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. Self-hosting stays free forever.',
+    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. Self-hosting availability is tracked separately.',
   },
 ];
 
@@ -86,9 +84,9 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <div className="flex justify-center">
             <Eyebrow>Pricing</Eyebrow>
           </div>
-          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Free forever self-hosted.</h1>
+          <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Clear status for self-hosting.</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            One open-source platform, two ways to run it. No feature gates, no per-seat pricing, no credit card.
+            Nibleaf Cloud is available now with no credit card. The AGPL-licensed deployment path is paused until public distribution access is restored.
           </p>
         </div>
       </section>
@@ -127,15 +125,15 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <h2 className="flex items-center gap-2 font-semibold text-lg">
             <Server className="size-5 text-primary" /> Self-hosted
           </h2>
-          <p className="mt-4 font-semibold text-4xl tracking-tight">$0</p>
-          <p className="mt-1 text-muted-foreground text-sm">free forever — AGPL-3.0</p>
+          <p className="mt-4 font-semibold text-4xl tracking-tight">Paused</p>
+          <p className="mt-1 text-muted-foreground text-sm">AGPL-3.0 codebase, public image unavailable</p>
           <ul className="mt-6 space-y-3 text-sm">
             {[
-              'The full platform, no feature gates',
-              'One docker compose to deploy',
-              'Your database, your storage, your domains',
-              'Unlimited everything, forever',
-              'Prebuilt images and a Coolify one-click config',
+              'Full-stack deployment design',
+              'PostgreSQL and S3-compatible storage',
+              'Docker Compose and Coolify configurations',
+              'Requires anonymous source and image access',
+              'Do not plan production from the current installer',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -143,11 +141,8 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
               </li>
             ))}
           </ul>
-          <div className="mt-6">
-            <CopyCommand command="docker compose up -d" />
-          </div>
           <a className={`${outlineButton} mt-4`} href="/self-hosting">
-            Read the self-hosting guide <ArrowRight className="size-4" />
+            Check self-hosting status <ArrowRight className="size-4" />
           </a>
         </div>
       </section>
@@ -159,7 +154,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <Eyebrow>What's included</Eyebrow>
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Every feature, both plans</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Self-hosting is not a demo tier. The only differences are who runs the infrastructure.
+              The table describes the intended full-stack deployment. Public installation is currently unavailable.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
@@ -238,16 +233,16 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             aria-hidden="true"
           />
           <div className="relative">
-            <h2 className="font-semibold text-3xl tracking-tight">Start free. Stay free if you self-host.</h2>
+            <h2 className="font-semibold text-3xl tracking-tight">Start with the free Cloud beta.</h2>
             <p className="mx-auto mt-3 max-w-xl text-background/75">
-              Try the cloud beta now, or run the whole platform yourself — same code either way.
+              Evaluate the editor and publishing workflow now. Check the distribution status before planning self-hosted infrastructure.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={primaryButton} href="/sign-up">
                 Get started free <ArrowRight className="size-4" />
               </a>
-              <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
-                <GithubIcon className="size-4" /> View on GitHub
+              <a className={invertedOutlineButton} href="/self-hosting">
+                Check distribution status
               </a>
             </div>
           </div>

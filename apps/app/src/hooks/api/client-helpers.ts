@@ -9,9 +9,19 @@ export async function errorMessage(res: Response, fallback: string): Promise<str
 }
 
 /** Unwrap a `{ data }` envelope, throwing a readable error on failure. */
+export class ApiResponseError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiResponseError';
+  }
+}
+
 export async function getData<T>(res: Response, what: string): Promise<T> {
   if (!res.ok) {
-    throw new Error(await errorMessage(res, `Failed to load ${what}.`));
+    throw new ApiResponseError(await errorMessage(res, `Failed to load ${what}.`), res.status);
   }
   const json = (await res.json()) as { data: T };
   return json.data;

@@ -138,11 +138,13 @@ describe('pageHead SEO cascade', () => {
     expect(meta(head, 'description')).toBe('Custom desc');
     expect(meta(head, 'og:image')).toBe('https://cdn/page-og.png');
     expect(canonical(head)).toBe('https://example.com/canonical');
+    expect(Object.keys(hreflangs(head))).toHaveLength(0);
   });
 
   it('emits noindex when the page sets noindex, even if the site allows indexing', () => {
     const head = pageHead(base({ page: { ...base().page, config: { seo: { noindex: true } } } }), 'p1');
     expect(meta(head, 'robots')).toBe('noindex,nofollow');
+    expect(Object.keys(hreflangs(head))).toHaveLength(0);
   });
 
   it('emits noindex when the language disallows indexing', () => {

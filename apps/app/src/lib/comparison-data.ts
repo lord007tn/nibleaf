@@ -112,12 +112,12 @@ export const nibleafPricing: PricingTable = {
       includes: 'Hosted dashboard and docs sites, managed database and storage, custom domains, analytics, search. Fair-use limits, no credit card.',
     },
     {
-      plan: 'Self-hosted',
-      price: 'Free forever',
-      includes: 'The entire open-source stack (AGPL-3.0) with one docker compose — no feature gates, your database and storage.',
+      plan: 'Self-hosted distribution',
+      price: 'Currently unavailable publicly',
+      includes: 'AGPL-3.0 codebase and full-stack Compose design. Anonymous repository and container access must be restored before installation works.',
     },
   ],
-  note: 'Paid cloud plans will come after the beta, announced with generous advance notice. Self-hosting stays free forever.',
+  note: 'No paid cloud plan is currently offered. Check the self-hosting status page before planning infrastructure.',
 };
 
 const mintlifyPricing: PricingTable = {
@@ -220,20 +220,20 @@ export const nibleafVsMintlify: Comparison = {
   path: '/compare/nibleaf-vs-mintlify',
   competitorName: 'Mintlify',
   competitorUrl: 'https://www.mintlify.com',
-  metaTitle: 'Nibleaf vs Mintlify — the open-source alternative, compared',
+  metaTitle: 'Nibleaf vs Mintlify: editor, pricing, RTL, and API docs',
   metaDescription:
-    'Nibleaf vs Mintlify, honestly compared: pricing, features, and where each wins. Nibleaf is open source and self-hostable; Mintlify leads on API tooling.',
+    'Compare Nibleaf and Mintlify on pricing, editors, Markdown portability, Arabic/RTL, API tooling, and current self-hosting availability.',
   heading: 'Nibleaf vs Mintlify',
   breadcrumbName: 'Nibleaf vs Mintlify',
   directAnswer: [
-    'Mintlify is a polished, hosted documentation platform; Nibleaf is the open-source alternative you can run yourself. Pick Nibleaf if you want a Notion-style editor over plain Markdown, first-class Arabic/RTL support, and the freedom to self-host under AGPL-3.0. Pick Mintlify if you need an OpenAPI playground, AI assistant, or preview deployments today — Nibleaf has not shipped those yet.',
+    'Mintlify is a polished hosted platform with strong API tooling. Nibleaf offers a visual editor over Markdown, a free cloud beta, and Arabic/RTL support. Its codebase is AGPL-3.0, but public source and container distribution is currently unavailable, so do not choose it for immediate self-hosting.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
   features: [
     {
-      feature: 'Open source & self-hostable',
-      nibleaf: yes('AGPL-3.0, one docker compose'),
+      feature: 'Public self-hosting',
+      nibleaf: partial('AGPL-3.0 codebase; public artifacts currently inaccessible'),
       competitor: no('Hosted platform'),
     },
     {
@@ -243,7 +243,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       feature: 'Free plan',
-      nibleaf: yes('Cloud free during beta; self-hosting free forever'),
+      nibleaf: yes('Cloud free during beta'),
       competitor: yes('Free Starter plan'),
     },
     { feature: 'Custom domains', nibleaf: yes(), competitor: yes('Included on free Starter') },
@@ -254,7 +254,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       feature: 'Built-in privacy-friendly analytics',
-      nibleaf: yes('No third-party trackers'),
+      nibleaf: yes('Product analytics; Cloudflare also processes hosted traffic'),
       competitor: partial('“Advanced insights” is listed under Enterprise'),
     },
     {
@@ -265,7 +265,7 @@ export const nibleafVsMintlify: Comparison = {
     { feature: 'llms.txt for AI assistants', nibleaf: yes('Generated per published site'), competitor: yes() },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: planned('On the public roadmap'),
+      nibleaf: planned('Documented gap; no committed date'),
       competitor: yes('Included on free Starter'),
     },
     { feature: 'Preview deployments', nibleaf: planned(), competitor: yes('Pro plan') },
@@ -284,25 +284,25 @@ export const nibleafVsMintlify: Comparison = {
   pickNibleaf: {
     title: 'When to pick Nibleaf',
     reasons: [
-      'You want to own your docs platform: Nibleaf is AGPL-3.0 open source and self-hosts with one docker compose. Mintlify is hosted-only.',
+      'You want a browser editor over exportable Markdown and are comfortable using the managed beta while public distribution is unavailable.',
       'Your writers prefer a Notion-style WYSIWYG editor over editing MDX files — while the content stays plain Markdown.',
       'You publish documentation in Arabic or another RTL language and want per-language page trees, not an afterthought.',
-      'You want built-in, privacy-friendly reader analytics without adding a third-party tracker.',
-      'You want a docs stack with no vendor lock-in: open code, plain-Markdown export, your own storage if you self-host.',
+      'You want built-in reader analytics and accept Cloudflare processing on the managed service.',
+      'You want plain-Markdown export and a documented path toward running the full stack after public artifacts become accessible.',
     ],
   },
   verdict: [
     'Mintlify is the more mature product today. Its free Starter plan is genuinely generous — custom domain, web editor, and an API playground — and its AI tooling is ahead of most of the market. If your documentation is API-first and you are comfortable with a closed, hosted platform, it is a strong choice.',
-    'Nibleaf wins on ownership and writing experience: the entire platform is open source, self-hosting is free forever, the editor is a real WYSIWYG over plain Markdown, and Arabic/RTL is first-class rather than an afterthought. The gaps — OpenAPI playground, preview deployments, SSO — are disclosed above and tracked publicly on GitHub. If those gaps are not blockers for you, Nibleaf gives you the same core docs workflow without lock-in.',
+    'Nibleaf is strongest on browser-based Markdown editing and Arabic/RTL authoring. Its public distribution is not usable today, and its OpenAPI playground, preview deployments, and SSO remain documented gaps. Choose the Cloud beta only if those limits are acceptable.',
   ],
   faqs: [
     {
       q: 'Is Nibleaf a good alternative to Mintlify?',
-      a: 'Yes, if you value open source and self-hosting over breadth of features. Nibleaf covers the core docs workflow — WYSIWYG Markdown editing, versioned publishing, search, custom domains, analytics — and is free (cloud beta and self-hosted). Mintlify is currently ahead on API tooling: OpenAPI playground, AI assistant, and preview deployments.',
+      a: 'It can be, if you value browser-based Markdown editing and Arabic/RTL support. Nibleaf Cloud covers editing, versioned publishing, search, custom domains, and analytics during its free beta. Mintlify is ahead on API tooling, and Nibleaf public self-hosting is currently unavailable.',
     },
     {
       q: 'Is Mintlify open source?',
-      a: 'The Mintlify platform is a closed-source hosted product, although some of its components are open source. Nibleaf’s entire platform is open source under AGPL-3.0 and can be self-hosted with one docker compose.',
+      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. Nibleaf’s codebase is AGPL-3.0, but its repository and container package must become anonymously accessible before public self-hosting works.',
     },
     {
       q: 'How much does Mintlify cost?',
@@ -314,7 +314,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'As of July 2026, Nibleaf does not yet ship an OpenAPI playground/API try-it, two-way git sync with PR previews, reader authentication or personalization, or SSO/SAML. All of these are tracked on the public roadmap at github.com/lord007tn/nibleaf.',
+      a: 'As of August 2026, Nibleaf does not ship an OpenAPI playground/API try-it, two-way git sync with PR previews, reader authentication or personalization, or SSO/SAML. These are documented gaps without committed delivery dates.',
     },
   ],
 };
@@ -326,16 +326,20 @@ export const nibleafVsGitbook: Comparison = {
   competitorUrl: 'https://www.gitbook.com',
   metaTitle: 'Nibleaf vs GitBook — pricing and features, honestly compared',
   metaDescription:
-    'Nibleaf vs GitBook: current pricing, a feature matrix, and where each wins. Nibleaf is the open-source, self-hostable option with first-class Arabic/RTL.',
+    'Nibleaf vs GitBook: current pricing, editors, git workflow, Arabic/RTL, Markdown portability, and verified self-hosting availability.',
   heading: 'Nibleaf vs GitBook',
   breadcrumbName: 'Nibleaf vs GitBook',
   directAnswer: [
-    'GitBook is a polished hosted docs platform priced per site plus per user; Nibleaf is the open-source alternative with a free cloud beta and free self-hosting. Pick Nibleaf for ownership, plain-Markdown portability, and Arabic/RTL documentation. Pick GitBook if you need git sync, reader authentication, or its AI features today.',
+    'GitBook is a polished hosted docs platform priced per site plus per user. Nibleaf is a documentation platform with a free cloud beta, Markdown export, and Arabic/RTL support. GitBook also publishes its reader renderer under GPLv3, but its workspace and editor remain part of the hosted service.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: gitbookPricing,
   features: [
-    { feature: 'Open source & self-hostable', nibleaf: yes('AGPL-3.0, one docker compose'), competitor: no('Hosted platform') },
+    {
+      feature: 'Public self-hosting',
+      nibleaf: partial('AGPL-3.0 codebase; public image access must be restored'),
+      competitor: partial('GPLv3 published-site renderer; not the full workspace'),
+    },
     {
       feature: 'WYSIWYG block editor',
       nibleaf: yes('Notion-style; persists plain Markdown'),
@@ -348,7 +352,7 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       feature: 'No per-seat fees',
-      nibleaf: yes('Free beta; self-hosting free forever'),
+      nibleaf: yes('Cloud is free during beta'),
       competitor: no('$12 per user/month on paid plans'),
     },
     {
@@ -363,7 +367,7 @@ export const nibleafVsGitbook: Comparison = {
       competitor: yes('Via GitHub/GitLab sync'),
     },
     { feature: 'llms.txt for AI assistants', nibleaf: yes('Generated per published site'), competitor: unknown('See their docs') },
-    { feature: 'Two-way git sync', nibleaf: planned('On the public roadmap'), competitor: yes('GitHub & GitLab, on the free plan') },
+    { feature: 'Two-way git sync', nibleaf: planned('Documented gap; track in GitHub issues'), competitor: yes('GitHub & GitLab, on the free plan') },
     { feature: 'API playground', nibleaf: planned(), competitor: yes('On the free plan') },
     { feature: 'Preview deployments', nibleaf: planned(), competitor: yes('On the free plan') },
     { feature: 'Reader authentication & adaptive content', nibleaf: planned(), competitor: yes('Ultimate plan') },
@@ -383,20 +387,20 @@ export const nibleafVsGitbook: Comparison = {
     title: 'When to pick Nibleaf',
     reasons: [
       'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Premium pricing as of July 2026).',
-      'You want to self-host: Nibleaf is AGPL-3.0 open source; GitBook’s current platform is cloud-only.',
+      'You need the full editor, publishing pipeline, and reader to be deployable together after Nibleaf’s public image access is restored. GitBook self-hosts only its published-site renderer.',
       'You write documentation in Arabic or another RTL language and want per-language page trees built in, not a paid translation add-on.',
       'You want your content to stay plain Markdown you can export and move any time.',
       'You want built-in analytics without upgrading to a paid tier.',
     ],
   },
   verdict: [
-    'GitBook is an excellent hosted product with a serious feature set: git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. The trade-offs are price — a custom domain starts at $65 per site/month plus $12 per user/month as of July 2026 — and that it is a closed platform you cannot run yourself.',
-    'Nibleaf covers the everyday docs workflow — WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics — for free, in the open, with Arabic/RTL as a first-class citizen. If you need GitBook’s git sync or reader auth today, use GitBook; if you want ownership and a lower bill, Nibleaf is built for exactly that.',
+    'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook says that path is not recommended or supported and it does not include the hosted workspace and editor.',
+    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, and Arabic/RTL during its free beta. Its public full-stack distribution is not currently installable. If you need GitBook’s git sync or reader authentication today, GitBook is the safer fit.',
   ],
   faqs: [
     {
       q: 'Is Nibleaf a good alternative to GitBook?',
-      a: 'Yes, for teams that want an open-source, self-hostable platform with a block-style editor over plain Markdown. Nibleaf includes custom domains and analytics for free (cloud beta and self-hosted), while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of July 2026. GitBook is ahead on git sync, reader authentication, and AI features.',
+      a: 'It can be for teams that want a block-style editor over Markdown and Arabic/RTL support. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of July 2026. GitBook is ahead on git sync, reader authentication, AI features, and currently verifiable distribution.',
     },
     {
       q: 'How much does GitBook cost?',
@@ -404,11 +408,11 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       q: 'Can I self-host GitBook?',
-      a: 'GitBook’s current platform is offered as a hosted service — its pricing page lists only cloud plans as of July 2026. Nibleaf is open source under AGPL-3.0 and self-hosts with one docker compose.',
+      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook says this is not its recommended or supported path. The hosted workspace and editor are not included. Nibleaf is designed to deploy the full stack, but its public repository and container image must be anonymously accessible before the public installation path is usable.',
     },
     {
       q: 'Does Nibleaf have git sync like GitBook?',
-      a: 'Not yet. Two-way git sync with PR previews is on Nibleaf’s public roadmap (github.com/lord007tn/nibleaf). Today, Nibleaf content is plain Markdown that you can export at any time.',
+      a: 'Not yet. Two-way git sync with PR previews is a documented gap. Today, Nibleaf stores Markdown in its database and exports Markdown in a ZIP; it is not a live Git repository.',
     },
     {
       q: 'Which is better for Arabic or RTL documentation?',
@@ -424,11 +428,11 @@ export const nibleafVsDocusaurus: Comparison = {
   competitorUrl: 'https://docusaurus.io',
   metaTitle: 'Nibleaf vs Docusaurus — docs platform vs static site generator',
   metaDescription:
-    'Nibleaf vs Docusaurus: both open source, different shapes. Docusaurus is a docs-as-code framework; Nibleaf adds a hosted-style editor and built-in search.',
+    'Nibleaf vs Docusaurus: browser-based docs platform versus static docs-as-code, compared on editing, search, hosting, Arabic/RTL, and ownership.',
   heading: 'Nibleaf vs Docusaurus',
   breadcrumbName: 'Nibleaf vs Docusaurus',
   directAnswer: [
-    'Docusaurus and Nibleaf are both open source, but they solve documentation differently. Docusaurus is a free, MIT-licensed static site generator: your docs live as MDX in a git repo, and developers build and deploy the site. Nibleaf is a full documentation platform — editor, publishing, search, analytics, and hosting — that non-developers can use through a WYSIWYG editor, available as a free cloud beta or self-hosted.',
+    'Docusaurus is a free, MIT-licensed static site generator whose MDX source lives in Git. Nibleaf is a managed documentation platform with a WYSIWYG editor, publishing, search, analytics, and a free cloud beta. Nibleaf’s codebase is AGPL-3.0, but its public installation artifacts are not currently accessible.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: docusaurusPricing,
@@ -473,7 +477,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: planned('On the public roadmap'),
+      nibleaf: planned('Documented gap; no committed date'),
       competitor: partial('Via community plugins'),
     },
     {
@@ -497,12 +501,12 @@ export const nibleafVsDocusaurus: Comparison = {
       'Non-developers write your docs: Nibleaf gives them a Notion-style WYSIWYG editor, no git or Node.js required.',
       'You want instant publishing with versioned snapshots instead of a build-and-deploy pipeline.',
       'You want search and reader analytics built in, without wiring up Algolia or an analytics service.',
-      'You want a managed option (the free cloud beta) with custom domains — or the same stack self-hosted.',
+      'You want a managed option in free beta with custom domains and do not require immediate self-hosting.',
       'You need Arabic/RTL editing in the authoring UI itself, not just in the rendered output.',
     ],
   },
   verdict: [
-    'This is the friendliest comparison on this site: both projects are open source, and Docusaurus is excellent at what it does. If you have engineers who are happy in git and want total control of a React codebase, Docusaurus costs nothing and will not limit you.',
+    'Docusaurus is excellent at what it does. If engineers are happy in Git and want control of a React codebase, it costs nothing and has a mature public distribution.',
     'Nibleaf trades some of that code-level control for a platform normal humans can operate: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
   ],
   faqs: [
@@ -512,15 +516,15 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       q: 'What is the difference between Nibleaf and Docusaurus?',
-      a: 'Docusaurus is a static site generator: content is MDX in a git repo, and developers build and deploy the site. Nibleaf is a documentation platform: a WYSIWYG editor over plain Markdown, versioned publishing, built-in search and analytics, and hosting — free cloud beta or self-hosted (AGPL-3.0).',
+      a: 'Docusaurus is a static site generator: content is MDX in Git, and developers build and deploy the site. Nibleaf is a managed documentation platform with a WYSIWYG editor over Markdown, versioned publishing, built-in search and analytics, and a free cloud beta. Its AGPL-3.0 public installation path is currently unavailable.',
     },
     {
       q: 'Does Docusaurus support Arabic and RTL?',
       a: 'Yes — the Docusaurus i18n docs state that right-to-left locales such as Arabic and Hebrew are supported. Nibleaf additionally makes the authoring experience RTL-aware: per-language page trees and an editor that handles RTL text natively.',
     },
     {
-      q: 'Can I self-host both Nibleaf and Docusaurus?',
-      a: 'Yes. A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full platform (app, API, worker, database, storage) that self-hosts with one docker compose under AGPL-3.0.',
+      q: 'Can I self-host Nibleaf and Docusaurus?',
+      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf has a full-stack Compose design, but its repository and container image must become anonymously accessible before a new public user can install it.',
     },
     {
       q: 'Which is better for non-developers?',
@@ -534,8 +538,8 @@ const nibleafAlternativeEntry = (vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product — and compared to ${vs} it does not yet have an OpenAPI playground, two-way git sync, reader authentication, or SSO/SAML. The roadmap is public on GitHub.`,
-  bestFor: 'Teams that want an open-source, self-hostable docs platform with a WYSIWYG Markdown editor and first-class Arabic/RTL.',
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Compared with ${vs}, it lacks an OpenAPI playground, two-way git sync, reader authentication, and SSO/SAML. Its public source and container distribution is also unavailable today.`,
+  bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
 const docusaurusEntry: AlternativeEntry = {
@@ -583,13 +587,13 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   path: '/alternatives/mintlify',
   competitorName: 'Mintlify',
   competitorUrl: 'https://www.mintlify.com',
-  metaTitle: 'The best Mintlify alternatives in 2026 (open source included)',
+  metaTitle: 'Mintlify alternatives: 5 hosted and open-source options (2026)',
   metaDescription:
-    'Five real Mintlify alternatives compared: Nibleaf (open source), Docusaurus, Starlight, Scalar, and GitBook — with pricing and who each is actually for.',
+    'Compare five Mintlify alternatives by editor, API workflow, hosting, Arabic/RTL, pricing, and verified public availability.',
   heading: 'Mintlify alternatives',
   breadcrumbName: 'Mintlify alternatives',
   directAnswer: [
-    'The best Mintlify alternative depends on what you are optimizing for. If you want an open-source, self-hostable platform with a WYSIWYG Markdown editor, that is Nibleaf — we build it, and we list what it still lacks below. If you want a free static site generator, look at Docusaurus or Starlight; if your docs are mostly an API reference, look at Scalar; if you want another polished hosted platform, look at GitBook.',
+    'The best Mintlify alternative depends on the workflow. Nibleaf Cloud offers a WYSIWYG Markdown editor and Arabic/RTL support, but its public self-hosting distribution is currently unavailable. Docusaurus and Starlight are public static generators, Scalar is API-first, and GitBook is another hosted editor.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
@@ -597,19 +601,19 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   faqs: [
     {
       q: 'What is the best open-source alternative to Mintlify?',
-      a: 'Nibleaf, if you want a full platform (editor, publishing, search, analytics, hosting) — it is AGPL-3.0 and self-hosts with one docker compose. Docusaurus or Starlight, if you prefer a static site generator and a docs-as-code workflow.',
+      a: 'Docusaurus or Starlight are the verifiable open-source choices today if you prefer a static generator and docs-as-code. Nibleaf’s codebase is AGPL-3.0, but its public repository and container package are not anonymously accessible, so its self-hosting path is not ready.',
     },
     {
       q: 'What is the best free alternative to Mintlify?',
-      a: 'Docusaurus and Starlight are free forever (you pay only for static hosting, which can also be free). Nibleaf is free too: the cloud is free while in beta, and self-hosting is free forever. Note that Mintlify itself has a free Starter plan, so "free" alone may not be a reason to switch.',
+      a: 'Docusaurus and Starlight are free software, with hosting costs determined by where you deploy the static output. Nibleaf Cloud is free while in beta. Mintlify itself has a free Starter plan, so compare workflows and limits rather than price alone.',
     },
     {
       q: 'Why would I switch away from Mintlify?',
-      a: 'Common reasons are wanting to self-host or own the platform (Mintlify is hosted-only), wanting content as plain Markdown in an editor non-developers can use, or needing first-class Arabic/RTL documentation. If none of those apply, Mintlify remains a strong product.',
+      a: 'Common reasons are wanting a different ownership model, a static docs-as-code workflow, exportable Markdown in a browser editor, or stronger Arabic/RTL support. If none apply, Mintlify remains a strong product.',
     },
     {
       q: 'Is Nibleaf really free?',
-      a: 'Yes. Nibleaf Cloud is free while in beta (fair-use limits, no credit card), and self-hosting the open-source AGPL-3.0 stack is free forever. Paid cloud plans will come later, announced with generous advance notice.',
+      a: 'Nibleaf Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. Public self-hosting is unavailable until anonymous source and container access is restored.',
     },
   ],
 };
@@ -619,13 +623,13 @@ export const gitbookAlternatives: AlternativesRoundup = {
   path: '/alternatives/gitbook',
   competitorName: 'GitBook',
   competitorUrl: 'https://www.gitbook.com',
-  metaTitle: 'The best GitBook alternatives in 2026 (open source included)',
+  metaTitle: 'GitBook alternatives: 5 open-source and hosted options (2026)',
   metaDescription:
-    'Five real GitBook alternatives compared: Nibleaf (open source), Docusaurus, Starlight, Scalar, and Mintlify — with pricing and who each is actually for.',
+    'Compare five GitBook alternatives by editor, Git workflow, hosting, custom domains, pricing, and verified public availability.',
   heading: 'GitBook alternatives',
   breadcrumbName: 'GitBook alternatives',
   directAnswer: [
-    'If you like GitBook’s block editor but not its per-site-plus-per-seat pricing or its closed platform, the closest alternative is Nibleaf: an open-source docs platform with a Notion-style editor over plain Markdown, free while in beta and free forever self-hosted — we build it, and its gaps are listed below. Docusaurus and Starlight are the strongest free static-site options, Scalar is the API-first pick, and Mintlify is the closest hosted-SaaS equivalent.',
+    'If you like GitBook’s block editor but want a different ownership or pricing model, compare the authoring workflow first. Nibleaf provides a browser editor and Markdown export, Docusaurus and Starlight are static docs-as-code options, Scalar is API-first, and Mintlify is the closest hosted developer-docs platform. GitBook itself also offers a self-hostable GPLv3 reader renderer, though not its full workspace.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: gitbookPricing,
@@ -633,19 +637,19 @@ export const gitbookAlternatives: AlternativesRoundup = {
   faqs: [
     {
       q: 'What is the best open-source alternative to GitBook?',
-      a: 'Nibleaf is the closest like-for-like: a block-style WYSIWYG editor over plain Markdown, publishing, search, custom domains, and analytics — open source under AGPL-3.0 with free self-hosting. Docusaurus and Starlight are excellent if you prefer a static site generator.',
+      a: 'Docusaurus and Starlight are the clearest publicly installable open-source choices if you prefer a static generator. Nibleaf Cloud is closer to GitBook’s browser-editor workflow, but its AGPL-3.0 source and container distribution is currently unavailable publicly.',
     },
     {
       q: 'What is the cheapest GitBook alternative with a custom domain?',
-      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of July 2026. Nibleaf includes custom domains in its free beta and in free self-hosting. Mintlify’s free Starter plan also includes a custom domain. Static generators like Docusaurus support custom domains through whatever host you deploy to.',
+      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of July 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
     },
     {
       q: 'Can I self-host a GitBook alternative?',
-      a: 'Yes. Nibleaf self-hosts with one docker compose (AGPL-3.0). Docusaurus and Starlight produce static files you can host anywhere. GitBook’s own current platform is cloud-only as of July 2026.',
+      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf is designed for full-stack self-hosting, though its public source and image access must be restored before anonymous installation works.',
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of July 2026: two-way git sync, an API playground, preview deployments, reader authentication/adaptive content, and SAML SSO. These are on the public roadmap at github.com/lord007tn/nibleaf. GitBook ships all of them today on various tiers.',
+      a: 'As of August 2026: two-way git sync, an API playground, preview deployments, reader authentication/adaptive content, and SAML SSO. These are documented gaps rather than committed roadmap dates. GitBook ships them on various tiers.',
     },
   ],
 };
@@ -655,13 +659,13 @@ export const readmeAlternatives: AlternativesRoundup = {
   path: '/alternatives/readme',
   competitorName: 'ReadMe',
   competitorUrl: 'https://readme.com',
-  metaTitle: 'The best ReadMe alternatives in 2026 (open source included)',
+  metaTitle: 'ReadMe alternatives: 5 API and product-docs options (2026)',
   metaDescription:
-    'Five real ReadMe alternatives compared: Nibleaf (open source), Scalar, Mintlify, Docusaurus, and Starlight — with pricing and who each is actually for.',
+    'Compare five ReadMe alternatives by API tooling, editor, product guides, hosting, pricing, and verified public availability.',
   heading: 'ReadMe alternatives',
   breadcrumbName: 'ReadMe alternatives',
   directAnswer: [
-    'ReadMe is strongest as a hosted API-reference hub, so the right alternative depends on which half you need. For interactive API references, Scalar and Mintlify are the closest matches. For guides, knowledge bases, and product docs — especially if you want open source, self-hosting, or Arabic/RTL — Nibleaf is the strongest pick; we build it, and its API-reference gap is disclosed plainly below.',
+    'ReadMe is strongest as a hosted API-reference hub. Scalar and Mintlify are closer for interactive API references. Nibleaf Cloud focuses on guides, product docs, browser editing, and Arabic/RTL, but it lacks an API playground and its public self-hosting distribution is currently unavailable.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: readmePricing,
@@ -669,7 +673,7 @@ export const readmeAlternatives: AlternativesRoundup = {
   faqs: [
     {
       q: 'What is the best open-source alternative to ReadMe?',
-      a: 'For product docs and guides, Nibleaf: an AGPL-3.0 platform with a WYSIWYG Markdown editor, search, custom domains, and analytics, free to self-host. For the API-reference side specifically, Scalar has an open-source API client and generates references from OpenAPI documents; Docusaurus covers it with community plugins.',
+      a: 'For API references, Scalar has an open-source client and generates references from OpenAPI documents; Docusaurus covers this through community plugins. Nibleaf’s codebase is AGPL-3.0, but it is not currently a publicly installable choice because its source and image distribution is inaccessible.',
     },
     {
       q: 'How much does ReadMe cost?',
@@ -677,11 +681,11 @@ export const readmeAlternatives: AlternativesRoundup = {
     },
     {
       q: 'Does Nibleaf have an interactive API reference like ReadMe?',
-      a: 'Not yet — an OpenAPI playground/API try-it is on Nibleaf’s public roadmap (github.com/lord007tn/nibleaf). If interactive API reference is your primary need today, Scalar or Mintlify are closer fits; Nibleaf is strongest for guides, product docs, and bilingual (Arabic/English) documentation.',
+      a: 'Not yet. An OpenAPI playground/API try-it is a documented gap without a committed date. If interactive API reference is the primary need, Scalar or Mintlify are closer fits; Nibleaf is focused on guides, product docs, and bilingual Arabic/English documentation.',
     },
     {
       q: 'Is Nibleaf really free?',
-      a: 'Yes. Nibleaf Cloud is free while in beta (fair-use limits, no credit card), and self-hosting the open-source AGPL-3.0 stack is free forever. Paid cloud plans will come later, announced with generous advance notice.',
+      a: 'Nibleaf Cloud is free while in beta, with fair-use limits and no credit card. No paid cloud plan is currently offered. Public self-hosting is unavailable until anonymous source and container access is restored.',
     },
   ],
 };

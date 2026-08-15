@@ -2,12 +2,11 @@ import { NibleafMark } from '@nibleaf/design-system/brand';
 import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { GithubIcon } from '@/components/icons/brand';
-import { type BlogEntry, type BlogFaq, blogEntry, blogReadingMinutes } from '@/lib/blog';
-import { GITHUB_URL } from '@/lib/links';
+import { type BlogEntry, type BlogFaq, blogEntry, blogLanguage, blogReadingMinutes } from '@/lib/blog';
 import { breadcrumbLd, canonicalHref, faqLd, pageMeta } from '@/lib/marketing-seo';
 
-const dateFormatter = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+const dateFormatter = (entry: BlogEntry) =>
+  new Intl.DateTimeFormat(blogLanguage(entry) === 'ar' ? 'ar' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
 
 /**
  * Standard <head> payload for a blog article: SEO meta with og:type article,
@@ -16,6 +15,10 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', { day: 'numeric', month: 
  */
 export function articleHead(entry: BlogEntry) {
   const path = `/blog/${entry.slug}`;
+  const language = blogLanguage(entry);
+  const arabic = language === 'ar';
+  const translation = entry.translationOf ? blogEntry(entry.translationOf) : undefined;
+  const imagePath = arabic ? '/brand/raster/social/nibleaf-og-card-ar.png' : '/brand/raster/social/nibleaf-og-card.png';
   const scripts = [
     {
       type: 'application/ld+json',
@@ -26,9 +29,9 @@ export function articleHead(entry: BlogEntry) {
         description: entry.description,
         datePublished: entry.datePublished,
         dateModified: entry.dateModified,
-        inLanguage: 'en',
+        inLanguage: language,
         mainEntityOfPage: canonicalHref(path),
-        image: canonicalHref('/brand/raster/social/nibleaf-og-card.png'),
+        image: canonicalHref(imagePath),
         author: { '@type': 'Organization', name: 'Nibleaf', url: canonicalHref('/about') },
         publisher: {
           '@type': 'Organization',
@@ -38,15 +41,36 @@ export function articleHead(entry: BlogEntry) {
       }),
     },
     breadcrumbLd([
-      { name: 'Home', path: '/' },
-      { name: 'Blog', path: '/blog' },
+      { name: arabic ? 'الرئيسية' : 'Home', path: '/' },
+      { name: arabic ? 'المدونة' : 'Blog', path: '/blog' },
       { name: entry.title, path },
     ]),
     ...(entry.faqs && entry.faqs.length > 0 ? [faqLd(entry.faqs.map((f) => ({ q: f.question, a: f.answer })))] : []),
   ];
   return {
-    meta: pageMeta({ title: `${entry.title} — Nibleaf blog`, description: entry.description, path, type: 'article' }),
-    links: [{ rel: 'canonical', href: canonicalHref(path) }],
+    meta: pageMeta({
+      title: entry.metaTitle ?? `${entry.title} | Nibleaf`,
+      description: entry.description,
+      path,
+      type: 'article',
+      locale: arabic ? 'ar_AR' : 'en_US',
+      imagePath,
+      imageAlt: arabic ? `Nibleaf: ${entry.title}` : undefined,
+    }),
+    links: [
+      { rel: 'canonical', href: canonicalHref(path) },
+      ...(translation
+        ? [
+            { rel: 'alternate', hreflang: language, href: canonicalHref(path) },
+            { rel: 'alternate', hreflang: blogLanguage(translation), href: canonicalHref(`/blog/${translation.slug}`) },
+            {
+              rel: 'alternate',
+              hreflang: 'x-default',
+              href: canonicalHref(`/blog/${language === 'en' ? entry.slug : translation.slug}`),
+            },
+          ]
+        : []),
+    ],
     scripts,
   };
 }
@@ -81,13 +105,14 @@ function CoverPanel({ entry, className }: { className: string; entry: BlogEntry 
 }
 
 function CardMeta({ entry }: { entry: BlogEntry }) {
+  const arabic = blogLanguage(entry) === 'ar';
   return (
     <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
-      <time dateTime={entry.datePublished}>{dateFormatter.format(new Date(entry.datePublished))}</time>
+      <time dateTime={entry.datePublished}>{dateFormatter(entry).format(new Date(entry.datePublished))}</time>
       <span aria-hidden="true">·</span>
       <span className="inline-flex items-center gap-1">
         <Clock aria-hidden="true" className="size-3.5" />
-        {blogReadingMinutes(entry)} min read
+        {arabic ? `${blogReadingMinutes(entry)} دقائق` : `${blogReadingMinutes(entry)} min read`}
       </span>
     </div>
   );
@@ -110,9 +135,11 @@ function TagChips({ entry }: { entry: BlogEntry }) {
 
 /** The one editorial card shared by the index and the "read next" rail. */
 export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; featured?: boolean }) {
+  const language = blogLanguage(entry);
+  const direction = language === 'ar' ? 'rtl' : 'ltr';
   if (featured) {
     return (
-      <article>
+      <article dir={direction} lang={language}>
         <a
           className="group grid overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-colors hover:border-primary/40 md:grid-cols-2"
           href={`/blog/${entry.slug}`}
@@ -120,7 +147,7 @@ export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; fea
           <CoverPanel className="aspect-[16/10] w-full md:aspect-auto md:h-full md:min-h-[260px]" entry={entry} />
           <div className="flex flex-col justify-center p-7 md:p-9">
             <TagChips entry={entry} />
-            <h2 className="text-pretty font-semibold text-2xl tracking-tight transition-colors group-hover:text-primary sm:text-3xl">
+            <h2 className="text-pretty font-semibold text-2xl tracking-tight transition-colors group-hover:text-primary rtl:tracking-normal sm:text-3xl">
               {entry.title}
             </h2>
             <p className="mt-3 mb-5 max-w-[48ch] text-muted-foreground text-sm leading-relaxed sm:text-[15px]">{entry.description}</p>
@@ -131,7 +158,7 @@ export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; fea
     );
   }
   return (
-    <article className="h-full">
+    <article className="h-full" dir={direction} lang={language}>
       <a
         className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xs transition-colors hover:border-primary/40"
         href={`/blog/${entry.slug}`}
@@ -139,7 +166,7 @@ export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; fea
         <CoverPanel className="aspect-[16/9] w-full shrink-0" entry={entry} />
         <div className="flex flex-1 flex-col p-6">
           <TagChips entry={entry} />
-          <h3 className="font-semibold text-lg leading-snug tracking-tight transition-colors group-hover:text-primary">{entry.title}</h3>
+          <h3 className="font-semibold text-lg leading-snug tracking-tight transition-colors group-hover:text-primary rtl:tracking-normal">{entry.title}</h3>
           <p className="mt-2 mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{entry.description}</p>
           <CardMeta entry={entry} />
         </div>
@@ -175,9 +202,9 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
           <Eyebrow>Blog</Eyebrow>
           <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Docs, open source, and ownership</h1>
+              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Product documentation, search, and ownership</h1>
               <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-                Guides and notes from building Nibleaf — self-hosting, Markdown, bilingual documentation, and honest looks at the docs tooling
+                Guides and notes from building Nibleaf: deployment architecture, Markdown, bilingual documentation, and source-backed looks at the docs tooling
                 landscape.
               </p>
             </div>
@@ -242,10 +269,12 @@ export function Note({ children }: { children: ReactNode }) {
 // biome-ignore lint/suspicious/noExplicitAny: MDX component maps are untyped by design.
 export const articleMdxComponents: Record<string, ComponentType<any>> = { Callout, Note };
 
-function ArticleFaqSection({ faqs }: { faqs: BlogFaq[] }) {
+function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar' | 'en' }) {
   return (
     <section className="mt-12">
-      <h2 className="mb-4 border-border border-b pb-3 font-semibold text-2xl tracking-tight">Frequently asked questions</h2>
+      <h2 className="mb-4 border-border border-b pb-3 font-semibold text-2xl tracking-tight rtl:tracking-normal">
+        {language === 'ar' ? 'أسئلة شائعة' : 'Frequently asked questions'}
+      </h2>
       <dl className="flex flex-col gap-5">
         {faqs.map((faq) => (
           <div key={faq.question}>
@@ -258,7 +287,8 @@ function ArticleFaqSection({ faqs }: { faqs: BlogFaq[] }) {
   );
 }
 
-function BlogCta() {
+function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
+  const arabic = language === 'ar';
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-foreground px-8 py-14 text-center text-background">
@@ -268,16 +298,20 @@ function BlogCta() {
           aria-hidden="true"
         />
         <div className="relative">
-          <h2 className="font-semibold text-3xl tracking-tight">Ship docs your users will love</h2>
+          <h2 className="font-semibold text-3xl tracking-tight rtl:tracking-normal">
+            {arabic ? 'انشر وثائق واضحة بالعربية والإنجليزية' : 'Ship docs your users will love'}
+          </h2>
           <p className="mx-auto mt-3 max-w-xl text-background/75">
-            Start free on Nibleaf Cloud, or self-host the same open-source platform on your own servers.
+            {arabic
+              ? 'جرّب Nibleaf Cloud مجانًا، أو شغّل المنصة مفتوحة المصدر على خادمك.'
+              : 'Start free on Nibleaf Cloud, and check the distribution status before planning self-hosting.'}
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
-              Get started free <ArrowRight className="size-4" />
+              {arabic ? 'ابدأ مجانًا' : 'Get started free'} <ArrowRight className="size-4 rtl:rotate-180" />
             </a>
-            <a className={invertedOutlineButton} href={GITHUB_URL} rel="noreferrer" target="_blank">
-              <GithubIcon className="size-4" /> View on GitHub
+            <a className={invertedOutlineButton} href="/self-hosting">
+              {arabic ? 'حالة الاستضافة الذاتية' : 'Self-hosting status'}
             </a>
           </div>
         </div>
@@ -291,6 +325,7 @@ const shareButton =
 
 function ShareRow({ entry }: { entry: BlogEntry }) {
   const shareUrl = canonicalHref(`/blog/${entry.slug}`);
+  const arabic = blogLanguage(entry) === 'ar';
   const [copied, setCopied] = useState(false);
   // navigator is undefined during SSR — enable clipboard affordance after mount
   // so server and client render identically.
@@ -313,9 +348,14 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="me-1 text-muted-foreground text-xs">Share</span>
+      <span className="me-1 text-muted-foreground text-xs">{arabic ? 'مشاركة' : 'Share'}</span>
       {canCopy ? (
-        <button aria-label={copied ? 'Link copied' : 'Copy article link'} className={shareButton} onClick={copyLink} type="button">
+        <button
+          aria-label={copied ? (arabic ? 'نُسخ الرابط' : 'Link copied') : arabic ? 'نسخ رابط المقال' : 'Copy article link'}
+          className={shareButton}
+          onClick={copyLink}
+          type="button"
+        >
           {copied ? <Check aria-hidden="true" className="size-4 text-primary" /> : <Link2 aria-hidden="true" className="size-4" />}
         </button>
       ) : null}
@@ -325,7 +365,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">Share on X</span>
+        <span className="sr-only">{arabic ? 'مشاركة على X' : 'Share on X'}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
@@ -336,7 +376,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">Share on LinkedIn</span>
+        <span className="sr-only">{arabic ? 'مشاركة على LinkedIn' : 'Share on LinkedIn'}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
         </svg>
@@ -351,14 +391,14 @@ const proseClass = [
   '[&_p]:mt-0 [&_p]:mb-4',
   '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary/80',
   '[&_strong]:font-semibold [&_strong]:text-foreground',
-  '[&_h2]:mt-12 [&_h2]:mb-3 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-2.5 [&_h2]:font-semibold [&_h2]:text-2xl [&_h2]:tracking-tight [&_h2:first-child]:mt-0',
-  '[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:font-semibold [&_h3]:text-lg [&_h3]:tracking-tight',
+  '[&_h2]:mt-12 [&_h2]:mb-3 [&_h2]:border-b [&_h2]:border-border [&_h2]:pb-2.5 [&_h2]:font-semibold [&_h2]:text-2xl [&_h2:first-child]:mt-0',
+  '[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:font-semibold [&_h3]:text-lg',
   '[&_ul]:mt-0 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:ps-5 [&_ol]:mt-0 [&_ol]:mb-4 [&_ol]:list-decimal [&_ol]:ps-5 [&_li]:mb-1.5',
   '[&_blockquote]:my-5 [&_blockquote]:border-s-2 [&_blockquote]:border-primary/50 [&_blockquote]:ps-4 [&_blockquote]:text-muted-foreground',
   // Inline code
-  '[&_:not(pre)>code]:rounded [&_:not(pre)>code]:border [&_:not(pre)>code]:border-border [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px]',
+  '[&_:not(pre)>code]:rounded [&_:not(pre)>code]:border [&_:not(pre)>code]:border-border [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:[direction:ltr] [&_:not(pre)>code]:[unicode-bidi:isolate]',
   // Code blocks — terminal-dark like the self-hosting page, in both themes.
-  '[&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-[#0d1117] [&_pre]:p-5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-relaxed [&_pre]:text-white/90',
+  '[&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-[#0d1117] [&_pre]:p-5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-relaxed [&_pre]:text-white/90 [&_pre]:[direction:ltr] [&_pre]:text-left',
   // Tables inside a scroll container courtesy of GFM output
   '[&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm',
   '[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-start [&_th]:font-semibold',
@@ -373,31 +413,35 @@ const proseClass = [
  */
 export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNode; entry: BlogEntry; stars?: number }) {
   const related = (entry.related ?? []).map(blogEntry).filter((item): item is BlogEntry => Boolean(item));
+  const language = blogLanguage(entry);
+  const arabic = language === 'ar';
   return (
     <MarketingShell stars={stars}>
-      <article className="mx-auto max-w-3xl px-6 pt-12 pb-20">
+      <article className="mx-auto max-w-3xl px-6 pt-12 pb-20" dir={arabic ? 'rtl' : 'ltr'} lang={language}>
         <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/blog">
-          <ArrowLeft className="size-4 rtl:rotate-180" /> All articles
+          <ArrowLeft className="size-4 rtl:rotate-180" /> {arabic ? 'كل المقالات' : 'All articles'}
         </a>
         <header className="mt-6">
           <TagChips entry={entry} />
-          <h1 className="text-pretty font-semibold text-4xl leading-[1.15] tracking-tight sm:text-[44px]">{entry.title}</h1>
+          <h1 className={`text-pretty font-semibold text-4xl leading-[1.15] sm:text-[44px] ${arabic ? '' : 'tracking-tight'}`}>{entry.title}</h1>
           <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">{entry.description}</p>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-border border-y py-4">
             <p className="text-muted-foreground text-sm">
-              <time dateTime={entry.dateModified}>Updated {dateFormatter.format(new Date(entry.dateModified))}</time>
+              <time dateTime={entry.dateModified}>
+                {arabic ? 'آخر تحديث' : 'Updated'} {dateFormatter(entry).format(new Date(entry.dateModified))}
+              </time>
               {' · '}
-              {blogReadingMinutes(entry)} min read · The Nibleaf team
+              {arabic ? `${blogReadingMinutes(entry)} دقائق قراءة · فريق Nibleaf` : `${blogReadingMinutes(entry)} min read · The Nibleaf team`}
             </p>
             <ShareRow entry={entry} />
           </div>
         </header>
         <div className={`mt-10 ${proseClass}`}>{children}</div>
-        {entry.faqs && entry.faqs.length > 0 ? <ArticleFaqSection faqs={entry.faqs} /> : null}
+        {entry.faqs && entry.faqs.length > 0 ? <ArticleFaqSection faqs={entry.faqs} language={language} /> : null}
       </article>
       {related.length > 0 ? (
         <aside className="mx-auto max-w-6xl px-6 pb-16">
-          <h2 className="mb-5 font-semibold text-xl tracking-tight">Read next</h2>
+          <h2 className={`mb-5 font-semibold text-xl ${arabic ? '' : 'tracking-tight'}`}>{arabic ? 'اقرأ أيضًا' : 'Read next'}</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item) => (
               <ArticleCard entry={item} key={item.slug} />
@@ -405,7 +449,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
           </div>
         </aside>
       ) : null}
-      <BlogCta />
+      <BlogCta language={language} />
     </MarketingShell>
   );
 }

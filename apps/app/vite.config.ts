@@ -26,8 +26,9 @@ export default defineConfig({
   plugins: [
     // Blog articles (src/content/**). `enforce: 'pre'` so .mdx compiles before the
     // React plugin sees it. remark-mdx-frontmatter turns the YAML block into an
-    // `export const frontmatter`, which lib/blog.ts reads to build the article
-    // registry — adding an article is one .mdx file, no codegen and no index edit.
+    // `export const frontmatter` for the article module. Production metadata
+    // comes from the lightweight manifest; a test deep-compares it to every MDX
+    // frontmatter block so bodies never enter the homepage bundle.
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkFrontmatter, [remarkMdxFrontmatter, { name: 'frontmatter' }], remarkGfm] }) },
     viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),

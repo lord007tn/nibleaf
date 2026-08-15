@@ -6,9 +6,9 @@ export const Route = createFileRoute('/')({
   loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
-      title: 'Nibleaf — the open-source Mintlify alternative',
+      title: 'Nibleaf: visual Markdown docs with Arabic and RTL',
       description:
-        'The open-source Mintlify alternative: a self-hostable docs platform with a Notion-style Markdown editor, built-in search, Arabic/RTL and a free cloud beta.',
+        'A documentation platform with a Notion-style Markdown editor, built-in search, versioned publishing, Arabic and RTL support, and a free cloud beta.',
       path: '/',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/') }],
