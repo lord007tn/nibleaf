@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { AppProviders } from '@/components/app-providers';
 import { AuthLayout } from '@/layouts/auth';
 import { authClient, useSession } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
@@ -18,6 +19,14 @@ export const Route = createFileRoute('/accept-invite/$invitationId')({
 
 /** Top-level so it resolves whether or not the user is authenticated. */
 function AcceptInvitePage() {
+  return (
+    <AppProviders>
+      <AcceptInviteContent />
+    </AppProviders>
+  );
+}
+
+function AcceptInviteContent() {
   const t = useT();
   const { invitationId } = Route.useParams();
   const { data: session, isPending } = useSession();

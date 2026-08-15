@@ -8,24 +8,28 @@ const CONTACTS = [
     icon: LifeBuoy,
     title: 'Product support',
     address: 'support@nibleaf.com',
+    linkLabel: 'Email product support',
     body: 'Questions about Nibleaf Cloud, publishing, workspaces, imports, billing during beta, or the current distribution status.',
   },
   {
     icon: LockKeyhole,
     title: 'Privacy requests',
     address: 'privacy@nibleaf.com',
+    linkLabel: 'Email the privacy team',
     body: 'Questions about personal data, retention, subprocessors, account access, or a deletion request.',
   },
   {
     icon: ShieldCheck,
     title: 'Security reports',
     address: 'security@nibleaf.com',
+    linkLabel: 'Email the security team',
     body: 'Potential vulnerabilities, exposed credentials, authentication problems, or other security-sensitive reports.',
   },
   {
     icon: AlertTriangle,
     title: 'Abuse reports',
     address: 'abuse@nibleaf.com',
+    linkLabel: 'Email the abuse team',
     body: 'Phishing, unlawful content, impersonation, malware, or another misuse of a site published through Nibleaf.',
   },
 ] as const;
@@ -101,7 +105,7 @@ function ContactPage() {
                 className="mt-4 inline-flex items-center gap-1.5 font-medium text-primary text-sm hover:underline"
                 href={`mailto:${contact.address}`}
               >
-                {contact.address}
+                {contact.linkLabel}
                 <ArrowRight aria-hidden="true" className="size-4" />
               </a>
             </article>
@@ -128,6 +132,10 @@ function ContactPage() {
               We welcome corrections to product claims, comparisons, technical guidance, and translations. Send the article URL, quote the sentence
               that needs attention, and link to a primary source when one is available. We review factual corrections separately from sales or
               partnership requests.
+            </p>
+            <p className="mt-4 text-muted-foreground leading-relaxed">
+              Messages can be written in English or Arabic. If a correction changes a published claim, we update the article and its modification date
+              so readers can see that the page was reviewed again.
             </p>
             <a
               className="mt-5 inline-flex items-center gap-2 font-medium text-primary hover:underline"

@@ -27,7 +27,11 @@ const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; bod
   { icon: Unlock, title: 'Licensed source', body: 'The codebase uses AGPL-3.0. Public repository and image access are currently being restored.' },
   { icon: BookOpen, title: 'Portable content', body: 'Pages are stored as Markdown in the database and can be exported as Markdown.' },
   { icon: Globe, title: 'Bilingual by design', body: 'English and Arabic with full RTL — first-class, not bolted on.' },
-  { icon: Server, title: 'Cloud available', body: 'Use the free cloud beta now. Self-hosting resumes when anonymous distribution access is restored.' },
+  {
+    icon: Server,
+    title: 'Cloud available',
+    body: 'Use the free cloud beta now. Self-hosting resumes when anonymous distribution access is restored.',
+  },
 ];
 
 function AboutPage() {
@@ -84,6 +88,11 @@ function AboutPage() {
           Postgres, Hono, TanStack Start, BullMQ, Orama search, and S3-compatible storage form the deployment architecture. Public installation waits
           on anonymous source and image access.
         </p>
+        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
+          We document those boundaries plainly. Product pages should distinguish shipped behavior from planned work, comparisons should point to
+          current primary sources, and technical articles should describe what the code and tests support today. When a claim changes, we correct the
+          page and update its review date.
+        </p>
       </section>
 
       {/* CTA */}
@@ -96,7 +105,9 @@ function AboutPage() {
           />
           <div className="relative">
             <h2 className="font-semibold text-3xl tracking-tight">Start writing today</h2>
-            <p className="mx-auto mt-3 max-w-xl text-background/75">Start free on Nibleaf Cloud. Check the self-hosting status before planning a deployment.</p>
+            <p className="mx-auto mt-3 max-w-xl text-background/75">
+              Start free on Nibleaf Cloud. Check the self-hosting status before planning a deployment.
+            </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={`${primaryButton} group`} href="/sign-up">
                 Get started free

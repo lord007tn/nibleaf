@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { useSession } from '@/lib/auth-client';
 
@@ -15,6 +16,14 @@ export const Route = createFileRoute('/(auth)')({
 
 /** Reverse guard: an authenticated user can never see sign-in/up — sent to /app. */
 function AuthRoute() {
+  return (
+    <AppProviders>
+      <AuthGuard />
+    </AppProviders>
+  );
+}
+
+function AuthGuard() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
 

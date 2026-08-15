@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
 import { useEffect } from 'react';
+import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { useSession } from '@/lib/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
@@ -13,6 +14,14 @@ export const Route = createFileRoute('/app')({
 
 /** Forward guard: signed-out users go to sign-in; the rest get the app. */
 function AppRoute() {
+  return (
+    <AppProviders>
+      <AppGuard />
+    </AppProviders>
+  );
+}
+
+function AppGuard() {
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
 
