@@ -25,18 +25,12 @@
 #
 name: nibleaf-coolify
 
-# Coolify builds one shared application image from this checkout. This keeps the
-# deployment independent from external registry visibility and bakes the current
-# public origins into the client bundle. The build needs roughly 5-6 GB free RAM.
+# GitHub Actions builds and publishes this shared multi-service image only after
+# the main branch passes CI. Pulling that image keeps production deployment
+# lightweight and prevents Coolify from rebuilding the full monorepo on its
+# resource-constrained management host.
 
-x-build: &build
-  context: .
-  dockerfile: Dockerfile
-  target: runner
-  args:
-    VITE_API_URL: http://server:4311
-    VITE_APP_URL: ${APP_URL:-https://nibleaf.com}
-    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-nibleaf.com}
+x-nibleaf-image: &nibleaf-image ghcr.io/lord007tn/nibleaf:${NIBLEAF_IMAGE_TAG:-main}
 
 x-service-env: &service-env
   NODE_ENV: production
@@ -154,8 +148,8 @@ services:
       start_period: 10s
 
   migrate:
-    build: *build
-    image: nibleaf:coolify
+    image: *nibleaf-image
+    pull_policy: always
     command: ["migrate"]
     environment: *service-env
     depends_on:
@@ -164,7 +158,8 @@ services:
     restart: "no"
 
   server:
-    image: nibleaf:coolify
+    image: *nibleaf-image
+    pull_policy: always
     command: ["server"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -187,7 +182,8 @@ services:
     restart: unless-stopped
 
   worker:
-    image: nibleaf:coolify
+    image: *nibleaf-image
+    pull_policy: always
     command: ["worker"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -208,7 +204,8 @@ services:
     restart: unless-stopped
 
   app:
-    image: nibleaf:coolify
+    image: *nibleaf-image
+    pull_policy: always
     command: ["app"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
@@ -230,7 +227,8 @@ services:
     restart: unless-stopped
 
   admin:
-    image: nibleaf:coolify
+    image: *nibleaf-image
+    pull_policy: always
     command: ["admin"]
     init: true
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-30s}
