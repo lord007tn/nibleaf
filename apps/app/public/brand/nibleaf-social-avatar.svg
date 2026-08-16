@@ -1,7 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Nibleaf">
   <rect width="1024" height="1024" fill="#181612"/>
-  <rect x="148" y="148" width="728" height="728" rx="168" fill="#8A4B2E"/>
-  <path d="M346 600 598 348c28-28 74-28 102 0l8 8c28 28 28 74 0 102L456 710l-144 36 34-146Z" fill="#FBF7EE"/>
-  <path d="M296 364c68-72 172-88 258-40" fill="none" stroke="#FBF7EE" stroke-linecap="round" stroke-width="52"/>
-  <circle cx="672" cy="648" r="58" fill="#B96A3D"/>
+  <path d="M296 736V288L728 736V288" fill="none" stroke="#FBF7EE" stroke-linecap="square" stroke-linejoin="round" stroke-width="176"/>
 </svg>

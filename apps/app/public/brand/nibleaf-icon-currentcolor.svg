@@ -1,5 +1,3 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nibleaf">
-  <path d="M173 300 299 174c14-14 37-14 51 0l4 4c14 14 14 37 0 51L228 355l-72 18 17-73Z" fill="currentColor"/>
-  <path d="M148 182c34-36 86-44 129-20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="24"/>
-  <circle cx="336" cy="324" r="27" fill="currentColor"/>
+  <path d="M148 368V144L364 368V144" fill="none" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round" stroke-width="88"/>
 </svg>

@@ -34,7 +34,7 @@ function New-RoundedRectPath([float]$x, [float]$y, [float]$w, [float]$h, [float]
   return $path
 }
 
-function New-IconBitmap([int]$size, [switch]$Reverse, [switch]$Monochrome, [switch]$AppTile) {
+function New-IconBitmap([int]$size, [switch]$Reverse, [switch]$Monochrome, [switch]$AppTile, [switch]$SocialTile) {
   $bmp = [System.Drawing.Bitmap]::new($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
@@ -44,35 +44,28 @@ function New-IconBitmap([int]$size, [switch]$Reverse, [switch]$Monochrome, [swit
   if ($AppTile) {
     $g.Clear($Paper)
     $outer = New-RoundedRectPath ($size * 0.129) ($size * 0.129) ($size * 0.742) ($size * 0.742) ($size * 0.172)
-    $g.FillPath([System.Drawing.SolidBrush]::new($Umber), $outer)
-  } else {
-    $bg = if ($Reverse) { $Paper } elseif ($Monochrome) { $Ink } else { $Umber }
-    $tile = New-RoundedRectPath 0 0 $size $size ($size * 0.205)
-    $g.FillPath([System.Drawing.SolidBrush]::new($bg), $tile)
+    $outerBrush = [System.Drawing.SolidBrush]::new($Ink)
+    $g.FillPath($outerBrush, $outer)
+    $outerBrush.Dispose()
+    $outer.Dispose()
+  } elseif ($SocialTile) {
+    $g.Clear($Ink)
   }
 
-  $shape = if ($Reverse) { $Umber } else { $Paper }
-  $dot = if ($Monochrome) { $Paper } else { $Copper }
-  if ($Reverse) { $dot = $Copper }
-
   $sx = $size / 512.0
-  $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
-  $path.AddPolygon([System.Drawing.PointF[]]@(
-      [System.Drawing.PointF]::new(173 * $sx, 300 * $sx),
-      [System.Drawing.PointF]::new(299 * $sx, 174 * $sx),
-      [System.Drawing.PointF]::new(354 * $sx, 229 * $sx),
-      [System.Drawing.PointF]::new(228 * $sx, 355 * $sx),
-      [System.Drawing.PointF]::new(156 * $sx, 373 * $sx)
-    ))
-  $g.FillPath([System.Drawing.SolidBrush]::new($shape), $path)
-
-  $pen = [System.Drawing.Pen]::new($shape, [Math]::Max(2, 24 * $sx))
-  $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-  $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-  $g.DrawBezier($pen, 148 * $sx, 182 * $sx, 186 * $sx, 142 * $sx, 234 * $sx, 139 * $sx, 277 * $sx, 162 * $sx)
+  $markColor = if ($AppTile -or $SocialTile -or $Reverse) { $Paper } else { $Ink }
+  $pen = [System.Drawing.Pen]::new($markColor, [Math]::Max(2, 88 * $sx))
+  $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Square
+  $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Square
+  $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $points = [System.Drawing.PointF[]]@(
+    [System.Drawing.PointF]::new(148 * $sx, 368 * $sx),
+    [System.Drawing.PointF]::new(148 * $sx, 144 * $sx),
+    [System.Drawing.PointF]::new(364 * $sx, 368 * $sx),
+    [System.Drawing.PointF]::new(364 * $sx, 144 * $sx)
+  )
+  $g.DrawLines($pen, $points)
   $pen.Dispose()
-
-  $g.FillEllipse([System.Drawing.SolidBrush]::new($dot), (336 - 27) * $sx, (324 - 27) * $sx, 54 * $sx, 54 * $sx)
   $g.Dispose()
   return $bmp
 }
@@ -333,7 +326,7 @@ if (Test-Path $RasterDir) {
 $jobs = @()
 foreach ($size in @(16, 32, 48, 64)) {
   $path = Join-Path $RasterDir "favicon/favicon-$size.png"
-  Save-Png (New-IconBitmap $size) $path
+  Save-Png (New-IconBitmap $size -SocialTile) $path
   $jobs += @{ file = "apps/app/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
 }
 
@@ -350,10 +343,14 @@ foreach ($size in @(64, 128, 256, 512, 1024)) {
   Save-Png (New-IconBitmap $size) $path
   $jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
 }
-Save-Png (New-IconBitmap 512 -Reverse) (Join-Path $RasterDir "icon/nibleaf-icon-reverse-512.png")
-Save-Png (New-IconBitmap 512 -Monochrome) (Join-Path $RasterDir "icon/nibleaf-icon-monochrome-512.png")
-Save-Png (New-IconBitmap 512) (Join-Path $RasterDir "social/nibleaf-social-avatar-512.png")
-Save-Png (New-IconBitmap 1024) (Join-Path $RasterDir "social/nibleaf-social-avatar-1024.png")
+$reverseIconPath = Join-Path $RasterDir "icon/nibleaf-icon-reverse-512.png"
+$monochromeIconPath = Join-Path $RasterDir "icon/nibleaf-icon-monochrome-512.png"
+Save-Png (New-IconBitmap 512 -Reverse) $reverseIconPath
+Save-Png (New-IconBitmap 512 -Monochrome) $monochromeIconPath
+$jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-reverse-512.png"; source = "nibleaf-icon-reverse.svg"; width = 512; height = 512; format = "png"; group = "icon" }
+$jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-monochrome-512.png"; source = "nibleaf-icon-monochrome.svg"; width = 512; height = 512; format = "png"; group = "icon" }
+Save-Png (New-IconBitmap 512 -SocialTile) (Join-Path $RasterDir "social/nibleaf-social-avatar-512.png")
+Save-Png (New-IconBitmap 1024 -SocialTile) (Join-Path $RasterDir "social/nibleaf-social-avatar-1024.png")
 Render-BrandSvgPng "nibleaf-og-card.svg" (Join-Path $RasterDir "social/nibleaf-og-card.png") 1200 630
 Render-BrandSvgPng "nibleaf-og-card-ar.svg" (Join-Path $RasterDir "social/nibleaf-og-card-ar.png") 1200 630
 Convert-PngToJpeg (Join-Path $RasterDir "social/nibleaf-og-card.png") (Join-Path $RasterDir "social/nibleaf-og-card.jpg") $Paper
@@ -364,11 +361,11 @@ $logoJobs = @(
   @{ source = "nibleaf-wordmark-reverse.svg"; name = "nibleaf-wordmark-reverse"; width = 840; height = 300; variant = "wordmark-reverse"; format = "png" },
   @{ source = "nibleaf-wordmark-ar.svg"; name = "nibleaf-wordmark-ar"; width = 840; height = 300; variant = "wordmark-ar"; format = "png" },
   @{ source = "nibleaf-wordmark-ar-reverse.svg"; name = "nibleaf-wordmark-ar-reverse"; width = 840; height = 300; variant = "wordmark-ar-reverse"; format = "png" },
-  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "png" },
-  @{ source = "nibleaf-logo-stacked-transparent.svg"; name = "nibleaf-logo-stacked-transparent"; width = 1024; height = 1360; variant = "stacked-transparent"; format = "png" },
-  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "png" },
-  @{ source = "nibleaf-logo-monochrome.svg"; name = "nibleaf-logo-monochrome"; width = 1024; height = 1360; variant = "monochrome"; format = "png" },
-  @{ source = "nibleaf-logo-stacked-ar.svg"; name = "nibleaf-logo-stacked-ar"; width = 1024; height = 1360; variant = "stacked-ar"; format = "png" },
+  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1180; variant = "stacked"; format = "png" },
+  @{ source = "nibleaf-logo-stacked-transparent.svg"; name = "nibleaf-logo-stacked-transparent"; width = 1024; height = 1180; variant = "stacked-transparent"; format = "png" },
+  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1180; variant = "dark"; format = "png" },
+  @{ source = "nibleaf-logo-monochrome.svg"; name = "nibleaf-logo-monochrome"; width = 1024; height = 1180; variant = "monochrome"; format = "png" },
+  @{ source = "nibleaf-logo-stacked-ar.svg"; name = "nibleaf-logo-stacked-ar"; width = 1024; height = 1180; variant = "stacked-ar"; format = "png" },
   @{ source = "nibleaf-logo-horizontal-ltr.svg"; name = "nibleaf-logo-horizontal-ltr"; width = 1520; height = 440; variant = "horizontal-ltr"; format = "png" },
   @{ source = "nibleaf-logo-horizontal-ltr-reverse.svg"; name = "nibleaf-logo-horizontal-ltr-reverse"; width = 1520; height = 440; variant = "horizontal-ltr-reverse"; format = "png" },
   @{ source = "nibleaf-logo-horizontal-rtl.svg"; name = "nibleaf-logo-horizontal-rtl"; width = 1520; height = 440; variant = "horizontal-rtl"; format = "png" },
@@ -376,8 +373,8 @@ $logoJobs = @(
   @{ source = "nibleaf-logo-horizontal-reverse.svg"; name = "nibleaf-logo-horizontal-reverse"; width = 1520; height = 440; variant = "horizontal-reverse"; format = "png" },
   @{ source = "nibleaf-sidebar-lockup.svg"; name = "nibleaf-sidebar-lockup"; width = 680; height = 192; variant = "sidebar"; format = "png" },
   @{ source = "nibleaf-sidebar-lockup-ar.svg"; name = "nibleaf-sidebar-lockup-ar"; width = 680; height = 192; variant = "sidebar-ar"; format = "png" },
-  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1360; variant = "stacked"; format = "jpg" },
-  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1360; variant = "dark"; format = "jpg" }
+  @{ source = "nibleaf-logo-stacked.svg"; name = "nibleaf-logo-stacked"; width = 1024; height = 1180; variant = "stacked"; format = "jpg" },
+  @{ source = "nibleaf-logo-dark.svg"; name = "nibleaf-logo-dark"; width = 1024; height = 1180; variant = "dark"; format = "jpg" }
 )
 
 foreach ($job in $logoJobs) {
@@ -458,8 +455,8 @@ foreach ($publicApp in $publicApps) {
     start_url = "/"
     scope = "/"
     display = "standalone"
-    theme_color = "#C2410C"
-    background_color = "#FAFAFA"
+    theme_color = "#181612"
+    background_color = "#FBF7EE"
     icons = @(
       [ordered]@{ src = "/favicon.svg"; type = "image/svg+xml"; sizes = "any"; purpose = "any" },
       [ordered]@{ src = "/apple-touch-icon.png"; type = "image/png"; sizes = "180x180"; purpose = "any" },
