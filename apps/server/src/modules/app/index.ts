@@ -16,6 +16,7 @@ import pages from './pages/handlers';
 import projectMembers from './project-members/handlers';
 import projectSettings from './project-settings/handlers';
 import projects from './projects/handlers';
+import readerAccess from './reader-access/handlers';
 import workspace from './workspace/handlers';
 
 const app = new Hono<HonoEnv>()
@@ -32,6 +33,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/comments', comments)
   .route('/projects/:projectId/members', projectMembers)
   .route('/projects/:projectId/settings', projectSettings)
+  .route('/projects/:projectId/reader-access', readerAccess)
   .route('/projects/:projectId/settings/import', imports)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)

@@ -7,6 +7,7 @@ import domains from './domains/handlers';
 import git from './git/handlers';
 import invitations from './invitations/handlers';
 import meta from './meta/handlers';
+import readerAccess from './reader-access/handlers';
 import sites from './sites/handlers';
 
 /** Machine/edge traffic that must not compete with human page views for the
@@ -26,11 +27,15 @@ const lowCostLimiter = rateLimit({ windowMs: 60_000, max: publicPerMinute * 10 }
 // Throttle unauthenticated public traffic (site shell, search, pageview tracking).
 const app = new Hono<HonoEnv>()
   .use('*', (ctx, next) => (LOW_COST_PATH.test(ctx.req.path) ? lowCostLimiter(ctx, next) : standardLimiter(ctx, next)))
+  // Activation and JWT exchange create credentials. Give them a tighter
+  // abuse budget than ordinary content/search requests.
+  .use('/reader-access/*', rateLimit({ windowMs: 60_000, max: 20 }))
   .route('/sites', sites)
   .route('/domains', domains)
   .route('/git', git)
   .route('/invitations', invitations)
   .route('/assets', assets)
+  .route('/reader-access', readerAccess)
   .route('/meta', meta);
 
 export default app;

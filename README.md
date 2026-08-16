@@ -60,6 +60,8 @@ anchored comments, and one-click publish:
 
 ## ✨ Features
 
+Private customer documentation supports dedicated reader accounts, audience/page rules, and signed JWT/JWKS portal handoff. See [Private reader access](docs/private-reader-access.md) for integration, key rotation, caching, and recovery guidance.
+
 - **Rich editor** — rich-text and raw Markdown/MDX editing with draft preview in a separate tab, a Notion-style
   block handle + slash menu, and a drag-and-drop, nestable page tree.
 - **MDX components** — callouts, cards, steps, tabs, code groups, accordions,
