@@ -12,20 +12,15 @@ interface DirectionContextValue {
 
 const DirectionContext = createContext<DirectionContextValue | null>(null);
 
-const readStored = (): Direction => {
-  if (typeof window === 'undefined') {
-    return 'ltr';
-  }
-  return window.localStorage.getItem(STORAGE_KEY) === 'rtl' ? 'rtl' : 'ltr';
-};
-
 /**
  * RTL-aware direction provider. Wraps the tree in Base UI's DirectionProvider
  * (so popovers/menus mirror correctly) and keeps `<html dir>` in sync. Toggle
  * via the settings → appearance control or `useDirection()`.
  */
 export function DirectionProvider({ children }: { children: ReactNode }) {
-  const [direction, setDirectionState] = useState<Direction>(() => readStored());
+  // Match the server on the first client render. LocaleProvider applies the
+  // persisted language's direction after its catalog has loaded.
+  const [direction, setDirectionState] = useState<Direction>('ltr');
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -42,7 +37,7 @@ export function DirectionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const toggleDirection = useCallback(() => setDirection(readStored() === 'rtl' ? 'ltr' : 'rtl'), [setDirection]);
+  const toggleDirection = useCallback(() => setDirection(direction === 'rtl' ? 'ltr' : 'rtl'), [direction, setDirection]);
 
   return (
     <DirectionContext value={{ direction, setDirection, toggleDirection }}>

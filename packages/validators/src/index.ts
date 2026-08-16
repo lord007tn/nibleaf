@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
+import { normalizeRedirectPath, resolveRedirectTarget } from './redirects';
 
 export {
   inferSafeInlineAssetContentType,
@@ -9,6 +10,7 @@ export {
   SAFE_INLINE_ASSET_CONTENT_TYPES,
   safeInlineAssetContentType,
 } from './assets';
+export { normalizeRedirectPath, type RedirectPair, resolveRedirectTarget } from './redirects';
 
 // ─── Common ─────────────────────────────────────────────────────────────────
 
@@ -33,57 +35,7 @@ const url = z
   .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
-export type RedirectPair = { from: string; to: string };
-
-export const normalizeRedirectPath = (path: string): string => {
-  const value = path.trim();
-  let start = 0;
-  let end = value.length;
-  while (start < end && value[start] === '/') {
-    start++;
-  }
-  while (end > start && value[end - 1] === '/') {
-    end--;
-  }
-  return value.slice(start, end);
-};
 const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(target);
-
-/**
- * Resolve an internal redirect chain to one final target. Returning `null`
- * means no rule matched or the stored rules contain a cycle. Keeping this
- * helper in the shared validator package makes save-time validation and the
- * public-site redirect behavior follow exactly the same path semantics.
- */
-export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: string): string | null => {
-  const rules = new Map<string, string>();
-  for (const rule of redirects) {
-    const from = normalizeRedirectPath(rule.from);
-    const to = rule.to.trim();
-    if (rule.from.trim() && to && !rules.has(from)) {
-      rules.set(from, to);
-    }
-  }
-
-  let current = normalizeRedirectPath(path);
-  const first = current;
-  const visited = new Set<string>();
-  while (true) {
-    if (visited.has(current)) {
-      return null;
-    }
-    visited.add(current);
-
-    const target = rules.get(current);
-    if (!target) {
-      return current === first ? null : `/${current}`;
-    }
-    if (isExternalRedirect(target)) {
-      return target;
-    }
-    current = normalizeRedirectPath(target);
-  }
-};
 
 const redirectsSchema = z
   .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())

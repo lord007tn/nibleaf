@@ -6,7 +6,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/index.ts"
+    "./schema": "./src/index.ts",
+    "./redirects": "./src/redirects.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

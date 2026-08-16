@@ -66,10 +66,9 @@ export const Route = createFileRoute('/sites/$projectId/$')({
 });
 
 function SitePath() {
-  const { projectId, _splat } = Route.useParams();
+  const { projectId } = Route.useParams();
   // Active language comes from the parent route's ?lang= search param.
   const { lang } = Route.useSearch();
   const { page } = Route.useLoaderData();
-  const version = _splat ? _splat.split('/')[0] : undefined;
-  return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={page ?? undefined} version={version} />;
+  return <SitePageView projectId={projectId} lang={lang} data={page} />;
 }

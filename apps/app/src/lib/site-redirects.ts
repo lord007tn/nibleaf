@@ -1,4 +1,4 @@
-import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators';
+import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { redirect } from '@tanstack/react-router';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';

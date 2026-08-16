@@ -1,16 +1,12 @@
-import 'katex/dist/katex.min.css';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { Check, Copy } from 'lucide-react';
-import { type ComponentProps, type ReactNode, useMemo, useRef, useState } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import { type ComponentProps, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
+import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
 import {
   Accordion,
   AccordionGroup,
@@ -47,6 +43,19 @@ export interface SiteLinkContext {
   lang?: string;
   version?: string;
 }
+
+export interface MarkdownProps {
+  content: string;
+  className?: string;
+  site?: SiteLinkContext;
+}
+
+const RichMarkdown = lazy(() => import('./markdown-rich'));
+
+/** Raw HTML/MDX and math need parse5/KaTeX; ordinary Markdown does not. Keep
+ * detection conservative—false positives only load the richer renderer, while
+ * false negatives could change output. */
+export const needsRichMarkdown = (content: string): boolean => /<\/?[A-Za-z][^>]*>/.test(content) || /(^|[^\\])\$\$?[\s\S]*?\$\$?/m.test(content);
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
@@ -253,7 +262,27 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
 /** Render Markdown + MDX-style components (Cards, Tabs, Steps, Callouts…) with
  *  GFM, admonitions, heading anchors, sanitized raw HTML, and code highlighting.
  *  Pass `site` on a published site so internal links resolve to the site base. */
-export function Markdown({ content, className, site }: { content: string; className?: string; site?: SiteLinkContext }) {
+export function Markdown({ content, className, site }: MarkdownProps) {
+  if (needsRichMarkdown(content)) {
+    return (
+      <Suspense fallback={<MarkdownRenderer content={content} className={className} site={site} />}>
+        <RichMarkdown content={content} className={className} site={site} />
+      </Suspense>
+    );
+  }
+  return <MarkdownRenderer content={content} className={className} site={site} />;
+}
+
+export function MarkdownRenderer({
+  content,
+  className,
+  site,
+  extraRemarkPlugins = [],
+  extraRehypePlugins = [],
+}: MarkdownProps & {
+  extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
+  extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
+}) {
   const components = useMemo(
     () =>
       ({
@@ -278,12 +307,11 @@ export function Markdown({ content, className, site }: { content: string; classN
     <div className={cn('typeset', className)}>
       <ReactMarkdown
         components={components}
-        remarkPlugins={[remarkGfm, remarkMath, remarkCallouts, remarkCodeMeta]}
+        remarkPlugins={[remarkGfm, ...extraRemarkPlugins, remarkCallouts, remarkCodeMeta]}
         rehypePlugins={[
-          rehypeRaw,
+          ...extraRehypePlugins,
           [rehypeSanitize, sanitizeSchema],
           rehypeMermaid,
-          rehypeKatex,
           rehypeSlug,
           // `heading-anchor` class lets the anchor renderer keep heading styling
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.

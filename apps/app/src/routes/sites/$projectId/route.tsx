@@ -13,7 +13,6 @@ import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
-import { useSite } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
@@ -80,23 +79,12 @@ function LinkedinIcon({ className }: { className?: string }) {
 function SiteChrome() {
   const { projectId } = Route.useParams();
   const { lang } = Route.useSearch();
-  const { site: initialSite } = Route.useLoaderData();
+  const { site } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
   const [searchOpen, setSearchOpen] = useState(false);
   const [pageAlternates, setPageAlternates] = useState<SiteLanguageAlternate[]>([]);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
-  const versionCandidate = currentPath && currentPath !== 'changelog' ? currentPath.split('/')[0] : undefined;
-  // Seed from the server loader so the nav + branding render in the initial
-  // HTML — but never seed a query key for a REAL version the loader shell
-  // didn't resolve (e.g. after a client-side navigation across versions), or
-  // the stale shell would render the wrong version's nav and never refetch.
-  const seedShell =
-    initialSite &&
-    (!versionCandidate || initialSite.activeVersion === versionCandidate || !initialSite.versions.some((item) => item.slug === versionCandidate))
-      ? initialSite
-      : undefined;
-  const { data: site, isPending, isError } = useSite(projectId, lang, seedShell, versionCandidate);
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
@@ -210,7 +198,7 @@ function SiteChrome() {
 
   const pageAlternatesContext = useMemo(() => ({ alternates: pageAlternates, setAlternates: setPageAlternates }), [pageAlternates]);
 
-  if (isError) {
+  if (!site) {
     return (
       <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
         <div>
@@ -525,11 +513,7 @@ function SiteChrome() {
                   ))}
                 </ul>
               ) : null}
-              {isPending ? (
-                <div className="py-6 text-muted-foreground text-sm">{t('loading')}</div>
-              ) : (
-                <SiteNav nodes={site?.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
-              )}
+              <SiteNav nodes={site.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
             </div>
           </ScrollArea>
         </aside>

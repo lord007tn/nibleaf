@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite dev --port 4310",
     "build": "vite build",
+    "bundle:check": "node ./scripts/check-bundle-budget.mjs --check",
+    "bundle:report": "node ./scripts/check-bundle-budget.mjs",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",

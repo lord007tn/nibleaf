@@ -46,4 +46,10 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Build production app
+        run: pnpm build:app
+
+      - name: Enforce public JavaScript budget
+        run: pnpm --filter @nibleaf/app bundle:check
+
       # Dependency vulnerabilities are scanned by the dedicated OSV workflow.
