@@ -17,7 +17,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Nibleaf Admin' },
       { name: 'application-name', content: 'Nibleaf Admin' },
-      { name: 'theme-color', content: '#0a0a0a' },
+      { name: 'theme-color', content: '#181612' },
       // Internal panel — never index.
       { name: 'robots', content: 'noindex, nofollow' },
     ],

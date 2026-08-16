@@ -7,7 +7,6 @@ export function NibleafMark({
   variant = 'tile',
   ...props
 }: ComponentProps<'svg'> & { title?: string; variant?: 'tile' | 'bare' }) {
-  const ink = variant === 'tile' ? 'var(--primary-foreground)' : 'currentColor';
   return (
     <svg
       aria-label={title}
@@ -17,16 +16,15 @@ export function NibleafMark({
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
-      {variant === 'tile' ? (
-        <>
-          <rect fill="var(--primary)" height="512" rx="104" width="512" />
-          <path d="M164 116h184c27 0 48 21 48 48v184c0 27-21 48-48 48H164c-27 0-48-21-48-48V164c0-27 21-48 48-48Z" fill={ink} opacity=".14" />
-          <path d="m282 191 55 55" fill="none" opacity=".28" stroke="var(--foreground)" strokeLinecap="round" strokeWidth="18" />
-        </>
-      ) : null}
-      <path d="M173 300 299 174c14-14 37-14 51 0l4 4c14 14 14 37 0 51L228 355l-72 18 17-73Z" fill={ink} />
-      <path d="M148 182c34-36 86-44 129-20" fill="none" stroke={ink} strokeLinecap="round" strokeWidth="24" />
-      <circle cx="336" cy="324" fill="var(--brand-copper, #B96A3D)" r="27" />
+      {variant === 'tile' ? <rect fill="#181612" height="512" rx="104" width="512" /> : null}
+      <path
+        d="M148 368V144L364 368V144"
+        fill="none"
+        stroke={variant === 'tile' ? '#FBF7EE' : 'currentColor'}
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeWidth="88"
+      />
     </svg>
   );
 }

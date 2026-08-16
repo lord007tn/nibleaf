@@ -1,278 +1,294 @@
 [
   {
-    "height": 16,
+    "file": "apps/app/public/brand/raster/favicon/favicon-16.png",
     "width": 16,
-    "group": "favicon",
-    "file": "apps/app/public/brand/raster/favicon/favicon-16.png"
+    "height": 16,
+    "group": "favicon"
   },
   {
-    "height": 32,
+    "file": "apps/app/public/brand/raster/favicon/favicon-32.png",
     "width": 32,
-    "group": "favicon",
-    "file": "apps/app/public/brand/raster/favicon/favicon-32.png"
+    "height": 32,
+    "group": "favicon"
   },
   {
-    "height": 48,
+    "file": "apps/app/public/brand/raster/favicon/favicon-48.png",
     "width": 48,
-    "group": "favicon",
-    "file": "apps/app/public/brand/raster/favicon/favicon-48.png"
+    "height": 48,
+    "group": "favicon"
   },
   {
-    "height": 64,
+    "file": "apps/app/public/brand/raster/favicon/favicon-64.png",
     "width": 64,
-    "group": "favicon",
-    "file": "apps/app/public/brand/raster/favicon/favicon-64.png"
+    "height": 64,
+    "group": "favicon"
   },
   {
-    "height": 180,
+    "file": "apps/app/public/brand/raster/app-icon/apple-touch-icon-180.png",
     "width": 180,
-    "group": "app-icon",
-    "file": "apps/app/public/brand/raster/app-icon/apple-touch-icon-180.png"
+    "height": 180,
+    "group": "app-icon"
   },
   {
-    "height": 512,
-    "width": 512,
-    "group": "app-icon",
-    "file": "apps/app/public/brand/raster/app-icon/android-chrome-512.png"
-  },
-  {
-    "height": 1024,
-    "width": 1024,
-    "group": "app-icon",
-    "file": "apps/app/public/brand/raster/app-icon/app-icon-1024.png"
-  },
-  {
-    "height": 192,
-    "width": 192,
-    "group": "app-icon",
-    "file": "apps/app/public/brand/raster/app-icon/android-chrome-192.png"
-  },
-  {
-    "height": 150,
+    "file": "apps/app/public/brand/raster/app-icon/mstile-150.png",
     "width": 150,
-    "group": "app-icon",
-    "file": "apps/app/public/brand/raster/app-icon/mstile-150.png"
+    "height": 150,
+    "group": "app-icon"
   },
   {
-    "height": 64,
-    "width": 64,
-    "group": "icon",
-    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-64.png"
+    "file": "apps/app/public/brand/raster/app-icon/android-chrome-192.png",
+    "width": 192,
+    "height": 192,
+    "group": "app-icon"
   },
   {
-    "height": 128,
-    "width": 128,
-    "group": "icon",
-    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-128.png"
-  },
-  {
-    "height": 256,
-    "width": 256,
-    "group": "icon",
-    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-256.png"
-  },
-  {
-    "height": 512,
+    "file": "apps/app/public/brand/raster/app-icon/android-chrome-512.png",
     "width": 512,
-    "group": "icon",
-    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-512.png"
+    "height": 512,
+    "group": "app-icon"
   },
   {
-    "height": 1024,
+    "file": "apps/app/public/brand/raster/app-icon/app-icon-1024.png",
     "width": 1024,
-    "group": "icon",
-    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-1024.png"
+    "height": 1024,
+    "group": "app-icon"
   },
   {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-64.png",
+    "width": 64,
+    "height": 64,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-128.png",
+    "width": 128,
+    "height": 128,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-256.png",
+    "width": 256,
+    "height": 256,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-512.png",
+    "width": 512,
+    "height": 512,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-1024.png",
+    "width": 1024,
+    "height": 1024,
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-reverse-512.png",
+    "source": "nibleaf-icon-reverse.svg",
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/icon/nibleaf-icon-monochrome-512.png",
+    "source": "nibleaf-icon-monochrome.svg",
+    "width": 512,
+    "height": 512,
+    "format": "png",
+    "group": "icon"
+  },
+  {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark.png",
     "source": "nibleaf-wordmark.svg",
     "width": 840,
-    "format": "png",
-    "group": "logo",
     "height": 300,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-reverse.png",
     "source": "nibleaf-wordmark-reverse.svg",
     "width": 840,
-    "format": "png",
-    "group": "logo",
     "height": 300,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-reverse.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-ar.png",
     "source": "nibleaf-wordmark-ar.svg",
     "width": 840,
-    "format": "png",
-    "group": "logo",
     "height": 300,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-ar.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-ar-reverse.png",
     "source": "nibleaf-wordmark-ar-reverse.svg",
     "width": 840,
-    "format": "png",
-    "group": "logo",
     "height": 300,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-wordmark-ar-reverse.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked.png",
     "source": "nibleaf-logo-stacked.svg",
     "width": 1024,
+    "height": 1180,
     "format": "png",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked.png"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked-transparent.png",
     "source": "nibleaf-logo-stacked-transparent.svg",
     "width": 1024,
+    "height": 1180,
     "format": "png",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked-transparent.png"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-dark.png",
     "source": "nibleaf-logo-dark.svg",
     "width": 1024,
+    "height": 1180,
     "format": "png",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-dark.png"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-monochrome.png",
     "source": "nibleaf-logo-monochrome.svg",
     "width": 1024,
+    "height": 1180,
     "format": "png",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-monochrome.png"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked-ar.png",
     "source": "nibleaf-logo-stacked-ar.svg",
     "width": 1024,
+    "height": 1180,
     "format": "png",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked-ar.png"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-ltr.png",
     "source": "nibleaf-logo-horizontal-ltr.svg",
     "width": 1520,
-    "format": "png",
-    "group": "logo",
     "height": 440,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-ltr.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-ltr-reverse.png",
     "source": "nibleaf-logo-horizontal-ltr-reverse.svg",
     "width": 1520,
-    "format": "png",
-    "group": "logo",
     "height": 440,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-ltr-reverse.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-rtl.png",
     "source": "nibleaf-logo-horizontal-rtl.svg",
     "width": 1520,
-    "format": "png",
-    "group": "logo",
     "height": 440,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-rtl.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-icon-right.png",
     "source": "nibleaf-logo-horizontal-icon-right.svg",
     "width": 1520,
-    "format": "png",
-    "group": "logo",
     "height": 440,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-icon-right.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-reverse.png",
     "source": "nibleaf-logo-horizontal-reverse.svg",
     "width": 1520,
-    "format": "png",
-    "group": "logo",
     "height": 440,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-horizontal-reverse.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-sidebar-lockup.png",
     "source": "nibleaf-sidebar-lockup.svg",
     "width": 680,
-    "format": "png",
-    "group": "logo",
     "height": 192,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-sidebar-lockup.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-sidebar-lockup-ar.png",
     "source": "nibleaf-sidebar-lockup-ar.svg",
     "width": 680,
-    "format": "png",
-    "group": "logo",
     "height": 192,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-sidebar-lockup-ar.png"
+    "format": "png",
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked.jpg",
     "source": "nibleaf-logo-stacked.svg",
     "width": 1024,
+    "height": 1180,
     "format": "jpg",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-stacked.jpg"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-dark.jpg",
     "source": "nibleaf-logo-dark.svg",
     "width": 1024,
+    "height": 1180,
     "format": "jpg",
-    "group": "logo",
-    "height": 1360,
-    "file": "apps/app/public/brand/raster/logo/nibleaf-logo-dark.jpg"
+    "group": "logo"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-social-avatar-512.png",
     "source": "nibleaf-social-avatar.svg",
     "width": 512,
-    "format": "png",
-    "group": "social",
     "height": 512,
-    "file": "apps/app/public/brand/raster/social/nibleaf-social-avatar-512.png"
+    "format": "png",
+    "group": "social"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-social-avatar-1024.png",
     "source": "nibleaf-social-avatar.svg",
     "width": 1024,
-    "format": "png",
-    "group": "social",
     "height": 1024,
-    "file": "apps/app/public/brand/raster/social/nibleaf-social-avatar-1024.png"
+    "format": "png",
+    "group": "social"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-og-card.png",
     "source": "nibleaf-og-card.svg",
     "width": 1200,
-    "format": "png",
-    "group": "social",
     "height": 630,
-    "file": "apps/app/public/brand/raster/social/nibleaf-og-card.png"
+    "format": "png",
+    "group": "social"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-og-card.jpg",
     "source": "nibleaf-og-card.svg",
     "width": 1200,
-    "format": "jpg",
-    "group": "social",
     "height": 630,
-    "file": "apps/app/public/brand/raster/social/nibleaf-og-card.jpg"
+    "format": "jpg",
+    "group": "social"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-og-card-ar.png",
     "source": "nibleaf-og-card-ar.svg",
     "width": 1200,
+    "height": 630,
     "format": "png",
-    "group": "social",
-    "height": 630,
-    "file": "apps/app/public/brand/raster/social/nibleaf-og-card-ar.png"
+    "group": "social"
   },
   {
+    "file": "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg",
     "source": "nibleaf-og-card-ar.svg",
     "width": 1200,
-    "format": "jpg",
-    "group": "social",
     "height": 630,
-    "file": "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg"
+    "format": "jpg",
+    "group": "social"
   }
 ]
