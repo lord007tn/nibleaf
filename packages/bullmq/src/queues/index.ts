@@ -20,6 +20,7 @@ export const queues: Record<QueueNames, Queue<unknown, unknown, string>> = {
   [QueueNames.SEARCH]: makeQueue(QueueNames.SEARCH) as Queue<unknown, unknown, string>,
   [QueueNames.EMAIL]: makeQueue(QueueNames.EMAIL) as Queue<unknown, unknown, string>,
   [QueueNames.ANALYTICS]: makeQueue(QueueNames.ANALYTICS) as Queue<unknown, unknown, string>,
+  [QueueNames.EXPORT]: makeQueue(QueueNames.EXPORT) as Queue<unknown, unknown, string>,
 };
 
 const queueEventsCache: Partial<Record<QueueNames, QueueEvents>> = {};

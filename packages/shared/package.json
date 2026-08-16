@@ -11,6 +11,7 @@
     "./ids": "./src/ids.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",
+    "./export-schedule": "./src/export-schedule.ts",
     "./utils": "./src/utils.ts"
   },
   "scripts": {

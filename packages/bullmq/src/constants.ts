@@ -6,5 +6,6 @@ export const QueueNames = {
   SEARCH: 'search',
   EMAIL: 'email',
   ANALYTICS: 'analytics',
+  EXPORT: 'export',
 } as const;
 export type QueueNames = (typeof QueueNames)[keyof typeof QueueNames];

@@ -61,6 +61,20 @@ export const QUEUE_CONFIGS: Record<QueueNames, QueueConfigEntry> = {
     stalledInterval: 15_000,
     maxStalledCount: 1,
   },
+  [QueueNames.EXPORT]: {
+    concurrency: env.EXPORT_CONCURRENCY,
+    defaultJobOptions: {
+      ...DEFAULT_JOB_OPTIONS,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: { count: 200, age: ONE_DAY },
+    },
+    // Static bundles and Chromium PDF rendering can be large, but must still
+    // renew their BullMQ lock well beyond ordinary request timeouts.
+    lockDuration: 30 * MINUTE_MS,
+    stalledInterval: 60_000,
+    maxStalledCount: 1,
+  },
 };
 
 /** Wrap queue names in a Redis hash tag so BullMQ keys stay grouped for Dragonfly. */

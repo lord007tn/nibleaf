@@ -85,6 +85,8 @@ anchored comments, and one-click publish:
 - **Platform admin** — an internal operator panel for customers, sites, deployments, and roles.
 - **Bring-your-own storage** — any S3-compatible store (maxio, Cloudflare R2, AWS S3,
   Backblaze B2).
+- **Portable exports** — snapshot-consistent Markdown ZIP, print-ready PDF, and
+  fully static HTML, plus timezone-aware archival schedules with retention and run history.
 
 ## 🚧 Not built yet
 
@@ -97,7 +99,6 @@ Honesty over marketing — if you need these today, Nibleaf isn't there yet:
   workspace members only; there are no dedicated end-reader accounts, JWT/SSO
   hand-off, or per-audience content.
 - **SSO / SAML** — email/password + Google OAuth only; no enterprise SSO.
-- **PDF / static-site export** — Markdown archive export works; PDF and static HTML jobs are not enabled.
 - **Arabic stemming** — Arabic tokenization and conservative spelling normalization work;
   stemming remains disabled to avoid silently broadening matches without language-specific evaluation.
 
@@ -184,7 +185,7 @@ packages/
   database    Prisma schema + client (PostgreSQL)
   auth        better-auth (email/password + organizations)
   storage     S3-compatible object storage
-  bullmq      Typed queues/workers (publish, search, email, analytics)
+  bullmq      Typed queues/workers (publish, search, email, analytics, export)
   search      Orama full-text + fuzzy search (bilingual)
   validators  Shared Zod schemas — the server↔app contract
   shared      Constants, RBAC, ids, snapshot/site helpers
@@ -197,6 +198,25 @@ creates a `Deployment` and enqueues a BullMQ job; the worker builds an immutable
 the doc tree and marks the deployment `READY`. The public site and its search index are
 served from that snapshot — so readers never see a half-written page, and rolling forward is
 atomic.
+
+**How exports work** — the dashboard copies the latest `READY` deployment into an
+immutable `ExportSnapshot`, then queues one background `ExportJob` for every selected
+format. Artifacts are written under the project's prefix in the configured S3-compatible
+bucket; the API returns five-minute presigned download URLs only after rechecking project
+membership. Static archives contain their own CSS, navigation, search index, rewritten
+links, and referenced published assets. Scheduled archives use IANA timezones and a
+database-backed minute dispatcher, so retries are idempotent and daylight-saving changes
+keep the requested wall-clock time.
+
+PDF rendering requires Chromium. The project Docker image installs it automatically.
+Source/non-Docker workers must install a Chromium-compatible browser and set
+`EXPORT_CHROMIUM_PATH`. Export workers also need storage credentials and the `export`
+queue in `WORKER_QUEUES` when an allowlist is used. Operators can tune
+`EXPORT_CONCURRENCY`, `EXPORT_MAX_ACTIVE_PER_PROJECT`, `EXPORT_MAX_DAILY_PER_PROJECT`,
+`EXPORT_MAX_PAGES`, `EXPORT_MAX_SNAPSHOT_BYTES`, `EXPORT_MAX_ASSET_BYTES`,
+`EXPORT_MANUAL_RETENTION_DAYS`, and `EXPORT_DOWNLOAD_TTL_SECONDS`. The nightly cleanup
+job deletes expired objects and database rows; storage lifecycle rules may be added as a
+defense in depth, but must not delete objects earlier than Nibleaf retention.
 
 **Same-origin auth** — the dashboard proxies `/api/**` to the server (via Nitro), so
 better-auth session cookies stay first-party with no CORS dance.

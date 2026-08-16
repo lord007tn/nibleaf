@@ -3,6 +3,8 @@ import {
   addDomainBody,
   adminSetRoleBody,
   confirmAssetBody,
+  createExportBody,
+  createExportScheduleBody,
   createLanguageBody,
   createProjectBody,
   gitConfigSchema,
@@ -306,5 +308,30 @@ describe('adminSetRoleBody', () => {
     expect(adminSetRoleBody.safeParse({ role: 'superadmin' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'owner' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'admin', extra: 1 }).success).toBe(false);
+  });
+});
+
+describe('export schemas', () => {
+  it('deduplicates formats and rejects unsupported formats', () => {
+    const parsed = createExportBody.parse({ formats: ['PDF', 'PDF', 'STATIC_HTML'] });
+    expect(parsed.formats).toEqual(['PDF', 'STATIC_HTML']);
+    expect(createExportBody.safeParse({ formats: ['DOCX'] }).success).toBe(false);
+    expect(createExportBody.safeParse({ formats: [] }).success).toBe(false);
+  });
+
+  it('validates cadence-specific fields and IANA timezones', () => {
+    const base = { name: 'Nightly', formats: ['MARKDOWN'], cadence: 'DAILY', timezone: 'Africa/Lagos', hour: 2, minute: 30 };
+    expect(createExportScheduleBody.safeParse(base).success).toBe(true);
+    expect(createExportScheduleBody.safeParse({ ...base, timezone: 'UTC+1' }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'WEEKLY' }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'WEEKLY', weekday: 1 }).success).toBe(true);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'MONTHLY', monthday: 31 }).success).toBe(true);
+  });
+
+  it('bounds retention and wall-clock values', () => {
+    const base = { name: 'Archive', formats: ['PDF'], cadence: 'DAILY', timezone: 'UTC', hour: 0, minute: 0 };
+    expect(createExportScheduleBody.safeParse({ ...base, retentionCount: 0 }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, retentionDays: 3651 }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, hour: 24 }).success).toBe(false);
   });
 });

@@ -31,11 +31,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  sessions    Session[]
-  accounts    Account[]
-  members     Member[]
-  invitations Invitation[]
-  comments    Comment[]
+  sessions        Session[]
+  accounts        Account[]
+  members         Member[]
+  invitations     Invitation[]
+  comments        Comment[]
+  exportJobs      ExportJob[]      @relation("ExportJobCreator")
+  exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
 
   @@map("user")
 }
@@ -167,6 +169,31 @@ enum TextDirection {
   RTL
 }
 
+enum ExportFormat {
+  MARKDOWN
+  PDF
+  STATIC_HTML
+}
+
+enum ExportJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ExportTrigger {
+  MANUAL
+  SCHEDULED
+}
+
+enum ExportCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
 /// A documentation site.
 model Project {
   id             String       @id @default(cuid())
@@ -198,6 +225,9 @@ model Project {
   assets          Asset[]
   comments        Comment[]
   analyticsEvents AnalyticsEvent[]
+  exportSnapshots ExportSnapshot[]
+  exportJobs      ExportJob[]
+  exportSchedules ExportSchedule[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -337,9 +367,115 @@ model Deployment {
   createdAt     DateTime         @default(now())
   completedAt   DateTime?
 
+  exportSnapshots ExportSnapshot[]
+
   @@unique([projectId, version])
   @@index([projectId, status])
   @@map("deployment")
+}
+
+/// Immutable copy of one READY deployment plus the storage asset manifest used
+/// by every artifact in an export job. Keeping this separate from mutable site
+/// rows guarantees multi-format jobs all render exactly one published revision.
+model ExportSnapshot {
+  id                String     @id @default(cuid())
+  projectId         String
+  project           Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deploymentId      String
+  deployment        Deployment @relation(fields: [deploymentId], references: [id], onDelete: Restrict)
+  deploymentVersion Int
+  snapshot          Json
+  assets            Json
+  pagesCount        Int
+  contentBytes      Int
+  createdAt         DateTime   @default(now())
+
+  jobs ExportJob[]
+
+  @@index([projectId, createdAt])
+  @@map("export_snapshot")
+}
+
+/// One background run may produce multiple formats from the same snapshot.
+/// idempotencyKey is populated for scheduled slots so dispatcher retries cannot
+/// create duplicate archives.
+model ExportJob {
+  id                String          @id @default(cuid())
+  projectId         String
+  project           Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  snapshotId        String
+  snapshot          ExportSnapshot  @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  scheduleId        String?
+  schedule          ExportSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  formats           ExportFormat[]
+  status            ExportJobStatus @default(PENDING)
+  trigger           ExportTrigger   @default(MANUAL)
+  idempotencyKey    String?         @unique
+  createdById       String?
+  createdBy         User?           @relation("ExportJobCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  attempts          Int             @default(0)
+  error             String?
+  cancelRequestedAt DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime        @default(now())
+
+  artifacts ExportArtifact[]
+
+  @@index([projectId, createdAt])
+  @@index([scheduleId, createdAt])
+  @@index([status, createdAt])
+  @@map("export_job")
+}
+
+model ExportArtifact {
+  id          String       @id @default(cuid())
+  jobId       String
+  job         ExportJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  format      ExportFormat
+  storageKey  String       @unique
+  fileName    String
+  contentType String
+  size        Int
+  checksum    String
+  createdAt   DateTime     @default(now())
+
+  @@unique([jobId, format])
+  @@map("export_artifact")
+}
+
+/// Archive schedules use an explicit local wall-clock policy instead of raw
+/// cron text, which keeps validation and DST behaviour deterministic.
+model ExportSchedule {
+  id             String         @id @default(cuid())
+  projectId      String
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  formats        ExportFormat[]
+  cadence        ExportCadence
+  timezone       String
+  hour           Int
+  minute         Int
+  weekday        Int?
+  monthday       Int?
+  retentionCount Int            @default(12)
+  retentionDays  Int            @default(90)
+  destination    String         @default("STORAGE")
+  enabled        Boolean        @default(true)
+  nextRunAt      DateTime?
+  lastRunAt      DateTime?
+  lastError      String?
+  createdById    String?
+  createdBy      User?          @relation("ExportScheduleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  jobs ExportJob[]
+
+  @@index([projectId, createdAt])
+  @@index([enabled, nextRunAt])
+  @@map("export_schedule")
 }
 
 model Domain {
