@@ -26,7 +26,7 @@ CREATE TABLE "git_connection" (
 
 CREATE TABLE "git_sync_operation" (
     "id" TEXT NOT NULL,
-    "connectionId" TEXT,
+    "connectionId" TEXT NOT NULL,
     "kind" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'QUEUED',
     "idempotencyKey" TEXT NOT NULL,
@@ -131,7 +131,7 @@ CREATE TABLE "git_webhook_delivery" (
 
 CREATE TABLE "git_audit_event" (
     "id" TEXT NOT NULL,
-    "connectionId" TEXT NOT NULL,
+    "connectionId" TEXT,
     "projectId" TEXT NOT NULL,
     "actorUserId" TEXT,
     "action" TEXT NOT NULL,
