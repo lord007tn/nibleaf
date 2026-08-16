@@ -58,6 +58,20 @@ Every push includes an idempotency key, commit message, author name, and author 
 
 The GitHub adapter creates or updates one draft pull request for the configured head/base pair. The UI shows changed files, durable operation status, PR state, and preview lifecycle (`PENDING`, `BUILDING`, `READY`, `FAILED`, or `SUPERSEDED`). READY previews are immutable snapshots at an unguessable URL and send `noindex, nofollow`; closing a PR supersedes its active preview.
 
+## Visual walkthrough
+
+The Git panel explains the least-privilege GitHub scopes and keeps the base and dedicated authoring branches explicit when an administrator connects a repository.
+
+![Connect a GitHub repository for two-way authoring](./images/git-authoring/connect.png)
+
+After a push, the same panel surfaces the durable operation, commit attribution, changed files, draft pull request, and preview lifecycle.
+
+![Successful sync, draft pull request, and ready preview](./images/git-authoring/sync-and-preview.png)
+
+The public preview renders the immutable pull-request snapshot independently from the authoring workspace.
+
+![Immutable pull-request documentation preview](./images/git-authoring/pull-request-preview.png)
+
 ## Conflict semantics
 
 Each tracked file stores the last common base. Before changing either side, Nibleaf compares:
@@ -69,6 +83,12 @@ Each tracked file stores the last common base. Before changing either side, Nibl
 If only one side changed, that change is preserved automatically. Identical edits converge. File additions and deletions are first-class states, not empty strings. If both sides changed differently, the operation moves to `CONFLICT` and no repository ref or Nibleaf page is overwritten.
 
 For every conflicted file, the UI displays complete base/ours/theirs content. An author must explicitly choose Nibleaf, Git, custom content, or custom deletion. Once all files are resolved, the same durable operation is retried. A second remote ref check still runs immediately before update, so changes that arrive during reconciliation cannot be silently lost.
+
+![Per-file base, Nibleaf, and Git reconciliation](./images/git-authoring/conflict-reconciliation.png)
+
+The following short recording shows an explicit per-file resolution and the operation returning to the durable queue. No side is changed before the author selects a resolution.
+
+![Conflict resolution interaction](./images/git-authoring/conflict-resolution.gif)
 
 ## Operational recovery
 
