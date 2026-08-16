@@ -28,6 +28,7 @@ export const env = createEnv({
       .int()
       .positive()
       .default(50 * 1024 * 1024),
+    GIT_WORKER_SECRET: z.string().min(32).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

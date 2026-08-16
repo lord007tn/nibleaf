@@ -47,6 +47,11 @@ export const env = createEnv({
       .default(50 * 1024 * 1024),
     EXPORT_MANUAL_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(7),
     EXPORT_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().min(30).max(900).default(300),
+    /** Base64-encoded 32-byte AES key used only for Git provider credentials
+     * and webhook secrets. Generate with: openssl rand -base64 32 */
+    GIT_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Shared API/worker authentication secret for opaque Git job execution. */
+    GIT_WORKER_SECRET: z.string().min(32).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

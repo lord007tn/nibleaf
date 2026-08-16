@@ -7,5 +7,6 @@ export const QueueNames = {
   EMAIL: 'email',
   ANALYTICS: 'analytics',
   EXPORT: 'export',
+  GIT: 'git',
 } as const;
 export type QueueNames = (typeof QueueNames)[keyof typeof QueueNames];

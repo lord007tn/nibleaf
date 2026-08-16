@@ -21,6 +21,7 @@ import {
 import { useFormatters } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { copyToClipboard } from '@/lib/invitations';
+import { GitWorkflow } from './git-workflow';
 import { SettingsSection } from './section';
 
 interface GitConfig {
@@ -623,6 +624,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
   if (!connected) {
     return (
       <div className="flex flex-col gap-6">
+        {projectId ? <GitWorkflow projectId={projectId} /> : null}
         {/* Empty state: what connecting does, then the connect form. */}
         <section className="rounded-xl border border-border border-dashed bg-muted/20 p-6 text-center">
           <span className="mx-auto grid size-12 place-items-center rounded-xl bg-foreground/10 text-foreground">
@@ -640,6 +642,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col gap-6">
+      {projectId ? <GitWorkflow projectId={projectId} /> : null}
       {/* Connected status card */}
       <section className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">

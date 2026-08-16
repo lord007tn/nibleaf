@@ -100,14 +100,7 @@ Private customer documentation supports dedicated reader accounts, audience/page
 
 Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
-- **Two-way git sync & PR previews** — public repo import and one-way webhook sync
-  exist, but browser edits do not push back to Git and there are no per-PR preview deployments.
-- **Reader auth / personalization** — sites are either public or visible to
-  workspace members only; there are no dedicated end-reader accounts, JWT/SSO
-  hand-off, or per-audience content.
 - **SSO / SAML** — email/password + Google OAuth only; no enterprise SSO.
-- **Arabic stemming** — Arabic tokenization and conservative spelling normalization work;
-  stemming remains disabled to avoid silently broadening matches without language-specific evaluation.
 
 Want one of these sooner? Open or upvote an issue —
 [github.com/lord007tn/nibleaf/issues](https://github.com/lord007tn/nibleaf/issues).
