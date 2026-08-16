@@ -5,7 +5,18 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, ArrowUpRight, GitCommit, GitCompare, GitPullRequest, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  GitCommit,
+  GitCompare,
+  GitPullRequest,
+  RefreshCw,
+  Settings2,
+  ShieldCheck,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { API_URL } from '@/lib/api';
@@ -126,6 +137,8 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   const [authorEmail, setAuthorEmail] = useState('docs@example.com');
   const [prTitle, setPrTitle] = useState('Update documentation');
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
+  const [connectStep, setConnectStep] = useState<1 | 2 | 3>(1);
+  const [intent, setIntent] = useState<'overview' | 'sync' | 'publish' | 'connection'>('overview');
   const query = useQuery({
     queryKey: keyFor(projectId),
     queryFn: () => request<GitStatus | null>(`/api/app/projects/${projectId}/git`),
@@ -179,47 +192,139 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     setContentPath(connection.contentPath);
   }, [connection]);
 
-  if (query.isPending) return <div className="rounded-xl border p-5 text-muted-foreground text-sm">Loading Git workflow…</div>;
+  if (query.isPending)
+    return (
+      <div aria-live="polite" className="rounded-xl border p-5 text-muted-foreground text-sm">
+        Loading Git connection…
+      </div>
+    );
+  if (query.isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle />
+        <AlertTitle>Git connection could not be loaded</AlertTitle>
+        <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+          <span>{query.error instanceof Error ? query.error.message : 'Try again or check the server connection.'}</span>
+          <Button onClick={() => query.refetch()} size="sm" variant="outline">
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    );
+  }
   if (!connection) {
     return (
       <section className="rounded-xl border border-primary/20 bg-primary/5 p-5">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-5 text-primary" />
           <div>
-            <h2 className="font-semibold">Two-way GitHub authoring</h2>
+            <h2 className="font-semibold">Connect GitHub</h2>
             <p className="text-muted-foreground text-sm">
-              Push Nibleaf edits to a dedicated branch, reconcile upstream changes, and create draft pull requests with previews.
+              Import existing docs, keep changes in sync, and publish reviewable pull requests from one connection.
             </p>
           </div>
         </div>
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div>
-            <Label htmlFor="git2-repo">Repository</Label>
-            <Input id="git2-repo" onChange={(e) => setRepository(e.target.value)} placeholder="owner/docs" value={repository} />
+        <ol aria-label="Connection progress" className="mt-5 grid grid-cols-3 gap-2 text-xs">
+          {(['Authorize', 'Repository', 'Review'] as const).map((label, index) => {
+            const step = (index + 1) as 1 | 2 | 3;
+            return (
+              <li
+                aria-current={connectStep === step ? 'step' : undefined}
+                className={`rounded-md border px-3 py-2 ${connectStep === step ? 'border-primary bg-background font-medium text-foreground' : 'text-muted-foreground'}`}
+                key={label}
+              >
+                {step}. {label}
+              </li>
+            );
+          })}
+        </ol>
+        {connectStep === 1 ? (
+          <div className="mt-5 max-w-xl space-y-3 rounded-lg border bg-background p-4">
+            <div>
+              <h3 className="font-medium text-sm">Authorize the provider</h3>
+              <p className="mt-1 text-muted-foreground text-xs">
+                Use a fine-grained GitHub token with Metadata read, Contents read/write, and Pull requests read/write. It is encrypted and never
+                displayed again.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="git2-token">Fine-grained token</Label>
+              <Input
+                autoComplete="off"
+                id="git2-token"
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="github_pat_…"
+                type="password"
+                value={token}
+              />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="git2-token">Fine-grained token</Label>
-            <Input autoComplete="off" id="git2-token" onChange={(e) => setToken(e.target.value)} type="password" value={token} />
+        ) : null}
+        {connectStep === 2 ? (
+          <div className="mt-5 grid gap-4 rounded-lg border bg-background p-4 md:grid-cols-2">
+            <div>
+              <Label htmlFor="git2-repo">Repository</Label>
+              <Input id="git2-repo" onChange={(e) => setRepository(e.target.value)} placeholder="owner/docs" value={repository} />
+            </div>
+            <div>
+              <Label htmlFor="git2-base">Base branch</Label>
+              <Input id="git2-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
+            </div>
+            <div>
+              <Label htmlFor="git2-head">Dedicated Nibleaf branch</Label>
+              <Input id="git2-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
+            </div>
+            <div>
+              <Label htmlFor="git2-path">Content path</Label>
+              <Input id="git2-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
+            </div>
           </div>
-          <div>
-            <Label htmlFor="git2-base">Base branch</Label>
-            <Input id="git2-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
+        ) : null}
+        {connectStep === 3 ? (
+          <div className="mt-5 rounded-lg border bg-background p-4">
+            <h3 className="font-medium text-sm">Review connection</h3>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-muted-foreground text-xs">Repository</dt>
+                <dd className="font-mono">{repository}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Docs path</dt>
+                <dd className="font-mono">{contentPath || '/'}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Import from</dt>
+                <dd className="font-mono">{baseBranch}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Write changes to</dt>
+                <dd className="font-mono">{headBranch}</dd>
+              </div>
+            </dl>
+            <p className="mt-3 text-muted-foreground text-xs">
+              Connecting verifies repository access and stores the credential. Import and sync remain separate actions after connection.
+            </p>
           </div>
-          <div>
-            <Label htmlFor="git2-head">Dedicated Nibleaf branch</Label>
-            <Input id="git2-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
-          </div>
-          <div>
-            <Label htmlFor="git2-path">Content path</Label>
-            <Input id="git2-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
-          </div>
+        ) : null}
+        <div className="mt-4 flex flex-wrap justify-between gap-2">
+          <Button disabled={connectStep === 1} onClick={() => setConnectStep((step) => Math.max(1, step - 1) as 1 | 2 | 3)} variant="outline">
+            <ArrowLeft className="size-4" /> Back
+          </Button>
+          {connectStep < 3 ? (
+            <Button
+              disabled={
+                (connectStep === 1 && !token.trim()) || (connectStep === 2 && (!repository.trim() || !baseBranch.trim() || !headBranch.trim()))
+              }
+              onClick={() => setConnectStep((step) => Math.min(3, step + 1) as 1 | 2 | 3)}
+            >
+              Continue <ArrowRight className="size-4" />
+            </Button>
+          ) : (
+            <Button disabled={connect.isPending || !repository || !token} onClick={() => connect.mutate()}>
+              {connect.isPending ? 'Verifying connection…' : 'Connect GitHub'}
+            </Button>
+          )}
         </div>
-        <p className="mt-3 text-muted-foreground text-xs">
-          Required GitHub scopes: Metadata read, Contents read/write, Pull requests read/write. The token is encrypted at rest and never shown again.
-        </p>
-        <Button className="mt-4" disabled={connect.isPending || !repository || !token} onClick={() => connect.mutate()}>
-          {connect.isPending ? 'Connecting…' : 'Connect GitHub'}
-        </Button>
       </section>
     );
   }
@@ -251,6 +356,28 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
         ) : null}
       </section>
 
+      <nav aria-label="Git workflow actions" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            ['overview', 'Status & activity', 'Health, previews, and recent runs'],
+            ['sync', 'Import & sync', 'Pull repository changes into Nibleaf'],
+            ['publish', 'Create or update PR', 'Push saved docs for review'],
+            ['connection', 'Connection settings', 'Branches, webhook, and disconnect'],
+          ] as const
+        ).map(([value, label, description]) => (
+          <button
+            aria-pressed={intent === value}
+            className={`rounded-lg border p-3 text-start transition-colors ${intent === value ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+            key={value}
+            onClick={() => setIntent(value)}
+            type="button"
+          >
+            <span className="block font-medium text-sm">{label}</span>
+            <span className="mt-1 block text-muted-foreground text-xs">{description}</span>
+          </button>
+        ))}
+      </nav>
+
       {activeConflicts.length > 0 ? (
         <section className="space-y-3">
           <div>
@@ -265,174 +392,204 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
         </section>
       ) : null}
 
-      <section className="rounded-xl border p-5">
-        <div className="flex items-center gap-2">
-          <GitCommit className="size-5" />
-          <h3 className="font-semibold">Commit and draft pull request</h3>
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <Label htmlFor="git2-message">Commit message</Label>
-            <Input id="git2-message" onChange={(e) => setMessage(e.target.value)} value={message} />
+      {intent === 'sync' ? (
+        <section className="rounded-xl border p-5">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="size-5" />
+            <h3 className="font-semibold">Import and sync repository changes</h3>
           </div>
-          <div>
-            <Label htmlFor="git2-author">Author name</Label>
-            <Input id="git2-author" onChange={(e) => setAuthorName(e.target.value)} value={authorName} />
-          </div>
-          <div>
-            <Label htmlFor="git2-email">Author email</Label>
-            <Input id="git2-email" onChange={(e) => setAuthorEmail(e.target.value)} type="email" value={authorEmail} />
-          </div>
-          <div className="md:col-span-2">
-            <Label htmlFor="git2-title">Pull request title</Label>
-            <Input id="git2-title" onChange={(e) => setPrTitle(e.target.value)} value={prTitle} />
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+          <p className="mt-1 text-muted-foreground text-sm">
+            Pull from <code>{connection.baseBranch}</code>, compare it with Nibleaf’s last common baseline, and review conflicts before anything is
+            overwritten.
+          </p>
           <Button
-            disabled={operation.isPending}
-            onClick={() =>
-              operation.mutate({
-                idempotencyKey: crypto.randomUUID(),
-                kind: 'PUSH',
-                commitMessage: message,
-                authorName,
-                authorEmail,
-                createPullRequest: true,
-                pullRequestTitle: prTitle,
-              })
-            }
+            className="mt-4"
+            disabled={operation.isPending || activeConflicts.length > 0}
+            onClick={() => operation.mutate({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
           >
-            <GitPullRequest className="size-4" /> Commit & update draft PR
+            <RefreshCw className={`size-4 ${operation.isPending ? 'animate-spin' : ''}`} />{' '}
+            {connection.lastSyncedAt ? 'Sync latest changes' : 'Import existing docs'}
           </Button>
-          <Button
-            disabled={operation.isPending}
-            onClick={() => operation.mutate({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.headBranch })}
-            variant="outline"
-          >
-            <RefreshCw className="size-4" /> Pull upstream changes
-          </Button>
-        </div>
-      </section>
+          {activeConflicts.length > 0 ? (
+            <p className="mt-2 text-amber-700 text-xs dark:text-amber-300">Resolve the open conflicts above before starting another sync.</p>
+          ) : null}
+        </section>
+      ) : null}
 
-      <section className="rounded-xl border p-5">
-        <h3 className="font-semibold">Pull requests and previews</h3>
-        <div className="mt-3 space-y-2">
-          {connection.pullRequests.length ? (
-            connection.pullRequests.map((pull) => {
-              const preview = pull.previews[0];
-              return (
-                <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3" key={pull.id}>
-                  <Badge variant={pull.draft ? 'secondary' : 'outline'}>{pull.draft ? 'Draft' : pull.state}</Badge>
-                  <a className="font-medium text-sm underline" href={pull.url} rel="noreferrer" target="_blank">
-                    #{pull.number} {pull.title} <ArrowUpRight className="inline size-3" />
-                  </a>
-                  <span className="ms-auto text-muted-foreground text-xs">Preview: {preview?.status ?? 'pending'}</span>
-                  {preview?.url ? (
-                    <a className="text-sm underline" href={preview.url} target="_blank" rel="noreferrer">
-                      Open preview
-                    </a>
-                  ) : null}
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-muted-foreground text-sm">No pull request has been created yet.</p>
-          )}
-        </div>
-      </section>
-
-      <section className="rounded-xl border p-5">
-        <h3 className="font-semibold">Webhook</h3>
-        <p className="text-muted-foreground text-sm">
-          Subscribe to push and pull_request events. Deliveries are signature-verified and deduplicated.
-        </p>
-        <Label className="mt-3" htmlFor="git2-webhook">
-          Payload URL
-        </Label>
-        <Input className="font-mono text-xs" id="git2-webhook" readOnly value={webhookUrl} />
-        {webhookSecret ? (
-          <Alert className="mt-3">
-            <ShieldCheck />
-            <AlertTitle>Copy this secret now</AlertTitle>
-            <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
-          </Alert>
-        ) : null}
-        <Button className="mt-3" disabled={rotate.isPending} onClick={() => rotate.mutate()} size="sm" variant="outline">
-          Rotate and reveal secret
-        </Button>
-      </section>
-
-      <section className="rounded-xl border p-5">
-        <h3 className="font-semibold">Connection configuration</h3>
-        <p className="text-muted-foreground text-sm">
-          Changing repository topology resets the common-base cache and safely establishes a new baseline. Leave the credential blank to keep the
-          encrypted token.
-        </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <Label htmlFor="git2-update-repo">Repository</Label>
-            <Input id="git2-update-repo" onChange={(e) => setRepository(e.target.value)} value={repository} />
+      {intent === 'publish' ? (
+        <section className="rounded-xl border p-5">
+          <div className="flex items-center gap-2">
+            <GitCommit className="size-5" />
+            <h3 className="font-semibold">Commit and draft pull request</h3>
           </div>
-          <div>
-            <Label htmlFor="git2-update-token">Rotate token (optional)</Label>
-            <Input autoComplete="off" id="git2-update-token" onChange={(e) => setToken(e.target.value)} type="password" value={token} />
-          </div>
-          <div>
-            <Label htmlFor="git2-update-base">Base branch</Label>
-            <Input id="git2-update-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
-          </div>
-          <div>
-            <Label htmlFor="git2-update-head">Dedicated Nibleaf branch</Label>
-            <Input id="git2-update-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
-          </div>
-          <div>
-            <Label htmlFor="git2-update-path">Content path</Label>
-            <Input id="git2-update-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
-          </div>
-        </div>
-        <div className="mt-4 flex flex-wrap justify-between gap-2">
-          <Button
-            disabled={disconnect.isPending}
-            onClick={() => {
-              if (window.confirm('Disconnect GitHub and remove encrypted credentials and sync history?')) disconnect.mutate();
-            }}
-            variant="destructive"
-          >
-            Disconnect
-          </Button>
-          <Button disabled={connect.isPending} onClick={() => connect.mutate()} variant="outline">
-            {connect.isPending ? 'Saving…' : 'Save connection'}
-          </Button>
-        </div>
-      </section>
-
-      <section className="rounded-xl border p-5">
-        <h3 className="font-semibold">Recent operations</h3>
-        <div className="mt-3 space-y-2">
-          {connection.operations.map((item) => (
-            <div className="rounded-lg border p-3" key={item.id}>
-              <div className="flex items-center gap-2">
-                <Badge variant={statusTone(item.status)}>{item.status}</Badge>
-                <span className="text-sm">
-                  {item.kind} {item.commitMessage}
-                </span>
-                <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString()}</span>
-              </div>
-              {item.changedFiles?.length ? (
-                <ul className="mt-2 text-muted-foreground text-xs">
-                  {item.changedFiles.map((file) => (
-                    <li key={file.path}>
-                      {file.status}: <code>{file.path}</code>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {item.error ? <p className="mt-2 text-destructive text-xs">{item.error}</p> : null}
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <Label htmlFor="git2-message">Commit message</Label>
+              <Input id="git2-message" onChange={(e) => setMessage(e.target.value)} value={message} />
             </div>
-          ))}
-        </div>
-      </section>
+            <div>
+              <Label htmlFor="git2-author">Author name</Label>
+              <Input id="git2-author" onChange={(e) => setAuthorName(e.target.value)} value={authorName} />
+            </div>
+            <div>
+              <Label htmlFor="git2-email">Author email</Label>
+              <Input id="git2-email" onChange={(e) => setAuthorEmail(e.target.value)} type="email" value={authorEmail} />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="git2-title">Pull request title</Label>
+              <Input id="git2-title" onChange={(e) => setPrTitle(e.target.value)} value={prTitle} />
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              disabled={operation.isPending}
+              onClick={() =>
+                operation.mutate({
+                  idempotencyKey: crypto.randomUUID(),
+                  kind: 'PUSH',
+                  commitMessage: message,
+                  authorName,
+                  authorEmail,
+                  createPullRequest: true,
+                  pullRequestTitle: prTitle,
+                })
+              }
+            >
+              <GitPullRequest className="size-4" /> Commit & update draft PR
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {intent === 'overview' || intent === 'publish' ? (
+        <section className="rounded-xl border p-5">
+          <h3 className="font-semibold">Pull requests and previews</h3>
+          <div className="mt-3 space-y-2">
+            {connection.pullRequests.length ? (
+              connection.pullRequests.map((pull) => {
+                const preview = pull.previews[0];
+                return (
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3" key={pull.id}>
+                    <Badge variant={pull.draft ? 'secondary' : 'outline'}>{pull.draft ? 'Draft' : pull.state}</Badge>
+                    <a className="font-medium text-sm underline" href={pull.url} rel="noreferrer" target="_blank">
+                      #{pull.number} {pull.title} <ArrowUpRight className="inline size-3" />
+                    </a>
+                    <span className="ms-auto text-muted-foreground text-xs">Preview: {preview?.status ?? 'pending'}</span>
+                    {preview?.url ? (
+                      <a className="text-sm underline" href={preview.url} target="_blank" rel="noreferrer">
+                        Open preview
+                      </a>
+                    ) : null}
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-muted-foreground text-sm">No pull request has been created yet.</p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {intent === 'connection' ? (
+        <>
+          <section className="rounded-xl border p-5">
+            <h3 className="font-semibold">Webhook</h3>
+            <p className="text-muted-foreground text-sm">
+              Subscribe to push and pull_request events. Deliveries are signature-verified and deduplicated.
+            </p>
+            <Label className="mt-3" htmlFor="git2-webhook">
+              Payload URL
+            </Label>
+            <Input className="font-mono text-xs" id="git2-webhook" readOnly value={webhookUrl} />
+            {webhookSecret ? (
+              <Alert className="mt-3">
+                <ShieldCheck />
+                <AlertTitle>Copy this secret now</AlertTitle>
+                <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
+              </Alert>
+            ) : null}
+            <Button className="mt-3" disabled={rotate.isPending} onClick={() => rotate.mutate()} size="sm" variant="outline">
+              Rotate and reveal secret
+            </Button>
+          </section>
+
+          <section className="rounded-xl border p-5">
+            <div className="flex items-center gap-2">
+              <Settings2 className="size-5" />
+              <h3 className="font-semibold">Connection configuration</h3>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Changing repository topology resets the common-base cache and safely establishes a new baseline. Leave the credential blank to keep the
+              encrypted token.
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="git2-update-repo">Repository</Label>
+                <Input id="git2-update-repo" onChange={(e) => setRepository(e.target.value)} value={repository} />
+              </div>
+              <div>
+                <Label htmlFor="git2-update-token">Rotate token (optional)</Label>
+                <Input autoComplete="off" id="git2-update-token" onChange={(e) => setToken(e.target.value)} type="password" value={token} />
+              </div>
+              <div>
+                <Label htmlFor="git2-update-base">Base branch</Label>
+                <Input id="git2-update-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
+              </div>
+              <div>
+                <Label htmlFor="git2-update-head">Dedicated Nibleaf branch</Label>
+                <Input id="git2-update-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
+              </div>
+              <div>
+                <Label htmlFor="git2-update-path">Content path</Label>
+                <Input id="git2-update-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap justify-between gap-2">
+              <Button
+                disabled={disconnect.isPending}
+                onClick={() => {
+                  if (window.confirm('Disconnect GitHub and remove encrypted credentials and sync history?')) disconnect.mutate();
+                }}
+                variant="destructive"
+              >
+                Disconnect
+              </Button>
+              <Button disabled={connect.isPending} onClick={() => connect.mutate()} variant="outline">
+                {connect.isPending ? 'Saving…' : 'Save connection'}
+              </Button>
+            </div>
+          </section>
+        </>
+      ) : null}
+
+      {intent === 'overview' || intent === 'sync' ? (
+        <section className="rounded-xl border p-5">
+          <h3 className="font-semibold">Recent operations</h3>
+          <div className="mt-3 space-y-2">
+            {connection.operations.map((item) => (
+              <div className="rounded-lg border p-3" key={item.id}>
+                <div className="flex items-center gap-2">
+                  <Badge variant={statusTone(item.status)}>{item.status}</Badge>
+                  <span className="text-sm">
+                    {item.kind} {item.commitMessage}
+                  </span>
+                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString()}</span>
+                </div>
+                {item.changedFiles?.length ? (
+                  <ul className="mt-2 text-muted-foreground text-xs">
+                    {item.changedFiles.map((file) => (
+                      <li key={file.path}>
+                        {file.status}: <code>{file.path}</code>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {item.error ? <p className="mt-2 text-destructive text-xs">{item.error}</p> : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

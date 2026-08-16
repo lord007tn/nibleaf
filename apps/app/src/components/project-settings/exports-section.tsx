@@ -54,6 +54,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
   const runs = useQuery({
     queryKey: queryKey(projectId, 'runs'),
     queryFn: async () => getData<ExportRun[]>(await api.app.projects[':projectId'].exports.$get({ param: { projectId } }), 'export runs'),
@@ -106,112 +107,153 @@ export function ExportsSection({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-7">
       <SectionHeader icon="⇩" title="Exports" description="Portable exports are rendered in the background from one immutable published revision." />
-      <section className="space-y-3">
-        <div className="font-semibold text-sm">Create export</div>
-        <div className="rounded-lg border border-border p-4">
-          <div className="flex flex-wrap gap-3">
-            {(Object.keys(labels) as ExportFormat[]).map((format) => (
-              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
-                <input checked={formats.includes(format)} onChange={() => toggleFormat(format)} type="checkbox" /> {labels[format]}
-              </label>
-            ))}
+      <nav aria-label="Export workflows" className="grid gap-2 sm:grid-cols-3">
+        {(
+          [
+            ['create', 'One-time export', 'Download the latest published revision'],
+            ['schedules', 'Schedules', 'Automate archival snapshots and retention'],
+            ['history', 'Run history', 'Monitor, recover, and download artifacts'],
+          ] as const
+        ).map(([value, title, description]) => (
+          <button
+            aria-pressed={surface === value}
+            className={`rounded-lg border p-3 text-start transition-colors ${surface === value ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+            key={value}
+            onClick={() => setSurface(value)}
+            type="button"
+          >
+            <span className="block font-medium text-sm">{title}</span>
+            <span className="mt-1 block text-muted-foreground text-xs">{description}</span>
+          </button>
+        ))}
+      </nav>
+      {runs.isError || schedules.isError ? (
+        <div aria-live="polite" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-destructive text-sm">
+          Export data could not be loaded. Check the connection and try this page again.
+        </div>
+      ) : null}
+      {surface === 'create' ? (
+        <section className="space-y-3">
+          <div className="font-semibold text-sm">Create export</div>
+          <div className="rounded-lg border border-border p-4">
+            <div className="flex flex-wrap gap-3">
+              {(Object.keys(labels) as ExportFormat[]).map((format) => (
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
+                  <input checked={formats.includes(format)} onChange={() => toggleFormat(format)} type="checkbox" /> {labels[format]}
+                </label>
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-muted-foreground text-xs">
+                PDF uses print-safe typography and RTL; static HTML includes offline navigation, search, themes, and assets.
+              </p>
+              <Button disabled={create.isPending} onClick={() => create.mutate()}>
+                {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />} Create export
+              </Button>
+            </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-muted-foreground text-xs">
-              PDF uses print-safe typography and RTL; static HTML includes offline navigation, search, themes, and assets.
-            </p>
-            <Button disabled={create.isPending} onClick={() => create.mutate()}>
-              {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />} Create export
+        </section>
+      ) : null}
+
+      {surface === 'schedules' ? (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="font-semibold text-sm">Archive schedules</div>
+            <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
+              <Plus className="size-3.5" /> New schedule
             </Button>
           </div>
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="font-semibold text-sm">Archive schedules</div>
-          <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
-            <Plus className="size-3.5" /> New schedule
-          </Button>
-        </div>
-        {showSchedule ? (
-          <ScheduleForm
-            projectId={projectId}
-            onCreated={() => {
-              setShowSchedule(false);
-              qc.invalidateQueries({ queryKey: queryKey(projectId, 'schedules') });
-            }}
-          />
-        ) : null}
-        <div className="space-y-2">
-          {schedules.data?.map((schedule) => (
-            <ScheduleRow
-              key={schedule.id}
+          {showSchedule ? (
+            <ScheduleForm
               projectId={projectId}
-              schedule={schedule}
-              onChanged={() => {
+              onCreated={() => {
+                setShowSchedule(false);
                 qc.invalidateQueries({ queryKey: queryKey(projectId, 'schedules') });
-                qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') });
               }}
             />
-          ))}
-          {!schedules.isLoading && !schedules.data?.length ? (
-            <p className="rounded-lg border border-dashed p-4 text-muted-foreground text-sm">No archival schedules yet.</p>
           ) : null}
-        </div>
-      </section>
+          <div className="space-y-2">
+            {schedules.data?.map((schedule) => (
+              <ScheduleRow
+                key={schedule.id}
+                projectId={projectId}
+                schedule={schedule}
+                onChanged={() => {
+                  qc.invalidateQueries({ queryKey: queryKey(projectId, 'schedules') });
+                  qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') });
+                }}
+              />
+            ))}
+            {!schedules.isLoading && !schedules.data?.length ? (
+              <div className="rounded-lg border border-dashed p-5 text-center">
+                <Archive className="mx-auto size-5 text-muted-foreground" />
+                <p className="mt-2 font-medium text-sm">No archival schedules</p>
+                <p className="mt-1 text-muted-foreground text-xs">Create one when exports need to run automatically across time zones.</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
-      <section className="space-y-3">
-        <div className="font-semibold text-sm">Run history</div>
-        <div className="space-y-2">
-          {runs.data?.map((run) => (
-            <div className="rounded-lg border border-border p-4" key={run.id}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 font-medium text-sm">
-                    <Archive className="size-4" />
-                    {run.formats.map((format) => labels[format]).join(', ')} <StatusBadge status={run.status} />
+      {surface === 'history' ? (
+        <section className="space-y-3">
+          <div className="font-semibold text-sm">Run history</div>
+          <div className="space-y-2">
+            {runs.data?.map((run) => (
+              <div className="rounded-lg border border-border p-4" key={run.id}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 font-medium text-sm">
+                      <Archive className="size-4" />
+                      {run.formats.map((format) => labels[format]).join(', ')} <StatusBadge status={run.status} />
+                    </div>
+                    <div className="mt-1 text-muted-foreground text-xs">
+                      Published v{run.snapshot.deploymentVersion} · {run.snapshot.pagesCount} pages ·{' '}
+                      {run.trigger === 'SCHEDULED' ? (run.schedule?.name ?? 'Scheduled') : 'Manual'} · {formatDate(run.createdAt)}
+                    </div>
                   </div>
-                  <div className="mt-1 text-muted-foreground text-xs">
-                    Published v{run.snapshot.deploymentVersion} · {run.snapshot.pagesCount} pages ·{' '}
-                    {run.trigger === 'SCHEDULED' ? (run.schedule?.name ?? 'Scheduled') : 'Manual'} · {formatDate(run.createdAt)}
-                  </div>
+                  {run.status === 'PENDING' || run.status === 'RUNNING' ? (
+                    <Button disabled={cancel.isPending} onClick={() => cancel.mutate(run.id)} size="sm" variant="outline">
+                      <Ban className="size-3.5" /> Cancel
+                    </Button>
+                  ) : null}
                 </div>
-                {run.status === 'PENDING' || run.status === 'RUNNING' ? (
-                  <Button disabled={cancel.isPending} onClick={() => cancel.mutate(run.id)} size="sm" variant="outline">
-                    <Ban className="size-3.5" /> Cancel
-                  </Button>
+                {run.error ? (
+                  <p className="mt-3 rounded-md bg-destructive/10 p-2 text-destructive text-xs">
+                    Attempt {run.attempts}: {run.error}
+                  </p>
+                ) : null}
+                {run.artifacts.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {run.artifacts.map((artifact) => (
+                      <Button key={artifact.id} onClick={() => download(run, artifact)} size="sm" variant="outline">
+                        <Download className="size-3.5" /> {labels[artifact.format]} · {sizeLabel(artifact.size)}
+                      </Button>
+                    ))}
+                  </div>
                 ) : null}
               </div>
-              {run.error ? (
-                <p className="mt-3 rounded-md bg-destructive/10 p-2 text-destructive text-xs">
-                  Attempt {run.attempts}: {run.error}
-                </p>
-              ) : null}
-              {run.artifacts.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {run.artifacts.map((artifact) => (
-                    <Button key={artifact.id} onClick={() => download(run, artifact)} size="sm" variant="outline">
-                      <Download className="size-3.5" /> {labels[artifact.format]} · {sizeLabel(artifact.size)}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ))}
-          {!runs.isLoading && !runs.data?.length ? (
-            <p className="rounded-lg border border-dashed p-4 text-muted-foreground text-sm">No export runs yet.</p>
-          ) : null}
-        </div>
-      </section>
+            ))}
+            {!runs.isLoading && !runs.data?.length ? (
+              <div className="rounded-lg border border-dashed p-5 text-center">
+                <FileArchive className="mx-auto size-5 text-muted-foreground" />
+                <p className="mt-2 font-medium text-sm">No export runs yet</p>
+                <p className="mt-1 text-muted-foreground text-xs">Create a one-time export or run a schedule to see status and downloads here.</p>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
-      <p className="text-muted-foreground text-xs">
-        Need the legacy all-drafts archive?{' '}
-        <a className="underline" download href={`/api/app/projects/${projectId}/export`}>
-          Download the original Markdown ZIP
-        </a>
-        .
-      </p>
+      {surface === 'create' ? (
+        <p className="text-muted-foreground text-xs">
+          Need the legacy all-drafts archive?{' '}
+          <a className="underline" download href={`/api/app/projects/${projectId}/export`}>
+            Download the original Markdown ZIP
+          </a>
+          .
+        </p>
+      ) : null}
     </div>
   );
 }
