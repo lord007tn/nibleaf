@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUpRight,
+  Check,
   GitCommit,
   GitCompare,
   GitPullRequest,
@@ -228,137 +229,190 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   }
   if (!connection) {
     return (
-      <section className="rounded-xl border border-primary/20 bg-primary/5 p-5">
-        <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-0.5 size-5 text-primary" />
-          <div>
-            <h2 className="font-semibold">Connect GitHub</h2>
-            <p className="text-muted-foreground text-sm">
-              Import existing docs, keep changes in sync, and publish reviewable pull requests from one connection.
-            </p>
-          </div>
-        </div>
-        <ol aria-label="Connection progress" className="mt-5 grid grid-cols-3 gap-2 text-xs">
-          {(['Authorize', 'Repository', 'Review'] as const).map((label, index) => {
-            const step = (index + 1) as 1 | 2 | 3;
-            return (
-              <li
-                aria-current={connectStep === step ? 'step' : undefined}
-                className={`rounded-md border px-3 py-2 ${connectStep === step ? 'border-primary bg-background font-medium text-foreground' : 'text-muted-foreground'}`}
-                key={label}
-              >
-                {step}. {label}
-              </li>
-            );
-          })}
-        </ol>
-        {connectStep === 1 ? (
-          <div className="mt-5 max-w-xl space-y-3 rounded-lg border bg-background p-4">
-            <div>
-              <h3 className="font-medium text-sm">Authorize the provider</h3>
-              <p className="mt-1 text-muted-foreground text-xs">
-                Use a fine-grained GitHub token with Metadata read, Contents read/write, and Pull requests read/write. This step verifies your
-                identity without storing the token; it is encrypted only when you finish connecting.
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <header className="border-border border-b bg-muted/20 px-5 py-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+              <ShieldCheck className="size-5 text-primary" />
+            </span>
+            <div className="space-y-1">
+              <h2 className="font-semibold text-base">Connect GitHub</h2>
+              <p className="max-w-2xl text-muted-foreground text-sm leading-6">
+                Bring existing docs into Nibleaf, keep changes in sync, and publish reviewable pull requests.
               </p>
             </div>
-            <div>
-              <Label htmlFor="git2-token">Fine-grained token</Label>
-              <Input
-                autoComplete="off"
-                id="git2-token"
-                onChange={(e) => {
-                  setToken(e.target.value);
-                  setAuthorizedAccount(null);
-                }}
-                placeholder="github_pat_…"
-                type="password"
-                value={token}
-              />
-            </div>
-            {authorize.isError ? (
-              <p aria-live="polite" className="text-destructive text-xs">
-                {authorize.error instanceof Error ? authorize.error.message : 'GitHub could not be authorized. Check the token and try again.'}
-              </p>
+          </div>
+        </header>
+
+        <div className="space-y-6 p-5 sm:p-6">
+          <ol aria-label="Connection progress" className="grid gap-3 sm:grid-cols-3">
+            {(
+              [
+                ['Authorize', 'Verify your account'],
+                ['Repository', 'Choose the source'],
+                ['Review', 'Confirm the setup'],
+              ] as const
+            ).map(([label, description], index) => {
+              const step = (index + 1) as 1 | 2 | 3;
+              const isActive = connectStep === step;
+              const isComplete = connectStep > step;
+              return (
+                <li
+                  aria-current={isActive ? 'step' : undefined}
+                  className={`flex min-h-16 items-center gap-3 rounded-xl border p-3 ${
+                    isActive
+                      ? 'border-primary/50 bg-primary/5 text-foreground shadow-sm'
+                      : isComplete
+                        ? 'border-border bg-muted/30 text-foreground'
+                        : 'border-border/80 bg-muted/10 text-muted-foreground'
+                  }`}
+                  key={label}
+                >
+                  <span
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full font-semibold text-xs ${
+                      isActive || isComplete ? 'bg-primary text-primary-foreground' : 'border border-border bg-background'
+                    }`}
+                  >
+                    {isComplete ? <Check aria-hidden="true" className="size-4" /> : step}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-medium text-sm leading-5">{label}</span>
+                    <span className="block text-muted-foreground text-xs leading-4">{description}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="rounded-xl border border-border bg-background p-5 shadow-sm sm:p-6">
+            {connectStep === 1 ? (
+              <div className="max-w-2xl space-y-5">
+                <div className="space-y-1.5">
+                  <h3 className="font-medium text-sm">Authorize the provider</h3>
+                  <p className="text-muted-foreground text-sm leading-6">
+                    Use a fine-grained GitHub token with Metadata read, Contents read/write, and Pull requests read/write. We verify your identity now
+                    and encrypt the token only after you confirm the connection.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="git2-token">Fine-grained token</Label>
+                  <Input
+                    autoComplete="off"
+                    id="git2-token"
+                    onChange={(e) => {
+                      setToken(e.target.value);
+                      setAuthorizedAccount(null);
+                    }}
+                    placeholder="github_pat_…"
+                    type="password"
+                    value={token}
+                  />
+                </div>
+                {authorize.isError ? (
+                  <p aria-live="polite" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-sm">
+                    {authorize.error instanceof Error ? authorize.error.message : 'GitHub could not be authorized. Check the token and try again.'}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            {connectStep === 2 ? (
+              <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <h3 className="font-medium text-sm">Choose repository and branches</h3>
+                  <p className="text-muted-foreground text-sm leading-6">
+                    Select where Nibleaf reads your docs and where it writes changes for review.
+                  </p>
+                </div>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="git2-repo">Repository</Label>
+                    <Input id="git2-repo" onChange={(e) => setRepository(e.target.value)} placeholder="owner/docs" value={repository} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="git2-base">Base branch</Label>
+                    <Input id="git2-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="git2-head">Dedicated Nibleaf branch</Label>
+                    <Input id="git2-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="git2-path">Content path</Label>
+                    <Input id="git2-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {connectStep === 3 ? (
+              <div className="space-y-5">
+                <div className="space-y-1.5">
+                  <h3 className="font-medium text-sm">Review connection</h3>
+                  <p className="text-muted-foreground text-sm leading-6">Confirm the account, source, and write destination before connecting.</p>
+                </div>
+                {authorizedAccount ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                    <span>
+                      GitHub authorized as <strong>@{authorizedAccount.login}</strong>
+                      {authorizedAccount.name ? <span className="text-muted-foreground"> · {authorizedAccount.name}</span> : null}
+                    </span>
+                    <Badge variant="outline">Verified</Badge>
+                  </div>
+                ) : null}
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  {(
+                    [
+                      ['Repository', repository],
+                      ['Docs path', contentPath || '/'],
+                      ['Import from', baseBranch],
+                      ['Write changes to', headBranch],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <div className="rounded-lg border border-border bg-muted/20 p-3" key={label}>
+                      <dt className="text-muted-foreground text-xs">{label}</dt>
+                      <dd className="mt-1 break-all font-mono">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="text-muted-foreground text-xs leading-5">
+                  Connecting verifies repository access and stores the credential. Import and sync remain separate actions after connection.
+                </p>
+              </div>
             ) : null}
           </div>
-        ) : null}
-        {connectStep === 2 ? (
-          <div className="mt-5 grid gap-4 rounded-lg border bg-background p-4 md:grid-cols-2">
-            <div>
-              <Label htmlFor="git2-repo">Repository</Label>
-              <Input id="git2-repo" onChange={(e) => setRepository(e.target.value)} placeholder="owner/docs" value={repository} />
-            </div>
-            <div>
-              <Label htmlFor="git2-base">Base branch</Label>
-              <Input id="git2-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
-            </div>
-            <div>
-              <Label htmlFor="git2-head">Dedicated Nibleaf branch</Label>
-              <Input id="git2-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
-            </div>
-            <div>
-              <Label htmlFor="git2-path">Content path</Label>
-              <Input id="git2-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
-            </div>
-          </div>
-        ) : null}
-        {connectStep === 3 ? (
-          <div className="mt-5 rounded-lg border bg-background p-4">
-            <h3 className="font-medium text-sm">Review connection</h3>
-            {authorizedAccount ? (
-              <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
-                <span>
-                  GitHub authorized as <strong>@{authorizedAccount.login}</strong>
-                  {authorizedAccount.name ? <span className="text-muted-foreground"> · {authorizedAccount.name}</span> : null}
-                </span>
-                <Badge variant="outline">Verified</Badge>
-              </div>
-            ) : null}
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-muted-foreground text-xs">Repository</dt>
-                <dd className="font-mono">{repository}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Docs path</dt>
-                <dd className="font-mono">{contentPath || '/'}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Import from</dt>
-                <dd className="font-mono">{baseBranch}</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Write changes to</dt>
-                <dd className="font-mono">{headBranch}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-muted-foreground text-xs">
-              Connecting verifies repository access and stores the credential. Import and sync remain separate actions after connection.
-            </p>
-          </div>
-        ) : null}
-        <div className="mt-4 flex flex-wrap justify-between gap-2">
-          <Button disabled={connectStep === 1} onClick={() => setConnectStep((step) => Math.max(1, step - 1) as 1 | 2 | 3)} variant="outline">
-            <ArrowLeft className="size-4" /> Back
-          </Button>
-          {connectStep < 3 ? (
-            connectStep === 1 ? (
-              <Button disabled={authorize.isPending || token.trim().length < 20} onClick={() => authorize.mutate()}>
-                {authorize.isPending ? 'Authorizing GitHub…' : 'Authorize GitHub'} <ArrowRight className="size-4" />
-              </Button>
+
+          <div className="flex flex-col-reverse gap-3 border-border border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              className="w-full sm:w-auto"
+              disabled={connectStep === 1}
+              onClick={() => setConnectStep((step) => Math.max(1, step - 1) as 1 | 2 | 3)}
+              variant="outline"
+            >
+              <ArrowLeft className="size-4" /> Back
+            </Button>
+            {connectStep < 3 ? (
+              connectStep === 1 ? (
+                <Button className="w-full sm:w-auto" disabled={authorize.isPending || token.trim().length < 20} onClick={() => authorize.mutate()}>
+                  {authorize.isPending ? 'Authorizing GitHub…' : 'Authorize GitHub'} <ArrowRight className="size-4" />
+                </Button>
+              ) : (
+                <Button
+                  className="w-full sm:w-auto"
+                  disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
+                  onClick={() => setConnectStep(3)}
+                >
+                  Continue <ArrowRight className="size-4" />
+                </Button>
+              )
             ) : (
               <Button
-                disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
-                onClick={() => setConnectStep(3)}
+                className="w-full sm:w-auto"
+                disabled={connect.isPending || !authorizedAccount || !repository || !token}
+                onClick={() => connect.mutate()}
               >
-                Continue <ArrowRight className="size-4" />
+                {connect.isPending ? 'Verifying connection…' : 'Connect GitHub'}
               </Button>
-            )
-          ) : (
-            <Button disabled={connect.isPending || !authorizedAccount || !repository || !token} onClick={() => connect.mutate()}>
-              {connect.isPending ? 'Verifying connection…' : 'Connect GitHub'}
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </section>
     );
