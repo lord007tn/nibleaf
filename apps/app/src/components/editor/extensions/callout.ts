@@ -1,5 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { preservedClosingTag, sourceMetadataAttributes } from './mdx-roundtrip';
 
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
 export const CALLOUT_VARIANTS = {
@@ -57,6 +58,7 @@ export const Callout = Node.create({
 
   addAttributes() {
     return {
+      ...sourceMetadataAttributes(),
       variant: {
         default: 'note' as CalloutVariant,
         // Derive the variant from data-variant, or from a Mintlify-style tag
@@ -115,6 +117,15 @@ export const Callout = Node.create({
     return {
       markdown: {
         serialize(state, node) {
+          const sourceOpen = String(node.attrs.sourceOpen ?? '');
+          if (sourceOpen) {
+            state.write(sourceOpen);
+            state.closeBlock(node);
+            state.renderContent(node);
+            state.write(preservedClosingTag(node, 'Callout'));
+            state.closeBlock(node);
+            return;
+          }
           const variant = (node.attrs.variant as CalloutVariant) ?? 'note';
           const def = CALLOUT_VARIANTS[variant] ?? CALLOUT_VARIANTS.note;
           state.write(`> [!${def.keyword}]\n`);

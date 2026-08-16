@@ -64,7 +64,8 @@ anchored comments, and one-click publish:
   block handle + slash menu, and a drag-and-drop, nestable page tree.
 - **MDX components** — callouts, cards, steps, tabs, code groups, accordions,
   param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid — all
-  round-trip losslessly between visual and source.
+  round-trip losslessly between visual and source. Custom components and expressions are
+  preserved as local read-only blocks, so surrounding content and anchored comments stay editable.
 - **Versioned publishing** — immutable snapshots; atomic roll-forward; readers never see a
   half-written page.
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge

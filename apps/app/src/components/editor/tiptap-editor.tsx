@@ -15,6 +15,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Typography from '@tiptap/extension-typography';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -45,7 +46,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import { type ComponentType, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Markdown } from 'tiptap-markdown';
+import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { useT } from '@/lib/i18n';
 import type { MessageKey } from '@/lib/i18n/messages';
 import { CodeBlockMenu } from './code-block-menu';
@@ -53,12 +54,31 @@ import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { mdxNodes } from './extensions/mdx-nodes';
+import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { SlashCommand } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 
 // Register a small set of common languages for code-block highlighting.
 const lowlight = createLowlight(common);
+
+type MarkdownSerializeState = {
+  write: (text: string) => void;
+  text: (text: string, shouldEscape?: boolean) => void;
+  ensureNewLine: () => void;
+  closeBlock: (node: PMNode) => void;
+};
+
+const fenceParsers = new WeakSet<object>();
+
+const replaceFenceLanguage = (opening: string, language: string): string => {
+  const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
+  if (!match) return opening;
+  const prefix = match[1] ?? '```';
+  const rest = match[4] ?? '';
+  if (!language) return `${prefix}${rest.trimStart() ? ` ${rest.trimStart()}` : ''}`;
+  return `${prefix}${match[2] ?? ''}${language}${rest}`;
+};
 
 /** Typed accessor for the tiptap-markdown storage (not part of the core Storage type). */
 export function getMarkdown(editor: Editor): string {
@@ -75,9 +95,76 @@ function getCounts(editor: Editor): { words: number; characters: number } {
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      sourceFenceOpen: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-open')),
+        rendered: false,
+      },
+      sourceFenceClose: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-close')),
+        rendered: false,
+      },
+      sourceFenceLanguage: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-language')),
+        rendered: false,
+      },
+    };
+  },
   renderHTML({ node, HTMLAttributes }) {
     const language = node.attrs.language || null;
     return ['pre', { ...HTMLAttributes, 'data-language': language ?? 'code' }, ['code', { class: language ? `language-${language}` : undefined }, 0]];
+  },
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: MarkdownSerializeState, node: PMNode) {
+          const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
+          if (sourceOpen) {
+            const language = String(node.attrs.language ?? '');
+            const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
+            state.write(language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language));
+            state.write('\n');
+            state.text(node.textContent, false);
+            state.ensureNewLine();
+            state.write(String(node.attrs.sourceFenceClose ?? '') || (sourceOpen.trimStart().startsWith('~') ? '~~~' : '```'));
+            state.closeBlock(node);
+            return;
+          }
+          state.write(`\`\`\`${node.attrs.language || ''}\n`);
+          state.text(node.textContent, false);
+          state.ensureNewLine();
+          state.write('```');
+          state.closeBlock(node);
+        },
+        parse: {
+          setup(markdownit) {
+            markdownit.set({ langPrefix: 'language-' });
+            if (fenceParsers.has(markdownit)) return;
+            markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => {
+              const lines = state.src.split('\n');
+              for (const token of state.tokens) {
+                if (token.type !== 'fence' || !token.map) continue;
+                const open = lines[token.map[0]] ?? '';
+                const close = lines[Math.max(token.map[0], token.map[1] - 1)] ?? '';
+                const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
+                token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
+                token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
+                token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
+              }
+            });
+            fenceParsers.add(markdownit);
+          },
+          updateDOM(element: HTMLElement) {
+            element.innerHTML = element.innerHTML.replace(/\n<\/code><\/pre>/g, '</code></pre>');
+          },
+        },
+      } satisfies MarkdownNodeSpec,
+    };
   },
 });
 
@@ -133,6 +220,7 @@ export function buildEditorExtensions({ onUpload, getComments, getActiveId, dir 
     CharacterCount,
     Callout,
     ...mdxNodes,
+    ...opaqueMdxNodes,
     SlashCommand.configure({ onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];

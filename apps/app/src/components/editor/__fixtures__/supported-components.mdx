@@ -1,0 +1,51 @@
+<Callout type="warning" data-track="hero">
+
+Keep the **original props**.
+
+</Callout>
+
+<CardGroup cols="3" className={gridClass}>
+
+<Card title="API" icon={icons.api} href="/api" data-analytics={{ area: 'docs' }}>
+
+Read the API guide.
+
+</Card>
+
+</CardGroup>
+
+<Tabs>
+
+<Tab title="TypeScript">
+
+```ts title="client.ts"
+const answer = 42;
+```
+
+</Tab>
+
+</Tabs>
+
+<AccordionGroup>
+
+<Accordion title="Details" defaultOpen={flags.expanded}>
+
+Nested **Markdown** stays editable.
+
+</Accordion>
+
+</AccordionGroup>
+
+<Steps>
+
+<Step title="Install">Run the installer.</Step>
+
+</Steps>
+
+<Frame caption="Architecture" data-lightbox>
+
+![Architecture diagram](/images/architecture.png)
+
+</Frame>
+
+Inline <Tooltip tip="More info" data-id="tip-1">help</Tooltip>, <Badge color="green">stable</Badge>, and <Icon icon={currentIcon} size="16" />.
