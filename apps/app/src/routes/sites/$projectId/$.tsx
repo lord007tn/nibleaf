@@ -1,12 +1,17 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
+import { lazy, Suspense } from 'react';
 import { SitePageView } from '@/components/site/site-page-view';
 import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
-import type { SitePage } from '@/hooks/api/types';
+import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
+
+const OpenApiReferenceView = lazy(() =>
+  import('@/components/site/openapi-reference-view').then((module) => ({ default: module.OpenApiReferenceView })),
+);
 
 export const Route = createFileRoute('/sites/$projectId/$')({
   component: SitePath,
@@ -27,6 +32,25 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
+      }
+      // The API Reference is a published snapshot resource rather than an MDX
+      // page, so it intentionally has no Page row. Resolve its configured path
+      // from the access-gated site shell before treating the page miss as 404.
+      const requested = (params._splat ?? '').replace(/^\/+|\/+$/g, '');
+      try {
+        const site = await getData<SiteShell>(
+          await api.public.sites[':id'].$get({
+            param: { id: params.projectId },
+            query: { ...(deps.lang ? { lang: deps.lang } : {}) },
+          }),
+          'site',
+        );
+        if (site.openapi && requested === site.openapi.path) {
+          return { kind: 'openapi' as const, openapi: site.openapi, site, lang: deps.lang, siteOrigin: customDomainOrigin() };
+        }
+      } catch {
+        // Preserve the original page-not-found behavior (and privacy-hiding 404)
+        // when the shell is unavailable or the reference is not published.
       }
       // Page didn't resolve — honor a configured redirect (throws a 308) before
       // falling back to the not-found state. Mark the SSR response 404 so this
@@ -60,16 +84,33 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       const href = isCustomDomainSite(params.projectId) ? `/${target}${query}` : `/sites/${params.projectId}/${target}${query}`;
       throw redirect({ href, statusCode: 302 });
     }
-    return { page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
+    return { kind: 'page' as const, page, lang: deps.lang, version, siteOrigin: customDomainOrigin() };
   },
-  head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang, loaderData?.siteOrigin),
+  head: ({ loaderData, params }) => {
+    if (loaderData?.kind === 'openapi') {
+      const title = `${loaderData.openapi.title} — ${loaderData.site.project.name}`;
+      const description = `Interactive API reference for ${loaderData.site.project.name}.`;
+      const noindex = loaderData.site.project.config?.visibility === 'private';
+      return {
+        meta: [{ title }, { name: 'description', content: description }, ...(noindex ? [{ name: 'robots', content: 'noindex,nofollow' }] : [])],
+      };
+    }
+    return pageHead(loaderData?.kind === 'page' ? loaderData.page : null, params.projectId, loaderData?.lang, loaderData?.siteOrigin);
+  },
 });
 
 function SitePath() {
   const { projectId, _splat } = Route.useParams();
   // Active language comes from the parent route's ?lang= search param.
   const { lang } = Route.useSearch();
-  const { page } = Route.useLoaderData();
+  const data = Route.useLoaderData();
+  if (data.kind === 'openapi') {
+    return (
+      <Suspense fallback={<div className="py-12 text-center text-muted-foreground">Loading API reference…</div>}>
+        <OpenApiReferenceView projectId={projectId} />
+      </Suspense>
+    );
+  }
   const version = _splat ? _splat.split('/')[0] : undefined;
-  return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={page ?? undefined} version={version} />;
+  return <SitePageView projectId={projectId} path={_splat ?? ''} lang={lang} initialData={data.page ?? undefined} version={version} />;
 }

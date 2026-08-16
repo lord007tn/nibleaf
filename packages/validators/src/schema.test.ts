@@ -22,7 +22,40 @@ import {
   updateLanguageBody,
   updateMemberRoleBody,
   updateProjectBody,
+  upsertOpenApiBody,
 } from './index';
+
+describe('upsertOpenApiBody', () => {
+  const spec = '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}';
+
+  it('accepts upload, public URL, and repository sources', () => {
+    expect(upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'api-reference', source: { type: 'upload', content: spec } }).success).toBe(
+      true,
+    );
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'reference', source: { type: 'url', url: 'https://api.example.com/openapi.yaml' } })
+        .success,
+    ).toBe(true);
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'api-reference', source: { type: 'repository', path: 'docs/openapi.yaml' } })
+        .success,
+    ).toBe(true);
+  });
+
+  it('accepts a metadata-only edit for an existing document', () => {
+    expect(upsertOpenApiBody.safeParse({ title: 'Renamed API', path: 'reference' }).success).toBe(true);
+  });
+
+  it('rejects credential-bearing URLs and unsafe or nested published paths', () => {
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API', path: 'api/reference', source: { type: 'url', url: 'https://token@example.com/openapi.json' } })
+        .success,
+    ).toBe(false);
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API', path: 'api-reference', source: { type: 'repository', path: '../openapi.yaml' } }).success,
+    ).toBe(false);
+  });
+});
 
 describe('projectConfigSchema', () => {
   it('accepts a valid single-section patch', () => {

@@ -13,6 +13,7 @@ import imports from './imports/handlers';
 import languages from './languages/handlers';
 import members from './members/handlers';
 import notifications from './notifications/handlers';
+import openapi from './openapi/handlers';
 import pages from './pages/handlers';
 import projectMembers from './project-members/handlers';
 import projectSettings from './project-settings/handlers';
@@ -33,6 +34,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/assets', assets)
   .route('/projects/:projectId/analytics', analytics)
   .route('/projects/:projectId/comments', comments)
+  .route('/projects/:projectId/openapi', openapi)
   .route('/projects/:projectId/members', projectMembers)
   .route('/projects/:projectId/settings', projectSettings)
   .route('/projects/:projectId/reader-access', readerAccess)

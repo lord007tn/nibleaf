@@ -6,6 +6,7 @@ import {
   getSiteChangelog,
   getSiteLlmsFullTxt,
   getSiteLlmsTxt,
+  getSiteOpenApi,
   getSitePage,
   getSiteRobots,
   getSiteSitemap,
@@ -54,6 +55,17 @@ const app = new Hono<HonoEnv>()
     const data = await getSitePage(ctx.req.param('id'), path, lang, version);
     setSiteCache(ctx, data.project);
     return ctx.json({ data }, 200);
+  })
+  .get('/:id/openapi.json', ...sitesRoutes.openapi, async (ctx) => {
+    const data = await getSiteOpenApi(ctx.req.param('id'));
+    setSiteCache(ctx, data.project);
+    const etag = `"${data.metadata.contentHash}"`;
+    ctx.header('ETag', etag);
+    ctx.header('Content-Disposition', 'inline; filename="openapi.json"');
+    if (ctx.req.header('if-none-match') === etag) {
+      return ctx.body(null, 304);
+    }
+    return ctx.json(data.document, 200);
   })
   .get('/:id/search', ...sitesRoutes.search, validator('query', siteSearchQuery), async (ctx) => {
     const { q, limit, lang, version } = ctx.req.valid('query');

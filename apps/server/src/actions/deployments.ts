@@ -93,6 +93,7 @@ const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
     include: {
       languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+      openApiDocument: true,
     },
   });
   if (!project) {
@@ -264,6 +265,34 @@ const pageSummary = (page: SnapshotPage, status: DeploymentPageDiff['status'], p
   };
 };
 
+const openApiSummary = (current: SiteSnapshot['openapi'], previous: SiteSnapshot['openapi'], languageCode: string): DeploymentPageDiff | null => {
+  if (!(current || previous)) return null;
+  if (current && previous && current.contentHash === previous.contentHash && current.title === previous.title && current.path === previous.path) {
+    return null;
+  }
+  const item = current ?? previous;
+  if (!item) return null;
+  const status: DeploymentPageDiff['status'] = !previous ? 'added' : !current ? 'removed' : 'modified';
+  const fields = [
+    ...(current && previous && current.title !== previous.title ? ['title'] : []),
+    ...(current && previous && current.path !== previous.path ? ['path'] : []),
+    ...(!current || !previous || current.contentHash !== previous.contentHash ? ['OpenAPI document'] : []),
+  ];
+  return {
+    id: 'openapi-reference',
+    title: item.title,
+    path: item.path,
+    languageCode,
+    kind: 'PAGE',
+    status,
+    fields,
+    additions: 0,
+    deletions: 0,
+    lines: [],
+    truncated: false,
+  };
+};
+
 const stripSnapshot = <T extends { snapshot: unknown }>(deployment: T): Omit<T, 'snapshot'> => {
   const { snapshot: _snapshot, ...rest } = deployment;
   return rest;
@@ -299,6 +328,8 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
       changes.push(pageSummary(page, 'removed', page));
     }
   }
+  const specChange = openApiSummary(currentSnapshot.openapi, previousSnapshot?.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
+  if (specChange) changes.push(specChange);
 
   return { deployment: stripSnapshot(deployment), previousDeployment: previousDeployment ? stripSnapshot(previousDeployment) : null, changes };
 };
@@ -310,15 +341,17 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
 export const getPendingChanges = async (projectId: string): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
   const validation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
-  const current = validation.snapshot.pages;
+  const currentSnapshot = validation.snapshot;
+  const current = currentSnapshot.pages;
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
+    const firstSpecChange = openApiSummary(currentSnapshot.openapi, null, currentSnapshot.project.languages[0]?.code ?? 'en');
     return {
       hasBaseline: false,
       lastVersion: null,
       lastPublishedAt: null,
-      changes: current.map((p) => pageSummary(p, 'added')),
+      changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
       redirectIssues: validation.issues,
     };
   }
@@ -341,6 +374,8 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
       changes.push(pageSummary(prev, 'removed', prev));
     }
   }
+  const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
+  if (specChange) changes.push(specChange);
 
   return {
     hasBaseline: true,

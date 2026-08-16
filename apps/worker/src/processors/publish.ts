@@ -266,6 +266,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       include: {
         languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
         branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+        openApiDocument: true,
       },
     });
     if (!project) {

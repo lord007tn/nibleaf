@@ -72,6 +72,9 @@ Private customer documentation supports dedicated reader accounts, audience/page
   half-written page.
 - **Validated redirects** — [route-aware redirect graphs](docs/redirects.md) are flattened to
   canonical one-hop destinations and published atomically with the site snapshot.
+- **OpenAPI + Scalar** — upload an OpenAPI 3.x JSON/YAML document, pull it from a public URL,
+  or read it from the connected public GitHub/GitLab repository; published snapshots get an
+  API Reference navigation section with schemas, generated code samples, and browser try-it.
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
@@ -97,7 +100,6 @@ Private customer documentation supports dedicated reader accounts, audience/page
 
 Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
-- **OpenAPI playground / API "try it"** — no interactive API-reference console yet.
 - **Two-way git sync & PR previews** — public repo import and one-way webhook sync
   exist, but browser edits do not push back to Git and there are no per-PR preview deployments.
 - **Reader auth / personalization** — sites are either public or visible to
@@ -109,6 +111,31 @@ Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
 Want one of these sooner? Open or upvote an issue —
 [github.com/lord007tn/nibleaf/issues](https://github.com/lord007tn/nibleaf/issues).
+
+## OpenAPI reference setup
+
+Open a site's **Settings → API Reference**, choose a navigation label and path, then provide
+one of these sources:
+
+- upload or paste one JSON/YAML document (maximum 5 MB);
+- a public HTTP(S) URL without embedded credentials; or
+- a repository-relative file in the site's connected public GitHub/GitLab repository.
+
+Nibleaf parses and validates OpenAPI 3.x before saving it. Validation errors identify the
+first failing path in the settings toast. Publish the site after saving or refreshing a spec:
+the validated document is frozen into that immutable deployment, while the editable source
+configuration remains available for later refreshes. Older deployments and rollbacks keep
+their own spec revision.
+
+For safety, documents must be self-contained: external `$ref` values are rejected, so bundle
+multi-file specs before importing. URL fetches are size/time bounded and reject credentials,
+private-network targets, and unsafe redirects. Repository-backed specs currently support the
+public GitHub and GitLab providers; generic clone URLs can use the URL or upload option.
+
+Scalar sends try-it requests directly from the reader's browser. Nibleaf does not provide a
+request proxy, prefill credentials, persist authentication, or log request secrets. Your API
+must allow the published documentation origin in its CORS policy. Never place live credentials
+or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 

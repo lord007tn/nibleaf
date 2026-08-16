@@ -16,6 +16,7 @@ import {
   type SnapshotPage,
   type SnapshotProject,
   type SnapshotVersion,
+  withOpenApiNav,
 } from '@nibleaf/shared/site';
 import type { TrackEventBody } from '@nibleaf/validators';
 import { getContext } from 'hono/context-storage';
@@ -317,9 +318,36 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     activeLanguage,
     activeVersion: docsVersion.slug,
     languageConfig: shellLanguage?.config ?? null,
-    nav: buildNavTree(versionPages, activeLanguage),
+    nav: withOpenApiNav(buildNavTree(versionPages, activeLanguage), snapshot.openapi),
+    openapi: snapshot.openapi
+      ? {
+          title: snapshot.openapi.title,
+          path: snapshot.openapi.path,
+          contentHash: snapshot.openapi.contentHash,
+          updatedAt: snapshot.openapi.updatedAt,
+        }
+      : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
+  };
+};
+
+/** The immutable published OpenAPI document. This goes through the exact same
+ *  publication, takedown, and private-site membership gates as pages. */
+export const getSiteOpenApi = async (identifier: string) => {
+  const { snapshot } = await getPublished(identifier);
+  if (!snapshot.openapi) {
+    throw notFound('OpenAPI document', { identifier });
+  }
+  return {
+    document: snapshot.openapi.document,
+    metadata: {
+      title: snapshot.openapi.title,
+      path: snapshot.openapi.path,
+      contentHash: snapshot.openapi.contentHash,
+      updatedAt: snapshot.openapi.updatedAt,
+    },
+    project: snapshot.project,
   };
 };
 

@@ -203,6 +203,12 @@ enum ExportCadence {
   MONTHLY
 }
 
+enum OpenApiSourceType {
+  UPLOAD
+  URL
+  REPOSITORY
+}
+
 /// A documentation site.
 model Project {
   id             String            @id @default(cuid())
@@ -246,10 +252,31 @@ model Project {
   exportSnapshots ExportSnapshot[]
   exportJobs      ExportJob[]
   exportSchedules ExportSchedule[]
+  openApiDocument OpenApiDocument?
 
   @@unique([organizationId, slug])
   @@unique([slug])
   @@map("project")
+}
+
+/// The editable OpenAPI source and last validated document for a site. The
+/// document is copied into immutable deployment snapshots at publish time;
+/// source details stay private to workspace members.
+model OpenApiDocument {
+  id          String            @id @default(cuid())
+  projectId   String            @unique
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  path        String            @default("api-reference")
+  sourceType  OpenApiSourceType
+  sourceUrl   String?
+  sourcePath  String?
+  document    Json
+  contentHash String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("openapi_document")
 }
 
 /// A content branch within a project (git-style, DB-backed). `main` is the
