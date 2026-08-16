@@ -68,6 +68,8 @@ anchored comments, and one-click publish:
   preserved as local read-only blocks, so surrounding content and anchored comments stay editable.
 - **Versioned publishing** — immutable snapshots; atomic roll-forward; readers never see a
   half-written page.
+- **Validated redirects** — [route-aware redirect graphs](docs/redirects.md) are flattened to
+  canonical one-hop destinations and published atomically with the site snapshot.
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.

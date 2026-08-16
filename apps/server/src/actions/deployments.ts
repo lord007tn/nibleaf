@@ -1,6 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
+import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
@@ -52,6 +53,8 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+  /** Blocking redirect issues for the exact draft snapshot being previewed. */
+  redirectIssues: RedirectValidationIssue[];
 }
 
 export interface DeploymentDiffLine {
@@ -80,6 +83,35 @@ export interface DeploymentDiff {
   previousDeployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'> | null;
   changes: DeploymentPageDiff[];
 }
+
+/** Read the complete effective publish input once and compose the same snapshot
+ * shape the worker will validate. Keeping preflight and worker inputs aligned
+ * prevents the dashboard from approving a different route graph. */
+const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+    },
+  });
+  if (!project) {
+    throw notFound('project', { projectId });
+  }
+  const branchIds = project.branches.map((branch) => branch.id);
+  const pages = await prisma.page.findMany({
+    where: { projectId, branchId: { in: branchIds } },
+    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    include: { language: { select: { code: true } } },
+  });
+  const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
+    ...page,
+    languageCode: language.code,
+    createdAt: createdAt.toISOString(),
+    updatedAt: updatedAt.toISOString(),
+  }));
+  return buildSnapshot(project, pageRows, new Date().toISOString());
+};
 
 /** Stable JSON compare (key-order independent) for the page `config` blob. */
 function stableEqual(a: unknown, b: unknown): boolean {
@@ -277,29 +309,8 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
  */
 export const getPendingChanges = async (projectId: string): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
-      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
-    },
-  });
-  if (!project) {
-    throw notFound('project', { projectId });
-  }
-  const branchIds = project.branches.map((branch) => branch.id);
-  const pages = await prisma.page.findMany({
-    where: { projectId, branchId: { in: branchIds } },
-    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    include: { language: { select: { code: true } } },
-  });
-  const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
-    ...page,
-    languageCode: language.code,
-    createdAt: createdAt.toISOString(),
-    updatedAt: updatedAt.toISOString(),
-  }));
-  const current = buildSnapshot(project, pageRows, new Date().toISOString()).pages;
+  const validation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  const current = validation.snapshot.pages;
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
@@ -308,6 +319,7 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
       lastVersion: null,
       lastPublishedAt: null,
       changes: current.map((p) => pageSummary(p, 'added')),
+      redirectIssues: validation.issues,
     };
   }
 
@@ -335,6 +347,7 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
     lastVersion: latest.version,
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
     changes,
+    redirectIssues: validation.issues,
   };
 };
 
@@ -371,6 +384,13 @@ export const createDeployment = async (organizationId: string, projectId: string
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
+  }
+  // Fail before allocating a version or enqueueing work. The worker repeats
+  // this against its fresh read to close the edit-between-preflight-and-build
+  // race; either way the previous READY snapshot remains the only live one.
+  const redirectValidation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  if (redirectValidation.issues.length > 0) {
+    throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
   }
   const deployment = await createWithNextVersion(projectId, (version) =>
     prisma.deployment.create({

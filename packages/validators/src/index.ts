@@ -1,7 +1,17 @@
+import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
 
+export {
+  MAX_REDIRECT_CHAIN_LENGTH,
+  MAX_REDIRECT_RULES,
+  normalizeRedirectPath,
+  type RedirectPair,
+  type RedirectValidationIssue,
+  resolveRedirectTarget,
+  validateRedirectGraph,
+} from '@nibleaf/shared/redirects';
 export {
   inferSafeInlineAssetContentType,
   isSafeInlineAssetContentType,
@@ -33,89 +43,14 @@ const url = z
   .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
-export type RedirectPair = { from: string; to: string };
-
-export const normalizeRedirectPath = (path: string): string => {
-  const value = path.trim();
-  let start = 0;
-  let end = value.length;
-  while (start < end && value[start] === '/') {
-    start++;
-  }
-  while (end > start && value[end - 1] === '/') {
-    end--;
-  }
-  return value.slice(start, end);
-};
-const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(target);
-
-/**
- * Resolve an internal redirect chain to one final target. Returning `null`
- * means no rule matched or the stored rules contain a cycle. Keeping this
- * helper in the shared validator package makes save-time validation and the
- * public-site redirect behavior follow exactly the same path semantics.
- */
-export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: string): string | null => {
-  const rules = new Map<string, string>();
-  for (const rule of redirects) {
-    const from = normalizeRedirectPath(rule.from);
-    const to = rule.to.trim();
-    if (rule.from.trim() && to && !rules.has(from)) {
-      rules.set(from, to);
-    }
-  }
-
-  let current = normalizeRedirectPath(path);
-  const first = current;
-  const visited = new Set<string>();
-  while (true) {
-    if (visited.has(current)) {
-      return null;
-    }
-    visited.add(current);
-
-    const target = rules.get(current);
-    if (!target) {
-      return current === first ? null : `/${current}`;
-    }
-    if (isExternalRedirect(target)) {
-      return target;
-    }
-    current = normalizeRedirectPath(target);
-  }
-};
 
 const redirectsSchema = z
   .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
-  .max(100)
+  .max(MAX_REDIRECT_RULES)
   .superRefine((redirects, ctx) => {
-    const seen = new Map<string, number>();
-    for (const [index, rule] of redirects.entries()) {
-      const from = normalizeRedirectPath(rule.from);
-      const to = rule.to.trim();
-      const rawFrom = rule.from.trim();
-      if (!rawFrom && !to) {
-        continue;
-      }
-      if (!rawFrom || !to) {
-        ctx.addIssue({ code: 'custom', message: 'A redirect must have both a source and a target.', path: [index, rawFrom ? 'to' : 'from'] });
-        continue;
-      }
-      const duplicate = seen.get(from);
-      if (duplicate !== undefined) {
-        ctx.addIssue({ code: 'custom', message: `Duplicate redirect source (also used in row ${duplicate + 1}).`, path: [index, 'from'] });
-      } else {
-        seen.set(from, index);
-      }
-      if (!isExternalRedirect(to) && normalizeRedirectPath(to) === from) {
-        ctx.addIssue({ code: 'custom', message: 'A redirect cannot point to itself.', path: [index, 'to'] });
-      }
-    }
-
-    for (const [index, rule] of redirects.entries()) {
-      if (rule.from.trim() && rule.to.trim() && resolveRedirectTarget(redirects, rule.from) === null) {
-        ctx.addIssue({ code: 'custom', message: 'Redirect cycle detected.', path: [index, 'to'] });
-      }
+    for (const graphIssue of validateRedirectGraph(redirects).issues) {
+      const index = graphIssue.rowIndexes[0] ?? 0;
+      ctx.addIssue({ code: 'custom', message: graphIssue.message, path: [index, graphIssue.field ?? 'to'] });
     }
   });
 const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) }).strict();

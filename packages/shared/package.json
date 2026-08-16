@@ -9,6 +9,7 @@
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
+    "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",
     "./utils": "./src/utils.ts"

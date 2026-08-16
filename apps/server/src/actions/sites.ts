@@ -25,6 +25,7 @@ import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
+import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 import { stableHash } from './importers/content';
@@ -108,7 +109,8 @@ const llmsTxtCache = new LruCache<string, string>(50);
 const llmsFullTxtCache = new LruCache<string, string>(50);
 
 /** Live project chrome is NOT frozen — config/appearance edits must show up on
- *  the live site within seconds, so this cache is TTL-bounded at 15s. */
+ *  the live site within seconds, so this cache is TTL-bounded at 15s. Executable
+ *  redirects are the exception and remain sourced from the READY snapshot. */
 const liveChromeCache = new TtlCache<string, LiveChromeRow | null>(200, 15_000);
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
@@ -152,9 +154,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
 /** Overlay live, non-versioned site chrome from the Project row onto a snapshot
  *  project. Branding and config (styling, navbar/footer, SEO, visibility,
  *  analytics, variables) reflect the current settings so appearance edits are
- *  live without a re-publish. Content, pages, languages and versions are left
- *  as captured — those are the versioned docs a publish freezes. Returns a new
- *  object so the cached (shared) snapshot is never mutated per-request. */
+ *  live without a re-publish. Redirects, content, pages, languages and versions
+ *  are left as captured — those are routing/versioned data a publish freezes.
+ *  Returns a new object so the cached snapshot is never mutated per-request. */
 const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null): SnapshotProject => {
   if (!live) {
     return project;
@@ -171,7 +173,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
     name: live.name,
     description: live.description,
     icon: live.icon,
-    config: (live.config as Record<string, unknown> | null) ?? null,
+    config: overlayLiveConfigPreservingPublishedRedirects(project.config, (live.config as Record<string, unknown> | null) ?? {}),
     languages: project.languages.map((language) => {
       const row = liveByCode.get(language.code);
       if (!row) return language;
@@ -227,8 +229,9 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // visibility, analytics) over the frozen snapshot so config/appearance edits
   // apply to the live site within seconds — without a re-publish. Page CONTENT
   // and navigation STRUCTURE stay frozen in the snapshot (those are the
-  // versioned docs that a publish captures); only presentational/config fields
-  // are live. The copy keeps the shared cached snapshot immutable.
+  // versioned docs that a publish captures); redirects are also kept frozen so
+  // they switch atomically with the READY snapshot. The copy keeps the shared
+  // cached snapshot immutable.
   // `primaryDomain` rides along so the app edge can consolidate canonicals and
   // 301 secondary origins onto the verified primary domain.
   const project: PublicSnapshotProject = {

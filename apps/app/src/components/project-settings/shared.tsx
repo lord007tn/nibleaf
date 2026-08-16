@@ -308,11 +308,11 @@ export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty:
 }
 
 /** The right-aligned Save button row used at the bottom of each form section. */
-export function SaveBar({ isSubmitting }: { isSubmitting: boolean }) {
+export function SaveBar({ isSubmitting, disabled = false }: { isSubmitting: boolean; disabled?: boolean }) {
   const t = useT();
   return (
     <div className="mt-2 flex justify-end">
-      <Button disabled={isSubmitting} type="submit">
+      <Button disabled={isSubmitting || disabled} type="submit">
         {isSubmitting ? t('common.saving') : t('common.save')}
       </Button>
     </div>
