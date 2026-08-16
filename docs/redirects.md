@@ -24,6 +24,8 @@ The editor reports syntax and graph errors before saving. The publish dialog per
 
 ## Editor and publish feedback
 
+[Watch the 20-second redirect validation interaction](./assets/redirects/redirect-validation-flow.webm) to see row-level feedback update while a cycle is entered.
+
 A valid internal chain is accepted in the editor. It is flattened to direct redirects in the immutable snapshot during publish.
 
 ![A valid two-hop redirect chain with saving enabled](./assets/redirects/redirect-valid-chain.webp)
