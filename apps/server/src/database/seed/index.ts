@@ -53,18 +53,34 @@ async function seed() {
       updatedAt: updatedAt.toISOString(),
     }));
     const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
-    await prisma.deployment.create({
-      data: {
-        projectId: project.id,
-        version: 1,
-        status: 'READY',
-        snapshot: snapshot as unknown as object,
-        pagesCount: pages.filter((p) => p.kind === 'PAGE').length,
-        commitMessage: 'Initial publish',
-        createdById: user.id,
-        completedAt: new Date(),
-      },
+    const pendingStarter = await prisma.deployment.findFirst({
+      where: { projectId: project.id },
+      orderBy: { version: 'desc' },
     });
+    const publishData = {
+      status: 'READY' as const,
+      snapshot: snapshot as unknown as object,
+      pagesCount: pages.filter((p) => p.kind === 'PAGE').length,
+      commitMessage: pendingStarter?.commitMessage ?? 'Initial publish',
+      createdById: user.id,
+      completedAt: new Date(),
+      error: null,
+      errorDetails: undefined,
+    };
+    if (pendingStarter) {
+      // Account provisioning queues version 1 before this script resumes. Finalize
+      // that row so repeated or queue-delayed seeds cannot collide on the unique
+      // (projectId, version) key.
+      await prisma.deployment.update({ where: { id: pendingStarter.id }, data: publishData });
+    } else {
+      await prisma.deployment.create({
+        data: {
+          projectId: project.id,
+          version: 1,
+          ...publishData,
+        },
+      });
+    }
   }
 
   logger.info('✔ Seed complete');
