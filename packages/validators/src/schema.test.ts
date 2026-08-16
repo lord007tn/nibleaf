@@ -8,6 +8,8 @@ import {
   gitConfigSchema,
   inferSafeInlineAssetContentType,
   inviteMemberBody,
+  inviteReaderBody,
+  jwtAccessConfigBody,
   languageConfigSchema,
   pageConfigSchema,
   paginationQuery,
@@ -306,5 +308,37 @@ describe('adminSetRoleBody', () => {
     expect(adminSetRoleBody.safeParse({ role: 'superadmin' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'owner' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'admin', extra: 1 }).success).toBe(false);
+  });
+});
+
+describe('private reader validation', () => {
+  it('requires a normalized email and at least one audience for invitations', () => {
+    const parsed = inviteReaderBody.safeParse({ email: '  READER@Example.com ', audienceIds: ['audience'] });
+    expect(parsed.success && parsed.data.email).toBe('reader@example.com');
+    expect(inviteReaderBody.safeParse({ email: 'reader@example.com', audienceIds: [] }).success).toBe(false);
+  });
+
+  it('accepts exactly one asymmetric public-key source', () => {
+    const base = {
+      enabled: true,
+      issuer: 'https://portal.example.com',
+      audience: 'docs',
+      claimMapping: { customers: 'audience' },
+    };
+    expect(jwtAccessConfigBody.safeParse({ ...base, jwksUrl: 'https://portal.example.com/.well-known/jwks.json' }).success).toBe(true);
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'RSA', kid: 'one', n: 'abc', e: 'AQAB' }] } }).success).toBe(true);
+    expect(jwtAccessConfigBody.safeParse({ ...base }).success).toBe(false);
+    expect(jwtAccessConfigBody.safeParse({ ...base, jwksUrl: 'http://portal.example.com/jwks', publicJwks: null }).success).toBe(false);
+  });
+
+  it('rejects private or symmetric key material so secrets cannot be persisted', () => {
+    const base = { enabled: true, issuer: 'https://portal.example.com', audience: 'docs', claimMapping: { customers: 'audience' } };
+    expect(
+      jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'RSA', kid: 'leak', n: 'abc', e: 'AQAB', d: 'private' }] } }).success,
+    ).toBe(false);
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'AKP', kid: 'leak', pub: 'abc', priv: 'private' }] } }).success).toBe(
+      false,
+    );
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'oct', kid: 'shared', k: 'secret' }] } }).success).toBe(false);
   });
 });

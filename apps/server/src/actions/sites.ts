@@ -1,4 +1,3 @@
-import { auth } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { searchDocs } from '@nibleaf/search';
 import {
@@ -25,10 +24,12 @@ import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
+import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
+import { resolveViewerAccess, type ViewerAccess } from './reader-access';
 
 /** Resolve a published site by its canonical project id. */
 const resolveProjectId = async (identifier: string): Promise<string> => {
@@ -43,29 +44,8 @@ interface PublishedSite {
   snapshot: SiteSnapshot;
   version: number;
   deploymentId: string;
+  viewer: ViewerAccess;
 }
-
-/** Enforce per-project visibility. A `private` site is only viewable by a
- *  signed-in member of the owning organization. The session is resolved lazily
- *  straight from the request — and only when the site is private — so public
- *  sites pay nothing. We throw notFound (not forbidden) so a private site's
- *  existence is never leaked to anonymous visitors. */
-const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promise<void> => {
-  const visibility = (snapshot.project.config as { visibility?: string } | null)?.visibility;
-  if (visibility !== 'private') {
-    return;
-  }
-  const headers = getContext<HonoEnv>().req.raw.headers;
-  const result = await auth.api.getSession({ headers }).catch(() => null);
-  const userId = result?.user?.id;
-  const project = userId ? await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }) : null;
-  const member = project
-    ? await prisma.member.findUnique({ where: { organizationId_userId: { organizationId: project.organizationId, userId: userId as string } } })
-    : null;
-  if (!member) {
-    throw notFound('site', { identifier: projectId, reason: 'private' });
-  }
-};
 
 /** The live, non-versioned site chrome fields read off the Project row. */
 interface LiveChromeRow {
@@ -73,6 +53,7 @@ interface LiveChromeRow {
   description: string | null;
   icon: string | null;
   config: unknown;
+  accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
   /** Moderation kill switch — a taken-down project must stop serving. */
   takedownAt: Date | null;
   /** Best verified domain (isPrimary first, oldest verified as fallback). */
@@ -89,7 +70,7 @@ interface LiveChromeRow {
 
 /** A snapshot project enriched with the fields the published-site edge needs
  *  (canonical/301 consolidation in apps/app reads `primaryDomain`). */
-type PublicSnapshotProject = SnapshotProject & { primaryDomain: string | null };
+type PublicSnapshotProject = SnapshotProject & { primaryDomain: string | null; accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS' };
 
 /** Deployment snapshots are immutable per deployment id, so deserializing the
  *  (potentially large) JSONB once per instance instead of once per page view is
@@ -123,6 +104,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       description: true,
       icon: true,
       config: true,
+      accessMode: true,
       takedownAt: true,
       // ONLY an explicitly-designated primary domain may become the canonical /
       // 301 target. `verified` proves TXT ownership, not that the domain's CNAME
@@ -195,6 +177,12 @@ export const isProjectTakenDown = async (projectId: string): Promise<boolean> =>
   return Boolean(live?.takedownAt);
 };
 
+export const projectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  if (!live || live.takedownAt) return null;
+  return resolveViewerAccess(projectId, live.accessMode, headers);
+};
+
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const projectId = await resolveProjectId(identifier);
   // Live chrome doubles as the moderation gate: a taken-down project stops
@@ -231,13 +219,23 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // are live. The copy keeps the shared cached snapshot immutable.
   // `primaryDomain` rides along so the app edge can consolidate canonicals and
   // 301 secondary origins onto the verified primary domain.
+  const overlaid = overlayLiveChrome(frozen.project, live);
+  const accessMode = live?.accessMode ?? 'PUBLIC';
   const project: PublicSnapshotProject = {
-    ...overlayLiveChrome(frozen.project, live),
+    ...overlaid,
+    // Keep the legacy config flag coherent for older clients and SEO helpers,
+    // while the database enum remains the authorization source of truth.
+    config: { ...(overlaid.config ?? {}), visibility: accessMode === 'PUBLIC' ? 'public' : 'private' },
     primaryDomain: live?.domains[0]?.domain.toLowerCase() ?? null,
+    accessMode,
   };
-  const snapshot: SiteSnapshot = { ...frozen, project };
-  await assertViewable(projectId, snapshot);
-  return { snapshot, version: deployment.version, deploymentId: deployment.id };
+  const viewer = await resolveViewerAccess(projectId, live?.accessMode ?? 'PUBLIC', getContext<HonoEnv>().req.raw.headers);
+  if (!viewer) {
+    throw notFound('site', { identifier: projectId, reason: 'private' });
+  }
+  const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
+  const snapshot: SiteSnapshot = { ...frozen, project, pages };
+  return { snapshot, version: deployment.version, deploymentId: deployment.id, viewer };
 };
 
 /** Resolve the active language code: the requested `lang` if it exists in the
@@ -555,6 +553,9 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
     throw notFound('site', { identifier, reason: 'takedown' });
   }
   const headers = getContext<HonoEnv>().req.raw.headers;
+  if (!(await projectDeliveryAccess(projectId, headers))) {
+    throw notFound('site', { identifier, reason: 'private' });
+  }
   const device = deviceFromUserAgent(headers.get('user-agent'));
   const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
   await trackEvent(projectId, body, { device, country }).catch(() => undefined);
