@@ -999,6 +999,10 @@ export const messages = {
     'settings.git.defaultLanguage': 'Default language',
     'settings.git.oneWayNote':
       'Pulls Markdown files from a public GitHub, GitLab, or http(s) Git repo into your pages. One-way — edits in Nibleaf are not pushed back.',
+    'settings.git.publicImport.title': 'Import a public repository instead',
+    'settings.git.publicImport.description': 'One-way import without provider authorization or pull-request publishing.',
+    'settings.git.publicImport.show': 'Show options',
+    'settings.git.publicImport.hide': 'Hide options',
     'settings.git.import.title': 'Import content',
     'settings.git.import.description': 'Connect a public Git repository and import its Markdown into your pages.',
     'settings.git.import.button': 'Import from {provider}',
@@ -2269,6 +2273,10 @@ export const messages = {
     'settings.git.defaultLanguage': 'اللغة الافتراضية',
     'settings.git.oneWayNote':
       'يجلب ملفات Markdown من مستودع GitHub أو GitLab أو Git عام عبر http(s) إلى صفحاتك. باتجاه واحد — لا تُدفع تعديلات Nibleaf إلى المستودع.',
+    'settings.git.publicImport.title': 'استيراد مستودع عام بدلاً من ذلك',
+    'settings.git.publicImport.description': 'استيراد باتجاه واحد دون تفويض المزوّد أو نشر طلبات السحب.',
+    'settings.git.publicImport.show': 'إظهار الخيارات',
+    'settings.git.publicImport.hide': 'إخفاء الخيارات',
     'settings.git.import.title': 'استيراد المحتوى',
     'settings.git.import.description': 'اربط مستودع Git عامًا واستورد ملفات Markdown إلى صفحاتك.',
     'settings.git.import.button': 'استيراد من {provider}',

@@ -621,29 +621,8 @@ export function GitTab({ projectId }: { projectId?: string }) {
     </form>
   );
 
-  if (!connected) {
-    return (
-      <div className="flex flex-col gap-6">
-        {projectId ? <GitWorkflow projectId={projectId} /> : null}
-        {/* Empty state: what connecting does, then the connect form. */}
-        <section className="rounded-xl border border-border border-dashed bg-muted/20 p-6 text-center">
-          <span className="mx-auto grid size-12 place-items-center rounded-xl bg-foreground/10 text-foreground">
-            <GithubIcon className="size-6" />
-          </span>
-          <h2 className="mt-3 font-semibold text-lg tracking-tight">{t('settings.git.connectTitle')}</h2>
-          <p className="mx-auto mt-1 max-w-md text-muted-foreground text-sm leading-relaxed">{t('settings.git.oneWayNote')}</p>
-        </section>
-        <SettingsSection title={t('settings.git.repository.title')} description={t('settings.git.import.description')}>
-          {connectForm}
-        </SettingsSection>
-      </div>
-    );
-  }
-
-  return (
+  const publicImport = connected ? (
     <div className="flex flex-col gap-6">
-      {projectId ? <GitWorkflow projectId={projectId} /> : null}
-      {/* Connected status card */}
       <section className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-4">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground">
@@ -677,7 +656,6 @@ export function GitTab({ projectId }: { projectId?: string }) {
       </section>
 
       {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={importFromGit.isPending} /> : null}
-
       {projectId ? (
         <DeployOnPush
           projectId={projectId}
@@ -686,10 +664,33 @@ export function GitTab({ projectId }: { projectId?: string }) {
           togglingAutoPublish={update.isPending}
         />
       ) : null}
-
       <SettingsSection title={t('settings.git.settingsTitle')} description={t('settings.git.import.description')}>
         {connectForm}
       </SettingsSection>
+    </div>
+  ) : (
+    <SettingsSection title={t('settings.git.repository.title')} description={t('settings.git.oneWayNote')}>
+      {connectForm}
+    </SettingsSection>
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      {projectId ? <GitWorkflow projectId={projectId} /> : null}
+      <details className="group rounded-xl border border-border bg-muted/10 open:bg-card">
+        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-5 py-4 outline-none transition-colors hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+            <DownloadCloud className="size-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium text-sm">{t('settings.git.publicImport.title')}</span>
+            <span className="block text-muted-foreground text-xs">{t('settings.git.publicImport.description')}</span>
+          </span>
+          <span className="text-muted-foreground text-xs group-open:hidden">{t('settings.git.publicImport.show')}</span>
+          <span className="hidden text-muted-foreground text-xs group-open:inline">{t('settings.git.publicImport.hide')}</span>
+        </summary>
+        <div className="border-border border-t p-5">{publicImport}</div>
+      </details>
     </div>
   );
 }
