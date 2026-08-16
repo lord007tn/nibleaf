@@ -21,3 +21,17 @@ Redirects are configured per site in **Editor → Site configuration → Redirec
 - Redirect responses use permanent HTTP `308`, preserving the original request method according to the existing published-site behavior.
 
 The editor reports syntax and graph errors before saving. The publish dialog performs a route-aware preflight against the effective pages, locales, and versions. The API repeats that preflight before creating a deployment, and the worker validates again immediately before marking a snapshot READY. Any failure leaves the previous READY deployment live; no partial redirect configuration is published.
+
+## Editor and publish feedback
+
+A valid internal chain is accepted in the editor. It is flattened to direct redirects in the immutable snapshot during publish.
+
+![A valid two-hop redirect chain with saving enabled](./assets/redirects/redirect-valid-chain.webp)
+
+Cycles highlight every involved row and show the complete path sequence before saving.
+
+![A two-node redirect cycle highlighted in the editor](./assets/redirects/redirect-cycle-validation.webp)
+
+Route-aware validation is repeated in the publish dialog. Publishing remains disabled until the graph is valid, so the current READY deployment stays live.
+
+![The publish dialog blocking a redirect cycle](./assets/redirects/publish-redirect-validation-block.webp)
