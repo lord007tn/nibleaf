@@ -2,16 +2,13 @@ import { createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { ErrorPage } from '@/components/error-page';
 import { NotFound } from '@/components/not-found';
 import { PageLoader } from '@/components/page-loader';
-import { getQueryContext, QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
 import { routeTree } from './routeTree.gen';
 
 export function getRouter() {
-  const queryContext = getQueryContext();
   const customDomainProjectId = hydratedCustomDomainProjectId();
   const router = createTanStackRouter({
     routeTree,
-    context: queryContext,
     defaultNotFoundComponent: NotFound,
     defaultErrorComponent: ErrorPage,
     // Branded loading screen for route transitions that resolve loaders/data.
@@ -29,7 +26,6 @@ export function getRouter() {
           output: ({ url }) => rewriteCustomDomainOutput(url, customDomainProjectId),
         }
       : undefined,
-    Wrap: ({ children }) => <QueryProvider queryClient={queryContext.queryClient}>{children}</QueryProvider>,
   });
   return router;
 }

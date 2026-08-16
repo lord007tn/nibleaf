@@ -56,5 +56,5 @@ function SiteHome() {
   const { lang } = Route.useSearch();
   const { page } = Route.useLoaderData();
   // Empty path resolves to the first page server-side.
-  return <SitePageView projectId={projectId} path="" lang={lang} initialData={page ?? undefined} />;
+  return <SitePageView projectId={projectId} lang={lang} data={page} />;
 }

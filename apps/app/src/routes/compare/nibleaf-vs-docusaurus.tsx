@@ -1,25 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ComparePage } from '@/components/marketing/comparison-page';
-import { nibleafVsDocusaurus as data } from '@/lib/comparison-data';
+import type { Comparison } from '@/lib/comparison-data';
+import { loadComparisonData } from '@/lib/comparison-loader';
 import { breadcrumbLd, canonicalHref, faqLd, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/compare/nibleaf-vs-docusaurus')({
-  loader: async () => ({ stars: await getGithubStars() }),
-  head: () => ({
-    meta: pageMeta({ title: data.metaTitle, description: data.metaDescription, path: data.path }),
-    links: [{ rel: 'canonical', href: canonicalHref(data.path) }],
+  loader: async () => ({ data: (await loadComparisonData('nibleafVsDocusaurus')) as Comparison, stars: await getGithubStars() }),
+  head: ({ loaderData }) => ({
+    meta: loaderData ? pageMeta({ title: loaderData.data.metaTitle, description: loaderData.data.metaDescription, path: loaderData.data.path }) : [],
+    links: loaderData ? [{ rel: 'canonical', href: canonicalHref(loaderData.data.path) }] : [],
     scripts: [
-      faqLd(data.faqs),
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: data.breadcrumbName, path: data.path },
-      ]),
+      ...(loaderData ? [faqLd(loaderData.data.faqs)] : []),
+      breadcrumbLd([{ name: 'Home', path: '/' }, ...(loaderData ? [{ name: loaderData.data.breadcrumbName, path: loaderData.data.path }] : [])]),
     ],
   }),
   component: NibleafVsDocusaurusRoute,
 });
 
 function NibleafVsDocusaurusRoute() {
-  const { stars } = Route.useLoaderData();
+  const { data, stars } = Route.useLoaderData();
   return <ComparePage data={data} stars={stars} />;
 }

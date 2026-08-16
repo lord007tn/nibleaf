@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react';
 import type { Locale } from './messages';
 
 const STORAGE_KEY = 'nibleaf.locale';
@@ -40,3 +41,11 @@ const readStoredLocale = (): Locale => {
  * Keeping it separate prevents the complete dashboard catalog from entering
  * every marketing and published-site route. */
 export const translateStandalone = (key: StandaloneMessageKey): string => standaloneMessages[readStoredLocale()][key];
+
+/** Hydration-safe translator for global router boundaries. Each boundary
+ * claims its English SSR text before applying a persisted client preference. */
+export const useStandaloneT = () => {
+  const [locale, setLocale] = useState<Locale>('en');
+  useEffect(() => setLocale(readStoredLocale()), []);
+  return useCallback((key: StandaloneMessageKey) => standaloneMessages[locale][key], [locale]);
+};

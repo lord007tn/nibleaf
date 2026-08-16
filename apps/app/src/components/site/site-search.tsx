@@ -4,7 +4,9 @@ import { useDebouncedValue } from '@tanstack/react-pacer';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { useSiteSearch } from '@/hooks/api';
+import { getData } from '@/hooks/api/client-helpers';
+import type { SearchHit } from '@/hooks/api/types';
+import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
 
@@ -62,10 +64,36 @@ export function SiteSearch({
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
-  // Debounce the typed query before it feeds the search hook, so we don't fire a
+  const [hits, setHits] = useState<SearchHit[]>([]);
+  // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
-  const { data: hits } = useSiteSearch(projectId, debouncedQuery, lang, version, maxResults);
+  useEffect(() => {
+    const q = debouncedQuery.trim();
+    if (!q) {
+      setHits([]);
+      return;
+    }
+    let active = true;
+    const loadHits = async () =>
+      getData<{ hits: SearchHit[] }>(
+        await api.public.sites[':id'].search.$get({
+          param: { id: projectId },
+          query: { q, ...(maxResults ? { limit: String(maxResults) } : {}), ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
+        }),
+        'search',
+      );
+    loadHits()
+      .then((result) => {
+        if (active) setHits(result.hits);
+      })
+      .catch(() => {
+        if (active) setHits([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery, lang, maxResults, projectId, version]);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -103,7 +131,7 @@ export function SiteSearch({
           <CommandList>
             <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
             <CommandGroup heading={t('results')}>
-              {(hits ?? []).map((hit) => (
+              {hits.map((hit) => (
                 <CommandItem
                   key={hit.id}
                   value={hit.id}
