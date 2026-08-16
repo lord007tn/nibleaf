@@ -164,12 +164,10 @@ function EditorPage() {
     const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
     return stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual';
   });
-  // Editor safety: JSX-like component tags the visual editor can't round-trip
-  // would be SILENTLY DROPPED on a visual-mode save. When any are present, the
-  // page is locked to Markdown mode (banner below) so nothing is ever lost.
+  // Unknown JSX components are represented by local opaque nodes. Inventory
+  // them for the explanatory banner without locking the rest of the page.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
-  const visualLocked = unsupportedTags.length > 0;
-  const effectiveMode = visualLocked && (editorMode === 'visual' || editorMode === 'wysiwyg') ? 'markdown' : editorMode;
+  const effectiveMode = editorMode;
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -691,22 +689,10 @@ function EditorPage() {
                 </Button>
               ) : null}
               <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-                <SegButton
-                  active={effectiveMode === 'visual'}
-                  onClick={() => setEditorMode('visual')}
-                  icon={<Pencil className="size-3.5" />}
-                  disabled={visualLocked}
-                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
-                >
+                <SegButton active={effectiveMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
                   {t('editor.mode.visual')}
                 </SegButton>
-                <SegButton
-                  active={effectiveMode === 'wysiwyg'}
-                  onClick={() => setEditorMode('wysiwyg')}
-                  icon={<TypeIcon className="size-3.5" />}
-                  disabled={visualLocked}
-                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
-                >
+                <SegButton active={effectiveMode === 'wysiwyg'} onClick={() => setEditorMode('wysiwyg')} icon={<TypeIcon className="size-3.5" />}>
                   {t('editor.mode.wysiwyg')}
                 </SegButton>
                 <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
@@ -718,12 +704,8 @@ function EditorPage() {
                 variant={commentMode ? 'secondary' : 'ghost'}
                 aria-pressed={commentMode}
                 className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
-                // Comment anchoring works through the visual editor, which is
-                // locked while the page holds unsupported components. (Stays
-                // clickable while ON so the user can always exit comment mode.)
-                disabled={visualLocked && !commentMode}
                 onClick={toggleCommentMode}
-                title={visualLocked ? t('editor.unsupportedMdx.commentsDisabled') : t('editor.comments.mode')}
+                title={t('editor.comments.mode')}
               >
                 <MessageSquare className="size-4" />
                 {commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
@@ -792,11 +774,11 @@ function EditorPage() {
             </div>
 
             <div className={cn('min-h-0 flex-1', effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-7 py-8')}>
-              {visualLocked ? (
+              {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
                 <div
                   className={cn(
                     'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
-                    effectiveMode === 'markdown' ? 'mx-5 mt-4 mb-4 shrink-0' : 'mx-auto mb-5 max-w-[720px]',
+                    'mx-auto mb-5 max-w-[720px]',
                   )}
                   role="status"
                 >

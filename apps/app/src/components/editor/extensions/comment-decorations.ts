@@ -32,8 +32,16 @@ export function findQuoteRange(doc: PMNode, quote: string): { from: number; to: 
     return null;
   }
   let text = '';
-  const posAt: number[] = [];
+  const posAt: Array<number | null> = [];
   doc.descendants((node, pos) => {
+    // Opaque MDX has no editable/commentable text. Insert a hard sentinel so a
+    // quote can never re-anchor by accidentally joining text from both sides.
+    // Anchors wholly before or after the atom keep their normal positions.
+    if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') {
+      text += '\uFFFC';
+      posAt.push(null);
+      return false;
+    }
     if (node.isText && node.text) {
       for (let i = 0; i < node.text.length; i++) {
         posAt.push(pos + i);
