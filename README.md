@@ -67,6 +67,8 @@ anchored comments, and one-click publish:
   round-trip losslessly between visual and source.
 - **Versioned publishing** — immutable snapshots; atomic roll-forward; readers never see a
   half-written page.
+- **Validated redirects** — [route-aware redirect graphs](docs/redirects.md) are flattened to
+  canonical one-hop destinations and published atomically with the site snapshot.
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.

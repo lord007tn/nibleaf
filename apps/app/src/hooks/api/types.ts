@@ -112,6 +112,13 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+  redirectIssues: Array<{
+    code: string;
+    message: string;
+    sequence: string[];
+    rowIndexes: number[];
+    field?: 'from' | 'to';
+  }>;
 }
 
 export interface DeploymentDiffLine {
