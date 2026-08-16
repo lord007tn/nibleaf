@@ -47,6 +47,10 @@ jobs:
         run: pnpm test
 
       - name: Build production app
+        env:
+          # The integrated app's route graph exceeds V8's default ~4 GiB heap
+          # while Rollup renders production chunks on GitHub-hosted runners.
+          NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm build:app
 
       - name: Enforce public JavaScript budget
