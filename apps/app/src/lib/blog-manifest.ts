@@ -88,7 +88,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Why can Arabic documentation search miss a word that is on the page?',
         answer:
-          'An English tokenizer can drop Arabic text entirely. Nibleaf selects Orama’s Arabic tokenizer and normalizes common alef forms, diacritics, tatweel, and alef maqsura. It does not enable stemming, so prefixed or inflected forms still need explicit tests.',
+          'An English tokenizer can drop Arabic text entirely. Nibleaf selects Orama’s Arabic tokenizer, normalizes common spelling variants, and applies conservative light morphology to prefixes, attached pronouns, and common plural or dual forms while preserving exact tokens.',
       },
       {
         question: 'Does Docusaurus support Arabic and RTL layouts?',

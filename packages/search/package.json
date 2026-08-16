@@ -10,6 +10,7 @@
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "bench": "vitest bench --run src/arabic.bench.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
