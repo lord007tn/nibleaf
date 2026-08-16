@@ -327,28 +327,28 @@ $jobs = @()
 foreach ($size in @(16, 32, 48, 64)) {
   $path = Join-Path $RasterDir "favicon/favicon-$size.png"
   Save-Png (New-IconBitmap $size -SocialTile) $path
-  $jobs += @{ file = "apps/app/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
+  $jobs += [ordered]@{ file = "apps/app/public/brand/raster/favicon/favicon-$size.png"; width = $size; height = $size; group = "favicon" }
 }
 
-$appIconSizes = @{ "apple-touch-icon-180" = 180; "mstile-150" = 150; "android-chrome-192" = 192; "android-chrome-512" = 512; "app-icon-1024" = 1024 }
+$appIconSizes = [ordered]@{ "apple-touch-icon-180" = 180; "mstile-150" = 150; "android-chrome-192" = 192; "android-chrome-512" = 512; "app-icon-1024" = 1024 }
 foreach ($name in $appIconSizes.Keys) {
   $size = [int]$appIconSizes[$name]
   $path = Join-Path $RasterDir "app-icon/$name.png"
   Save-Png (New-IconBitmap $size -AppTile) $path
-  $jobs += @{ file = "apps/app/public/brand/raster/app-icon/$name.png"; width = $size; height = $size; group = "app-icon" }
+  $jobs += [ordered]@{ file = "apps/app/public/brand/raster/app-icon/$name.png"; width = $size; height = $size; group = "app-icon" }
 }
 
 foreach ($size in @(64, 128, 256, 512, 1024)) {
   $path = Join-Path $RasterDir "icon/nibleaf-icon-$size.png"
   Save-Png (New-IconBitmap $size) $path
-  $jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
+  $jobs += [ordered]@{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-$size.png"; width = $size; height = $size; group = "icon" }
 }
 $reverseIconPath = Join-Path $RasterDir "icon/nibleaf-icon-reverse-512.png"
 $monochromeIconPath = Join-Path $RasterDir "icon/nibleaf-icon-monochrome-512.png"
 Save-Png (New-IconBitmap 512 -Reverse) $reverseIconPath
-Save-Png (New-IconBitmap 512 -Monochrome) $monochromeIconPath
-$jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-reverse-512.png"; source = "nibleaf-icon-reverse.svg"; width = 512; height = 512; format = "png"; group = "icon" }
-$jobs += @{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-monochrome-512.png"; source = "nibleaf-icon-monochrome.svg"; width = 512; height = 512; format = "png"; group = "icon" }
+Render-BrandSvgPng "nibleaf-icon-monochrome.svg" $monochromeIconPath 512 512
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-reverse-512.png"; source = "nibleaf-icon-reverse.svg"; width = 512; height = 512; format = "png"; group = "icon" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/icon/nibleaf-icon-monochrome-512.png"; source = "nibleaf-icon-monochrome.svg"; width = 512; height = 512; format = "png"; group = "icon" }
 Save-Png (New-IconBitmap 512 -SocialTile) (Join-Path $RasterDir "social/nibleaf-social-avatar-512.png")
 Save-Png (New-IconBitmap 1024 -SocialTile) (Join-Path $RasterDir "social/nibleaf-social-avatar-1024.png")
 Render-BrandSvgPng "nibleaf-og-card.svg" (Join-Path $RasterDir "social/nibleaf-og-card.png") 1200 630
@@ -390,7 +390,7 @@ foreach ($job in $logoJobs) {
   } else {
     Render-BrandSvgPng ([string]$job.source) $path ([int]$job.width) ([int]$job.height)
   }
-  $jobs += @{
+  $jobs += [ordered]@{
     file = "apps/app/public/brand/raster/logo/$name.$ext"
     source = [string]$job.source
     width = [int]$job.width
@@ -400,12 +400,12 @@ foreach ($job in $logoJobs) {
   }
 }
 
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-512.png"; source = "nibleaf-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-1024.png"; source = "nibleaf-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.png"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.jpg"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.png"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
-$jobs += @{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-512.png"; source = "nibleaf-social-avatar.svg"; width = 512; height = 512; format = "png"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-social-avatar-1024.png"; source = "nibleaf-social-avatar.svg"; width = 1024; height = 1024; format = "png"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.png"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-og-card.jpg"; source = "nibleaf-og-card.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.png"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "png"; group = "social" }
+$jobs += [ordered]@{ file = "apps/app/public/brand/raster/social/nibleaf-og-card-ar.jpg"; source = "nibleaf-og-card-ar.svg"; width = 1200; height = 630; format = "jpg"; group = "social" }
 
 $manifestPath = Join-Path $RasterDir "manifest.json"
 New-Item -ItemType Directory -Force -Path (Split-Path $manifestPath) | Out-Null
