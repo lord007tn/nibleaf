@@ -265,7 +265,7 @@ export const nibleafVsMintlify: Comparison = {
     { feature: 'llms.txt for AI assistants', nibleaf: yes('Generated per published site'), competitor: yes() },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: planned('Documented gap; no committed date'),
+      nibleaf: yes('OpenAPI 3.x references powered by Scalar'),
       competitor: yes('Included on free Starter'),
     },
     { feature: 'Preview deployments', nibleaf: planned(), competitor: yes('Pro plan') },
@@ -275,7 +275,6 @@ export const nibleafVsMintlify: Comparison = {
   pickCompetitor: {
     title: 'When to pick Mintlify instead',
     reasons: [
-      'You need an OpenAPI playground and API try-it today — Nibleaf’s is still on the roadmap.',
       'You want an AI assistant and agent built into your docs (metered by credits on their side).',
       'You need preview deployments for every change right now.',
       'You need SSO, SCIM, and enterprise compliance guarantees today.',
@@ -293,7 +292,7 @@ export const nibleafVsMintlify: Comparison = {
   },
   verdict: [
     'Mintlify is the more mature product today. Its free Starter plan is genuinely generous — custom domain, web editor, and an API playground — and its AI tooling is ahead of most of the market. If your documentation is API-first and you are comfortable with a closed, hosted platform, it is a strong choice.',
-    'Nibleaf is strongest on browser-based Markdown editing and Arabic/RTL authoring. Its public self-hosted release is available, while an OpenAPI playground, preview deployments, and SSO remain documented gaps.',
+    'Nibleaf is strongest on browser-based Markdown editing, Arabic/RTL authoring, and self-hostable OpenAPI references powered by Scalar. Preview deployments and SSO remain documented gaps.',
   ],
   faqs: [
     {
@@ -314,7 +313,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'As of August 2026, Nibleaf does not ship an OpenAPI playground/API try-it, two-way git sync with PR previews, reader authentication or personalization, or SSO/SAML. These are documented gaps without committed delivery dates.',
+      a: 'As of August 2026, Nibleaf does not ship two-way git sync with PR previews, reader authentication or personalization, or SSO/SAML. These are documented gaps without committed delivery dates.',
     },
   ],
 };
@@ -477,7 +476,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       feature: 'OpenAPI playground / API try-it',
-      nibleaf: planned('Documented gap; no committed date'),
+      nibleaf: yes('OpenAPI 3.x references powered by Scalar'),
       competitor: partial('Via community plugins'),
     },
     {
@@ -538,7 +537,7 @@ const nibleafAlternativeEntry = (vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Compared with ${vs}, it lacks an OpenAPI playground, two-way git sync, reader authentication, and SSO/SAML. Its public AGPL-3.0 release can be self-hosted with Docker Compose.`,
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Compared with ${vs}, it lacks two-way git sync, reader authentication, and SSO/SAML. Its public AGPL-3.0 release can be self-hosted with Docker Compose and includes Scalar-powered OpenAPI references.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -647,7 +646,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of August 2026: two-way git sync, an API playground, preview deployments, reader authentication/adaptive content, and SAML SSO. These are documented gaps rather than committed roadmap dates. GitBook ships them on various tiers.',
+      a: 'As of August 2026: two-way git sync, preview deployments, reader authentication/adaptive content, and SAML SSO. These are documented gaps rather than committed roadmap dates. GitBook ships them on various tiers.',
     },
   ],
 };
@@ -662,7 +661,7 @@ export const readmeAlternatives: AlternativesRoundup = {
   heading: 'ReadMe alternatives',
   breadcrumbName: 'ReadMe alternatives',
   directAnswer: [
-    'ReadMe is strongest as a hosted API-reference hub. Scalar and Mintlify are closer for interactive API references. Nibleaf focuses on guides, product docs, browser editing, and Arabic/RTL, offers Cloud and self-hosted deployment, and still lacks an API playground.',
+    'ReadMe is strongest as a hosted API-reference hub. Nibleaf combines guides, product docs, browser editing, Arabic/RTL, and Scalar-powered OpenAPI references across Cloud and self-hosted deployment.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: readmePricing,
@@ -670,7 +669,7 @@ export const readmeAlternatives: AlternativesRoundup = {
   faqs: [
     {
       q: 'What is the best open-source alternative to ReadMe?',
-      a: 'For API references, Scalar has an open-source client and generates references from OpenAPI documents; Docusaurus covers this through community plugins. Nibleaf’s public AGPL-3.0 release is installable, but it does not yet include an OpenAPI playground.',
+      a: 'For API references, Scalar has an open-source client and generates references from OpenAPI documents; Docusaurus covers this through community plugins. Nibleaf’s public AGPL-3.0 release includes Scalar-powered OpenAPI references alongside its guide editor.',
     },
     {
       q: 'How much does ReadMe cost?',
@@ -678,7 +677,7 @@ export const readmeAlternatives: AlternativesRoundup = {
     },
     {
       q: 'Does Nibleaf have an interactive API reference like ReadMe?',
-      a: 'Not yet. An OpenAPI playground/API try-it is a documented gap without a committed date. If interactive API reference is the primary need, Scalar or Mintlify are closer fits; Nibleaf is focused on guides, product docs, and bilingual Arabic/English documentation.',
+      a: 'Yes. Nibleaf validates OpenAPI 3.x documents, publishes generated endpoint and schema pages with Scalar, and includes browser-based API try-it alongside guides and bilingual Arabic/English documentation.',
     },
     {
       q: 'Is Nibleaf really free?',

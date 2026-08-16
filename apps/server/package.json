@@ -32,6 +32,7 @@
     "@nibleaf/storage": "workspace:*",
     "@nibleaf/validators": "workspace:*",
     "@scalar/hono-api-reference": "^0.10.19",
+    "@scalar/openapi-parser": "^0.28.14",
     "@t3-oss/env-core": "^0.13.11",
     "diff": "^9.0.0",
     "fflate": "^0.8.2",
@@ -42,6 +43,7 @@
     "quansync": "0.2.11",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
+    "yaml": "2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

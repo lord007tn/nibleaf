@@ -25,6 +25,7 @@
     "@nibleaf/server": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/validators": "workspace:*",
+    "@scalar/api-reference-react": "^0.9.63",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/pacer": "^0.21.1",
     "@tanstack/react-form": "1.32.0",

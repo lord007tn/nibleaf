@@ -10,6 +10,7 @@ import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { LanguagesSection } from '@/components/project-settings/languages-section';
 import { MembersSection } from '@/components/project-settings/members-section';
+import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import { GitTab } from '@/components/settings/git-tab';
@@ -40,6 +41,7 @@ const SECTIONS = [
   { id: 'search', group: 'site', icon: '⌕' },
   { id: 'addons', group: 'site', icon: '◩' },
   { id: 'git', group: 'deployment', icon: '⎇' },
+  { id: 'openapi', group: 'deployment', icon: '{}' },
   { id: 'contentImport', group: 'deployment', icon: '⤓' },
   { id: 'members', group: 'workspace', icon: '⧉' },
   // 'apiKeys' is intentionally hidden: no API route mounts requireApiKey yet, so
@@ -121,6 +123,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     search: <SearchSection key={`search-${project.id}`} project={project} />,
     addons: <AddonsSection key={`addons-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
+    openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,

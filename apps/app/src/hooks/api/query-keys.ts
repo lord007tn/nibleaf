@@ -31,6 +31,9 @@ export const queryKeys = {
   assets: {
     all: (projectId: string) => ['assets', projectId] as const,
   },
+  openapi: {
+    detail: (projectId: string) => ['openapi', projectId] as const,
+  },
   analytics: {
     overview: (projectId: string, range: string) => ['analytics', projectId, range] as const,
   },

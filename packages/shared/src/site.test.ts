@@ -15,6 +15,7 @@ import {
   type SnapshotLanguage,
   type SnapshotPage,
   type SnapshotProject,
+  withOpenApiNav,
 } from './site';
 
 describe('extractHeadings', () => {
@@ -279,6 +280,53 @@ describe('buildSnapshot', () => {
     expect(snap.pages[0]?.title).toBe('Welcome to Nibleaf');
     expect(snap.pages[0]?.description).toBe('Docs for Nibleaf');
     expect(snap.pages[0]?.content).toBe('Use API v2. Unknown {{ nope }} stays.');
+  });
+  it('freezes a validated OpenAPI document without editable source details', () => {
+    const snap = buildSnapshot(
+      {
+        ...projectRow,
+        openApiDocument: {
+          title: 'API Reference',
+          path: 'api-reference',
+          contentHash: 'sha256',
+          updatedAt: '2026-08-16T00:00:00.000Z',
+          document: { openapi: '3.1.0', info: { title: 'Pets', version: '1' }, paths: {} },
+        },
+      },
+      [rawPage],
+      '2026-08-16T00:00:01.000Z',
+    );
+    expect(snap.openapi).toEqual({
+      title: 'API Reference',
+      path: 'api-reference',
+      contentHash: 'sha256',
+      updatedAt: '2026-08-16T00:00:00.000Z',
+      document: { openapi: '3.1.0', info: { title: 'Pets', version: '1' }, paths: {} },
+    });
+    expect(snap.openapi).not.toHaveProperty('sourceUrl');
+  });
+});
+
+describe('withOpenApiNav', () => {
+  it('adds a deliberate API Reference page without mutating ordinary navigation', () => {
+    const nav = [{ id: 'guide', kind: 'PAGE' as const, title: 'Guide', path: 'guide', icon: null, tag: null, children: [] }];
+    const result = withOpenApiNav(nav, {
+      title: 'API Reference',
+      path: 'api-reference',
+      contentHash: 'hash',
+      updatedAt: '2026-08-16T00:00:00.000Z',
+      document: {},
+    });
+    expect(result.map((item) => [item.title, item.path])).toEqual([
+      ['Guide', 'guide'],
+      ['API Reference', 'api-reference'],
+    ]);
+    expect(nav).toHaveLength(1);
+  });
+
+  it('returns the existing navigation when no reference was published', () => {
+    const nav: [] = [];
+    expect(withOpenApiNav(nav, null)).toBe(nav);
   });
 });
 
