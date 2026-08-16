@@ -24,6 +24,7 @@ export const keys = () =>
       SEARCH_CONCURRENCY: z.coerce.number().default(4),
       EMAIL_CONCURRENCY: z.coerce.number().default(3),
       ANALYTICS_CONCURRENCY: z.coerce.number().default(10),
+      GIT_CONCURRENCY: z.coerce.number().default(2),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,

@@ -198,6 +198,8 @@ model Project {
   assets          Asset[]
   comments        Comment[]
   analyticsEvents AnalyticsEvent[]
+  gitConnection   GitConnection?
+  gitPreviews     GitPreview[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -221,6 +223,204 @@ model Branch {
   @@unique([projectId, name])
   @@index([projectId])
   @@map("branch")
+}
+
+/// Durable repository configuration for two-way authoring. Provider credentials
+/// and webhook secrets are envelope-encrypted by the API before they reach these
+/// columns; plaintext credentials are never persisted.
+model GitConnection {
+  id                       String   @id @default(cuid())
+  projectId                String   @unique
+  project                  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider                 String   @default("github")
+  repository               String
+  baseBranch               String   @default("main")
+  headBranch               String
+  contentPath              String   @default("")
+  importBranchId           String?
+  importLanguageId         String?
+  credentialEncrypted      String?
+  credentialFingerprint    String?
+  webhookSecretEncrypted   String?
+  remoteBaseSha            String?
+  remoteHeadSha            String?
+  lastSyncStatus           String   @default("IDLE")
+  lastSyncError            String?
+  lastSyncedAt             DateTime?
+  createdById              String
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  files             GitFileState[]
+  operations        GitSyncOperation[]
+  pullRequests      GitPullRequest[]
+  previews          GitPreview[]
+  webhookDeliveries GitWebhookDelivery[]
+  auditEvents       GitAuditEvent[]
+
+  @@index([provider, repository])
+  @@map("git_connection")
+}
+
+/// One idempotent import/push/PR/preview operation. A caller-supplied key is
+/// scoped to the connection, so retries return the original durable result.
+model GitSyncOperation {
+  id             String        @id @default(cuid())
+  connectionId   String
+  connection     GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  kind           String
+  status         String        @default("QUEUED")
+  idempotencyKey String
+  requestHash    String
+  requestedById  String?
+  baseBranch     String
+  headBranch     String
+  commitMessage  String?
+  authorName     String?
+  authorEmail    String?
+  request        Json?
+  changedFiles   Json?
+  remoteSha      String?
+  pullRequestNo  Int?
+  pullRequestUrl String?
+  error          String?
+  createdAt      DateTime      @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  conflicts GitConflict[]
+
+  @@unique([connectionId, idempotencyKey])
+  @@index([connectionId, createdAt])
+  @@index([status])
+  @@map("git_sync_operation")
+}
+
+/// The last common base for one repository file. This is the third input to
+/// three-way reconciliation (base / Nibleaf / upstream Git).
+model GitFileState {
+  id            String        @id @default(cuid())
+  connectionId  String
+  connection    GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  path          String
+  pageId        String?
+  branchId      String?
+  languageId    String?
+  baseContent   String?       @db.Text
+  baseExists    Boolean       @default(true)
+  baseBlobSha   String?
+  remoteBlobSha String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([connectionId, path])
+  @@index([connectionId, pageId])
+  @@map("git_file_state")
+}
+
+/// A conflict snapshot is immutable until an authorized user explicitly picks
+/// ours, theirs, or custom content. No side is overwritten while status=OPEN.
+model GitConflict {
+  id              String           @id @default(cuid())
+  operationId     String
+  operation       GitSyncOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  path            String
+  baseContent     String?          @db.Text
+  oursContent     String?          @db.Text
+  theirsContent   String?          @db.Text
+  status          String           @default("OPEN")
+  resolution      String?
+  resolvedContent String?          @db.Text
+  resolvedById    String?
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@unique([operationId, path])
+  @@index([status])
+  @@map("git_conflict")
+}
+
+model GitPullRequest {
+  id            String        @id @default(cuid())
+  connectionId  String
+  connection    GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  number        Int
+  url           String
+  title         String
+  state         String        @default("open")
+  draft         Boolean       @default(true)
+  baseBranch    String
+  headBranch    String
+  headSha       String?
+  lastSyncedAt  DateTime      @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  previews GitPreview[]
+
+  @@unique([connectionId, number])
+  @@unique([connectionId, headBranch])
+  @@map("git_pull_request")
+}
+
+/// Immutable, token-addressed PR documentation snapshot. Superseded previews
+/// remain auditable but only READY previews are served publicly.
+model GitPreview {
+  id            String          @id @default(cuid())
+  projectId     String
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    GitConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  pullRequestId String?
+  pullRequest   GitPullRequest? @relation(fields: [pullRequestId], references: [id], onDelete: SetNull)
+  token         String          @unique
+  sourceSha     String
+  status        String          @default("PENDING")
+  snapshot      Json?
+  url           String?
+  error         String?
+  createdAt     DateTime        @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  @@unique([connectionId, sourceSha])
+  @@index([projectId, status])
+  @@map("git_preview")
+}
+
+model GitWebhookDelivery {
+  id                 String        @id @default(cuid())
+  connectionId       String
+  connection         GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerDeliveryId String
+  event              String
+  payloadHash        String
+  status             String        @default("ACCEPTED")
+  attempts           Int           @default(0)
+  error              String?
+  receivedAt         DateTime      @default(now())
+  processedAt        DateTime?
+
+  @@unique([connectionId, providerDeliveryId])
+  @@index([status, receivedAt])
+  @@map("git_webhook_delivery")
+}
+
+/// Security-relevant Git actions use a dedicated append-only audit trail rather
+/// than transient application logs. Metadata is intentionally secret-free.
+model GitAuditEvent {
+  id           String        @id @default(cuid())
+  connectionId String?
+  connection   GitConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  projectId    String
+  actorUserId  String?
+  action       String
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([connectionId, createdAt])
+  @@map("git_audit_event")
 }
 
 /// A language/locale a project's docs are authored in. Each language owns its

@@ -8,6 +8,7 @@ import branches from './branches/handlers';
 import comments from './comments/handlers';
 import deployments from './deployments/handlers';
 import domains from './domains/handlers';
+import git from './git/handlers';
 import imports from './imports/handlers';
 import languages from './languages/handlers';
 import members from './members/handlers';
@@ -33,6 +34,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/members', projectMembers)
   .route('/projects/:projectId/settings', projectSettings)
   .route('/projects/:projectId/settings/import', imports)
+  .route('/projects/:projectId/git', git)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)
   .route('/members', members)

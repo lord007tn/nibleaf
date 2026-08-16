@@ -15,6 +15,7 @@ export const env = createEnv({
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),
+    GIT_WORKER_SECRET: z.string().min(32).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

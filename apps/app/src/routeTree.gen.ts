@@ -20,6 +20,7 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
 import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
@@ -102,6 +103,11 @@ const IndexRoute = IndexRouteImport.update({
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
+  id: '/git-preview/$token',
+  path: '/git-preview/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareNibleafVsMintlifyRoute =
@@ -282,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/git-preview/$token': typeof GitPreviewTokenRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/git-preview/$token': typeof GitPreviewTokenRoute
   '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/git-preview/$token': typeof GitPreviewTokenRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
@@ -404,6 +413,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/git-preview/$token'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/analytics'
@@ -443,6 +453,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/git-preview/$token'
     | '/blog'
     | '/app/analytics'
     | '/app/members'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
+    | '/git-preview/$token'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
@@ -520,6 +532,7 @@ export interface RootRouteChildren {
   CompareNibleafVsDocusaurusRoute: typeof CompareNibleafVsDocusaurusRoute
   CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
   CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
+  GitPreviewTokenRoute: typeof GitPreviewTokenRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -600,6 +613,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/git-preview/$token': {
+      id: '/git-preview/$token'
+      path: '/git-preview/$token'
+      fullPath: '/git-preview/$token'
+      preLoaderRoute: typeof GitPreviewTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/compare/nibleaf-vs-mintlify': {
@@ -918,6 +938,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareNibleafVsDocusaurusRoute: CompareNibleafVsDocusaurusRoute,
   CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
   CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
+  GitPreviewTokenRoute: GitPreviewTokenRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport

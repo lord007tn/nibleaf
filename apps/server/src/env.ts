@@ -37,6 +37,11 @@ export const env = createEnv({
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4315').transform(csv),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     OPENAI_API_KEY: z.string().optional(),
+    /** Base64-encoded 32-byte AES key used only for Git provider credentials
+     * and webhook secrets. Generate with: openssl rand -base64 32 */
+    GIT_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Shared API/worker authentication secret for opaque Git job execution. */
+    GIT_WORKER_SECRET: z.string().min(32).optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

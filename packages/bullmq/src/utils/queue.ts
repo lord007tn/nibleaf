@@ -61,6 +61,14 @@ export const QUEUE_CONFIGS: Record<QueueNames, QueueConfigEntry> = {
     stalledInterval: 15_000,
     maxStalledCount: 1,
   },
+  [QueueNames.GIT]: {
+    concurrency: env.GIT_CONCURRENCY,
+    defaultJobOptions: { ...DEFAULT_JOB_OPTIONS, attempts: 5, backoff: { type: 'exponential', delay: 2000 } },
+    limiter: { max: 20, duration: 1000 },
+    lockDuration: 10 * MINUTE_MS,
+    stalledInterval: 30_000,
+    maxStalledCount: 2,
+  },
 };
 
 /** Wrap queue names in a Redis hash tag so BullMQ keys stay grouped for Dragonfly. */
