@@ -33,6 +33,7 @@ export interface GitCommitInput {
  * code depend only on these repository primitives. */
 export interface GitProviderClient {
   readonly provider: 'github';
+  verifyIdentity(): Promise<{ login: string; name: string | null }>;
   verifyWriteAccess(repository: string): Promise<void>;
   getBranchSha(repository: string, branch: string): Promise<string | null>;
   listMarkdownFiles(repository: string, ref: string, contentPath: string): Promise<RemoteFile[]>;

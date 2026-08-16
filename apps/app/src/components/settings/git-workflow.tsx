@@ -51,6 +51,7 @@ type GitStatus = {
   pullRequests: PullRequest[];
   files: Array<{ path: string }>;
 };
+type GitIdentity = { login: string; name: string | null };
 
 const request = async <T,>(path: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(`${API_URL}${path}`, {
@@ -132,6 +133,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   const [headBranch, setHeadBranch] = useState('nibleaf/docs');
   const [contentPath, setContentPath] = useState('docs');
   const [token, setToken] = useState('');
+  const [authorizedAccount, setAuthorizedAccount] = useState<GitIdentity | null>(null);
   const [message, setMessage] = useState('Update documentation');
   const [authorName, setAuthorName] = useState('Nibleaf author');
   const [authorEmail, setAuthorEmail] = useState('docs@example.com');
@@ -145,6 +147,17 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     refetchInterval: (state) => (state.state.data?.operations.some((operation) => ['QUEUED', 'RUNNING'].includes(operation.status)) ? 2500 : false),
   });
   const connection = query.data;
+  const authorize = useMutation({
+    mutationFn: () =>
+      request<GitIdentity>(`/api/app/projects/${projectId}/git/authorize`, {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    onSuccess: (identity) => {
+      setAuthorizedAccount(identity);
+      setConnectStep(2);
+    },
+  });
   const connect = useMutation({
     mutationFn: () =>
       request<{ connection: GitStatus; webhookSecret: string | null }>(`/api/app/projects/${projectId}/git/connection`, {
@@ -154,6 +167,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     onSuccess: (data) => {
       setWebhookSecret(data.webhookSecret);
       setToken('');
+      setAuthorizedAccount(null);
       client.invalidateQueries({ queryKey: keyFor(projectId) });
       toast.success('GitHub connection saved.');
     },
@@ -243,8 +257,8 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <div>
               <h3 className="font-medium text-sm">Authorize the provider</h3>
               <p className="mt-1 text-muted-foreground text-xs">
-                Use a fine-grained GitHub token with Metadata read, Contents read/write, and Pull requests read/write. It is encrypted and never
-                displayed again.
+                Use a fine-grained GitHub token with Metadata read, Contents read/write, and Pull requests read/write. This step verifies your
+                identity without storing the token; it is encrypted only when you finish connecting.
               </p>
             </div>
             <div>
@@ -252,12 +266,20 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               <Input
                 autoComplete="off"
                 id="git2-token"
-                onChange={(e) => setToken(e.target.value)}
+                onChange={(e) => {
+                  setToken(e.target.value);
+                  setAuthorizedAccount(null);
+                }}
                 placeholder="github_pat_…"
                 type="password"
                 value={token}
               />
             </div>
+            {authorize.isError ? (
+              <p aria-live="polite" className="text-destructive text-xs">
+                {authorize.error instanceof Error ? authorize.error.message : 'GitHub could not be authorized. Check the token and try again.'}
+              </p>
+            ) : null}
           </div>
         ) : null}
         {connectStep === 2 ? (
@@ -283,6 +305,15 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
         {connectStep === 3 ? (
           <div className="mt-5 rounded-lg border bg-background p-4">
             <h3 className="font-medium text-sm">Review connection</h3>
+            {authorizedAccount ? (
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+                <span>
+                  GitHub authorized as <strong>@{authorizedAccount.login}</strong>
+                  {authorizedAccount.name ? <span className="text-muted-foreground"> · {authorizedAccount.name}</span> : null}
+                </span>
+                <Badge variant="outline">Verified</Badge>
+              </div>
+            ) : null}
             <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted-foreground text-xs">Repository</dt>
@@ -311,16 +342,20 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <ArrowLeft className="size-4" /> Back
           </Button>
           {connectStep < 3 ? (
-            <Button
-              disabled={
-                (connectStep === 1 && !token.trim()) || (connectStep === 2 && (!repository.trim() || !baseBranch.trim() || !headBranch.trim()))
-              }
-              onClick={() => setConnectStep((step) => Math.min(3, step + 1) as 1 | 2 | 3)}
-            >
-              Continue <ArrowRight className="size-4" />
-            </Button>
+            connectStep === 1 ? (
+              <Button disabled={authorize.isPending || token.trim().length < 20} onClick={() => authorize.mutate()}>
+                {authorize.isPending ? 'Authorizing GitHub…' : 'Authorize GitHub'} <ArrowRight className="size-4" />
+              </Button>
+            ) : (
+              <Button
+                disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
+                onClick={() => setConnectStep(3)}
+              >
+                Continue <ArrowRight className="size-4" />
+              </Button>
+            )
           ) : (
-            <Button disabled={connect.isPending || !repository || !token} onClick={() => connect.mutate()}>
+            <Button disabled={connect.isPending || !authorizedAccount || !repository || !token} onClick={() => connect.mutate()}>
               {connect.isPending ? 'Verifying connection…' : 'Connect GitHub'}
             </Button>
           )}

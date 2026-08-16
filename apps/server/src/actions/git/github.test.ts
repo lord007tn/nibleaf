@@ -4,6 +4,16 @@ import { GitHubProvider } from './github';
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
 
 describe('GitHub provider adapter', () => {
+  it('verifies the provider identity without a repository request', async () => {
+    const request = vi.fn(async () => json({ login: 'octocat', name: 'The Octocat' }));
+    const provider = new GitHubProvider('never-log-this-token', request as typeof fetch);
+    await expect(provider.verifyIdentity()).resolves.toEqual({ login: 'octocat', name: 'The Octocat' });
+    expect(request).toHaveBeenCalledWith(
+      'https://api.github.com/user',
+      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer never-log-this-token' }), redirect: 'error' }),
+    );
+  });
+
   it('enforces repository write permission before connecting', async () => {
     const request = vi.fn(async () => json({ permissions: { push: false } }));
     const provider = new GitHubProvider('never-log-this-token', request as typeof fetch);
@@ -48,5 +58,11 @@ describe('GitHub provider adapter', () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request as typeof fetch);
     await expect(provider.verifyWriteAccess('acme/docs')).rejects.not.toThrow(/super-secret-token/);
+  });
+
+  it('does not leak credentials through authorization errors', async () => {
+    const request = vi.fn(async () => json({ message: 'Bad credentials' }, 401));
+    const provider = new GitHubProvider('super-secret-token', request as typeof fetch);
+    await expect(provider.verifyIdentity()).rejects.not.toThrow(/super-secret-token/);
   });
 });

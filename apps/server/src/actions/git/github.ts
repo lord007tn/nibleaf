@@ -67,6 +67,26 @@ export class GitHubProvider implements GitProviderClient {
     return (await response.json()) as T;
   }
 
+  async verifyIdentity(): Promise<{ login: string; name: string | null }> {
+    const response = await this.request('https://api.github.com/user', {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+        'User-Agent': 'nibleaf-git-sync',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      redirect: 'error',
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as GitHubErrorBody;
+      throw new Error(`GitHub authorization failed (${response.status}): ${(body.message ?? 'request failed').slice(0, 180)}`);
+    }
+    const identity = (await response.json()) as { login?: string; name?: string | null };
+    if (!identity.login) throw new Error('GitHub authorization did not return an account identity.');
+    return { login: identity.login, name: identity.name ?? null };
+  }
+
   async verifyWriteAccess(repository: string): Promise<void> {
     const repo = await this.api<{ permissions?: { push?: boolean } }>(repository, '');
     if (repo.permissions?.push !== true) {

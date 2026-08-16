@@ -1,9 +1,16 @@
 import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
-import { gitConflictResolutionBody, gitConnectionBody, gitOperationBody } from '@nibleaf/validators';
+import { gitAuthorizationBody, gitConflictResolutionBody, gitConnectionBody, gitOperationBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { connectGitHub, gitWorkspaceStatus, queueGitOperation, resolveGitConflict, rotateConnectionWebhookSecret } from '@/actions/git/workflow';
+import {
+  authorizeGitHub,
+  connectGitHub,
+  gitWorkspaceStatus,
+  queueGitOperation,
+  resolveGitConflict,
+  rotateConnectionWebhookSecret,
+} from '@/actions/git/workflow';
 import { getContextMembership, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import routes from './routes';
@@ -18,6 +25,10 @@ const app = new Hono<HonoEnv>()
       status.auditEvents = [];
     }
     return ctx.json({ data: status }, 200);
+  })
+  .post('/authorize', ...routes.authorize, validator('json', gitAuthorizationBody), async (ctx) => {
+    const identity = await authorizeGitHub(ctx.req.valid('json').token);
+    return ctx.json({ data: identity }, 200);
   })
   .put('/connection', ...routes.connect, validator('json', gitConnectionBody), async (ctx) => {
     const user = getContextUserOrThrow();

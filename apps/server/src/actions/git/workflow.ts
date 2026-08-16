@@ -258,6 +258,10 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   return { connection: redactConnection(connection), webhookSecret: generatedSecret };
 };
 
+/** Verify the provider identity before repository configuration is exposed.
+ * The credential is held only for this request and is never persisted here. */
+export const authorizeGitHub = async (token: string) => new GitHubProvider(token).verifyIdentity();
+
 export const redactConnection = <T extends { credentialEncrypted: string | null; webhookSecretEncrypted: string | null }>(connection: T) => {
   const { credentialEncrypted: _credential, webhookSecretEncrypted: _webhook, ...safe } = connection;
   return { ...safe, credentialConfigured: Boolean(connection.credentialEncrypted), webhookConfigured: Boolean(connection.webhookSecretEncrypted) };

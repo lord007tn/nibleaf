@@ -19,6 +19,12 @@ export default {
     description: 'Create or update a two-way GitHub connection. Provider tokens are encrypted and never returned.',
     responses: ok,
   }),
+  authorize: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['git'],
+    description: 'Verify a GitHub account before repository configuration. The provider token is not persisted by this endpoint.',
+    responses: ok,
+  }),
   disconnect: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
     tags: ['git'],

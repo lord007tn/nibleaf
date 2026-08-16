@@ -914,6 +914,15 @@ export const gitConnectionBody = z
   .refine((body) => body.baseBranch !== body.headBranch, { message: 'Use a dedicated authoring branch.', path: ['headBranch'] });
 export type GitConnectionBody = z.infer<typeof gitConnectionBody>;
 
+export const gitAuthorizationBody = z
+  .object({
+    /** Fine-grained token used for a read-only identity check. It is never
+     * persisted by the authorization endpoint. */
+    token: z.string().min(20).max(500),
+  })
+  .strict();
+export type GitAuthorizationBody = z.infer<typeof gitAuthorizationBody>;
+
 export const gitOperationBody = z
   .object({
     idempotencyKey: z
