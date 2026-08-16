@@ -130,8 +130,26 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
 
 export interface SearchOptions {
   limit?: number;
+  /** Maximum Levenshtein distance. The effective distance is reduced for short
+   * tokens to avoid noisy matches such as API -> app. */
   tolerance?: number;
 }
+
+/** Orama's tolerance is a Levenshtein edit distance. Long words can absorb two
+ * typing mistakes without becoming ambiguous; short technical terms cannot. */
+export const fuzzyToleranceForQuery = (query: string, maximum: number): number => {
+  const longestToken = query
+    .trim()
+    .split(/\s+/)
+    .reduce((longest, token) => Math.max(longest, token.length), 0);
+  if (longestToken <= 3) {
+    return 0;
+  }
+  if (longestToken <= 7) {
+    return Math.min(maximum, 1);
+  }
+  return Math.min(maximum, 2);
+};
 
 /** Full-text + fuzzy search over a doc index, title/heading-boosted, with snippets. */
 export const searchDocs = async (db: DocIndex, term: string, options: SearchOptions = {}): Promise<SearchHit[]> => {
@@ -140,7 +158,7 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   if (!query) {
     return [];
   }
-  const tolerance = options.tolerance ?? keys().SEARCH_FUZZY_TOLERANCE;
+  const tolerance = fuzzyToleranceForQuery(query, options.tolerance ?? keys().SEARCH_FUZZY_TOLERANCE);
   const results = await search(db, {
     term: query,
     properties: ['searchTitle', 'searchHeadings', 'searchDescription', 'searchContent'],

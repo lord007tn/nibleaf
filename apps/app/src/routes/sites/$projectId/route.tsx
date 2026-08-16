@@ -17,6 +17,7 @@ import { useSite } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
+import { publishedSiteLogo } from '@/lib/site-branding';
 import { siteT } from '@/lib/site-i18n';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
@@ -237,7 +238,8 @@ function SiteChrome() {
 
   // Branding can provide a theme-specific logo and an optional off-site link.
   const branding = config?.branding;
-  const logoSrc = (siteTheme === 'dark' ? branding?.logoDark || branding?.logoLight : branding?.logoLight) || null;
+  const configuredLogo = (siteTheme === 'dark' ? branding?.logoDark || branding?.logoLight : branding?.logoLight) || null;
+  const logo = publishedSiteLogo(configuredLogo, siteTheme);
   const logoHref = branding?.logoHref?.trim() || undefined;
 
   // Apply the configured corner radius + typography. Font names are charset-guarded
@@ -301,14 +303,19 @@ function SiteChrome() {
   const siteName = site?.languageConfig?.name || site?.project.name;
   const brandInner = (
     <>
-      {logoSrc ? (
-        <img src={logoSrc} alt={siteName ?? 'Logo'} className="h-6 w-auto object-contain" />
+      {logo ? (
+        <>
+          <img src={logo.src} alt={siteName ?? 'Logo'} className={cn('object-contain', logo.markOnly ? 'size-7' : 'h-6 w-auto')} />
+          {logo.markOnly ? null : <span className="truncate">{siteName ?? 'Documentation'}</span>}
+        </>
       ) : (
-        <span className="grid size-7 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
-          {siteName?.[0] ?? 'D'}
-        </span>
+        <>
+          <span className="grid size-7 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
+            {siteName?.[0] ?? 'D'}
+          </span>
+          <span className="truncate">{siteName ?? 'Documentation'}</span>
+        </>
       )}
-      <span className="truncate">{siteName ?? 'Documentation'}</span>
     </>
   );
 
@@ -493,8 +500,11 @@ function SiteChrome() {
       </div>
 
       <div className="mx-auto w-full max-w-[90rem] flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10">
-        <aside className="hidden border-border/60 border-e lg:block">
-          <ScrollArea className="sticky top-(--site-header-h) h-[calc(100vh-var(--site-header-h))]">
+        <aside className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-border/60 border-e lg:block">
+          {/* Base UI sets position:relative inline on its ScrollArea root. Keep
+              sticky positioning on the outer aside so the entire navigation
+              viewport remains visible while this inner viewport scrolls. */}
+          <ScrollArea className="h-full">
             <div className="pt-7 pb-12 pe-5">
               {navAnchors.length > 0 ? (
                 <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
