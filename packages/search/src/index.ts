@@ -167,6 +167,44 @@ export const fuzzyToleranceForQuery = (query: string, maximum: number): number =
   return Math.min(maximum, 2);
 };
 
+type SearchProperty = Exclude<keyof typeof docSchema, 'id'>;
+
+interface RankingLane {
+  term: string;
+  properties: SearchProperty[];
+  boost: Partial<Record<SearchProperty, number>>;
+  tolerance: number;
+  exact: boolean;
+  weight: number;
+}
+
+const EXACT_PROPERTIES: SearchProperty[] = ['searchTitle', 'searchHeadings', 'searchDescription', 'searchContent'];
+const MORPHOLOGY_PROPERTIES: SearchProperty[] = ['morphologyTitle', 'morphologyHeadings', 'morphologyDescription', 'morphologyContent'];
+const EXACT_BOOST = { searchTitle: 4, searchHeadings: 2, searchDescription: 1.5 };
+const MORPHOLOGY_BOOST = { morphologyTitle: 2.5, morphologyHeadings: 1.25, morphologyDescription: 0.8, morphologyContent: 0.5 };
+const RRF_K = 30;
+
+function sourceDoc(db: DocIndex, id: string): SearchDoc {
+  const doc = indexDocuments.get(db)?.get(id);
+  if (!doc) {
+    throw new Error(`Search result ${id} is missing its source document.`);
+  }
+  return doc;
+}
+
+function toSearchHit(db: DocIndex, id: string, score: number, rawQuery: string, arabic: boolean): SearchHit {
+  const doc = sourceDoc(db, id);
+  return {
+    id: String(doc.id),
+    title: doc.title,
+    path: doc.path,
+    description: doc.description,
+    icon: doc.icon || undefined,
+    snippet: makeSnippet(doc.content, rawQuery, arabic),
+    score,
+  };
+}
+
 /** Full-text + fuzzy search over a doc index, title/heading-boosted, with snippets. */
 export const searchDocs = async (db: DocIndex, term: string, options: SearchOptions = {}): Promise<SearchHit[]> => {
   const rawQuery = term.trim();
@@ -177,68 +215,86 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   }
   const tolerance = fuzzyToleranceForQuery(query, options.tolerance ?? keys().SEARCH_FUZZY_TOLERANCE);
   const limit = options.limit ?? 12;
-  const morphologyCandidateLimit = Math.min(Math.max(limit * 2, 24), 64);
-  const directCandidateLimit = Math.max(limit, morphologyCandidateLimit);
-  const results = await search(db, {
-    term: query,
-    properties: ['searchTitle', 'searchHeadings', 'searchDescription', 'searchContent'],
-    tolerance,
-    boost: { searchTitle: 4, searchHeadings: 2, searchDescription: 1.5 },
-    limit: directCandidateLimit,
-  });
+  const candidateLimit = Math.min(Math.max(limit * 2, 24), 64);
+  const directLimit = Math.max(limit, candidateLimit);
 
-  // Morphology is a second, bounded recall channel. Keeping it out of the
-  // original fields preserves their ranking channel and keeps morphology-only
-  // recall below direct matches.
-  const morphologyQuery = arabic ? normalizeArabicMorphologyText(rawQuery).trim() : '';
-  const morphologyResults =
-    arabic && morphologyQuery
-      ? await search(db, {
-          term: morphologyQuery,
-          properties: ['morphologyTitle', 'morphologyHeadings', 'morphologyDescription', 'morphologyContent'],
-          tolerance,
-          boost: { morphologyTitle: 1.5, morphologyHeadings: 0.8, morphologyDescription: 0.5, morphologyContent: 0.35 },
-          limit: morphologyCandidateLimit,
+  // Preserve the single-channel behavior and scores for every non-Arabic
+  // project. The lane architecture below is deliberately Arabic-only.
+  if (!arabic) {
+    const results = await search(db, {
+      term: query,
+      properties: EXACT_PROPERTIES,
+      tolerance,
+      boost: EXACT_BOOST,
+      limit: directLimit,
+    });
+    return results.hits.slice(0, limit).map((hit) => {
+      const id = String((hit.document as unknown as { id: string }).id);
+      return toSearchHit(db, id, hit.score, rawQuery, false);
+    });
+  }
+
+  const morphologyQuery = normalizeArabicMorphologyText(rawQuery).trim();
+  const lanes: RankingLane[] = [
+    // Orama's `exact` option requires the entire field to equal the term, not
+    // an exact token inside a field. Exact phrase strength is therefore the
+    // explicit field-aware signal below; this lane retains prefix completion.
+    { term: query, properties: EXACT_PROPERTIES, boost: EXACT_BOOST, tolerance: 0, exact: false, weight: 4 },
+  ];
+  if (morphologyQuery) {
+    lanes.push({ term: morphologyQuery, properties: MORPHOLOGY_PROPERTIES, boost: MORPHOLOGY_BOOST, tolerance: 0, exact: false, weight: 1.75 });
+  }
+  if (tolerance > 0) {
+    lanes.push({ term: query, properties: EXACT_PROPERTIES, boost: EXACT_BOOST, tolerance, exact: false, weight: 0.7 });
+    if (morphologyQuery) {
+      lanes.push({ term: morphologyQuery, properties: MORPHOLOGY_PROPERTIES, boost: MORPHOLOGY_BOOST, tolerance, exact: false, weight: 0.45 });
+    }
+  }
+
+  const laneResults = await Promise.all(
+    lanes.map(async (lane) => ({
+      lane,
+      hits: (
+        await search(db, {
+          term: lane.term,
+          properties: lane.properties,
+          tolerance: lane.tolerance,
+          exact: lane.exact,
+          boost: lane.boost,
+          limit: lane.weight >= 3 ? directLimit : candidateLimit,
         })
-      : undefined;
+      ).hits,
+    })),
+  );
 
-  const maximumDirectScore = results.hits.reduce((maximum, hit) => Math.max(maximum, hit.score), 0);
-  type RankedHit = { id: string; score: number; direct: boolean; exactSignal: number };
-  const ranked = new Map<string, RankedHit>();
-  for (const hit of results.hits) {
-    const indexed = hit.document as unknown as { id: string };
-    const id = String(indexed.id);
-    const source = indexDocuments.get(db)?.get(id);
-    const exactSignal = arabic && source ? exactArabicSignal(source, query) : 0;
-    ranked.set(id, { id, score: hit.score + exactSignal * (maximumDirectScore + 1), direct: true, exactSignal });
+  // Weighted reciprocal-rank fusion keeps scores from different Orama fields
+  // comparable and deterministic. A small within-lane score component breaks
+  // near ties without allowing morphology/fuzzy lanes to overpower exact ones.
+  type FusedHit = { id: string; fusion: number; exactSignal: number };
+  const fused = new Map<string, FusedHit>();
+  for (const { lane, hits } of laneResults) {
+    const stableHits = [...hits].sort((left, right) => {
+      const scoreDifference = right.score - left.score;
+      if (scoreDifference !== 0) return scoreDifference;
+      const leftId = String((left.document as unknown as { id: string }).id);
+      const rightId = String((right.document as unknown as { id: string }).id);
+      return leftId.localeCompare(rightId);
+    });
+    const maximumScore = stableHits.reduce((maximum, hit) => Math.max(maximum, hit.score), 0) || 1;
+    stableHits.forEach((hit, index) => {
+      const id = String((hit.document as unknown as { id: string }).id);
+      const current = fused.get(id) ?? { id, fusion: 0, exactSignal: exactArabicSignal(sourceDoc(db, id), query) };
+      const reciprocalRank = 1 / (RRF_K + index + 1);
+      const normalizedScore = hit.score / maximumScore;
+      current.fusion += lane.weight * (reciprocalRank * 0.8 + (normalizedScore / (RRF_K + 1)) * 0.2);
+      fused.set(id, current);
+    });
   }
-  for (const hit of morphologyResults?.hits ?? []) {
-    const indexed = hit.document as unknown as { id: string };
-    const id = String(indexed.id);
-    if (!ranked.has(id)) {
-      ranked.set(id, { id, score: hit.score * 0.15, direct: false, exactSignal: 0 });
-    }
-  }
 
-  const merged = [...ranked.values()]
-    .sort((left, right) => right.exactSignal - left.exactSignal || Number(right.direct) - Number(left.direct) || right.score - left.score)
-    .slice(0, limit);
-
-  return merged.map((hit) => {
-    const doc = indexDocuments.get(db)?.get(hit.id);
-    if (!doc) {
-      throw new Error(`Search result ${hit.id} is missing its source document.`);
-    }
-    return {
-      id: String(doc.id),
-      title: doc.title,
-      path: doc.path,
-      description: doc.description,
-      icon: doc.icon || undefined,
-      snippet: makeSnippet(doc.content, rawQuery, indexLanguages.get(db) === 'arabic'),
-      score: hit.score,
-    };
-  });
+  return [...fused.values()]
+    .sort((left, right) => right.exactSignal - left.exactSignal || right.fusion - left.fusion || left.id.localeCompare(right.id))
+    .slice(0, limit)
+    .map((hit) => toSearchHit(db, hit.id, hit.exactSignal * 100 + hit.fusion * 100, rawQuery, true));
 };
 
 const SNIPPET_RADIUS = 90;

@@ -15,7 +15,7 @@ describe('lightStemArabicToken', () => {
   it.each([
     ['المستخدم', 'مستخدم'],
     ['والمستخدمين', 'مستخدم'],
-    ['بالمستخدمات', 'مستخدمة'],
+    ['بالمستخدمات', 'مستخدم'],
     ['للمطورين', 'مطور'],
     ['لمستخدمين', 'مستخدم'],
     ['كمطورين', 'مطور'],
@@ -24,15 +24,24 @@ describe('lightStemArabicToken', () => {
     ['كتابهم', 'كتاب'],
     ['إعداداتهم', 'اعداد'],
     ['إعداداتكما', 'اعداد'],
-    ['المكتبتين', 'مكتبة'],
-    ['مكتبات', 'مكتبة'],
-    ['صلاحيات', 'صلاحية'],
-    ['واجهات', 'واجهة'],
-    ['سيارات', 'سيارة'],
+    ['المكتبتين', 'مكتب'],
+    ['مكتبة', 'مكتب'],
+    ['مكتبات', 'مكتب'],
+    ['صلاحية', 'صلاح'],
+    ['صلاحيات', 'صلاح'],
+    ['واجهة', 'واجه'],
+    ['واجهات', 'واجه'],
+    ['سيارة', 'سيار'],
+    ['سيارات', 'سيار'],
     ['تحديثات', 'تحديث'],
     ['مستندات', 'مستند'],
     ['المطوران', 'مطور'],
     ['فالاشعارات', 'اشعار'],
+    ['برمجة', 'برمج'],
+    ['مكتبتهم', 'مكتب'],
+    ['ملفهما', 'ملف'],
+    ['حسابنا', 'حساب'],
+    ['خياركم', 'خيار'],
   ])('normalizes %s to the conservative search form %s', (surface, expected) => {
     expect(lightStemArabicToken(surface)).toBe(expected);
   });
@@ -43,12 +52,10 @@ describe('lightStemArabicToken', () => {
     'وال',
     'محمد',
     'الرياض',
-    'والرياض',
     'قوانين',
     'عناوين',
     'وثائق',
     'فواتير',
-    'برمجة',
     'APIالمستخدمين',
     'v2-المستخدمين',
     'المستخدم_الجديد',
@@ -59,6 +66,17 @@ describe('lightStemArabicToken', () => {
   it('omits code and mixed-script identifiers only from the morphology channel', () => {
     expect(normalizeArabicMorphologyText('APIالمستخدمين v2-المستخدمين `المستخدمين`')).not.toContain('مستخدم');
     expect(normalizeArabicSearchText('APIالمستخدمين')).toBe('APIالمستخدمين');
+  });
+
+  it('removes only the conjunction from a protected proper noun', () => {
+    expect(lightStemArabicToken('والرياض')).toBe('الرياض');
+  });
+
+  it('uses a scanner for varied Markdown code fences and unmatched delimiters', () => {
+    const analyzed = normalizeArabicMorphologyText('مستخدم\n  ~~~~ts\nالمستخدمين\n~~~~\n``المستخدمين`` ونهاية ` مفردة');
+    expect(analyzed).toContain('مستخدم');
+    expect(analyzed).not.toContain('المستخدمين');
+    expect(analyzed).toContain('مفرد');
   });
 
   it('never applies aggressive root extraction', () => {
@@ -91,9 +109,16 @@ describe('Arabic morphological search corpus', () => {
     ['رياض', doc('city', 'الرياض')],
     ['مستخدم', doc('identifier', 'APIالمستخدمين')],
     ['مستخدم', doc('code', 'مثال', 'شغّل `المستخدمين` داخل المثال.')],
+    ['برنامج', doc('programming', 'أساسيات البرمجة')],
   ])('does not introduce the harmful match %s -> %s', async (query, source) => {
     const index = await createDocIndex([source], 'arabic');
     expect(await searchDocs(index, query, { tolerance: 0 })).toHaveLength(0);
+  });
+
+  it('matches a protected proper noun with an outer conjunction but not its ambiguous unmarked word', async () => {
+    const index = await createDocIndex([doc('city', 'والرياض')], 'arabic');
+    expect((await searchDocs(index, 'الرياض', { tolerance: 0 }))[0]?.id).toBe('city');
+    expect(await searchDocs(index, 'رياض', { tolerance: 0 })).toHaveLength(0);
   });
 
   it('keeps an exact normalized title match ahead of a morphology-only title match', async () => {
@@ -104,6 +129,16 @@ describe('Arabic morphological search corpus', () => {
     const hits = await searchDocs(index, 'المستخدم', { tolerance: 0 });
     expect(hits.map((hit) => hit.id)).toEqual(['exact', 'body', 'morph']);
     expect(hits[0]?.score).toBeGreaterThan(hits[2]?.score ?? 0);
+  });
+
+  it('keeps fused ranking stable when insertion order changes', async () => {
+    const sources = [doc('morph', 'دليل المستخدمين'), doc('exact', 'دليل المستخدم'), doc('body', 'دليل الحساب', 'شرح المستخدم هنا.')];
+    const forward = await createDocIndex(sources, 'arabic');
+    const reverse = await createDocIndex([...sources].reverse(), 'arabic');
+    const forwardIds = (await searchDocs(forward, 'المستخدم', { tolerance: 1 })).map((hit) => hit.id);
+    const reverseIds = (await searchDocs(reverse, 'المستخدم', { tolerance: 1 })).map((hit) => hit.id);
+    expect(forwardIds).toEqual(reverseIds);
+    expect(forwardIds[0]).toBe('exact');
   });
 
   it('preserves normalized exact phrase/title strength', async () => {
@@ -166,6 +201,14 @@ describe('Arabic morphology performance guards', () => {
 
     expect(analyzed.length).toBeLessThanOrEqual(sample.length);
     expect(elapsed).toBeLessThan(1_500);
+  });
+
+  it('handles many malformed unmatched code delimiters within the same budget', () => {
+    const sample = Array.from({ length: 4_000 }, () => '` مستخدم دون اغلاق').join('\n');
+    const started = performance.now();
+    const analyzed = normalizeArabicMorphologyText(sample);
+    expect(analyzed).toContain('مستخدم');
+    expect(performance.now() - started).toBeLessThan(1_500);
   });
 
   it('keeps indexing and repeated morphology queries below the regression ceiling', async () => {
