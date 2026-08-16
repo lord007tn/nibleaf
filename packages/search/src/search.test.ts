@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createDocIndex, normalizeArabicSearchText, oramaLanguageForCode, type SearchDoc, searchDocs, stripMarkdown } from './index';
+import {
+  createDocIndex,
+  fuzzyToleranceForQuery,
+  normalizeArabicSearchText,
+  oramaLanguageForCode,
+  type SearchDoc,
+  searchDocs,
+  stripMarkdown,
+} from './index';
 
 describe('stripMarkdown (search snippets read as clean prose)', () => {
   it('removes headings, emphasis, inline + fenced code, links and component tags', () => {
@@ -136,5 +144,20 @@ describe('English search', () => {
   it('returns nothing for an empty query', async () => {
     const index = await createDocIndex(englishDocs, 'english');
     expect(await searchDocs(index, '   ')).toHaveLength(0);
+  });
+
+  it('finds a long documentation term with two typing mistakes', async () => {
+    const index = await createDocIndex(englishDocs, 'english');
+    const hits = await searchDocs(index, 'instlltion');
+    expect(hits[0]?.id).toBe('a');
+  });
+});
+
+describe('adaptive fuzzy tolerance', () => {
+  it('keeps short technical terms exact and expands safely for longer words', () => {
+    expect(fuzzyToleranceForQuery('api', 2)).toBe(0);
+    expect(fuzzyToleranceForQuery('search', 2)).toBe(1);
+    expect(fuzzyToleranceForQuery('installation', 2)).toBe(2);
+    expect(fuzzyToleranceForQuery('installation', 1)).toBe(1);
   });
 });
