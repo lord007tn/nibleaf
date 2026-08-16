@@ -1,4 +1,5 @@
 import { serve } from '@hono/node-server';
+import { isQueueEnabled, QueueNames, scheduleExportMaintenance } from '@nibleaf/bullmq';
 import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@nibleaf/bullmq/workers';
 import { logger } from '@nibleaf/logger';
 import { env } from './env';
@@ -26,6 +27,9 @@ async function main() {
   });
 
   await bootWorkers(processors);
+  if (isQueueEnabled(QueueNames.EXPORT)) {
+    await scheduleExportMaintenance();
+  }
   // Sweep deployments stranded by a crash mid-build back to FAILED.
   reaperTimer = startDeploymentReaper();
   setWorkerReady(true);

@@ -8,6 +8,7 @@ import branches from './branches/handlers';
 import comments from './comments/handlers';
 import deployments from './deployments/handlers';
 import domains from './domains/handlers';
+import exports from './exports/handlers';
 import imports from './imports/handlers';
 import languages from './languages/handlers';
 import members from './members/handlers';
@@ -26,6 +27,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/languages', languages)
   .route('/projects/:projectId/branches', branches)
   .route('/projects/:projectId/deployments', deployments)
+  .route('/projects/:projectId/exports', exports)
   .route('/projects/:projectId/domains', domains)
   .route('/projects/:projectId/api-keys', apiKeys)
   .route('/projects/:projectId/assets', assets)
