@@ -50,6 +50,15 @@ jobs:
         run: pnpm build:app
 
       - name: Enforce public JavaScript budget
-        run: pnpm --filter @nibleaf/app bundle:check
+        run: pnpm --filter @nibleaf/app bundle:check 2>&1 | tee apps/app/public-bundle-report.txt
+
+      - name: Upload public bundle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-bundle-report-${{ github.run_id }}
+          path: apps/app/public-bundle-report.txt
+          if-no-files-found: ignore
+          retention-days: 90
 
       # Dependency vulnerabilities are scanned by the dedicated OSV workflow.
