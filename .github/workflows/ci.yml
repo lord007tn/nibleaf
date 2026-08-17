@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload public bundle report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: public-bundle-report-${{ github.run_id }}
           path: apps/app/public-bundle-report.txt
