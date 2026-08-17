@@ -16,11 +16,12 @@ so Markdown, PDF, and static HTML selected together describe the same content.
 Publish and verify the site before exporting. Then open **Site settings →
 Exports → Create export**, select at least one format, and start the run:
 
-| Format | Use it for | Verify |
-| --- | --- | --- |
-| Markdown ZIP | Portable source and migration checkpoints | Page files, frontmatter, navigation, and referenced assets are present. |
-| PDF | Review, approval, or print distribution | Fonts, code, diagrams, page breaks, and RTL text render correctly. |
-| Static HTML ZIP | Offline or independent static hosting | Internal links, local search, navigation, CSS, and copied assets work without Nibleaf. |
+- **Markdown ZIP** for portable source and migration checkpoints. Verify page
+  files, frontmatter, navigation, and referenced assets.
+- **PDF** for review, approval, or print distribution. Verify fonts, code,
+  diagrams, page breaks, and RTL text.
+- **Static HTML ZIP** for offline or independent static hosting. Verify internal
+  links, local search, navigation, CSS, and copied assets without Nibleaf.
 
 The run moves through `PENDING`, `RUNNING`, and a terminal state. Download links
 appear only for `SUCCEEDED` artifacts and expire after a short, instance-defined
