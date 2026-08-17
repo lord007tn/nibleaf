@@ -1,25 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AlternativesPage } from '@/components/marketing/comparison-page';
-import { gitbookAlternatives as data } from '@/lib/comparison-data';
+import type { AlternativesRoundup } from '@/lib/comparison-data';
+import { loadComparisonData } from '@/lib/comparison-loader';
 import { breadcrumbLd, canonicalHref, faqLd, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/alternatives/gitbook')({
-  loader: async () => ({ stars: await getGithubStars() }),
-  head: () => ({
-    meta: pageMeta({ title: data.metaTitle, description: data.metaDescription, path: data.path }),
-    links: [{ rel: 'canonical', href: canonicalHref(data.path) }],
+  loader: async () => ({ data: (await loadComparisonData('gitbookAlternatives')) as AlternativesRoundup, stars: await getGithubStars() }),
+  head: ({ loaderData }) => ({
+    meta: loaderData ? pageMeta({ title: loaderData.data.metaTitle, description: loaderData.data.metaDescription, path: loaderData.data.path }) : [],
+    links: loaderData ? [{ rel: 'canonical', href: canonicalHref(loaderData.data.path) }] : [],
     scripts: [
-      faqLd(data.faqs),
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: data.breadcrumbName, path: data.path },
-      ]),
+      ...(loaderData ? [faqLd(loaderData.data.faqs)] : []),
+      breadcrumbLd([{ name: 'Home', path: '/' }, ...(loaderData ? [{ name: loaderData.data.breadcrumbName, path: loaderData.data.path }] : [])]),
     ],
   }),
   component: GitbookAlternativesRoute,
 });
 
 function GitbookAlternativesRoute() {
-  const { stars } = Route.useLoaderData();
+  const { data, stars } = Route.useLoaderData();
   return <AlternativesPage data={data} stars={stars} />;
 }

@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { BlogIndexPage } from '@/components/marketing/blog';
-import { BLOG_ENTRIES } from '@/lib/blog';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/blog/')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => {
+    const [{ BLOG_ENTRIES: entries }, stars] = await Promise.all([import('@/lib/blog'), getGithubStars()]);
+    return { entries, stars };
+  },
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf blog — docs, open source, and ownership',
@@ -24,6 +26,6 @@ export const Route = createFileRoute('/blog/')({
 });
 
 function BlogRoute() {
-  const { stars } = Route.useLoaderData();
-  return <BlogIndexPage entries={BLOG_ENTRIES} stars={stars} />;
+  const { entries, stars } = Route.useLoaderData();
+  return <BlogIndexPage entries={entries} stars={stars} />;
 }

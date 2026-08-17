@@ -400,6 +400,56 @@
 
 /* ── MDX components (editor view) ─────────────────────────────────────────── */
 
+/* Unknown/custom MDX is a local atom: source is visible enough to identify the
+ * block, never contenteditable, and does not lock supported siblings. */
+.pl-editor .pl-mdx-opaque-block {
+  position: relative;
+  margin: 1rem 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px dashed color-mix(in oklch, var(--color-amber-500, #f59e0b) 55%, var(--color-border));
+  border-radius: 0.75rem;
+  background: color-mix(in oklch, #f59e0b 7%, var(--color-card));
+  padding: 2.1rem 0.9rem 0.8rem;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+.pl-editor .pl-mdx-opaque-block::before {
+  content: attr(data-name) " · unsupported block · source preserved";
+  position: absolute;
+  inset-inline: 0.9rem;
+  top: 0.65rem;
+  color: color-mix(in oklch, #b45309 80%, var(--color-foreground));
+  font-family: var(--font-sans, ui-sans-serif, sans-serif);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pl-editor .pl-mdx-opaque-inline {
+  display: inline-block;
+  max-width: 22rem;
+  overflow: hidden;
+  vertical-align: text-bottom;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border: 1px dashed color-mix(in oklch, #f59e0b 55%, var(--color-border));
+  border-radius: 0.35rem;
+  background: color-mix(in oklch, #f59e0b 8%, var(--color-card));
+  padding: 0.05rem 0.35rem;
+  color: #b45309;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8em;
+}
+.pl-editor .pl-mdx-opaque-block.ProseMirror-selectednode,
+.pl-editor .pl-mdx-opaque-inline.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Steps: a vertical guide line with auto-numbered step markers. */
 .pl-editor .pl-steps {
   display: flex;

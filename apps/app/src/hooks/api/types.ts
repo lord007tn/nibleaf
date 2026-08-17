@@ -34,6 +34,21 @@ export interface Project {
   _count?: { pages: number; deployments: number; domains?: number };
 }
 
+export interface OpenApiConfiguration {
+  title: string;
+  path: string;
+  contentHash: string;
+  updatedAt: string;
+  source: { type: 'upload' } | { type: 'url'; url: string } | { type: 'repository'; path: string };
+}
+
+export interface PublishedOpenApi {
+  title: string;
+  path: string;
+  contentHash: string;
+  updatedAt: string;
+}
+
 export type PageKind = 'PAGE' | 'GROUP';
 
 export interface PageNode {
@@ -112,6 +127,13 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+  redirectIssues: Array<{
+    code: string;
+    message: string;
+    sequence: string[];
+    rowIndexes: number[];
+    field?: 'from' | 'to';
+  }>;
 }
 
 export interface DeploymentDiffLine {
@@ -347,6 +369,8 @@ export interface SiteShell {
   languageConfig: PublishedLanguageConfig | null;
   version: number;
   generatedAt: string;
+  /** Validated OpenAPI document metadata frozen in the current deployment. */
+  openapi?: PublishedOpenApi | null;
 }
 
 export interface Heading {

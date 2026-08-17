@@ -135,26 +135,26 @@ function PricingSection({ competitor, headingPrefix }: { competitor: PricingTabl
 function PricingTableView({ table }: { table: PricingTable }) {
   const external = table.sourceUrl.startsWith('http');
   return (
-    <div>
+    <div className="min-w-0">
       <h3 className="font-semibold text-lg tracking-tight">{table.productName}</h3>
       <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-        <table className="w-full min-w-[26rem] text-start text-sm">
+        <table className="w-full table-fixed text-start text-sm sm:min-w-[26rem] sm:table-auto">
           <caption className="sr-only">
             {table.productName} plans and pricing as of {table.asOf}
           </caption>
           <thead>
             <tr className="border-border border-b bg-muted/40 text-muted-foreground">
-              <th className="px-4 py-3 text-start font-medium">Plan</th>
-              <th className="px-4 py-3 text-start font-medium">Price</th>
-              <th className="px-4 py-3 text-start font-medium">What you get</th>
+              <th className="px-2 py-3 text-start font-medium sm:px-4">Plan</th>
+              <th className="px-2 py-3 text-start font-medium sm:px-4">Price</th>
+              <th className="px-2 py-3 text-start font-medium sm:px-4">What you get</th>
             </tr>
           </thead>
           <tbody>
             {table.rows.map((row) => (
               <tr key={row.plan} className="border-border border-b align-top last:border-0">
-                <td className="px-4 py-3 font-medium">{row.plan}</td>
-                <td className="px-4 py-3 whitespace-nowrap">{row.price}</td>
-                <td className="px-4 py-3 text-muted-foreground leading-relaxed">{row.includes}</td>
+                <td className="px-2 py-3 font-medium sm:px-4">{row.plan}</td>
+                <td className="px-2 py-3 sm:px-4 sm:whitespace-nowrap">{row.price}</td>
+                <td className="px-2 py-3 text-muted-foreground leading-relaxed sm:px-4">{row.includes}</td>
               </tr>
             ))}
           </tbody>
@@ -184,27 +184,27 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
         <h2 className="mt-4 font-semibold text-3xl tracking-tight">Nibleaf vs {competitorName}, feature by feature</h2>
       </div>
       <div className="mt-10 overflow-x-auto rounded-xl border border-border bg-card shadow-xs">
-        <table className="w-full min-w-[34rem] text-sm">
+        <table className="w-full table-fixed text-sm sm:min-w-[34rem] sm:table-auto">
           <caption className="sr-only">Nibleaf and {competitorName} feature comparison</caption>
           <thead>
             <tr className="border-border border-b bg-muted/40">
-              <th className="px-5 py-3 text-start font-medium text-muted-foreground">Feature</th>
-              <th className="w-40 px-4 py-3 font-medium">
+              <th className="px-2 py-3 text-start font-medium text-muted-foreground sm:px-5">Feature</th>
+              <th className="w-auto px-2 py-3 font-medium sm:w-40 sm:px-4">
                 <span className="flex items-center justify-center gap-1.5">
                   <NibleafMark className="size-4" /> Nibleaf
                 </span>
               </th>
-              <th className="w-40 px-4 py-3 text-center font-medium text-muted-foreground">{competitorName}</th>
+              <th className="w-auto px-2 py-3 text-center font-medium text-muted-foreground sm:w-40 sm:px-4">{competitorName}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.feature} className="border-border border-b align-top last:border-0">
-                <td className="px-5 py-3.5">{row.feature}</td>
-                <td className="bg-primary/5 px-4 py-3.5">
+                <td className="px-2 py-3.5 sm:px-5">{row.feature}</td>
+                <td className="bg-primary/5 px-2 py-3.5 sm:px-4">
                   <FeatureCellView cell={row.nibleaf} />
                 </td>
-                <td className="px-4 py-3.5">
+                <td className="px-2 py-3.5 sm:px-4">
                   <FeatureCellView cell={row.competitor} muted />
                 </td>
               </tr>

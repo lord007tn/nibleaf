@@ -1,9 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link } from '@tanstack/react-router';
-import { translateStandalone as t } from '@/lib/i18n/standalone';
+import { useStandaloneT } from '@/lib/i18n/standalone';
 
 export function ErrorPage({ error, reset }: ErrorComponentProps) {
+  const t = useStandaloneT();
   const message = error instanceof Error ? error.message : t('error.unexpected');
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 text-center">

@@ -6,6 +6,7 @@ import {
   getSiteChangelog,
   getSiteLlmsFullTxt,
   getSiteLlmsTxt,
+  getSiteOpenApi,
   getSitePage,
   getSiteRobots,
   getSiteSitemap,
@@ -13,6 +14,7 @@ import {
   type SiteTextDocument,
   searchSite,
 } from '@/actions/sites';
+import { deliveryCacheHeaders } from '@/lib/delivery-cache';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import sitesRoutes from './routes';
@@ -31,12 +33,15 @@ const PUBLIC_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
  *  cache would leak one member's view to anonymous visitors. */
 const setSiteCache = (ctx: Context<HonoEnv>, project: { config?: Record<string, unknown> | null }): void => {
   const isPrivate = (project.config as { visibility?: string } | null)?.visibility === 'private';
-  ctx.header('Cache-Control', isPrivate ? 'private, no-store' : PUBLIC_CACHE);
+  for (const [name, value] of Object.entries(deliveryCacheHeaders(isPrivate, PUBLIC_CACHE))) ctx.header(name, value);
 };
 
 /** Serve a SiteTextDocument (sitemap/robots/llms) with the right cacheability. */
 const textDocument = (ctx: Context<HonoEnv>, doc: SiteTextDocument, contentType: string) =>
-  ctx.body(doc.body, 200, { 'Content-Type': contentType, 'Cache-Control': doc.isPrivate ? 'private, no-store' : PUBLIC_CACHE });
+  ctx.body(doc.body, 200, {
+    'Content-Type': contentType,
+    ...deliveryCacheHeaders(doc.isPrivate, PUBLIC_CACHE),
+  });
 
 const app = new Hono<HonoEnv>()
   .get('/:id', ...sitesRoutes.site, validator('query', siteQuery), async (ctx) => {
@@ -51,14 +56,32 @@ const app = new Hono<HonoEnv>()
     setSiteCache(ctx, data.project);
     return ctx.json({ data }, 200);
   })
+  .get('/:id/openapi.json', ...sitesRoutes.openapi, async (ctx) => {
+    const data = await getSiteOpenApi(ctx.req.param('id'));
+    setSiteCache(ctx, data.project);
+    const etag = `"${data.metadata.contentHash}"`;
+    ctx.header('ETag', etag);
+    ctx.header('Content-Disposition', 'inline; filename="openapi.json"');
+    if (ctx.req.header('if-none-match') === etag) {
+      return ctx.body(null, 304);
+    }
+    return ctx.json(data.document, 200);
+  })
   .get('/:id/search', ...sitesRoutes.search, validator('query', siteSearchQuery), async (ctx) => {
     const { q, limit, lang, version } = ctx.req.valid('query');
+    ctx.header('Cache-Control', 'private, no-store');
+    ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version) }, 200);
   })
   .post('/:id/events', ...sitesRoutes.track, validator('json', trackEventBody), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
     return ctx.json({ data: await recordSiteEvent(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
   })
-  .get('/:id/changelog', ...sitesRoutes.changelog, async (ctx) => ctx.json({ data: await getSiteChangelog(ctx.req.param('id')) }, 200))
+  .get('/:id/changelog', ...sitesRoutes.changelog, async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    ctx.header('Vary', 'Cookie, Authorization');
+    return ctx.json({ data: await getSiteChangelog(ctx.req.param('id')) }, 200);
+  })
   .get('/:id/sitemap.xml', ...sitesRoutes.sitemap, async (ctx) =>
     textDocument(ctx, await getSiteSitemap(ctx.req.param('id')), 'application/xml; charset=utf-8'),
   )

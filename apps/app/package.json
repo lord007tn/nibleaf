@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite dev --port 4310",
     "build": "vite build",
+    "bundle:check": "node ./scripts/check-bundle-budget.mjs --check",
+    "bundle:report": "node ./scripts/check-bundle-budget.mjs",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
@@ -25,6 +27,7 @@
     "@nibleaf/server": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/validators": "workspace:*",
+    "@scalar/api-reference-react": "^0.9.63",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/pacer": "^0.21.1",
     "@tanstack/react-form": "1.32.0",

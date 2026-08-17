@@ -1,7 +1,17 @@
+import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
 
+export {
+  MAX_REDIRECT_CHAIN_LENGTH,
+  MAX_REDIRECT_RULES,
+  normalizeRedirectPath,
+  type RedirectPair,
+  type RedirectValidationIssue,
+  resolveRedirectTarget,
+  validateRedirectGraph,
+} from '@nibleaf/shared/redirects';
 export {
   inferSafeInlineAssetContentType,
   isSafeInlineAssetContentType,
@@ -33,89 +43,14 @@ const url = z
   .refine((v) => !/^\s*(?:javascript|data|vbscript):/i.test(v), { message: 'Unsupported URL scheme.' });
 const navLink = z.object({ label: z.string().max(80), href: url, external: z.boolean().optional() }).strict();
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
-export type RedirectPair = { from: string; to: string };
-
-export const normalizeRedirectPath = (path: string): string => {
-  const value = path.trim();
-  let start = 0;
-  let end = value.length;
-  while (start < end && value[start] === '/') {
-    start++;
-  }
-  while (end > start && value[end - 1] === '/') {
-    end--;
-  }
-  return value.slice(start, end);
-};
-const isExternalRedirect = (target: string): boolean => /^https?:\/\//i.test(target);
-
-/**
- * Resolve an internal redirect chain to one final target. Returning `null`
- * means no rule matched or the stored rules contain a cycle. Keeping this
- * helper in the shared validator package makes save-time validation and the
- * public-site redirect behavior follow exactly the same path semantics.
- */
-export const resolveRedirectTarget = (redirects: readonly RedirectPair[], path: string): string | null => {
-  const rules = new Map<string, string>();
-  for (const rule of redirects) {
-    const from = normalizeRedirectPath(rule.from);
-    const to = rule.to.trim();
-    if (rule.from.trim() && to && !rules.has(from)) {
-      rules.set(from, to);
-    }
-  }
-
-  let current = normalizeRedirectPath(path);
-  const first = current;
-  const visited = new Set<string>();
-  while (true) {
-    if (visited.has(current)) {
-      return null;
-    }
-    visited.add(current);
-
-    const target = rules.get(current);
-    if (!target) {
-      return current === first ? null : `/${current}`;
-    }
-    if (isExternalRedirect(target)) {
-      return target;
-    }
-    current = normalizeRedirectPath(target);
-  }
-};
 
 const redirectsSchema = z
   .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
-  .max(100)
+  .max(MAX_REDIRECT_RULES)
   .superRefine((redirects, ctx) => {
-    const seen = new Map<string, number>();
-    for (const [index, rule] of redirects.entries()) {
-      const from = normalizeRedirectPath(rule.from);
-      const to = rule.to.trim();
-      const rawFrom = rule.from.trim();
-      if (!rawFrom && !to) {
-        continue;
-      }
-      if (!rawFrom || !to) {
-        ctx.addIssue({ code: 'custom', message: 'A redirect must have both a source and a target.', path: [index, rawFrom ? 'to' : 'from'] });
-        continue;
-      }
-      const duplicate = seen.get(from);
-      if (duplicate !== undefined) {
-        ctx.addIssue({ code: 'custom', message: `Duplicate redirect source (also used in row ${duplicate + 1}).`, path: [index, 'from'] });
-      } else {
-        seen.set(from, index);
-      }
-      if (!isExternalRedirect(to) && normalizeRedirectPath(to) === from) {
-        ctx.addIssue({ code: 'custom', message: 'A redirect cannot point to itself.', path: [index, 'to'] });
-      }
-    }
-
-    for (const [index, rule] of redirects.entries()) {
-      if (rule.from.trim() && rule.to.trim() && resolveRedirectTarget(redirects, rule.from) === null) {
-        ctx.addIssue({ code: 'custom', message: 'Redirect cycle detected.', path: [index, 'to'] });
-      }
+    for (const graphIssue of validateRedirectGraph(redirects).issues) {
+      const index = graphIssue.rowIndexes[0] ?? 0;
+      ctx.addIssue({ code: 'custom', message: graphIssue.message, path: [index, graphIssue.field ?? 'to'] });
     }
   });
 const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) }).strict();
@@ -381,6 +316,54 @@ export const updateProjectBody = z
   .strict();
 export type UpdateProjectBody = z.infer<typeof updateProjectBody>;
 
+// ─── OpenAPI reference ──────────────────────────────────────────────────────
+
+const repositoryFilePath = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine((value) => {
+    const slashPath = value.trim().replace(/\\/g, '/');
+    const parts = slashPath.split('/').filter(Boolean);
+    return !slashPath.startsWith('/') && !/^[A-Za-z]:/.test(slashPath) && parts.every((part) => part !== '.' && part !== '..');
+  }, 'OpenAPI file path must stay inside the repository.');
+
+export const openApiSourceSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('upload'), content: z.string().min(1).max(5_000_000) }).strict(),
+  z
+    .object({
+      type: z.literal('url'),
+      url: z
+        .url()
+        .max(1_000)
+        .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'OpenAPI URL must use http(s).')
+        .refine((value) => {
+          const parsed = new URL(value);
+          return !(parsed.username || parsed.password);
+        }, 'OpenAPI URL must not include embedded credentials.'),
+    })
+    .strict(),
+  z.object({ type: z.literal('repository'), path: repositoryFilePath }).strict(),
+]);
+export type OpenApiSourceInput = z.infer<typeof openApiSourceSchema>;
+
+/** Replace the draft API reference after the server has fetched and validated
+ *  its source. `path` is a single stable site segment so it cannot shadow page
+ *  trees or machine endpoints. */
+export const upsertOpenApiBody = z
+  .object({
+    title: z.string().trim().min(1).max(120),
+    path: z
+      .string()
+      .trim()
+      .min(1)
+      .max(80)
+      .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.'),
+    source: openApiSourceSchema.optional(),
+  })
+  .strict();
+export type UpsertOpenApiBody = z.infer<typeof upsertOpenApiBody>;
+
 // ─── Languages ───────────────────────────────────────────────────────────────
 
 export const textDirectionEnum = z.enum(['LTR', 'RTL']);
@@ -578,6 +561,92 @@ export const trackEventBody = z.object({
 });
 export type TrackEventBody = z.infer<typeof trackEventBody>;
 
+// ─── Dedicated private-reader access ────────────────────────────────────────
+
+export const projectAccessModeBody = z.object({ mode: z.enum(['PUBLIC', 'WORKSPACE', 'READERS']) }).strict();
+export type ProjectAccessModeBody = z.infer<typeof projectAccessModeBody>;
+
+export const createAudienceBody = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(500).optional(),
+    /** Empty/null page scope means the entire site. */
+    pageIds: z.array(z.string().min(1)).max(500).optional(),
+  })
+  .strict();
+export type CreateAudienceBody = z.infer<typeof createAudienceBody>;
+
+export const updateAudienceBody = createAudienceBody.partial();
+export type UpdateAudienceBody = z.infer<typeof updateAudienceBody>;
+
+export const inviteReaderBody = z
+  .object({
+    email: z.string().trim().toLowerCase().email().max(320),
+    name: z.string().trim().min(1).max(120).optional(),
+    audienceIds: z.array(z.string().min(1)).min(1).max(100),
+  })
+  .strict();
+export type InviteReaderBody = z.infer<typeof inviteReaderBody>;
+
+export const updateReaderBody = z
+  .object({
+    name: z.string().trim().min(1).max(120).nullable().optional(),
+    audienceIds: z.array(z.string().min(1)).min(1).max(100).optional(),
+  })
+  .strict();
+export type UpdateReaderBody = z.infer<typeof updateReaderBody>;
+
+const publicJwk = z
+  .object({
+    kty: z.string().min(1),
+    kid: z.string().min(1).optional(),
+    use: z.string().optional(),
+    alg: z.string().optional(),
+  })
+  .passthrough()
+  .refine((key) => !['d', 'p', 'q', 'dp', 'dq', 'qi', 'oth', 'priv', 'k'].some((field) => field in key), 'JWKS must contain public keys only');
+
+export const jwtAccessConfigBody = z
+  .object({
+    enabled: z.boolean(),
+    issuer: z.string().trim().url().max(2048),
+    audience: z.string().trim().min(1).max(500),
+    jwksUrl: z.string().trim().url().max(2048).nullable().optional(),
+    publicJwks: z
+      .object({ keys: z.array(publicJwk).min(1).max(20) })
+      .strict()
+      .nullable()
+      .optional(),
+    subjectClaim: z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]{1,80}$/)
+      .default('sub'),
+    emailClaim: z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]{1,80}$/)
+      .default('email'),
+    nameClaim: z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]{1,80}$/)
+      .default('name'),
+    groupsClaim: z
+      .string()
+      .regex(/^[A-Za-z0-9_.-]{1,80}$/)
+      .default('groups'),
+    /** Maps an IdP claim value to an audience id. */
+    claimMapping: z.record(z.string().min(1).max(200), z.string().min(1)).default({}),
+    sessionTtlMinutes: z.number().int().min(5).max(43_200).default(480),
+    maxTokenAgeSeconds: z.number().int().min(30).max(3600).default(300),
+    clockToleranceSecs: z.number().int().min(0).max(300).default(30),
+  })
+  .strict()
+  .refine((value) => Boolean(value.jwksUrl) !== Boolean(value.publicJwks), 'Provide exactly one of jwksUrl or publicJwks')
+  .refine((value) => !value.jwksUrl || new URL(value.jwksUrl).protocol === 'https:', 'JWKS URL must use HTTPS');
+export type JwtAccessConfigBody = z.infer<typeof jwtAccessConfigBody>;
+
+export const readerActivationQuery = z.object({ token: z.string().min(32).max(512) }).strict();
+export const readerJwtHandoffBody = z.object({ token: z.string().min(32).max(32_768), redirect: z.string().max(2048).optional() }).strict();
+
 // ─── Comments ────────────────────────────────────────────────────────────────
 
 /** Figma-style anchor: the block/selection a comment is attached to. `quote` (the
@@ -684,6 +753,71 @@ export const markNotificationsReadBody = z
   .refine((value) => value.all === true || (value.ids?.length ?? 0) > 0, { message: 'Provide notification ids or all: true.' });
 export type MarkNotificationsReadBody = z.infer<typeof markNotificationsReadBody>;
 
+// ─── Published export jobs & archival schedules ────────────────────────────
+
+export const exportFormat = z.enum(['MARKDOWN', 'PDF', 'STATIC_HTML']);
+export type ExportFormatInput = z.infer<typeof exportFormat>;
+
+export const createExportBody = z
+  .object({
+    formats: z
+      .array(exportFormat)
+      .min(1)
+      .max(3)
+      .transform((formats) => [...new Set(formats)]),
+  })
+  .strict();
+export type CreateExportBody = z.infer<typeof createExportBody>;
+
+export const createExportScheduleBody = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    formats: z
+      .array(exportFormat)
+      .min(1)
+      .max(3)
+      .transform((formats) => [...new Set(formats)]),
+    cadence: z.enum(['DAILY', 'WEEKLY', 'MONTHLY']),
+    timezone: z
+      .string()
+      .min(1)
+      .max(80)
+      .refine((timezone) => {
+        try {
+          new Intl.DateTimeFormat('en', { timeZone: timezone }).format();
+          return true;
+        } catch {
+          return false;
+        }
+      }, 'Use a valid IANA timezone, for example Africa/Lagos.'),
+    hour: z.number().int().min(0).max(23),
+    minute: z.number().int().min(0).max(59),
+    weekday: z.number().int().min(0).max(6).optional(),
+    monthday: z.number().int().min(1).max(31).optional(),
+    retentionCount: z.number().int().min(1).max(100).default(12),
+    retentionDays: z.number().int().min(1).max(3650).default(90),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.cadence === 'WEEKLY' && value.weekday === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['weekday'], message: 'weekday is required for weekly schedules.' });
+    }
+    if (value.cadence === 'MONTHLY' && value.monthday === undefined) {
+      ctx.addIssue({ code: 'custom', path: ['monthday'], message: 'monthday is required for monthly schedules.' });
+    }
+  });
+export type CreateExportScheduleBody = z.infer<typeof createExportScheduleBody>;
+
+export const updateExportScheduleBody = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    enabled: z.boolean().optional(),
+    retentionCount: z.number().int().min(1).max(100).optional(),
+    retentionDays: z.number().int().min(1).max(3650).optional(),
+  })
+  .strict();
+export type UpdateExportScheduleBody = z.infer<typeof updateExportScheduleBody>;
+
 // ─── Admin panel ────────────────────────────────────────────────────────────
 
 /** Set a user's platform role from the internal admin panel. */
@@ -738,3 +872,93 @@ export interface GitConfigStored extends GitConfig {
   /** Present only when the last push sync failed. */
   lastSyncError?: string;
 }
+
+// ─── Bidirectional Git authoring ────────────────────────────────────────────
+
+const invalidGitBranchCharacter = (character: string): boolean =>
+  character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127 || '~^:?*[\\'.includes(character) || /\s/.test(character);
+
+const gitBranchName = z
+  .string()
+  .trim()
+  .min(1)
+  .max(180)
+  .refine(
+    (branch) =>
+      !branch.startsWith('.') &&
+      !branch.endsWith('.') &&
+      !branch.endsWith('/') &&
+      !branch.includes('..') &&
+      !branch.includes('@{') &&
+      ![...branch].some(invalidGitBranchCharacter),
+    'Use a valid Git branch name.',
+  );
+
+export const gitConnectionBody = z
+  .object({
+    repository: z
+      .string()
+      .trim()
+      .max(220)
+      .regex(/^(?:https:\/\/github\.com\/)?[\w.-]+\/[\w.-]+(?:\.git)?$/i, 'Use owner/repository or a GitHub repository URL.'),
+    baseBranch: gitBranchName,
+    headBranch: gitBranchName,
+    contentPath: z.string().trim().max(300).optional(),
+    importBranchId: z.string().max(120).optional(),
+    importLanguageId: z.string().max(120).optional(),
+    /** Fine-grained token: Repository metadata read, Contents read/write, Pull
+     * requests read/write. Accepted once and never returned. */
+    token: z.string().min(20).max(500).optional(),
+  })
+  .strict()
+  .refine((body) => body.baseBranch !== body.headBranch, { message: 'Use a dedicated authoring branch.', path: ['headBranch'] });
+export type GitConnectionBody = z.infer<typeof gitConnectionBody>;
+
+export const gitAuthorizationBody = z
+  .object({
+    /** Fine-grained token used for a read-only identity check. It is never
+     * persisted by the authorization endpoint. */
+    token: z.string().min(20).max(500),
+  })
+  .strict();
+export type GitAuthorizationBody = z.infer<typeof gitAuthorizationBody>;
+
+export const gitOperationBody = z
+  .object({
+    idempotencyKey: z
+      .string()
+      .min(8)
+      .max(160)
+      .regex(/^[A-Za-z0-9._-]+$/),
+    kind: z.enum(['PUSH', 'PULL']).default('PUSH'),
+    commitMessage: z.string().trim().min(1).max(300).optional(),
+    authorName: z.string().trim().min(1).max(120).optional(),
+    authorEmail: z.email().max(254).optional(),
+    createPullRequest: z.boolean().optional(),
+    pullRequestTitle: z.string().trim().min(1).max(200).optional(),
+    pullRequestBody: z.string().max(20_000).optional(),
+    pullRequestNumber: z.number().int().positive().optional(),
+    sourceRef: gitBranchName.optional(),
+    sourceSha: z
+      .string()
+      .regex(/^[a-f0-9]{40,64}$/i)
+      .optional(),
+  })
+  .strict()
+  .superRefine((body, ctx) => {
+    if (body.kind === 'PUSH') {
+      for (const key of ['commitMessage', 'authorName', 'authorEmail'] as const) {
+        if (!body[key]) ctx.addIssue({ code: 'custom', message: `${key} is required for a push.`, path: [key] });
+      }
+    }
+  });
+export type GitOperationBody = z.infer<typeof gitOperationBody>;
+
+export const gitConflictResolutionBody = z
+  .object({ resolution: z.enum(['OURS', 'THEIRS', 'CUSTOM']), content: z.string().max(2_000_000).nullable().optional() })
+  .strict()
+  .refine((body) => body.resolution !== 'CUSTOM' || body.content !== undefined, {
+    message: 'Custom content is required; use null to delete the file.',
+    path: ['content'],
+  });
+export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody>;

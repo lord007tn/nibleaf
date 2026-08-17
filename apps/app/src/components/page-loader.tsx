@@ -1,5 +1,5 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { translateStandalone as t } from '@/lib/i18n/standalone';
+import { useStandaloneT } from '@/lib/i18n/standalone';
 
 /**
  * Full-screen branded loading state shown during route transitions that fetch
@@ -7,6 +7,7 @@ import { translateStandalone as t } from '@/lib/i18n/standalone';
  * translator so it renders correctly even before the LocaleProvider mounts.
  */
 export function PageLoader() {
+  const t = useStandaloneT();
   return (
     <div className="grid min-h-screen w-full place-items-center bg-background" role="status" aria-live="polite">
       <div className="flex flex-col items-center gap-4">

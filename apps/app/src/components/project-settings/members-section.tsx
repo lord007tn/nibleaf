@@ -106,7 +106,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
       <SectionHeader icon="⧉" title={t('settings.members.title')} description={t('settings.members.description')} />
 
       <form
-        className="mb-5 flex items-end gap-2.5 rounded-xl bg-muted/30 p-3.5"
+        className="mb-5 flex flex-col items-stretch gap-2.5 rounded-xl bg-muted/30 p-3.5 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault();
           form.handleSubmit();
@@ -114,7 +114,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
       >
         <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
           {(field) => (
-            <div className="flex flex-1 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span className="font-medium text-[13px]">{t('settings.members.inviteByEmail')}</span>
               <Input
                 className="bg-background"
@@ -128,27 +128,29 @@ export function MembersSection({ projectId }: { projectId: string }) {
             </div>
           )}
         </form.Field>
-        <form.Field name="role">
-          {(field) => (
-            // No `owner` option: invitations can never carry the owner role.
-            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
-              <SelectTrigger className="w-32 bg-background">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
-                <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </form.Field>
-        <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
-          {([isSubmitting, emailValue]) => (
-            <Button disabled={isSubmitting || !emailValue.trim()} type="submit">
-              <Mail className="size-4" /> {t('settings.members.invite')}
-            </Button>
-          )}
-        </form.Subscribe>
+        <div className="flex w-full items-end gap-2.5 sm:w-auto">
+          <form.Field name="role">
+            {(field) => (
+              // No `owner` option: invitations can never carry the owner role.
+              <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
+                <SelectTrigger className="min-w-0 flex-1 bg-background sm:w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
+                  <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </form.Field>
+          <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
+            {([isSubmitting, emailValue]) => (
+              <Button className="flex-1 sm:flex-none" disabled={isSubmitting || !emailValue.trim()} type="submit">
+                <Mail className="size-4" /> {t('settings.members.invite')}
+              </Button>
+            )}
+          </form.Subscribe>
+        </div>
       </form>
 
       {lastInvite ? (

@@ -23,12 +23,16 @@ export function firstLeafPath(nodes: NavNode[]): string | undefined {
 const containsPath = (node: NavNode, path: string): boolean =>
   node.kind === 'PAGE' ? node.path === path : node.children.some((child) => containsPath(child, path));
 
+/** API references are deployment resources, not branch-backed pages, so their
+ *  link must stay stable while browsing a non-default docs version. */
+export const isVersionIndependentNavNode = (node: Pick<NavNode, 'id'>): boolean => node.id.startsWith('openapi:');
+
 function NavLink({ node, projectId, currentPath, lang, version, depth, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
   const active = currentPath === node.path;
   return (
     <li>
       <a
-        href={siteHref(projectId, node.path, { lang, version })}
+        href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors',

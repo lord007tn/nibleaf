@@ -31,11 +31,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  sessions    Session[]
-  accounts    Account[]
-  members     Member[]
-  invitations Invitation[]
-  comments    Comment[]
+  sessions        Session[]
+  accounts        Account[]
+  members         Member[]
+  invitations     Invitation[]
+  comments        Comment[]
+  exportJobs      ExportJob[]      @relation("ExportJobCreator")
+  exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
 
   @@map("user")
 }
@@ -167,13 +169,53 @@ enum TextDirection {
   RTL
 }
 
+/// Published-site access policy. PUBLIC preserves the historical default;
+/// WORKSPACE is the former `config.visibility = private` behavior; READERS uses
+/// dedicated reader identities and audience grants without consuming author seats.
+enum ProjectAccessMode {
+  PUBLIC
+  WORKSPACE
+  READERS
+}
+
+enum ExportFormat {
+  MARKDOWN
+  PDF
+  STATIC_HTML
+}
+
+enum ExportJobStatus {
+  PENDING
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ExportTrigger {
+  MANUAL
+  SCHEDULED
+}
+
+enum ExportCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum OpenApiSourceType {
+  UPLOAD
+  URL
+  REPOSITORY
+}
+
 /// A documentation site.
 model Project {
-  id             String       @id @default(cuid())
+  id             String            @id @default(cuid())
   // Each site owns its own Organization (1:1) — that org IS the site's member
   // boundary, so members/roles/invitations are per-site. See provisionSiteOrg.
-  organizationId String       @unique
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String            @unique
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   name           String
   slug           String
   description    String?
@@ -181,12 +223,13 @@ model Project {
   /// Full site configuration: { visibility, branding, styling, typography,
   /// navbar, footer, banner, seo, search, analytics, redirects, variables }.
   config         Json?
+  accessMode     ProjectAccessMode @default(PUBLIC)
   /// Moderation: set when a platform admin takes the site down. Taken-down
   /// projects must not be publicly served and cannot be published.
   takedownAt     DateTime?
   takedownReason String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   languages       Language[]
   translations    ProjectTranslation[]
@@ -198,10 +241,44 @@ model Project {
   assets          Asset[]
   comments        Comment[]
   analyticsEvents AnalyticsEvent[]
+  readers         Reader[]
+  audiences       Audience[]
+  audienceGrants  AudienceGrant[]
+  readerInvites   ReaderInvitation[]
+  readerSessions  ReaderSession[]
+  jwtAccess       JwtAccessProvider?
+  jwtReplays      JwtReplay[]
+  readerAuditLogs ReaderAuditLog[]
+  exportSnapshots ExportSnapshot[]
+  exportJobs      ExportJob[]
+  exportSchedules ExportSchedule[]
+  openApiDocument OpenApiDocument?
+  gitConnection   GitConnection?
+  gitPreviews     GitPreview[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
   @@map("project")
+}
+
+/// The editable OpenAPI source and last validated document for a site. The
+/// document is copied into immutable deployment snapshots at publish time;
+/// source details stay private to workspace members.
+model OpenApiDocument {
+  id          String            @id @default(cuid())
+  projectId   String            @unique
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  path        String            @default("api-reference")
+  sourceType  OpenApiSourceType
+  sourceUrl   String?
+  sourcePath  String?
+  document    Json
+  contentHash String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@map("openapi_document")
 }
 
 /// A content branch within a project (git-style, DB-backed). `main` is the
@@ -221,6 +298,204 @@ model Branch {
   @@unique([projectId, name])
   @@index([projectId])
   @@map("branch")
+}
+
+/// Durable repository configuration for two-way authoring. Provider credentials
+/// and webhook secrets are envelope-encrypted by the API before they reach these
+/// columns; plaintext credentials are never persisted.
+model GitConnection {
+  id                     String    @id @default(cuid())
+  projectId              String    @unique
+  project                Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider               String    @default("github")
+  repository             String
+  baseBranch             String    @default("main")
+  headBranch             String
+  contentPath            String    @default("")
+  importBranchId         String?
+  importLanguageId       String?
+  credentialEncrypted    String?
+  credentialFingerprint  String?
+  webhookSecretEncrypted String?
+  remoteBaseSha          String?
+  remoteHeadSha          String?
+  lastSyncStatus         String    @default("IDLE")
+  lastSyncError          String?
+  lastSyncedAt           DateTime?
+  createdById            String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  files             GitFileState[]
+  operations        GitSyncOperation[]
+  pullRequests      GitPullRequest[]
+  previews          GitPreview[]
+  webhookDeliveries GitWebhookDelivery[]
+  auditEvents       GitAuditEvent[]
+
+  @@index([provider, repository])
+  @@map("git_connection")
+}
+
+/// One idempotent import/push/PR/preview operation. A caller-supplied key is
+/// scoped to the connection, so retries return the original durable result.
+model GitSyncOperation {
+  id             String        @id @default(cuid())
+  connectionId   String
+  connection     GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  kind           String
+  status         String        @default("QUEUED")
+  idempotencyKey String
+  requestHash    String
+  requestedById  String?
+  baseBranch     String
+  headBranch     String
+  commitMessage  String?
+  authorName     String?
+  authorEmail    String?
+  request        Json?
+  changedFiles   Json?
+  remoteSha      String?
+  pullRequestNo  Int?
+  pullRequestUrl String?
+  error          String?
+  createdAt      DateTime      @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  conflicts GitConflict[]
+
+  @@unique([connectionId, idempotencyKey])
+  @@index([connectionId, createdAt])
+  @@index([status])
+  @@map("git_sync_operation")
+}
+
+/// The last common base for one repository file. This is the third input to
+/// three-way reconciliation (base / Nibleaf / upstream Git).
+model GitFileState {
+  id            String        @id @default(cuid())
+  connectionId  String
+  connection    GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  path          String
+  pageId        String?
+  branchId      String?
+  languageId    String?
+  baseContent   String?       @db.Text
+  baseExists    Boolean       @default(true)
+  baseBlobSha   String?
+  remoteBlobSha String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([connectionId, path])
+  @@index([connectionId, pageId])
+  @@map("git_file_state")
+}
+
+/// A conflict snapshot is immutable until an authorized user explicitly picks
+/// ours, theirs, or custom content. No side is overwritten while status=OPEN.
+model GitConflict {
+  id              String           @id @default(cuid())
+  operationId     String
+  operation       GitSyncOperation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  path            String
+  baseContent     String?          @db.Text
+  oursContent     String?          @db.Text
+  theirsContent   String?          @db.Text
+  status          String           @default("OPEN")
+  resolution      String?
+  resolvedContent String?          @db.Text
+  resolvedById    String?
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  @@unique([operationId, path])
+  @@index([status])
+  @@map("git_conflict")
+}
+
+model GitPullRequest {
+  id           String        @id @default(cuid())
+  connectionId String
+  connection   GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  number       Int
+  url          String
+  title        String
+  state        String        @default("open")
+  draft        Boolean       @default(true)
+  baseBranch   String
+  headBranch   String
+  headSha      String?
+  lastSyncedAt DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  previews GitPreview[]
+
+  @@unique([connectionId, number])
+  @@unique([connectionId, headBranch])
+  @@map("git_pull_request")
+}
+
+/// Immutable, token-addressed PR documentation snapshot. Superseded previews
+/// remain auditable but only READY previews are served publicly.
+model GitPreview {
+  id            String          @id @default(cuid())
+  projectId     String
+  project       Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  connectionId  String
+  connection    GitConnection   @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  pullRequestId String?
+  pullRequest   GitPullRequest? @relation(fields: [pullRequestId], references: [id], onDelete: SetNull)
+  token         String          @unique
+  sourceSha     String
+  status        String          @default("PENDING")
+  snapshot      Json?
+  url           String?
+  error         String?
+  createdAt     DateTime        @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  @@unique([connectionId, sourceSha])
+  @@index([projectId, status])
+  @@map("git_preview")
+}
+
+model GitWebhookDelivery {
+  id                 String        @id @default(cuid())
+  connectionId       String
+  connection         GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  providerDeliveryId String
+  event              String
+  payloadHash        String
+  status             String        @default("ACCEPTED")
+  attempts           Int           @default(0)
+  error              String?
+  receivedAt         DateTime      @default(now())
+  processedAt        DateTime?
+
+  @@unique([connectionId, providerDeliveryId])
+  @@index([status, receivedAt])
+  @@map("git_webhook_delivery")
+}
+
+/// Security-relevant Git actions use a dedicated append-only audit trail rather
+/// than transient application logs. Metadata is intentionally secret-free.
+model GitAuditEvent {
+  id           String         @id @default(cuid())
+  connectionId String?
+  connection   GitConnection? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  projectId    String
+  actorUserId  String?
+  action       String
+  metadata     Json?
+  createdAt    DateTime       @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([connectionId, createdAt])
+  @@map("git_audit_event")
 }
 
 /// A language/locale a project's docs are authored in. Each language owns its
@@ -307,7 +582,8 @@ model Page {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  comments Comment[]
+  comments       Comment[]
+  audienceGrants AudienceGrant[]
 
   @@index([projectId, languageId, path])
   @@index([projectId, parentId])
@@ -315,6 +591,176 @@ model Page {
   @@index([languageId])
   @@index([branchId])
   @@map("page")
+}
+
+// ─── Private reader access ──────────────────────────────────────────────────
+
+/// A customer/reader identity. Readers are deliberately separate from User and
+/// Member so granting docs access never grants dashboard access or an author seat.
+model Reader {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  email           String?
+  name            String?
+  externalSubject String?
+  status          String    @default("INVITED")
+  invitedAt       DateTime  @default(now())
+  activatedAt     DateTime?
+  revokedAt       DateTime?
+  lastSeenAt      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  audiences   ReaderAudience[]
+  invitations ReaderInvitation[]
+  sessions    ReaderSession[]
+  auditLogs   ReaderAuditLog[]
+
+  @@unique([projectId, email])
+  @@unique([projectId, externalSubject])
+  @@index([projectId, status])
+  @@map("reader")
+}
+
+model Audience {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  readers ReaderAudience[]
+  grants  AudienceGrant[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+  @@map("audience")
+}
+
+model ReaderAudience {
+  readerId   String
+  reader     Reader   @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  audienceId String
+  audience   Audience @relation(fields: [audienceId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([readerId, audienceId])
+  @@index([audienceId])
+  @@map("reader_audience")
+}
+
+/// A grant applies to the entire site when pageId is null, or to a single
+/// published page when pageId is set. scopeKey makes the nullable scope unique.
+model AudienceGrant {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  audienceId String
+  audience   Audience @relation(fields: [audienceId], references: [id], onDelete: Cascade)
+  pageId     String?
+  page       Page?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  scopeKey   String
+  createdAt  DateTime @default(now())
+
+  @@unique([audienceId, scopeKey])
+  @@index([projectId, pageId])
+  @@map("audience_grant")
+}
+
+model ReaderInvitation {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  readerId    String
+  reader      Reader    @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId, expiresAt])
+  @@index([readerId])
+  @@map("reader_invitation")
+}
+
+model ReaderSession {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  readerId      String
+  reader        Reader    @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  tokenHash     String    @unique
+  source        String    @default("INVITATION")
+  expiresAt     DateTime
+  revokedAt     DateTime?
+  lastUsedAt    DateTime  @default(now())
+  ipHash        String?
+  userAgentHash String?
+  createdAt     DateTime  @default(now())
+
+  @@index([projectId, expiresAt])
+  @@index([readerId, revokedAt])
+  @@map("reader_session")
+}
+
+/// Per-site OIDC/JWT handoff configuration. Only public verification material
+/// is persisted: a HTTPS JWKS URL or an inline public JWKS document.
+model JwtAccessProvider {
+  id                 String   @id @default(cuid())
+  projectId          String   @unique
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  enabled            Boolean  @default(false)
+  issuer             String
+  audience           String
+  jwksUrl            String?
+  publicJwks         Json?
+  subjectClaim       String   @default("sub")
+  emailClaim         String   @default("email")
+  nameClaim          String   @default("name")
+  groupsClaim        String   @default("groups")
+  claimMapping       Json?
+  sessionTtlMinutes  Int      @default(480)
+  maxTokenAgeSeconds Int      @default(300)
+  clockToleranceSecs Int      @default(30)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("jwt_access_provider")
+}
+
+model JwtReplay {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  jtiHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, jtiHash])
+  @@index([expiresAt])
+  @@map("jwt_replay")
+}
+
+model ReaderAuditLog {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  readerId    String?
+  reader      Reader?  @relation(fields: [readerId], references: [id], onDelete: SetNull)
+  actorUserId String?
+  action      String
+  metadata    Json?
+  ipHash      String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([readerId, createdAt])
+  @@map("reader_audit_log")
 }
 
 /// An immutable snapshot of a project's docs at publish time. The live site is
@@ -337,9 +783,115 @@ model Deployment {
   createdAt     DateTime         @default(now())
   completedAt   DateTime?
 
+  exportSnapshots ExportSnapshot[]
+
   @@unique([projectId, version])
   @@index([projectId, status])
   @@map("deployment")
+}
+
+/// Immutable copy of one READY deployment plus the storage asset manifest used
+/// by every artifact in an export job. Keeping this separate from mutable site
+/// rows guarantees multi-format jobs all render exactly one published revision.
+model ExportSnapshot {
+  id                String     @id @default(cuid())
+  projectId         String
+  project           Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deploymentId      String
+  deployment        Deployment @relation(fields: [deploymentId], references: [id], onDelete: Restrict)
+  deploymentVersion Int
+  snapshot          Json
+  assets            Json
+  pagesCount        Int
+  contentBytes      Int
+  createdAt         DateTime   @default(now())
+
+  jobs ExportJob[]
+
+  @@index([projectId, createdAt])
+  @@map("export_snapshot")
+}
+
+/// One background run may produce multiple formats from the same snapshot.
+/// idempotencyKey is populated for scheduled slots so dispatcher retries cannot
+/// create duplicate archives.
+model ExportJob {
+  id                String          @id @default(cuid())
+  projectId         String
+  project           Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  snapshotId        String
+  snapshot          ExportSnapshot  @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+  scheduleId        String?
+  schedule          ExportSchedule? @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  formats           ExportFormat[]
+  status            ExportJobStatus @default(PENDING)
+  trigger           ExportTrigger   @default(MANUAL)
+  idempotencyKey    String?         @unique
+  createdById       String?
+  createdBy         User?           @relation("ExportJobCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  attempts          Int             @default(0)
+  error             String?
+  cancelRequestedAt DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime        @default(now())
+
+  artifacts ExportArtifact[]
+
+  @@index([projectId, createdAt])
+  @@index([scheduleId, createdAt])
+  @@index([status, createdAt])
+  @@map("export_job")
+}
+
+model ExportArtifact {
+  id          String       @id @default(cuid())
+  jobId       String
+  job         ExportJob    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  format      ExportFormat
+  storageKey  String       @unique
+  fileName    String
+  contentType String
+  size        Int
+  checksum    String
+  createdAt   DateTime     @default(now())
+
+  @@unique([jobId, format])
+  @@map("export_artifact")
+}
+
+/// Archive schedules use an explicit local wall-clock policy instead of raw
+/// cron text, which keeps validation and DST behaviour deterministic.
+model ExportSchedule {
+  id             String         @id @default(cuid())
+  projectId      String
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String
+  formats        ExportFormat[]
+  cadence        ExportCadence
+  timezone       String
+  hour           Int
+  minute         Int
+  weekday        Int?
+  monthday       Int?
+  retentionCount Int            @default(12)
+  retentionDays  Int            @default(90)
+  destination    String         @default("STORAGE")
+  enabled        Boolean        @default(true)
+  nextRunAt      DateTime?
+  lastRunAt      DateTime?
+  lastError      String?
+  createdById    String?
+  createdBy      User?          @relation("ExportScheduleCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  jobs ExportJob[]
+
+  @@index([projectId, createdAt])
+  @@index([enabled, nextRunAt])
+  @@map("export_schedule")
 }
 
 model Domain {

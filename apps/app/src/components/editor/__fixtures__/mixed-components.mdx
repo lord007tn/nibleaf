@@ -1,0 +1,28 @@
+# Mixed content
+
+import Chart from './Chart'
+
+export const chartTheme = { axis: 'red' }
+
+Editable text before the custom block.
+
+<Chart data={points} options={{ axis: { color: "red" } }}>
+  <Chart.Legend position="bottom" />
+  {points.map((point) => <Chart.Point key={point.id} {...point} />)}
+</Chart>
+
+Editable text after the custom block with an inline <Status value={build.status} /> component and {user.name} expression.
+
+{condition ? <Feature flag={flag} /> : fallback}
+
+<Tabs>
+
+<Tab title="Supported">
+
+<CustomWidget config={{ dense: true }} />
+
+This supported child remains structured.
+
+</Tab>
+
+</Tabs>

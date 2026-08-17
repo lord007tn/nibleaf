@@ -1,9 +1,10 @@
 import { Readable } from 'node:stream';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
-import { isProjectTakenDown } from '@/actions/sites';
+import { isProjectTakenDown, projectDeliveryAccess } from '@/actions/sites';
 import { notFound } from '@/errors';
 import { publicAssetResponseHeaders } from '@/lib/asset-response';
+import { deliveryCacheHeaders } from '@/lib/delivery-cache';
 import type { HonoEnv } from '@/lib/hono/context';
 import assetRoutes from './routes';
 
@@ -29,6 +30,10 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (projectId && (await isProjectTakenDown(projectId))) {
     throw notFound('asset', { key });
   }
+  const viewer = projectId ? await projectDeliveryAccess(projectId, ctx.req.raw.headers) : null;
+  if (projectId && !viewer) {
+    throw notFound('asset', { key });
+  }
   const head = await headObject(key).catch(() => null);
   if (!head) {
     throw notFound('asset', { key });
@@ -44,7 +49,11 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   }
   // Long-lived but NOT immutable: a taken-down asset must become unreachable in
   // caches within a day rather than being pinned for a year.
-  ctx.header('Cache-Control', 'public, max-age=86400');
+  // Reader/workspace responses vary by a private session cookie and must never
+  // enter a shared cache. Public assets retain the historical one-day policy.
+  for (const [name, value] of Object.entries(deliveryCacheHeaders(Boolean(viewer && viewer.kind !== 'public'), 'public, max-age=86400'))) {
+    ctx.header(name, value);
+  }
   return ctx.body(Readable.toWeb(stream) as ReadableStream);
 });
 

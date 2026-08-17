@@ -10,7 +10,8 @@
     "start": "node ./dist/index.mjs",
     "with-env": "dotenv -e ../../.env --",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@getworkbench/hono": "^0.9.1",
@@ -19,10 +20,15 @@
     "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
+    "@nibleaf/storage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "bullmq": "^5.77.6",
+    "fflate": "^0.8.2",
     "hono": "^4.13.2",
+    "marked": "^16.3.0",
     "nodemailer": "^9.0.3",
+    "pdf-lib": "^1.17.1",
+    "playwright-core": "^1.55.0",
     "postmark": "^5.0.0",
     "zod": "^4.4.3"
   },

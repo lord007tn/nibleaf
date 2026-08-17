@@ -16,6 +16,7 @@ import type {
   Language,
   Member,
   NotificationList,
+  OpenApiConfiguration,
   Page,
   PageNode,
   PendingChanges,
@@ -185,6 +186,17 @@ export const useAssets = (projectId: string | undefined) =>
       getData<Asset[]>(
         await api.app.projects[':projectId'].assets.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
         'assets',
+      ),
+  });
+
+export const useOpenApiConfiguration = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: queryKeys.openapi.detail(projectId ?? ''),
+    enabled: Boolean(projectId),
+    queryFn: async () =>
+      getData<OpenApiConfiguration | null>(
+        await api.app.projects[':projectId'].openapi.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
+        'OpenAPI configuration',
       ),
   });
 

@@ -60,13 +60,21 @@ anchored comments, and one-click publish:
 
 ## ✨ Features
 
+Private customer documentation supports dedicated reader accounts, audience/page rules, and signed JWT/JWKS portal handoff. See [Private reader access](docs/private-reader-access.md) for integration, key rotation, caching, and recovery guidance.
+
 - **Rich editor** — rich-text and raw Markdown/MDX editing with draft preview in a separate tab, a Notion-style
   block handle + slash menu, and a drag-and-drop, nestable page tree.
 - **MDX components** — callouts, cards, steps, tabs, code groups, accordions,
   param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid — all
-  round-trip losslessly between visual and source.
+  round-trip losslessly between visual and source. Custom components and expressions are
+  preserved as local read-only blocks, so surrounding content and anchored comments stay editable.
 - **Versioned publishing** — immutable snapshots; atomic roll-forward; readers never see a
   half-written page.
+- **Validated redirects** — [route-aware redirect graphs](docs/redirects.md) are flattened to
+  canonical one-hop destinations and published atomically with the site snapshot.
+- **OpenAPI + Scalar** — upload an OpenAPI 3.x JSON/YAML document, pull it from a public URL,
+  or read it from the connected public GitHub/GitLab repository; published snapshots get an
+  API Reference navigation section with schemas, generated code samples, and browser try-it.
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
@@ -85,24 +93,42 @@ anchored comments, and one-click publish:
 - **Platform admin** — an internal operator panel for customers, sites, deployments, and roles.
 - **Bring-your-own storage** — any S3-compatible store (maxio, Cloudflare R2, AWS S3,
   Backblaze B2).
+- **Portable exports** — snapshot-consistent Markdown ZIP, print-ready PDF, and
+  fully static HTML, plus timezone-aware archival schedules with retention and run history.
 
 ## 🚧 Not built yet
 
 Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
-- **OpenAPI playground / API "try it"** — no interactive API-reference console yet.
-- **Two-way git sync & PR previews** — public repo import and one-way webhook sync
-  exist, but browser edits do not push back to Git and there are no per-PR preview deployments.
-- **Reader auth / personalization** — sites are either public or visible to
-  workspace members only; there are no dedicated end-reader accounts, JWT/SSO
-  hand-off, or per-audience content.
 - **SSO / SAML** — email/password + Google OAuth only; no enterprise SSO.
-- **PDF / static-site export** — Markdown archive export works; PDF and static HTML jobs are not enabled.
-- **Arabic stemming** — Arabic tokenization and conservative spelling normalization work;
-  stemming remains disabled to avoid silently broadening matches without language-specific evaluation.
 
 Want one of these sooner? Open or upvote an issue —
 [github.com/lord007tn/nibleaf/issues](https://github.com/lord007tn/nibleaf/issues).
+
+## OpenAPI reference setup
+
+Open a site's **Settings → API Reference**, choose a navigation label and path, then provide
+one of these sources:
+
+- upload or paste one JSON/YAML document (maximum 5 MB);
+- a public HTTP(S) URL without embedded credentials; or
+- a repository-relative file in the site's connected public GitHub/GitLab repository.
+
+Nibleaf parses and validates OpenAPI 3.x before saving it. Validation errors identify the
+first failing path in the settings toast. Publish the site after saving or refreshing a spec:
+the validated document is frozen into that immutable deployment, while the editable source
+configuration remains available for later refreshes. Older deployments and rollbacks keep
+their own spec revision.
+
+For safety, documents must be self-contained: external `$ref` values are rejected, so bundle
+multi-file specs before importing. URL fetches are size/time bounded and reject credentials,
+private-network targets, and unsafe redirects. Repository-backed specs currently support the
+public GitHub and GitLab providers; generic clone URLs can use the URL or upload option.
+
+Scalar sends try-it requests directly from the reader's browser. Nibleaf does not provide a
+request proxy, prefill credentials, persist authentication, or log request secrets. Your API
+must allow the published documentation origin in its CORS policy. Never place live credentials
+or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
@@ -184,7 +210,7 @@ packages/
   database    Prisma schema + client (PostgreSQL)
   auth        better-auth (email/password + organizations)
   storage     S3-compatible object storage
-  bullmq      Typed queues/workers (publish, search, email, analytics)
+  bullmq      Typed queues/workers (publish, search, email, analytics, export)
   search      Orama full-text + fuzzy search (bilingual)
   validators  Shared Zod schemas — the server↔app contract
   shared      Constants, RBAC, ids, snapshot/site helpers
@@ -197,6 +223,25 @@ creates a `Deployment` and enqueues a BullMQ job; the worker builds an immutable
 the doc tree and marks the deployment `READY`. The public site and its search index are
 served from that snapshot — so readers never see a half-written page, and rolling forward is
 atomic.
+
+**How exports work** — the dashboard copies the latest `READY` deployment into an
+immutable `ExportSnapshot`, then queues one background `ExportJob` for every selected
+format. Artifacts are written under the project's prefix in the configured S3-compatible
+bucket; the API returns five-minute presigned download URLs only after rechecking project
+membership. Static archives contain their own CSS, navigation, search index, rewritten
+links, and referenced published assets. Scheduled archives use IANA timezones and a
+database-backed minute dispatcher, so retries are idempotent and daylight-saving changes
+keep the requested wall-clock time.
+
+PDF rendering requires Chromium. The project Docker image installs it automatically.
+Source/non-Docker workers must install a Chromium-compatible browser and set
+`EXPORT_CHROMIUM_PATH`. Export workers also need storage credentials and the `export`
+queue in `WORKER_QUEUES` when an allowlist is used. Operators can tune
+`EXPORT_CONCURRENCY`, `EXPORT_MAX_ACTIVE_PER_PROJECT`, `EXPORT_MAX_DAILY_PER_PROJECT`,
+`EXPORT_MAX_PAGES`, `EXPORT_MAX_SNAPSHOT_BYTES`, `EXPORT_MAX_ASSET_BYTES`,
+`EXPORT_MANUAL_RETENTION_DAYS`, and `EXPORT_DOWNLOAD_TTL_SECONDS`. The nightly cleanup
+job deletes expired objects and database rows; storage lifecycle rules may be added as a
+defense in depth, but must not delete objects earlier than Nibleaf retention.
 
 **Same-origin auth** — the dashboard proxies `/api/**` to the server (via Nitro), so
 better-auth session cookies stay first-party with no CORS dance.

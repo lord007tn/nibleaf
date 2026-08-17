@@ -52,7 +52,7 @@ Because snapshots are immutable, rollback is trivial: republish a previous snaps
 
 Docs search is where hosted platforms usually earn their subscription and static generators usually send you to a third party. Nibleaf ships search inside the platform: full-text plus fuzzy matching powered by Orama, served from your own instance with the Cmd+K interface readers expect. There is no Algolia account to configure, no crawler to schedule, and no search-as-a-service bill.
 
-Search selects an Arabic tokenizer for Arabic projects and applies limited spelling normalization. It does not currently enable Arabic stemming, so teams should test prefixed and inflected terms from their own content.
+Search selects an Arabic tokenizer for Arabic projects, applies spelling normalization, and adds conservative light morphology for common prefixes, attached pronouns, and plural or dual forms. Exact tokens retain the strongest ranking, while code, mixed identifiers, short words, and ambiguous terms are protected from stemming.
 
 ## Arabic-first, not RTL-as-an-afterthought
 

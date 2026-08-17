@@ -78,6 +78,10 @@ x-service-env: &service-env
   SMTP_URL: ${SMTP_URL:-}
   # Optional AI writing assist (off unless a key is set).
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  # Two-way Git: envelope encryption plus API/worker callback authentication.
+  GIT_CREDENTIAL_ENCRYPTION_KEY: ${GIT_CREDENTIAL_ENCRYPTION_KEY:-}
+  GIT_WORKER_SECRET: ${GIT_WORKER_SECRET:-}
+  GIT_CONCURRENCY: ${GIT_CONCURRENCY:-2}
   AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-}
   # Per-IP budget for the public site-serving API (requests/minute).
   RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}

@@ -36,9 +36,14 @@ export function PublishControl({ project, initialPublishOpen = false }: { projec
 
   return (
     <div className="flex items-center gap-2">
-      <Button disabled={building} onClick={() => setPublishOpen(true)} size="sm">
+      <Button
+        aria-label={building ? t('project.publishing') : t('project.publish')}
+        disabled={building}
+        onClick={() => setPublishOpen(true)}
+        size="sm"
+      >
         <Rocket className="size-3.5" />
-        {building ? t('project.publishing') : t('project.publish')}
+        <span className="hidden sm:inline">{building ? t('project.publishing') : t('project.publish')}</span>
       </Button>
 
       <PublishModal onOpenChange={setPublishOpen} onPublished={() => setDeployOpen(true)} open={publishOpen} project={project} />

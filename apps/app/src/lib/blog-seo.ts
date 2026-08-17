@@ -1,13 +1,12 @@
-import { type BlogEntry, blogEntry, blogLanguage } from './blog';
+import type { BlogEntry } from './blog';
 import { breadcrumbLd, canonicalHref, faqLd, pageMeta } from './marketing-seo';
 
 /** SEO metadata and structured data for one blog article. Kept independent of
  * the article UI so route head evaluation does not pull the renderer bundle. */
-export function articleHead(entry: BlogEntry) {
+export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
   const path = `/blog/${entry.slug}`;
-  const language = blogLanguage(entry);
+  const language = entry.language ?? 'en';
   const arabic = language === 'ar';
-  const translation = entry.translationOf ? blogEntry(entry.translationOf) : undefined;
   const imagePath = arabic ? '/brand/raster/social/nibleaf-og-card-ar.png' : '/brand/raster/social/nibleaf-og-card.png';
   const scripts = [
     {
@@ -53,7 +52,7 @@ export function articleHead(entry: BlogEntry) {
       ...(translation
         ? [
             { rel: 'alternate', hreflang: language, href: canonicalHref(path) },
-            { rel: 'alternate', hreflang: blogLanguage(translation), href: canonicalHref(`/blog/${translation.slug}`) },
+            { rel: 'alternate', hreflang: translation.language ?? 'en', href: canonicalHref(`/blog/${translation.slug}`) },
             {
               rel: 'alternate',
               hreflang: 'x-default',

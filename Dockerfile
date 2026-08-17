@@ -13,7 +13,8 @@ ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
-RUN apk add --no-cache curl git openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
+RUN apk add --no-cache chromium curl git openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
+ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
 COPY . .
@@ -28,7 +29,10 @@ ARG VITE_API_URL=http://server:4311
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_URL=$VITE_APP_URL
 ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
-ENV NODE_OPTIONS=--max-old-space-size=4096
+# The app build exceeds a 4 GiB V8 heap as the editor, docs renderer, and SSR
+# bundles are optimized together. Keep this aligned with the 5-6 GiB build
+# requirement documented in docker-compose.yml.
+ENV NODE_OPTIONS=--max-old-space-size=6144
 RUN pnpm exec turbo run build --concurrency=1
 
 FROM base AS runner

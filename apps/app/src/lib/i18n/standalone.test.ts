@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { translateStandalone } from './standalone';
 
 describe('standalone translations', () => {
-  afterEach(() => window.localStorage.clear());
+  afterEach(() => {
+    window.localStorage.clear();
+  });
 
   it('uses English when no preference is stored', () => {
     expect(translateStandalone('common.loading')).toBe('Loading…');

@@ -1,6 +1,7 @@
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
+import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { notifyDeployment } from '../lib/notify';
@@ -265,6 +266,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       include: {
         languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
         branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+        openApiDocument: true,
       },
     });
     if (!project) {
@@ -293,7 +295,11 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
     }
-    const snapshot = buildSnapshot(project, pageRows, new Date().toISOString());
+    const redirectValidation = validateSnapshotRedirects(buildSnapshot(project, pageRows, new Date().toISOString()));
+    if (redirectValidation.issues.length > 0) {
+      throw new Error(summarizeRedirectIssues(redirectValidation.issues));
+    }
+    const snapshot = redirectValidation.snapshot;
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({

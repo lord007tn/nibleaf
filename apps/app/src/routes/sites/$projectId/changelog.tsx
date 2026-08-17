@@ -1,6 +1,5 @@
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
-import { useSiteChangelog } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
@@ -22,9 +21,15 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
         }),
         'site',
       );
-      return { site, lang: deps.lang, siteOrigin: customDomainOrigin() };
+      let entries: ChangelogEntry[] = [];
+      try {
+        entries = await getData<ChangelogEntry[]>(await api.public.sites[':id'].changelog.$get({ param: { id: params.projectId } }), 'changelog');
+      } catch {
+        // The shell still owns SEO/chrome when the optional feed is unavailable.
+      }
+      return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch {
-      return { site: null, lang: deps.lang, siteOrigin: customDomainOrigin() };
+      return { site: null, entries: [] as ChangelogEntry[], lang: deps.lang, siteOrigin: customDomainOrigin() };
     }
   },
   head: ({ loaderData, params }) => {
@@ -90,12 +95,11 @@ function groupByMonth(entries: ChangelogEntry[], lang?: string): Array<{ key: st
 }
 
 function SiteChangelog() {
-  const { projectId } = Route.useParams();
   // The active language comes from the parent site route's ?lang= search param.
   const { lang } = useSearch({ strict: false }) as { lang?: string };
   const t = siteT(lang);
-  const { data, isPending } = useSiteChangelog(projectId);
-  const groups = groupByMonth(data ?? [], lang);
+  const { entries } = Route.useLoaderData();
+  const groups = groupByMonth(entries, lang);
 
   return (
     // Horizontal gutters come from the route's content wrapper (px-4 sm:px-6).
@@ -109,9 +113,7 @@ function SiteChangelog() {
       <p className="mt-2 text-muted-foreground text-sm">{t('changelogSubtitle')}</p>
 
       <div className="mt-10">
-        {isPending ? (
-          <ChangelogSkeleton />
-        ) : groups.length === 0 ? (
+        {groups.length === 0 ? (
           <p className="text-muted-foreground text-sm">{t('changelogEmpty')}</p>
         ) : (
           <div className="space-y-10">
@@ -145,29 +147,6 @@ function SiteChangelog() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function ChangelogSkeleton() {
-  return (
-    <div className="animate-pulse space-y-8">
-      {[0, 1].map((section) => (
-        <div key={section}>
-          <div className="mb-4 h-3 w-24 rounded bg-muted" />
-          <div className="space-y-2.5">
-            {[0, 1].map((row) => (
-              <div className="flex items-start gap-4 rounded-xl border border-border p-4" key={row}>
-                <div className="h-11 w-14 shrink-0 rounded-lg bg-muted" />
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 w-48 rounded bg-muted" />
-                  <div className="h-3 w-32 rounded bg-muted" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
