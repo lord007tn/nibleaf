@@ -519,6 +519,9 @@ importers:
       turndown-plugin-gfm:
         specifier: ^1.0.2
         version: 1.0.2
+      undici:
+        specifier: 7.29.0
+        version: 7.29.0
       yaml:
         specifier: 2.9.0
         version: 2.9.0

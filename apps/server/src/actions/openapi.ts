@@ -3,6 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { GitConfig, OpenApiSourceInput, UpsertOpenApiBody } from '@nibleaf/validators';
 import { validate } from '@scalar/openapi-parser';
+import { Agent, fetch as undiciFetch } from 'undici';
 import { parseDocument } from 'yaml';
 import { badRequest, notFound } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
@@ -138,7 +139,16 @@ export const readBoundedOpenApiResponse = async (response: Response): Promise<st
   return new TextDecoder().decode(bytes);
 };
 
-const normalizePublicUrl = async (value: string, label: string): Promise<URL> => {
+type PinnedPublicUrl = {
+  url: URL;
+  address: string;
+  family: 4 | 6;
+};
+
+/** Resolve once, reject every non-public answer, and retain one validated
+ * address for the connection itself. The URL intentionally keeps its original
+ * hostname so Undici still sends the correct Host header and TLS SNI. */
+const normalizePublicUrl = async (value: string, label: string): Promise<PinnedPublicUrl> => {
   let url: URL;
   try {
     url = new URL(value);
@@ -157,43 +167,68 @@ const normalizePublicUrl = async (value: string, label: string): Promise<URL> =>
   } catch {
     throw badRequest(`${label} could not be resolved. Check the hostname and try again.`);
   }
-  if (records.length === 0 || records.some((record) => isPrivateIp(record.address))) {
+  if (records.length === 0 || records.some((record) => (record.family !== 4 && record.family !== 6) || isPrivateIp(record.address))) {
     throw badRequest(`${label} must resolve only to public IP addresses.`);
   }
-  return url;
+  const selected = records[0] as { address: string; family: 4 | 6 };
+  return { url, address: selected.address, family: selected.family };
 };
+
+/** Bind an Undici connection to the address that passed the public-network
+ * check. This closes the DNS-rebinding gap between validation and connect. */
+const pinnedDispatcher = ({ address, family }: PinnedPublicUrl): Agent =>
+  new Agent({
+    connect: {
+      lookup: (_hostname, _options, callback) => callback(null, address, family),
+    },
+  });
 
 /** Fetch a public spec without credentials, following only a small number of
  *  revalidated public redirects. The response body is bounded before parsing. */
 export const fetchPublicOpenApi = async (value: string, label = 'OpenAPI URL'): Promise<string> => {
   let current = await normalizePublicUrl(value, label);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
+    const dispatcher = pinnedDispatcher(current);
     let response: Response;
     try {
-      response = await fetch(current, {
+      response = await undiciFetch(current.url, {
         headers: { Accept: 'application/json, application/yaml, text/yaml, text/plain', 'User-Agent': 'nibleaf-openapi' },
         redirect: 'manual',
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        dispatcher,
       });
     } catch {
+      await dispatcher.close();
       throw badRequest(`Could not fetch the ${label.toLowerCase()}. Check that it is publicly reachable.`);
     }
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
       if (!location || redirect === MAX_REDIRECTS) {
+        await response.body?.cancel();
+        await dispatcher.close();
         throw badRequest(`The ${label.toLowerCase()} redirected too many times.`);
       }
-      current = await normalizePublicUrl(new URL(location, current).toString(), label);
+      await response.body?.cancel();
+      await dispatcher.close();
+      current = await normalizePublicUrl(new URL(location, current.url).toString(), label);
       continue;
     }
     if (!response.ok) {
+      await response.body?.cancel();
+      await dispatcher.close();
       throw badRequest(`The ${label.toLowerCase()} returned HTTP ${response.status}.`);
     }
     const declared = Number(response.headers.get('content-length') ?? '0');
     if (Number.isFinite(declared) && declared > MAX_OPENAPI_BYTES) {
+      await response.body?.cancel();
+      await dispatcher.close();
       throw badRequest('The OpenAPI document is larger than 5 MB.');
     }
-    return readBoundedOpenApiResponse(response);
+    try {
+      return await readBoundedOpenApiResponse(response);
+    } finally {
+      await dispatcher.close();
+    }
   }
   throw badRequest(`Could not fetch the ${label.toLowerCase()}.`);
 };
@@ -218,7 +253,7 @@ const repositorySpecUrl = async (organizationId: string, filePath: string): Prom
     return `https://raw.githubusercontent.com/${encodePath(git.repo)}/${encodeURIComponent(branch)}/${encodePath(filePath)}`;
   }
   if (provider === 'gitlab' && git.repo?.includes('/')) {
-    const instance = await normalizePublicUrl(git.instanceUrl?.trim() || 'https://gitlab.com', 'GitLab instance URL');
+    const { url: instance } = await normalizePublicUrl(git.instanceUrl?.trim() || 'https://gitlab.com', 'GitLab instance URL');
     instance.pathname = instance.pathname.replace(/\/+$/, '');
     const url = new URL(
       `${instance.toString().replace(/\/+$/, '')}/api/v4/projects/${encodeURIComponent(git.repo)}/repository/files/${encodeURIComponent(filePath)}/raw`,
