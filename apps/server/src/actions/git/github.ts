@@ -5,6 +5,21 @@ interface GitHubErrorBody {
   documentation_url?: string;
 }
 
+const BLOB_FETCH_CONCURRENCY = 8;
+
+const mapWithConcurrency = async <T, R>(values: readonly T[], concurrency: number, mapper: (value: T, index: number) => Promise<R>): Promise<R[]> => {
+  const results = new Array<R>(values.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    while (nextIndex < values.length) {
+      const index = nextIndex++;
+      results[index] = await mapper(values[index] as T, index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+};
+
 const repoParts = (repository: string): [string, string] => {
   const parts = repository.split('/');
   if (parts.length !== 2 || parts.some((part) => !/^[A-Za-z0-9_.-]+$/.test(part))) {
@@ -122,7 +137,15 @@ export class GitHubProvider implements GitProviderClient {
     if (entries.length > 2_000) {
       throw new Error('Git sync is limited to 2,000 Markdown files per connection.');
     }
-    return Promise.all(entries.map(async (entry) => ({ path: entry.path, sha: entry.sha, content: await this.getBlob(repository, entry.sha) })));
+    // Large documentation repositories can contain thousands of Markdown
+    // blobs. Fetch a small parallel window instead of bursting all requests at
+    // GitHub at once, which otherwise triggers secondary rate limits and holds
+    // thousands of response bodies in memory.
+    return mapWithConcurrency(entries, BLOB_FETCH_CONCURRENCY, async (entry) => ({
+      path: entry.path,
+      sha: entry.sha,
+      content: await this.getBlob(repository, entry.sha),
+    }));
   }
 
   private async createBlob(repository: string, file: Exclude<CommitFile, { content: null }>): Promise<string> {

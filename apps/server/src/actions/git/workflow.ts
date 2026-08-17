@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { buildSnapshot } from '@nibleaf/shared/site';
@@ -15,6 +15,7 @@ import type { GitProviderClient, RemoteFile, RemotePullRequest } from './types';
 
 const MAX_ERROR = 500;
 const MAX_AUDIT_METADATA = 30;
+const GIT_OPERATION_CLAIM_TIMEOUT = QUEUE_CONFIGS[QueueNames.GIT].operationClaimTimeout ?? 12 * 60 * 1000;
 
 export interface ConnectGitInput {
   repository: string;
@@ -535,22 +536,88 @@ const markFailed = async (operationId: string, connectionId: string, error: unkn
   throw error;
 };
 
+class GitOperationBusyError extends Error {
+  constructor(connectionId: string) {
+    super(`Another Git operation is already running for connection ${connectionId}.`);
+    this.name = 'GitOperationBusyError';
+  }
+}
+
+const isSerializationFailure = (error: unknown): boolean => typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2034';
+
+/**
+ * Claim one operation while holding a serializable transaction on its
+ * connection. The RUNNING row is the durable mutex: PostgreSQL aborts one side
+ * of concurrent write-skew claims, while a sufficiently old row can be
+ * recovered after the API or worker process disappears mid-operation.
+ */
+const claimGitOperation = async (operationId: string) => {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const operation = await tx.gitSyncOperation.findUnique({
+          where: { id: operationId },
+          include: { connection: true, conflicts: true },
+        });
+        if (!operation) throw notFound('git operation', { id: operationId });
+        if (operation.status === 'SUCCEEDED') return null;
+
+        const now = new Date();
+        const staleBefore = new Date(now.getTime() - GIT_OPERATION_CLAIM_TIMEOUT);
+        const active = await tx.gitSyncOperation.findFirst({
+          where: { connectionId: operation.connectionId, status: 'RUNNING', id: { not: operation.id } },
+          select: { id: true, startedAt: true },
+        });
+        if (active) {
+          if (active.startedAt && active.startedAt > staleBefore) {
+            throw new GitOperationBusyError(operation.connectionId);
+          }
+          const released = await tx.gitSyncOperation.updateMany({
+            where: {
+              id: active.id,
+              status: 'RUNNING',
+              ...(active.startedAt ? { startedAt: { lte: staleBefore } } : { startedAt: null }),
+            },
+            data: {
+              status: 'FAILED',
+              error: 'Git operation was interrupted before completion and can be retried safely.',
+              completedAt: now,
+            },
+          });
+          if (released.count !== 1) throw new GitOperationBusyError(operation.connectionId);
+        }
+
+        if (operation.status === 'RUNNING' && operation.startedAt && operation.startedAt > staleBefore) {
+          throw new GitOperationBusyError(operation.connectionId);
+        }
+        const claimed = await tx.gitSyncOperation.updateMany({
+          where: {
+            id: operation.id,
+            status: operation.status,
+            ...(operation.startedAt ? { startedAt: operation.startedAt } : { startedAt: null }),
+          },
+          data: { status: 'RUNNING', startedAt: operation.startedAt ?? now, completedAt: null, error: null },
+        });
+        if (claimed.count !== 1) throw new GitOperationBusyError(operation.connectionId);
+        await tx.gitConnection.update({
+          where: { id: operation.connectionId },
+          data: { lastSyncStatus: 'RUNNING', lastSyncError: null },
+        });
+        return { ...operation, status: 'RUNNING', startedAt: operation.startedAt ?? now, completedAt: null, error: null };
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  } catch (error) {
+    if (isSerializationFailure(error)) throw new GitOperationBusyError(operationId);
+    throw error;
+  }
+};
+
 export const processGitOperation = async (operationId: string): Promise<void> => {
-  const operation = await prisma.gitSyncOperation.findUnique({
-    where: { id: operationId },
-    include: { connection: true, conflicts: true },
-  });
-  if (!operation) throw notFound('git operation', { id: operationId });
-  if (operation.status === 'SUCCEEDED') return;
+  const operation = await claimGitOperation(operationId);
+  if (!operation) return;
   const connection = operation.connection;
   try {
-    await prisma.$transaction([
-      prisma.gitSyncOperation.update({
-        where: { id: operation.id },
-        data: { status: 'RUNNING', startedAt: operation.startedAt ?? new Date(), error: null },
-      }),
-      prisma.gitConnection.update({ where: { id: connection.id }, data: { lastSyncStatus: 'RUNNING', lastSyncError: null } }),
-    ]);
     const provider = providerFor(connection);
     const request = (operation.request ?? {}) as unknown as QueueGitInput;
     const sourceBranch =

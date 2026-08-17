@@ -23,6 +23,8 @@ export interface QueueConfigEntry {
   limiter?: { duration: number; max: number };
   /** Worker lock TTL. Long-running jobs must exceed their worst-case runtime. */
   lockDuration?: number;
+  /** Durable database claims older than this can be recovered after a worker crash. */
+  operationClaimTimeout?: number;
   maxStalledCount: number;
   stalledInterval: number;
 }
@@ -77,9 +79,16 @@ export const QUEUE_CONFIGS: Record<QueueNames, QueueConfigEntry> = {
   },
   [QueueNames.GIT]: {
     concurrency: env.GIT_CONCURRENCY,
-    defaultJobOptions: { ...DEFAULT_JOB_OPTIONS, attempts: 5, backoff: { type: 'exponential', delay: 2000 } },
+    // A second operation for the same connection is retried until the first
+    // releases its durable claim. Ten exponential attempts reach past the
+    // recovery timeout without turning all Git work into a global serial queue.
+    defaultJobOptions: { ...DEFAULT_JOB_OPTIONS, attempts: 10, backoff: { type: 'exponential', delay: 2000 } },
     limiter: { max: 20, duration: 1000 },
     lockDuration: 10 * MINUTE_MS,
+    // The worker's internal API request times out after nine minutes. A claim
+    // must remain exclusive beyond that boundary, then become recoverable if
+    // either the worker or API process died before recording failure.
+    operationClaimTimeout: 12 * MINUTE_MS,
     stalledInterval: 30_000,
     maxStalledCount: 2,
   },

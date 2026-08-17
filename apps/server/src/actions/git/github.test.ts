@@ -54,6 +54,34 @@ describe('GitHub provider adapter', () => {
     expect(request.mock.calls[1]?.[1]?.method).toBe('PATCH');
   });
 
+  it('bounds concurrent blob downloads for large documentation trees', async () => {
+    const entries = Array.from({ length: 24 }, (_, index) => ({
+      path: `docs/page-${index}.mdx`,
+      type: 'blob',
+      sha: `blob-${index}`,
+      size: 100,
+    }));
+    let activeBlobs = 0;
+    let maxActiveBlobs = 0;
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) return json({ truncated: false, tree: entries });
+      activeBlobs += 1;
+      maxActiveBlobs = Math.max(maxActiveBlobs, activeBlobs);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      activeBlobs -= 1;
+      const sha = url.split('/').pop() ?? '';
+      return json({ encoding: 'base64', content: Buffer.from(sha).toString('base64') });
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    const files = await provider.listMarkdownFiles('acme/docs', 'head-sha', 'docs');
+
+    expect(files).toHaveLength(entries.length);
+    expect(files.map((file) => file.path)).toEqual(entries.map((entry) => entry.path));
+    expect(maxActiveBlobs).toBe(8);
+  });
+
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request as typeof fetch);
