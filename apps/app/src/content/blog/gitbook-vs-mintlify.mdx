@@ -3,7 +3,7 @@ title: 'GitBook vs Mintlify in 2026: editor, Git workflow, pricing, and ownershi
 metaTitle: 'GitBook vs Mintlify in 2026: a practical comparison'
 description: 'A source-backed GitBook and Mintlify comparison covering editors, Git workflows, API docs, pricing, multilingual content, and self-hosting.'
 datePublished: '2026-08-15'
-dateModified: '2026-08-15'
+dateModified: '2026-08-17'
 tags: ['comparison', 'gitbook', 'mintlify']
 related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
 readingMinutes: 8
@@ -28,7 +28,7 @@ We reviewed the vendors' public pricing and workflow documentation on August 15,
 
 Choose GitBook when a block editor is the center of the workflow and Git is an optional integration. Choose Mintlify when the repository, branches, previews, and developer-facing API documentation are the center of the workflow.
 
-If full-platform self-hosting is a requirement, neither hosted product gives you that exact arrangement. GitBook publishes an open-source renderer, but not the whole workspace and editor. Mintlify is a hosted platform. In that case, compare open-source options separately rather than stretching either product into a role it was not designed to fill.
+If full-platform self-hosting is a requirement, neither product gives you that exact arrangement. GitBook publishes an open-source renderer, but not the whole workspace and editor. Mintlify offers Enterprise customers a self-hosted custom frontend, while its content engine, editor, search, and AI remain managed services. In that case, compare full-stack open-source options separately rather than stretching either product into a role it was not designed to fill.
 
 | Decision | GitBook | Mintlify |
 | --- | --- | --- |
@@ -36,7 +36,7 @@ If full-platform self-hosting is a requirement, neither hosted product gives you
 | Git workflow | Optional Git Sync | Core branch and deployment workflow |
 | API documentation | OpenAPI import and interactive blocks | OpenAPI generation and API playground |
 | Multilingual structure | Spaces and site structure managed in GitBook | Language-specific content structures in the docs repository |
-| Self-hosting | Published renderer only, not the full platform | Hosted platform |
+| Self-hosting | Published renderer only, not the full platform | Enterprise custom frontend; core services remain managed |
 | Best starting point | Writers who want the editor first | Developer teams that want Git first |
 
 ## Writing and review
@@ -73,7 +73,7 @@ A sales demo with a small Petstore file will not answer those questions. Bring a
 
 ## Multilingual documentation
 
-Mintlify documents [language-specific content structures](https://www.mintlify.com/docs/guides/internationalization) and a language switcher. GitBook can organize localized content through its site and space structure.
+Mintlify documents [language-specific content structures](https://www.mintlify.com/docs/guides/internationalization), a language switcher, and automatic RTL layout for configured Arabic and Hebrew locales. GitBook can organize localized content through its site and space structure, but its [editing help](https://gitbook.com/docs/help-center/editing-content/writing-and-editing) says only paragraphs and headings currently auto-align reliably for RTL text.
 
 For either product, ask how it handles pages that do not have a translation. A useful multilingual system must distinguish “this page has no Arabic version” from “show the English page under an Arabic selector.” It should also emit a correct `lang`, canonical, and reciprocal `hreflang` for pages that do correspond.
 
@@ -100,7 +100,7 @@ Seat price alone can hide the larger cost. A workflow that saves money but exclu
 
 GitBook's [open-source renderer repository](https://github.com/GitbookIO/gitbook) is licensed under GPLv3. GitBook says the frontend used to render published content can be self-hosted, but also says this route is not recommended or supported and leaves updates and infrastructure to the operator. The repository is not the full hosted workspace, editor, and service.
 
-Mintlify keeps source content in your Git repository, which is valuable portability. The hosted rendering, search, deployment, and product layer remain Mintlify's service.
+Mintlify keeps source content in your Git repository, which is valuable portability. Its [custom-frontends announcement](https://www.mintlify.com/blog/custom-frontends-on-mintlify) adds an Enterprise option to host the frontend on your infrastructure, while Mintlify continues to operate the content engine, editor, search, and AI services.
 
 These are two different forms of ownership. Git ownership means the source files and history are in your repository. Full-stack ownership means you can also run the editor, publishing pipeline, search, analytics, and reader on infrastructure you control. Decide which one the policy actually requires.
 

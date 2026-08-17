@@ -315,8 +315,8 @@ describe('pageHead JSON-LD', () => {
     expect(article?.url).toBe('http://localhost:4310/sites/p1/quickstart');
     expect(article?.datePublished).toBe('2025-12-15T00:00:00.000Z');
     expect(article?.dateModified).toBe('2026-01-01T00:00:00.000Z');
-    expect(article?.author).toMatchObject({ '@type': 'Organization', name: 'Acme Docs' });
-    expect(article?.publisher).toMatchObject({ '@type': 'Organization', name: 'Acme Docs' });
+    expect(article).not.toHaveProperty('author');
+    expect(article).not.toHaveProperty('publisher');
   });
 
   it('emits a BreadcrumbList when breadcrumbs exist, and omits it otherwise', () => {
