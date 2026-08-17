@@ -16,7 +16,20 @@
       },
       {
         "group": "Use Nibleaf",
-        "pages": ["product/authoring", "product/markdown-mdx", "product/publishing", "product/arabic-rtl", "product/migration"]
+        "pages": [
+          "product/authoring",
+          "product/markdown-mdx",
+          "git-authoring",
+          "product/publishing",
+          "product/exports",
+          "redirects",
+          "product/arabic-rtl",
+          "product/migration"
+        ]
+      },
+      {
+        "group": "Secure access",
+        "pages": ["private-reader-access"]
       },
       {
         "group": "Self-hosting",

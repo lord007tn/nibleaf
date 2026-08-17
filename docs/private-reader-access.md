@@ -1,4 +1,11 @@
-# Private reader access
+---
+title: 'Protect documentation with private reader access'
+description: 'Choose workspace or reader access, configure audiences and portal JWT handoff, and recover quickly from a compromised reader integration.'
+audience: 'site administrators and customer-portal developers'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/server/src/actions/reader-access.ts and apps/server/src/lib/reader-jwt.ts'
+---
 
 Nibleaf has three explicit published-site access modes:
 

@@ -65,12 +65,14 @@ rollback copy.
 
 ## Export and recover
 
-Create a Markdown export before a large migration, before closing a workspace,
-and after the final source freeze. Markdown portability is separate from
-disaster recovery: self-hosters also need synchronized Postgres and object-
-storage backups.
+Create a [Markdown export](/product/exports) before a large migration, before
+closing a workspace, and after the final source freeze. Markdown portability is
+separate from disaster recovery: self-hosters also need synchronized Postgres
+and object-storage backups.
 
-Repository synchronization capabilities depend on the installed release and
-provider. Decide explicitly whether Git or Nibleaf is authoritative and never
-allow two writers to update both sides without a documented conflict process.
-See [known limitations](/reference/known-limitations) for current boundaries.
+When GitHub will remain in the workflow, complete the [bidirectional Git
+authoring](/git-authoring) setup in a disposable repository first. Name Git or
+Nibleaf as the authority for each phase, use a dedicated authoring branch, and
+rehearse conflict resolution before allowing both browser and repository edits.
+See [known limitations](/reference/known-limitations) for provider and recovery
+boundaries.

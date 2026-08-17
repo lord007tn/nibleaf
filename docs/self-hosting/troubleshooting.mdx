@@ -62,6 +62,18 @@ worker log at the publish time. The public site should continue serving the
 previous ready version. Correct the cause and publish forward; do not modify the
 database status manually.
 
+## An export or Git operation stays queued
+
+Check whether `WORKER_QUEUES` is empty or includes the required `export` or `git`
+queue. Then inspect worker health and the durable run or operation record in the
+dashboard. For PDF-only failures, verify `EXPORT_CHROMIUM_PATH` inside the worker.
+For Git failures, preserve the operation and conflict record; retry through the
+documented reconciliation flow instead of force-pushing the authoring branch.
+
+Changing `GIT_CREDENTIAL_ENCRYPTION_KEY` cannot repair a decryption error and
+will make existing credentials unreadable. Restore the correct key or follow a
+controlled disconnect/reconnect rotation.
+
 ## A domain serves the wrong site
 
 Confirm DNS, certificate name, primary-domain status, original `Host` forwarding,

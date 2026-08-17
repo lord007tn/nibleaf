@@ -37,6 +37,18 @@ object storage. Do not copy values from an example, development deployment,
 support request, or another environment. The production entrypoint rejects
 known demo authentication secrets.
 
+Two-way Git requires an exactly 32-byte base64 encryption key and a separate
+API/worker secret of at least 32 characters:
+
+```bash
+openssl rand -base64 32
+openssl rand -hex 32
+```
+
+Deploy `GIT_CREDENTIAL_ENCRYPTION_KEY` and `GIT_WORKER_SECRET` to the services
+listed by the release Compose file. Read the [Git key rotation boundary](/git-authoring)
+before enabling a production repository connection.
+
 ## Configure object storage
 
 The server uses `STORAGE_ENDPOINT` for internal requests. The writer's browser
@@ -76,4 +88,6 @@ Set both `WORKBENCH_USER` and `WORKBENCH_PASS` even when worker port 4312 is not
 published. Use an SSH tunnel when an operator needs the jobs dashboard.
 
 Review the complete [environment-variable reference](/reference/environment-variables),
-then run the [production checklist](/self-hosting/production).
+then run the [production checklist](/self-hosting/production). If the site will
+be private, complete the [reader-access recovery procedure](/private-reader-access)
+before sending invitations.

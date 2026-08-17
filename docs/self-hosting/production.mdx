@@ -43,6 +43,10 @@ Then test actual behavior: create and verify an account, upload an image, publis
 a two-page project, search the second page, request a missing page, and send a
 password-reset message.
 
+For enabled optional workflows, also create and download one [export](/product/exports),
+exercise a [redirect](/redirects), complete one [Git push and preview](/git-authoring),
+and prove both authorized and unauthorized [private reader access](/private-reader-access).
+
 ## Verify security boundaries
 
 Confirm that:
@@ -54,6 +58,8 @@ Confirm that:
 - public HTML carries the expected security headers and request-specific CSP;
 - admin and token-bearing auth pages are not indexable;
 - sign-up policy matches the intended audience;
+- private reader, audience, and JWT rules deny an ungranted page and search result;
+- Git provider credentials use the documented minimum repository scopes;
 - backups use separate access control from the live service.
 
 Do not publish secrets, customer content, access tokens, or full environment

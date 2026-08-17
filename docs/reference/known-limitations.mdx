@@ -25,8 +25,10 @@ OAuth or private-site controls.
 
 Nibleaf stores active page Markdown and navigation in Postgres. Markdown is the
 portable serialization format, but a database-backed project is not automatically
-a Git directory. Import, export, and connected-repository behavior vary by
-release and provider.
+a Git directory. Bidirectional authoring currently targets GitHub and uses a
+dedicated branch, draft pull request, and explicit conflict reconciliation.
+Public GitHub and GitLab repositories can still serve one-way import and
+repository-backed OpenAPI workflows.
 
 Before using a Git-centered workflow, test pull, push, conflict reconciliation,
 branch protection, and preview behavior with the same provider and repository
@@ -35,8 +37,10 @@ both sides change.
 
 ## API reference boundaries
 
-The platform server publishes its own OpenAPI reference. Project-level API
-references depend on the deployed release. Test one representative specification,
+The platform server publishes its own OpenAPI reference. A project can publish
+one self-contained OpenAPI 3.x document from upload/paste, a safe public URL, or
+a connected public GitHub/GitLab repository. External `$ref` resolution and a
+server-side try-it proxy are not provided. Test one representative specification,
 large schemas, code samples, mobile navigation, keyboard use, CORS, authentication,
 and the browser try-it path before choosing Nibleaf for an API-first portal.
 
@@ -51,6 +55,11 @@ is a deployment starting point, not a managed-service commitment.
 
 Application snapshots protect readers from half-written drafts. They are not a
 replacement for synchronized Postgres and object-storage backups.
+
+Portable exports start from the latest `READY` deployment and cover Markdown,
+PDF, or static HTML. They do not preserve drafts, workspace identities, comments,
+analytics, credentials, or the rest of the database. PDF export also requires a
+Chromium-compatible browser in the worker image.
 
 ## Search and multilingual behavior
 

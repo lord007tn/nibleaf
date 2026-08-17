@@ -4,7 +4,7 @@ description: 'Find the self-hosted server specification, understand browser-sess
 audience: 'developers integrating with or extending Nibleaf'
 content_type: 'reference'
 last_reviewed: '2026-08-17'
-verified_against: 'apps/server/src/index.ts and apps/server/src/modules'
+verified_against: 'apps/server/src/index.ts, apps/server/src/actions/openapi.ts, apps/server/src/modules, and apps/app/src/components/site/openapi-reference-view.tsx'
 ---
 
 The Nibleaf server exposes an OpenAPI-backed interactive reference at `/docs`
@@ -59,7 +59,26 @@ including private environment details.
 ## Published customer API references
 
 The Nibleaf platform API and a documentation project's own API reference are
-different products. Project-level OpenAPI rendering, source options, try-it
-behavior, and limits depend on the installed Nibleaf release. Review the
-release notes and [known limitations](/reference/known-limitations) before
-promising an interactive customer API portal.
+different products. To publish a project reference, open **Settings → API
+Reference**, choose its navigation label and path, then use one supported source:
+
+- upload or paste one JSON or YAML document up to 5 MB;
+- fetch a public HTTP(S) URL without embedded credentials; or
+- read a repository-relative file from a connected public GitHub or GitLab
+  repository.
+
+Nibleaf validates OpenAPI 3.x before saving. The document must be self-contained;
+bundle multi-file specifications because external `$ref` values are rejected.
+URL fetches are time- and size-bounded and reject private-network destinations,
+credentials, and unsafe redirects.
+
+Publish after saving or refreshing the specification. The validated document
+is frozen into that immutable deployment, so an older deployment or rollback
+retains its own specification revision.
+
+The published reference uses Scalar. Try-it requests go directly from the
+reader's browser to the described API; Nibleaf does not proxy requests, inject
+credentials, persist authentication, or log request secrets. The API must allow
+the published documentation origin in its CORS policy. Test one harmless request
+with temporary credentials and clear them before sharing a browser or recording
+evidence.

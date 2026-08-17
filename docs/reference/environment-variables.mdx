@@ -84,6 +84,38 @@ actually consumes. Never commit a populated `.env`.
 
 ## Operator and lifecycle settings
 
+### Export workers
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `EXPORT_CHROMIUM_PATH` | For PDF outside the official image | `/usr/bin/chromium-browser` | Chromium-compatible executable used for PDF rendering. |
+| `EXPORT_CONCURRENCY` | No | `2` | Export jobs processed by one worker; accepted range is 1–8. |
+| `EXPORT_MAX_ACTIVE_PER_PROJECT` | No | `3` | Concurrent project runs accepted by the API. |
+| `EXPORT_MAX_DAILY_PER_PROJECT` | No | `20` | Per-project daily run limit. |
+| `EXPORT_MAX_PAGES` | No | `5000` | Maximum pages copied into one immutable export snapshot. |
+| `EXPORT_MAX_SNAPSHOT_BYTES` | No | `52428800` | Maximum serialized snapshot bytes. |
+| `EXPORT_MAX_ASSET_BYTES` | No | `262144000` | Maximum referenced asset bytes copied into an artifact. |
+| `EXPORT_MANUAL_RETENTION_DAYS` | No | `7` | Retention for one-time export runs. |
+| `EXPORT_DOWNLOAD_TTL_SECONDS` | No | `300` | Presigned download lifetime; accepted range is 30–900 seconds. |
+
+The official image includes Chromium. If `WORKER_QUEUES` is a comma-separated
+allowlist, include `export`; an empty value enables every queue.
+
+### Bidirectional Git
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `GIT_CREDENTIAL_ENCRYPTION_KEY` | To enable two-way Git | None | Exactly 32 bytes encoded as base64; encrypts provider credentials and webhook secrets. |
+| `GIT_WORKER_SECRET` | To enable two-way Git | None | At least 32 characters shared by API and worker for opaque callbacks. |
+| `GIT_CONCURRENCY` | No | `2` | Git operations processed by one worker. |
+
+Generate the two secrets independently. Do not rotate the encryption key in
+place: existing ciphertext cannot be decrypted with a new key. Follow the
+[Git authoring rotation procedure](/git-authoring). If `WORKER_QUEUES` is set,
+include `git`.
+
+### General operator settings
+
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `WORKBENCH_USER`, `WORKBENCH_PASS` | Recommended | Empty | Basic authentication for worker operations at port 4312. |

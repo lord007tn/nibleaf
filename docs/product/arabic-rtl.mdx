@@ -4,7 +4,7 @@ description: 'Create an Arabic page tree, connect real translations, and verify 
 audience: 'writers and reviewers publishing Arabic documentation'
 content_type: 'how-to'
 last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/lib/languages.ts, packages/search/src/index.ts, and apps/server/src/actions/sites.ts'
+verified_against: 'apps/app/src/lib/languages.ts, packages/search/src/arabic.ts, packages/search/ARABIC_MORPHOLOGY.md, and apps/server/src/actions/sites.ts'
 ---
 
 Each Nibleaf language has its own page tree and direction. Arabic reader chrome
@@ -50,11 +50,19 @@ font weights, mobile menus, long code blocks, and heading spacing.
 
 ## Verify Arabic search
 
-Arabic projects use the Arabic tokenizer plus conservative normalization:
-diacritics and tatweel are removed, common alef forms are folded, and alef
-maqsura maps to ya. The current release does not enable stemming, so it is not
-a semantic or root-based search engine.
+Arabic projects index exact normalized fields and lower-weight morphology fields.
+Both remove diacritics and tatweel, fold common alef forms, and map alef maqsura
+to ya. The morphology lane then applies a conservative Lucene Light10-style
+affix stemmer. Exact normalized tokens remain available and rank separately, so
+stemming can add recall without replacing the original spelling signal.
+
+This is not semantic retrieval, triliteral-root extraction, or general
+lemmatization. Short tokens, code, mixed Arabic/Latin identifiers, and protected
+ambiguous words are excluded from morphology processing. Exact phrases remain
+the strongest signal; lexical, morphology, and bounded fuzzy lanes fill in
+additional results.
 
 Test words with and without diacritics, alef variants, tatweel, common prefixes
-and suffixes, singular and plural forms, and product terms written in Arabic and
-Latin script. Use real page vocabulary, not synthetic keyword lists.
+and suffixes, singular and plural forms, exact technical phrases, and product
+terms written in Arabic and Latin script. Include negative queries that must not
+match. Use real page vocabulary, not synthetic keyword lists.
