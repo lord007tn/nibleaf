@@ -68,32 +68,6 @@ export function pageMeta({
   ];
 }
 
-/** HowTo JSON-LD `<script>` for step-by-step pages (self-hosting quick start). */
-export function howToLd({
-  name,
-  description,
-  totalTime,
-  steps,
-}: {
-  name: string;
-  description: string;
-  /** ISO-8601 duration, e.g. 'PT10M'. */
-  totalTime?: string;
-  steps: { name: string; text: string }[];
-}) {
-  return {
-    type: 'application/ld+json',
-    children: JSON.stringify({
-      '@context': 'https://schema.org',
-      '@type': 'HowTo',
-      name,
-      description,
-      ...(totalTime ? { totalTime } : {}),
-      step: steps.map((step, i) => ({ '@type': 'HowToStep', position: i + 1, name: step.name, text: step.text })),
-    }),
-  };
-}
-
 /** BreadcrumbList JSON-LD `<script>` for a route's `head().scripts`. */
 export function breadcrumbLd(items: { name: string; path: string }[]) {
   return {
@@ -127,8 +101,9 @@ export function faqLd(faqs: { q: string; a: string }[]) {
   };
 }
 
-/** Organization + WebSite + SoftwareApplication @graph JSON-LD `<script>` for rich results. */
+/** Organization + WebSite + WebApplication @graph JSON-LD `<script>` for machine-readable entity context. */
 export function marketingLd() {
+  const homepage = canonicalHref('/');
   return {
     type: 'application/ld+json',
     children: JSON.stringify({
@@ -136,34 +111,41 @@ export function marketingLd() {
       '@graph': [
         {
           '@type': 'Organization',
-          '@id': `${APP_URL}/#organization`,
+          '@id': `${homepage}#organization`,
           name: SITE_NAME,
-          url: APP_URL,
+          url: homepage,
           logo: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png'),
+          sameAs: [GITHUB_URL],
+          contactPoint: {
+            '@type': 'ContactPoint',
+            contactType: 'Product support',
+            email: 'support@nibleaf.com',
+            availableLanguage: ['English', 'Arabic'],
+          },
         },
         {
           '@type': 'WebSite',
-          '@id': `${APP_URL}/#website`,
+          '@id': `${homepage}#website`,
           name: SITE_NAME,
-          url: APP_URL,
+          url: homepage,
           inLanguage: ['en', 'ar'],
-          publisher: { '@id': `${APP_URL}/#organization` },
+          publisher: { '@id': `${homepage}#organization` },
         },
         {
-          '@type': 'SoftwareApplication',
-          '@id': `${APP_URL}/#software`,
+          '@type': 'WebApplication',
+          '@id': `${homepage}#software`,
           name: SITE_NAME,
           applicationCategory: 'DeveloperApplication',
           applicationSubCategory: 'Documentation Platform',
           operatingSystem: 'Web',
           description: ENTITY_SENTENCE,
-          url: APP_URL,
+          url: homepage,
           image: canonicalHref(OG_IMAGE_PATH),
           inLanguage: ['en', 'ar'],
           license: 'https://www.gnu.org/licenses/agpl-3.0.html',
           isAccessibleForFree: true,
-          publisher: { '@id': `${APP_URL}/#organization` },
-          offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: canonicalHref('/sign-up') },
+          publisher: { '@id': `${homepage}#organization` },
+          offers: { '@type': 'Offer', price: 0, priceCurrency: 'USD', availability: 'https://schema.org/InStock', url: canonicalHref('/pricing') },
         },
       ],
     }),
