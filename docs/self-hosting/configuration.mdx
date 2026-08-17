@@ -1,0 +1,93 @@
+---
+title: 'Configure a production deployment'
+description: 'Set public origins, independent secrets, object storage, email, domain routing, proxy trust, and operator access for self-hosted Nibleaf.'
+audience: 'self-hosted Nibleaf operators'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: '.env.production.example and docker-compose.prod.yml'
+---
+
+Copy `.env.production.example` from the release you are deploying. It is the
+authoritative setting template. Pin an image, set browser-reachable public
+origins, generate independent secrets, and keep internal services private.
+
+## Set the public origins
+
+`APP_URL` is the browser-facing dashboard origin and authentication base for a
+normal deployment. Do not add a trailing slash. Keep `NIBLEAF_BIND=127.0.0.1`
+when a reverse proxy runs on the same host.
+
+`SITE_BASE_DOMAIN` enables project hosts such as
+`project.docs.example.com`; it needs wildcard DNS and wildcard TLS.
+`CUSTOM_DOMAIN_CNAME_TARGET` is a hostname you operate that customer domains
+can target. Leave optional domain features empty until their DNS and TLS path is
+ready.
+
+## Generate independent secrets
+
+Generate secrets on the target host:
+
+```bash
+openssl rand -hex 32
+openssl rand -base64 24
+```
+
+Use separate random values for authentication, the internal API, Postgres, and
+object storage. Do not copy values from an example, development deployment,
+support request, or another environment. The production entrypoint rejects
+known demo authentication secrets.
+
+Two-way Git requires an exactly 32-byte base64 encryption key and a separate
+API/worker secret of at least 32 characters:
+
+```bash
+openssl rand -base64 32
+openssl rand -hex 32
+```
+
+Deploy `GIT_CREDENTIAL_ENCRYPTION_KEY` and `GIT_WORKER_SECRET` to the services
+listed by the release Compose file. Read the [Git key rotation boundary](/git-authoring)
+before enabling a production repository connection.
+
+## Configure object storage
+
+The server uses `STORAGE_ENDPOINT` for internal requests. The writer's browser
+uses presigned URLs based on `STORAGE_PUBLIC_ENDPOINT`, so that origin must be
+publicly reachable and must match how requests are signed. `STORAGE_PUBLIC_URL`
+is the base used when published pages reference assets.
+
+For bundled maxio, route the public storage hostname to maxio port 9000 through
+TLS. For R2, S3, Backblaze B2, or another compatible provider, make the endpoint,
+region, path-style behavior, credentials, bucket, CORS origins, and public URL
+agree. Upload and open a real image before inviting writers.
+
+## Configure sign-up and mail
+
+Production requires email verification by default. Set a verified `EMAIL_FROM`
+and configure Postmark or `SMTP_URL`. Send a verification and password-reset
+message to an external mailbox; a container health check cannot prove delivery.
+
+After creating the intended owners, set `DISABLE_SIGNUP=true` if registration
+should close. Existing accounts can still sign in.
+
+## Preserve the client address behind a proxy
+
+Forward the original host and HTTPS scheme. Configure `TRUSTED_PROXY_HOPS` only
+after capturing the real public forwarding chain and configuring the ingress to
+discard untrusted forwarded headers. A value that is too high lets clients
+influence the address used for rate limiting; a value that is too low groups
+traffic under the proxy.
+
+## Protect operator surfaces
+
+Only the app binds a host port in the production Compose file. Keep Postgres,
+Dragonfly, the API, the worker, maxio administration, and the optional admin app
+on the Docker network, loopback, or a private VPN.
+
+Set both `WORKBENCH_USER` and `WORKBENCH_PASS` even when worker port 4312 is not
+published. Use an SSH tunnel when an operator needs the jobs dashboard.
+
+Review the complete [environment-variable reference](/reference/environment-variables),
+then run the [production checklist](/self-hosting/production). If the site will
+be private, complete the [reader-access recovery procedure](/private-reader-access)
+before sending invitations.

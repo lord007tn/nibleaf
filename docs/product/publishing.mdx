@@ -1,0 +1,61 @@
+---
+title: 'Publish and verify a documentation version'
+description: 'Turn the reviewed default-branch draft into an immutable snapshot, verify the public response, and recover from a failed publish.'
+audience: 'workspace owners and editors responsible for releases'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/worker/src/processors/publish.ts and apps/server/src/actions/sites.ts'
+---
+
+Publishing freezes the current default-branch draft into a deployment snapshot.
+Readers continue to receive the latest ready snapshot until the worker finishes
+the new one successfully.
+
+## Run the pre-publish review
+
+Check the pages that changed:
+
+- The opening paragraph answers the page's primary question.
+- Prerequisites appear before actions that depend on them.
+- Commands and setting names match the current repository or release.
+- Links and redirects reach the final destination.
+- Images have useful alternative text and contain no secrets.
+- Headings form a logical outline.
+- Title, description, slug, indexing, and language relationships are correct.
+- Failure recovery is documented for destructive or operational tasks.
+
+For a large change, merge a reviewed documentation branch into the default
+draft before selecting **Publish**.
+
+## Publish one coherent version
+
+Select **Publish** once the default draft is ready. Nibleaf creates a deployment,
+queues the publish job, serializes the project and page tree, prepares search
+data, and marks the deployment ready. Do not edit and republish repeatedly to
+guess past a failing job; inspect its recorded failure first.
+
+## Verify as an unauthenticated reader
+
+Open the canonical host while signed out and check:
+
+1. The homepage and a deep page return HTTP 200.
+2. An unknown path returns HTTP 404.
+3. Search finds a phrase from late in a changed page.
+4. The page canonical uses the public host and current path.
+5. `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` return the
+   expected site and pages.
+6. A moved URL reaches its final page in one permanent hop.
+7. The mobile sidebar, language switcher, tables, and code blocks remain usable.
+
+A ready status proves that the snapshot job completed. It does not prove DNS,
+TLS, storage delivery, email, or an external custom domain.
+
+## Recover from failure
+
+If the job fails, leave the previous ready version live. Read the deployment
+failure and worker log, correct the draft or infrastructure cause, and publish a
+new version. If an incorrect version is already public, restore the intended
+content to the default draft and publish forward.
+
+Pinning an older application image does not roll back page drafts or a database
+migration. Self-hosters should use the separate [upgrade and restore process](/self-hosting/backups-upgrades).

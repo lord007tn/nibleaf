@@ -1,0 +1,75 @@
+---
+title: 'Choose your Nibleaf path'
+description: 'Decide between Nibleaf Cloud and self-hosting, understand the publishing model, and reach a useful first result without guessing.'
+audience: 'evaluators and new workspace owners'
+content_type: 'explanation'
+last_reviewed: '2026-08-17'
+verified_against: 'README.md and packages/database/prisma/schema.prisma'
+---
+
+Nibleaf is a documentation platform for teams that want a browser editor
+without giving up portable Markdown. You write and review a draft, then publish
+an immutable snapshot that readers can search and navigate.
+
+## Choose Cloud or self-hosting
+
+### Nibleaf Cloud
+
+Choose [Nibleaf Cloud](/getting-started/cloud) when you want to evaluate the
+product or start writing without infrastructure work.
+
+- **You operate:** your content and team settings.
+- **Nibleaf operates:** the application and supporting services.
+
+### Self-hosting
+
+Choose [self-hosting](/getting-started/self-hosted) when you need the application
+and data on infrastructure you control.
+
+- **You operate:** DNS, TLS, Postgres, Dragonfly, object storage, email, backups,
+  monitoring, and upgrades.
+- **Nibleaf provides:** the application source, container images, Compose
+  templates, and installation tooling.
+
+Cloud is a free beta. It does not currently carry an enterprise uptime or
+support commitment. Self-hosting gives you operational control, not fewer
+operational responsibilities. Review [known limitations](/reference/known-limitations)
+before choosing either path for a critical workload.
+
+## Understand drafts and published versions
+
+Nibleaf stores the active page tree and Markdown drafts in Postgres. Selecting
+**Publish** creates a deployment job. The worker freezes the current content
+and configuration into a versioned snapshot and marks it ready only after the
+job succeeds. Readers keep receiving the previous ready version while a new
+version builds.
+
+This boundary prevents a half-written draft from leaking into the public site.
+It does not replace backups, review, or source control: database state can still
+be lost, and a correctly built version can still contain incorrect content.
+
+## Define a first-success test
+
+Before importing a large knowledge base, publish a two-page project:
+
+1. Write an introduction that names the audience and the result they can reach.
+2. Add a second page under a group and link to it from the introduction.
+3. Preview both pages and wait for autosave to report **Saved**.
+4. Publish once.
+5. Open the public site while signed out, search for a phrase from the second
+   page, and request a made-up URL to confirm a real 404.
+
+You have a successful baseline when the public site, deep link, search result,
+and 404 response all behave as expected. Continue with the [Cloud tutorial](/getting-started/cloud)
+or the [self-hosted tutorial](/getting-started/self-hosted).
+
+## Know where product truth lives
+
+The public repository is authoritative for code, environment variables,
+Compose topology, and release tags. This documentation explains how to use
+those artifacts. When a command or setting differs from the checked-out release,
+follow the template shipped with that release and report the documentation gap.
+
+Use the API specification served at `/docs` on the API service for exact
+server routes. Use [.env.production.example](https://github.com/lord007tn/nibleaf/blob/main/.env.production.example)
+for the complete production setting list.

@@ -12,7 +12,7 @@
     "with-env": "dotenv -e ../../.env --",
     "generate": "prisma generate",
     "migrate:dev": "pnpm with-env prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy": "pnpm with-env prisma migrate deploy",
     "push": "pnpm with-env prisma db push",
     "studio": "pnpm with-env prisma studio",
     "clean": "git clean -xdf .cache .turbo dist node_modules src/generated",

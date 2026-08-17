@@ -1,0 +1,78 @@
+---
+title: 'Migrate documentation into Nibleaf'
+description: 'Plan a reversible migration from Mintlify, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
+audience: 'documentation owners planning a platform migration'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/server/src/actions/importers and apps/server/src/actions/export.ts'
+---
+
+Treat an import as a conversion, not proof of parity. Keep the source available,
+import into a disposable project or branch, account for every warning, and move
+traffic only after a crawl and rollback rehearsal.
+
+## Choose the source
+
+| Source | Nibleaf reads | Review closely |
+| --- | --- | --- |
+| Mintlify repository | Public GitHub repository, `docs.json` or `mint.json`, navigation, Markdown/MDX, reachable assets, and supported site settings. | Custom components, nested navigation containers, redirects, asset URLs, and unsupported settings. |
+| Ghost export | Supported posts, metadata, and assets from an export file. | Post-to-page hierarchy, language assignment, embeds, and missing remote assets. |
+| Public Git repository | Markdown content from the configured public provider and branch. | Source root, ordering, frontmatter, link rewriting, and later synchronization expectations. |
+
+For a Mintlify import, enter `owner/repository` and an optional branch. Nibleaf
+prefers `docs.json`, reads navigation relative to that file, imports linked
+internal pages omitted from navigation up to its safety limit, and preserves
+existing target settings when they are already populated.
+
+## Establish a baseline
+
+Before import, record:
+
+- source revision or export timestamp;
+- page and asset counts;
+- navigation hierarchy and redirects;
+- custom domains, canonical rules, indexing, and language relationships;
+- representative Markdown, MDX components, tables, diagrams, and downloads;
+- search queries that must return a particular page.
+
+Export or back up the source and choose an owner for the cutover and rollback.
+
+## Import and inspect warnings
+
+Run the import into a new project or isolated branch. Read the summary and
+resolve every skipped page, asset, duplicated slug, and unsupported setting.
+Nibleaf may retain a source URL when an asset cannot be copied; that is not a
+durable migration if the source will be removed.
+
+Search the imported source for old hostnames, `/docs` prefixes, source-specific
+component tags, embedded credentials, and absolute asset URLs.
+
+## Verify parity
+
+Use this order:
+
+1. Compare page count and hierarchy.
+2. Preview one page for every content pattern.
+3. Crawl internal links, images, downloads, redirects, and missing paths.
+4. Test the baseline search queries in every language.
+5. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
+   structured data on the initial HTML response.
+6. Verify keyboard and mobile behavior on representative pages.
+7. Publish to a non-primary hostname and repeat the checks while signed out.
+
+Do not delete the source or change DNS until the replacement has a tested
+rollback copy.
+
+## Export and recover
+
+Create a [Markdown export](/product/exports) before a large migration, before
+closing a workspace, and after the final source freeze. Markdown portability is
+separate from disaster recovery: self-hosters also need synchronized Postgres
+and object-storage backups.
+
+When GitHub will remain in the workflow, complete the [bidirectional Git
+authoring](/git-authoring) setup in a disposable repository first. Name Git or
+Nibleaf as the authority for each phase, use a dedicated authoring branch, and
+rehearse conflict resolution before allowing both browser and repository edits.
+See [known limitations](/reference/known-limitations) for provider and recovery
+boundaries.

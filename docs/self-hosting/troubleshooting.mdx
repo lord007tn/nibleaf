@@ -1,0 +1,99 @@
+---
+title: 'Troubleshoot a self-hosted deployment'
+description: 'Diagnose startup, migration, storage, email, publishing, domain, proxy, and search failures without destroying recoverable state.'
+audience: 'self-hosted operators responding to a failed workflow'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'docker-compose.prod.yml, scripts/install.sh, and apps/server/src/env.ts'
+---
+
+Start with the failed user outcome and the first relevant error. Preserve the
+current `.env`, database, storage, and logs before recreating services. Do not
+delete volumes or run a clean reset as a troubleshooting shortcut.
+
+## Collect a safe diagnostic snapshot
+
+Run from the deployment directory:
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs migrate
+docker compose -f docker-compose.prod.yml logs --since=15m server worker app
+docker compose -f docker-compose.prod.yml config --services
+```
+
+Do not post `docker compose config` or `.env`; rendered configuration can contain
+secrets. When asking for help, include the Nibleaf tag and digest, Compose
+version, affected service, redacted error, expected behavior, and exact time.
+
+## The stack does not start
+
+| Symptom | Likely cause | Next check |
+| --- | --- | --- |
+| Compose exits before creating services | A required environment value is empty. | Read the interpolation error and compare `.env` with the template from the same release. |
+| App waits for the server | Server health is failing or `migrate` did not complete. | Read `migrate`, then the first server error. |
+| Production refuses authentication secret | The value is empty, weak, or a known demo default. | Generate a fresh independent value and restart only after updating `.env`. |
+| Image pull is denied or missing | The tag does not exist or registry access failed. | Confirm the tag on the release page and run `docker compose pull` directly. |
+
+Do not skip migrations by removing dependencies from the Compose file.
+
+## Uploads fail in the browser
+
+The browser uses `STORAGE_PUBLIC_ENDPOINT`, not the internal Docker hostname.
+Confirm DNS, TLS, bucket CORS, credentials, path-style mode, and the signed host.
+Open the browser network error and compare its origin with `APP_URL` and
+`STORAGE_CORS_ALLOWED_ORIGINS`.
+
+An internal storage health check can pass while the public upload path fails.
+
+## Email does not arrive
+
+Confirm that `REQUIRE_EMAIL_VERIFICATION` matches the intended policy, then
+check the worker log, sender verification, Postmark message stream or SMTP URL,
+recipient spam folder, and provider activity. Without Postmark or SMTP, the
+worker logs development mail instead of delivering it.
+
+Do not disable verification as a permanent workaround for a public deployment.
+
+## A publish stays queued or fails
+
+Check worker health and queue connectivity, then read the deployment error and
+worker log at the publish time. The public site should continue serving the
+previous ready version. Correct the cause and publish forward; do not modify the
+database status manually.
+
+## An export or Git operation stays queued
+
+Check whether `WORKER_QUEUES` is empty or includes the required `export` or `git`
+queue. Then inspect worker health and the durable run or operation record in the
+dashboard. For PDF-only failures, verify `EXPORT_CHROMIUM_PATH` inside the worker.
+For Git failures, preserve the operation and conflict record; retry through the
+documented reconciliation flow instead of force-pushing the authoring branch.
+
+Changing `GIT_CREDENTIAL_ENCRYPTION_KEY` cannot repair a decryption error and
+will make existing credentials unreadable. Restore the correct key or follow a
+controlled disconnect/reconnect rotation.
+
+## A domain serves the wrong site
+
+Confirm DNS, certificate name, primary-domain status, original `Host` forwarding,
+and the configured base/CNAME targets. Test the app directly with the intended
+host header only from a trusted operator environment. A proxy that replaces all
+customer hosts with its internal upstream name prevents project resolution.
+
+## Every visitor shares one rate-limit bucket
+
+Capture the forwarding chain at the ingress. Configure the proxy to discard
+untrusted forwarded headers, then set `TRUSTED_PROXY_HOPS` to the number of
+public proxies that actually append addresses. Do not increase the value until
+requests stop failing; an excessive value weakens address attribution.
+
+## Search misses a recent edit
+
+Draft changes do not enter public search until a deployment is ready. Confirm
+the page is published and indexable, search its exact title, then a distinctive
+body phrase. For Arabic, test normalized spelling variants and consult
+[Arabic and RTL](/product/arabic-rtl).
+
+For security-sensitive behavior, stop public troubleshooting and use the
+private reporting path in the repository's `SECURITY.md`.

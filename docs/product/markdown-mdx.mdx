@@ -1,0 +1,90 @@
+---
+title: 'Markdown and MDX component reference'
+description: 'Use the Markdown, GitHub-style extensions, math, diagrams, and documentation components that Nibleaf renders and round-trips safely.'
+audience: 'documentation authors working in source mode'
+content_type: 'reference'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/app/src/components/site/mdx-config.ts and apps/app/src/components/markdown.tsx'
+---
+
+Nibleaf stores page bodies as Markdown strings and renders GitHub-flavored
+Markdown plus a documented component set. Preview source changes before
+publishing; syntactically valid MDX can still produce an unintended layout.
+
+## Standard Markdown
+
+Use ATX headings (`## Heading`), paragraphs, emphasis, links, images, blockquotes,
+ordered and unordered lists, fenced code, thematic breaks, and inline code.
+GitHub-flavored tables, task lists, autolinks, and strikethrough are enabled.
+
+Add a language to every fenced code block that contains code:
+
+````md
+```bash title="Start Nibleaf"
+docker compose -f docker-compose.prod.yml up -d
+```
+````
+
+Keep the page title in page settings rather than adding another H1 to the body.
+Start body sections at H2 and do not skip levels for visual styling.
+
+## Callouts
+
+GitHub-style admonitions round-trip through the visual editor:
+
+```md
+> [!WARNING]
+> Back up Postgres and object storage before an upgrade.
+```
+
+Supported variants normalize to `note`, `info`, `tip`, `check`, `warning`, and
+`danger`. `important` maps to information and `caution` maps to danger.
+
+## Block components
+
+The reader recognizes these component families:
+
+| Components | Purpose | Important attributes |
+| --- | --- | --- |
+| `Card`, `CardGroup` | Related destinations | `title`, `href`, `icon`, group `cols` |
+| `Steps`, `Step` | Ordered procedures | step `title` |
+| `Tabs`, `Tab` | Mutually exclusive variants | tab `title` |
+| `Accordion`, `AccordionGroup` | Optional detail | `title`, `defaultOpen` |
+| `Frame` | Media with context | `caption` |
+| `ParamField`, `ResponseField` | API field descriptions | `name`, `type`, `required`, `default`, `deprecated` |
+| `CodeGroup` | Alternative code samples | fenced-code languages become labels |
+| `Expandable`, `Update`, `Columns`, `Column`, `Banner` | Supplementary structured content | component-specific title or label fields |
+
+Put block tags on their own lines and leave a blank line around Markdown children:
+
+```mdx
+<Steps>
+  <Step title="Create a backup">
+
+  Run the backup script and record the output files.
+
+  </Step>
+</Steps>
+```
+
+## Inline components
+
+Use `<Tooltip tip="Plain-language definition">term</Tooltip>` for a short
+definition and `<Icon icon="star" />` for a curated interface icon. Do not use a
+tooltip for required instructions, and do not rely on an icon alone to convey
+meaning.
+
+## Math and diagrams
+
+Inline and block math use dollar delimiters through KaTeX. Mermaid diagrams use
+a `mermaid` fenced block and render client-side. Always add surrounding prose
+that states the diagram's conclusion; the diagram must not be the only place a
+reader can obtain required information.
+
+## Unsupported or custom syntax
+
+Raw scripts, event handlers, and unknown attributes are removed by the sanitizer.
+Custom JSX components and expressions may be preserved as source or read-only
+blocks, but Nibleaf cannot promise a custom runtime for them. Keep the page in
+Markdown mode, verify the published result, and prefer the supported component
+set for portable documentation.

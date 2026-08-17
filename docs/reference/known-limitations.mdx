@@ -1,0 +1,79 @@
+---
+title: 'Known limitations and product boundaries'
+description: 'Evaluate Nibleaf honestly against beta operations, identity, Git workflows, API portals, exports, private readers, and search requirements.'
+audience: 'technical evaluators, operators, and documentation leads'
+content_type: 'reference'
+last_reviewed: '2026-08-17'
+verified_against: 'README.md, apps/app/src/lib/comparison-data.ts, and current main branch'
+---
+
+Nibleaf is pre-1.0. Capability depends on the release you deploy, and `main` can
+contain features that are not in the latest GHCR release. Verify a required
+workflow against the exact tag before committing a production migration.
+
+## Identity and service commitments
+
+Nibleaf Cloud is a free beta and does not currently promise enterprise uptime
+or public-support response times. Export critical content and keep an operational
+fallback.
+
+Email/password and Google OAuth are available. SAML and a general enterprise SSO
+offering are not. Do not infer an identity compliance claim from the presence of
+OAuth or private-site controls.
+
+## Content and Git authority
+
+Nibleaf stores active page Markdown and navigation in Postgres. Markdown is the
+portable serialization format, but a database-backed project is not automatically
+a Git directory. Bidirectional authoring currently targets GitHub and uses a
+dedicated branch, draft pull request, and explicit conflict reconciliation.
+Public GitHub and GitLab repositories can still serve one-way import and
+repository-backed OpenAPI workflows.
+
+Before using a Git-centered workflow, test pull, push, conflict reconciliation,
+branch protection, and preview behavior with the same provider and repository
+shape you will use. Name one authoritative source and document recovery when
+both sides change.
+
+## API reference boundaries
+
+The platform server publishes its own OpenAPI reference. A project can publish
+one self-contained OpenAPI 3.x document from upload/paste, a safe public URL, or
+a connected public GitHub/GitLab repository. External `$ref` resolution and a
+server-side try-it proxy are not provided. Test one representative specification,
+large schemas, code samples, mobile navigation, keyboard use, CORS, authentication,
+and the browser try-it path before choosing Nibleaf for an API-first portal.
+
+Never publish live credentials inside an OpenAPI example. A reader-side try-it
+request also depends on the documented API accepting the documentation origin.
+
+## Operations and recovery
+
+Self-hosting moves DNS, TLS, databases, queues, object storage, email, backups,
+monitoring, upgrades, and incident response to the operator. The Compose stack
+is a deployment starting point, not a managed-service commitment.
+
+Application snapshots protect readers from half-written drafts. They are not a
+replacement for synchronized Postgres and object-storage backups.
+
+Portable exports start from the latest `READY` deployment and cover Markdown,
+PDF, or static HTML. They do not preserve drafts, workspace identities, comments,
+analytics, credentials, or the rest of the database. PDF export also requires a
+Chromium-compatible browser in the worker image.
+
+## Search and multilingual behavior
+
+Search is full-text and fuzzy, not semantic retrieval. Language-specific
+tokenization and Arabic normalization improve matching but do not guarantee
+that every inflected or synonymous term resolves to the intended page. Build
+acceptance queries from real reader vocabulary.
+
+Each language has an independent page tree. Nibleaf does not translate source
+content automatically or guarantee parity between languages.
+
+## Report a blocking gap
+
+Search the public issue tracker before filing a report. Include the release tag
+and digest, deployment type, expected result, actual result, and a minimal
+reproduction. Remove secrets, customer content, private hostnames, and tokens.
+Report vulnerabilities privately through the repository's `SECURITY.md` path.

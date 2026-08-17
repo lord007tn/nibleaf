@@ -1,0 +1,85 @@
+---
+title: 'Take a self-hosted installation to production'
+description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
+audience: 'operators responsible for production readiness'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
+---
+
+A green container is not a production launch. Prove the complete path from DNS
+and TLS through the application, storage, email, publishing, search, backups,
+and restore.
+
+## Verify DNS and TLS
+
+Test every intended origin independently:
+
+- dashboard `APP_URL`;
+- storage `STORAGE_PUBLIC_ENDPOINT`;
+- optional admin origin;
+- one project under `SITE_BASE_DOMAIN`;
+- the custom-domain CNAME target;
+- one real external custom domain.
+
+A wildcard project domain needs wildcard DNS and a certificate covering
+`*.<base-domain>`. Let's Encrypt wildcard certificates require a DNS challenge.
+For custom domains, preserve the validated original `Host` header through the
+ingress because Nibleaf uses it to select the project.
+
+## Verify service health
+
+Run from the deployment directory:
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs migrate
+docker compose -f docker-compose.prod.yml logs --tail=200 server worker app
+```
+
+The server and worker expose internal `/health` responses; the app health check
+requests `/sign-in`. Keep those checks on the internal network or loopback.
+Then test actual behavior: create and verify an account, upload an image, publish
+a two-page project, search the second page, request a missing page, and send a
+password-reset message.
+
+For enabled optional workflows, also create and download one [export](/product/exports),
+exercise a [redirect](/redirects), complete one [Git push and preview](/git-authoring),
+and prove both authorized and unauthorized [private reader access](/private-reader-access).
+
+## Verify security boundaries
+
+Confirm that:
+
+- internal ports are unreachable from the internet;
+- worker operations require credentials;
+- authentication and OAuth redirects use the public origin;
+- object-storage credentials are limited to the intended bucket;
+- public HTML carries the expected security headers and request-specific CSP;
+- admin and token-bearing auth pages are not indexable;
+- sign-up policy matches the intended audience;
+- private reader, audience, and JWT rules deny an ungranted page and search result;
+- Git provider credentials use the documented minimum repository scopes;
+- backups use separate access control from the live service.
+
+Do not publish secrets, customer content, access tokens, or full environment
+files in logs, screenshots, issues, or support discussions.
+
+## Monitor the user path
+
+Monitor container health, failed publish and export jobs, queue depth, Postgres
+disk usage, object-storage usage, backup age, certificate expiry, 5xx responses,
+and mail delivery. Add an external check for the canonical homepage and one deep
+published page, not only the app port.
+
+Set alerts before launch and record who responds to them.
+
+## Record the launch gate
+
+Launch only when a durable record contains the image tag and digest, migration
+result, DNS and TLS evidence, public 200/redirect/404 checks, upload and search
+evidence, last backup identifiers, isolated restore result, and the owner of
+alerts and upgrades.
+
+Complete [backup and restore](/self-hosting/backups-upgrades) before the first
+production content publish.

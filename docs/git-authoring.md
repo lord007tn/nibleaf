@@ -1,4 +1,11 @@
-# Bidirectional Git authoring
+---
+title: 'Connect a repository for bidirectional Git authoring'
+description: 'Connect GitHub with least-privilege credentials, publish browser edits through a draft pull request, and recover safely from conflicts.'
+audience: 'site administrators and documentation teams using GitHub'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/server/src/actions/git, apps/worker/src/processors/git.ts, and apps/app/src/components/settings/git-workflow.tsx'
+---
 
 Nibleaf can import a repository as before, or connect a GitHub repository for two-way authoring. In two-way mode, browser edits are committed to a dedicated branch, a draft pull request is created or updated, upstream changes are reconciled, and each pull request receives an immutable, noindex preview.
 

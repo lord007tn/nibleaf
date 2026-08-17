@@ -17,7 +17,7 @@ first-class Arabic/RTL support, custom domains, and a free cloud beta at
 [![CI](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml/badge.svg)](https://github.com/lord007tn/nibleaf/actions/workflows/ci.yml)
 [![Docker image](https://github.com/lord007tn/nibleaf/actions/workflows/docker.yml/badge.svg)](https://github.com/lord007tn/nibleaf/pkgs/container/nibleaf)
 
-[Homepage](https://nibleaf.com) · [Documentation](https://docs.nibleaf.com) · [Quick start](#-quick-start) · [Features](#-features) · [Self-host](https://docs.nibleaf.com/getting-started/self-hosted) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
+[Homepage](https://nibleaf.com) · [Documentation](https://docs.nibleaf.com) · [Docs source](docs/README.md) · [Quick start](#-quick-start) · [Features](#-features) · [Self-host](https://docs.nibleaf.com/getting-started/self-hosted) · [Architecture](#️-architecture) · [Contributing](CONTRIBUTING.md)
 
 <br />
 
