@@ -1,0 +1,78 @@
+---
+title: 'Back up, restore, and upgrade Nibleaf'
+description: 'Capture Postgres and object storage as one recovery set, test restoration in isolation, and upgrade or roll back a pinned Nibleaf release.'
+audience: 'self-hosted Nibleaf operators'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'scripts/backup.sh, docker-compose.prod.yml, and packages/database/prisma/migrations'
+---
+
+A usable recovery set includes Postgres and object storage from the same
+operational window. A database dump without uploaded assets is incomplete. Keep
+copies outside the live host and account, and prove restoration before relying
+on them.
+
+## Create a backup
+
+From a repository checkout, the bundled script defaults to
+`docker-compose.prod.yml`, `./backups`, 14-day local retention, and the bundled
+maxio volume:
+
+```bash
+./scripts/backup.sh
+```
+
+For a guided-installer directory where the Compose file is named
+`docker-compose.yml`, point the script at that file:
+
+```bash
+COMPOSE_FILE=docker-compose.yml ./scripts/backup.sh
+```
+
+The script creates a custom-format `pg_dump` and, when the configured Docker
+volume exists, a compressed storage archive. External R2 or S3 buckets are not
+captured by the Docker-volume step; use provider versioning, replication, or an
+independent bucket backup.
+
+Ship both artifacts off-host with separate credentials and record identifiers,
+sizes, timestamps, retention, and the application release.
+
+## Test a restore
+
+Never overwrite production for a drill. Create an isolated database, storage
+target, and application origin. Follow the restore commands documented at the
+top of `scripts/backup.sh`, then verify projects, memberships, page trees,
+current drafts, ready deployments, uploaded assets, authentication isolation,
+and public search.
+
+Record elapsed time and every manual step. A backup job exit code without a
+successful isolated restore is not recovery evidence.
+
+## Upgrade a pinned release
+
+Read each intervening release note and check for release-specific migration or
+configuration changes. Create and restore-test a backup, then change
+`NIBLEAF_VERSION` to an existing release tag in `.env`:
+
+```dotenv
+NIBLEAF_VERSION=v0.2.0
+```
+
+Pull and recreate the services:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Confirm the image digest, migration log, service health, sign-in, one upload,
+one publish, one search, and one public page.
+
+## Roll back safely
+
+If no schema migration ran, pin the prior image and recreate the services. If a
+forward-only migration changed the database, stop writes and restore the
+pre-upgrade recovery set before starting the older application.
+
+Do not combine an application upgrade with a PostgreSQL major-version change.
+Treat the database upgrade as a separate dump-and-restore project.

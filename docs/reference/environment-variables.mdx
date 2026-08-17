@@ -1,0 +1,95 @@
+---
+title: 'Production environment variables'
+description: 'Look up the production image, origin, domain, secret, storage, authentication, email, proxy, worker, and lifecycle settings Nibleaf consumes.'
+audience: 'self-hosted operators and infrastructure reviewers'
+content_type: 'reference'
+last_reviewed: '2026-08-17'
+verified_against: '.env.production.example and docker-compose.prod.yml'
+---
+
+Start from `.env.production.example` shipped with the release. This page explains
+the setting groups, but the template and Compose file determine what that release
+actually consumes. Never commit a populated `.env`.
+
+## Image and public application
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `NIBLEAF_VERSION` | Yes in practice | `v0.1.1` in the current template | GHCR release tag. Pin an existing release; avoid floating tags. |
+| `APP_URL` | Yes | None | Browser-facing dashboard and normal authentication origin, without a trailing slash. |
+| `ADMIN_URL` | Only when admin is exposed | `http://localhost:4315` | Public origin for the optional operator console. |
+| `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
+| `APP_PORT` | No | `4310` | Host port mapped to the app container. |
+| `BETTER_AUTH_URL` | No | `APP_URL` | Explicit authentication base override. |
+| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. |
+| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. |
+
+## Published documentation domains
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `SITE_BASE_DOMAIN` | No | Empty | Enables `<project>.<base-domain>` publishing; requires wildcard DNS and TLS. |
+| `CUSTOM_DOMAIN_CNAME_TARGET` | No | `SITE_BASE_DOMAIN` | Operator-controlled CNAME target shown to custom-domain owners. |
+| `CUSTOM_DOMAIN_PROVIDER` | No | `ingress` | Custom-domain automation strategy supported by the release. |
+| `CLOUDFLARE_SAAS_ZONE_ID` | For Cloudflare for SaaS | Empty | Zone identifier for managed custom hostnames. |
+| `CLOUDFLARE_SAAS_API_TOKEN` | For Cloudflare for SaaS | Empty | Narrow token for custom-hostname operations. |
+| `CLOUDFLARE_SAAS_WORKER_SCRIPT` | No | `nibleaf-custom-domain-edge` | Edge worker script name. |
+| `CUSTOM_DOMAIN_EDGE_SECRET` | For the managed edge path | Empty | Shared edge-to-origin authentication secret. |
+
+## Required secrets
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `BETTER_AUTH_SECRET` | Yes | Signs authentication state. Generate independently with `openssl rand -hex 32`. |
+| `POSTGRES_PASSWORD` | Yes | Password for the bundled Nibleaf database user. |
+| `INTERNAL_API_SECRET` | Strongly recommended | Authenticates trusted app-to-API hints used for accurate rate limiting. |
+
+## Object storage
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `STORAGE_PROVIDER` | No | `maxio` | Provider behavior such as `maxio`, `r2`, or another supported S3-compatible mode. |
+| `STORAGE_ENDPOINT` | For external storage | `http://maxio:9000` | Server-to-storage endpoint. |
+| `STORAGE_PUBLIC_ENDPOINT` | Yes | None | Browser-reachable origin used for presigned requests. |
+| `STORAGE_ACCESS_KEY_ID` | Yes | None | Bucket access identifier. |
+| `STORAGE_SECRET_ACCESS_KEY` | Yes | None | Bucket secret. Generate independently. |
+| `STORAGE_BUCKET` | No | `nibleaf` | Asset and export bucket. |
+| `STORAGE_REGION` | No | `auto` | S3 region value. |
+| `STORAGE_FORCE_PATH_STYLE` | No | `true` | Use path-style bucket URLs; AWS S3 commonly uses `false`. |
+| `STORAGE_PUBLIC_URL` | Recommended | Empty | Public asset base, often a bucket or CDN URL. |
+| `STORAGE_CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Browser origins allowed to upload directly. |
+| `STORAGE_AUTO_CORS` | No | `true` | Let Nibleaf configure supported bucket CORS automatically. |
+| `MAXIO_SECURE_COOKIES` | No | `true` | Require HTTPS for bundled maxio console cookies. |
+
+## Authentication and email
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `REQUIRE_EMAIL_VERIFICATION` | No | `true` | Require delivery and verification before sign-in. |
+| `DISABLE_SIGNUP` | No | `false` | Close new registration while preserving existing sign-in. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | For Google sign-in | Empty | OAuth client credentials. |
+| `EMAIL_FROM` | For delivery | `nibleaf@localhost` | Provider-verified sender. |
+| `POSTMARK_API_KEY` | For Postmark | Empty | Server token; preferred when set. |
+| `POSTMARK_MESSAGE_STREAM` | No | Empty | Postmark stream. |
+| `SMTP_URL` | For SMTP fallback | Empty | Full SMTP connection URL. Protect it as a secret. |
+
+## Optional product and traffic controls
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | Only for AI assist | Empty | Enables explicit AI writing actions. |
+| `AI_DAILY_LIMIT` | No | Application default | Per-workspace daily AI request limit; `0` disables drafting. |
+| `RATE_LIMIT_PUBLIC_PER_MIN` | No | Application default | Public site-serving requests per address per minute. |
+| `TRUSTED_PROXY_HOPS` | No | `0` | Count of trusted public proxies that append to the forwarding chain. |
+
+## Operator and lifecycle settings
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `WORKBENCH_USER`, `WORKBENCH_PASS` | Recommended | Empty | Basic authentication for worker operations at port 4312. |
+| `NIBLEAF_RUN_SEED` | No | `false` | Seed demo content during migration; keep false in production. |
+| `SERVER_SHUTDOWN_TIMEOUT_MS` | No | `25000` | API drain timeout in milliseconds. |
+| `NIBLEAF_SHUTDOWN_GRACE` | No | `30s` | Container stop grace; keep longer than the server timeout. |
+
+After changing origins, secrets, or storage, recreate the affected services and
+repeat the workflow checks in [production readiness](/self-hosting/production).

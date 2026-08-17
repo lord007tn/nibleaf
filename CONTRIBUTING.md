@@ -55,6 +55,12 @@ pnpm lint        # biome check .
 pnpm test        # vitest across the workspace
 ```
 
+Documentation lives under [`docs/`](docs/README.md), with reader navigation in
+`docs/docs.json`. Run `pnpm docs:check` after changing a page or the navigation.
+The [documentation contribution guide](docs/contributing/documentation.mdx)
+covers content types, product-truth checks, visual review, and publication to
+the canonical site.
+
 ## Conventions
 
 - **Monorepo** (pnpm + turbo). Apps live in `apps/*`, shared libraries in

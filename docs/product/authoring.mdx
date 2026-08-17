@@ -1,0 +1,65 @@
+---
+title: 'Write and review a page'
+description: 'Choose an editing mode, organize the page tree, use branches and anchored comments, and recover safely when a draft does not render.'
+audience: 'writers, editors, and documentation reviewers'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/app/src/components/editor and apps/server/src/actions/pages.ts'
+---
+
+Every Nibleaf page has one Markdown source. Visual, WYSIWYG, and Markdown are
+editing modes for that source, not separate documents. Preview is a separate
+action that opens the saved draft in a reader view. Wait for **Saved** before
+leaving a page or publishing.
+
+## Choose an editing mode
+
+| Mode | Use it for | Check before leaving |
+| --- | --- | --- |
+| Visual | Structured blocks, slash commands, tables, and rearranging content. | Complex components still contain their attributes and children. |
+| WYSIWYG | Focused prose editing with less interface chrome. | Headings, lists, and links kept their intended structure. |
+| Markdown | Direct source changes, bulk edits, and syntax unavailable as a visual control. | Fences, component tags, and blank lines are balanced. |
+If a page contains a component the structured editor cannot safely round-trip,
+Nibleaf keeps that block read-only or opens the page in Markdown mode. This is a
+data-preservation boundary, not an error to bypass.
+
+Use **Preview** after changing structure, components, links, or mixed-direction
+text. The preview action saves pending content before opening the draft in a new
+tab; allow pop-ups for the Nibleaf origin if the tab does not open.
+
+## Organize pages around reader tasks
+
+Use groups to create a shallow hierarchy and pages for content readers can open.
+Give each page one primary purpose. A practical product manual normally exposes
+getting started, common tasks, configuration, operations and troubleshooting,
+and reference without copying the application's internal menu.
+
+Before moving or renaming a published page, record its public path. Parent groups
+contribute to the path. Add a direct permanent redirect from the old path and
+update internal links so readers do not spend a hop on normal navigation.
+
+## Review a substantial change
+
+Create a branch before a migration, large rewrite, or page-tree reorganization.
+Use a name that describes the outcome. Add anchored comments to the exact block
+being reviewed, then resolve or record every blocking discussion.
+
+Review the branch as a reader:
+
+1. Open every changed page in Preview.
+2. Test new links and paths.
+3. Search using words a reader would type.
+4. Check a narrow mobile viewport and keyboard focus.
+5. Confirm title, description, indexing, and language relationships.
+6. Merge the reviewed branch into the default draft, publish once, and verify
+   the public deployment.
+
+## Recover from a bad draft
+
+If the public version is still correct, stop before publishing. Compare the
+draft with the last ready deployment or a Markdown export, repair one section,
+wait for **Saved**, and preview again. For a conflicting multi-writer change,
+preserve both sources until the intended version has been reconciled.
+
+Publishing history helps with content releases, but it is not a database backup.
+Self-hosters should also follow [backup and restore](/self-hosting/backups-upgrades).

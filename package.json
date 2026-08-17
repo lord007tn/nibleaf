@@ -23,6 +23,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "release:notes": "pnpm dlx changelogithub@14.0.0",
+    "docs:check": "node scripts/check-docs.mjs",
     "db:generate": "pnpm --filter @nibleaf/database generate",
     "db:migrate": "pnpm --filter @nibleaf/database migrate:dev",
     "db:deploy": "pnpm --filter @nibleaf/database migrate:deploy",

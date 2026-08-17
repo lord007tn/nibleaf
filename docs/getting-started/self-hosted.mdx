@@ -1,0 +1,103 @@
+---
+title: 'Install Nibleaf on one Linux server'
+description: 'Install the pinned Nibleaf release with the guided installer or Docker Compose, then verify migrations, sign-up, storage, and publishing.'
+audience: 'operators evaluating or installing self-hosted Nibleaf'
+content_type: 'tutorial'
+last_reviewed: '2026-08-17'
+verified_against: 'scripts/install.sh, docker-compose.prod.yml, and .env.production.example'
+---
+
+The recommended production path pulls the pinned multi-architecture image from
+GHCR. It does not compile the monorepo on the server. Complete this tutorial on
+a disposable host before moving real content.
+
+## Prerequisites
+
+Prepare:
+
+- a Linux host with Docker Engine and Docker Compose v2 (`docker compose`);
+- `curl`, `sed`, and OpenSSL;
+- a dashboard hostname and a separate browser-reachable storage hostname;
+- a TLS reverse proxy;
+- outbound email when email verification is enabled;
+- enough separate capacity for Postgres and object-storage backups.
+
+Confirm the required tools:
+
+```bash
+docker --version
+docker compose version
+curl --version
+openssl version
+```
+
+## Run the guided installer
+
+For the shortest path, run the official interactive installer from an SSH
+terminal:
+
+```bash
+curl -fsSL https://nibleaf.com/install.sh | sh
+```
+
+If your security policy requires inspection before execution, download and
+review the same script first:
+
+```bash
+curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
+less nibleaf-install.sh
+sh nibleaf-install.sh
+```
+
+The installer validates its local tools, asks for public origins, generates
+fresh secrets, writes a mode-600 `.env`, downloads the production Compose file,
+pulls the pinned image, and starts the stack. Its default install directory is
+`$PWD/nibleaf`.
+
+## Install manually
+
+Use this path when configuration management owns the environment file:
+
+```bash
+git clone https://github.com/lord007tn/nibleaf.git
+cd nibleaf
+cp .env.production.example .env
+```
+
+Set every required value in `.env`. Generate independent secrets; never reuse
+example, development, or cross-environment values:
+
+```bash
+openssl rand -hex 32
+openssl rand -base64 24
+```
+
+Then pull and start the pinned release:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+The one-shot `migrate` service applies Prisma migrations before the application
+services start.
+
+## Verify the first result
+
+Run:
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs migrate
+docker compose -f docker-compose.prod.yml logs --tail=100 server worker app
+```
+
+All long-running services should be healthy and `migrate` should exit
+successfully. Open `$APP_URL/sign-up`, create the first owner, upload one image,
+and publish a two-page project. Verify the image URL and search while signed out.
+
+If a service is unhealthy, do not repeatedly recreate the stack. Read the
+first error for that service and use [troubleshooting](/self-hosting/troubleshooting).
+Before inviting writers, complete [production configuration](/self-hosting/configuration),
+the [production checklist](/self-hosting/production), and a tested
+[backup and restore](/self-hosting/backups-upgrades).

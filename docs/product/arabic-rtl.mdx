@@ -1,0 +1,60 @@
+---
+title: 'Publish Arabic and right-to-left documentation'
+description: 'Create an Arabic page tree, connect real translations, and verify direction, mixed technical text, search, metadata, and mobile navigation.'
+audience: 'writers and reviewers publishing Arabic documentation'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'apps/app/src/lib/languages.ts, packages/search/src/index.ts, and apps/server/src/actions/sites.ts'
+---
+
+Each Nibleaf language has its own page tree and direction. Arabic reader chrome
+renders right to left while inline code and code blocks remain left to right.
+Publish only real translations and connect the pages that are actual counterparts.
+
+## Add the Arabic language
+
+Open the page-tree language controls, add Arabic with the correct language code
+and `rtl` direction, and decide which language is the default. An Arabic page
+may use a different slug and location from its English counterpart.
+
+Do not create empty translated copies just to make the trees match. Missing,
+non-indexable, and external-canonical pages should not be advertised as a
+reciprocal language cluster.
+
+## Connect translations
+
+Link each translated page to its actual counterpart. Nibleaf uses that explicit
+relationship when generating `hreflang`; matching slugs are not required.
+
+```text
+English: /getting-started
+Arabic:  /البدء
+```
+
+The initial HTML should agree on `lang`, `dir`, page title, description, Open
+Graph locale, canonical, language alternates, and structured-data language.
+
+## Test mixed technical text
+
+Use a sentence containing Arabic prose, a command, a path, a query string, and
+a version number:
+
+```text
+شغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.1.1.
+```
+
+Check the line in Visual, Markdown, Preview, and the published reader. Copy the
+command into a plain-text field to verify its logical order. Also check focus
+order, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,
+font weights, mobile menus, long code blocks, and heading spacing.
+
+## Verify Arabic search
+
+Arabic projects use the Arabic tokenizer plus conservative normalization:
+diacritics and tatweel are removed, common alef forms are folded, and alef
+maqsura maps to ya. The current release does not enable stemming, so it is not
+a semantic or root-based search engine.
+
+Test words with and without diacritics, alef variants, tatweel, common prefixes
+and suffixes, singular and plural forms, and product terms written in Arabic and
+Latin script. Use real page vocabulary, not synthetic keyword lists.

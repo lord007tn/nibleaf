@@ -1,0 +1,35 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "Nibleaf documentation",
+  "description": "Use Nibleaf Cloud or operate the self-hosted documentation platform.",
+  "theme": "mint",
+  "colors": {
+    "primary": "#B96A3D",
+    "light": "#C67A50",
+    "dark": "#A85832"
+  },
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": ["getting-started/introduction", "getting-started/cloud", "getting-started/self-hosted"]
+      },
+      {
+        "group": "Use Nibleaf",
+        "pages": ["product/authoring", "product/markdown-mdx", "product/publishing", "product/arabic-rtl", "product/migration"]
+      },
+      {
+        "group": "Self-hosting",
+        "pages": ["self-hosting/configuration", "self-hosting/production", "self-hosting/backups-upgrades", "self-hosting/troubleshooting"]
+      },
+      {
+        "group": "Reference",
+        "pages": ["reference/environment-variables", "reference/api", "reference/known-limitations"]
+      },
+      {
+        "group": "Contribute",
+        "pages": ["contributing/documentation"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+---
+title: 'Contribute to Nibleaf documentation'
+description: 'Propose, write, validate, review, publish, and maintain Nibleaf documentation changes with reproducible evidence and product-truth checks.'
+audience: 'open-source contributors and Nibleaf maintainers'
+content_type: 'how-to'
+last_reviewed: '2026-08-17'
+verified_against: 'CONTRIBUTING.md, docs/docs.json, and scripts/check-docs.mjs'
+---
+
+Documentation changes use the same pull-request workflow as code. The repository
+source makes the content reviewable; the canonical site changes only after the
+approved source is imported or synchronized, published, and verified.
+
+## Choose one reader and one purpose
+
+Before writing, name the reader's goal and select one content type:
+
+- tutorial for a guided first success;
+- how-to for a specific task;
+- reference for scannable facts;
+- explanation for concepts and decisions.
+
+Split pages that try to teach a beginner, troubleshoot an incident, and list
+every setting at the same time. Use the terminology visible in Nibleaf and the
+words readers use in support and search.
+
+## Verify product claims
+
+Read the implementation, example environment files, Compose files, tests, and
+release notes that govern the workflow. Run commands on a matching environment
+when practical. If a claim applies only to `main`, a beta feature, or a future
+release, say so rather than presenting it as generally available.
+
+Do not copy proprietary documentation wording. External guides can inform the
+method and structure; Nibleaf's repository determines product truth.
+
+## Write a self-contained page
+
+Start with the outcome. Put prerequisites before steps, keep one action per
+step, show expected results, and add recovery for plausible failures. Use clear
+H2 and H3 headings, descriptive links, language-tagged code fences, meaningful
+image alternative text, and exact interface labels.
+
+Every page requires `title`, `description`, `audience`, `content_type`,
+`last_reviewed`, and `verified_against` frontmatter. Add it to `docs.json`; do
+not leave a navigable page orphaned.
+
+## Validate and review
+
+Run:
+
+```bash
+pnpm docs:check
+pnpm --filter @nibleaf/app build
+```
+
+For a user-visible workflow, preview representative desktop and mobile widths.
+Use a screenshot only when it clarifies a hard-to-find state or proves layout;
+keep written instructions sufficient without it. Redact accounts, tokens,
+customer content, and infrastructure details.
+
+The pull request should state the reader problem, changed paths, commands and
+sources checked, test results, visual evidence, product boundaries, and any
+remaining gap.
+
+## Publish and maintain
+
+After review, import or synchronize the source into the official Nibleaf project,
+publish one coherent version, and test the canonical site while signed out.
+Check a deep page, search, 404, canonical, sitemap, `llms.txt`, mobile navigation,
+and changed redirects.
+
+Use documentation analytics, no-result searches, support questions, product
+changes, and reader feedback to trigger focused reviews. Remove or correct
+misleading instructions promptly; wrong operational documentation is worse
+than an explicit limitation.
