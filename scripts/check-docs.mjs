@@ -4,6 +4,9 @@ import { dirname, extname, join, normalize, relative, resolve, sep } from 'node:
 const root = process.cwd();
 const docsRoot = join(root, 'docs');
 const configPath = join(docsRoot, 'docs.json');
+// Repository planning material lives beside the importable docs source, but it
+// is intentionally not reader-facing and must not be forced into docs.json.
+const nonPublishedRoots = [join(docsRoot, 'marketing')];
 const errors = [];
 
 const fail = (file, message) => errors.push(`${relative(root, file)}: ${message}`);
@@ -53,6 +56,7 @@ if (!existsSync(configPath)) {
 
     for (const file of markdownFiles(docsRoot)) {
       if (file === join(docsRoot, 'README.md')) continue;
+      if (nonPublishedRoots.some((directory) => file.startsWith(`${directory}${sep}`))) continue;
       if (!navigatedFiles.has(normalize(file))) fail(file, 'page is orphaned from docs.json navigation');
     }
 
