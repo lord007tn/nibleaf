@@ -9,18 +9,18 @@ export interface MarketingSitemapEntry {
  * (rolled forward only when that page materially changes). Blog URLs are
  * appended from the article frontmatter registry. */
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
-  { path: '/', lastmod: '2026-08-15' },
+  { path: '/', lastmod: '2026-08-17' },
   { path: '/cloud', lastmod: '2026-07-13' },
   { path: '/pricing', lastmod: '2026-08-15' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
   { path: '/about', lastmod: '2026-08-15' },
   { path: '/contact', lastmod: '2026-08-15' },
-  { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-08-15' },
-  { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-08-15' },
-  { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-08-15' },
-  { path: '/alternatives/mintlify', lastmod: '2026-08-15' },
-  { path: '/alternatives/gitbook', lastmod: '2026-08-15' },
-  { path: '/alternatives/readme', lastmod: '2026-08-15' },
+  { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-08-17' },
+  { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-08-17' },
+  { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-08-17' },
+  { path: '/alternatives/mintlify', lastmod: '2026-08-17' },
+  { path: '/alternatives/gitbook', lastmod: '2026-08-17' },
+  { path: '/alternatives/readme', lastmod: '2026-08-17' },
   { path: '/terms', lastmod: '2026-08-15' },
   { path: '/privacy', lastmod: '2026-08-15' },
 ];

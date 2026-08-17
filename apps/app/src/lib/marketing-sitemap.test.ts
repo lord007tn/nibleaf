@@ -2,22 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { MARKETING_SITEMAP, marketingSitemap, marketingSitemapEntries } from './marketing-sitemap';
 
 describe('marketing sitemap', () => {
-  it('uses the material-change date only for routes updated on August 15', () => {
+  it('uses each route material-change date', () => {
     const lastmodByPath = Object.fromEntries(MARKETING_SITEMAP.map((entry) => [entry.path, entry.lastmod]));
 
     expect(lastmodByPath).toEqual({
-      '/': '2026-08-15',
+      '/': '2026-08-17',
       '/cloud': '2026-07-13',
       '/pricing': '2026-08-15',
       '/self-hosting': '2026-08-15',
       '/about': '2026-08-15',
       '/contact': '2026-08-15',
-      '/compare/nibleaf-vs-mintlify': '2026-08-15',
-      '/compare/nibleaf-vs-gitbook': '2026-08-15',
-      '/compare/nibleaf-vs-docusaurus': '2026-08-15',
-      '/alternatives/mintlify': '2026-08-15',
-      '/alternatives/gitbook': '2026-08-15',
-      '/alternatives/readme': '2026-08-15',
+      '/compare/nibleaf-vs-mintlify': '2026-08-17',
+      '/compare/nibleaf-vs-gitbook': '2026-08-17',
+      '/compare/nibleaf-vs-docusaurus': '2026-08-17',
+      '/alternatives/mintlify': '2026-08-17',
+      '/alternatives/gitbook': '2026-08-17',
+      '/alternatives/readme': '2026-08-17',
       '/terms': '2026-08-15',
       '/privacy': '2026-08-15',
     });

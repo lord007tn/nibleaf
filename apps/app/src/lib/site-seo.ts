@@ -304,12 +304,6 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   // Structured data: a TechArticle for the page + a BreadcrumbList for its trail,
   // so search engines/AI can read the doc title, description and hierarchy.
   const canonicalBase = canonicalSiteBase(projectId, urlOptions);
-  const organization = {
-    '@type': 'Organization',
-    name: data.project.name,
-    url: canonicalBase,
-    ...(config?.branding?.logoLight ? { logo: { '@type': 'ImageObject', url: config.branding.logoLight } } : {}),
-  };
   const scripts: Script[] = [
     {
       type: 'application/ld+json',
@@ -322,8 +316,6 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
         ...(ogImage ? { image: ogImage } : {}),
         datePublished: data.page.createdAt,
         dateModified: data.page.updatedAt,
-        author: organization,
-        publisher: organization,
         mainEntityOfPage: { '@type': 'WebPage', '@id': url },
         inLanguage: activeLang,
         // The language's localized site name also names the WebSite in JSON-LD.
