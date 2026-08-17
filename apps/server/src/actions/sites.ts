@@ -1,4 +1,3 @@
-import { auth } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { searchDocs } from '@nibleaf/search';
 import {
@@ -17,6 +16,7 @@ import {
   type SnapshotPage,
   type SnapshotProject,
   type SnapshotVersion,
+  withOpenApiNav,
 } from '@nibleaf/shared/site';
 import type { TrackEventBody } from '@nibleaf/validators';
 import { getContext } from 'hono/context-storage';
@@ -25,10 +25,13 @@ import { notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
+import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
+import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
 import { trackEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
+import { resolveViewerAccess, type ViewerAccess } from './reader-access';
 
 /** Resolve a published site by its canonical project id. */
 const resolveProjectId = async (identifier: string): Promise<string> => {
@@ -43,29 +46,8 @@ interface PublishedSite {
   snapshot: SiteSnapshot;
   version: number;
   deploymentId: string;
+  viewer: ViewerAccess;
 }
-
-/** Enforce per-project visibility. A `private` site is only viewable by a
- *  signed-in member of the owning organization. The session is resolved lazily
- *  straight from the request — and only when the site is private — so public
- *  sites pay nothing. We throw notFound (not forbidden) so a private site's
- *  existence is never leaked to anonymous visitors. */
-const assertViewable = async (projectId: string, snapshot: SiteSnapshot): Promise<void> => {
-  const visibility = (snapshot.project.config as { visibility?: string } | null)?.visibility;
-  if (visibility !== 'private') {
-    return;
-  }
-  const headers = getContext<HonoEnv>().req.raw.headers;
-  const result = await auth.api.getSession({ headers }).catch(() => null);
-  const userId = result?.user?.id;
-  const project = userId ? await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }) : null;
-  const member = project
-    ? await prisma.member.findUnique({ where: { organizationId_userId: { organizationId: project.organizationId, userId: userId as string } } })
-    : null;
-  if (!member) {
-    throw notFound('site', { identifier: projectId, reason: 'private' });
-  }
-};
 
 /** The live, non-versioned site chrome fields read off the Project row. */
 interface LiveChromeRow {
@@ -73,6 +55,7 @@ interface LiveChromeRow {
   description: string | null;
   icon: string | null;
   config: unknown;
+  accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
   /** Moderation kill switch — a taken-down project must stop serving. */
   takedownAt: Date | null;
   /** Best verified domain (isPrimary first, oldest verified as fallback). */
@@ -89,7 +72,7 @@ interface LiveChromeRow {
 
 /** A snapshot project enriched with the fields the published-site edge needs
  *  (canonical/301 consolidation in apps/app reads `primaryDomain`). */
-type PublicSnapshotProject = SnapshotProject & { primaryDomain: string | null };
+type PublicSnapshotProject = SnapshotProject & { primaryDomain: string | null; accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS' };
 
 /** Deployment snapshots are immutable per deployment id, so deserializing the
  *  (potentially large) JSONB once per instance instead of once per page view is
@@ -108,7 +91,8 @@ const llmsTxtCache = new LruCache<string, string>(50);
 const llmsFullTxtCache = new LruCache<string, string>(50);
 
 /** Live project chrome is NOT frozen — config/appearance edits must show up on
- *  the live site within seconds, so this cache is TTL-bounded at 15s. */
+ *  the live site within seconds, so this cache is TTL-bounded at 15s. Executable
+ *  redirects are the exception and remain sourced from the READY snapshot. */
 const liveChromeCache = new TtlCache<string, LiveChromeRow | null>(200, 15_000);
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
@@ -123,6 +107,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       description: true,
       icon: true,
       config: true,
+      accessMode: true,
       takedownAt: true,
       // ONLY an explicitly-designated primary domain may become the canonical /
       // 301 target. `verified` proves TXT ownership, not that the domain's CNAME
@@ -152,9 +137,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
 /** Overlay live, non-versioned site chrome from the Project row onto a snapshot
  *  project. Branding and config (styling, navbar/footer, SEO, visibility,
  *  analytics, variables) reflect the current settings so appearance edits are
- *  live without a re-publish. Content, pages, languages and versions are left
- *  as captured — those are the versioned docs a publish freezes. Returns a new
- *  object so the cached (shared) snapshot is never mutated per-request. */
+ *  live without a re-publish. Redirects, content, pages, languages and versions
+ *  are left as captured — those are routing/versioned data a publish freezes.
+ *  Returns a new object so the cached snapshot is never mutated per-request. */
 const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null): SnapshotProject => {
   if (!live) {
     return project;
@@ -171,7 +156,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
     name: live.name,
     description: live.description,
     icon: live.icon,
-    config: (live.config as Record<string, unknown> | null) ?? null,
+    config: overlayLiveConfigPreservingPublishedRedirects(project.config, (live.config as Record<string, unknown> | null) ?? {}),
     languages: project.languages.map((language) => {
       const row = liveByCode.get(language.code);
       if (!row) return language;
@@ -193,6 +178,12 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
 export const isProjectTakenDown = async (projectId: string): Promise<boolean> => {
   const live = await getLiveChrome(projectId).catch(() => null);
   return Boolean(live?.takedownAt);
+};
+
+export const projectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  if (!live || live.takedownAt) return null;
+  return resolveViewerAccess(projectId, live.accessMode, headers);
 };
 
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
@@ -227,17 +218,28 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // visibility, analytics) over the frozen snapshot so config/appearance edits
   // apply to the live site within seconds — without a re-publish. Page CONTENT
   // and navigation STRUCTURE stay frozen in the snapshot (those are the
-  // versioned docs that a publish captures); only presentational/config fields
-  // are live. The copy keeps the shared cached snapshot immutable.
+  // versioned docs that a publish captures); redirects are also kept frozen so
+  // they switch atomically with the READY snapshot. The copy keeps the shared
+  // cached snapshot immutable.
   // `primaryDomain` rides along so the app edge can consolidate canonicals and
   // 301 secondary origins onto the verified primary domain.
+  const overlaid = overlayLiveChrome(frozen.project, live);
+  const accessMode = live?.accessMode ?? 'PUBLIC';
   const project: PublicSnapshotProject = {
-    ...overlayLiveChrome(frozen.project, live),
+    ...overlaid,
+    // Keep the legacy config flag coherent for older clients and SEO helpers,
+    // while the database enum remains the authorization source of truth.
+    config: { ...(overlaid.config ?? {}), visibility: accessMode === 'PUBLIC' ? 'public' : 'private' },
     primaryDomain: live?.domains[0]?.domain.toLowerCase() ?? null,
+    accessMode,
   };
-  const snapshot: SiteSnapshot = { ...frozen, project };
-  await assertViewable(projectId, snapshot);
-  return { snapshot, version: deployment.version, deploymentId: deployment.id };
+  const viewer = await resolveViewerAccess(projectId, live?.accessMode ?? 'PUBLIC', getContext<HonoEnv>().req.raw.headers);
+  if (!viewer) {
+    throw notFound('site', { identifier: projectId, reason: 'private' });
+  }
+  const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
+  const snapshot: SiteSnapshot = { ...frozen, project, pages };
+  return { snapshot, version: deployment.version, deploymentId: deployment.id, viewer };
 };
 
 /** Resolve the active language code: the requested `lang` if it exists in the
@@ -316,9 +318,36 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
     activeLanguage,
     activeVersion: docsVersion.slug,
     languageConfig: shellLanguage?.config ?? null,
-    nav: buildNavTree(versionPages, activeLanguage),
+    nav: withOpenApiNav(buildNavTree(versionPages, activeLanguage), snapshot.openapi),
+    openapi: snapshot.openapi
+      ? {
+          title: snapshot.openapi.title,
+          path: snapshot.openapi.path,
+          contentHash: snapshot.openapi.contentHash,
+          updatedAt: snapshot.openapi.updatedAt,
+        }
+      : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
+  };
+};
+
+/** The immutable published OpenAPI document. This goes through the exact same
+ *  publication, takedown, and private-site membership gates as pages. */
+export const getSiteOpenApi = async (identifier: string) => {
+  const { snapshot } = await getPublished(identifier);
+  if (!snapshot.openapi) {
+    throw notFound('OpenAPI document', { identifier });
+  }
+  return {
+    document: snapshot.openapi.document,
+    metadata: {
+      title: snapshot.openapi.title,
+      path: snapshot.openapi.path,
+      contentHash: snapshot.openapi.contentHash,
+      updatedAt: snapshot.openapi.updatedAt,
+    },
+    project: snapshot.project,
   };
 };
 
@@ -463,11 +492,11 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  Scoped to the active language so each language has its own index. */
 export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
-  const { snapshot, deploymentId } = await getPublished(identifier);
+  const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = activeVersion(snapshot, version);
   const versionPages = pagesForVersion(snapshot, docsVersion);
-  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages);
+  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages, viewer.allowedPageIds);
   const hits = await searchDocs(index, query, { limit });
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
@@ -555,6 +584,9 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
     throw notFound('site', { identifier, reason: 'takedown' });
   }
   const headers = getContext<HonoEnv>().req.raw.headers;
+  if (!(await projectDeliveryAccess(projectId, headers))) {
+    throw notFound('site', { identifier, reason: 'private' });
+  }
   const device = deviceFromUserAgent(headers.get('user-agent'));
   const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
   await trackEvent(projectId, body, { device, country }).catch(() => undefined);

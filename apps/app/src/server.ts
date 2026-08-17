@@ -169,7 +169,12 @@ const clientIpFromForwardedFor = (header: string | null): string | null => {
   return (candidates[candidates.length - 1] as string) ?? null;
 };
 
-const ssrClientIp = new AsyncLocalStorage<string>();
+interface PublishedRequestAuth {
+  ip: string | null;
+  cookie: string | null;
+  authorization: string | null;
+}
+const publishedRequestAuth = new AsyncLocalStorage<PublishedRequestAuth>();
 
 // Shared secret proving to the API that `x-nibleaf-client-ip` was stamped by
 // THIS server entry (and not spoofed by a browser through the nitro /api
@@ -202,17 +207,22 @@ const effectiveRequestHost = (request: Request, url: URL): string => {
 // context (no store) and to other targets are passed through untouched.
 const baseFetch = globalThis.fetch.bind(globalThis);
 globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
-  const ip = ssrClientIp.getStore();
-  if (ip) {
+  const requestAuth = publishedRequestAuth.getStore();
+  if (requestAuth) {
     const target = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
     if (target.startsWith(`${SELF}/api/`)) {
       const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
       // Always overwrite: an inbound (possibly attacker-supplied) value must
       // never ride along on our authenticated internal hint.
-      headers.set('x-nibleaf-client-ip', ip);
-      if (INTERNAL_API_SECRET) {
+      if (requestAuth.ip) headers.set('x-nibleaf-client-ip', requestAuth.ip);
+      if (requestAuth.ip && INTERNAL_API_SECRET) {
         headers.set('x-nibleaf-internal', INTERNAL_API_SECRET);
       }
+      // SSR loaders and edge metadata/SEO fetches must make the same access
+      // decision as the browser request. Forward only credentials, never the
+      // full inbound header bag.
+      if (requestAuth.cookie) headers.set('cookie', requestAuth.cookie);
+      if (requestAuth.authorization) headers.set('authorization', requestAuth.authorization);
       return baseFetch(input, { ...init, headers });
     }
   }
@@ -257,7 +267,8 @@ const SITE_META_TTL = 60_000;
  *  is unknown/unpublished/private-to-anonymous — callers must then behave
  *  conservatively (no cache header, no redirect). */
 async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
-  const hit = siteMetaCache.get(projectId);
+  const requestHasCredentials = Boolean(publishedRequestAuth.getStore()?.cookie || publishedRequestAuth.getStore()?.authorization);
+  const hit = requestHasCredentials ? undefined : siteMetaCache.get(projectId);
   if (hit && Date.now() - hit.at < SITE_META_TTL) {
     return hit.meta;
   }
@@ -283,7 +294,9 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
   if (siteMetaCache.size > 500) {
     siteMetaCache.clear();
   }
-  siteMetaCache.set(projectId, { meta, at: Date.now() });
+  // Never share-cache credential-dependent metadata or anonymous misses: doing
+  // so would let one viewer's state affect another viewer's redirect decision.
+  if (!requestHasCredentials && meta && !meta.isPrivate) siteMetaCache.set(projectId, { meta, at: Date.now() });
   return meta;
 }
 
@@ -745,8 +758,12 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
 
   // Run inside the visitor-IP context so SSR loader fetches are attributed to
   // the real client (see the fetch patch above).
-  const clientIp = clientIpFromForwardedFor(request.headers.get('x-forwarded-for'));
-  return clientIp ? ssrClientIp.run(clientIp, serve) : serve();
+  const requestAuth: PublishedRequestAuth = {
+    ip: clientIpFromForwardedFor(request.headers.get('x-forwarded-for')),
+    cookie: request.headers.get('cookie'),
+    authorization: request.headers.get('authorization'),
+  };
+  return publishedRequestAuth.run(requestAuth, serve);
 };
 
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {

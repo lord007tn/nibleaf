@@ -39,8 +39,8 @@ export function ViewsAreaChart({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
-        <CardAction>
-          <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
+        <CardAction className="col-span-full col-start-1 row-start-3 mt-2 justify-self-stretch sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:justify-self-end">
+          <div className="grid grid-cols-3 items-center gap-1 rounded-lg bg-muted p-0.5 sm:flex">
             {RANGES.map((r) => (
               <button
                 key={r}

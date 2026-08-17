@@ -18,6 +18,11 @@ export const canEdit = (role: string): boolean => roleAtLeast(role, MemberRole.M
 /** Roles allowed to manage members, billing, domains, and danger-zone actions. */
 export const canAdminister = (role: string): boolean => roleAtLeast(role, MemberRole.ADMIN);
 
+/** Export policy constants are shared so API guards and permission tests cannot
+ * drift: editors may create/cancel runs; only admins may manage schedules. */
+export const EXPORT_CREATE_ROLE = MemberRole.MEMBER;
+export const EXPORT_SCHEDULE_ROLE = MemberRole.ADMIN;
+
 /** The roles that can be granted through invites and role changes. `owner` is
  *  deliberately absent: a workspace has exactly ONE owner, and ownership moves
  *  only through the explicit transfer-ownership flow (never by assigning the

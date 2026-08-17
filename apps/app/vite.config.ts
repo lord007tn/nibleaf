@@ -8,6 +8,8 @@ import remarkGfm from 'remark-gfm';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig } from 'vite';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
+import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin';
+import { messageCatalogPlugin } from './scripts/message-catalog-plugin';
 
 const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
 
@@ -24,6 +26,8 @@ const SECURITY_HEADERS = {
 export default defineConfig({
   server: { port: 4310 },
   plugins: [
+    messageCatalogPlugin(),
+    bundleAnalysisPlugin(),
     // Blog articles (src/content/**). `enforce: 'pre'` so .mdx compiles before the
     // React plugin sees it. remark-mdx-frontmatter turns the YAML block into an
     // `export const frontmatter` for the article module. Production metadata

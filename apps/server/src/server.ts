@@ -4,6 +4,7 @@ import { requestId } from 'hono/request-id';
 import { env } from './env';
 import { AppError } from './errors';
 import { errorMiddleware } from './errors/handler';
+import { protectPrivateDeliveryFailureResponse } from './lib/delivery-cache';
 import type { HonoEnv } from './lib/hono/context';
 import middlewares from './middlewares/app';
 import { observabilityMiddleware } from './middlewares/observability';
@@ -20,6 +21,8 @@ baseApp.notFound((ctx) => {
   throw new AppError({ code: 'http:not_found', details: { route: ctx.req.url } });
 });
 
-baseApp.onError((err, ctx) => errorMiddleware({ isDevelopment: env.NODE_ENV !== 'production' })(err, ctx));
+baseApp.onError((err, ctx) =>
+  protectPrivateDeliveryFailureResponse(ctx.req.path, errorMiddleware({ isDevelopment: env.NODE_ENV !== 'production' })(err, ctx)),
+);
 
 export default baseApp;

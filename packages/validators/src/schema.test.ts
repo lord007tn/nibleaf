@@ -3,11 +3,15 @@ import {
   addDomainBody,
   adminSetRoleBody,
   confirmAssetBody,
+  createExportBody,
+  createExportScheduleBody,
   createLanguageBody,
   createProjectBody,
   gitConfigSchema,
   inferSafeInlineAssetContentType,
   inviteMemberBody,
+  inviteReaderBody,
+  jwtAccessConfigBody,
   languageConfigSchema,
   pageConfigSchema,
   paginationQuery,
@@ -18,7 +22,40 @@ import {
   updateLanguageBody,
   updateMemberRoleBody,
   updateProjectBody,
+  upsertOpenApiBody,
 } from './index';
+
+describe('upsertOpenApiBody', () => {
+  const spec = '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}';
+
+  it('accepts upload, public URL, and repository sources', () => {
+    expect(upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'api-reference', source: { type: 'upload', content: spec } }).success).toBe(
+      true,
+    );
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'reference', source: { type: 'url', url: 'https://api.example.com/openapi.yaml' } })
+        .success,
+    ).toBe(true);
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API Reference', path: 'api-reference', source: { type: 'repository', path: 'docs/openapi.yaml' } })
+        .success,
+    ).toBe(true);
+  });
+
+  it('accepts a metadata-only edit for an existing document', () => {
+    expect(upsertOpenApiBody.safeParse({ title: 'Renamed API', path: 'reference' }).success).toBe(true);
+  });
+
+  it('rejects credential-bearing URLs and unsafe or nested published paths', () => {
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API', path: 'api/reference', source: { type: 'url', url: 'https://token@example.com/openapi.json' } })
+        .success,
+    ).toBe(false);
+    expect(
+      upsertOpenApiBody.safeParse({ title: 'API', path: 'api-reference', source: { type: 'repository', path: '../openapi.yaml' } }).success,
+    ).toBe(false);
+  });
+});
 
 describe('projectConfigSchema', () => {
   it('accepts a valid single-section patch', () => {
@@ -306,5 +343,62 @@ describe('adminSetRoleBody', () => {
     expect(adminSetRoleBody.safeParse({ role: 'superadmin' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'owner' }).success).toBe(false);
     expect(adminSetRoleBody.safeParse({ role: 'admin', extra: 1 }).success).toBe(false);
+  });
+});
+
+describe('private reader validation', () => {
+  it('requires a normalized email and at least one audience for invitations', () => {
+    const parsed = inviteReaderBody.safeParse({ email: '  READER@Example.com ', audienceIds: ['audience'] });
+    expect(parsed.success && parsed.data.email).toBe('reader@example.com');
+    expect(inviteReaderBody.safeParse({ email: 'reader@example.com', audienceIds: [] }).success).toBe(false);
+  });
+
+  it('accepts exactly one asymmetric public-key source', () => {
+    const base = {
+      enabled: true,
+      issuer: 'https://portal.example.com',
+      audience: 'docs',
+      claimMapping: { customers: 'audience' },
+    };
+    expect(jwtAccessConfigBody.safeParse({ ...base, jwksUrl: 'https://portal.example.com/.well-known/jwks.json' }).success).toBe(true);
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'RSA', kid: 'one', n: 'abc', e: 'AQAB' }] } }).success).toBe(true);
+    expect(jwtAccessConfigBody.safeParse({ ...base }).success).toBe(false);
+    expect(jwtAccessConfigBody.safeParse({ ...base, jwksUrl: 'http://portal.example.com/jwks', publicJwks: null }).success).toBe(false);
+  });
+
+  it('rejects private or symmetric key material so secrets cannot be persisted', () => {
+    const base = { enabled: true, issuer: 'https://portal.example.com', audience: 'docs', claimMapping: { customers: 'audience' } };
+    expect(
+      jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'RSA', kid: 'leak', n: 'abc', e: 'AQAB', d: 'private' }] } }).success,
+    ).toBe(false);
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'AKP', kid: 'leak', pub: 'abc', priv: 'private' }] } }).success).toBe(
+      false,
+    );
+    expect(jwtAccessConfigBody.safeParse({ ...base, publicJwks: { keys: [{ kty: 'oct', kid: 'shared', k: 'secret' }] } }).success).toBe(false);
+  });
+});
+
+describe('export schemas', () => {
+  it('deduplicates formats and rejects unsupported formats', () => {
+    const parsed = createExportBody.parse({ formats: ['PDF', 'PDF', 'STATIC_HTML'] });
+    expect(parsed.formats).toEqual(['PDF', 'STATIC_HTML']);
+    expect(createExportBody.safeParse({ formats: ['DOCX'] }).success).toBe(false);
+    expect(createExportBody.safeParse({ formats: [] }).success).toBe(false);
+  });
+
+  it('validates cadence-specific fields and IANA timezones', () => {
+    const base = { name: 'Nightly', formats: ['MARKDOWN'], cadence: 'DAILY', timezone: 'Africa/Lagos', hour: 2, minute: 30 };
+    expect(createExportScheduleBody.safeParse(base).success).toBe(true);
+    expect(createExportScheduleBody.safeParse({ ...base, timezone: 'UTC+1' }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'WEEKLY' }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'WEEKLY', weekday: 1 }).success).toBe(true);
+    expect(createExportScheduleBody.safeParse({ ...base, cadence: 'MONTHLY', monthday: 31 }).success).toBe(true);
+  });
+
+  it('bounds retention and wall-clock values', () => {
+    const base = { name: 'Archive', formats: ['PDF'], cadence: 'DAILY', timezone: 'UTC', hour: 0, minute: 0 };
+    expect(createExportScheduleBody.safeParse({ ...base, retentionCount: 0 }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, retentionDays: 3651 }).success).toBe(false);
+    expect(createExportScheduleBody.safeParse({ ...base, hour: 24 }).success).toBe(false);
   });
 });

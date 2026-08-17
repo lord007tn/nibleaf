@@ -1,6 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
+import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
@@ -52,6 +53,8 @@ export interface PendingChanges {
   lastVersion: number | null;
   lastPublishedAt: string | null;
   changes: PendingChange[];
+  /** Blocking redirect issues for the exact draft snapshot being previewed. */
+  redirectIssues: RedirectValidationIssue[];
 }
 
 export interface DeploymentDiffLine {
@@ -80,6 +83,36 @@ export interface DeploymentDiff {
   previousDeployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'> | null;
   changes: DeploymentPageDiff[];
 }
+
+/** Read the complete effective publish input once and compose the same snapshot
+ * shape the worker will validate. Keeping preflight and worker inputs aligned
+ * prevents the dashboard from approving a different route graph. */
+const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+      openApiDocument: true,
+    },
+  });
+  if (!project) {
+    throw notFound('project', { projectId });
+  }
+  const branchIds = project.branches.map((branch) => branch.id);
+  const pages = await prisma.page.findMany({
+    where: { projectId, branchId: { in: branchIds } },
+    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+    include: { language: { select: { code: true } } },
+  });
+  const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
+    ...page,
+    languageCode: language.code,
+    createdAt: createdAt.toISOString(),
+    updatedAt: updatedAt.toISOString(),
+  }));
+  return buildSnapshot(project, pageRows, new Date().toISOString());
+};
 
 /** Stable JSON compare (key-order independent) for the page `config` blob. */
 function stableEqual(a: unknown, b: unknown): boolean {
@@ -232,6 +265,34 @@ const pageSummary = (page: SnapshotPage, status: DeploymentPageDiff['status'], p
   };
 };
 
+const openApiSummary = (current: SiteSnapshot['openapi'], previous: SiteSnapshot['openapi'], languageCode: string): DeploymentPageDiff | null => {
+  if (!(current || previous)) return null;
+  if (current && previous && current.contentHash === previous.contentHash && current.title === previous.title && current.path === previous.path) {
+    return null;
+  }
+  const item = current ?? previous;
+  if (!item) return null;
+  const status: DeploymentPageDiff['status'] = !previous ? 'added' : !current ? 'removed' : 'modified';
+  const fields = [
+    ...(current && previous && current.title !== previous.title ? ['title'] : []),
+    ...(current && previous && current.path !== previous.path ? ['path'] : []),
+    ...(!current || !previous || current.contentHash !== previous.contentHash ? ['OpenAPI document'] : []),
+  ];
+  return {
+    id: 'openapi-reference',
+    title: item.title,
+    path: item.path,
+    languageCode,
+    kind: 'PAGE',
+    status,
+    fields,
+    additions: 0,
+    deletions: 0,
+    lines: [],
+    truncated: false,
+  };
+};
+
 const stripSnapshot = <T extends { snapshot: unknown }>(deployment: T): Omit<T, 'snapshot'> => {
   const { snapshot: _snapshot, ...rest } = deployment;
   return rest;
@@ -267,6 +328,8 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
       changes.push(pageSummary(page, 'removed', page));
     }
   }
+  const specChange = openApiSummary(currentSnapshot.openapi, previousSnapshot?.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
+  if (specChange) changes.push(specChange);
 
   return { deployment: stripSnapshot(deployment), previousDeployment: previousDeployment ? stripSnapshot(previousDeployment) : null, changes };
 };
@@ -277,37 +340,19 @@ export const getDeploymentDiff = async (projectId: string, id: string): Promise<
  */
 export const getPendingChanges = async (projectId: string): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
-      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
-    },
-  });
-  if (!project) {
-    throw notFound('project', { projectId });
-  }
-  const branchIds = project.branches.map((branch) => branch.id);
-  const pages = await prisma.page.findMany({
-    where: { projectId, branchId: { in: branchIds } },
-    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    include: { language: { select: { code: true } } },
-  });
-  const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
-    ...page,
-    languageCode: language.code,
-    createdAt: createdAt.toISOString(),
-    updatedAt: updatedAt.toISOString(),
-  }));
-  const current = buildSnapshot(project, pageRows, new Date().toISOString()).pages;
+  const validation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  const currentSnapshot = validation.snapshot;
+  const current = currentSnapshot.pages;
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
+    const firstSpecChange = openApiSummary(currentSnapshot.openapi, null, currentSnapshot.project.languages[0]?.code ?? 'en');
     return {
       hasBaseline: false,
       lastVersion: null,
       lastPublishedAt: null,
-      changes: current.map((p) => pageSummary(p, 'added')),
+      changes: [...current.map((p) => pageSummary(p, 'added')), ...(firstSpecChange ? [firstSpecChange] : [])],
+      redirectIssues: validation.issues,
     };
   }
 
@@ -329,12 +374,15 @@ export const getPendingChanges = async (projectId: string): Promise<PendingChang
       changes.push(pageSummary(prev, 'removed', prev));
     }
   }
+  const specChange = openApiSummary(currentSnapshot.openapi, snap.openapi, currentSnapshot.project.languages[0]?.code ?? 'en');
+  if (specChange) changes.push(specChange);
 
   return {
     hasBaseline: true,
     lastVersion: latest.version,
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
     changes,
+    redirectIssues: validation.issues,
   };
 };
 
@@ -371,6 +419,13 @@ export const createDeployment = async (organizationId: string, projectId: string
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
+  }
+  // Fail before allocating a version or enqueueing work. The worker repeats
+  // this against its fresh read to close the edit-between-preflight-and-build
+  // race; either way the previous READY snapshot remains the only live one.
+  const redirectValidation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  if (redirectValidation.issues.length > 0) {
+    throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
   }
   const deployment = await createWithNextVersion(projectId, (version) =>
     prisma.deployment.create({

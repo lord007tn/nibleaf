@@ -69,7 +69,7 @@ function MembersPage() {
       </div>
 
       <form
-        className="flex items-end gap-3 rounded-xl border border-border bg-card p-4"
+        className="flex flex-col items-stretch gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault();
           form.handleSubmit();
@@ -77,7 +77,7 @@ function MembersPage() {
       >
         <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
           {(field) => (
-            <div className="flex flex-1 flex-col gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span className="font-medium text-sm">{t('members.inviteByEmail')}</span>
               <Input
                 onBlur={field.handleBlur}
@@ -90,27 +90,29 @@ function MembersPage() {
             </div>
           )}
         </form.Field>
-        <form.Field name="role">
-          {(field) => (
-            // No `owner` option: invitations can never carry the owner role.
-            <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="member">{t('members.role.editor')}</SelectItem>
-                <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        </form.Field>
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting} type="submit">
-              <Mail className="size-4" /> {t('members.invite')}
-            </Button>
-          )}
-        </form.Subscribe>
+        <div className="flex w-full items-end gap-3 sm:w-auto">
+          <form.Field name="role">
+            {(field) => (
+              // No `owner` option: invitations can never carry the owner role.
+              <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
+                <SelectTrigger className="min-w-0 flex-1 sm:w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">{t('members.role.editor')}</SelectItem>
+                  <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </form.Field>
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button className="flex-1 sm:flex-none" disabled={isSubmitting} type="submit">
+                <Mail className="size-4" /> {t('members.invite')}
+              </Button>
+            )}
+          </form.Subscribe>
+        </div>
       </form>
 
       <div className="overflow-hidden rounded-xl border border-border">

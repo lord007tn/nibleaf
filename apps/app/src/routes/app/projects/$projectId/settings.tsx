@@ -10,6 +10,7 @@ import { ExportsSection } from '@/components/project-settings/exports-section';
 import { GeneralSection } from '@/components/project-settings/general-section';
 import { LanguagesSection } from '@/components/project-settings/languages-section';
 import { MembersSection } from '@/components/project-settings/members-section';
+import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
 import { GitTab } from '@/components/settings/git-tab';
@@ -40,6 +41,7 @@ const SECTIONS = [
   { id: 'search', group: 'site', icon: '⌕' },
   { id: 'addons', group: 'site', icon: '◩' },
   { id: 'git', group: 'deployment', icon: '⎇' },
+  { id: 'openapi', group: 'deployment', icon: '{}' },
   { id: 'contentImport', group: 'deployment', icon: '⤓' },
   { id: 'members', group: 'workspace', icon: '⧉' },
   // 'apiKeys' is intentionally hidden: no API route mounts requireApiKey yet, so
@@ -73,8 +75,30 @@ function ProjectSettingsPage() {
   const t = useT();
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden bg-background">
-      <aside className="w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-background md:flex-row">
+      <div className="shrink-0 border-border border-b bg-card px-4 py-3 md:hidden">
+        <label className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider" htmlFor="mobile-settings-section">
+          {t('settings.heading')}
+        </label>
+        <select
+          aria-label={t('settings.heading')}
+          className="h-10 w-full rounded-lg border border-input bg-background px-3 font-medium text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          id="mobile-settings-section"
+          onChange={(event) => navigate({ search: { section: event.target.value as SectionId }, replace: true })}
+          value={section}
+        >
+          {GROUPS.map((group) => (
+            <optgroup key={group.id} label={t(group.labelKey)}>
+              {SECTIONS.filter((item) => item.group === group.id).map((item) => (
+                <option key={item.id} value={item.id}>
+                  {t(`settings.${item.id}` as MessageKey)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+      <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
         <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
         <nav className="flex flex-col gap-0.5">
           {GROUPS.map((group) => (
@@ -103,7 +127,7 @@ function ProjectSettingsPage() {
       </aside>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[660px] px-9 pt-8 pb-32">
+        <div className="mx-auto max-w-[660px] px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
           {isLoading || !project ? <SectionSkeleton /> : <ActiveSection projectId={projectId} project={project} section={section} />}
         </div>
       </div>
@@ -121,6 +145,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     search: <SearchSection key={`search-${project.id}`} project={project} />,
     addons: <AddonsSection key={`addons-${project.id}`} project={project} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
+    openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,

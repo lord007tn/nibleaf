@@ -18,6 +18,7 @@ import type {
   UpdatePageBody,
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
+  UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ import type {
   Domain,
   GitImportSummary,
   Language,
+  OpenApiConfiguration,
   Page,
   Project,
   WorkspaceSettings,
@@ -85,6 +87,42 @@ export const useDeleteProject = () => {
     mutationFn: async (projectId: string) =>
       mutateData<{ id: string }>(await api.app.projects[':id'].$delete({ param: { id: projectId } }), 'Could not delete the site.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+  });
+};
+
+export const useUpsertOpenApi = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: UpsertOpenApiBody) =>
+      mutateData<OpenApiConfiguration>(
+        await api.app.projects[':projectId'].openapi.$put({ param: { projectId }, json: body }),
+        'Could not save the OpenAPI document.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
+  });
+};
+
+export const useSyncOpenApi = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      mutateData<OpenApiConfiguration>(
+        await api.app.projects[':projectId'].openapi.sync.$post({ param: { projectId } }),
+        'Could not refresh the OpenAPI document.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
+  });
+};
+
+export const useDeleteOpenApi = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      mutateData<{ projectId: string }>(
+        await api.app.projects[':projectId'].openapi.$delete({ param: { projectId } }),
+        'Could not remove the OpenAPI document.',
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
   });
 };
 

@@ -1,9 +1,10 @@
-import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators';
+import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { redirect } from '@tanstack/react-router';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { isCustomDomainSite } from '@/lib/site-paths';
+import { buildSiteRedirectHref } from '@/lib/site-redirect-href';
 
 /**
  * Honor a configured `config.redirects` entry for `path`. Consulted only when a
@@ -15,14 +16,20 @@ import { isCustomDomainSite } from '@/lib/site-paths';
  * Works for both app-origin (`/sites/:id/*`) and custom-domain (root) serving.
  */
 export async function redirectIfConfigured(projectId: string, path: string, lang?: string): Promise<void> {
-  const from = normalizeRedirectPath(path);
+  let from: string;
+  try {
+    from = normalizeRedirectPath(path);
+  } catch {
+    return;
+  }
   let shell: SiteShell | null = null;
   try {
     shell = await getData<SiteShell>(await api.public.sites[':id'].$get({ param: { id: projectId }, query: lang ? { lang } : {} }), 'site');
   } catch {
     return; // site itself is unavailable — let the caller render its not-found state
   }
-  const redirects = (shell?.project.config as { redirects?: Array<{ from?: string; to?: string }> } | null)?.redirects ?? [];
+  const storedRedirects = (shell?.project.config as { redirects?: unknown } | null)?.redirects;
+  const redirects = Array.isArray(storedRedirects) ? storedRedirects : [];
   const validRedirects = redirects.filter(
     (rule): rule is { from: string; to: string } => typeof rule?.from === 'string' && typeof rule?.to === 'string',
   );
@@ -34,9 +41,11 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
   if (/^https?:\/\//i.test(to)) {
     throw redirect({ href: to, statusCode: 308 });
   }
-  const target = normalizeRedirectPath(to);
-  const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-  // On a custom domain the docs live at the root; on the app origin under /sites/:id.
-  const href = isCustomDomainSite(projectId) ? `/${target}${query}` : `/sites/${projectId}${target ? `/${target}` : ''}${query}`;
+  let href: string;
+  try {
+    href = buildSiteRedirectHref({ projectId, target: to, lang, customDomain: isCustomDomainSite(projectId) });
+  } catch {
+    return;
+  }
   throw redirect({ href, statusCode: 308 });
 }

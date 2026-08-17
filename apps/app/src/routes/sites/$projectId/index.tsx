@@ -1,9 +1,10 @@
-import { createFileRoute, notFound } from '@tanstack/react-router';
+import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { SitePageView } from '@/components/site/site-page-view';
 import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
-import type { SitePage } from '@/hooks/api/types';
+import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { customDomainOrigin } from '@/lib/site-origin';
+import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
 
@@ -25,6 +26,17 @@ export const Route = createFileRoute('/sites/$projectId/')({
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
       }
+      // A site may intentionally publish only an API reference. Give that
+      // reference a useful home URL instead of returning a root 404.
+      const site = await getData<SiteShell>(
+        await api.public.sites[':id'].$get({ param: { id: params.projectId }, query: { ...(deps.lang ? { lang: deps.lang } : {}) } }),
+        'site',
+      ).catch(() => null);
+      if (site?.openapi) {
+        const prefix = isCustomDomainSite(params.projectId) ? '' : `/sites/${params.projectId}`;
+        const query = deps.lang ? `?lang=${encodeURIComponent(deps.lang)}` : '';
+        throw redirect({ href: `${prefix}/${site.openapi.path}${query}`, statusCode: 302 });
+      }
       // Honor a configured redirect for the site root before the not-found
       // state. Mark the SSR response 404 so this soft-404 returns the right
       // status (the head also carries robots noindex).
@@ -44,5 +56,5 @@ function SiteHome() {
   const { lang } = Route.useSearch();
   const { page } = Route.useLoaderData();
   // Empty path resolves to the first page server-side.
-  return <SitePageView projectId={projectId} path="" lang={lang} initialData={page ?? undefined} />;
+  return <SitePageView projectId={projectId} lang={lang} data={page} />;
 }

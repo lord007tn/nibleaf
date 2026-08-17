@@ -1,8 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Link } from '@tanstack/react-router';
-import { translateStandalone as t } from '@/lib/i18n/standalone';
+import { useStandaloneT } from '@/lib/i18n/standalone';
 
 export function NotFound() {
+  const t = useStandaloneT();
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
       <div className="flex flex-col items-center gap-3">

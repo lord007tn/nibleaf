@@ -164,12 +164,10 @@ function EditorPage() {
     const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
     return stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual';
   });
-  // Editor safety: JSX-like component tags the visual editor can't round-trip
-  // would be SILENTLY DROPPED on a visual-mode save. When any are present, the
-  // page is locked to Markdown mode (banner below) so nothing is ever lost.
+  // Unknown JSX components are represented by local opaque nodes. Inventory
+  // them for the explanatory banner without locking the rest of the page.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
-  const visualLocked = unsupportedTags.length > 0;
-  const effectiveMode = visualLocked && (editorMode === 'visual' || editorMode === 'wysiwyg') ? 'markdown' : editorMode;
+  const effectiveMode = editorMode;
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -216,6 +214,9 @@ function EditorPage() {
       // ignore storage failures
     }
   }, [sidebarCollapsed]);
+  // On narrow viewports the page tree behaves as an on-demand drawer instead
+  // of permanently consuming the editor canvas.
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Which per-language sections are collapsed in the page tree. Persisted.
   const [collapsedLangs, setCollapsedLangs] = useState<Set<string>>(() => {
@@ -416,7 +417,7 @@ function EditorPage() {
     <div className="flex h-screen flex-col">
       {/* Top bar — workspace controls (Mintlify-style): back + branch on the left,
           configure / preview / publish on the right. No breadcrumb. */}
-      <header className="flex h-14 shrink-0 items-center gap-2.5 border-border border-b bg-background px-3">
+      <header className="flex h-14 shrink-0 items-center gap-1.5 border-border border-b bg-background px-2 sm:gap-2.5 sm:px-3">
         <Link
           to="/app/projects/$projectId"
           params={{ projectId }}
@@ -424,10 +425,10 @@ function EditorPage() {
           title={t('editor.backToDashboard')}
         >
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
-          {project?.name ? <span className="max-w-[200px] truncate font-medium text-foreground text-sm">{project.name}</span> : null}
+          {project?.name ? <span className="hidden max-w-[200px] truncate font-medium text-foreground text-sm sm:inline">{project.name}</span> : null}
         </Link>
         {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
-        {project?.name ? <span className="h-5 w-px bg-border" /> : null}
+        {project?.name ? <span className="hidden h-5 w-px bg-border sm:block" /> : null}
         <BranchSwitcher
           projectId={projectId}
           branches={branches ?? []}
@@ -438,7 +439,7 @@ function EditorPage() {
             synced.current = null;
           }}
         />
-        <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+        <span className="hidden items-center gap-1.5 text-muted-foreground text-xs lg:flex">
           {status === 'saving' ? (
             <>
               <Loader2 className="size-3 animate-spin" /> {t('editor.savingShort')}
@@ -449,17 +450,25 @@ function EditorPage() {
             </>
           ) : null}
         </span>
-        <div className="ms-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-1 sm:gap-2">
           <Button
+            aria-label={t('editor.mode.configuration')}
             size="sm"
             variant={view === 'config' ? 'secondary' : 'ghost'}
             className="cursor-pointer"
-            onClick={() => setView((v) => (v === 'config' ? 'content' : 'config'))}
+            onClick={() => {
+              const nextView = view === 'config' ? 'content' : 'config';
+              setView(nextView);
+              if (nextView === 'config') {
+                setSidebarCollapsed(false);
+                setMobileSidebarOpen(true);
+              }
+            }}
           >
-            <SlidersHorizontal className="size-3.5" /> {t('editor.mode.configuration')}
+            <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
           </Button>
           <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
-            <Eye className="size-3.5" /> {t('project.preview')}
+            <Eye className="size-3.5" /> <span className="hidden md:inline">{t('project.preview')}</span>
           </Button>
           {project ? <PublishControl project={project} initialPublishOpen={publishParam} /> : null}
         </div>
@@ -471,15 +480,16 @@ function EditorPage() {
           tallest column's content and break scrolling. */}
       <div
         className={cn(
-          'grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[var(--editor-sidebar)_1fr]',
+          'relative grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)] lg:grid-cols-[var(--editor-sidebar)_1fr]',
           showRail && 'xl:grid-cols-[var(--editor-sidebar)_1fr_300px]',
         )}
         style={{ '--editor-sidebar': navigationCollapsed ? '0px' : `${sidebarWidth}px` } as CSSProperties}
       >
         <aside
           className={cn(
-            'relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/40',
-            navigationCollapsed && 'invisible pointer-events-none border-e-0 max-lg:hidden',
+            'relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/95 max-lg:absolute max-lg:inset-y-0 max-lg:start-0 max-lg:z-30 max-lg:w-[min(85vw,320px)] max-lg:shadow-xl lg:bg-sidebar/40',
+            !mobileSidebarOpen && 'max-lg:hidden',
+            navigationCollapsed && 'invisible pointer-events-none border-e-0',
           )}
           aria-hidden={navigationCollapsed}
           inert={navigationCollapsed}
@@ -494,7 +504,13 @@ function EditorPage() {
               size="icon-xs"
               variant="ghost"
               className="cursor-pointer"
-              onClick={() => setSidebarCollapsed(true)}
+              onClick={() => {
+                if (window.matchMedia('(max-width: 1023px)').matches) {
+                  setMobileSidebarOpen(false);
+                } else {
+                  setSidebarCollapsed(true);
+                }
+              }}
               aria-label={t('editor.hideSidebar')}
               title={t('editor.hideSidebar')}
             >
@@ -505,7 +521,13 @@ function EditorPage() {
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-1 px-2 py-2">
               {view === 'config' ? (
-                <ConfigSectionList active={configSection} onSelect={setConfigSection} />
+                <ConfigSectionList
+                  active={configSection}
+                  onSelect={(section) => {
+                    setConfigSection(section);
+                    setMobileSidebarOpen(false);
+                  }}
+                />
               ) : isPending ? (
                 <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
               ) : (
@@ -591,7 +613,10 @@ function EditorPage() {
                                 pages={langPages}
                                 activeId={activeTreeId}
                                 treeKey={lang.id}
-                                onSelect={setSelectedId}
+                                onSelect={(id) => {
+                                  setSelectedId(id);
+                                  setMobileSidebarOpen(false);
+                                }}
                                 onAddChild={(parentId) => addPage(parentId, lang.id)}
                                 onSettings={(id) => setSettingsForId(id)}
                                 onMove={(items) => reorderPages.mutate({ items })}
@@ -677,13 +702,16 @@ function EditorPage() {
           <section className="flex min-h-0 min-w-0 flex-col">
             {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
-            <div className="flex h-12 items-center gap-2 border-border border-b px-4">
-              {sidebarCollapsed && !markdownFocused ? (
+            <div className="flex min-h-12 items-center gap-1 overflow-x-auto border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+              {!markdownFocused && !mobileSidebarOpen ? (
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  className="cursor-pointer"
-                  onClick={() => setSidebarCollapsed(false)}
+                  className={cn('cursor-pointer', !sidebarCollapsed && 'lg:hidden')}
+                  onClick={() => {
+                    setSidebarCollapsed(false);
+                    setMobileSidebarOpen(true);
+                  }}
                   aria-label={t('editor.showSidebar')}
                   title={t('editor.showSidebar')}
                 >
@@ -691,22 +719,10 @@ function EditorPage() {
                 </Button>
               ) : null}
               <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
-                <SegButton
-                  active={effectiveMode === 'visual'}
-                  onClick={() => setEditorMode('visual')}
-                  icon={<Pencil className="size-3.5" />}
-                  disabled={visualLocked}
-                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
-                >
+                <SegButton active={effectiveMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
                   {t('editor.mode.visual')}
                 </SegButton>
-                <SegButton
-                  active={effectiveMode === 'wysiwyg'}
-                  onClick={() => setEditorMode('wysiwyg')}
-                  icon={<TypeIcon className="size-3.5" />}
-                  disabled={visualLocked}
-                  title={visualLocked ? t('editor.unsupportedMdx.visualDisabled') : undefined}
-                >
+                <SegButton active={effectiveMode === 'wysiwyg'} onClick={() => setEditorMode('wysiwyg')} icon={<TypeIcon className="size-3.5" />}>
                   {t('editor.mode.wysiwyg')}
                 </SegButton>
                 <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
@@ -718,15 +734,11 @@ function EditorPage() {
                 variant={commentMode ? 'secondary' : 'ghost'}
                 aria-pressed={commentMode}
                 className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
-                // Comment anchoring works through the visual editor, which is
-                // locked while the page holds unsupported components. (Stays
-                // clickable while ON so the user can always exit comment mode.)
-                disabled={visualLocked && !commentMode}
                 onClick={toggleCommentMode}
-                title={visualLocked ? t('editor.unsupportedMdx.commentsDisabled') : t('editor.comments.mode')}
+                title={t('editor.comments.mode')}
               >
                 <MessageSquare className="size-4" />
-                {commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
+                <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
               </Button>
               <Button
                 nativeButton={false}
@@ -791,12 +803,17 @@ function EditorPage() {
               ) : null}
             </div>
 
-            <div className={cn('min-h-0 flex-1', effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-7 py-8')}>
-              {visualLocked ? (
+            <div
+              className={cn(
+                'min-h-0 flex-1',
+                effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
+              )}
+            >
+              {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
                 <div
                   className={cn(
                     'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
-                    effectiveMode === 'markdown' ? 'mx-5 mt-4 mb-4 shrink-0' : 'mx-auto mb-5 max-w-[720px]',
+                    'mx-auto mb-5 max-w-[720px]',
                   )}
                   role="status"
                 >
@@ -809,7 +826,7 @@ function EditorPage() {
                 title and source editor use the full canvas. */}
               <div className={cn(effectiveMode === 'markdown' ? 'w-full shrink-0 border-border border-b px-6 py-4' : 'mx-auto max-w-[720px]')}>
                 <input
-                  className="w-full rounded-sm border-0 bg-transparent font-semibold text-[2.1rem] leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="w-full rounded-sm border-0 bg-transparent font-semibold text-3xl leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-[2.1rem]"
                   dir={activeLangDir}
                   aria-label={t('editor.pageTitlePlaceholder')}
                   onChange={(e) => setTitle(e.target.value)}
@@ -911,6 +928,7 @@ function SegButton({
 }) {
   return (
     <button
+      aria-label={typeof children === 'string' ? children : title}
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -922,7 +940,7 @@ function SegButton({
       )}
     >
       {icon}
-      {children}
+      <span className="hidden sm:inline">{children}</span>
     </button>
   );
 }

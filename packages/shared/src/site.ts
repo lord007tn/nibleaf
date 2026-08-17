@@ -91,9 +91,20 @@ export interface SnapshotProject {
   versions: SnapshotVersion[];
 }
 
+/** A validated, self-contained OpenAPI document frozen with a deployment. The
+ *  editable URL/repository source deliberately never enters the public snapshot. */
+export interface SnapshotOpenApi {
+  title: string;
+  path: string;
+  contentHash: string;
+  updatedAt: string;
+  document: Record<string, unknown>;
+}
+
 export interface SiteSnapshot {
   project: SnapshotProject;
   pages: SnapshotPage[];
+  openapi?: SnapshotOpenApi | null;
   generatedAt: string;
 }
 
@@ -191,6 +202,24 @@ export interface NavNode {
   tag: string | null;
   children: NavNode[];
 }
+
+/** Add the frozen API Reference as a first-class navigation item without
+ *  mutating the page-derived tree. Older snapshots simply have no item. */
+export const withOpenApiNav = (nav: NavNode[], openapi: SiteSnapshot['openapi']): NavNode[] =>
+  openapi
+    ? [
+        ...nav,
+        {
+          id: `openapi:${openapi.contentHash}`,
+          kind: 'PAGE' as const,
+          title: openapi.title,
+          path: openapi.path,
+          icon: 'braces',
+          tag: null,
+          children: [],
+        },
+      ]
+    : nav;
 
 export interface ResolvedPageCategory {
   title: string;
@@ -512,6 +541,13 @@ type ProjectRow = {
   config: unknown;
   languages: LanguageRow[];
   branches: BranchRow[];
+  openApiDocument?: {
+    title: string;
+    path: string;
+    contentHash: string;
+    updatedAt: Date | string;
+    document: unknown;
+  } | null;
 };
 type PageRow = Omit<SnapshotPage, 'config' | 'versionId'> & {
   config: unknown;
@@ -595,6 +631,16 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
         hidden: page.hidden,
       };
     }),
+    openapi: project.openApiDocument
+      ? {
+          title: project.openApiDocument.title,
+          path: project.openApiDocument.path,
+          contentHash: project.openApiDocument.contentHash,
+          updatedAt:
+            project.openApiDocument.updatedAt instanceof Date ? project.openApiDocument.updatedAt.toISOString() : project.openApiDocument.updatedAt,
+          document: project.openApiDocument.document as Record<string, unknown>,
+        }
+      : null,
     generatedAt,
   };
 };

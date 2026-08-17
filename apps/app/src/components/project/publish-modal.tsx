@@ -12,7 +12,7 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { ArrowLeft, FileText, Loader2, Minus, Pencil, Plus, Rocket } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
@@ -42,7 +42,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
   const t = useT();
   const publish = usePublish(project.id);
   // Only compute the diff while the dialog is open (it re-reads on each open).
-  const { data: pending, isPending: loadingChanges } = usePendingChanges(project.id, { enabled: open });
+  const { data: pending, isPending: loadingChanges, isError: preflightFailed } = usePendingChanges(project.id, { enabled: open });
 
   const [message, setMessage] = useState('');
   const [reviewing, setReviewing] = useState(false);
@@ -58,16 +58,23 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
   }, [pending]);
 
   const doPublish = () => {
+    if (loadingChanges || preflightFailed || (pending?.redirectIssues?.length ?? 0) > 0) {
+      return;
+    }
     const trimmed = message.trim();
     publish.mutate(trimmed || undefined, {
+      onSuccess: () => {
+        setMessage('');
+        onOpenChange(false);
+        onPublished();
+      },
       onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
     });
-    setMessage('');
-    onOpenChange(false);
-    onPublished();
   };
 
   const count = sorted.length;
+  const redirectIssues = pending?.redirectIssues ?? [];
+  const publishBlocked = loadingChanges || preflightFailed || redirectIssues.length > 0;
   const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
   const selectedChange = sorted.find((change) => changeKey(change) === selectedKey) ?? sorted[0] ?? null;
@@ -93,7 +100,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4" /> {t('publish.backToSummary')}
               </Button>
-              <Button size="sm" disabled={publish.isPending} onClick={doPublish}>
+              <Button size="sm" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
                 {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
                 {t('publish.now')}
               </Button>
@@ -200,6 +207,31 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
               </div>
             </div>
 
+            {redirectIssues.length > 0 ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
+                <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
+                  <TriangleAlert className="size-4" /> {t('publish.redirectsBlocked')}
+                </div>
+                <p className="mt-1 text-muted-foreground text-xs">{t('publish.redirectsBlockedHint')}</p>
+                <ul className="mt-3 space-y-1.5 text-xs">
+                  {redirectIssues.map((issue) => (
+                    <li className="font-mono" key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}-${issue.message}`}>
+                      {issue.message}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {preflightFailed ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
+                <div className="flex items-center gap-2 font-semibold text-destructive text-sm">
+                  <TriangleAlert className="size-4" /> {t('publish.preflightFailed')}
+                </div>
+                <p className="mt-1 text-muted-foreground text-xs">{t('publish.preflightFailedHint')}</p>
+              </div>
+            ) : null}
+
             {/* Changes diff — what this publish will push live. */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
@@ -285,7 +317,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
         {!reviewing ? (
           <DialogFooter className="gap-2.5 px-6 pt-0 pb-5 sm:justify-stretch">
             <DialogClose render={<Button variant="outline" className="h-[42px] flex-none px-4" />}>{t('common.cancel')}</DialogClose>
-            <Button className="h-[42px] flex-1" disabled={publish.isPending} onClick={doPublish}>
+            <Button className="h-[42px] flex-1" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
               {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
               {t('publish.now')}
             </Button>

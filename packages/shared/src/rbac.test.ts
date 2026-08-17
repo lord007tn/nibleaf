@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { MemberRole } from './constants';
-import { ASSIGNABLE_MEMBER_ROLES, canAdminister, canAssignRole, canEdit, canManageMember, planOwnershipTransfer, rankOf, roleAtLeast } from './rbac';
+import {
+  ASSIGNABLE_MEMBER_ROLES,
+  canAdminister,
+  canAssignRole,
+  canEdit,
+  canManageMember,
+  EXPORT_CREATE_ROLE,
+  EXPORT_SCHEDULE_ROLE,
+  planOwnershipTransfer,
+  rankOf,
+  roleAtLeast,
+} from './rbac';
 
 describe('rankOf', () => {
   it('orders owner > admin > member > unknown', () => {
@@ -101,5 +112,14 @@ describe('capability helpers', () => {
   it('roleAtLeast respects the MemberRole enum', () => {
     expect(roleAtLeast('owner', MemberRole.ADMIN)).toBe(true);
     expect(roleAtLeast('member', MemberRole.ADMIN)).toBe(false);
+  });
+});
+
+describe('export permissions', () => {
+  it('allows editors to create runs but reserves schedules for admins', () => {
+    expect(roleAtLeast(MemberRole.MEMBER, EXPORT_CREATE_ROLE)).toBe(true);
+    expect(roleAtLeast(MemberRole.MEMBER, EXPORT_SCHEDULE_ROLE)).toBe(false);
+    expect(roleAtLeast(MemberRole.ADMIN, EXPORT_SCHEDULE_ROLE)).toBe(true);
+    expect(roleAtLeast('viewer', EXPORT_CREATE_ROLE)).toBe(false);
   });
 });

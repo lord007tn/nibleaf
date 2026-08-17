@@ -3,6 +3,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { preservedClosingTag, preservedOpeningTag, sourceMetadataAttributes } from './mdx-roundtrip';
 import { TitledBlockView } from './titled-block-view';
 
 /**
@@ -24,29 +25,14 @@ type SerializeState = {
   renderInline: (node: PMNode) => void;
 };
 
-/** Render the MDX attribute string for the configured keys (skips empty values). */
-const attrString = (node: PMNode, keys: string[]): string =>
-  keys
-    .map((key) => {
-      const value = node.attrs[key];
-      if (value == null || value === '' || value === false) {
-        return '';
-      }
-      if (value === true) {
-        return ` ${key}`;
-      }
-      return ` ${key}="${String(value).replace(/"/g, '&quot;')}"`;
-    })
-    .join('');
-
 /** A serializer that writes an MDX block tag wrapping its (blank-line-padded) content. */
 const mdxBlockSerializer =
   (tag: string, attrKeys: string[]) =>
   (state: SerializeState, node: PMNode): void => {
-    state.write(`<${tag}${attrString(node, attrKeys)}>`);
+    state.write(preservedOpeningTag(node, tag, attrKeys));
     state.closeBlock(node); // forces a blank line before the inner content
     state.renderContent(node);
-    state.write(`</${tag}>`);
+    state.write(preservedClosingTag(node, tag));
     state.closeBlock(node);
   };
 
@@ -67,8 +53,12 @@ const stringAttr = (name: string): Attributes => ({
 const boolAttr = (name: string): Attributes => ({
   [name]: {
     default: false,
-    parseHTML: (element) => element.hasAttribute(name) || element.getAttribute(`data-${name}`) === 'true',
-    renderHTML: (attributes) => (attributes[name] ? { [`data-${name}`]: 'true' } : {}),
+    parseHTML: (element) => {
+      const dataValue = element.getAttribute(`data-${name}`);
+      if (dataValue != null) return dataValue === 'true' ? true : dataValue;
+      return element.hasAttribute(name);
+    },
+    renderHTML: (attributes) => (attributes[name] ? { [`data-${name}`]: String(attributes[name]) } : {}),
   },
 });
 
@@ -82,7 +72,7 @@ const containerNode = (config: { name: string; tag: string; content: string; cla
     group: 'block',
     content: config.content,
     defining: true,
-    addAttributes: () => config.attrs ?? {},
+    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addStorage: () => markdownStorage(config.tag, config.attrKeys ?? []),
@@ -96,7 +86,7 @@ const titledNode = (config: { name: string; tag: string; className: string; attr
     group: 'block',
     content: 'block+',
     defining: true,
-    addAttributes: () => config.attrs ?? {},
+    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
@@ -109,15 +99,15 @@ const inlineWrapperNode = (config: { name: string; tag: string; className: strin
     group: 'inline',
     inline: true,
     content: 'inline*',
-    addAttributes: () => config.attrs ?? {},
+    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `span[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addStorage: () => ({
       markdown: {
         serialize: (state: SerializeState, node: PMNode) => {
-          state.write(`<${config.tag}${attrString(node, config.attrKeys)}>`);
+          state.write(preservedOpeningTag(node, config.tag, config.attrKeys));
           state.renderInline(node);
-          state.write(`</${config.tag}>`);
+          state.write(preservedClosingTag(node, config.tag));
         },
         parse: {},
       } satisfies MarkdownNodeSpec,
@@ -245,15 +235,15 @@ export const Tooltip = Node.create({
   group: 'inline',
   inline: true,
   content: 'inline*',
-  addAttributes: () => stringAttr('tip'),
+  addAttributes: () => ({ ...stringAttr('tip'), ...sourceMetadataAttributes() }),
   parseHTML: () => [{ tag: 'tooltip' }, { tag: 'span[data-mdx="Tooltip"]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': 'Tooltip', class: 'pl-tooltip' }), 0],
   addStorage: () => ({
     markdown: {
       serialize: (state: SerializeState, node: PMNode) => {
-        state.write(`<Tooltip${attrString(node, ['tip'])}>`);
+        state.write(preservedOpeningTag(node, 'Tooltip', ['tip']));
         state.renderInline(node);
-        state.write('</Tooltip>');
+        state.write(preservedClosingTag(node, 'Tooltip'));
       },
       parse: {},
     } satisfies MarkdownNodeSpec,
@@ -270,13 +260,13 @@ export const Icon = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  addAttributes: () => stringAttrs('icon', 'name', 'color', 'size'),
+  addAttributes: () => ({ ...stringAttrs('icon', 'name', 'color', 'size'), ...sourceMetadataAttributes() }),
   parseHTML: () => [{ tag: 'icon' }, { tag: 'span[data-mdx="Icon"]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': 'Icon', class: 'pl-icon' })],
   addStorage: () => ({
     markdown: {
       serialize: (state: SerializeState, node: PMNode) => {
-        state.write(`<Icon${attrString(node, ['icon', 'name', 'color', 'size'])} />`);
+        state.write(preservedOpeningTag(node, 'Icon', ['icon', 'name', 'color', 'size'], true));
       },
       parse: {},
     } satisfies MarkdownNodeSpec,

@@ -46,6 +46,21 @@ export async function scheduleAnalyticsRollup(): Promise<void> {
   queueLogger.info('Scheduled daily analytics rollup job');
 }
 
+/** Poll due database-backed archive schedules once a minute. The fixed job id
+ * makes startup idempotent across any number of worker replicas. */
+export async function scheduleExportMaintenance(): Promise<void> {
+  await createJob(
+    QueueNames.EXPORT,
+    { name: 'dispatch-export-schedules', data: { requestedAt: new Date().toISOString() } },
+    { jobId: 'dispatch-export-schedules', repeat: { pattern: '* * * * *', tz: 'UTC' } },
+  );
+  await createJob(
+    QueueNames.EXPORT,
+    { name: 'cleanup-exports', data: { requestedAt: new Date().toISOString() } },
+    { jobId: 'cleanup-exports', repeat: { pattern: '17 2 * * *', tz: 'UTC' } },
+  );
+}
+
 export * from './constants';
 export { isQueueEnabled } from './keys';
 export {

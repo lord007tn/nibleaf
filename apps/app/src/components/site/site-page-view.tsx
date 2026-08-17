@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
-import { useSitePage } from '@/hooks/api';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
@@ -149,45 +148,7 @@ function ReaderActions({
   );
 }
 
-/** Placeholder shapes matching the article layout, shown while a page loads.
- *  bg-border (not bg-muted) keeps the bars visible on the light background;
- *  the sr-only label announces the loading state to assistive tech. */
-function PageSkeleton({ label }: { label: string }) {
-  return (
-    <div role="status" className="py-9 lg:py-12">
-      <span className="sr-only">{label}</span>
-      <div className="animate-pulse" aria-hidden>
-        <div className="mx-auto w-full max-w-[46rem]">
-          <div className="h-3.5 w-28 rounded-md bg-border" />
-          <div className="mt-5 h-9 w-2/3 rounded-lg bg-border" />
-          <div className="mt-5 h-5 w-full max-w-md rounded-md bg-border" />
-          <div className="mt-10 space-y-3">
-            <div className="h-4 w-full rounded-md bg-border" />
-            <div className="h-4 w-11/12 rounded-md bg-border" />
-            <div className="h-4 w-4/5 rounded-md bg-border" />
-          </div>
-          <div className="mt-8 h-40 rounded-xl bg-border" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function SitePageView({
-  projectId,
-  path,
-  lang,
-  version,
-  initialData,
-}: {
-  projectId: string;
-  path: string;
-  lang?: string;
-  version?: string;
-  initialData?: SitePage;
-}) {
-  const t = siteT(lang);
-  const { data, isPending, isError } = useSitePage(projectId, path, lang, initialData, version);
+export function SitePageView({ projectId, lang, data }: { projectId: string; lang?: string; data: SitePage }) {
   const { setAlternates } = useSitePageAlternates();
 
   useEffect(() => {
@@ -213,13 +174,6 @@ export function SitePageView({
         .catch(() => undefined);
     }
   }, [data?.page.path, data?.activeLanguage, lang, projectId]);
-
-  if (isPending) {
-    return <PageSkeleton label={t('loading')} />;
-  }
-  if (isError || !data) {
-    return <div className="py-12 text-muted-foreground text-sm">{t('pageUnavailable')}</div>;
-  }
 
   const { page, breadcrumbs, prev, next } = data;
   const language = data.activeLanguage ?? lang;
