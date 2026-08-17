@@ -45,7 +45,7 @@ export const BLOG_MANIFEST = [
     description:
       'A source-backed GitBook and Mintlify comparison covering editors, Git workflows, API docs, pricing, multilingual content, and self-hosting.',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-17',
     tags: ['comparison', 'gitbook', 'mintlify'],
     related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
     readingMinutes: 8,
@@ -114,7 +114,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-17',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
@@ -151,7 +151,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-17',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
     readingMinutes: 7,
@@ -180,7 +180,7 @@ export const BLOG_MANIFEST = [
     description:
       'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-17',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',

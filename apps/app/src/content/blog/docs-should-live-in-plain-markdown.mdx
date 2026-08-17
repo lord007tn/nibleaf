@@ -3,7 +3,7 @@ title: 'Your Docs Should Live in Plain Markdown (Even With a Visual Editor)'
 metaTitle: 'Why documentation should live in Markdown | Nibleaf'
 description: 'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-15'
+dateModified: '2026-08-17'
 tags: ['markdown', 'content-ownership']
 related: ['open-source-documentation-tools', 'introducing-nibleaf-open-source-mintlify-alternative', 'self-host-documentation-site-docker-compose']
 readingMinutes: 7
@@ -35,7 +35,7 @@ Every documentation tool sits in one of two camps, whatever its editor looks lik
 | Diff and review | `git diff`, line-by-line | Opaque or vendor-specific |
 | Search your own content | `grep`, ripgrep, any indexer | Vendor API |
 | Feed to an LLM | Directly | Extraction pipeline first |
-| Migration cost | Near zero | A project with a deadline |
+| Migration cost | Usually lower, but components, metadata, links, and assets still need work | A project with a deadline |
 
 Block-database platforms are not built by malicious people. A database of structured blocks is genuinely easier to build real-time collaboration and granular permissions on top of. But the storage choice quietly becomes a switching cost, and switching costs quietly become pricing power. When your 2,000-page knowledge base exists only as rows in someone else's database, every renewal negotiation starts from a weaker position.
 
@@ -92,7 +92,7 @@ Markdown-as-storage is not free. Two costs are worth naming rather than hand-wav
 
 Credit where due — several platforms get this right, each with different trade-offs.
 
-**Mintlify** stores docs as MDX in your own git repository, and its web editor commits changes back to the repo. It passes the plain-text test; the differences are elsewhere — it is a closed-source managed service, so the *platform* (hosting, search, analytics) is not something you can run yourself. See our [Mintlify alternatives breakdown](/alternatives/mintlify) for the full picture.
+**Mintlify** stores docs as MDX in your own git repository, and its web editor commits changes back to the repo. It passes the plain-text test; the differences are elsewhere. Enterprise customers can now [self-host a custom frontend](https://www.mintlify.com/blog/custom-frontends-on-mintlify), while Mintlify continues to operate the content engine, editor, search, and AI services. See our [Mintlify alternatives breakdown](/alternatives/mintlify) for the full picture.
 
 **Docusaurus** is Markdown/MDX files all the way down, fully open source, and a strong fit if your whole team is comfortable in git and React. What it does not ship is a hosted editor, search infrastructure, or a publishing workflow for non-developers — you assemble those. Our [Nibleaf vs Docusaurus comparison](/compare/nibleaf-vs-docusaurus) goes deeper.
 
@@ -114,4 +114,4 @@ Ask any documentation vendor two questions. First: *what exactly is written to s
 
 If the answers are "Markdown" and "yes," the platform is competing for your renewal on quality. Any other answer, and part of what you are paying for — now or eventually — is the difficulty of leaving.
 
-<Note>Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as of July 2026 and may change.</Note>
+<Note>Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as reviewed on August 17, 2026 and may change.</Note>
