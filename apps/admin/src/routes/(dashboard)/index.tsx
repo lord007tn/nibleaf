@@ -194,6 +194,13 @@ function OverviewPage() {
               })}
             </div>
           )}
+          {funnel.isSuccess ? (
+            <p className="mt-4 text-muted-foreground text-xs">
+              {funnel.data?.medianHoursToReady == null
+                ? 'Time to first successful publish: no converted sign-ups in this window.'
+                : `Median time to first successful publish: ${funnel.data.medianHoursToReady}h. ${funnel.data.readyWithin24Hours} sign-up${funnel.data.readyWithin24Hours === 1 ? '' : 's'} published successfully within 24h.`}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 

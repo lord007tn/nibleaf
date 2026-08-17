@@ -124,9 +124,9 @@ export function MarketingShell({ children }: { children: ReactNode; stars?: numb
       <Announcement />
       <header className="sticky top-0 z-40 border-border/70 border-b bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
-          <a className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
-            <NibleafMark className="size-8" />
-            <NibleafWordmark />
+          <a aria-label="Nibleaf home" className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
+            <NibleafMark aria-hidden="true" className="size-8" />
+            <NibleafWordmark aria-hidden="true" />
           </a>
           <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
             {navLinks.map((link) => (

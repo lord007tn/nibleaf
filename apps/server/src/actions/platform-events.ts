@@ -1,4 +1,5 @@
 import { type Prisma, prisma } from '@nibleaf/database';
+import { activationTiming } from '@/lib/activation-metrics';
 
 /**
  * Platform-level product events (activation funnel), written to `platform_event`.
@@ -61,6 +62,10 @@ export interface ActivationFunnel {
   published: number;
   /** Distinct users with at least one user-initiated publish that went READY. */
   ready: number;
+  /** Number of sign-ups whose first user-initiated READY publish completed within 24 hours. */
+  readyWithin24Hours: number;
+  /** Median sign-up -> first user-initiated READY publish in hours, among converters. */
+  medianHoursToReady: number | null;
 }
 
 /** Activation funnel counts for the admin overview (last `days` days). All four
@@ -80,11 +85,19 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       distinct: ['userId'],
       select: { userId: true },
     });
-  const [signups, edited, published, ready] = await Promise.all([
+  const [signups, edited, published, ready, signupEvents, readyEvents] = await Promise.all([
     prisma.platformEvent.count({ where: { type: 'signup_completed', createdAt: { gte: since } } }),
     distinctUsers('page_edited', false),
     distinctUsers('publish_clicked', true),
     distinctUsers('publish_ready', true),
+    prisma.platformEvent.findMany({
+      where: { type: 'signup_completed', createdAt: { gte: since }, userId: { not: null } },
+      select: { userId: true, createdAt: true },
+    }),
+    prisma.platformEvent.findMany({
+      where: { type: 'publish_ready', createdAt: { gte: since }, userId: { not: null }, metadata: { path: ['auto'], equals: false } },
+      select: { userId: true, createdAt: true },
+    }),
   ]);
-  return { days, signups, edited: edited.length, published: published.length, ready: ready.length };
+  return { days, signups, edited: edited.length, published: published.length, ready: ready.length, ...activationTiming(signupEvents, readyEvents) };
 }

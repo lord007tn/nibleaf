@@ -618,6 +618,9 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       }
     }
     if ((res.headers.get('content-type') || '').includes('text/html')) {
+      if (res.status === 404 && !res.headers.has('X-Robots-Tag')) {
+        res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      }
       res.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
@@ -632,6 +635,9 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       }
     }
     if ((wrapped.headers.get('content-type') || '').includes('text/html')) {
+      if (wrapped.status === 404 && !wrapped.headers.has('X-Robots-Tag')) {
+        wrapped.headers.set('X-Robots-Tag', 'noindex, nofollow');
+      }
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
       wrapped.headers.set('cache-control', 'private, no-store');
     }
