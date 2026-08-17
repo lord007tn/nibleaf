@@ -3,7 +3,7 @@ title: 'Open-source documentation tools in 2026: how to choose'
 metaTitle: '7 open-source documentation tools compared (2026)'
 description: 'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-15'
+dateModified: '2026-08-17'
 tags: ['comparison', 'open-source']
 related: ['self-host-documentation-site-docker-compose', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
 readingMinutes: 7
@@ -44,7 +44,7 @@ Neither model is better. A five-person infra startup and a forty-person team wit
 
 ### Docusaurus
 
-Meta's React-based generator remains the safest default for public product docs. It has the deepest ecosystem of the four: MDX components, document versioning (v1/v2/next side by side), a mature i18n system that handles RTL locales, and a plugin API most competitors still lack. Search defaults to Algolia DocSearch — free for open-source documentation, and as of Docusaurus 3.9 it supports DocSearch v4 with Algolia's conversational "Ask AI" — with solid community plugins if you'd rather keep search local. The tradeoffs are real but manageable: builds are heavier than the newer generators, and customization means writing React. If you're weighing it against a platform-style tool, we wrote a detailed [Nibleaf vs. Docusaurus comparison](/compare/nibleaf-vs-docusaurus).
+Meta's [Docusaurus](https://docusaurus.io/docs) is a practical default for engineering-led public product docs. It has a deep ecosystem: MDX components, [document versioning](https://docusaurus.io/docs/versioning), a mature i18n system that handles RTL locales, and a broad plugin API. Search defaults to Algolia DocSearch — free for qualifying open-source documentation — with community plugins if you would rather keep search local. The tradeoffs are real but manageable: builds are heavier than the newer generators, and customization means writing React. If you're weighing it against a platform-style tool, we wrote a detailed [Nibleaf vs. Docusaurus comparison](/compare/nibleaf-vs-docusaurus).
 
 ### MkDocs Material
 
@@ -52,7 +52,7 @@ For years the answer for Python shops, and still an excellent tool — but go in
 
 ### Starlight
 
-Astro's documentation theme is the strongest pick if you want fast static output with the least ceremony. Full-text search via Pagefind works out of the box with zero configuration and no third-party service. The i18n story is the best of the static generators: built-in multilingual routing, fallback content for untranslated pages, and full RTL support, with UI strings already translated into 30+ languages including Arabic. Because it's an Astro integration, docs can share a codebase with an Astro marketing site. The ecosystem is younger than Docusaurus's, and versioned docs require community plugins rather than a first-party feature.
+Astro's [Starlight](https://starlight.astro.build/) is a strong fit when you want fast static output with little setup. Full-text search via Pagefind works out of the box with no third-party service. Its [internationalization support](https://starlight.astro.build/guides/i18n/) includes multilingual routing, fallback content for untranslated pages, and RTL layout. Because it is an Astro integration, docs can share a codebase with an Astro marketing site. The ecosystem is younger than Docusaurus's, and versioned docs require community plugins rather than a first-party feature.
 
 ### Fumadocs
 
@@ -90,5 +90,5 @@ The deployment design includes the app, API, worker, PostgreSQL, a Redis-compati
 - **Non-developers need to contribute or you're shipping Arabic/RTL docs** → evaluate **Nibleaf Cloud** or follow the [self-hosting guide](/self-hosting). If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
 
 <Note>
-Competitor claims were checked against official documentation and release announcements, with the page re-reviewed on August 15, 2026. Corrections can be sent to support@nibleaf.com.
+Competitor claims were checked against official documentation and release announcements, with the page re-reviewed on August 17, 2026. Corrections can be sent to support@nibleaf.com.
 </Note>

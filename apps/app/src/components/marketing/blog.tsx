@@ -354,33 +354,23 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
   const arabic = language === 'ar';
   return (
     <MarketingShell stars={stars}>
-      <article
-        className="mx-auto max-w-3xl px-6 pt-12 pb-20"
-        dir={arabic ? 'rtl' : 'ltr'}
-        itemScope
-        itemType="https://schema.org/BlogPosting"
-        lang={language}
-      >
+      <article className="mx-auto max-w-3xl px-6 pt-12 pb-20" dir={arabic ? 'rtl' : 'ltr'} lang={language}>
         <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/blog">
           <ArrowLeft className="size-4 rtl:rotate-180" /> {arabic ? 'كل المقالات' : 'All articles'}
         </a>
         <header className="mt-6">
           <TagChips entry={entry} />
-          <h1 className={`text-pretty font-semibold text-4xl leading-[1.15] sm:text-[44px] ${arabic ? '' : 'tracking-tight'}`} itemProp="headline">
-            {entry.title}
-          </h1>
-          <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed" itemProp="description">
-            {entry.description}
-          </p>
+          <h1 className={`text-pretty font-semibold text-4xl leading-[1.15] sm:text-[44px] ${arabic ? '' : 'tracking-tight'}`}>{entry.title}</h1>
+          <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">{entry.description}</p>
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-border border-y py-4">
             <p className="text-muted-foreground text-sm">
-              <time className="datePublished" dateTime={entry.datePublished} itemProp="datePublished">
+              <time className="datePublished" dateTime={entry.datePublished}>
                 {arabic ? 'نُشر' : 'Published'} {dateFormatter(entry).format(new Date(entry.datePublished))}
               </time>
               {entry.dateModified !== entry.datePublished ? (
                 <>
                   {' · '}
-                  <time dateTime={entry.dateModified} itemProp="dateModified">
+                  <time dateTime={entry.dateModified}>
                     {arabic ? 'آخر تحديث' : 'Updated'} {dateFormatter(entry).format(new Date(entry.dateModified))}
                   </time>
                 </>
@@ -396,9 +386,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
             <ShareRow entry={entry} />
           </div>
         </header>
-        <div className={`mt-10 ${proseClass}`} itemProp="articleBody">
-          {children}
-        </div>
+        <div className={`mt-10 ${proseClass}`}>{children}</div>
         {entry.faqs && entry.faqs.length > 0 ? <ArticleFaqSection faqs={entry.faqs} language={language} /> : null}
       </article>
       {related.length > 0 ? (

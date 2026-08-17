@@ -43,6 +43,12 @@ test-results
 # dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
 dogfood-output
 output
+.playwright-cli/
 
 # cross-skill SEO evidence cache (local only)
 .seo-cache/
+
+# raw SEO audit working files (curated reports/evidence remain tracked)
+seo-audit/live/
+seo-audit/*-audit-*/
+seo-audit/tools/

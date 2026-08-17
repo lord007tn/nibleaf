@@ -3,7 +3,7 @@ title: 'Why we built Nibleaf for teams that want to own their docs'
 metaTitle: 'Why we built Nibleaf for documentation ownership'
 description: 'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-15'
+dateModified: '2026-08-17'
 tags: ['announcement', 'open-source']
 related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl']
 readingMinutes: 7
@@ -24,7 +24,7 @@ This post covers why we built it and what is in the box.
 
 ## Why docs tooling became rent
 
-To be fair to the incumbents: they are good products. Mintlify's source files are MDX in your own Git repository, and its rendering is polished. GitBook has a capable hosted editor. But in both cases the *platform* — the renderer, the search index, the analytics, the publishing pipeline — is closed, hosted-only, and sold as a subscription. You cannot run either one on your own infrastructure, and your readers cannot reach your docs without touching their servers. We break down the trade-offs in [Nibleaf vs GitBook](/compare/nibleaf-vs-gitbook).
+To be fair to the incumbents: they are good products. Mintlify keeps MDX source in your Git repository and now offers Enterprise teams a self-hosted custom frontend, while its content engine, editor, search, and AI remain managed services. GitBook has a capable hosted editor and publishes an open-source reader renderer that can be self-hosted, although GitBook says that route is not recommended or supported and it does not include the hosted workspace or editor. Nibleaf's distinction is a public full-stack deployment that includes authoring, publishing, search, analytics, and the reader. We break down the boundaries in [Nibleaf vs GitBook](/compare/nibleaf-vs-gitbook), [Nibleaf vs Mintlify](/compare/nibleaf-vs-mintlify), [GitBook's public renderer](https://github.com/gitbookio/gitbook), and [Mintlify's custom-frontend announcement](https://www.mintlify.com/blog/custom-frontends-on-mintlify).
 
 The open-source side of the spectrum has the opposite problem. Docusaurus is excellent and MIT-licensed, but it is a static site generator, not a platform: there is no hosted editor for non-developers, search usually means wiring up an external service, and every contributor needs Git and a build pipeline. We compare the trade-offs honestly in [Nibleaf vs Docusaurus](/compare/nibleaf-vs-docusaurus).
 
