@@ -89,6 +89,22 @@ describe('export renderers', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  it('omits hidden pages from static files and the offline search index', () => {
+    const hidden = {
+      ...required(snapshot.pages[1]),
+      id: 'internal-plan',
+      title: 'Internal launch plan',
+      slug: 'internal-plan',
+      path: 'internal-plan',
+      content: 'Embargoed roadmap details',
+      hidden: true,
+    };
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: [...snapshot.pages, hidden] }, assets).bytes);
+
+    expect(files['main/ar/internal-plan/index.html']).toBeUndefined();
+    expect(text(required(files['theme/theme.js']))).not.toContain('Embargoed roadmap details');
+  });
+
   it('produces PDF source with RTL, tables, code, page breaks, links, and metadata', () => {
     const html = renderPdfHtml(snapshot, assets);
     expect(html).toContain('dir="rtl"');

@@ -163,7 +163,11 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   const files: Record<string, Uint8Array> = {
     'theme/theme.css': strToU8(baseCss),
   };
-  const pages = snapshot.pages.filter((page) => page.kind === 'PAGE');
+  // Static HTML is a publishable reader artifact, not a source backup. Match
+  // the live reader and PDF export by omitting hidden pages entirely, including
+  // from the bundled client-side search index. Markdown ZIP remains the format
+  // that intentionally preserves hidden source with `hidden: true` frontmatter.
+  const pages = snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden);
   for (const page of pages) files[outputPath(snapshot, page)] = strToU8(pageDocument(snapshot, page, assets));
   for (const asset of assets) files[assetName(asset)] = asset.bytes;
   const first = pages.find((page) => !page.hidden) ?? pages[0];

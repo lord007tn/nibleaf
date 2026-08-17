@@ -492,11 +492,11 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  Scoped to the active language so each language has its own index. */
 export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
-  const { snapshot, deploymentId } = await getPublished(identifier);
+  const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = activeVersion(snapshot, version);
   const versionPages = pagesForVersion(snapshot, docsVersion);
-  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages);
+  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages, viewer.allowedPageIds);
   const hits = await searchDocs(index, query, { limit });
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).

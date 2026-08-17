@@ -53,7 +53,13 @@ export const createPublishedSnapshot = async (projectId: string) => {
   });
 };
 
-export const createExport = async (projectId: string, userId: string, formats: ExportFormat[]) => {
+interface QueueExportOptions {
+  scheduleId?: string;
+  trigger: 'MANUAL' | 'SCHEDULED';
+  retentionDays: number;
+}
+
+const queueExport = async (projectId: string, userId: string, formats: ExportFormat[], options: QueueExportOptions) => {
   await assertQuota(projectId);
   const snapshot = await createPublishedSnapshot(projectId);
   const job = await prisma.exportJob.create({
@@ -62,7 +68,9 @@ export const createExport = async (projectId: string, userId: string, formats: E
       snapshotId: snapshot.id,
       formats,
       createdById: userId,
-      expiresAt: new Date(Date.now() + env.EXPORT_MANUAL_RETENTION_DAYS * 86_400_000),
+      trigger: options.trigger,
+      ...(options.scheduleId ? { scheduleId: options.scheduleId } : {}),
+      expiresAt: new Date(Date.now() + options.retentionDays * 86_400_000),
     },
     include: jobInclude,
   });
@@ -72,9 +80,22 @@ export const createExport = async (projectId: string, userId: string, formats: E
     await prisma.exportJob.update({ where: { id: job.id }, data: { status: 'FAILED', error: 'The export worker queue is unavailable.' } });
     throw error;
   }
-  logPlatformEvent('export_queued', { userId, projectId, metadata: { jobId: job.id, formats, deploymentVersion: snapshot.deploymentVersion } });
+  logPlatformEvent('export_queued', {
+    userId,
+    projectId,
+    metadata: {
+      jobId: job.id,
+      formats,
+      deploymentVersion: snapshot.deploymentVersion,
+      trigger: options.trigger,
+      ...(options.scheduleId ? { scheduleId: options.scheduleId } : {}),
+    },
+  });
   return job;
 };
+
+export const createExport = (projectId: string, userId: string, formats: ExportFormat[]) =>
+  queueExport(projectId, userId, formats, { trigger: 'MANUAL', retentionDays: env.EXPORT_MANUAL_RETENTION_DAYS });
 
 export const listExports = (projectId: string) =>
   prisma.exportJob.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 50, include: jobInclude });
@@ -167,5 +188,9 @@ export const runExportSchedule = async (projectId: string, id: string, userId: s
   const schedule = await prisma.exportSchedule.findFirst({ where: { id, projectId } });
   if (!schedule) throw notFound('export schedule', { id });
   logPlatformEvent('export_schedule_manual_run', { userId, projectId, metadata: { scheduleId: id } });
-  return createExport(projectId, userId, schedule.formats);
+  return queueExport(projectId, userId, schedule.formats, {
+    scheduleId: schedule.id,
+    trigger: 'SCHEDULED',
+    retentionDays: schedule.retentionDays,
+  });
 };
