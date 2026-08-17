@@ -29,7 +29,10 @@ ARG VITE_API_URL=http://server:4311
 ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_URL=$VITE_APP_URL
 ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
-ENV NODE_OPTIONS=--max-old-space-size=4096
+# The app build exceeds a 4 GiB V8 heap as the editor, docs renderer, and SSR
+# bundles are optimized together. Keep this aligned with the 5-6 GiB build
+# requirement documented in docker-compose.yml.
+ENV NODE_OPTIONS=--max-old-space-size=6144
 RUN pnpm exec turbo run build --concurrency=1
 
 FROM base AS runner
