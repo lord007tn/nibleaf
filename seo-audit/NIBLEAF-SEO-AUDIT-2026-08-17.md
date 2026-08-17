@@ -154,6 +154,7 @@ FLOW framework attribution: Framework and prompts Â© Daniel Agrici, CC BY 4.0 â€
 6. Removed the unused deprecated HowTo helper.
 7. Updated article metadata manifests and sitemap lastmod values for material changes.
 8. Added regression tests for marketing entity/offer markup and false tenant authorship.
+9. Converted the pre-existing automatic Docker image workflow to explicit `workflow_dispatch` inputs so pull requests and pushes do not build images implicitly.
 
 Verification:
 

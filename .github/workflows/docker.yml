@@ -1,31 +1,46 @@
 name: Docker
 
-# Production images are GATED ON CI: a push to main builds/publishes only via
-# workflow_run, after the "CI" workflow (typecheck, lint, tests) has completed
-# successfully for that commit. Release tags (v*) build directly — they are
-# cut from an already CI-green main. Pull requests build but never push.
+# Docker builds are deliberately manual. Pull requests and pushes must not
+# spend runner time building images or publish artifacts implicitly.
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
-  push:
-    tags:
-      - "v*"
-  pull_request:
-    branches: [main]
-    paths-ignore:
-      - "*.md"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/PULL_REQUEST_TEMPLATE.md"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, or commit SHA to build
+        required: true
+        default: main
+        type: string
+      image_tag:
+        description: Container tag to produce
+        required: true
+        default: manual
+        type: string
+      platforms:
+        description: Target platforms
+        required: true
+        default: linux/amd64
+        type: choice
+        options:
+          - linux/amd64
+          - linux/amd64,linux/arm64
+      publish:
+        description: Publish the image to GHCR
+        required: true
+        default: false
+        type: boolean
+      deploy:
+        description: Trigger Coolify after a successful publish
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
   packages: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -33,25 +48,16 @@ jobs:
     name: Build self-host image
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    # For workflow_run events, build only when CI succeeded for a PUSH to main.
-    # The workflow_run.event guard matters: CI also runs on pull_request, and a
-    # fork PR's head branch can be named anything — including "main".
-    if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.conclusion == 'success')
     steps:
       - uses: actions/checkout@v6
         with:
-          # For workflow_run, build the exact commit CI validated.
-          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          ref: ${{ inputs.ref }}
 
-      - name: Validate semver tag
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Validate image tag
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Docker release tags must be semantic versions like v0.1.0"
+          TAG="${{ inputs.image_tag }}"
+          if [[ ! "$TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid Docker tag: $TAG"
             exit 1
           fi
 
@@ -64,7 +70,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: inputs.publish
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -77,10 +83,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}},prefix=v
-            type=semver,pattern={{major}}.{{minor}},prefix=v
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ inputs.image_tag }}
 
       - name: Build and publish
         uses: docker/build-push-action@v7
@@ -88,11 +91,8 @@ jobs:
           context: .
           file: ./Dockerfile
           target: runner
-          # PRs and CI-gated main deployments target the amd64 cloud host for
-          # fast delivery. Versioned release tags remain multi-arch so stable
-          # self-host releases also run on ARM servers and Raspberry Pi.
-          platforms: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_run') && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
-          push: ${{ github.event_name != 'pull_request' }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ inputs.publish }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -105,10 +105,9 @@ jobs:
           cache-to: |
             type=gha,mode=max,scope=nibleaf-image,ignore-error=true
 
-      # Deploys ONLY after a CI-green main build published above (workflow_run
-      # is filtered to successful CI push runs on main by the job-level if).
+      # Deployment remains a separate explicit choice on the manual run.
       - name: Trigger Coolify deployment
-        if: github.event_name == 'workflow_run'
+        if: inputs.publish && inputs.deploy
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
