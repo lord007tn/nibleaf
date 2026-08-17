@@ -97,7 +97,7 @@ export function BranchSwitcher({
           render={
             <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5">
               <GitBranch className="size-3.5" />
-              <span className="max-w-[140px] truncate font-medium text-[12.5px]">{active?.name ?? 'main'}</span>
+              <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]">{active?.name ?? 'main'}</span>
             </Button>
           }
         />

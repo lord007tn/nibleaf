@@ -34,13 +34,13 @@ export function DangerSection({ project }: { project: Project }) {
     <div>
       <SectionHeader icon="⚠" title={t('settings.danger.title')} />
 
-      <div className="mb-3.5 flex items-center gap-3.5 rounded-2xl border border-destructive/30 p-5">
+      <div className="mb-3.5 flex flex-col items-stretch gap-4 rounded-2xl border border-destructive/30 p-5 sm:flex-row sm:items-center sm:gap-3.5">
         <p className="flex-1 text-[13.5px] text-muted-foreground leading-relaxed">
           <strong className="text-foreground">{t('settings.danger.transfer.title')}</strong>
           <br />
           {t('settings.danger.transfer.description')}
         </p>
-        <div className="flex min-w-[250px] items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:min-w-[250px] sm:w-auto">
           <Select
             disabled={!canTransferOwnership || transferTargets.length === 0 || transfer.isPending}
             onValueChange={(value) => setTargetMemberId(value ?? '')}
@@ -90,14 +90,14 @@ export function DangerSection({ project }: { project: Project }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3.5 rounded-2xl border border-destructive/30 p-5">
+      <div className="flex flex-col items-stretch gap-4 rounded-2xl border border-destructive/30 p-5 sm:flex-row sm:items-center sm:gap-3.5">
         <p className="flex-1 text-[13.5px] text-muted-foreground leading-relaxed">
           <strong className="text-destructive">{t('settings.danger.delete.title')}</strong>
           <br />
           {t('settings.danger.delete.description')}
         </p>
         <Button
-          className="cursor-pointer"
+          className="w-full cursor-pointer sm:w-auto"
           onClick={async () => {
             // Type-the-name confirmation: deleting a project cascades its whole
             // org (members, pages, deployments, domains), so require an explicit

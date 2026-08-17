@@ -35,9 +35,25 @@ function WorkspaceSettingsPage() {
         <p className="mt-1 text-muted-foreground text-sm">{t('settings.subtitle')}</p>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex min-w-0 flex-col gap-6 sm:flex-row sm:gap-8">
+        <label className="sm:hidden">
+          <span className="sr-only">{t('settings.title')}</span>
+          <select
+            aria-label={t('settings.title')}
+            className="h-10 w-full cursor-pointer rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            onChange={(event) => navigate({ search: { tab: event.target.value as TabValue }, replace: true })}
+            value={tab}
+          >
+            {SECTIONS.map((item) => (
+              <option key={item.value} value={item.value}>
+                {t(item.labelKey)}
+              </option>
+            ))}
+          </select>
+        </label>
+
         {/* Left settings sidebar */}
-        <nav className="flex w-48 shrink-0 flex-col gap-0.5">
+        <nav className="hidden w-48 shrink-0 flex-col gap-0.5 sm:flex">
           {SECTIONS.map((item) => (
             <button
               key={item.value}
@@ -54,7 +70,7 @@ function WorkspaceSettingsPage() {
           ))}
         </nav>
 
-        <div className="min-w-0 max-w-2xl flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
+        <div className="min-w-0 w-full max-w-2xl flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
       </div>
     </div>
   );
