@@ -4,7 +4,7 @@ import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/compone
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/self-hosting')({
-  loader: () => ({ stars: getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf self-hosting status and deployment architecture',

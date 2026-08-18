@@ -35,6 +35,11 @@ import { marketingFaqs } from '@/lib/marketing-faqs';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+const INSTALL_COMMAND = 'curl -fsSL https://nibleaf.com/install.sh | sh';
+const compactNumberFormatter = new Intl.NumberFormat('en-US', {
+  maximumFractionDigits: 1,
+  notation: 'compact',
+});
 export const primaryButton = `${buttonBase} bg-primary text-primary-foreground hover:bg-primary/90`;
 export const outlineButton = `${buttonBase} border border-border bg-background hover:bg-muted`;
 /** Outline button for inverted (bg-foreground) CTA panels: translucent border, hover that stays legible on dark. */
@@ -150,9 +155,6 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             >
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>
-            <a className={cn(outlineButton, 'hidden h-9 px-3 text-muted-foreground sm:inline-flex')} href="/self-hosting">
-              Self-hosting
-            </a>
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
               Sign in
             </a>
@@ -238,7 +240,7 @@ function Hero({ stars }: { stars: number }) {
     <section className="relative overflow-hidden border-border border-b">
       <GridBackground />
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-[1fr_0.9fr] lg:py-24">
-        <div>
+        <div className="min-w-0">
           <a
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium text-muted-foreground text-xs shadow-xs transition-colors hover:text-foreground"
             href="/self-hosting"
@@ -254,10 +256,19 @@ function Hero({ stars }: { stars: number }) {
             <a className={`${primaryButton} group`} href="/sign-up">
               Start writing — it's free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a className={outlineButton} href="/self-hosting">
-              <Server className="size-4" /> Self-host Nibleaf
-            </a>
             <GitHubStarLink stars={stars} />
+          </div>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+            <div className="min-w-0 flex-1">
+              <CopyCommand command={INSTALL_COMMAND} />
+            </div>
+            <a
+              aria-label="Read the self-hosting guide"
+              className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-4 font-medium text-sm transition-colors hover:bg-muted"
+              href="/self-hosting"
+            >
+              Guide <ArrowRight className="size-4" />
+            </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
             {['No credit card required', 'Your content stays Markdown', 'English and Arabic'].map((item) => (
@@ -476,14 +487,17 @@ export function CopyCommand({ command }: { command: string }) {
       type="button"
       onClick={copy}
       aria-label={copied ? 'Copied' : `Copy ${command}`}
-      className="group flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-[#0d1117] px-4 py-3 text-start font-mono text-sm text-white/90 transition-colors hover:border-primary/40"
+      className="group flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-border bg-[#0d1117] px-4 py-3 text-start font-mono text-sm text-white/90 transition-colors hover:border-primary/40 sm:h-12 sm:py-0"
       dir="ltr"
     >
-      <span>
-        <span className="select-none text-white/40">$ </span>
+      <span className="min-w-0 break-all sm:overflow-x-auto sm:whitespace-nowrap">
+        <span className="select-none text-primary">$ </span>
         {command}
       </span>
-      {copied ? <Check className="size-4 shrink-0 text-primary" /> : <Copy className="size-4 shrink-0 text-white/40 group-hover:text-white/80" />}
+      <span className="inline-flex shrink-0 items-center gap-1.5 font-sans font-medium text-[11px] text-white/45 uppercase tracking-wide group-hover:text-white/80">
+        {copied ? 'Copied' : 'Copy'}
+        {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
+      </span>
     </button>
   );
 }
@@ -745,12 +759,13 @@ export function GitHubStarLink({
   label?: string;
 }) {
   const count = Number.isFinite(stars) ? Math.max(0, Math.floor(stars)) : 0;
-  const hasCount = count > 0;
   const starLabel = count === 1 ? '1 star' : `${count.toLocaleString('en-US')} stars`;
+  const displayCount =
+    count < 1000 ? count.toLocaleString('en-US') : compactNumberFormatter.format(count).replace(/[KMBT]/g, (unit) => unit.toLowerCase());
 
   return (
     <a
-      aria-label={hasCount ? `Star Nibleaf on GitHub — ${starLabel}` : 'Star Nibleaf on GitHub'}
+      aria-label={`Star Nibleaf on GitHub — ${starLabel}`}
       className={cn(outlineButton, 'group px-3', className)}
       href={GITHUB_URL}
       rel="noreferrer"
@@ -759,11 +774,9 @@ export function GitHubStarLink({
       <GitHubGlyph aria-hidden="true" className="size-4" />
       <span className={cn(compact && 'hidden lg:inline')}>{label}</span>
       <Star aria-hidden="true" className={cn('size-3.5', !compact && 'hidden sm:block')} />
-      {hasCount ? (
-        <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
-          {count.toLocaleString('en-US')}
-        </span>
-      ) : null}
+      <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
+        {displayCount}
+      </span>
     </a>
   );
 }
@@ -863,7 +876,7 @@ function SiteFooter({ stars }: { stars: number }) {
 
 function DocsPreview() {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/[0.08]">
+    <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/[0.08]">
       <div className="flex items-center gap-2 border-border border-b px-4 py-3">
         <span className="size-2.5 rounded-full bg-border" />
         <span className="size-2.5 rounded-full bg-border" />
