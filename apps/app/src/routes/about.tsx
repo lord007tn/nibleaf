@@ -5,7 +5,7 @@ import { Eyebrow, iconTile, invertedOutlineButton, MarketingShell, primaryButton
 import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/about')({
-  loader: () => ({ stars: getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'About Nibleaf: documentation ownership and Arabic support',

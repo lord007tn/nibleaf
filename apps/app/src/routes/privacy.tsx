@@ -3,7 +3,7 @@ import { MarketingShell } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/privacy')({
-  loader: () => ({ stars: getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud Privacy Policy and Data Practices',

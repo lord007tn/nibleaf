@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, BookOpenCheck, LifeBuoy, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 const CONTACTS = [
   {
@@ -35,6 +35,7 @@ const CONTACTS = [
 ] as const;
 
 export const Route = createFileRoute('/contact')({
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Contact Nibleaf: support, privacy, security, and corrections',
@@ -74,8 +75,9 @@ export const Route = createFileRoute('/contact')({
 });
 
 function ContactPage() {
+  const { stars } = Route.useLoaderData();
   return (
-    <MarketingShell>
+    <MarketingShell stars={stars}>
       <section className="border-border border-b">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
           <div className="flex justify-center">

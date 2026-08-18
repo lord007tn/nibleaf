@@ -3,7 +3,7 @@ import { LandingPage } from '@/components/cloud-marketing';
 import { canonicalHref, getGithubStars, marketingLd, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/')({
-  loader: () => ({ stars: getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf: visual Markdown docs with Arabic and RTL',

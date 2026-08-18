@@ -160,15 +160,15 @@ const STARS_TTL_MS = 60 * 60 * 1000;
 /** Cache a failed/zero result for only ~1m so a transient GitHub outage doesn't
  *  hide the badge for a full hour. */
 const STARS_ERROR_TTL_MS = 60 * 1000;
-/** Shared background fetch: concurrent renders never fan out API requests. */
-let inFlight: Promise<void> | null = null;
+/** Shared fetch: concurrent renders never fan out API requests. */
+let inFlight: Promise<number> | null = null;
 
 /**
- * Return the cached Nibleaf star count immediately and refresh it in the
- * background when stale. A cold process returns 0 (the count-free "Star on
- * GitHub" state) while the first authoritative response is fetched.
+ * Return the cached Nibleaf star count, refreshing it when stale. Cold renders
+ * wait at most two seconds for GitHub so the header does not knowingly display
+ * a placeholder count; an unavailable API falls back to the last known value.
  */
-export function getGithubStars(): number {
+export async function getGithubStars(): Promise<number> {
   const now = Date.now();
   if (starsCache) {
     const ttl = starsCache.value > 0 ? STARS_TTL_MS : STARS_ERROR_TTL_MS;
@@ -197,9 +197,10 @@ export function getGithubStars(): number {
         // Network/API failure or timeout — treat as "no stars to show".
       }
       starsCache = { value, fetchedAt: Date.now() };
+      return value;
     })().finally(() => {
       inFlight = null;
     });
   }
-  return starsCache?.value ?? 0;
+  return inFlight;
 }

@@ -3,7 +3,7 @@ import { MarketingShell } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/terms')({
-  loader: () => ({ stars: getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud Terms of Service and Acceptable Use',
