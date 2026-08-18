@@ -4,17 +4,23 @@ import { renderToPipeableStream } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
 
-const render = (content: string): Promise<string> =>
+const render = (content: string, language?: string): Promise<string> =>
   new Promise((resolve, reject) => {
     const output = new PassThrough();
     const chunks: Buffer[] = [];
     output.on('data', (chunk: Buffer) => chunks.push(chunk));
     output.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     output.on('error', reject);
-    const stream = renderToPipeableStream(createElement(Markdown, { content }), {
-      onAllReady: () => stream.pipe(output),
-      onError: reject,
-    });
+    const stream = renderToPipeableStream(
+      createElement(Markdown, {
+        content,
+        site: language ? { projectId: 'reader-test', lang: language } : undefined,
+      }),
+      {
+        onAllReady: () => stream.pipe(output),
+        onError: reject,
+      },
+    );
   });
 
 describe('Markdown renderer — Mintlify component parity', () => {
@@ -72,5 +78,56 @@ describe('Markdown renderer — Mintlify component parity', () => {
   it('still renders pre-existing components (Card, Callout)', async () => {
     expect(await render('<Card title="Hello">body</Card>')).toContain('Hello');
     expect(await render('> [!WARNING]\n> be careful')).toContain('be careful');
+  });
+
+  it('localizes code controls and default MDX labels for an Arabic reader', async () => {
+    const html = await render(
+      [
+        '```text',
+        'copy me',
+        '```',
+        '',
+        '<Accordion>',
+        'تفاصيل داخلية',
+        '</Accordion>',
+        '',
+        '<Tabs>',
+        '<Tab>',
+        'المحتوى',
+        '</Tab>',
+        '</Tabs>',
+        '',
+        '<ParamField name="status" type="string" required deprecated default="ready">',
+        'وصف',
+        '</ParamField>',
+        '',
+        '<Expandable>',
+        'خاصية داخلية',
+        '</Expandable>',
+      ].join('\n'),
+      'ar-SA',
+    );
+
+    expect(html).toContain('aria-label="نسخ الشيفرة"');
+    expect(html).toContain('التفاصيل');
+    expect(html).toContain('علامة التبويب 1');
+    expect(html).toContain('مطلوب');
+    expect(html).toContain('مهمل');
+    expect(html).toContain('الافتراضي');
+    expect(html).toContain('عرض الخصائص');
+  });
+
+  it('preserves English MDX defaults when no site language is supplied', async () => {
+    const html = await render(
+      '<Accordion>\ninside\n</Accordion>\n\n<Tabs>\n<Tab>\ncontent\n</Tab>\n</Tabs>\n\n<Expandable>\nproperty\n</Expandable>',
+    );
+    expect(html).toContain('Details');
+    expect(html).toContain('Tab 1');
+    expect(html).toContain('Show properties');
+  });
+
+  it('localizes the fallback label for an unlabeled Arabic CodeGroup tab', async () => {
+    const html = await render('<CodeGroup>\n\n```\necho ready\n```\n\n</CodeGroup>', 'ar');
+    expect(html).toContain('علامة التبويب 1');
   });
 });

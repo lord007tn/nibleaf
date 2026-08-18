@@ -1,5 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { Check, ChevronDown, Languages } from 'lucide-react';
+import { siteT } from '@/lib/site-i18n';
 
 export interface SiteLanguage {
   code: string;
@@ -27,6 +28,7 @@ export function LanguageSwitcher({
   }
 
   const active = languages.find((language) => language.code === activeCode);
+  const t = siteT(active?.code);
 
   return (
     <DropdownMenu>
@@ -35,7 +37,7 @@ export function LanguageSwitcher({
           <button
             type="button"
             className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border border-border/70 px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/60 hover:text-foreground"
-            aria-label="Change language"
+            aria-label={t('changeLanguage')}
           >
             <Languages className="size-3.5" />
             <span className="max-w-[7rem] truncate" dir={active?.direction === 'RTL' ? 'rtl' : 'ltr'}>

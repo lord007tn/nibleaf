@@ -12,17 +12,43 @@ import type { ImportSummary } from './types';
  */
 
 const mem = vi.hoisted(() => ({
-  rows: [] as Array<{ id: string; kind: 'GROUP' | 'PAGE'; parentId: string | null; slug: string; title: string }>,
+  rows: [] as Array<{
+    id: string;
+    kind: 'GROUP' | 'PAGE';
+    languageId: string;
+    parentId: string | null;
+    slug: string;
+    title: string;
+    translationKey?: string;
+  }>,
+  languages: new Map([['en', { id: 'lang-en', code: 'en' }]]),
   nextId: 1,
   repoFiles: new Map<string, string>(),
   reset() {
     this.rows.length = 0;
     this.nextId = 1;
     this.repoFiles.clear();
+    this.languages.clear();
+    this.languages.set('en', { id: 'lang-en', code: 'en' });
   },
 }));
 
-vi.mock('@nibleaf/database', () => ({ prisma: { project: { update: vi.fn(async () => ({})) } } }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: {
+    project: { update: vi.fn(async () => ({})) },
+    language: {
+      findUnique: vi.fn(async ({ where }: { where: { projectId_code: { code: string } } }) => mem.languages.get(where.projectId_code.code) ?? null),
+    },
+  },
+}));
+vi.mock('../languages', () => ({
+  createLanguage: vi.fn(async (_projectId: string, body: { code: string }) => {
+    const language = { id: `lang-${body.code}`, code: body.code };
+    mem.languages.set(body.code, language);
+    return language;
+  }),
+  updateLanguage: vi.fn(async (_projectId: string, id: string) => [...mem.languages.values()].find((language) => language.id === id)),
+}));
 vi.mock('../projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ id: 'project', config: null })) }));
 vi.mock('./github', () => ({
   getGitHubDefaultBranch: async () => 'main',
@@ -31,26 +57,48 @@ vi.mock('./github', () => ({
   fetchRawText: async (path: string) => mem.repoFiles.get(path) ?? null,
 }));
 vi.mock('./persistence', () => ({
-  defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang' }),
+  defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang-en' }),
   removeImportPlaceholders: async () => 0,
-  ensureGroupPage: async (_target: unknown, group: { parentId: string | null; title: string; slug: string }) => {
+  ensureGroupPage: async (target: { languageId: string }, group: { parentId: string | null; title: string; slug: string }) => {
     const found =
-      mem.rows.find((row) => row.kind === 'GROUP' && row.parentId === group.parentId && row.slug === group.slug) ??
-      mem.rows.find((row) => row.kind === 'GROUP' && row.parentId === group.parentId && row.title === group.title);
+      mem.rows.find(
+        (row) => row.languageId === target.languageId && row.kind === 'GROUP' && row.parentId === group.parentId && row.slug === group.slug,
+      ) ??
+      mem.rows.find(
+        (row) => row.languageId === target.languageId && row.kind === 'GROUP' && row.parentId === group.parentId && row.title === group.title,
+      );
     if (found) {
       return found.id;
     }
-    const row = { id: `row-${mem.nextId++}`, kind: 'GROUP' as const, parentId: group.parentId, slug: group.slug, title: group.title };
+    const row = {
+      id: `row-${mem.nextId++}`,
+      kind: 'GROUP' as const,
+      languageId: target.languageId,
+      parentId: group.parentId,
+      slug: group.slug,
+      title: group.title,
+    };
     mem.rows.push(row);
     return row.id;
   },
-  upsertLeafPage: async (_target: unknown, page: { parentId: string | null; slug: string; title: string }) => {
-    const found = mem.rows.find((row) => row.kind === 'PAGE' && row.parentId === page.parentId && row.slug === page.slug);
+  upsertLeafPage: async (target: { languageId: string }, page: { parentId: string | null; slug: string; title: string; translationKey?: string }) => {
+    const found = mem.rows.find(
+      (row) => row.languageId === target.languageId && row.kind === 'PAGE' && row.parentId === page.parentId && row.slug === page.slug,
+    );
     if (found) {
       found.title = page.title;
+      found.translationKey = page.translationKey;
       return 'updated' as const;
     }
-    mem.rows.push({ id: `row-${mem.nextId++}`, kind: 'PAGE' as const, parentId: page.parentId, slug: page.slug, title: page.title });
+    mem.rows.push({
+      id: `row-${mem.nextId++}`,
+      kind: 'PAGE' as const,
+      languageId: target.languageId,
+      parentId: page.parentId,
+      slug: page.slug,
+      title: page.title,
+      translationKey: page.translationKey,
+    });
     return 'imported' as const;
   },
 }));
@@ -122,6 +170,30 @@ describe('mintlify importNodes slug collisions', () => {
     expect(new Set(groups.map((group) => group.slug)).size).toBe(2);
     expect(new Set(pages.map((page) => page.slug)).size).toBe(2);
     expect(summary.warnings.some((w) => w.includes('no Latin characters'))).toBe(true);
+  });
+});
+
+describe('mintlify language import', () => {
+  it('imports language trees into separate targets with explicit page pairing', async () => {
+    setNavigation({
+      languages: [
+        { language: 'en', default: true, groups: [{ group: 'Guides', 'x-nibleaf': { slug: 'guides' }, pages: ['intro'] }] },
+        { language: 'ar', groups: [{ group: 'الأدلة', 'x-nibleaf': { slug: 'guides' }, pages: ['ar/intro'] }] },
+      ],
+    });
+    mem.repoFiles.set('intro.mdx', "---\ntranslation_key: 'intro'\nlang: 'en'\n---\n# Intro");
+    mem.repoFiles.set('ar/intro.mdx', "---\ntranslation_key: 'intro'\nlang: 'ar'\n---\n# مقدمة");
+
+    const summary = await runImport();
+    expect(summary.imported).toBe(2);
+    expect([...mem.languages.keys()]).toEqual(['en', 'ar']);
+    const pages = mem.rows.filter((row) => row.kind === 'PAGE');
+    expect(pages.map((page) => ({ languageId: page.languageId, translationKey: page.translationKey }))).toEqual([
+      { languageId: 'lang-en', translationKey: 'intro' },
+      { languageId: 'lang-ar', translationKey: 'intro' },
+    ]);
+    const groups = mem.rows.filter((row) => row.kind === 'GROUP');
+    expect(groups.map((group) => group.slug)).toEqual(['guides', 'guides']);
   });
 });
 

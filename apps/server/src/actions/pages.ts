@@ -154,6 +154,7 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
       description: body.description ?? null,
       content: body.content ?? '',
       config: body.config ?? undefined,
+      translationKey: body.translationKey ?? null,
       position: body.position ?? (maxPosition._max.position ?? -1) + 1,
     },
   });

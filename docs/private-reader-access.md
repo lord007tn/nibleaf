@@ -5,6 +5,9 @@ audience: 'site administrators and customer-portal developers'
 content_type: 'how-to'
 last_reviewed: '2026-08-17'
 verified_against: 'apps/server/src/actions/reader-access.ts and apps/server/src/lib/reader-jwt.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'private-reader-access'
 ---
 
 Nibleaf has three explicit published-site access modes:

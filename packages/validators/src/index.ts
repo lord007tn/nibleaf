@@ -408,6 +408,7 @@ export const createPageBody = z.object({
   description: z.string().max(500).nullable().optional(),
   content: z.string().optional(),
   config: pageConfigSchema.nullable().optional(),
+  translationKey: z.string().max(120).nullable().optional(),
   position: z.number().int().optional(),
 });
 export type CreatePageBody = z.infer<typeof createPageBody>;

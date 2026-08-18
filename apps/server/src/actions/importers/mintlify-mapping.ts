@@ -1,5 +1,5 @@
 import { slugify } from '@nibleaf/shared';
-import { type ProjectConfig, projectConfigSchema } from '@nibleaf/validators';
+import { type LanguageConfig, languageConfigSchema, type ProjectConfig, projectConfigSchema } from '@nibleaf/validators';
 
 /**
  * Pure mapping logic for the Mintlify importer: locate the config file,
@@ -14,6 +14,8 @@ export interface NavGroupNode {
   kind: 'group';
   title: string;
   icon?: string;
+  /** Stable Nibleaf route segment for localized group labels. */
+  slug?: string;
   /** Which schema construct produced this group (tabs/anchors become groups too). */
   origin: 'group' | 'tab' | 'anchor' | 'dropdown' | 'language' | 'version' | 'menu';
   children: NavNode[];
@@ -35,11 +37,39 @@ export interface MintlifyNavResult {
   warnings: string[];
 }
 
+export interface MintlifyLanguageNavigation {
+  code: string;
+  label: string;
+  direction: 'LTR' | 'RTL';
+  isDefault: boolean;
+  enabled: boolean;
+  nodes: NavNode[];
+  /** Nibleaf-only import metadata. Kept under the namespaced `x-nibleaf`
+   * extension so the same docs.json remains portable to Mintlify. */
+  config?: LanguageConfig;
+  translation?: { name?: string; description?: string };
+}
+
+export interface MintlifyLanguageResult {
+  languages: MintlifyLanguageNavigation[];
+  warnings: string[];
+}
+
 type Dict = Record<string, unknown>;
 
 const isDict = (value: unknown): value is Dict => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const asString = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 const isExternalUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  ar: 'العربية',
+  en: 'English',
+  he: 'עברית',
+  fa: 'فارسی',
+  ur: 'اردو',
+};
+
+const languageDirection = (code: string): 'LTR' | 'RTL' => (/^(?:ar|fa|he|ur)(?:-|$)/i.test(code) ? 'RTL' : 'LTR');
 
 /** docs.json container kinds, in the order Mintlify nests them. */
 const CONTAINERS = [
@@ -153,7 +183,18 @@ const parseContainerObject = (entry: Dict, warnings: string[]): NavNode[] => {
       warnings.push(`Navigation group "${groupTitle}" has no pages and was skipped.`);
       return [];
     }
-    return [{ kind: 'group', title: groupTitle, origin: 'group', icon: asString(entry.icon), children }];
+    const extension = isDict(entry['x-nibleaf']) ? entry['x-nibleaf'] : undefined;
+    const stableSlug = (extension ? asString(extension.slug) : undefined) ?? asString(entry.slug);
+    return [
+      {
+        kind: 'group',
+        title: groupTitle,
+        origin: 'group',
+        icon: asString(entry.icon),
+        ...(stableSlug ? { slug: stableSlug } : {}),
+        children,
+      },
+    ];
   }
   return children;
 };
@@ -209,6 +250,87 @@ export const parseMintlifyNavigation = (config: Dict): MintlifyNavResult => {
   }
   warnings.push('The Mintlify config has no navigation section — no pages were imported from it.');
   return { nodes: [], warnings };
+};
+
+/**
+ * Parse `navigation.languages` as real language partitions. The legacy
+ * `parseMintlifyNavigation` function intentionally keeps its historical
+ * flattening behaviour for callers that only understand one page tree; the
+ * importer uses this richer result and writes each partition to a Language.
+ *
+ * Language-specific Nibleaf SEO/chrome and project identity live in an
+ * optional `x-nibleaf` object on the language entry:
+ * `{ label, translation: { name, description }, config: { seo, search, ... } }`.
+ * Mintlify ignores this namespaced extension while Nibleaf can import it
+ * without guessing translated metadata.
+ */
+export const parseMintlifyLanguages = (config: Dict): MintlifyLanguageResult => {
+  const warnings: string[] = [];
+  const navigation = isDict(config.navigation) ? config.navigation : undefined;
+  if (!navigation || !Array.isArray(navigation.languages)) {
+    return { languages: [], warnings };
+  }
+
+  const candidates: Array<Omit<MintlifyLanguageNavigation, 'isDefault'> & { requestedDefault: boolean }> = [];
+  const seen = new Set<string>();
+  for (const entry of navigation.languages) {
+    if (!isDict(entry)) {
+      warnings.push('Skipped an unrecognized language navigation entry.');
+      continue;
+    }
+    const code = asString(entry.language);
+    if (!code) {
+      warnings.push('Skipped a language navigation entry without a language code.');
+      continue;
+    }
+    const normalizedCode = code.toLowerCase();
+    if (seen.has(normalizedCode)) {
+      warnings.push(`Skipped duplicate language navigation for "${code}".`);
+      continue;
+    }
+    seen.add(normalizedCode);
+    const nodes = resolveDivisions(entry, warnings);
+    if (nodes.length === 0) {
+      warnings.push(`Navigation language "${code}" has no pages and was skipped.`);
+      continue;
+    }
+
+    const extension = isDict(entry['x-nibleaf']) ? entry['x-nibleaf'] : undefined;
+    const rawConfig = extension && isDict(extension.config) ? extension.config : undefined;
+    const checkedConfig = rawConfig ? languageConfigSchema.safeParse(rawConfig) : undefined;
+    if (checkedConfig && !checkedConfig.success) {
+      warnings.push(`Skipped invalid x-nibleaf.config for language "${code}".`);
+    }
+    const rawTranslation = extension && isDict(extension.translation) ? extension.translation : undefined;
+    const name = rawTranslation ? asString(rawTranslation.name) : undefined;
+    const description = rawTranslation ? asString(rawTranslation.description) : undefined;
+    candidates.push({
+      code,
+      label: (extension ? asString(extension.label) : undefined) ?? LANGUAGE_LABELS[normalizedCode] ?? code,
+      direction: languageDirection(code),
+      enabled: entry.hidden !== true,
+      nodes,
+      requestedDefault: entry.default === true,
+      ...(checkedConfig?.success ? { config: checkedConfig.data } : {}),
+      ...(name || description ? { translation: { ...(name ? { name } : {}), ...(description ? { description } : {}) } } : {}),
+    });
+  }
+
+  if (candidates.length === 0) {
+    return { languages: [], warnings };
+  }
+  const explicitDefaults = candidates.map((candidate, index) => (candidate.requestedDefault ? index : -1)).filter((index) => index >= 0);
+  if (explicitDefaults.length > 1) {
+    warnings.push('Multiple navigation languages were marked default; the first one was used.');
+  }
+  const defaultIndex = explicitDefaults[0] ?? 0;
+  return {
+    languages: candidates.map(({ requestedDefault: _requestedDefault, ...candidate }, index) => ({
+      ...candidate,
+      isDefault: index === defaultIndex,
+    })),
+    warnings,
+  };
 };
 
 // ─── Config-file discovery ───────────────────────────────────────────────────

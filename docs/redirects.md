@@ -5,6 +5,9 @@ audience: 'documentation administrators planning URL changes'
 content_type: 'reference'
 last_reviewed: '2026-08-17'
 verified_against: 'packages/shared/src/redirects.ts, packages/validators/src/redirects.ts, and apps/server/src/actions/deployments.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'redirects'
 ---
 
 Redirects are configured per site in **Editor → Site configuration → Redirects**. They are part of an immutable deployment snapshot: editing a redirect does not change the live site until the next successful publish.

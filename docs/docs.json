@@ -9,39 +9,119 @@
     "dark": "#A85832"
   },
   "navigation": {
-    "groups": [
+    "languages": [
       {
-        "group": "Getting started",
-        "pages": ["getting-started/introduction", "getting-started/cloud", "getting-started/self-hosted"]
-      },
-      {
-        "group": "Use Nibleaf",
-        "pages": [
-          "product/authoring",
-          "product/markdown-mdx",
-          "git-authoring",
-          "product/publishing",
-          "product/exports",
-          "redirects",
-          "product/arabic-rtl",
-          "product/migration"
+        "language": "en",
+        "default": true,
+        "x-nibleaf": {
+          "label": "English",
+          "config": { "search": { "placeholder": "Search documentation" } }
+        },
+        "groups": [
+          {
+            "group": "Getting started",
+            "x-nibleaf": { "slug": "getting-started" },
+            "pages": ["getting-started/introduction", "getting-started/cloud", "getting-started/self-hosted"]
+          },
+          {
+            "group": "Use Nibleaf",
+            "x-nibleaf": { "slug": "use-nibleaf" },
+            "pages": [
+              "product/authoring",
+              "product/markdown-mdx",
+              "git-authoring",
+              "product/publishing",
+              "product/exports",
+              "redirects",
+              "product/arabic-rtl",
+              "product/migration"
+            ]
+          },
+          {
+            "group": "Secure access",
+            "x-nibleaf": { "slug": "secure-access" },
+            "pages": ["private-reader-access"]
+          },
+          {
+            "group": "Self-hosting",
+            "x-nibleaf": { "slug": "self-hosting" },
+            "pages": ["self-hosting/configuration", "self-hosting/production", "self-hosting/backups-upgrades", "self-hosting/troubleshooting"]
+          },
+          {
+            "group": "Reference",
+            "x-nibleaf": { "slug": "reference" },
+            "pages": ["reference/environment-variables", "reference/api", "reference/known-limitations"]
+          },
+          {
+            "group": "Contribute",
+            "x-nibleaf": { "slug": "contribute" },
+            "pages": ["contributing/documentation"]
+          }
         ]
       },
       {
-        "group": "Secure access",
-        "pages": ["private-reader-access"]
-      },
-      {
-        "group": "Self-hosting",
-        "pages": ["self-hosting/configuration", "self-hosting/production", "self-hosting/backups-upgrades", "self-hosting/troubleshooting"]
-      },
-      {
-        "group": "Reference",
-        "pages": ["reference/environment-variables", "reference/api", "reference/known-limitations"]
-      },
-      {
-        "group": "Contribute",
-        "pages": ["contributing/documentation"]
+        "language": "ar",
+        "x-nibleaf": {
+          "label": "العربية",
+          "translation": {
+            "name": "توثيق Nibleaf",
+            "description": "دليل استخدام Nibleaf Cloud وتشغيل منصة التوثيق بالاستضافة الذاتية."
+          },
+          "config": {
+            "seo": {
+              "metaTitle": "توثيق Nibleaf",
+              "metaDescription": "دليل عربي لاستخدام Nibleaf Cloud وتشغيل منصة التوثيق بالاستضافة الذاتية.",
+              "allowIndex": true
+            },
+            "search": { "placeholder": "ابحث في التوثيق" }
+          }
+        },
+        "groups": [
+          {
+            "group": "البدء",
+            "x-nibleaf": { "slug": "getting-started" },
+            "pages": ["ar/getting-started/introduction", "ar/getting-started/cloud", "ar/getting-started/self-hosted"]
+          },
+          {
+            "group": "استخدام Nibleaf",
+            "x-nibleaf": { "slug": "use-nibleaf" },
+            "pages": [
+              "ar/product/authoring",
+              "ar/product/markdown-mdx",
+              "ar/git-authoring",
+              "ar/product/publishing",
+              "ar/product/exports",
+              "ar/redirects",
+              "ar/product/arabic-rtl",
+              "ar/product/migration"
+            ]
+          },
+          {
+            "group": "الوصول الآمن",
+            "x-nibleaf": { "slug": "secure-access" },
+            "pages": ["ar/private-reader-access"]
+          },
+          {
+            "group": "الاستضافة الذاتية",
+            "x-nibleaf": { "slug": "self-hosting" },
+            "pages": [
+              "ar/self-hosting/configuration",
+              "ar/self-hosting/production",
+              "ar/self-hosting/backups-upgrades",
+              "ar/self-hosting/troubleshooting"
+            ]
+          },
+          {
+            "group": "المرجع",
+            "x-nibleaf": { "slug": "reference" },
+            "pages": ["ar/reference/environment-variables", "ar/reference/api", "ar/reference/known-limitations"]
+          },
+          {
+            "group": "المساهمة",
+            "x-nibleaf": { "slug": "contribute" },
+            "pages": ["ar/contributing/documentation"]
+          }
+        ]
       }
     ]
   }
