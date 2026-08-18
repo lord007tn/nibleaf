@@ -152,24 +152,23 @@ export function marketingLd() {
   };
 }
 
-/** In-memory GitHub star-count cache. Failures cache 0 so a private or
- *  rate-limited repo never re-fetches on every request. */
+/** In-memory GitHub star-count cache. The last known value is served while a
+ *  refresh runs so GitHub can never sit on the homepage's SSR critical path. */
 let starsCache: { value: number; fetchedAt: number } | null = null;
 /** Cache a successful (>0) count for ~1h. */
 const STARS_TTL_MS = 60 * 60 * 1000;
 /** Cache a failed/zero result for only ~1m so a transient GitHub outage doesn't
  *  hide the badge for a full hour. */
 const STARS_ERROR_TTL_MS = 60 * 1000;
-/** Shared in-flight fetch: concurrent cold-cache SSR renders reuse one request
- *  to api.github.com instead of each opening (and blocking on) their own. */
-let inFlight: Promise<number> | null = null;
+/** Shared background fetch: concurrent renders never fan out API requests. */
+let inFlight: Promise<void> | null = null;
 
 /**
- * Star count for the Nibleaf repo, fetched unauthenticated and cached
- * module-level. Returns 0 when the repo is unreachable (private, rate-limited,
- * offline, or slow) — callers hide the badge for 0.
+ * Return the cached Nibleaf star count immediately and refresh it in the
+ * background when stale. A cold process returns 0 (the count-free "Star on
+ * GitHub" state) while the first authoritative response is fetched.
  */
-export async function getGithubStars(): Promise<number> {
+export function getGithubStars(): number {
   const now = Date.now();
   if (starsCache) {
     const ttl = starsCache.value > 0 ? STARS_TTL_MS : STARS_ERROR_TTL_MS;
@@ -179,7 +178,7 @@ export async function getGithubStars(): Promise<number> {
   }
   if (!inFlight) {
     inFlight = (async () => {
-      let value = 0;
+      let value = starsCache?.value ?? 0;
       try {
         const repo = new URL(GITHUB_URL).pathname.replace(/^\/+|\/+$/g, '');
         const res = await fetch(`https://api.github.com/repos/${repo}`, {
@@ -190,18 +189,17 @@ export async function getGithubStars(): Promise<number> {
         });
         if (res.ok) {
           const data = (await res.json()) as { stargazers_count?: number };
-          if (typeof data.stargazers_count === 'number' && data.stargazers_count > 0) {
-            value = data.stargazers_count;
+          if (typeof data.stargazers_count === 'number' && data.stargazers_count >= 0) {
+            value = Math.floor(data.stargazers_count);
           }
         }
       } catch {
         // Network/API failure or timeout — treat as "no stars to show".
       }
       starsCache = { value, fetchedAt: Date.now() };
-      return value;
     })().finally(() => {
       inFlight = null;
     });
   }
-  return inFlight;
+  return starsCache?.value ?? 0;
 }

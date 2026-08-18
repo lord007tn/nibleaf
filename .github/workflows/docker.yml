@@ -14,7 +14,7 @@ on:
       image_tag:
         description: Container tag to produce
         required: true
-        default: manual
+        default: latest
         type: string
       platforms:
         description: Target platforms
