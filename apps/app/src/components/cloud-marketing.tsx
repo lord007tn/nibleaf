@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { type ComponentType, type ReactNode, type SVGProps, useState } from 'react';
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
+import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
 
 const buttonBase =
@@ -115,7 +116,7 @@ const compareLinks = [
   { href: '/alternatives/mintlify', label: 'Mintlify alternatives' },
 ];
 
-export function MarketingShell({ children }: { children: ReactNode; stars?: number }) {
+export function MarketingShell({ children, stars = 0 }: { children: ReactNode; stars?: number }) {
   const { resolvedTheme, setTheme } = useTheme();
   const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
 
@@ -158,15 +159,15 @@ export function MarketingShell({ children }: { children: ReactNode; stars?: numb
         </div>
       </header>
       <main>{children}</main>
-      <SiteFooter />
+      <SiteFooter stars={stars} />
     </div>
   );
 }
 
-export function LandingPage(_props: { stars?: number }) {
+export function LandingPage({ stars = 0 }: { stars?: number }) {
   return (
-    <MarketingShell>
-      <Hero />
+    <MarketingShell stars={stars}>
+      <Hero stars={stars} />
       <TrustStrip />
       <ShowcaseEditor />
       <ShowcasePublish />
@@ -182,9 +183,9 @@ export function LandingPage(_props: { stars?: number }) {
   );
 }
 
-export function CloudPage(_props: { stars?: number }) {
+export function CloudPage({ stars = 0 }: { stars?: number }) {
   return (
-    <MarketingShell>
+    <MarketingShell stars={stars}>
       <section className="relative overflow-hidden border-border border-b">
         <GridBackground />
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
@@ -228,7 +229,7 @@ function Announcement() {
   );
 }
 
-function Hero() {
+function Hero({ stars }: { stars: number }) {
   return (
     <section className="relative overflow-hidden border-border border-b">
       <GridBackground />
@@ -252,6 +253,7 @@ function Hero() {
             <a className={outlineButton} href="/self-hosting">
               <Server className="size-4" /> Self-host Nibleaf
             </a>
+            <GitHubStarLink stars={stars} />
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
             {['No credit card required', 'Your content stays Markdown', 'English and Arabic'].map((item) => (
@@ -727,15 +729,47 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
   },
 ];
 
-function SiteFooter() {
+export function GitHubStarLink({ stars, className }: { stars: number; className?: string }) {
+  const hasCount = Number.isFinite(stars) && stars > 0;
+  const count = hasCount ? Math.floor(stars) : 0;
+  const starLabel = count === 1 ? '1 star' : `${count.toLocaleString('en-US')} stars`;
+
+  return (
+    <a
+      aria-label={hasCount ? `Star Nibleaf on GitHub — ${starLabel}` : 'Star Nibleaf on GitHub'}
+      className={cn(outlineButton, 'group px-3', className)}
+      href={GITHUB_URL}
+      rel="noreferrer"
+      target="_blank"
+    >
+      <GitHubGlyph aria-hidden="true" className="size-4" />
+      <span>Star on GitHub</span>
+      {hasCount ? (
+        <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
+          {count.toLocaleString('en-US')}
+        </span>
+      ) : null}
+    </a>
+  );
+}
+
+function GitHubGlyph({ className, ...props }: SVGProps<SVGSVGElement>) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24" {...props}>
+      <path d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.23c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.39.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.16 1.18a10.95 10.95 0 0 1 5.76 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.58.23 2.75.12 3.04.74.81 1.18 1.83 1.18 3.09 0 4.41-2.71 5.38-5.29 5.67.42.36.79 1.06.79 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+    </svg>
+  );
+}
+
+function SiteFooter({ stars }: { stars: number }) {
   return (
     <footer className="border-border border-t bg-card/30">
       <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
-            <a className="flex items-center gap-2 font-semibold" href="/">
-              <NibleafMark className="size-7" />
-              <span>Nibleaf</span>
+            <a aria-label="Nibleaf home" className="flex items-center gap-2 font-semibold" href="/">
+              <NibleafMark aria-hidden="true" className="size-7" />
+              <span aria-hidden="true">Nibleaf</span>
             </a>
             <p className="mt-3 max-w-[28ch] text-muted-foreground text-sm leading-relaxed">
               A visual Markdown editor for publishing searchable, multilingual product documentation.
@@ -743,6 +777,7 @@ function SiteFooter() {
             <a className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/contact">
               Contact Nibleaf
             </a>
+            <GitHubStarLink className="mt-5 h-9 text-xs" stars={stars} />
           </div>
           {footerColumns.map((column) => (
             <nav key={column.title} aria-label={column.title}>
