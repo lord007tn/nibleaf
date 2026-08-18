@@ -6,11 +6,14 @@ import { GitHubStarLink } from '@/components/cloud-marketing';
 describe('GitHubStarLink', () => {
   it('offers a truthful count-free action when the repository has no stars or GitHub is unavailable', () => {
     const html = renderToStaticMarkup(<GitHubStarLink stars={0} />);
+    const fractionalHtml = renderToStaticMarkup(<GitHubStarLink stars={0.5} />);
 
     expect(html).toContain('href="https://github.com/lord007tn/nibleaf"');
     expect(html).toContain('aria-label="Star Nibleaf on GitHub"');
     expect(html).toContain('Star on GitHub');
     expect(html).not.toContain('data-github-stars');
+    expect(fractionalHtml).not.toContain('data-github-stars');
+    expect(fractionalHtml).not.toContain('0 stars');
   });
 
   it('renders an authoritative positive count with an accessible label', () => {

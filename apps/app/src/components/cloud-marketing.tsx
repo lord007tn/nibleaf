@@ -730,8 +730,8 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
 ];
 
 export function GitHubStarLink({ stars, className }: { stars: number; className?: string }) {
-  const hasCount = Number.isFinite(stars) && stars > 0;
-  const count = hasCount ? Math.floor(stars) : 0;
+  const count = Number.isFinite(stars) ? Math.max(0, Math.floor(stars)) : 0;
+  const hasCount = count > 0;
   const starLabel = count === 1 ? '1 star' : `${count.toLocaleString('en-US')} stars`;
 
   return (
