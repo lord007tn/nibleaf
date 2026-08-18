@@ -5,6 +5,7 @@ import {
   mergeConfigPreservingExisting,
   type NavGroupNode,
   type NavNode,
+  parseMintlifyLanguages,
   parseMintlifyNavigation,
 } from './mintlify-mapping';
 
@@ -163,6 +164,70 @@ describe('parseMintlifyNavigation', () => {
     });
     expect(warnings).toEqual([]);
     expect(group(nodes[0] as NavNode).children).toEqual([{ kind: 'page', path: 'intro', title: 'Start here', icon: 'rocket', tag: 'New' }]);
+  });
+});
+
+describe('parseMintlifyLanguages', () => {
+  it('keeps localized trees separate and imports namespaced RTL metadata', () => {
+    const result = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          { language: 'en', default: true, groups: [{ group: 'Guides', 'x-nibleaf': { slug: 'guides' }, pages: ['intro'] }] },
+          {
+            language: 'ar',
+            groups: [{ group: 'الأدلة', 'x-nibleaf': { slug: 'guides' }, pages: ['ar/intro'] }],
+            'x-nibleaf': {
+              label: 'العربية',
+              translation: { name: 'توثيق Acme', description: 'مرجع Acme باللغة العربية' },
+              config: { seo: { metaTitle: 'توثيق Acme', allowIndex: true }, search: { placeholder: 'ابحث في التوثيق' } },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(result.warnings).toEqual([]);
+    expect(result.languages).toHaveLength(2);
+    expect(result.languages[0]).toMatchObject({ code: 'en', direction: 'LTR', isDefault: true, enabled: true });
+    expect(result.languages[1]).toMatchObject({
+      code: 'ar',
+      label: 'العربية',
+      direction: 'RTL',
+      isDefault: false,
+      translation: { name: 'توثيق Acme' },
+      config: { search: { placeholder: 'ابحث في التوثيق' } },
+    });
+    expect(group(result.languages[1]?.nodes[0] as NavNode)).toMatchObject({ title: 'الأدلة', slug: 'guides' });
+  });
+
+  it('chooses the first declared language when no default is explicit', () => {
+    const result = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          { language: 'ar', pages: ['ar/intro'] },
+          { language: 'en', pages: ['intro'] },
+        ],
+      },
+    });
+    expect(result.languages.map((language) => language.isDefault)).toEqual([true, false]);
+  });
+
+  it('recognizes RTL language and script subtags beyond the core Arabic locales', () => {
+    const result = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          { language: 'en', default: true, pages: ['intro'] },
+          { language: 'ps', pages: ['ps/intro'] },
+          { language: 'az-Arab', pages: ['az-Arab/intro'] },
+        ],
+      },
+    });
+
+    expect(result.languages.map(({ code, direction }) => ({ code, direction }))).toEqual([
+      { code: 'en', direction: 'LTR' },
+      { code: 'ps', direction: 'RTL' },
+      { code: 'az-Arab', direction: 'RTL' },
+    ]);
   });
 });
 

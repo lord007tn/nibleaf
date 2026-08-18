@@ -1,0 +1,105 @@
+---
+title: 'ثبّت Nibleaf على خادم Linux واحد'
+description: 'ثبّت إصدار Nibleaf المثبّت باستخدام برنامج التثبيت الموجّه أو Docker Compose، ثم تحقق من عمليات الترحيل والتسجيل والتخزين والنشر.'
+audience: 'المشغّلون الذين يقيّمون Nibleaf المستضاف ذاتيًا أو يثبتونه'
+content_type: 'tutorial'
+last_reviewed: '2026-08-17'
+verified_against: 'scripts/install.sh, docker-compose.prod.yml, and .env.production.example'
+lang: 'ar'
+dir: 'rtl'
+translation_key: 'getting-started/self-hosted'
+---
+
+يسحب مسار الإنتاج الموصى به صورة متعددة البنى ومثبتة الإصدار من GHCR. ولا
+يجمع المستودع الأحادي على الخادم. أكمل هذا الدليل التعليمي على مضيف مؤقت قبل
+نقل المحتوى الحقيقي.
+
+## المتطلبات المسبقة
+
+جهّز ما يلي:
+
+- مضيف Linux عليه Docker Engine وDocker Compose v2 (`docker compose`)؛
+- الأدوات `curl` و`sed` وOpenSSL؛
+- اسم مضيف للوحة التحكم واسم مضيف منفصل للتخزين يمكن الوصول إليه من المتصفح؛
+- وكيلاً عكسيًا يدعم TLS؛
+- بريدًا إلكترونيًا صادرًا عند تفعيل التحقق بالبريد الإلكتروني؛
+- سعة منفصلة كافية للنسخ الاحتياطية من Postgres وتخزين الكائنات.
+
+تحقق من الأدوات المطلوبة:
+
+```bash
+docker --version
+docker compose version
+curl --version
+openssl version
+```
+
+## شغّل برنامج التثبيت الموجّه
+
+لأقصر مسار، شغّل برنامج التثبيت التفاعلي الرسمي من طرفية SSH:
+
+```bash
+curl -fsSL https://nibleaf.com/install.sh | sh
+```
+
+إذا كانت سياسة الأمان لديك تتطلب الفحص قبل التنفيذ، فنزّل البرنامج النصي نفسه
+وراجعه أولًا:
+
+```bash
+curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
+less nibleaf-install.sh
+sh nibleaf-install.sh
+```
+
+يتحقق برنامج التثبيت من الأدوات المحلية، ويطلب الأصول العامة، وينشئ أسرارًا
+جديدة، ويكتب ملف `.env` بصلاحيات الوضع 600، وينزّل ملف Compose الخاص بالإنتاج،
+ويسحب الصورة المثبتة الإصدار، ثم يشغّل المنظومة. مجلد التثبيت الافتراضي هو
+`$PWD/nibleaf`.
+
+## ثبّت يدويًا
+
+استخدم هذا المسار عندما تكون إدارة الإعدادات مسؤولة عن ملف البيئة:
+
+```bash
+git clone https://github.com/lord007tn/nibleaf.git
+cd nibleaf
+cp .env.production.example .env
+```
+
+عيّن كل قيمة مطلوبة في `.env`. أنشئ أسرارًا مستقلة؛ ولا تُعد استخدام قيم
+الأمثلة أو التطوير أو قيم بيئة أخرى مطلقًا:
+
+```bash
+openssl rand -hex 32
+openssl rand -base64 24
+```
+
+ثم اسحب الإصدار المثبت وشغّله:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+تطبّق خدمة `migrate` ذات التشغيل الواحد عمليات ترحيل Prisma قبل بدء خدمات
+التطبيق.
+
+## تحقق من أول نتيجة
+
+شغّل:
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml logs migrate
+docker compose -f docker-compose.prod.yml logs --tail=100 server worker app
+```
+
+ينبغي أن تكون جميع الخدمات طويلة التشغيل سليمة، وأن تنتهي `migrate` بنجاح.
+افتح `$APP_URL/sign-up`، وأنشئ المالك الأول، وارفع صورة واحدة، وانشر مشروعًا من
+صفحتين. تحقق من عنوان URL للصورة ومن البحث بعد تسجيل الخروج.
+
+إذا كانت إحدى الخدمات غير سليمة، فلا تُعد إنشاء المنظومة مرارًا. اقرأ أول خطأ
+لهذه الخدمة واستخدم [استكشاف الأخطاء وإصلاحها](/ar/self-hosting/troubleshooting).
+قبل دعوة الكتّاب، أكمل [إعدادات الإنتاج](/ar/self-hosting/configuration)
+و[قائمة التحقق للإنتاج](/ar/self-hosting/production) ونفّذ عملية مجرّبة
+لـ[النسخ الاحتياطي والاستعادة](/ar/self-hosting/backups-upgrades).

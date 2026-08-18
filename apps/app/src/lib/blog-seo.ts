@@ -51,11 +51,11 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
       { rel: 'canonical', href: canonicalHref(path) },
       ...(translation
         ? [
-            { rel: 'alternate', hreflang: language, href: canonicalHref(path) },
-            { rel: 'alternate', hreflang: translation.language ?? 'en', href: canonicalHref(`/blog/${translation.slug}`) },
+            { rel: 'alternate', hrefLang: language, href: canonicalHref(path) },
+            { rel: 'alternate', hrefLang: translation.language ?? 'en', href: canonicalHref(`/blog/${translation.slug}`) },
             {
               rel: 'alternate',
-              hreflang: 'x-default',
+              hrefLang: 'x-default',
               href: canonicalHref(`/blog/${language === 'en' ? entry.slug : translation.slug}`),
             },
           ]

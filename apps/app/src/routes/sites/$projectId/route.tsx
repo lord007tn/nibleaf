@@ -444,7 +444,7 @@ function SiteChrome() {
               className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               onClick={toggleSiteTheme}
               type="button"
-              aria-label="Toggle theme"
+              aria-label={t('toggleTheme')}
             >
               {siteTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>

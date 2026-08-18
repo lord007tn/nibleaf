@@ -6,6 +6,7 @@ import {
   createExportBody,
   createExportScheduleBody,
   createLanguageBody,
+  createPageBody,
   createProjectBody,
   gitConfigSchema,
   inferSafeInlineAssetContentType,
@@ -21,9 +22,20 @@ import {
   transferOwnershipBody,
   updateLanguageBody,
   updateMemberRoleBody,
+  updatePageBody,
   updateProjectBody,
   upsertOpenApiBody,
 } from './index';
+
+describe('page translation keys', () => {
+  it('allows absence or null and rejects blank values for creates and updates', () => {
+    expect(createPageBody.safeParse({ title: 'Intro' }).success).toBe(true);
+    expect(createPageBody.safeParse({ title: 'Intro', translationKey: null }).success).toBe(true);
+    expect(createPageBody.safeParse({ title: 'Intro', translationKey: '   ' }).success).toBe(false);
+    expect(createPageBody.parse({ title: 'Intro', translationKey: '  intro  ' }).translationKey).toBe('intro');
+    expect(updatePageBody.safeParse({ translationKey: '   ' }).success).toBe(false);
+  });
+});
 
 describe('upsertOpenApiBody', () => {
   const spec = '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}';

@@ -227,7 +227,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       ) : null}
       <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
-      <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label="Article details">
+      <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label={tArticle('articleDetails')}>
         <li className="inline-flex items-center gap-1.5">
           <Clock3 className="size-3.5" aria-hidden /> {readingMinutes} {tArticle('minRead')}
         </li>
@@ -250,7 +250,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </ul>
       ) : null}
       <div className="mt-8">
-        <Markdown content={page.content} site={{ projectId, lang, version: versionPrefix }} />
+        <Markdown content={page.content} site={{ projectId, lang: language, version: versionPrefix }} />
       </div>
 
       <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />

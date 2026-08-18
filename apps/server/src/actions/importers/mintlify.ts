@@ -2,13 +2,22 @@ import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
+import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
 import { RemoteAssetMigrator } from './ghost-assets';
 import { fetchRawText, getGitHubDefaultBranch, githubRawUrl, listGitHubFiles } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
-import { findMintlifyConfigPath, mapMintlifyConfig, mergeConfigPreservingExisting, type NavNode, parseMintlifyNavigation } from './mintlify-mapping';
+import {
+  findMintlifyConfigPath,
+  type MintlifyLanguageNavigation,
+  mapMintlifyConfig,
+  mergeConfigPreservingExisting,
+  type NavNode,
+  parseMintlifyLanguages,
+  parseMintlifyNavigation,
+} from './mintlify-mapping';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertLeafPage } from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
@@ -54,35 +63,47 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     }
 
     const summary = emptySummary();
-    const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
-    summary.warnings.push(...navWarnings);
-    if (nodes.length === 0) {
-      throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
-    }
-
     // Nav page paths are relative to the config file's directory.
     const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
-    const linkedPages = await discoverLinkedPages(nodes, { owner, name, branch }, baseDir, blobs);
-    if (linkedPages.length > 0) {
-      nodes.push({
-        kind: 'group',
-        title: 'Additional pages',
-        origin: 'group',
-        children: linkedPages.map((path) => ({ kind: 'page', path })),
-      });
-      summary.warnings.push(
-        `Imported ${linkedPages.length} linked page${linkedPages.length === 1 ? ' that was' : 's that were'} not listed in Mintlify navigation.`,
-      );
-    }
-    const target = await defaultImportTarget(projectId);
-    const removedPlaceholders = await removeImportPlaceholders(target);
-    if (removedPlaceholders > 0) {
-      summary.warnings.push(`Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}.`);
-    }
+    const repository = { owner, name, branch };
+    const defaultTarget = await defaultImportTarget(projectId);
     const assets = new RemoteAssetMigrator(projectId, 'mintlify');
-    const routeMap = buildMintlifyRouteMap(nodes);
     const state = { pages: 0, capWarned: false };
-    await importNodes(nodes, null, { owner, name, branch }, baseDir, blobs, target, assets, routeMap, summary, state);
+    const languageResult = parseMintlifyLanguages(config);
+    summary.warnings.push(...languageResult.warnings);
+    let chromeNodes: NavNode[];
+
+    if (languageResult.languages.length > 0) {
+      chromeNodes = languageResult.languages.find((language) => language.isDefault)?.nodes ?? languageResult.languages[0]?.nodes ?? [];
+      const orderedLanguages = languageResult.languages
+        .map((language, position) => ({ language, position }))
+        .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
+      for (const { language, position } of orderedLanguages) {
+        const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
+        const nodes = [...language.nodes];
+        await addLinkedPages(nodes, language.code, repository, baseDir, blobs, summary);
+        const removedPlaceholders = await removeImportPlaceholders(target);
+        if (removedPlaceholders > 0) {
+          summary.warnings.push(
+            `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'} from ${language.code}.`,
+          );
+        }
+        await importNodes(nodes, null, repository, baseDir, blobs, target, assets, buildMintlifyRouteMap(nodes), summary, state, language.code);
+      }
+    } else {
+      const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
+      summary.warnings.push(...navWarnings);
+      if (nodes.length === 0) {
+        throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
+      }
+      chromeNodes = nodes;
+      await addLinkedPages(nodes, undefined, repository, baseDir, blobs, summary);
+      const removedPlaceholders = await removeImportPlaceholders(defaultTarget);
+      if (removedPlaceholders > 0) {
+        summary.warnings.push(`Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}.`);
+      }
+      await importNodes(nodes, null, repository, baseDir, blobs, defaultTarget, assets, buildMintlifyRouteMap(nodes), summary, state);
+    }
     summary.assetsImported = assets.migrated;
     summary.assetsSkipped = assets.skipped;
     if (assets.skipped > 0) {
@@ -94,7 +115,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
 
     // Site chrome → project config, but only into keys that are currently empty.
     const rawRepoUrl = (path: string) => githubRawUrl(owner, name, branch, path);
-    const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, nodes, {
+    const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, chromeNodes, {
       resolveRepoAsset: (path) => resolveMintlifyConfigAsset(path, configPath, blobs, rawRepoUrl),
     });
     summary.warnings.push(...configWarnings);
@@ -114,11 +135,53 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
   },
 };
 
+const ensureLanguageTarget = async (
+  projectId: string,
+  defaultTarget: ImportTarget,
+  language: MintlifyLanguageNavigation,
+  position: number,
+): Promise<ImportTarget> => {
+  const existing = await prisma.language.findFirst({
+    where: { projectId, code: { equals: language.code, mode: 'insensitive' } },
+  });
+  const body = {
+    label: language.label,
+    direction: language.direction,
+    position,
+    enabled: language.isDefault ? true : language.enabled,
+    ...(language.isDefault ? { isDefault: true } : {}),
+    ...(language.config ? { config: language.config } : {}),
+    ...(language.translation ? { translation: language.translation } : {}),
+  } as const;
+  const persisted = existing
+    ? await updateLanguage(projectId, existing.id, body)
+    : await createLanguage(projectId, {
+        code: language.code,
+        label: language.label,
+        direction: language.direction,
+        isDefault: language.isDefault,
+        enabled: language.isDefault ? true : language.enabled,
+      });
+  if (!existing && (language.config || language.translation)) {
+    await updateLanguage(projectId, persisted.id, {
+      ...(language.config ? { config: language.config } : {}),
+      ...(language.translation ? { translation: language.translation } : {}),
+      position,
+    });
+  }
+  return { projectId, branchId: defaultTarget.branchId, languageId: persisted.id };
+};
+
 interface RepoRef {
   owner: string;
   name: string;
   branch: string;
 }
+
+const stripLanguagePrefix = (path: string, languageCode: string): string => {
+  const prefix = `${languageCode.toLowerCase()}/`;
+  return path.toLowerCase().startsWith(prefix) ? path.slice(prefix.length) : path;
+};
 
 const navPagePaths = (nodes: readonly NavNode[]): Set<string> => {
   const paths = new Set<string>();
@@ -130,6 +193,27 @@ const navPagePaths = (nodes: readonly NavNode[]): Set<string> => {
   };
   visit(nodes);
   return paths;
+};
+
+const addLinkedPages = async (
+  nodes: NavNode[],
+  languageCode: string | undefined,
+  repo: RepoRef,
+  baseDir: string,
+  blobs: ReadonlySet<string>,
+  summary: ImportSummary,
+): Promise<void> => {
+  const linkedPages = await discoverLinkedPages(nodes, repo, baseDir, blobs);
+  if (linkedPages.length === 0) return;
+  nodes.push({
+    kind: 'group',
+    title: languageCode?.toLowerCase().startsWith('ar') ? 'صفحات إضافية' : 'Additional pages',
+    origin: 'group',
+    children: linkedPages.map((path) => ({ kind: 'page', path })),
+  });
+  summary.warnings.push(
+    `Imported ${linkedPages.length} linked page${linkedPages.length === 1 ? ' that was' : 's that were'} not listed in ${languageCode ? `${languageCode} ` : ''}Mintlify navigation.`,
+  );
 };
 
 /** Mintlify allows linked pages to remain outside navigation. Follow internal
@@ -171,6 +255,7 @@ const importNodes = async (
   routeMap: ReadonlyMap<string, string>,
   summary: ImportSummary,
   state: { pages: number; capWarned: boolean },
+  languageCode?: string,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
   // invocation gives per-parent scoping through the recursion. Two sibling nav
@@ -191,7 +276,7 @@ const importNodes = async (
     }
 
     if (node.kind === 'group') {
-      let groupSlug = slugify(node.title);
+      let groupSlug = slugify(node.slug ?? node.title);
       if (!groupSlug) {
         groupSlug = `group-${stableHash(node.title)}`;
         summary.warnings.push(`Group "${node.title}" has no Latin characters to build a slug from — imported as "${groupSlug}".`);
@@ -204,7 +289,7 @@ const importNodes = async (
         ...(node.icon ? { icon: node.icon.slice(0, 64) } : {}),
         position,
       });
-      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state);
+      await importNodes(node.children, groupId, repo, baseDir, blobs, target, assets, routeMap, summary, state, languageCode);
       continue;
     }
 
@@ -226,6 +311,9 @@ const importNodes = async (
     // MDX imports as-is (the editor/renderer handles Mintlify-style components);
     // only the frontmatter is stripped into title/description/icon.
     const { meta, body } = parseFrontmatter(raw);
+    if (languageCode && meta.lang && meta.lang.toLowerCase() !== languageCode.toLowerCase()) {
+      summary.warnings.push(`Page "${node.path}" declares lang "${meta.lang}" but is navigated under "${languageCode}".`);
+    }
     const linkedBody = rewriteMintlifyInternalLinks(body, node.path, routeMap);
     const assetReferences = rewriteMintlifyAssetReferences(
       linkedBody,
@@ -266,6 +354,11 @@ const importNodes = async (
               tag: (node.tag ?? meta.tag)?.slice(0, 20),
               tags: [(node.tag ?? meta.tag)?.slice(0, 40)].filter((tag): tag is string => Boolean(tag)),
             },
+          }
+        : {}),
+      ...(languageCode
+        ? {
+            translationKey: (meta.translation_key || stripLanguagePrefix(node.path, languageCode)).slice(0, 120),
           }
         : {}),
       position,

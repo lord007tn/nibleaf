@@ -24,7 +24,12 @@ const SECURITY_HEADERS = {
 };
 
 export default defineConfig({
-  server: { port: 4310 },
+  server: {
+    port: 4310,
+    // Vite's static middleware claims unknown dotted paths before Nitro in
+    // development. Route imported media directly to the API at that layer.
+    proxy: { '/api/public/assets': { target: API_TARGET, changeOrigin: true } },
+  },
   plugins: [
     messageCatalogPlugin(),
     bundleAnalysisPlugin(),
@@ -42,6 +47,9 @@ export default defineConfig({
     nitro({
       routeRules: {
         '/**': { headers: SECURITY_HEADERS },
+        // Nitro otherwise treats dotted asset keys as app/static paths before
+        // the broad API proxy, leaving imported images as published-site 404s.
+        '/api/public/assets/**': { proxy: `${API_TARGET}/api/public/assets/**` },
         '/api/**': { proxy: `${API_TARGET}/api/**` },
       },
     }),

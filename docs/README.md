@@ -5,6 +5,13 @@ self-hosting documentation. `docs.json` defines the reader-facing hierarchy;
 the Markdown and MDX pages are portable content that Nibleaf can import from
 this public repository.
 
+English pages keep their existing paths and Arabic counterparts mirror them
+under `ar/`. Every public page declares `lang`, `dir`, and a shared
+`translation_key`; `docs.json` keeps the two navigation trees in exact order.
+Use [`ARABIC_GLOSSARY.md`](ARABIC_GLOSSARY.md) as the internal terminology
+authority when reviewing Arabic changes. It deliberately stays out of public
+navigation.
+
 The hosted site at [docs.nibleaf.com](https://docs.nibleaf.com) is published
 from Nibleaf's database. Treat a change as complete only after the source is
 reviewed, imported or synchronized into the documentation project, published,

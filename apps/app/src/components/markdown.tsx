@@ -33,6 +33,7 @@ import {
 } from '@/components/site/mdx-components';
 import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
+import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -75,9 +76,10 @@ function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefi
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
  *  filename header bar is drawn; otherwise the language shows as a floating badge. */
-function Pre(props: ComponentProps<'pre'>) {
+function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
+  const t = siteT(locale);
   // Language + optional title come from the fence meta. mdast→hast may attach
   // them to this <pre> or to the child <code>, so check both.
   const ownProps = props as ComponentProps<'pre'> & { 'data-title'?: string; 'data-lang'?: string };
@@ -99,7 +101,7 @@ function Pre(props: ComponentProps<'pre'>) {
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? 'Copied' : 'Copy code'}
+      aria-label={copied ? t('copied') : t('copyCode')}
       className={cn(
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
@@ -287,8 +289,42 @@ export function MarkdownRenderer({
     () =>
       ({
         ...htmlComponents,
+        pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
         a: anchorRenderer(site),
         ...mdxComponents,
+        tabs: ({ children }: MdxProps) => <Tabs language={site?.lang}>{children}</Tabs>,
+        accordion: ({ title, defaultopen, children }: MdxProps) => (
+          <Accordion title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
+            {children}
+          </Accordion>
+        ),
+        codegroup: ({ children }: MdxProps) => <CodeGroup language={site?.lang}>{children}</CodeGroup>,
+        expandable: ({ title, defaultopen, children }: MdxProps) => (
+          <Expandable title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
+            {children}
+          </Expandable>
+        ),
+        paramfield: ({ path, query, header, body, name, type, required, default: def, deprecated, children }: MdxProps) => (
+          <ParamField
+            path={str(path)}
+            query={str(query)}
+            header={str(header)}
+            body={str(body)}
+            name={str(name)}
+            type={str(type)}
+            required={required}
+            default={str(def)}
+            deprecated={deprecated}
+            language={site?.lang}
+          >
+            {children}
+          </ParamField>
+        ),
+        responsefield: ({ name, type, required, default: def, deprecated, children }: MdxProps) => (
+          <ResponseField name={str(name)} type={str(type)} required={required} default={str(def)} deprecated={deprecated} language={site?.lang}>
+            {children}
+          </ResponseField>
+        ),
         // Card links are internal doc targets too — rewrite them to the site base.
         card: ({ title, href, icon, children }: MdxProps) => (
           <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>

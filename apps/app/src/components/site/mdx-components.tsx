@@ -3,6 +3,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type 
 import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
+import { siteT } from '@/lib/site-i18n';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────
 
@@ -90,9 +91,10 @@ export function Step({ title, children }: { title?: string; children?: ReactNode
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
-export function Tabs({ children }: { children?: ReactNode }) {
+export function Tabs({ children, language }: { children?: ReactNode; language?: string }) {
   const tabs = Children.toArray(children).filter(isValidElement) as Array<React.ReactElement<{ title?: string; children?: ReactNode }>>;
   const [active, setActive] = useState(0);
+  const t = siteT(language);
   if (tabs.length === 0) return null;
   return (
     <div className="my-5">
@@ -107,7 +109,7 @@ export function Tabs({ children }: { children?: ReactNode }) {
               i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
-            {tab.props.title ?? `Tab ${i + 1}`}
+            {tab.props.title ?? `${t('tab')} ${i + 1}`}
           </button>
         ))}
       </div>
@@ -126,8 +128,19 @@ export function AccordionGroup({ children }: { children?: ReactNode }) {
   return <div className="my-5 divide-y divide-border overflow-hidden rounded-xl border border-border">{children}</div>;
 }
 
-export function Accordion({ title, defaultOpen, children }: { title?: string; defaultOpen?: string | boolean; children?: ReactNode }) {
+export function Accordion({
+  title,
+  defaultOpen,
+  children,
+  language,
+}: {
+  title?: string;
+  defaultOpen?: string | boolean;
+  children?: ReactNode;
+  language?: string;
+}) {
   const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
+  const t = siteT(language);
   return (
     <div>
       <button
@@ -136,7 +149,7 @@ export function Accordion({ title, defaultOpen, children }: { title?: string; de
         aria-expanded={open}
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-start font-medium"
       >
-        {title ?? 'Details'}
+        {title ?? t('details')}
         <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
       {open ? <div className="px-4 pb-4 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
@@ -194,6 +207,7 @@ function FieldRow({
   defaultValue,
   deprecated,
   children,
+  language,
 }: {
   name?: string;
   type?: string;
@@ -201,21 +215,23 @@ function FieldRow({
   defaultValue?: string;
   deprecated?: unknown;
   children?: ReactNode;
+  language?: string;
 }) {
+  const t = siteT(language);
   return (
     <div className="border-border border-b py-3 first:pt-0 last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {name ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold text-[0.8rem]">{name}</code> : null}
         {type ? <span className="font-mono text-muted-foreground text-xs">{type}</span> : null}
         {truthyAttr(required) ? (
-          <span className="font-medium text-[11px] text-red-600 uppercase tracking-wide dark:text-red-400">required</span>
+          <span className="font-medium text-[11px] text-red-600 uppercase tracking-wide dark:text-red-400">{t('required')}</span>
         ) : null}
         {truthyAttr(deprecated) ? (
-          <span className="font-medium text-[11px] text-amber-600 uppercase tracking-wide dark:text-amber-400">deprecated</span>
+          <span className="font-medium text-[11px] text-amber-600 uppercase tracking-wide dark:text-amber-400">{t('deprecated')}</span>
         ) : null}
         {defaultValue ? (
           <span className="text-muted-foreground text-xs">
-            default: <code className="font-mono">{defaultValue}</code>
+            {t('defaultValue')}: <code className="font-mono">{defaultValue}</code>
           </span>
         ) : null}
       </div>
@@ -235,6 +251,7 @@ export function ParamField({
   default: defaultValue,
   deprecated,
   children,
+  language,
 }: {
   path?: string;
   query?: string;
@@ -246,9 +263,17 @@ export function ParamField({
   default?: string;
   deprecated?: unknown;
   children?: ReactNode;
+  language?: string;
 }) {
   return (
-    <FieldRow name={path ?? query ?? header ?? body ?? name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated}>
+    <FieldRow
+      name={path ?? query ?? header ?? body ?? name}
+      type={type}
+      required={required}
+      defaultValue={defaultValue}
+      deprecated={deprecated}
+      language={language}
+    >
       {children}
     </FieldRow>
   );
@@ -261,6 +286,7 @@ export function ResponseField({
   default: defaultValue,
   deprecated,
   children,
+  language,
 }: {
   name?: string;
   type?: string;
@@ -268,16 +294,28 @@ export function ResponseField({
   default?: string;
   deprecated?: unknown;
   children?: ReactNode;
+  language?: string;
 }) {
   return (
-    <FieldRow name={name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated}>
+    <FieldRow name={name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated} language={language}>
       {children}
     </FieldRow>
   );
 }
 
-export function Expandable({ title, defaultOpen, children }: { title?: string; defaultOpen?: string | boolean; children?: ReactNode }) {
+export function Expandable({
+  title,
+  defaultOpen,
+  children,
+  language,
+}: {
+  title?: string;
+  defaultOpen?: string | boolean;
+  children?: ReactNode;
+  language?: string;
+}) {
   const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
+  const t = siteT(language);
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border">
       <button
@@ -287,7 +325,7 @@ export function Expandable({ title, defaultOpen, children }: { title?: string; d
         className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-start font-medium text-sm"
       >
         <ChevronRight className={cn('size-4 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} aria-hidden />
-        {title ?? 'Show properties'}
+        {title ?? t('showProperties')}
       </button>
       {open ? <div className="border-border border-t px-4 py-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
     </div>
@@ -363,7 +401,7 @@ export function MdxButton({ href, variant, children }: { href?: string; variant?
 type CodeProps = { className?: string; 'data-title'?: string; 'data-lang'?: string };
 type PreElement = ReactElement<{ 'data-title'?: string; 'data-lang'?: string; children?: { props?: CodeProps } }>;
 
-export function CodeGroup({ children }: { children?: ReactNode }) {
+export function CodeGroup({ children, language }: { children?: ReactNode; language?: string }) {
   const blocks = Children.toArray(children).filter(isValidElement) as PreElement[];
   const [active, setActive] = useState(0);
   if (blocks.length === 0) {
@@ -375,8 +413,8 @@ export function CodeGroup({ children }: { children?: ReactNode }) {
     if (title) {
       return title;
     }
-    const lang = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
-    return lang ? lang.toUpperCase() : `Tab ${index + 1}`;
+    const codeLanguage = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
+    return codeLanguage ? codeLanguage.toUpperCase() : `${siteT(language)('tab')} ${index + 1}`;
   };
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-border">

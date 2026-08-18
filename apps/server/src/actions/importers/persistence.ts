@@ -105,6 +105,7 @@ export const upsertLeafPage = async (
     description?: string;
     icon?: string;
     config?: PageConfig;
+    translationKey?: string;
     position?: number;
   },
 ): Promise<UpsertOutcome> => {
@@ -126,6 +127,7 @@ export const upsertLeafPage = async (
         ...(page.description !== undefined ? { description: page.description } : {}),
         ...(page.icon !== undefined ? { icon: page.icon } : {}),
         ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
+        ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
         ...(page.position !== undefined ? { position: page.position } : {}),
       },
     });
@@ -141,6 +143,7 @@ export const upsertLeafPage = async (
     ...(page.description !== undefined ? { description: page.description } : {}),
     ...(page.icon !== undefined ? { icon: page.icon } : {}),
     ...(page.config !== undefined ? { config: page.config } : {}),
+    ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
     ...(page.position !== undefined ? { position: page.position } : {}),
   });
   return 'imported';
