@@ -121,7 +121,7 @@ jobs:
 
       # Deployment requires an explicit publish + deploy choice and is limited
       # to a workflow dispatched on main that also builds the main ref.
-      - name: Trigger Coolify deployment
+      - name: Deploy with Coolify and verify completion
         if: inputs.publish && inputs.deploy && inputs.ref == 'main' && github.ref == 'refs/heads/main'
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
@@ -130,8 +130,8 @@ jobs:
           COOLIFY_CF_ACCESS_CLIENT_SECRET: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_SECRET }}
         run: |
           if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" || -z "$COOLIFY_CF_ACCESS_CLIENT_ID" || -z "$COOLIFY_CF_ACCESS_CLIENT_SECRET" ]]; then
-            echo "::warning::Missing a Coolify deployment or Cloudflare Access secret; image was published but Coolify deployment was not triggered"
-            exit 0
+            echo "::error::Missing a Coolify deployment or Cloudflare Access secret"
+            exit 1
           fi
 
           response=$(curl --fail-with-body --silent --show-error \
@@ -149,3 +149,58 @@ jobs:
             echo "::error::Coolify deploy webhook did not return JSON"
             exit 1
           fi
+
+          deployment_uuid=$(printf '%s' "$response" | jq --exit-status --raw-output '.deployments[0].deployment_uuid // empty')
+          if [[ -z "$deployment_uuid" ]]; then
+            echo "::error::Coolify did not return a deployment UUID"
+            exit 1
+          fi
+
+          coolify_api_base="${COOLIFY_NIBLEAF_DEPLOY_WEBHOOK%%/deploy*}"
+          if [[ "$coolify_api_base" == "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" ]]; then
+            echo "::error::Could not derive the Coolify API base URL from the deployment webhook"
+            exit 1
+          fi
+
+          echo "Coolify deployment UUID: $deployment_uuid"
+          deadline=$((SECONDS + 1800))
+
+          while (( SECONDS < deadline )); do
+            deployment=$(curl --fail-with-body --silent --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --location \
+              --proto-redir '=https' \
+              --header "Accept: application/json" \
+              --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
+              --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
+              --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
+              "${coolify_api_base}/deployments/${deployment_uuid}")
+            status=$(printf '%s' "$deployment" | jq --exit-status --raw-output '.status // empty')
+
+            echo "Coolify deployment status: $status"
+            case "$status" in
+              finished)
+                {
+                  echo "### Coolify deployment"
+                  echo "- UUID: \`$deployment_uuid\`"
+                  echo "- Status: **finished**"
+                } >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+                ;;
+              failed|cancelled-by-user)
+                echo "::error::Coolify deployment $deployment_uuid ended with status: $status"
+                exit 1
+                ;;
+              queued|in_progress)
+                sleep 15
+                ;;
+              *)
+                echo "::error::Coolify deployment $deployment_uuid returned an unknown status: $status"
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "::error::Timed out waiting for Coolify deployment $deployment_uuid to finish"
+          exit 1
