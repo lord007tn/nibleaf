@@ -2,9 +2,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BookOpen, Globe, Server, Unlock } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Eyebrow, iconTile, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/about')({
+  loader: () => ({ stars: getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'About Nibleaf: documentation ownership and Arabic support',
@@ -35,8 +36,9 @@ const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; bod
 ];
 
 function AboutPage() {
+  const { stars } = Route.useLoaderData();
   return (
-    <MarketingShell>
+    <MarketingShell stars={stars}>
       {/* Header */}
       <section className="border-border border-b">
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">

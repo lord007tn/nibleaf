@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { MarketingShell } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/privacy')({
+  loader: () => ({ stars: getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud Privacy Policy and Data Practices',
@@ -62,8 +63,9 @@ const SECTIONS: { heading: string; body: string }[] = [
 ];
 
 function PrivacyPage() {
+  const { stars } = Route.useLoaderData();
   return (
-    <MarketingShell>
+    <MarketingShell stars={stars}>
       <article className="mx-auto max-w-3xl px-6 py-20">
         <h1 className="font-semibold text-4xl tracking-tight">Privacy Policy</h1>
         <p className="mt-2 text-muted-foreground text-sm">Last updated: {LAST_UPDATED}</p>
