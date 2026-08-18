@@ -69,7 +69,9 @@ const LANGUAGE_LABELS: Record<string, string> = {
   ur: 'اردو',
 };
 
-const languageDirection = (code: string): 'LTR' | 'RTL' => (/^(?:ar|fa|he|ur)(?:-|$)/i.test(code) ? 'RTL' : 'LTR');
+const RTL_LANGUAGES = /^(?:ar|fa|he|iw|ur|ps|sd|ckb|dv|yi|ug)(?:[-_]|$)/i;
+const RTL_SCRIPTS = /[-_](?:Arab|Hebr|Thaa|Syrc)(?:[-_]|$)/i;
+const languageDirection = (code: string): 'LTR' | 'RTL' => (RTL_LANGUAGES.test(code) || RTL_SCRIPTS.test(code) ? 'RTL' : 'LTR');
 
 /** docs.json container kinds, in the order Mintlify nests them. */
 const CONTAINERS = [

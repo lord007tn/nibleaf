@@ -75,7 +75,10 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
 
     if (languageResult.languages.length > 0) {
       chromeNodes = languageResult.languages.find((language) => language.isDefault)?.nodes ?? languageResult.languages[0]?.nodes ?? [];
-      for (const [position, language] of languageResult.languages.entries()) {
+      const orderedLanguages = languageResult.languages
+        .map((language, position) => ({ language, position }))
+        .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
+      for (const { language, position } of orderedLanguages) {
         const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
         const nodes = [...language.nodes];
         await addLinkedPages(nodes, language.code, repository, baseDir, blobs, summary);
@@ -138,7 +141,9 @@ const ensureLanguageTarget = async (
   language: MintlifyLanguageNavigation,
   position: number,
 ): Promise<ImportTarget> => {
-  const existing = await prisma.language.findUnique({ where: { projectId_code: { projectId, code: language.code } } });
+  const existing = await prisma.language.findFirst({
+    where: { projectId, code: { equals: language.code, mode: 'insensitive' } },
+  });
   const body = {
     label: language.label,
     direction: language.direction,
@@ -173,7 +178,10 @@ interface RepoRef {
   branch: string;
 }
 
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const stripLanguagePrefix = (path: string, languageCode: string): string => {
+  const prefix = `${languageCode.toLowerCase()}/`;
+  return path.toLowerCase().startsWith(prefix) ? path.slice(prefix.length) : path;
+};
 
 const navPagePaths = (nodes: readonly NavNode[]): Set<string> => {
   const paths = new Set<string>();
@@ -350,7 +358,7 @@ const importNodes = async (
         : {}),
       ...(languageCode
         ? {
-            translationKey: (meta.translation_key || node.path.replace(new RegExp(`^${escapeRegExp(languageCode)}/`, 'i'), '')).slice(0, 120),
+            translationKey: (meta.translation_key || stripLanguagePrefix(node.path, languageCode)).slice(0, 120),
           }
         : {}),
       position,

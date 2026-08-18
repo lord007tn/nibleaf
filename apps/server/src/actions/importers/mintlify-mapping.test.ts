@@ -211,6 +211,24 @@ describe('parseMintlifyLanguages', () => {
     });
     expect(result.languages.map((language) => language.isDefault)).toEqual([true, false]);
   });
+
+  it('recognizes RTL language and script subtags beyond the core Arabic locales', () => {
+    const result = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          { language: 'en', default: true, pages: ['intro'] },
+          { language: 'ps', pages: ['ps/intro'] },
+          { language: 'az-Arab', pages: ['az-Arab/intro'] },
+        ],
+      },
+    });
+
+    expect(result.languages.map(({ code, direction }) => ({ code, direction }))).toEqual([
+      { code: 'en', direction: 'LTR' },
+      { code: 'ps', direction: 'RTL' },
+      { code: 'az-Arab', direction: 'RTL' },
+    ]);
+  });
 });
 
 describe('findMintlifyConfigPath', () => {

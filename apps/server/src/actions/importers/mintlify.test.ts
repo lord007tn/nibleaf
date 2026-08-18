@@ -22,12 +22,14 @@ const mem = vi.hoisted(() => ({
     translationKey?: string;
   }>,
   languages: new Map([['en', { id: 'lang-en', code: 'en' }]]),
+  languageOperations: [] as Array<{ kind: 'create' | 'update'; code: string; position?: number; isDefault?: boolean; enabled?: boolean }>,
   nextId: 1,
   repoFiles: new Map<string, string>(),
   reset() {
     this.rows.length = 0;
     this.nextId = 1;
     this.repoFiles.clear();
+    this.languageOperations.length = 0;
     this.languages.clear();
     this.languages.set('en', { id: 'lang-en', code: 'en' });
   },
@@ -37,17 +39,25 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     project: { update: vi.fn(async () => ({})) },
     language: {
-      findUnique: vi.fn(async ({ where }: { where: { projectId_code: { code: string } } }) => mem.languages.get(where.projectId_code.code) ?? null),
+      findFirst: vi.fn(async ({ where }: { where: { code: { equals: string } } }) =>
+        [...mem.languages.values()].find((language) => language.code.toLowerCase() === where.code.equals.toLowerCase()),
+      ),
     },
   },
 }));
 vi.mock('../languages', () => ({
   createLanguage: vi.fn(async (_projectId: string, body: { code: string }) => {
     const language = { id: `lang-${body.code}`, code: body.code };
+    mem.languageOperations.push({ kind: 'create', code: body.code });
     mem.languages.set(body.code, language);
     return language;
   }),
-  updateLanguage: vi.fn(async (_projectId: string, id: string) => [...mem.languages.values()].find((language) => language.id === id)),
+  updateLanguage: vi.fn(async (_projectId: string, id: string, body: { position?: number; isDefault?: boolean; enabled?: boolean }) => {
+    const language = [...mem.languages.values()].find((candidate) => candidate.id === id);
+    if (!language) return undefined;
+    mem.languageOperations.push({ kind: 'update', code: language.code, ...body });
+    return language;
+  }),
 }));
 vi.mock('../projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ id: 'project', config: null })) }));
 vi.mock('./github', () => ({
@@ -194,6 +204,37 @@ describe('mintlify language import', () => {
     ]);
     const groups = mem.rows.filter((row) => row.kind === 'GROUP');
     expect(groups.map((group) => group.slug)).toEqual(['guides', 'guides']);
+  });
+
+  it('matches existing language codes case-insensitively without changing their stored spelling', async () => {
+    mem.languages.clear();
+    mem.languages.set('AR', { id: 'lang-ar', code: 'AR' });
+    setNavigation({ languages: [{ language: 'ar', default: true, pages: ['ar/intro'] }] });
+    mem.repoFiles.set('ar/intro.mdx', '# مقدمة');
+
+    await runImport();
+
+    expect([...mem.languages.keys()]).toEqual(['AR']);
+    expect(mem.languageOperations[0]).toMatchObject({ kind: 'update', code: 'AR', isDefault: true });
+  });
+
+  it('promotes the declared default before updating a previously default hidden language while retaining positions', async () => {
+    mem.languages.set('ar', { id: 'lang-ar', code: 'ar' });
+    setNavigation({
+      languages: [
+        { language: 'ar', hidden: true, pages: ['ar/intro'] },
+        { language: 'en', default: true, pages: ['intro'] },
+      ],
+    });
+    mem.repoFiles.set('ar/intro.mdx', '# مقدمة');
+    mem.repoFiles.set('intro.mdx', '# Intro');
+
+    await runImport();
+
+    expect(mem.languageOperations.slice(0, 2)).toMatchObject([
+      { kind: 'update', code: 'en', position: 1, isDefault: true, enabled: true },
+      { kind: 'update', code: 'ar', position: 0, enabled: false },
+    ]);
   });
 });
 

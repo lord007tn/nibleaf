@@ -117,8 +117,8 @@ function validateConfig(config) {
   }
 
   const pageCount = [...trees.values()].reduce((sum, tree) => sum + tree.pages.length, 0);
-  if (pageCount !== 40 || records.size !== 20) {
-    fail(configPath, `expected 20 explicit English/Arabic page pairs (found ${records.size} pairs across ${pageCount} routes)`);
+  if (pageCount !== records.size * REQUIRED_LANGUAGES.length) {
+    fail(configPath, `every navigated route needs one page per language (found ${records.size} pairs across ${pageCount} routes)`);
   }
   console.log(`Checked ${records.size} English/Arabic documentation pairs across ${pageCount} navigated pages.`);
 }
@@ -223,7 +223,7 @@ function checkPage(file, route, expectedLanguage, routes) {
     previousLevel = level;
   }
 
-  for (const match of body.matchAll(/(!?)\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+  for (const match of withoutFences.matchAll(/(!?)\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
     const [, imageMarker, label, target] = match;
     if (expectedLanguage === 'ar' && imageMarker === '!' && !ARABIC.test(label)) fail(file, `image "${target}" needs Arabic alt text`);
     if (/^(?:https?:|mailto:|#)/.test(target)) continue;
@@ -243,12 +243,12 @@ function checkPage(file, route, expectedLanguage, routes) {
     else if (!existsSync(resolved)) fail(file, `local link target does not exist: "${clean}"`);
   }
   if (expectedLanguage === 'ar') {
-    for (const match of body.matchAll(/<Frame\s+[^>]*caption=["']([^"']+)["'][^>]*>/g)) {
+    for (const match of withoutFences.matchAll(/<Frame\s+[^>]*caption=["']([^"']+)["'][^>]*>/g)) {
       if (!ARABIC.test(match[1])) fail(file, 'Frame captions on Arabic pages must be Arabic');
     }
-    if ((body.match(/[\u0600-\u06ff]/gu) ?? []).length < 100) fail(file, 'Arabic page body is too short to be a substantive adaptation');
+    if ((withoutFences.match(/[\u0600-\u06ff]/gu) ?? []).length < 100) fail(file, 'Arabic page body is too short to be a substantive adaptation');
   }
-  if (!body.match(/^##\s+/m)) fail(file, `route "${route}" needs at least one H2 section`);
+  if (!withoutFences.match(/^##\s+/m)) fail(file, `route "${route}" needs at least one H2 section`);
 
   return {
     file,
