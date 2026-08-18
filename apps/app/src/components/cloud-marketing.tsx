@@ -467,26 +467,29 @@ function HowItWorks() {
 
 /** Copies a shell command; renders identically on server and client until clicked. */
 export function CopyCommand({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
   const copy = () => {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) {
+    if (typeof navigator === 'undefined' || typeof navigator.clipboard?.writeText !== 'function') {
+      setCopyStatus('failed');
       return;
     }
     navigator.clipboard
       .writeText(command)
       .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        setCopyStatus('copied');
+        setTimeout(() => setCopyStatus('idle'), 2000);
       })
       .catch(() => {
-        // Clipboard permission denied — leave the button in its resting state.
+        setCopyStatus('failed');
       });
   };
+  const copied = copyStatus === 'copied';
+  const copyLabel = copied ? 'Copied' : copyStatus === 'failed' ? 'Copy failed' : 'Copy';
   return (
     <button
       type="button"
       onClick={copy}
-      aria-label={copied ? 'Copied' : `Copy ${command}`}
+      aria-label={copyStatus === 'idle' ? `Copy ${command}` : copyLabel}
       className="group flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-border bg-[#0d1117] px-4 py-3 text-start font-mono text-sm text-white/90 transition-colors hover:border-primary/40 sm:h-12 sm:py-0"
       dir="ltr"
     >
@@ -495,7 +498,7 @@ export function CopyCommand({ command }: { command: string }) {
         {command}
       </span>
       <span className="inline-flex shrink-0 items-center gap-1.5 font-sans font-medium text-[11px] text-white/45 uppercase tracking-wide group-hover:text-white/80">
-        {copied ? 'Copied' : 'Copy'}
+        {copyLabel}
         {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
       </span>
     </button>
