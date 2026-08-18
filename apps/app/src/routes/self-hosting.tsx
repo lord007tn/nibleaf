@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/self-hosting')({
+  loader: () => ({ stars: getGithubStars() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf self-hosting status and deployment architecture',
@@ -22,8 +23,9 @@ export const Route = createFileRoute('/self-hosting')({
 });
 
 function SelfHostingPage() {
+  const { stars } = Route.useLoaderData();
   return (
-    <MarketingShell>
+    <MarketingShell stars={stars}>
       <section className="border-border border-b">
         <div className="mx-auto max-w-3xl px-6 py-20">
           <Eyebrow>Self-hosting status</Eyebrow>
