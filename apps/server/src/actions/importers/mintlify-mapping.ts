@@ -371,7 +371,7 @@ const firstLeafPath = (nodes: NavNode[], prefix: string[]): string | null => {
     if (node.kind === 'page') {
       return [...prefix, pageSlug(node.path)].join('/');
     }
-    const found = firstLeafPath(node.children, [...prefix, slugify(node.title) || 'group']);
+    const found = firstLeafPath(node.children, [...prefix, slugify(node.slug ?? node.title) || 'group']);
     if (found) {
       return found;
     }
@@ -523,7 +523,7 @@ export const mapMintlifyConfig = (config: Dict, nav: NavNode[], options: Mintlif
   }
   for (const node of nav) {
     if (node.kind === 'group' && node.origin === 'tab') {
-      const leaf = firstLeafPath(node.children, [slugify(node.title) || 'group']);
+      const leaf = firstLeafPath(node.children, [slugify(node.slug ?? node.title) || 'group']);
       if (leaf) {
         tabs.push({ label: label(node.title), href: `/${leaf}` });
       }

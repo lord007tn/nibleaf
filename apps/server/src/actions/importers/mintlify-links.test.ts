@@ -6,6 +6,7 @@ const nodes: NavNode[] = [
   {
     kind: 'group',
     title: 'Documentation',
+    slug: 'docs',
     origin: 'group',
     children: [
       { kind: 'group', title: 'Getting Started', origin: 'group', children: [{ kind: 'page', path: 'quickstart' }] },
@@ -25,8 +26,8 @@ const nodes: NavNode[] = [
 describe('buildMintlifyRouteMap', () => {
   it('maps Mintlify source paths to their imported grouped public routes', () => {
     const routes = buildMintlifyRouteMap(nodes);
-    expect(routes.get('quickstart')).toBe('/documentation/getting-started/quickstart');
-    expect(routes.get('guides/python-fastapi')).toBe('/documentation/language-guides/python-fastapi');
+    expect(routes.get('quickstart')).toBe('/docs/getting-started/quickstart');
+    expect(routes.get('guides/python-fastapi')).toBe('/docs/language-guides/python-fastapi');
   });
 });
 
@@ -41,9 +42,9 @@ describe('rewriteMintlifyInternalLinks', () => {
       '![Image](/nodejs-express.png)',
     ].join('\n');
     const result = rewriteMintlifyInternalLinks(content, 'quickstart', routes);
-    expect(result).toContain('[Node](/documentation/language-guides/nodejs-express)');
-    expect(result).toContain('[Python](/documentation/language-guides/python-fastapi#install)');
-    expect(result).toContain('href="/documentation/getting-started/quickstart?from=card"');
+    expect(result).toContain('[Node](/docs/language-guides/nodejs-express)');
+    expect(result).toContain('[Python](/docs/language-guides/python-fastapi#install)');
+    expect(result).toContain('href="/docs/getting-started/quickstart?from=card"');
     expect(result).toContain('[External](https://example.com/nodejs-express)');
     expect(result).toContain('![Image](/nodejs-express.png)');
   });

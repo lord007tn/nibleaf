@@ -25,7 +25,7 @@ export const buildMintlifyRouteMap = (nodes: readonly NavNode[]): ReadonlyMap<st
     const usedSlugs = new Map<string, string>();
     for (const node of items) {
       if (node.kind === 'group') {
-        const groupSlug = slugify(node.title) || `group-${stableHash(node.title)}`;
+        const groupSlug = slugify(node.slug ?? node.title) || `group-${stableHash(node.title)}`;
         visit(node.children, [...parentSegments, groupSlug]);
         continue;
       }

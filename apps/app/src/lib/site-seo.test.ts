@@ -17,7 +17,7 @@ const meta = (head: ReturnType<typeof pageHead>, key: string): string | undefine
 const title = (head: ReturnType<typeof pageHead>): string | undefined => head.meta?.find((m) => 'title' in m)?.title;
 const canonical = (head: ReturnType<typeof pageHead>): string | undefined => head.links?.find((l) => l.rel === 'canonical')?.href;
 const hreflangs = (head: ReturnType<typeof pageHead>): Record<string, string> =>
-  Object.fromEntries((head.links ?? []).filter((l) => l.rel === 'alternate').map((l) => [l.hreflang, l.href]));
+  Object.fromEntries((head.links ?? []).filter((l) => l.rel === 'alternate').map((l) => [l.hrefLang, l.href]));
 
 const base = (over: Partial<SitePage> = {}): SitePage => ({
   project: {

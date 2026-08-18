@@ -287,7 +287,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
       const altLang = language.isDefault ? undefined : language.code;
       links.push({
         rel: 'alternate',
-        hreflang: language.code,
+        hrefLang: language.code,
         href: sitePageUrl(projectId, versionedPath(language.path as string), altLang, urlOptions),
       });
     }
@@ -295,7 +295,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
     if (fallback) {
       links.push({
         rel: 'alternate',
-        hreflang: 'x-default',
+        hrefLang: 'x-default',
         href: sitePageUrl(projectId, versionedPath(fallback.path as string), undefined, urlOptions),
       });
     }
