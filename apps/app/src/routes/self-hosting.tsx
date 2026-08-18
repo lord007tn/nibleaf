@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
-import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { CopyCommand, Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+
+const INSTALL_COMMAND = 'curl -fsSL https://nibleaf.com/install.sh | sh';
 
 export const Route = createFileRoute('/self-hosting')({
   loader: async () => ({ stars: await getGithubStars() }),
@@ -43,12 +45,12 @@ function SelfHostingPage() {
               <li>The install path is tested on a disposable Linux runner before release.</li>
             </ul>
           </div>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a className={primaryButton} href="/install.sh">
-              Download the installer <ArrowRight className="size-4" />
-            </a>
+          <div className="mt-8 flex flex-col items-start gap-3">
+            <div className="w-full">
+              <CopyCommand command={INSTALL_COMMAND} />
+            </div>
             <a className={outlineButton} href="/blog/self-host-documentation-site-docker-compose">
-              Follow the deployment guide
+              Follow the deployment guide <ArrowRight className="size-4" />
             </a>
           </div>
         </div>
