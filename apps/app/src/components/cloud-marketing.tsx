@@ -9,17 +9,20 @@ import {
   Cloud,
   Copy,
   FileText,
+  GitFork,
   Globe2,
   History,
   Languages,
   Moon,
   PenLine,
   Rocket,
+  Scale,
   Search,
   Server,
   Share2,
   ShieldCheck,
   Sparkles,
+  Star,
   Sun,
   Users,
   Workflow,
@@ -137,6 +140,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-2">
+            <GitHubStarLink className="h-9 px-2.5 text-muted-foreground hover:text-foreground" compact label="GitHub" stars={stars} />
             <button
               aria-label={`Switch to ${nextTheme} mode`}
               className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -729,7 +733,17 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
   },
 ];
 
-export function GitHubStarLink({ stars, className }: { stars: number; className?: string }) {
+export function GitHubStarLink({
+  stars,
+  className,
+  compact = false,
+  label = 'Star on GitHub',
+}: {
+  stars: number;
+  className?: string;
+  compact?: boolean;
+  label?: string;
+}) {
   const count = Number.isFinite(stars) ? Math.max(0, Math.floor(stars)) : 0;
   const hasCount = count > 0;
   const starLabel = count === 1 ? '1 star' : `${count.toLocaleString('en-US')} stars`;
@@ -743,7 +757,8 @@ export function GitHubStarLink({ stars, className }: { stars: number; className?
       target="_blank"
     >
       <GitHubGlyph aria-hidden="true" className="size-4" />
-      <span>Star on GitHub</span>
+      <span className={cn(compact && 'hidden lg:inline')}>{label}</span>
+      <Star aria-hidden="true" className={cn('size-3.5', !compact && 'hidden sm:block')} />
       {hasCount ? (
         <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
           {count.toLocaleString('en-US')}
@@ -764,8 +779,23 @@ function GitHubGlyph({ className, ...props }: SVGProps<SVGSVGElement>) {
 function SiteFooter({ stars }: { stars: number }) {
   return (
     <footer className="border-border border-t bg-card/30">
-      <div className="mx-auto max-w-6xl px-6 py-14">
-        <div className="grid grid-cols-2 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+      <div className="border-border border-b">
+        <div className="mx-auto flex max-w-6xl flex-col gap-7 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1 font-medium text-muted-foreground text-xs">
+              <GitFork aria-hidden="true" className="size-3.5" />
+              Open source · AGPL-3.0
+            </div>
+            <h2 className="mt-4 text-balance font-semibold text-2xl tracking-tight sm:text-3xl">Documentation infrastructure you can own.</h2>
+            <p className="mt-2 max-w-xl text-muted-foreground text-sm leading-relaxed sm:text-base">
+              Read the code, run Nibleaf on your own infrastructure, and help shape a documentation platform built in public.
+            </p>
+          </div>
+          <GitHubStarLink className="h-11 self-start px-4 sm:self-auto" stars={stars} />
+        </div>
+      </div>
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-3 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <a aria-label="Nibleaf home" className="flex items-center gap-2 font-semibold" href="/">
               <NibleafMark aria-hidden="true" className="size-7" />
@@ -774,10 +804,24 @@ function SiteFooter({ stars }: { stars: number }) {
             <p className="mt-3 max-w-[28ch] text-muted-foreground text-sm leading-relaxed">
               A visual Markdown editor for publishing searchable, multilingual product documentation.
             </p>
-            <a className="mt-4 inline-flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/contact">
-              Contact Nibleaf
-            </a>
-            <GitHubStarLink className="mt-5 h-9 text-xs" stars={stars} />
+            <div className="mt-5 flex flex-wrap gap-2 text-xs">
+              <a
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                href={`${GITHUB_URL}/blob/main/LICENSE`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <Scale aria-hidden="true" className="size-3.5" /> AGPL-3.0-only
+              </a>
+              <a
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                href={GITHUB_URL}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <GitHubGlyph aria-hidden="true" className="size-3.5" /> Source code
+              </a>
+            </div>
           </div>
           {footerColumns.map((column) => (
             <nav key={column.title} aria-label={column.title}>
@@ -798,9 +842,19 @@ function SiteFooter({ stars }: { stars: number }) {
             </nav>
           ))}
         </div>
-        <div className="mt-12 flex flex-col gap-2 border-border border-t pt-6 text-muted-foreground text-xs sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Nibleaf. Open source under AGPL-3.0.</span>
-          <span>Built for teams who want to own their docs.</span>
+        <div className="mt-12 flex flex-col gap-4 border-border border-t pt-6 text-muted-foreground text-xs sm:flex-row sm:items-center sm:justify-between">
+          <span>© {new Date().getFullYear()} Nibleaf. Built in public under AGPL-3.0.</span>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <a className="transition-colors hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">
+              GitHub
+            </a>
+            <a className="transition-colors hover:text-foreground" href="https://docs.nibleaf.com" rel="noreferrer" target="_blank">
+              Documentation
+            </a>
+            <a className="transition-colors hover:text-foreground" href="/contact">
+              Contact
+            </a>
+          </div>
         </div>
       </div>
     </footer>

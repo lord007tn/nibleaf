@@ -23,4 +23,13 @@ describe('GitHubStarLink', () => {
     expect(html).toContain('data-github-stars="1234"');
     expect(html).toContain('1,234');
   });
+
+  it('supports the compact GitHub header control without changing the repository destination', () => {
+    const html = renderToStaticMarkup(<GitHubStarLink compact label="GitHub" stars={42} />);
+
+    expect(html).toContain('href="https://github.com/lord007tn/nibleaf"');
+    expect(html).toContain('aria-label="Star Nibleaf on GitHub — 42 stars"');
+    expect(html).toContain('>GitHub</span>');
+    expect(html).toContain('data-github-stars="42"');
+  });
 });
