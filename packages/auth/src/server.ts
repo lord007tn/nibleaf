@@ -16,7 +16,18 @@ const log = createLogger({ module: 'auth' });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
 const sendMail = (to: string, email: TransactionalEmail) =>
-  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch(() => undefined);
+  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
+    log.warn({ error }, 'transactional email enqueue failed');
+  });
+
+/** Render and queue without making public auth response timing account-dependent. */
+function queueRenderedEmail(to: string, email: Promise<TransactionalEmail>): void {
+  void email
+    .then((message) => sendMail(to, message))
+    .catch((error) => {
+      log.warn({ error }, 'transactional email rendering failed');
+    });
+}
 
 /** Workspace notification prefs are a JSON blob on Organization.metadata. Default ON. */
 function notificationEnabled(metadata: string | null | undefined, id: string): boolean {
@@ -699,7 +710,7 @@ export const auth = betterAuth({
     sendResetPassword: async ({ user, url }) => {
       // Keep the public response timing independent of whether the address
       // exists. The queue persists delivery after this callback returns.
-      void buildPasswordResetEmail(url).then((email) => sendMail(user.email, email));
+      queueRenderedEmail(user.email, buildPasswordResetEmail(url));
     },
   },
   emailVerification: {
@@ -745,14 +756,17 @@ export const auth = betterAuth({
         const purpose = type === 'sign-in' ? 'sign in' : type === 'forget-password' ? 'reset your password' : 'verify your email';
         const subject = type === 'sign-in' ? 'Your Nibleaf Admin sign-in code' : `Your Nibleaf code to ${purpose}`;
         // Do not make the auth response timing depend on the mail provider.
-        void buildTransactionalEmail({
-          subject,
-          preheader: `Use this one-time code to ${purpose}.`,
-          title: 'Your Nibleaf code',
-          message: `Use this one-time code to ${purpose}.`,
-          code: otp,
-          detail: 'The code expires in 10 minutes and can be used only once.',
-        }).then((message) => sendMail(email, message));
+        queueRenderedEmail(
+          email,
+          buildTransactionalEmail({
+            subject,
+            preheader: `Use this one-time code to ${purpose}.`,
+            title: 'Your Nibleaf code',
+            message: `Use this one-time code to ${purpose}.`,
+            code: otp,
+            detail: 'The code expires in 10 minutes and can be used only once.',
+          }),
+        );
       },
     }),
     organization({

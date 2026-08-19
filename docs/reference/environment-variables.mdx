@@ -84,7 +84,7 @@ Create a **Web application** OAuth client in Google Cloud, then configure:
 - Authorized redirect URI: `${APP_URL}/api/auth/callback/google`.
 - `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the matching client credentials.
 
-Both variables must be present and non-empty. Nibleaf hides the Google button when either value is missing, so a partially configured provider cannot send readers into a broken sign-in flow. Restart the application after changing these server-side values.
+Both variables must be present and non-blank after trimming surrounding whitespace. Nibleaf hides the Google button when either value is missing, so a partially configured provider cannot send readers into a broken sign-in flow. Restart the application after changing these server-side values.
 
 ## Optional product and traffic controls
 
