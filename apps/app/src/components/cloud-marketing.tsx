@@ -52,6 +52,7 @@ const navLinks = [
   { href: '/pricing', label: 'Pricing' },
   { href: 'https://docs.nibleaf.com', label: 'Docs' },
   { href: '/blog', label: 'Blog' },
+  { href: '/tools/rtl-documentation-readiness', label: 'RTL grader' },
   { href: '/self-hosting', label: 'Self-hosting' },
 ];
 
@@ -132,7 +133,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
     <div className="min-h-screen bg-background text-foreground">
       <Announcement />
       <header className="sticky top-0 z-40 border-border/70 border-b bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-3 sm:px-6">
           <a aria-label="Nibleaf home" className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/">
             <NibleafMark aria-hidden="true" className="size-8" />
             <NibleafWordmark aria-hidden="true" />
@@ -158,8 +159,9 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
               Sign in
             </a>
-            <a className={cn(primaryButton, 'h-9 px-3')} href="/sign-up">
-              Get started
+            <a aria-label="Get started" className={cn(primaryButton, 'h-9 px-3')} href="/sign-up">
+              <span className="sm:hidden">Start</span>
+              <span className="hidden sm:inline">Get started</span>
             </a>
           </div>
         </div>
@@ -735,6 +737,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
     title: 'Resources',
     links: [
       { href: '/blog', label: 'Blog' },
+      { href: '/tools/rtl-documentation-readiness', label: 'RTL grader' },
       { href: 'https://docs.nibleaf.com', label: 'Documentation', external: true },
       { href: '/about', label: 'About' },
       { href: '/self-hosting', label: 'Self-hosting' },

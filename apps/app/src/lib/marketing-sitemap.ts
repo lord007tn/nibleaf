@@ -15,6 +15,7 @@ export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/self-hosting', lastmod: '2026-08-15' },
   { path: '/about', lastmod: '2026-08-15' },
   { path: '/contact', lastmod: '2026-08-15' },
+  { path: '/tools/rtl-documentation-readiness', lastmod: '2026-08-19' },
   { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-08-17' },
   { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-08-17' },
   { path: '/compare/nibleaf-vs-docusaurus', lastmod: '2026-08-17' },

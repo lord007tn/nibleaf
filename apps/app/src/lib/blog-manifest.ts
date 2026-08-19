@@ -10,7 +10,7 @@ export const BLOG_MANIFEST = [
     description: 'قائمة فحص عملية لنشر وثائق منتج بالعربية: اتجاه الصفحة، الشيفرة داخل النص، البحث، الخطوط، شجرة الصفحات، ووسوم hreflang قبل النشر.',
     language: 'ar',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-19',
     tags: ['العربية', 'RTL', 'وثائق المنتج'],
     related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose'],
     translationOf: 'arabic-documentation-rtl',
@@ -24,7 +24,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'كيف أختبر البحث في وثائق عربية؟',
         answer:
-          'ابدأ بكلمات من صفحاتك نفسها، ثم جرّبها من دون تشكيل أو تطويل وبأشكال الألف المختلفة. اختبر أيضًا الكلمات ذات البوادئ واللواحق، لأن التطبيع الإملائي لا يساوي الاشتقاق الصرفي.',
+          'ابدأ بكلمات من صفحاتك نفسها، ثم جرّبها من دون تشكيل أو تطويل وبأشكال الألف المختلفة. اختبر الكلمات ذات البوادئ واللواحق أيضًا؛ يستخدم Nibleaf تطبيعًا إملائيًا ومسارًا صرفيًا خفيفًا ومحافظًا، مع إبقاء المطابقات الدقيقة في المرتبة الأعلى.',
       },
       {
         question: 'هل يجب أن تطابق شجرة الصفحات العربية الشجرة الإنجليزية؟',
@@ -34,7 +34,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'ما الذي يدعمه Nibleaf للعربية اليوم؟',
         answer:
-          'يدعم اتجاه RTL في القارئ والمحرر، وشجرة مستقلة لكل لغة، وعزل الشيفرة داخل النص، وبحثًا يستخدم tokenizer عربيًا مع تطبيع إملائي محدود، إضافة إلى canonical وhreflang للصفحات المتقابلة.',
+          'يدعم اتجاه RTL في القارئ والمحرر، وشجرة مستقلة لكل لغة، وعزل الشيفرة داخل النص، وبحثًا يستخدم tokenizer عربيًا مع تطبيع إملائي ومسار صرفي خفيف ومحافظ، إضافة إلى canonical وhreflang للصفحات المتقابلة.',
       },
     ],
   },
@@ -79,7 +79,7 @@ export const BLOG_MANIFEST = [
     description:
       'A practical guide to RTL layout, bidirectional code, Arabic search, language trees, hreflang, and typography for product documentation.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-19',
     tags: ['arabic', 'rtl', 'i18n'],
     related: ['arabic-technical-documentation-rtl-checklist', 'open-source-documentation-tools', 'self-host-documentation-site-docker-compose'],
     translationOf: 'arabic-technical-documentation-rtl-checklist',

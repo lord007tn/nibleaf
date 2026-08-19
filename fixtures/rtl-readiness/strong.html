@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="دليل عربي لاختبار اتجاه وثائق المنتج والبحث والشيفرة." />
+    <meta property="og:locale" content="ar_AR" />
+    <title>اختبار وثائق المنتج العربية</title>
+    <link rel="canonical" href="https://docs.example.com/ar/test" />
+    <link rel="alternate" hreflang="ar" href="https://docs.example.com/ar/test" />
+    <link rel="alternate" hreflang="en" href="https://docs.example.com/en/test" />
+    <link rel="alternate" hreflang="x-default" href="https://docs.example.com/en/test" />
+    <style>
+      :not(pre) > code { direction: ltr; unicode-bidi: isolate; }
+      pre { direction: ltr; text-align: left; }
+      .table-scroll { overflow-x: auto; }
+      :focus-visible { outline: 2px solid currentColor; }
+      @media (max-width: 48rem) { aside { position: static; } }
+    </style>
+  </head>
+  <body>
+    <a href="#content">تخط إلى المحتوى</a>
+    <nav aria-label="التنقل الرئيسي"><a href="/ar/test">الاختبار</a></nav>
+    <nav aria-label="breadcrumb" data-breadcrumb><a href="/ar">الرئيسية</a><a href="/ar/test">الاختبار</a></nav>
+    <main id="content">
+      <h1>اختبار وثائق المنتج العربية</h1>
+      <p>شغّل الأمر <code>docker compose up -d</code> ثم افتح المسار <code>/docs?v=2</code>.</p>
+      <label for="search">البحث</label><input id="search" type="search" placeholder="ابحث في التوثيق" />
+      <pre><code>curl https://docs.example.com</code></pre>
+      <div class="table-scroll"><table><tr><th>المعامل</th><td><code>user_id</code></td></tr></table></div>
+      <figure><img alt="نتيجة البحث العربية" src="result.png" /><figcaption>نتيجة متوقعة</figcaption></figure>
+      <button type="button" aria-label="فتح القائمة">☰</button>
+    </main>
+  </body>
+</html>
+

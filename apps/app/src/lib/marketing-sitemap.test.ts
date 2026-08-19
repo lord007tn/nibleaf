@@ -12,6 +12,7 @@ describe('marketing sitemap', () => {
       '/self-hosting': '2026-08-15',
       '/about': '2026-08-15',
       '/contact': '2026-08-15',
+      '/tools/rtl-documentation-readiness': '2026-08-19',
       '/compare/nibleaf-vs-mintlify': '2026-08-17',
       '/compare/nibleaf-vs-gitbook': '2026-08-17',
       '/compare/nibleaf-vs-docusaurus': '2026-08-17',
