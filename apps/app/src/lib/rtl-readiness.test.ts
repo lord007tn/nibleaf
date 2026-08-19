@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { JSDOM } from 'jsdom';
 import { describe, expect, it } from 'vitest';
-import { gradeRtlDocument, RTL_RUBRIC_VERSION } from './rtl-readiness';
+import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION } from './rtl-readiness';
 
 const fixture = (name: string) => readFileSync(fileURLToPath(new URL(`../../../../fixtures/rtl-readiness/${name}.html`, import.meta.url)), 'utf8');
 const expected = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixtures/rtl-readiness/expected.json', import.meta.url)), 'utf8')) as {
@@ -11,8 +10,7 @@ const expected = JSON.parse(readFileSync(fileURLToPath(new URL('../../../../fixt
 };
 const grade = (name: string) => {
   const source = fixture(name);
-  const document = new JSDOM(source).window.document;
-  return gradeRtlDocument(document, source);
+  return parseAndGradeRtlHtml(source);
 };
 
 describe('RTL readiness rubric fixtures', () => {
@@ -61,5 +59,18 @@ describe('RTL readiness rubric fixtures', () => {
     expect(codeCheck?.status).toBe('unknown');
     expect(mediaCheck?.status).toBe('unknown');
     expect(result.score).not.toBe(0);
+  });
+
+  it('keeps scripts and remote resources inert while parsing untrusted HTML', () => {
+    const marker = '__nibleaf_rtl_grader_script_ran__';
+    const scope = globalThis as typeof globalThis & Record<string, unknown>;
+    delete scope[marker];
+
+    expect(() =>
+      parseAndGradeRtlHtml(
+        `<html lang="ar" dir="rtl"><body><script>globalThis.${marker}=true</script><img src="https://example.invalid/pixel"></body></html>`,
+      ),
+    ).not.toThrow();
+    expect(scope[marker]).toBeUndefined();
   });
 });

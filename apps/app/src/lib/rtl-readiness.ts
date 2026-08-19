@@ -1,3 +1,5 @@
+import { parseHTML } from 'linkedom';
+
 export const RTL_RUBRIC_VERSION = '0.1.0';
 
 export type RtlCheckStatus = 'pass' | 'fail' | 'unknown';
@@ -490,6 +492,9 @@ export function gradeRtlDocument(document: Document, source = ''): RtlReadinessR
   };
 }
 
-export function parseAndGradeRtlHtml(html: string, parse: (source: string) => Document): RtlReadinessResult {
-  return gradeRtlDocument(parse(html), html);
+/** Parse untrusted markup without attaching it to the browser DOM. LinkeDOM
+ * does not execute scripts or fetch image, iframe, or stylesheet resources. */
+export function parseAndGradeRtlHtml(html: string): RtlReadinessResult {
+  const { document } = parseHTML(html);
+  return gradeRtlDocument(document as unknown as Document, html);
 }

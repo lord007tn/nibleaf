@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 import { trackMarketingEvent } from '@/lib/marketing-events';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
-import { gradeRtlDocument, RTL_RUBRIC_VERSION, type RtlReadinessResult } from '@/lib/rtl-readiness';
+import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION, type RtlReadinessResult } from '@/lib/rtl-readiness';
 
 const TOOL_PATH = '/tools/rtl-documentation-readiness';
 const TOOL_SLUG = 'rtl-documentation-readiness';
@@ -68,7 +68,6 @@ function RtlDocumentationReadinessPage() {
   const [copied, setCopied] = useState(false);
 
   const analyze = () => {
-    const parser = new DOMParser();
     trackMarketingEvent('free_tool_started', {
       input_mode: 'html',
       page_path: TOOL_PATH,
@@ -76,7 +75,7 @@ function RtlDocumentationReadinessPage() {
       rubric_version: RTL_RUBRIC_VERSION,
       tool_slug: TOOL_SLUG,
     });
-    const next = gradeRtlDocument(parser.parseFromString(html, 'text/html'), html);
+    const next = parseAndGradeRtlHtml(html);
     setResult(next);
     setCopied(false);
     trackMarketingEvent('free_tool_completed', {
