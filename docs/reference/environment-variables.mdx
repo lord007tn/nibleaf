@@ -76,6 +76,16 @@ actually consumes. Never commit a populated `.env`.
 | `POSTMARK_MESSAGE_STREAM` | No | Empty | Postmark stream. |
 | `SMTP_URL` | For SMTP fallback | Empty | Full SMTP connection URL. Protect it as a secret. |
 
+### Google OAuth
+
+Create a **Web application** OAuth client in Google Cloud, then configure:
+
+- Authorized JavaScript origin: the exact `APP_URL`, such as `https://nibleaf.example.com`.
+- Authorized redirect URI: `${APP_URL}/api/auth/callback/google`.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: the matching client credentials.
+
+Both variables must be present and non-blank after trimming surrounding whitespace. Nibleaf hides the Google button when either value is missing, so a partially configured provider cannot send readers into a broken sign-in flow. Restart the application after changing these server-side values.
+
 ## Optional product and traffic controls
 
 | Variable | Required | Default | Purpose |

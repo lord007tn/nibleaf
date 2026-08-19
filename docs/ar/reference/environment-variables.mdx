@@ -80,6 +80,16 @@ translation_key: 'reference/environment-variables'
 | `POSTMARK_MESSAGE_STREAM` | لا | فارغة | تدفق Postmark. |
 | `SMTP_URL` | لاستخدام SMTP كخيار احتياطي | فارغة | عنوان URL الكامل لاتصال SMTP. احمه بوصفه سرًا. |
 
+### مصادقة Google OAuth
+
+أنشئ عميل OAuth من نوع **تطبيق ويب** في Google Cloud، ثم اضبط ما يلي:
+
+- مصدر JavaScript المسموح: قيمة `APP_URL` نفسها، مثل `https://nibleaf.example.com`.
+- عنوان إعادة التوجيه المسموح: `${APP_URL}/api/auth/callback/google`.
+- `GOOGLE_CLIENT_ID` و`GOOGLE_CLIENT_SECRET`: بيانات اعتماد العميل المطابقة.
+
+يجب أن يكون المتغيّران موجودين وغير فارغين بعد إزالة المسافات المحيطة. يخفي Nibleaf زر Google عند غياب أي منهما حتى لا يدخل القارئ في مسار تسجيل دخول غير مكتمل. أعد تشغيل التطبيق بعد تغيير هذه القيم على الخادم.
+
 ## عناصر التحكم الاختيارية في المنتج وحركة المرور
 
 | المتغيّر | مطلوب | القيمة الافتراضية | الغرض |

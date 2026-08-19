@@ -1,0 +1,26 @@
+{
+  "name": "@nibleaf/email-preview",
+  "license": "AGPL-3.0-only",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "email dev --dir emails --port 4316",
+    "build": "email export --dir emails --outDir dist --pretty",
+    "clean": "git clean -xdf .cache .react-email .turbo dist node_modules",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nibleaf/email": "workspace:*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-email": "^6.9.2"
+  },
+  "devDependencies": {
+    "@nibleaf/tsconfig": "workspace:*",
+    "@react-email/ui": "6.9.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.2"
+  }
+}

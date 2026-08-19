@@ -10,33 +10,46 @@ import { AuthLayout } from '@/layouts/auth';
 import { authClient } from '@/lib/auth-client';
 import { minLength } from '@/lib/form';
 import { useT } from '@/lib/i18n';
+import { passwordsMatch, resetLinkIsInvalid } from '@/lib/password-reset';
 
 export const Route = createFileRoute('/(auth)/reset-password')({
   component: ResetPasswordPage,
-  validateSearch: (s: Record<string, unknown>) => ({ token: typeof s.token === 'string' ? s.token : '' }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    token: typeof search.token === 'string' ? search.token : '',
+    error: typeof search.error === 'string' ? search.error : '',
+  }),
 });
 
 function ResetPasswordPage() {
   const t = useT();
   const navigate = useNavigate();
-  const { token } = Route.useSearch();
+  const { token, error: callbackError } = Route.useSearch();
   const [error, setError] = useState<string | null>(null);
+  const [invalidated, setInvalidated] = useState(false);
 
   const form = useForm({
-    defaultValues: { password: '' },
+    defaultValues: { password: '', confirmPassword: '' },
     onSubmit: async ({ value }) => {
       setError(null);
+      if (!passwordsMatch(value.password, value.confirmPassword)) {
+        setError(t('auth.reset.passwordMismatch'));
+        return;
+      }
       const { error: resetError } = await authClient.resetPassword({ newPassword: value.password, token });
       if (resetError) {
+        if (resetError.code === 'INVALID_TOKEN' || resetError.message?.toLowerCase().includes('invalid token')) {
+          setInvalidated(true);
+          return;
+        }
         setError(resetError.message ?? t('auth.reset.error'));
         return;
       }
       toast.success(t('auth.reset.success'));
-      navigate({ to: '/sign-in' });
+      await navigate({ to: '/sign-in', replace: true });
     },
   });
 
-  if (!token) {
+  if (resetLinkIsInvalid(token, callbackError, invalidated)) {
     return (
       <AuthLayout subtitle={t('auth.forgot.subtitle')}>
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
@@ -72,6 +85,24 @@ function ResetPasswordPage() {
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={t('auth.field.passwordMinPlaceholder')}
+                type="password"
+                value={field.state.value}
+              />
+              <FieldError errors={field.state.meta.errors} />
+            </div>
+          )}
+        </form.Field>
+        <form.Field name="confirmPassword" validators={{ onChange: ({ value }) => minLength(8)(value) }}>
+          {(field) => (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="confirm-password">{t('auth.reset.confirmPassword')}</Label>
+              <Input
+                autoComplete="new-password"
+                id="confirm-password"
+                minLength={8}
+                onBlur={field.handleBlur}
+                onChange={(event) => field.handleChange(event.target.value)}
+                placeholder={t('auth.reset.confirmPasswordPlaceholder')}
                 type="password"
                 value={field.state.value}
               />

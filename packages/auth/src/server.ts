@@ -1,6 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
+import { buildPasswordResetEmail, buildTransactionalEmail, type TransactionalEmail } from '@nibleaf/email';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
@@ -8,16 +9,25 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
 import { emailOTP, organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
+import { googleOAuthEnabled } from './providers';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
-const sendMail = (to: string, subject: string, html: string) =>
-  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, subject, html } }).catch(() => undefined);
+const sendMail = (to: string, email: TransactionalEmail) =>
+  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
+    log.warn({ error }, 'transactional email enqueue failed');
+  });
 
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
+/** Render and queue without making public auth response timing account-dependent. */
+function queueRenderedEmail(to: string, email: Promise<TransactionalEmail>): void {
+  void email
+    .then((message) => sendMail(to, message))
+    .catch((error) => {
+      log.warn({ error }, 'transactional email rendering failed');
+    });
+}
 
 /** Workspace notification prefs are a JSON blob on Organization.metadata. Default ON. */
 function notificationEnabled(metadata: string | null | undefined, id: string): boolean {
@@ -665,18 +675,17 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
   basePath: '/api/auth',
-  socialProviders:
-    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? {
-          google: {
-            clientId: env.GOOGLE_CLIENT_ID,
-            clientSecret: env.GOOGLE_CLIENT_SECRET,
-            // Honor DISABLE_SIGNUP for social sign-in too: existing users keep
-            // signing in with Google, but no new accounts are created.
-            disableSignUp: env.DISABLE_SIGNUP,
-          },
-        }
-      : undefined,
+  socialProviders: googleOAuthEnabled(env)
+    ? {
+        google: {
+          clientId: env.GOOGLE_CLIENT_ID,
+          clientSecret: env.GOOGLE_CLIENT_SECRET,
+          // Honor DISABLE_SIGNUP for social sign-in too: existing users keep
+          // signing in with Google, but no new accounts are created.
+          disableSignUp: env.DISABLE_SIGNUP,
+        },
+      }
+    : undefined,
   trustedOrigins: env.TRUSTED_ORIGINS,
   advanced: {
     defaultCookieAttributes: {
@@ -690,6 +699,8 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
+    resetPasswordTokenExpiresIn: 60 * 60,
+    revokeSessionsOnPasswordReset: true,
     // DISABLE_SIGNUP=true refuses new email/password accounts while existing
     // users keep signing in (closed self-hosts, or an emergency cloud brake).
     disableSignUp: env.DISABLE_SIGNUP,
@@ -697,7 +708,9 @@ export const auth = betterAuth({
     // for public instances. The verify-email UI + resend then work via the queue below.
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     sendResetPassword: async ({ user, url }) => {
-      await sendMail(user.email, 'Reset your Nibleaf password', `<p>Click to reset your password:</p><p><a href="${url}">${url}</a></p>`);
+      // Keep the public response timing independent of whether the address
+      // exists. The queue persists delivery after this callback returns.
+      queueRenderedEmail(user.email, buildPasswordResetEmail(url));
     },
   },
   emailVerification: {
@@ -709,8 +722,14 @@ export const auth = betterAuth({
     sendVerificationEmail: async ({ user, url }) => {
       await sendMail(
         user.email,
-        'Verify your Nibleaf email',
-        `<p>Confirm your email to finish setting up your account:</p><p><a href="${url}">${url}</a></p>`,
+        await buildTransactionalEmail({
+          subject: 'Verify your Nibleaf email',
+          preheader: 'Confirm your email address to finish setting up Nibleaf.',
+          title: 'Verify your email address',
+          message: 'Confirm this email address to finish setting up your Nibleaf account.',
+          action: { label: 'Verify email', url },
+          detail: 'This verification link is single-use. If it expires, request a new one from the sign-in page.',
+        }),
       );
     },
   },
@@ -736,14 +755,18 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         const purpose = type === 'sign-in' ? 'sign in' : type === 'forget-password' ? 'reset your password' : 'verify your email';
         const subject = type === 'sign-in' ? 'Your Nibleaf Admin sign-in code' : `Your Nibleaf code to ${purpose}`;
-        const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0f172a">
-  <h2 style="font-size:20px;margin:0 0 12px">Your Nibleaf code</h2>
-  <p style="margin:0 0 18px;color:#475569;line-height:1.6">Use this one-time code to ${purpose}. It expires in 10 minutes.</p>
-  <div style="display:inline-block;padding:14px 20px;border-radius:10px;background:#f1f5f9;font:700 28px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:0.24em;color:#0f172a">${escapeHtml(otp)}</div>
-  <p style="margin:20px 0 0;color:#94a3b8;font-size:12px;line-height:1.5">If you did not request this code, you can safely ignore this email.</p>
-</div>`;
         // Do not make the auth response timing depend on the mail provider.
-        void sendMail(email, subject, html);
+        queueRenderedEmail(
+          email,
+          buildTransactionalEmail({
+            subject,
+            preheader: `Use this one-time code to ${purpose}.`,
+            title: 'Your Nibleaf code',
+            message: `Use this one-time code to ${purpose}.`,
+            code: otp,
+            detail: 'The code expires in 10 minutes and can be used only once.',
+          }),
+        );
       },
     }),
     organization({
@@ -801,8 +824,13 @@ export const auth = betterAuth({
               select: { user: { select: { email: true } } },
             });
             const subject = `${who} joined ${org.name}`;
-            const html = `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New teammate in ${escapeHtml(org.name)}</h2><p style="margin:0;color:#475569;line-height:1.6"><strong>${escapeHtml(who)}</strong> just joined <strong>${escapeHtml(org.name)}</strong>.</p></div>`;
-            await Promise.all(admins.map((a) => (a.user.email ? sendMail(a.user.email, subject, html) : undefined)));
+            const email = await buildTransactionalEmail({
+              subject,
+              preheader: `${who} joined ${org.name}.`,
+              title: `New teammate in ${org.name}`,
+              message: `${who} just joined ${org.name} and can now collaborate on its documentation.`,
+            });
+            await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
           } catch {
             // never block the join
           }
@@ -846,11 +874,16 @@ export const auth = betterAuth({
             if (!user?.email) {
               return;
             }
-            const where = session.ipAddress ? ` from a new location (IP ${escapeHtml(session.ipAddress)})` : ' from a new device';
+            const where = session.ipAddress ? ` from a new location (IP ${session.ipAddress})` : ' from a new device';
             await sendMail(
               user.email,
-              'New sign-in to your Nibleaf account',
-              `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">New sign-in detected</h2><p style="margin:0;color:#475569;line-height:1.6">We noticed a new sign-in to your account${where}. If this was you, you can ignore this email — otherwise change your password right away.</p></div>`,
+              await buildTransactionalEmail({
+                subject: 'New sign-in to your Nibleaf account',
+                preheader: 'We noticed a sign-in from a new device or location.',
+                title: 'New sign-in detected',
+                message: `We noticed a new sign-in to your account${where}.`,
+                detail: 'If this was not you, reset your password immediately and review your active sessions.',
+              }),
             );
           } catch {
             // never block sign-in
@@ -876,8 +909,13 @@ export const auth = betterAuth({
             }
             await sendMail(
               user.email,
-              'Your Nibleaf password was changed',
-              `<div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#0f172a"><h2 style="font-size:18px;margin:0 0 12px">Password changed</h2><p style="margin:0;color:#475569;line-height:1.6">Your account password was just changed. If this wasn't you, reset your password immediately and review your active sessions.</p></div>`,
+              await buildTransactionalEmail({
+                subject: 'Your Nibleaf password was changed',
+                preheader: 'The password for your Nibleaf account was changed.',
+                title: 'Password changed',
+                message: 'The password for your Nibleaf account was just changed.',
+                detail: 'If this was not you, reset your password immediately and review your active sessions.',
+              }),
             );
           } catch {
             // never block the password update
