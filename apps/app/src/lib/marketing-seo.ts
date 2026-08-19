@@ -153,7 +153,7 @@ export function marketingLd() {
 }
 
 /** In-memory GitHub star-count cache. The last known value is served while a
- *  refresh runs so GitHub can never sit on the homepage's SSR critical path. */
+ *  refresh runs so GitHub never sits on the marketing SSR critical path. */
 let starsCache: { value: number; fetchedAt: number } | null = null;
 /** Cache a successful (>0) count for ~1h. */
 const STARS_TTL_MS = 60 * 60 * 1000;
@@ -164,9 +164,9 @@ const STARS_ERROR_TTL_MS = 60 * 1000;
 let inFlight: Promise<number> | null = null;
 
 /**
- * Return the cached Nibleaf star count, refreshing it when stale. Cold renders
- * wait at most two seconds for GitHub so the header does not knowingly display
- * a placeholder count; an unavailable API falls back to the last known value.
+ * Return the cached Nibleaf star count and refresh it in the background when
+ * stale. A cold process returns zero immediately; a later request receives the
+ * fetched value. Repository popularity is secondary to rendering the page.
  */
 export async function getGithubStars(): Promise<number> {
   const now = Date.now();
@@ -202,5 +202,5 @@ export async function getGithubStars(): Promise<number> {
       inFlight = null;
     });
   }
-  return inFlight;
+  return starsCache?.value ?? 0;
 }

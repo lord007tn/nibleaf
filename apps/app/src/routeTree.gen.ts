@@ -20,6 +20,7 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
@@ -105,6 +106,12 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsRtlDocumentationReadinessRoute =
+  ToolsRtlDocumentationReadinessRouteImport.update({
+    id: '/tools/rtl-documentation-readiness',
+    path: '/tools/rtl-documentation-readiness',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
   id: '/git-preview/$token',
   path: '/git-preview/$token',
@@ -289,6 +296,7 @@ export interface FileRoutesByFullPath {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
@@ -329,6 +337,7 @@ export interface FileRoutesByTo {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -371,6 +380,7 @@ export interface FileRoutesById {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/tools/rtl-documentation-readiness'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/analytics'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/tools/rtl-documentation-readiness'
     | '/blog'
     | '/app/analytics'
     | '/app/members'
@@ -495,6 +507,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/tools/rtl-documentation-readiness'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
@@ -533,6 +546,7 @@ export interface RootRouteChildren {
   CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
   CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
   GitPreviewTokenRoute: typeof GitPreviewTokenRoute
+  ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -613,6 +627,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/rtl-documentation-readiness': {
+      id: '/tools/rtl-documentation-readiness'
+      path: '/tools/rtl-documentation-readiness'
+      fullPath: '/tools/rtl-documentation-readiness'
+      preLoaderRoute: typeof ToolsRtlDocumentationReadinessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/git-preview/$token': {
@@ -939,6 +960,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
   CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
   GitPreviewTokenRoute: GitPreviewTokenRoute,
+  ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport

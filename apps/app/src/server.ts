@@ -475,6 +475,7 @@ function marketingLlms(origin: string): string {
 - [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
 - [About](${origin}/about): mission and stack
 - [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
+- [RTL documentation readiness grader](${origin}/tools/rtl-documentation-readiness): browser-only static HTML checks with transparent unknowns
 - [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
 - [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
 - [Nibleaf vs Docusaurus](${origin}/compare/nibleaf-vs-docusaurus)
@@ -545,6 +546,7 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Terms of Service: ${origin}/terms
 - Privacy Policy: ${origin}/privacy
 - Support: support@nibleaf.com
+- RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
 `;
 }
 

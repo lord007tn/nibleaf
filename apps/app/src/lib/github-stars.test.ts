@@ -6,7 +6,7 @@ afterEach(() => {
 });
 
 describe('getGithubStars', () => {
-  it('waits for and caches the authoritative response on a cold render', async () => {
+  it('returns immediately on a cold render and caches the background response', async () => {
     let finishRequest: ((response: Response) => void) | undefined;
     const response = new Promise<Response>((resolve) => {
       finishRequest = resolve;
@@ -17,11 +17,13 @@ describe('getGithubStars', () => {
     );
     const { getGithubStars } = await import('@/lib/marketing-seo');
 
-    const firstCount = getGithubStars();
+    await expect(getGithubStars()).resolves.toBe(0);
     expect(fetch).toHaveBeenCalledTimes(1);
 
     finishRequest?.(new Response(JSON.stringify({ stargazers_count: 12 }), { status: 200 }));
-    await expect(firstCount).resolves.toBe(12);
+    await vi.waitFor(async () => {
+      await expect(getGithubStars()).resolves.toBe(12);
+    });
     await expect(getGithubStars()).resolves.toBe(12);
     expect(fetch).toHaveBeenCalledTimes(1);
   });

@@ -6,6 +6,7 @@ import assets from './assets/handlers';
 import domains from './domains/handlers';
 import git from './git/handlers';
 import invitations from './invitations/handlers';
+import marketingEvents from './marketing-events/handlers';
 import meta from './meta/handlers';
 import readerAccess from './reader-access/handlers';
 import sites from './sites/handlers';
@@ -30,10 +31,12 @@ const app = new Hono<HonoEnv>()
   // Activation and JWT exchange create credentials. Give them a tighter
   // abuse budget than ordinary content/search requests.
   .use('/reader-access/*', rateLimit({ windowMs: 60_000, max: 20 }))
+  .use('/marketing-events/*', rateLimit({ windowMs: 60_000, max: 30 }))
   .route('/sites', sites)
   .route('/domains', domains)
   .route('/git', git)
   .route('/invitations', invitations)
+  .route('/marketing-events', marketingEvents)
   .route('/assets', assets)
   .route('/reader-access', readerAccess)
   .route('/meta', meta);

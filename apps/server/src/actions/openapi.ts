@@ -3,7 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { GitConfig, OpenApiSourceInput, UpsertOpenApiBody } from '@nibleaf/validators';
 import { validate } from '@scalar/openapi-parser';
-import { Agent, fetch as undiciFetch } from 'undici';
+import { Agent, type Response as UndiciResponse, fetch as undiciFetch } from 'undici';
 import { parseDocument } from 'yaml';
 import { badRequest, notFound } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
@@ -115,7 +115,7 @@ export const parseAndValidateOpenApi = async (content: string): Promise<OpenApiO
 
 /** Consume a fetch body incrementally so a missing or dishonest Content-Length
  *  cannot make the server buffer an unbounded document. */
-export const readBoundedOpenApiResponse = async (response: Response): Promise<string> => {
+export const readBoundedOpenApiResponse = async (response: Response | UndiciResponse): Promise<string> => {
   if (!response.body) return '';
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -189,7 +189,7 @@ export const fetchPublicOpenApi = async (value: string, label = 'OpenAPI URL'): 
   let current = await normalizePublicUrl(value, label);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
     const dispatcher = pinnedDispatcher(current);
-    let response: Response;
+    let response: Awaited<ReturnType<typeof undiciFetch>>;
     try {
       response = await undiciFetch(current.url, {
         headers: { Accept: 'application/json, application/yaml, text/yaml, text/plain', 'User-Agent': 'nibleaf-openapi' },
