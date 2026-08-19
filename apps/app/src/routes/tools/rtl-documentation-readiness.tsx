@@ -10,6 +10,12 @@ import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION, type RtlReadinessResult } fro
 
 const TOOL_PATH = '/tools/rtl-documentation-readiness';
 const TOOL_SLUG = 'rtl-documentation-readiness';
+const RESULT_EVENT_TYPES = {
+  'insufficient evidence': 'insufficient_evidence',
+  'material gaps': 'material_gaps',
+  'strong evidence': 'strong_evidence',
+  'work remaining': 'work_remaining',
+} as const;
 
 export const Route = createFileRoute('/tools/rtl-documentation-readiness')({
   loader: async () => ({ stars: await getGithubStars() }),
@@ -66,6 +72,7 @@ function RtlDocumentationReadinessPage() {
   const [html, setHtml] = useState(SAMPLE_HTML);
   const [result, setResult] = useState<RtlReadinessResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   const analyze = () => {
     trackMarketingEvent('free_tool_started', {
@@ -78,12 +85,13 @@ function RtlDocumentationReadinessPage() {
     const next = parseAndGradeRtlHtml(html);
     setResult(next);
     setCopied(false);
+    setCopyError(null);
     trackMarketingEvent('free_tool_completed', {
       category_count: next.categories.length,
       checks_run: next.checksRun,
       checks_unknown: next.checksUnknown,
       product: 'nibleaf',
-      result_type: next.band.replaceAll(' ', '_'),
+      result_type: RESULT_EVENT_TYPES[next.band],
       rubric_version: next.rubricVersion,
       tool_slug: TOOL_SLUG,
     });
@@ -91,11 +99,17 @@ function RtlDocumentationReadinessPage() {
 
   const copyResult = async () => {
     if (!result) return;
-    await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+      setCopied(true);
+      setCopyError(null);
+    } catch {
+      setCopied(false);
+      setCopyError('Clipboard access was unavailable. Open the full check list and copy the result manually.');
+    }
   };
 
-  const trackCta = (destination: string, placement: string) =>
+  const trackCta = (destination: 'sample_project_signup' | 'fixture_corpus', placement: 'result_bridge') =>
     trackMarketingEvent('free_tool_cta_clicked', {
       destination,
       placement,
@@ -159,7 +173,9 @@ function RtlDocumentationReadinessPage() {
           </div>
         </div>
 
-        <div aria-live="polite">{result ? <ResultPanel onCopy={copyResult} copied={copied} result={result} /> : <EmptyResult />}</div>
+        <div aria-live="polite">
+          {result ? <ResultPanel copyError={copyError} onCopy={copyResult} copied={copied} result={result} /> : <EmptyResult />}
+        </div>
       </section>
 
       <section className="border-border border-y bg-card/40">
@@ -236,7 +252,17 @@ function EmptyResult() {
   );
 }
 
-function ResultPanel({ copied, onCopy, result }: { copied: boolean; onCopy: () => void; result: RtlReadinessResult }) {
+function ResultPanel({
+  copied,
+  copyError,
+  onCopy,
+  result,
+}: {
+  copied: boolean;
+  copyError: string | null;
+  onCopy: () => void;
+  result: RtlReadinessResult;
+}) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -252,6 +278,7 @@ function ResultPanel({ copied, onCopy, result }: { copied: boolean; onCopy: () =
           <Clipboard className="size-4" /> {copied ? 'Copied' : 'Copy JSON'}
         </button>
       </div>
+      {copyError ? <p className="mt-3 text-amber-700 text-sm dark:text-amber-300">{copyError}</p> : null}
       <div className="mt-6 grid grid-cols-3 gap-3 text-center text-sm">
         <Metric value={`${result.coverage}%`} label="rubric covered" />
         <Metric value={String(result.checksRun)} label="checks scored" />
@@ -293,7 +320,8 @@ function CheckRow({ check }: { check: RtlReadinessResult['checks'][number] }) {
   return (
     <div className="py-4 text-sm">
       <div className="flex items-start gap-2">
-        <Icon className={`mt-0.5 size-4 shrink-0 ${color}`} />
+        <Icon aria-hidden="true" className={`mt-0.5 size-4 shrink-0 ${color}`} />
+        <span className="sr-only">Status: {check.status}</span>
         <div>
           <p className="font-medium">{check.id}</p>
           <p className="mt-1 text-muted-foreground">{check.actual}</p>

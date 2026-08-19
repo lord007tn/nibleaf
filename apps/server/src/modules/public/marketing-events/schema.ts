@@ -47,3 +47,5 @@ export const marketingEventBody = z.discriminatedUnion('event', [
     })
     .strict(),
 ]);
+
+export type MarketingEventBody = z.infer<typeof marketingEventBody>;

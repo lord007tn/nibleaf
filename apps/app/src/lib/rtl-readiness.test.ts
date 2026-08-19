@@ -73,4 +73,38 @@ describe('RTL readiness rubric fixtures', () => {
     ).not.toThrow();
     expect(scope[marker]).toBeUndefined();
   });
+
+  it('recognizes Arabic search and breadcrumb accessible names', () => {
+    const result = parseAndGradeRtlHtml(`
+      <html lang="ar" dir="rtl"><body>
+        <nav aria-label="مسار التنقل"><a href="/ar">الرئيسية</a></nav>
+        <button aria-label="البحث"></button>
+      </body></html>`);
+
+    expect(result.checks.find((check) => check.id === 'breadcrumbs')?.status).toBe('pass');
+    expect(result.checks.find((check) => check.id === 'search-interface')?.status).toBe('pass');
+    expect(result.checks.find((check) => check.id === 'arabic-search-prompt')?.status).toBe('pass');
+  });
+
+  it('requires a scrollable table ancestor and rejects overflow hidden', () => {
+    const hidden = parseAndGradeRtlHtml('<html><body><div class="overflow-hidden"><table><tr><td>x</td></tr></table></div></body></html>');
+    const scrollable = parseAndGradeRtlHtml(
+      '<html><head><style>.table-scroll { overflow-x: auto; }</style></head><body><div class="table-scroll"><table><tr><td>x</td></tr></table></div></body></html>',
+    );
+
+    expect(hidden.checks.find((check) => check.id === 'table-overflow')?.status).toBe('fail');
+    expect(scrollable.checks.find((check) => check.id === 'table-overflow')?.status).toBe('pass');
+  });
+
+  it('checks figure captions while accepting implicit labels and ignoring hidden inputs', () => {
+    const result = parseAndGradeRtlHtml(`
+      <html><body>
+        <figure><img alt="نتيجة الاختبار" src="result.png"></figure>
+        <label>البحث <input type="search"></label>
+        <input type="hidden" value="internal">
+      </body></html>`);
+
+    expect(result.checks.find((check) => check.id === 'media-alternatives')?.status).toBe('fail');
+    expect(result.checks.find((check) => check.id === 'control-labels')?.status).toBe('pass');
+  });
 });

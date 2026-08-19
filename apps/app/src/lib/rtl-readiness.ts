@@ -57,6 +57,8 @@ const CATEGORIES = [
 
 const ARABIC = /[\u0600-\u06ff]/u;
 const LATIN_OR_TECHNICAL = /[A-Za-z]|(?:https?:\/\/)|(?:\/[\w-]+)|(?:--?[a-z])/u;
+const SEARCH_CONTROL_SELECTOR =
+  'input[type="search"], [role="searchbox"], [role="search"] input, button[aria-label*="search" i], button[aria-label*="بحث"], [data-search]';
 
 const pass = (actual: string) => ({ actual, status: 'pass' as const });
 const fail = (actual: string) => ({ actual, status: 'fail' as const });
@@ -263,7 +265,7 @@ const CHECKS: CheckDefinition[] = [
     expected: 'Breadcrumb navigation is labelled and exposes an ordered path.',
     reproduction: 'Inspect the breadcrumb nav and verify its visible order in RTL.',
     run: (document) => {
-      const breadcrumb = document.querySelector('[aria-label*="breadcrumb" i], [data-breadcrumb]');
+      const breadcrumb = document.querySelector('[aria-label*="breadcrumb" i], [aria-label*="مسار"], [aria-label*="فتات"], [data-breadcrumb]');
       if (!breadcrumb) return unknown('No breadcrumb component was found.');
       return breadcrumb.querySelectorAll('a').length > 0
         ? pass('A labelled breadcrumb path is present.')
@@ -285,7 +287,7 @@ const CHECKS: CheckDefinition[] = [
     expected: 'A labelled documentation-search input or dialog is discoverable.',
     reproduction: 'Find the search control and open it with pointer and keyboard.',
     run: (document) => {
-      const control = document.querySelector('input[type="search"], [role="searchbox"], [role="search"] input, button[aria-label*="search" i]');
+      const control = document.querySelector(SEARCH_CONTROL_SELECTOR);
       if (!control) return fail('No labelled search control was detected.');
       const label = control.getAttribute('aria-label') || control.getAttribute('placeholder') || control.textContent || '';
       return label.trim() ? pass(`Search control label is "${label.trim()}".`) : fail('The search control has no accessible label or placeholder.');
@@ -298,7 +300,7 @@ const CHECKS: CheckDefinition[] = [
     expected: 'The Arabic search surface uses an Arabic label or placeholder.',
     reproduction: 'Inspect the active Arabic search control and its accessible name.',
     run: (document) => {
-      const control = document.querySelector('input[type="search"], [role="searchbox"], [role="search"] input, button[aria-label*="search" i]');
+      const control = document.querySelector(SEARCH_CONTROL_SELECTOR);
       if (!control) return unknown('No search control exists to inspect.');
       const label = `${control.getAttribute('aria-label') ?? ''} ${control.getAttribute('placeholder') ?? ''} ${control.textContent ?? ''}`;
       return ARABIC.test(label) ? pass('The search prompt contains Arabic text.') : fail('The search prompt is not localized into Arabic.');
@@ -319,12 +321,25 @@ const CHECKS: CheckDefinition[] = [
     expected: 'Wide tables have an explicit horizontal-overflow strategy.',
     reproduction: 'Inspect table wrappers and render the page at 390 px.',
     run: (document, source) => {
-      if (!document.querySelector('table')) return unknown('No table exists in the sample.');
+      const tables = [...document.querySelectorAll('table')];
+      if (tables.length === 0) return unknown('No table exists in the sample.');
       const css = normalizedStyle(styleText(document) || source);
-      const wrapper = document.querySelector('[class*="overflow" i] table, [data-table-scroll] table');
-      return wrapper || /table[^}]*overflow(?:-x)?\s*:\s*(?:auto|scroll)/u.test(css)
-        ? pass('A table overflow strategy is present.')
-        : fail('Tables exist without a detected overflow strategy.');
+      const scrollable = tables.some((table) => {
+        let ancestor = table.parentElement;
+        while (ancestor) {
+          const inline = normalizedStyle(ancestor.getAttribute('style') ?? '');
+          if (/overflow(?:-x)?\s*:\s*(?:auto|scroll)/u.test(inline)) return true;
+          const classes = (ancestor.getAttribute('class') ?? '').split(/\s+/u).filter(Boolean);
+          if (classes.some((name) => /^(?:overflow|overflow-x)-(?:auto|scroll)$/u.test(name))) return true;
+          const matchingRule = css
+            .split('}')
+            .some((rule) => classes.some((name) => rule.includes(`.${name}`)) && /overflow(?:-x)?\s*:\s*(?:auto|scroll)/u.test(rule));
+          if (matchingRule) return true;
+          ancestor = ancestor.parentElement;
+        }
+        return false;
+      });
+      return scrollable ? pass('A table overflow strategy is present.') : fail('Tables exist without a detected overflow strategy.');
     },
   },
   {
@@ -337,9 +352,12 @@ const CHECKS: CheckDefinition[] = [
       const images = [...document.querySelectorAll('img')];
       if (images.length === 0) return unknown('No images exist in the sample.');
       const missing = images.filter((image) => !image.getAttribute('alt')?.trim()).length;
-      return missing === 0
-        ? pass(`All ${images.length} images have alternative text.`)
-        : fail(`${missing} of ${images.length} images have empty or missing alt text.`);
+      const uncaptained = [...document.querySelectorAll('figure')].filter(
+        (figure) => figure.querySelector('img') && !figure.querySelector('figcaption')?.textContent?.trim(),
+      ).length;
+      return missing === 0 && uncaptained === 0
+        ? pass(`All ${images.length} images have alternative text and every image figure has a caption.`)
+        : fail(`${missing} images have empty or missing alt text; ${uncaptained} image figures have no useful caption.`);
     },
   },
   {
@@ -376,7 +394,7 @@ const CHECKS: CheckDefinition[] = [
     expected: 'Form controls and icon-only buttons have accessible names.',
     reproduction: 'Inspect the accessibility tree for every button, input, select, and textarea.',
     run: (document) => {
-      const controls = [...document.querySelectorAll('button, input, select, textarea')];
+      const controls = [...document.querySelectorAll('button, input:not([type="hidden"]), select, textarea')];
       if (controls.length === 0) return unknown('No interactive controls exist in the sample.');
       const labels = new Set([...document.querySelectorAll('label[for]')].map((label) => label.getAttribute('for')));
       const unnamed = controls.filter((control) => {
@@ -387,6 +405,7 @@ const CHECKS: CheckDefinition[] = [
           control.getAttribute('aria-label') ||
           control.getAttribute('aria-labelledby') ||
           control.getAttribute('title') ||
+          control.closest('label') ||
           (id && labels.has(id))
         );
       });
