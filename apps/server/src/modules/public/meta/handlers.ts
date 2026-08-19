@@ -1,3 +1,4 @@
+import { googleOAuthEnabled } from '@nibleaf/auth/providers';
 import { Hono } from 'hono';
 import { env } from '@/env';
 import { envExtras } from '@/lib/env-extras';
@@ -11,7 +12,7 @@ const app = new Hono<HonoEnv>().get('/', ...metaRoutes.meta, (ctx) =>
   ctx.json(
     {
       data: {
-        providers: { google: Boolean(env.GOOGLE_CLIENT_ID) },
+        providers: { google: googleOAuthEnabled(env) },
         signupDisabled: envExtras.DISABLE_SIGNUP,
       },
     },

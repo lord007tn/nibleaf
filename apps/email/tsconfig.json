@@ -1,0 +1,5 @@
+{
+  "extends": "@nibleaf/tsconfig/react.json",
+  "include": ["emails"],
+  "exclude": ["node_modules", "dist", ".react-email"]
+}

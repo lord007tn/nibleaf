@@ -6,33 +6,26 @@
   "type": "module",
   "exports": {
     "./server": "./src/server.ts",
-    "./keys.server": "./src/keys.server.ts"
+    "./keys.server": "./src/keys.server.ts",
+    "./providers": "./src/providers.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/database": "workspace:*",
+    "@nibleaf/email": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "^1.6.29",
     "zod": "^4.4.3"
   },
-  "peerDependencies": {
-    "react": "^19.0.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
-  },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/react": "^19.2.0",
-    "react": "^19.2.0",
     "typescript": "^5.9.2"
   }
 }

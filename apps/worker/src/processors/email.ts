@@ -4,6 +4,7 @@ import type { Job } from 'bullmq';
 import nodemailer from 'nodemailer';
 import { ServerClient } from 'postmark';
 import { env } from '@/env';
+import { postmarkPrivacyOptions } from './email-options';
 
 const log = createLogger({ processor: 'email' });
 
@@ -22,6 +23,7 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
         Subject: subject,
         HtmlBody: html,
         TextBody: text,
+        ...postmarkPrivacyOptions,
         ...(env.POSTMARK_MESSAGE_STREAM ? { MessageStream: env.POSTMARK_MESSAGE_STREAM } : {}),
       });
       log.info({ to, subject, from: env.EMAIL_FROM, provider: 'postmark' }, 'email sent');
