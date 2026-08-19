@@ -3,7 +3,7 @@ import { lookup } from 'node:dns/promises';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { GitConfig, OpenApiSourceInput, UpsertOpenApiBody } from '@nibleaf/validators';
 import { validate } from '@scalar/openapi-parser';
-import { Agent, fetch as undiciFetch, type Response as UndiciResponse } from 'undici';
+import { Agent, type Response as UndiciResponse, fetch as undiciFetch } from 'undici';
 import { parseDocument } from 'yaml';
 import { badRequest, notFound } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
