@@ -122,14 +122,22 @@ paths:
     );
 
     const bundled = document as {
-      paths: { '/pets': { get: { responses: { '200': { content: { 'application/json': { schema: { $ref: string } } } } } } } };
-      'x-ext': Record<string, { components?: { schemas?: { Pet?: unknown } } }>;
+      paths: { '/pets': { $ref: string } };
+      'x-ext': Record<
+        string,
+        {
+          paths?: { '/pets'?: { get?: { responses?: { '200'?: { content?: { 'application/json'?: { schema?: { $ref?: string } } } } } } } };
+          components?: { schemas?: { Pet?: unknown } };
+        }
+      >;
     };
-    const responseSchemaRef = bundled.paths['/pets'].get.responses['200'].content['application/json'].schema.$ref;
-    const externalDocumentKey = responseSchemaRef.match(/^#\/x-ext\/([^/]+)\/components\/schemas\/Pet$/)?.[1];
+    const externalDocumentKey = bundled.paths['/pets'].$ref.match(/^#\/x-ext\/([^/]+)\/paths\/~1pets$/)?.[1];
+    const externalDocument = bundled['x-ext'][externalDocumentKey as string];
+    const responseSchemaRef = externalDocument?.paths?.['/pets']?.get?.responses?.['200']?.content?.['application/json']?.schema?.$ref;
 
     expect(externalDocumentKey).toBeTruthy();
-    expect(bundled['x-ext'][externalDocumentKey as string]?.components?.schemas?.Pet).toMatchObject({ type: 'object' });
+    expect(responseSchemaRef).toBe(`#/x-ext/${externalDocumentKey}/components/schemas/Pet`);
+    expect(externalDocument?.components?.schemas?.Pet).toMatchObject({ type: 'object' });
   });
 
   it('resolves nested relative references and enforces the external-document limit', async () => {
