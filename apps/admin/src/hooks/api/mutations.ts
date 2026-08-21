@@ -24,8 +24,9 @@ export function useSetUserRole() {
       }
       return (await res.json()).data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users', id] });
       qc.invalidateQueries({ queryKey: ['admin', 'overview'] });
       toast.success('Role updated');
     },
@@ -45,8 +46,10 @@ export function useSuspendUser() {
       }
       return (await res.json()).data;
     },
-    onSuccess: (_data, { suspend }) => {
+    onSuccess: (_data, { id, suspend }) => {
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'users', id] });
+      qc.invalidateQueries({ queryKey: ['admin', 'sites'] });
       toast.success(suspend ? 'Account suspended' : 'Suspension lifted');
     },
     onError: (_err, { suspend }) => toast.error(suspend ? 'Could not suspend the account' : 'Could not lift the suspension'),
@@ -65,8 +68,10 @@ export function useTakedownSite() {
       }
       return (await res.json()).data;
     },
-    onSuccess: (_data, { takedown }) => {
+    onSuccess: (_data, { id, takedown }) => {
       qc.invalidateQueries({ queryKey: ['admin', 'sites'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'sites', id] });
+      qc.invalidateQueries({ queryKey: ['admin', 'operations'] });
       toast.success(takedown ? 'Site taken down' : 'Site restored');
     },
     onError: (err, { takedown }) => {

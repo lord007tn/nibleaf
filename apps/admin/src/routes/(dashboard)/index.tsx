@@ -1,10 +1,12 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@nibleaf/design-system/components/ui/chart';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { createFileRoute } from '@tanstack/react-router';
-import { CheckCircle2, FileText, Filter, Rocket, ShieldCheck, TrendingUp, UserPlus, Users } from 'lucide-react';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { Activity, CheckCircle2, FileText, Filter, Globe2, Rocket, ShieldCheck, TrendingUp, TriangleAlert, UserPlus, Users } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
+import { DataError } from '@/components/data-state';
 import { type AdminUser, useAdminFunnel, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
 import { fmtDate } from '@/lib/format';
 
@@ -47,13 +49,29 @@ function OverviewPage() {
 
   const publishedPct = data && data.deployments > 0 ? Math.round((data.publishedDeployments / data.deployments) * 100) : 0;
   const verifiedPct = data && data.users > 0 ? Math.round((data.verifiedUsers / data.users) * 100) : 0;
+  const attentionCount =
+    (data?.failedDeployments24h ?? 0) +
+    (data?.domainIssues ?? 0) +
+    (data?.takenDownSites ?? 0) +
+    (data?.expiredOwnerInvites ?? 0) +
+    (data?.failedExports7d ?? 0) +
+    (data?.gitIssues ?? 0);
 
   const stats: { label: string; value: number | undefined; hint: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
     { label: 'Customers', value: data?.users, hint: `+${data?.recentUsers ?? 0} new this week`, icon: Users },
     { label: 'Sites', value: data?.sites, hint: 'Across all workspaces', icon: FileText },
-    { label: 'Deployments', value: data?.deployments, hint: `${data?.publishedDeployments ?? 0} published · ${publishedPct}%`, icon: Rocket },
+    { label: 'Deployments', value: data?.deployments, hint: `${data?.publishedDeployments ?? 0} ready · ${publishedPct}%`, icon: Rocket },
     { label: 'Verified customers', value: data?.verifiedUsers, hint: `${verifiedPct}% of all customers`, icon: CheckCircle2 },
   ];
+
+  if (users.isError || sites.isError || funnel.isError) {
+    return (
+      <DataError
+        message="One or more overview data sources could not be loaded."
+        retry={() => void Promise.all([users.refetch(), sites.refetch(), funnel.refetch()])}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -61,6 +79,40 @@ function OverviewPage() {
         <h1 className="font-semibold text-2xl tracking-tight">Overview</h1>
         <p className="mt-1 text-muted-foreground text-sm">Customer, site, and deployment health for Nibleaf Cloud.</p>
       </div>
+
+      <Card className={attentionCount > 0 ? 'border-destructive/40' : undefined}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            {attentionCount > 0 ? <TriangleAlert className="size-4 text-destructive" /> : <Activity className="size-4 text-muted-foreground" />}
+            Operator attention
+          </CardTitle>
+          <CardDescription>
+            {attentionCount > 0
+              ? `${attentionCount} current signals need review across recent failures, domains, moderation, invitations, exports, and Git.`
+              : 'No current failure or moderation signals in the operational summary.'}
+          </CardDescription>
+          <CardAction>
+            <Button nativeButton={false} render={<Link to="/operations" />} size="sm" variant="outline">
+              Open operations
+            </Button>
+          </CardAction>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            ['Deploy failures (24h)', data?.failedDeployments24h ?? 0],
+            ['Domain errors', data?.domainIssues ?? 0],
+            ['Taken down', data?.takenDownSites ?? 0],
+            ['Expired owner invites', data?.expiredOwnerInvites ?? 0],
+            ['Export failures (7d)', data?.failedExports7d ?? 0],
+            ['Git issues', data?.gitIssues ?? 0],
+          ].map(([label, value]) => (
+            <div className="rounded-lg border p-3" key={String(label)}>
+              <p className="text-muted-foreground text-xs">{label}</p>
+              <p className="mt-1 font-semibold text-xl tabular-nums">{value}</p>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -205,7 +257,7 @@ function OverviewPage() {
       </Card>
 
       {/* Secondary stats */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader>
             <CardDescription>Admins</CardDescription>
@@ -217,9 +269,18 @@ function OverviewPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Published sites</CardDescription>
+            <CardDescription>Ready deployments</CardDescription>
             <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">
               {isPending ? '—' : (data?.publishedDeployments ?? 0)}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Healthy domains</CardDescription>
+            <CardTitle className="flex items-center gap-2 font-semibold text-2xl tabular-nums tracking-tight">
+              <Globe2 className="size-4 text-muted-foreground" />
+              {isPending ? '—' : `${data?.healthyDomains ?? 0}/${data?.domains ?? 0}`}
             </CardTitle>
           </CardHeader>
         </Card>

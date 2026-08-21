@@ -1,5 +1,6 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/confirm';
 import {
   Dialog,
@@ -16,21 +17,28 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useForm } from '@tanstack/react-form';
-import { createFileRoute } from '@tanstack/react-router';
-import { Copy, ExternalLink, Mail, Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
+import { ChevronRight, Copy, ExternalLink, Mail, Plus, Search } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { DataEmpty, DataError } from '@/components/data-state';
+import { StatusBadge } from '@/components/status-badge';
 import { useInviteOrganization, useTakedownSite } from '@/hooks/api/mutations';
 import { type AdminSite, useAdminSites } from '@/hooks/api/queries';
-import { fmtDate } from '@/lib/format';
+import { fmtRelative } from '@/lib/format';
 import { APP_URL } from '@/lib/links';
 
 export const Route = createFileRoute('/(dashboard)/sites')({
-  component: SitesPage,
+  component: SitesRoute,
 });
 
 /** Matches the server's `z.string().max(500)` on the takedown reason. */
 const TAKEDOWN_REASON_MAX = 500;
+
+function SitesRoute() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  return pathname === '/sites' ? <SitesPage /> : <Outlet />;
+}
 
 function InviteOrganizationDialog() {
   const [open, setOpen] = useState(false);
@@ -239,10 +247,31 @@ function InviteOrganizationDialog() {
 }
 
 function SitesPage() {
-  const { data, isPending } = useAdminSites();
+  const query = useAdminSites();
   const takedown = useTakedownSite();
   const confirm = useConfirm();
   const prompt = usePrompt();
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'healthy' | 'attention' | 'unpublished' | 'taken-down'>('all');
+
+  const sites = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return (query.data ?? []).filter((site) => {
+      const matchesSearch =
+        !needle ||
+        site.name.toLowerCase().includes(needle) ||
+        site.owner.toLowerCase().includes(needle) ||
+        site.org.toLowerCase().includes(needle) ||
+        site.slug.toLowerCase().includes(needle);
+      const matchesFilter =
+        filter === 'all' ||
+        (filter === 'healthy' && !site.takedownAt && site.domainIssues === 0 && site.latestDeployment?.status === 'READY') ||
+        (filter === 'attention' && (site.domainIssues > 0 || site.latestDeployment?.status === 'FAILED' || site.ownerStatus === 'missing')) ||
+        (filter === 'unpublished' && !site.latestDeployment) ||
+        (filter === 'taken-down' && Boolean(site.takedownAt));
+      return matchesSearch && matchesFilter;
+    });
+  }, [filter, query.data, search]);
 
   const copyOwnerInvitation = async (site: AdminSite) => {
     if (!site.ownerInvitationId) {
@@ -296,93 +325,236 @@ function SitesPage() {
     }
   };
 
+  if (query.isError) return <DataError retry={() => void query.refetch()} />;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-2xl tracking-tight">Sites</h1>
-          <p className="mt-1 text-muted-foreground text-sm">Every documentation site across all workspaces on this instance.</p>
+          <h1 className="font-semibold text-2xl tracking-tight">Sites & workspaces</h1>
+          <p className="mt-1 text-muted-foreground text-sm">Publishing, domains, access, ownership, plan metadata, and usage across the instance.</p>
         </div>
         <InviteOrganizationDialog />
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Workspace</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Pages</TableHead>
-              <TableHead>Deploys</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isPending ? (
-              <TableRow>
-                <TableCell className="py-8 text-center text-muted-foreground" colSpan={8}>
-                  Loading…
-                </TableCell>
-              </TableRow>
-            ) : (
-              data?.map((site: AdminSite) => (
-                <TableRow key={site.id}>
-                  <TableCell className="font-medium">{site.name}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <span>{site.owner}</span>
-                      {site.ownerStatus === 'invited' ? <Badge variant="outline">Invited</Badge> : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{site.org}</TableCell>
-                  <TableCell>
-                    {site.takedownAt ? (
-                      <Badge title={site.takedownReason ?? undefined} variant="destructive">
-                        Taken down {fmtDate(site.takedownAt)}
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Live</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{site.pages}</TableCell>
-                  <TableCell>{site.deployments}</TableCell>
-                  <TableCell className="text-muted-foreground">{fmtDate(site.createdAt)}</TableCell>
-                  <TableCell className="text-end">
-                    <div className="flex items-center justify-end gap-2">
-                      {site.ownerInvitationId ? (
-                        <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
-                          <Copy className="size-4" /> Copy invite
-                        </Button>
-                      ) : null}
-                      <Button
-                        disabled={takedown.isPending && takedown.variables?.id === site.id}
-                        onClick={() => (site.takedownAt ? onRestore(site) : onTakedown(site))}
-                        size="sm"
-                        variant={site.takedownAt ? 'outline' : 'destructive'}
-                      >
-                        {site.takedownAt ? 'Restore' : 'Take down'}
-                      </Button>
-                      <Button
-                        nativeButton={false}
-                        render={
-                          // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
-                          <a aria-label="Open live site" href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />
-                        }
-                        size="icon-sm"
-                        variant="ghost"
-                      >
-                        <ExternalLink className="size-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+
+      <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
+        <label className="relative" htmlFor="site-search">
+          <span className="sr-only">Search sites</span>
+          <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="ps-9"
+            id="site-search"
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search site, workspace, owner, or slug"
+            value={search}
+          />
+        </label>
+        <label htmlFor="site-filter">
+          <span className="sr-only">Filter sites</span>
+          <select
+            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            id="site-filter"
+            onChange={(event) => setFilter(event.target.value as typeof filter)}
+            value={filter}
+          >
+            <option value="all">All sites</option>
+            <option value="healthy">Healthy</option>
+            <option value="attention">Needs attention</option>
+            <option value="unpublished">Not published</option>
+            <option value="taken-down">Taken down</option>
+          </select>
+        </label>
       </div>
+
+      {query.isPending ? (
+        <div className="rounded-xl border bg-card py-12 text-center text-muted-foreground text-sm" role="status">
+          Loading sites…
+        </div>
+      ) : sites.length === 0 ? (
+        <div className="rounded-xl border bg-card">
+          <DataEmpty title="No sites match" description="Clear the search or choose another operational filter." />
+        </div>
+      ) : (
+        <>
+          <div className="hidden overflow-x-auto rounded-xl border border-border bg-card md:block">
+            <Table className="min-w-[1080px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Workspace</TableHead>
+                  <TableHead>Publish</TableHead>
+                  <TableHead>Domains</TableHead>
+                  <TableHead>Usage</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sites.map((site: AdminSite) => (
+                  <TableRow key={site.id}>
+                    <TableCell>
+                      <Link className="font-medium hover:underline" params={{ siteId: site.id }} to="/sites/$siteId">
+                        {site.name}
+                      </Link>
+                      <p className="font-mono text-muted-foreground text-xs">{site.slug}</p>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span>{site.owner}</span>
+                        {site.ownerStatus === 'invited' ? <Badge variant="outline">Invited</Badge> : null}
+                        {site.ownerStatus === 'missing' ? <Badge variant="destructive">Missing owner</Badge> : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-muted-foreground">{site.org}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {site.plan} plan · {site.members} member{site.members === 1 ? '' : 's'}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      {site.takedownAt ? (
+                        <StatusBadge label="taken down" value="taken-down" />
+                      ) : site.latestDeployment ? (
+                        <div className="space-y-1">
+                          <StatusBadge value={site.latestDeployment.status} />
+                          <p className="text-muted-foreground text-xs">
+                            v{site.latestDeployment.version} · {fmtRelative(site.latestDeployment.at)}
+                          </p>
+                        </div>
+                      ) : (
+                        <Badge variant="outline">not published</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p>{site.domains}</p>
+                      {site.domainIssues ? (
+                        <p className="text-destructive text-xs">
+                          {site.domainIssues} issue{site.domainIssues === 1 ? '' : 's'}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground text-xs">No errors</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <p>
+                        {site.pages} page{site.pages === 1 ? '' : 's'} · {site.languages} lang.
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {site.deployments} deployment{site.deployments === 1 ? '' : 's'} · {site.accessMode.toLowerCase()}
+                      </p>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{fmtRelative(site.updatedAt)}</TableCell>
+                    <TableCell className="text-end">
+                      <div className="flex items-center justify-end gap-2">
+                        {site.ownerInvitationId ? (
+                          <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
+                            <Copy className="size-4" /> Copy invite
+                          </Button>
+                        ) : null}
+                        <Button
+                          disabled={takedown.isPending && takedown.variables?.id === site.id}
+                          onClick={() => (site.takedownAt ? onRestore(site) : onTakedown(site))}
+                          size="sm"
+                          variant={site.takedownAt ? 'outline' : 'destructive'}
+                        >
+                          {site.takedownAt ? 'Restore' : 'Take down'}
+                        </Button>
+                        <Button
+                          nativeButton={false}
+                          render={<Link aria-label={`View ${site.name} details`} params={{ siteId: site.id }} to="/sites/$siteId" />}
+                          size="icon-sm"
+                          variant="ghost"
+                        >
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <div className="grid gap-3 md:hidden">
+            {sites.map((site) => (
+              <Card key={site.id}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-start justify-between gap-3 text-base">
+                    <span className="min-w-0">
+                      <span className="block truncate">{site.name}</span>
+                      <span className="block truncate font-normal text-muted-foreground text-xs">
+                        {site.org} · {site.plan} plan
+                      </span>
+                    </span>
+                    <Button
+                      nativeButton={false}
+                      render={<Link aria-label={`View ${site.name}`} params={{ siteId: site.id }} to="/sites/$siteId" />}
+                      size="icon-sm"
+                      variant="ghost"
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex flex-wrap gap-1.5">
+                    {site.takedownAt ? (
+                      <StatusBadge label="taken down" value="taken-down" />
+                    ) : site.latestDeployment ? (
+                      <StatusBadge value={site.latestDeployment.status} />
+                    ) : (
+                      <Badge variant="outline">not published</Badge>
+                    )}
+                    {site.domainIssues ? (
+                      <Badge variant="destructive">
+                        {site.domainIssues} domain issue{site.domainIssues === 1 ? '' : 's'}
+                      </Badge>
+                    ) : null}
+                    <Badge variant="outline">{site.accessMode.toLowerCase()}</Badge>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <dt className="text-muted-foreground">Pages</dt>
+                      <dd className="font-medium">{site.pages}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Members</dt>
+                      <dd className="font-medium">{site.members}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Updated</dt>
+                      <dd className="font-medium">{fmtRelative(site.updatedAt)}</dd>
+                    </div>
+                  </dl>
+                  <div className="flex gap-2">
+                    {site.ownerInvitationId ? (
+                      <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
+                        <Copy className="size-4" /> Copy invite
+                      </Button>
+                    ) : null}
+                    <Button
+                      nativeButton={false}
+                      render={
+                        // biome-ignore lint/a11y/useAnchorContent: accessible content is merged from the Button children
+                        <a aria-label={`Open ${site.name} customer view`} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />
+                      }
+                      size="sm"
+                      variant="outline"
+                    >
+                      <ExternalLink className="size-4" /> Customer view
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+      {!query.isPending ? (
+        <p className="text-muted-foreground text-xs" aria-live="polite">
+          Showing {sites.length} of {query.data?.length ?? 0} sites
+        </p>
+      ) : null}
     </div>
   );
 }

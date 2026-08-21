@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
 } from '@nibleaf/design-system/components/ui/sidebar';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { LayoutDashboard, LogOut, Server, Users } from 'lucide-react';
+import { Activity, LayoutDashboard, LogOut, Server, Users } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { signOut, useSession } from '@/lib/auth-client';
 
@@ -19,6 +19,7 @@ const NAV: { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGEleme
   { to: '/', label: 'Overview', icon: LayoutDashboard, exact: true },
   { to: '/users', label: 'Customers', icon: Users, exact: false },
   { to: '/sites', label: 'Sites', icon: Server, exact: false },
+  { to: '/operations', label: 'Operations', icon: Activity, exact: false },
 ];
 
 export function AdminSidebar() {

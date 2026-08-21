@@ -3,8 +3,11 @@ import { api, type InferResponseType } from '@/lib/api';
 
 export type AdminOverview = InferResponseType<typeof api.admin.overview.$get>['data'];
 export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data'][number];
+export type AdminUserDetail = InferResponseType<(typeof api.admin.users)[':id']['$get']>['data'];
 export type AdminSite = InferResponseType<typeof api.admin.sites.$get>['data'][number];
+export type AdminSiteDetail = InferResponseType<(typeof api.admin.sites)[':id']['$get']>['data'];
 export type AdminFunnel = InferResponseType<typeof api.admin.funnel.$get>['data'];
+export type AdminOperations = InferResponseType<typeof api.admin.operations.$get>['data'];
 
 export function useAdminOverview() {
   return useQuery({
@@ -32,6 +35,19 @@ export function useAdminUsers() {
   });
 }
 
+export function useAdminUser(id: string) {
+  return useQuery({
+    queryKey: ['admin', 'users', id],
+    queryFn: async () => {
+      const res = await api.admin.users[':id'].$get({ param: { id } });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      return (await res.json()).data;
+    },
+  });
+}
+
 export function useAdminSites() {
   return useQuery({
     queryKey: ['admin', 'sites'],
@@ -42,6 +58,33 @@ export function useAdminSites() {
       }
       return (await res.json()).data;
     },
+  });
+}
+
+export function useAdminSite(id: string) {
+  return useQuery({
+    queryKey: ['admin', 'sites', id],
+    queryFn: async () => {
+      const res = await api.admin.sites[':id'].$get({ param: { id } });
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      return (await res.json()).data;
+    },
+  });
+}
+
+export function useAdminOperations() {
+  return useQuery({
+    queryKey: ['admin', 'operations'],
+    queryFn: async () => {
+      const res = await api.admin.operations.$get();
+      if (!res.ok) {
+        throw new Error(String(res.status));
+      }
+      return (await res.json()).data;
+    },
+    refetchInterval: 30_000,
   });
 }
 

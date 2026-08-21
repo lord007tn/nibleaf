@@ -2,7 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router';
-import { ShieldCheck } from 'lucide-react';
+import { AlertCircle, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
@@ -46,15 +46,26 @@ function AdminGate() {
     return <PageLoader />;
   }
   if (overview.isError) {
+    const unauthorized = overview.error instanceof Error && ['401', '403'].includes(overview.error.message);
     return (
       <FullScreen>
         <div className="flex flex-col items-center gap-3 text-center">
-          <ShieldCheck className="size-8 text-muted-foreground" />
-          <h1 className="font-semibold text-foreground text-xl tracking-tight">Not authorized</h1>
-          <p className="max-w-sm text-muted-foreground text-sm">Your account doesn't have admin access to this panel.</p>
-          <Button className="mt-1" onClick={() => void signOut().then(() => window.location.assign('/sign-in'))} variant="outline">
-            Sign out
-          </Button>
+          {unauthorized ? <ShieldCheck className="size-8 text-muted-foreground" /> : <AlertCircle className="size-8 text-destructive" />}
+          <h1 className="font-semibold text-foreground text-xl tracking-tight">{unauthorized ? 'Not authorized' : 'Admin data unavailable'}</h1>
+          <p className="max-w-sm text-muted-foreground text-sm">
+            {unauthorized
+              ? "Your account doesn't have admin access to this panel."
+              : 'Your session is valid, but the admin API could not be reached. No authorization conclusion was inferred from this failure.'}
+          </p>
+          {unauthorized ? (
+            <Button className="mt-1" onClick={() => void signOut().then(() => window.location.assign('/sign-in'))} variant="outline">
+              Sign out
+            </Button>
+          ) : (
+            <Button className="mt-1" onClick={() => void overview.refetch()} variant="outline">
+              Try again
+            </Button>
+          )}
         </div>
       </FullScreen>
     );
@@ -69,6 +80,9 @@ function titleFromPathname(pathname: string): string {
   }
   if (pathname.startsWith('/sites')) {
     return 'Sites';
+  }
+  if (pathname.startsWith('/operations')) {
+    return 'Operations';
   }
   return 'Overview';
 }

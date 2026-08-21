@@ -47,7 +47,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       <head>
         {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} suppressHydrationWarning />
         <HeadContent />
       </head>
       <body>

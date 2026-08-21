@@ -12,7 +12,7 @@ interface WorkspaceMetadata {
 
 const defaults = (): WorkspaceMetadata => ({ plan: 'free', notifications: {}, integrations: {}, git: {} });
 
-const parseMetadata = (raw: string | null): WorkspaceMetadata => {
+export const parseWorkspaceMetadata = (raw: string | null): WorkspaceMetadata => {
   if (!raw) {
     return defaults();
   }
@@ -34,7 +34,7 @@ export const getWorkspaceSettings = async (organizationId: string) => {
     prisma.member.count({ where: { organizationId } }),
   ]);
   return {
-    ...parseMetadata(org.metadata),
+    ...parseWorkspaceMetadata(org.metadata),
     name: org.name,
     slug: org.slug,
     projectCount,
@@ -53,7 +53,7 @@ export const updateWorkspaceSettings = async (organizationId: string, patch: Upd
   if (!org) {
     throw notFound('organization', { id: organizationId });
   }
-  const current = parseMetadata(org.metadata);
+  const current = parseWorkspaceMetadata(org.metadata);
   const merged = { ...current, ...patch };
   if (patch.git) {
     const previousGit = (current.git ?? {}) as Record<string, unknown>;
