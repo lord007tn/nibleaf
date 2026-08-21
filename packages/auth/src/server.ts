@@ -14,9 +14,11 @@ import { googleOAuthEnabled } from './providers';
 const env = keys();
 const log = createLogger({ module: 'auth' });
 
+const sanitizeEmailErrorField = (value: string) => value.replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500);
+
 const safeEmailError = (error: unknown) => ({
-  name: error instanceof Error ? error.name : 'UnknownError',
-  message: (error instanceof Error ? error.message : String(error)).replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500),
+  name: error instanceof Error ? sanitizeEmailErrorField(error.name) : 'UnknownError',
+  message: sanitizeEmailErrorField(error instanceof Error ? error.message : String(error)),
 });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
