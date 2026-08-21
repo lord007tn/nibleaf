@@ -45,16 +45,15 @@ jobs:
 
           resource_uuid=$(node -e 'const url = new URL(process.env.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK); process.stdout.write(url.searchParams.get("uuid") ?? "")')
           if [[ -z "$resource_uuid" ]]; then
-            services=$(coolify_get "/services")
-            resource_uuid=$(printf '%s' "$services" | jq --raw-output '[.[] | select(((.name // "") | ascii_downcase) == "nibleaf")][0].uuid // empty')
+            applications=$(coolify_get "/applications")
+            resource_uuid=$(printf '%s' "$applications" | jq --raw-output '[.[] | select(((.name // "") | ascii_downcase) == "nibleaf")][0].uuid // empty')
           fi
           if [[ -z "$resource_uuid" ]]; then
-            echo "::error::Could not find the Nibleaf production service"
+            echo "::error::Could not find the Nibleaf production application"
             exit 1
           fi
 
-          service=$(coolify_get "/services/${resource_uuid}")
-          envs=$(coolify_get "/services/${resource_uuid}/envs")
+          envs=$(coolify_get "/applications/${resource_uuid}/envs")
           postmark_token=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_API_KEY" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
           smtp_url=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "SMTP_URL" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
           message_stream=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_MESSAGE_STREAM" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
@@ -70,7 +69,6 @@ jobs:
             exit 1
           fi
 
-          worker_name=$(printf '%s' "$service" | jq --raw-output '[.applications[]? | select((.name // "") == "worker" or ((.name // "") | endswith("-worker")))][0].name // "worker"')
           worker_logs=$(curl --fail-with-body --silent --show-error \
             --retry 3 \
             --retry-all-errors \
@@ -81,10 +79,8 @@ jobs:
             --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
             --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
             --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
-            --data-urlencode "sub_service_name=${worker_name}" \
             --data-urlencode "lines=500" \
-            --data-urlencode "show_timestamps=true" \
-            "${coolify_api_base}/services/${resource_uuid}/logs")
+            "${coolify_api_base}/applications/${resource_uuid}/logs")
           log_text=$(printf '%s' "$worker_logs" | jq --raw-output '.logs // ""')
           sent_count=$(grep -c 'email sent' <<<"$log_text" || true)
           failed_count=$(grep -c 'email delivery failed' <<<"$log_text" || true)
