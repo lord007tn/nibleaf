@@ -141,10 +141,54 @@ export function buildPasswordResetEmail(url: string): Promise<TransactionalEmail
   return buildTransactionalEmail(passwordResetEmailOptions(url));
 }
 
+type TransactionalEmailRenderer = (element: React.ReactElement) => Promise<string>;
+
+const escapeHtml = (value: string): string =>
+  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+
+/**
+ * Keep auth email delivery available if the optional React Email renderer
+ * rejects inside a long-running request context. All dynamic values are
+ * escaped before they are inserted into the fallback markup.
+ */
+function fallbackTransactionalEmailHtml(options: TransactionalEmailOptions): string {
+  const preheader = escapeHtml(options.preheader);
+  const title = escapeHtml(options.title);
+  const message = escapeHtml(options.message);
+  const code = options.code ? escapeHtml(options.code) : undefined;
+  const action = options.action ? { label: escapeHtml(options.action.label), url: escapeHtml(options.action.url) } : undefined;
+  const detail = options.detail ? escapeHtml(options.detail) : undefined;
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="background:#f1f5f9;color:#0f172a;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:24px 12px">
+  <div style="display:none;font-size:1px;color:#f1f5f9;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden">${preheader}</div>
+  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:16px;margin:0 auto;max-width:560px;overflow:hidden">
+    <div style="padding:24px 28px;font-size:18px;font-weight:700;letter-spacing:-.02em">Nibleaf</div>
+    <div style="border-top:1px solid #e2e8f0;padding:32px 28px">
+      <h1 style="font-size:24px;letter-spacing:-.025em;line-height:1.25;margin:0 0 14px">${title}</h1>
+      <p style="color:#475569;font-size:15px;line-height:1.65;margin:0">${message}</p>
+      ${code ? `<div style="background:#f1f5f9;border-radius:10px;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:28px;font-weight:700;letter-spacing:.22em;line-height:1;margin:24px 0 0;padding:14px 20px">${code}</div>` : ''}
+      ${action ? `<div style="margin-top:24px"><a href="${action.url}" style="background:#0f172a;border-radius:10px;color:#fff;display:inline-block;font-size:14px;font-weight:700;padding:12px 18px;text-decoration:none">${action.label}</a></div><p style="color:#64748b;font-size:12px;line-height:1.55;margin:18px 0 0">If the button does not work, copy and paste this link:<br><a href="${action.url}" style="color:#0f766e;word-break:break-all">${action.url}</a></p>` : ''}
+      ${detail ? `<p style="color:#64748b;font-size:13px;line-height:1.6;margin:22px 0 0">${detail}</p>` : ''}
+    </div>
+    <div style="background:#f8fafc;color:#94a3b8;font-size:12px;line-height:1.55;padding:18px 28px">This automated message was sent by Nibleaf. If you did not request it, you can safely ignore it.</div>
+  </div>
+</body></html>`;
+}
+
 /** Build a responsive React Email template with an explicit plain-text fallback. */
-export async function buildTransactionalEmail(options: TransactionalEmailOptions): Promise<TransactionalEmail> {
+export async function buildTransactionalEmail(
+  options: TransactionalEmailOptions,
+  renderEmail: TransactionalEmailRenderer = render,
+): Promise<TransactionalEmail> {
   const subject = options.subject.replace(/[\r\n]+/g, ' ').trim();
-  const html = await render(<TransactionalEmailTemplate options={options} />);
+  let html: string;
+  try {
+    html = await renderEmail(<TransactionalEmailTemplate options={options} />);
+  } catch {
+    html = fallbackTransactionalEmailHtml(options);
+  }
   const text = [
     `Nibleaf — ${options.title}`,
     '',
