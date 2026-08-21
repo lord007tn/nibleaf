@@ -22,7 +22,7 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     invite: typeof search.invite === 'string' ? search.invite : undefined,
     email: typeof search.email === 'string' ? search.email : undefined,
   }),
-  head: () => ({ meta: [{ title: 'Sign in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Log in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignInPage,
 });
 
@@ -129,7 +129,7 @@ function SignInPage() {
         <>
           <Button className="mb-4 w-full gap-2" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
             <GoogleIcon className="size-4" />
-            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.signIn')}
           </Button>
           <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
             <span className="h-px flex-1 bg-border" />

@@ -51,7 +51,7 @@ export function SiteBanner({ projectId, banner }: { projectId: string; banner: S
           rel="noreferrer"
           className="inline-flex cursor-pointer items-center gap-1 font-semibold underline underline-offset-4 hover:opacity-90"
         >
-          {banner.linkLabel ?? 'Learn more'}
+          {banner.linkLabel ?? 'View details'}
           <ExternalLink className="size-3" />
         </a>
       ) : null}

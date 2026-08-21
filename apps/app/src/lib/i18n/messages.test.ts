@@ -16,4 +16,18 @@ describe('i18n message tables', () => {
       }
     }
   });
+
+  it('uses goal-based labels for passwordless authentication', () => {
+    expect(messages.en['auth.otp.sendSignIn']).toBe('Log in');
+    expect(messages.en['auth.otp.verifySignIn']).toBe('Log in');
+    expect(messages.en['auth.otp.sendCreate']).toBe('Create account');
+    expect(messages.en['auth.otp.verifyCreate']).toBe('Create account');
+    expect(messages.en['auth.google.signIn']).toBe('Log in with Google');
+    expect(messages.en['auth.google.signUp']).toBe('Create account with Google');
+    expect(messages.en['auth.otp.resend']).toBe('Resend code');
+
+    expect(messages.ar['auth.otp.sendSignIn']).toBe('تسجيل الدخول');
+    expect(messages.ar['auth.otp.sendCreate']).toBe('إنشاء حساب');
+    expect(messages.ar['auth.otp.resend']).toBe('إعادة إرسال الرمز');
+  });
 });

@@ -245,10 +245,10 @@ function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
           </p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
-              {arabic ? 'ابدأ مجانًا' : 'Get started free'} <ArrowRight className="size-4 rtl:rotate-180" />
+              {arabic ? 'أنشئ حسابًا مجانيًا' : 'Create free account'} <ArrowRight className="size-4 rtl:rotate-180" />
             </a>
             <a className={invertedOutlineButton} href="/self-hosting">
-              {arabic ? 'حالة الاستضافة الذاتية' : 'Self-hosting status'}
+              {arabic ? 'دليل الاستضافة الذاتية' : 'Self-hosting guide'}
             </a>
           </div>
         </div>

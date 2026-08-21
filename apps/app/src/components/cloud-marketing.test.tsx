@@ -5,7 +5,21 @@ import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { CopyCommand, GitHubStarLink } from '@/components/cloud-marketing';
+import { CloudPage, CopyCommand, GitHubStarLink, LandingPage } from '@/components/cloud-marketing';
+
+describe('marketing calls to action', () => {
+  it('uses destination-focused labels instead of generic prompts', () => {
+    const landing = renderToStaticMarkup(<LandingPage stars={42} />);
+    const cloud = renderToStaticMarkup(<CloudPage stars={42} />);
+
+    expect(landing).toContain('Create account');
+    expect(landing).toContain('Create free account');
+    expect(landing).toContain('Compare options');
+    expect(cloud).toContain('Create free account');
+    expect(`${landing}${cloud}`).not.toContain('Get started');
+    expect(`${landing}${cloud}`).not.toContain('Learn more');
+  });
+});
 
 describe('GitHubStarLink', () => {
   it('shows an authoritative zero count instead of hiding it', () => {

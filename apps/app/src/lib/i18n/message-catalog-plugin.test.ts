@@ -13,9 +13,9 @@ describe('message catalog compiler', () => {
   it('emits only the requested locale', () => {
     const english = buildMessageCatalogModule('en', 'auth');
     const arabic = buildMessageCatalogModule('ar', 'auth');
-    expect(english).toContain('Sign in');
+    expect(english).toContain('Log in');
     expect(english).not.toContain('تسجيل الدخول');
     expect(arabic).toContain('تسجيل الدخول');
-    expect(arabic).not.toContain('Sign in');
+    expect(arabic).not.toContain('Log in');
   });
 });
