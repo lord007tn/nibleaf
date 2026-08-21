@@ -55,6 +55,12 @@ jobs:
           postmark_token=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_API_KEY" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
           smtp_url=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "SMTP_URL" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
           message_stream=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_MESSAGE_STREAM" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
+          if [[ -n "$postmark_token" ]]; then
+            echo "::add-mask::$postmark_token"
+          fi
+          if [[ -n "$smtp_url" ]]; then
+            echo "::add-mask::$smtp_url"
+          fi
 
           if [[ -z "$postmark_token" && -z "$smtp_url" ]]; then
             echo "::error::Production has neither POSTMARK_API_KEY nor SMTP_URL configured"
@@ -90,7 +96,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -n "$postmark_token" ]]; then
-            echo "::add-mask::$postmark_token"
             server=$(curl --fail-with-body --silent --show-error \
               --retry 3 \
               --retry-all-errors \
@@ -99,6 +104,10 @@ jobs:
               "https://api.postmarkapp.com/server")
             server_id=$(printf '%s' "$server" | jq --exit-status --raw-output '.ID')
             delivery_type=$(printf '%s' "$server" | jq --exit-status --raw-output '.DeliveryType')
+            if [[ "$delivery_type" != "Live" ]]; then
+              echo "::error::Postmark is authenticated but the production server is not in Live delivery mode"
+              exit 1
+            fi
 
             messages_url="https://api.postmarkapp.com/messages/outbound"
             message_query=(
