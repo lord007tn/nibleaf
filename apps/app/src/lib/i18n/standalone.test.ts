@@ -18,4 +18,9 @@ describe('standalone translations', () => {
     expect(translateStandalone('common.loading')).toBe('جارٍ التحميل…');
     expect(translateStandalone('error.tryAgain')).toBe('حاول مجددًا');
   });
+
+  it('uses another persisted interface language', () => {
+    window.localStorage.setItem('nibleaf.locale', 'es');
+    expect(translateStandalone('notFound.title')).toBe('Página no encontrada');
+  });
 });

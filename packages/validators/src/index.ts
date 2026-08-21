@@ -369,12 +369,22 @@ export type UpsertOpenApiBody = z.infer<typeof upsertOpenApiBody>;
 export const textDirectionEnum = z.enum(['LTR', 'RTL']);
 export type TextDirection = z.infer<typeof textDirectionEnum>;
 
+const languageTag = z
+  .string()
+  .trim()
+  .min(2)
+  .max(35)
+  .refine((value) => {
+    try {
+      return Intl.getCanonicalLocales(value).length === 1;
+    } catch {
+      return false;
+    }
+  }, 'Use a valid BCP-47 code like "en", "pt-BR", or "zh-Hans-CN"')
+  .transform((value) => Intl.getCanonicalLocales(value)[0] as string);
+
 export const createLanguageBody = z.object({
-  code: z
-    .string()
-    .min(2)
-    .max(10)
-    .regex(/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/, 'Use a BCP-47 code like "en" or "pt-BR"'),
+  code: languageTag,
   label: z.string().min(1).max(60),
   direction: textDirectionEnum.optional(),
   isDefault: z.boolean().optional(),

@@ -38,8 +38,8 @@ your content stays in your database.
 
 - 🖋️ **Rich text _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
-- 🌍 **Bilingual & RTL-first** — genuine Arabic + English with per-language page trees,
-  right-to-left layout, and fully translated chrome.
+- 🌍 **Multilingual & RTL-first** — 12 interface languages, arbitrary BCP-47 content
+  languages, per-language page trees, and right-to-left layout.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
 - 🏠 **Self-hosted** — Docker Compose or Coolify, bring-your-own Postgres + S3-compatible
@@ -80,8 +80,8 @@ Private customer documentation supports dedicated reader accounts, audience/page
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
 - **Hybrid search** — full-text + fuzzy ([Orama](https://oramasearch.com)), bilingual
   (including an Arabic tokenizer), built into every published site and available via `⌘K`.
-- **Bilingual & RTL** — per-language page trees, RTL layout, `hreflang`, and localized
-  dashboard / editor / site chrome (English + Arabic).
+- **Multilingual & RTL** — 12 interface languages, arbitrary BCP-47 content languages,
+  per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
   and host-based published-site routing.
 - **SEO built in** — SSR, per-page canonical / Open Graph / Twitter / JSON-LD, sitemap,

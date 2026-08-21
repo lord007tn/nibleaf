@@ -16,6 +16,7 @@ const sitesRoutes = {
   search: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'Search a published site (full-text + fuzzy).', responses: ok }),
   track: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'Record a pageview, search, or feedback event.', responses: ok }),
   changelog: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'Published-version changelog for a site.', responses: ok }),
+  changelogRss: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'RSS 2.0 feed of published site releases.', responses: ok }),
   sitemap: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'XML sitemap of a published site.', responses: ok }),
   robots: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'robots.txt for a published site.', responses: ok }),
   llms: createRouteConfig({

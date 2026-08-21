@@ -1,5 +1,6 @@
 import { ExternalLink, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { siteT } from '@/lib/site-i18n';
 
 export interface SiteBannerConfig {
   enabled?: boolean;
@@ -15,7 +16,8 @@ export interface SiteBannerConfig {
  * localStorage so it doesn't reappear on every navigation. Renders nothing when
  * the banner is disabled or has no message.
  */
-export function SiteBanner({ projectId, banner }: { projectId: string; banner: SiteBannerConfig | undefined }) {
+export function SiteBanner({ projectId, banner, lang }: { projectId: string; banner: SiteBannerConfig | undefined; lang?: string }) {
+  const t = siteT(lang);
   const message = banner?.message?.trim();
   const dismissible = banner?.dismissible !== false;
   const storageKey = `nibleaf.banner.${projectId}.${message ?? ''}`;
@@ -51,7 +53,7 @@ export function SiteBanner({ projectId, banner }: { projectId: string; banner: S
           rel="noreferrer"
           className="inline-flex cursor-pointer items-center gap-1 font-semibold underline underline-offset-4 hover:opacity-90"
         >
-          {banner.linkLabel ?? 'View details'}
+          {banner.linkLabel ?? t('viewDetails')}
           <ExternalLink className="size-3" />
         </a>
       ) : null}
@@ -59,7 +61,7 @@ export function SiteBanner({ projectId, banner }: { projectId: string; banner: S
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Dismiss banner"
+          aria-label={t('dismissBanner')}
           className="ms-2 cursor-pointer rounded-md p-0.5 opacity-80 transition-opacity hover:opacity-100"
         >
           <X className="size-4" />

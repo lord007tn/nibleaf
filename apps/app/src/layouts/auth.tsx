@@ -1,6 +1,8 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
 import { Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
+import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
+import { useT } from '@/lib/i18n';
 
 /**
  * Auth chrome — a premium split: a dark, brand-led panel (value props +
@@ -8,13 +10,15 @@ import type { ComponentType, ReactNode, SVGProps } from 'react';
  * decorative marketing copy (English, hidden below lg); the form heading uses
  * the localized `subtitle` each page passes.
  */
-const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; text: string }[] = [
-  { icon: Cloud, text: 'Managed hosting for every docs site' },
-  { icon: Globe2, text: 'Custom domains and fast global delivery' },
-  { icon: Languages, text: 'Arabic-ready, RTL-first authoring' },
-];
+const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; key: 'auth.brand.domains' | 'auth.brand.hosting' | 'auth.brand.multilingual' }[] =
+  [
+    { icon: Cloud, key: 'auth.brand.hosting' },
+    { icon: Globe2, key: 'auth.brand.domains' },
+    { icon: Languages, key: 'auth.brand.multilingual' },
+  ];
 
 export function AuthLayout({ children, subtitle }: { children: ReactNode; subtitle?: string }) {
+  const t = useT();
   return (
     <main className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
@@ -38,32 +42,31 @@ export function AuthLayout({ children, subtitle }: { children: ReactNode; subtit
           <span className="font-semibold text-lg tracking-tight">Nibleaf</span>
         </div>
         <div className="relative">
-          <h2 className="font-semibold text-[2rem] leading-[1.15] tracking-tight">Your docs, hosted and ready.</h2>
-          <p className="mt-3 max-w-md text-sm text-white/65 leading-relaxed">
-            Nibleaf Cloud gives teams a polished Markdown workflow, instant search, analytics, custom domains, and managed infrastructure.
-          </p>
+          <h2 className="font-semibold text-[2rem] leading-[1.15] tracking-tight">{t('auth.brand.heading')}</h2>
+          <p className="mt-3 max-w-md text-sm text-white/65 leading-relaxed">{t('auth.brand.description')}</p>
           <ul className="mt-8 space-y-3.5">
             {BRAND_POINTS.map((point) => (
-              <li key={point.text} className="flex items-center gap-3 text-sm text-white/90">
+              <li key={point.key} className="flex items-center gap-3 text-sm text-white/90">
                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 ring-1 ring-white/10">
                   <point.icon className="size-3.5 text-[#F97316]" />
                 </span>
-                {point.text}
+                {t(point.key)}
               </li>
             ))}
           </ul>
         </div>
         <div className="relative flex items-center gap-2 text-white/55 text-xs">
           <span className="size-1.5 rounded-full bg-emerald-400" />
-          Cloud deployment active
+          {t('auth.brand.status')}
           <span className="ms-auto inline-flex items-center gap-1 font-mono text-white/40">
-            <ShieldCheck className="size-3" /> open source core
+            <ShieldCheck className="size-3" /> {t('auth.brand.openSource')}
           </span>
         </div>
       </div>
 
       {/* Form panel */}
       <div className="relative grid place-items-center bg-background px-6 py-12">
+        <InterfaceLanguageButton className="absolute top-4 end-4 max-w-[calc(100%-2rem)]" />
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center gap-3 text-center lg:hidden">
             <div className="inline-flex items-center gap-2">

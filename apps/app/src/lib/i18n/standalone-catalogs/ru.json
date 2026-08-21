@@ -1,0 +1,12 @@
+{
+  "common.loading": "Загрузка…",
+  "error.badge": "Ошибка",
+  "error.title": "Что-то пошло не так",
+  "error.unexpected": "Произошла непредвиденная ошибка.",
+  "error.tryAgain": "Попробуйте еще раз",
+  "error.backHome": "Вернуться домой",
+  "notFound.badge": "404",
+  "notFound.title": "Страница не найдена",
+  "notFound.body": "Страница, которую вы ищете, не существует или переехала.",
+  "notFound.backHome": "Вернуться домой"
+}

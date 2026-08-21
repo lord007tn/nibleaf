@@ -272,7 +272,7 @@ function Hero({ stars }: { stars: number }) {
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
-            {['No credit card required', 'Your content stays Markdown', 'English and Arabic'].map((item) => (
+            {['No credit card required', 'Your content stays Markdown', '12 interface languages'].map((item) => (
               <span key={item} className="flex items-center gap-1.5">
                 <Check className="size-4 text-primary" /> {item}
               </span>
@@ -290,7 +290,7 @@ function TrustStrip() {
   const stats = [
     { value: 'AGPL-3.0', label: 'licensed codebase' },
     { value: 'Beta', label: 'cloud access available' },
-    { value: '2 languages', label: 'English & Arabic, full RTL' },
+    { value: '12 languages', label: 'Localized interface with LTR and RTL' },
     { value: 'Built in', label: 'product analytics' },
   ];
   return (
@@ -397,7 +397,7 @@ function ShowcaseBilingual() {
     <ShowcaseRow
       eyebrow="Bilingual by design"
       title="Arabic-first. RTL that actually works."
-      body="Most docs platforms bolt RTL on as an afterthought. Nibleaf was built bilingual from day one: per-language page trees, mirrored layout, localized chrome, and hreflang emitted for every page."
+      body="Most docs platforms bolt RTL on as an afterthought. Nibleaf supports 12 interface languages, arbitrary BCP-47 content languages, per-language page trees, mirrored layouts, localized chrome, and hreflang for every page."
       bullets={[
         'Per-language page trees — structure each language independently',
         'True RTL layout in the editor, dashboard, and published site',
@@ -1025,7 +1025,7 @@ function BilingualMock() {
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/[0.06]">
       <div className="flex items-center justify-between border-border border-b px-4 py-3">
         <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <Languages className="size-3.5" /> One site, two languages
+          <Languages className="size-3.5" /> One site, many languages
         </div>
         <div className="flex items-center gap-1.5 text-xs" aria-hidden="true">
           <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary">EN</span>

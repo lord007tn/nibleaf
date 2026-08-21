@@ -1,0 +1,12 @@
+{
+  "common.loading": "Carregando…",
+  "error.badge": "Erro",
+  "error.title": "Algo deu errado",
+  "error.unexpected": "Ocorreu um erro inesperado.",
+  "error.tryAgain": "Tente novamente",
+  "error.backHome": "De volta para casa",
+  "notFound.badge": "404",
+  "notFound.title": "Página não encontrada",
+  "notFound.body": "A página que você procura não existe ou foi movida.",
+  "notFound.backHome": "De volta para casa"
+}

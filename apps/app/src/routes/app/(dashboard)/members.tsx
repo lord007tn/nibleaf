@@ -75,7 +75,7 @@ function MembersPage() {
           form.handleSubmit();
         }}
       >
-        <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
+        <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
           {(field) => (
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
               <span className="font-medium text-sm">{t('members.inviteByEmail')}</span>

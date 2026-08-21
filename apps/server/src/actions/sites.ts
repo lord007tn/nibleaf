@@ -23,6 +23,7 @@ import type { TrackEventBody } from '@nibleaf/validators';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { notFound } from '@/errors';
+import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
@@ -502,12 +503,7 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
   return { hits };
 };
 
-/** Public changelog for a site, derived from its READY deployments (newest first). */
-export const getSiteChangelog = async (identifier: string) => {
-  // Load (and visibility-gate) the published site first so a private site's
-  // release history isn't exposed to anonymous visitors.
-  const { snapshot } = await getPublished(identifier);
-  const projectId = snapshot.project.id;
+const changelogEntries = async (projectId: string) => {
   const deployments = await prisma.deployment.findMany({
     where: { projectId, status: 'READY' },
     orderBy: { version: 'desc' },
@@ -519,6 +515,31 @@ export const getSiteChangelog = async (identifier: string) => {
     title: d.commitMessage || `Published v${d.version}`,
     pages: d.pagesCount,
   }));
+};
+
+/** Public changelog for a site, derived from its READY deployments (newest first). */
+export const getSiteChangelog = async (identifier: string) => {
+  // Load (and visibility-gate) the published site first so a private site's
+  // release history isn't exposed to anonymous visitors.
+  const { snapshot } = await getPublished(identifier);
+  return changelogEntries(snapshot.project.id);
+};
+
+/** RSS 2.0 representation of the same immutable release history. The app edge
+ * rebases internal /sites/:id URLs to a verified custom domain when present. */
+export const getSiteChangelogRss = async (identifier: string): Promise<SiteTextDocument> => {
+  const { snapshot } = await getPublished(identifier);
+  const entries = await changelogEntries(snapshot.project.id);
+  const config = seoConfigOf(snapshot);
+  return {
+    body: buildChangelogRss({
+      baseUrl: `${env.APP_URL}/sites/${snapshot.project.id}`,
+      title: snapshot.project.name,
+      description: snapshot.project.description || snapshot.project.name,
+      entries,
+    }),
+    isPrivate: config?.visibility === 'private',
+  };
 };
 
 /** Classify a User-Agent into a coarse device bucket for the analytics breakdown. */

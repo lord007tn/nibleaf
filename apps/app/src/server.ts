@@ -303,15 +303,16 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
 // ─── SEO / machine-readable files ─────────────────────────────────────────────
 
 /** Files served at a custom domain's root (not rewritten into site routes). */
-const DOMAIN_SEO_FILE = /^\/(robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt)$/;
+const DOMAIN_SEO_FILE = /^\/(robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt|changelog\/rss\.xml)$/;
 /** The same files under the app origin's /sites/:id/ prefix. */
-const APP_SEO_FILE = /^\/sites\/([^/]+)\/(robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt)$/;
+const APP_SEO_FILE = /^\/sites\/([^/]+)\/(robots\.txt|sitemap\.xml|llms\.txt|llms-full\.txt|changelog\/rss\.xml)$/;
 
 const SEO_CONTENT_TYPE: Record<string, string> = {
   'robots.txt': 'text/plain; charset=utf-8',
   'sitemap.xml': 'application/xml; charset=utf-8',
   'llms.txt': 'text/plain; charset=utf-8',
   'llms-full.txt': 'text/plain; charset=utf-8',
+  'changelog/rss.xml': 'application/rss+xml; charset=utf-8',
 };
 
 /** Result of proxying a site's SEO document from the API:

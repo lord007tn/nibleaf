@@ -8,7 +8,7 @@ import { useLocale } from '@/lib/i18n';
  */
 export function useFormatters() {
   const { locale } = useLocale();
-  const tag = locale === 'ar' ? 'ar' : 'en';
+  const tag = locale;
   return {
     number: (value: number) => new Intl.NumberFormat(tag).format(value),
     date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),

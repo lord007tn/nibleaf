@@ -37,6 +37,17 @@ describe('page translation keys', () => {
   });
 });
 
+describe('project languages', () => {
+  it('accepts and canonicalizes complete BCP-47 tags', () => {
+    expect(createLanguageBody.parse({ code: 'zh-hans-cn', label: '简体中文' }).code).toBe('zh-Hans-CN');
+    expect(createLanguageBody.parse({ code: 'pt-br', label: 'Português' }).code).toBe('pt-BR');
+  });
+
+  it('rejects malformed language tags', () => {
+    expect(createLanguageBody.safeParse({ code: 'not_a_locale', label: 'Invalid' }).success).toBe(false);
+  });
+});
+
 describe('upsertOpenApiBody', () => {
   const spec = '{"openapi":"3.1.0","info":{"title":"Pets","version":"1"},"paths":{}}';
 
@@ -167,8 +178,8 @@ describe('createLanguageBody', () => {
     expect(createLanguageBody.safeParse({ code: 'pt-BR', label: 'Português' }).success).toBe(true);
   });
   it('rejects malformed codes', () => {
-    expect(createLanguageBody.safeParse({ code: 'EN', label: 'x' }).success).toBe(false);
-    expect(createLanguageBody.safeParse({ code: 'english', label: 'x' }).success).toBe(false);
+    expect(createLanguageBody.safeParse({ code: 'en--US', label: 'x' }).success).toBe(false);
+    expect(createLanguageBody.safeParse({ code: 'not_a_tag', label: 'x' }).success).toBe(false);
   });
   it('accepts the enabled serving toggle', () => {
     expect(createLanguageBody.safeParse({ code: 'ar', label: 'العربية', enabled: false }).success).toBe(true);

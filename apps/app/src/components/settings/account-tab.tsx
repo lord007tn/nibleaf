@@ -38,7 +38,7 @@ function NameForm({ initialName }: { initialName: string }) {
         form.handleSubmit();
       }}
     >
-      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.account.name.label'))(value) }}>
+      <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.account.name.label'), t)(value) }}>
         {(field) => (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="acct-name">{t('settings.account.name.label')}</Label>
@@ -158,7 +158,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
           }}
         >
           <p className="mb-3 text-muted-foreground text-sm leading-relaxed">{t('settings.account.email.changeIntro')}</p>
-          <editForm.Field name="newEmail" validators={{ onChange: ({ value }) => validateEmail(value) }}>
+          <editForm.Field name="newEmail" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
             {(field) => (
               <div className="flex flex-col gap-1.5">
                 <Input

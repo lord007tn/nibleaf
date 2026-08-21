@@ -241,7 +241,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </li>
       </ul>
       {page.config?.tags?.length ? (
-        <ul className="mt-4 flex flex-wrap gap-2" aria-label="Tags">
+        <ul className="mt-4 flex flex-wrap gap-2" aria-label={tArticle('tags')}>
           {page.config.tags.map((tag) => (
             <li className="rounded-full border border-border bg-muted/45 px-2.5 py-1 font-medium text-muted-foreground text-xs" key={tag}>
               {tag}

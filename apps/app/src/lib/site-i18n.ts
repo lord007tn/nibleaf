@@ -1,3 +1,15 @@
+import { resolveLocale as resolveInterfaceLocale } from './i18n/locales';
+import bengali from './i18n/site-catalogs/bn.json';
+import german from './i18n/site-catalogs/de.json';
+import spanish from './i18n/site-catalogs/es.json';
+import french from './i18n/site-catalogs/fr.json';
+import hindi from './i18n/site-catalogs/hi.json';
+import indonesian from './i18n/site-catalogs/id.json';
+import brazilianPortuguese from './i18n/site-catalogs/pt-BR.json';
+import russian from './i18n/site-catalogs/ru.json';
+import urdu from './i18n/site-catalogs/ur.json';
+import simplifiedChinese from './i18n/site-catalogs/zh-CN.json';
+
 /**
  * Localized strings for the published-site chrome (nav, search, pager, states).
  * Keyed by the site's active language so an Arabic site renders Arabic chrome to
@@ -52,6 +64,11 @@ const MESSAGES = {
     deprecated: 'deprecated',
     defaultValue: 'default',
     showProperties: 'Show properties',
+    viewDetails: 'View details',
+    dismissBanner: 'Dismiss banner',
+    changeVersion: 'Change docs version',
+    defaultVersion: 'Default',
+    tags: 'Tags',
   },
   ar: {
     docs: 'الوثائق',
@@ -99,7 +116,22 @@ const MESSAGES = {
     deprecated: 'مهمل',
     defaultValue: 'الافتراضي',
     showProperties: 'عرض الخصائص',
+    viewDetails: 'عرض التفاصيل',
+    dismissBanner: 'إغلاق الشريط',
+    changeVersion: 'تغيير إصدار الوثائق',
+    defaultVersion: 'الافتراضي',
+    tags: 'الوسوم',
   },
+  'zh-CN': simplifiedChinese,
+  hi: hindi,
+  es: spanish,
+  fr: french,
+  bn: bengali,
+  'pt-BR': brazilianPortuguese,
+  ru: russian,
+  ur: urdu,
+  id: indonesian,
+  de: german,
 } as const;
 
 type SiteLocale = keyof typeof MESSAGES;
@@ -107,8 +139,8 @@ export type SiteMessageKey = keyof (typeof MESSAGES)['en'];
 
 /** Resolve a language code (e.g. `ar`, `ar-SA`) to a shipped locale, else English. */
 const resolveLocale = (langCode?: string): SiteLocale => {
-  const base = (langCode ?? 'en').toLowerCase().split('-')[0] ?? 'en';
-  return base in MESSAGES ? (base as SiteLocale) : 'en';
+  const locale = resolveInterfaceLocale(langCode);
+  return locale && locale in MESSAGES ? (locale as SiteLocale) : 'en';
 };
 
 /** Translator for the published-site chrome, bound to the active language. */

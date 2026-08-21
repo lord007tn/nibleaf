@@ -1,14 +1,21 @@
 import { createContext, type ReactNode, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useDirection } from '@/components/direction-provider';
-import type { Locale, MessageKey } from './messages';
+import { DEFAULT_LOCALE, type Locale, localeDetails, resolveLocale } from './locales';
+import type { MessageKey } from './messages';
 
 const STORAGE_KEY = 'nibleaf.locale';
 
 const readStored = (): Locale => {
   if (typeof window === 'undefined') {
-    return 'en';
+    return DEFAULT_LOCALE;
   }
-  return window.localStorage.getItem(STORAGE_KEY) === 'ar' ? 'ar' : 'en';
+  const stored = resolveLocale(window.localStorage.getItem(STORAGE_KEY));
+  if (stored) return stored;
+  for (const preferred of window.navigator.languages) {
+    const locale = resolveLocale(preferred);
+    if (locale) return locale;
+  }
+  return DEFAULT_LOCALE;
 };
 
 const interpolate = (template: string, vars?: Record<string, string | number>): string =>
@@ -22,6 +29,7 @@ interface LocaleContextValue {
 
 export type MessageCatalog = Partial<Record<MessageKey, string>>;
 export type MessageCatalogLoader = () => Promise<{ default: Record<string, string> }>;
+export type LocaleCatalogLoader = (locale: Exclude<Locale, 'en'>) => ReturnType<MessageCatalogLoader>;
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
@@ -33,39 +41,39 @@ const LocaleContext = createContext<LocaleContextValue | null>(null);
 export function LocaleProvider({
   children,
   englishMessages,
-  loadArabicMessages,
+  loadMessages,
 }: {
   children: ReactNode;
   englishMessages: Record<string, string>;
-  loadArabicMessages: MessageCatalogLoader;
+  loadMessages: LocaleCatalogLoader;
 }) {
   const { setDirection } = useDirection();
   // English on the server and first client render guarantees hydration matches.
   // A persisted Arabic preference is loaded after mount from its own chunk.
-  const [locale, setLocaleState] = useState<Locale>('en');
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
   const [activeMessages, setActiveMessages] = useState<MessageCatalog>(englishMessages);
-  const requestedLocale = useRef<Locale>('en');
+  const requestedLocale = useRef<Locale>(DEFAULT_LOCALE);
 
   const selectLocale = useCallback(
     (next: Locale) => {
       requestedLocale.current = next;
-      if (next === 'en') {
+      if (next === DEFAULT_LOCALE) {
         setActiveMessages(englishMessages);
-        setLocaleState('en');
+        setLocaleState(DEFAULT_LOCALE);
         return;
       }
-      loadArabicMessages().then(({ default: arabicMessages }) => {
-        if (requestedLocale.current === 'ar') {
+      loadMessages(next).then(({ default: localizedMessages }) => {
+        if (requestedLocale.current === next) {
           // A transition never preempts React's selective hydration of a
           // code-split route subtree.
           startTransition(() => {
-            setActiveMessages(arabicMessages);
-            setLocaleState('ar');
+            setActiveMessages(localizedMessages);
+            setLocaleState(next);
           });
         }
       });
     },
-    [englishMessages, loadArabicMessages],
+    [englishMessages, loadMessages],
   );
 
   useEffect(() => {
@@ -77,7 +85,7 @@ export function LocaleProvider({
     if (typeof document !== 'undefined') {
       document.documentElement.lang = locale;
     }
-    setDirection(locale === 'ar' ? 'rtl' : 'ltr');
+    setDirection(localeDetails(locale).direction);
   }, [locale, setDirection]);
 
   const setLocale = useCallback(

@@ -269,14 +269,41 @@ export const nibleafVsMintlify: Comparison = {
       competitor: yes('Included on free Starter'),
     },
     { feature: 'Preview deployments', nibleaf: yes('Immutable previews for GitHub draft pull requests'), competitor: yes('Pro plan') },
+    { feature: 'Changelog RSS', nibleaf: yes('RSS 2.0 feed for every published changelog'), competitor: yes('Subscribable changelog feed') },
+    {
+      feature: 'Real-time multi-user editing',
+      nibleaf: no('Comments and Git review are available; live co-editing and presence are not'),
+      competitor: yes('Real-time collaboration in the web editor'),
+    },
+    {
+      feature: 'Git providers and multi-repository projects',
+      nibleaf: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
+      competitor: yes('GitHub, GitLab, Bitbucket, and Enterprise multi-repo workflows'),
+    },
+    {
+      feature: 'Custom components, CSS, and JavaScript',
+      nibleaf: partial('Curated portable MDX components and branding controls; arbitrary runtime code is not accepted'),
+      competitor: yes('Custom components plus CSS and JavaScript customization'),
+    },
+    {
+      feature: 'Reader personalization and adaptive content',
+      nibleaf: partial('Private readers, audiences, page grants, and JWT group mapping without adaptive content'),
+      competitor: yes('Authentication, personalization, and adaptive content options'),
+    },
+    {
+      feature: 'Third-party integrations and platform webhooks',
+      nibleaf: partial('GA4, Plausible, Git webhooks, and API access'),
+      competitor: yes('Broad analytics, support, webhook, and websocket integrations'),
+    },
     { feature: 'AI assistant & agent', nibleaf: no('Not a current focus'), competitor: yes('Pro plan, metered by credits') },
-    { feature: 'SSO / SCIM', nibleaf: planned(), competitor: yes('Enterprise plan') },
+    { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
     title: 'When to pick Mintlify instead',
     reasons: [
       'You want an AI assistant and agent built into your docs (metered by credits on their side).',
-      'You want preview deployments across Mintlify’s broader managed Git workflow rather than Nibleaf’s current GitHub-focused workflow.',
+      'You need real-time co-editing, GitLab or Bitbucket two-way workflows, or a multi-repository documentation project.',
+      'You need arbitrary custom components and runtime CSS or JavaScript, adaptive content, or a broad catalog of managed integrations.',
       'You need SSO, SCIM, and enterprise compliance guarantees today.',
     ],
   },
@@ -292,7 +319,7 @@ export const nibleafVsMintlify: Comparison = {
   },
   verdict: [
     'Mintlify is the more mature product today. Its free Starter plan is genuinely generous — custom domain, web editor, and an API playground — and its AI tooling is ahead of most of the market. It also supports Arabic/RTL and offers Enterprise teams a self-hosted custom frontend while retaining its managed content and AI services.',
-    'Nibleaf is strongest on full-stack self-hosting, browser-based Markdown editing, Arabic/RTL authoring, bidirectional Git workflows, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on AI tooling, and SAML SSO remains a documented Nibleaf gap.',
+    'Nibleaf is strongest on full-stack self-hosting, browser-based Markdown editing, multilingual and RTL authoring, a focused bidirectional GitHub workflow, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on real-time collaboration, provider breadth, custom runtime components, integrations, personalization, and enterprise identity governance.',
   ],
   faqs: [
     {
@@ -309,11 +336,11 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'Can I migrate docs from Mintlify to Nibleaf?',
-      a: 'There is no one-click importer yet. Both tools keep content as Markdown/MDX, so migration is mostly moving Markdown into Nibleaf pages; Mintlify-specific MDX components need adjusting to Nibleaf’s component set.',
+      a: 'Yes. Nibleaf imports a public Mintlify GitHub repository that contains docs.json or mint.json, including navigation, pages, and site branding. The current importer accepts up to 500 nodes; Mintlify-specific components outside Nibleaf’s portable component set still need review.',
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'As of August 2026, Nibleaf ships two-way GitHub authoring with draft-PR previews and private reader access, but it does not provide a built-in AI assistant, adaptive content, SAML SSO, or SCIM. Two-way GitLab authoring is also not available yet.',
+      a: 'Excluding AI, Nibleaf does not yet provide live multi-user co-editing, two-way GitLab or Bitbucket and multi-repository workflows, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
     },
   ],
 };

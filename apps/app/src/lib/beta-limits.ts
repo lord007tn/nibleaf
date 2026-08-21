@@ -8,7 +8,7 @@
  */
 export const BETA_LIMITS = {
   pages: 500,
-  languages: 10,
+  languages: 25,
   members: 20,
   /** Publishes per calendar month. */
   deploymentsPerMonth: 200,

@@ -3,20 +3,20 @@ import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
 import type { ReactNode } from 'react';
 import { DirectionProvider } from '@/components/direction-provider';
-import { LocaleProvider, type MessageCatalogLoader, useT } from '@/lib/i18n';
+import { type LocaleCatalogLoader, LocaleProvider, useT } from '@/lib/i18n';
 
 export function LocalizedProductProviders({
   children,
   englishMessages,
-  loadArabicMessages,
+  loadMessages,
 }: {
   children: ReactNode;
   englishMessages: Record<string, string>;
-  loadArabicMessages: MessageCatalogLoader;
+  loadMessages: LocaleCatalogLoader;
 }) {
   return (
     <DirectionProvider>
-      <LocaleProvider englishMessages={englishMessages} loadArabicMessages={loadArabicMessages}>
+      <LocaleProvider englishMessages={englishMessages} loadMessages={loadMessages}>
         <LocalizedSurfaces>
           <TooltipProvider>{children}</TooltipProvider>
           <Toaster position="bottom-right" richColors />
