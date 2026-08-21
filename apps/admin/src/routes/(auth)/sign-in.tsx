@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -17,6 +18,7 @@ function SignInPage() {
   const [codeSent, setCodeSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
 
   const requestCode = async () => {
     setIsSubmitting(true);
@@ -28,6 +30,9 @@ function SignInPage() {
         return;
       }
       setCodeSent(true);
+      startCountdown();
+    } catch {
+      setError('Could not send a sign-in code.');
     } finally {
       setIsSubmitting(false);
     }
@@ -43,6 +48,8 @@ function SignInPage() {
         return;
       }
       navigate({ to: '/' });
+    } catch {
+      setError('That code is invalid or expired.');
     } finally {
       setIsSubmitting(false);
     }
@@ -61,6 +68,7 @@ function SignInPage() {
     setCodeSent(false);
     setOtp('');
     setError(null);
+    resetCountdown();
   };
 
   return (
@@ -117,8 +125,8 @@ function SignInPage() {
               <Button onClick={useDifferentEmail} size="sm" type="button" variant="ghost">
                 <ArrowLeft className="size-4" /> Different email
               </Button>
-              <Button disabled={isSubmitting} onClick={requestCode} size="sm" type="button" variant="ghost">
-                Send a new code
+              <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
+                {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
               </Button>
             </div>
           ) : null}
