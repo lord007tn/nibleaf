@@ -53,7 +53,7 @@ Do not fill these gaps with estimates. Establish access, record a dated 28-day b
 
 Claims may state the implemented scope precisely:
 
-- OpenAPI 3.x sources can be uploaded, fetched from a public URL, or read from a connected public GitHub/GitLab repository. Published snapshots render a Scalar reference with schemas, generated code samples, and browser try-it. Nibleaf does not proxy requests, prefill or persist credentials, or resolve external `$ref` files.
+- OpenAPI 3.x sources can be uploaded, fetched from a public URL, or read from a connected public GitHub/GitLab repository. Public external `$ref` files are resolved within strict network and resource bounds. Published snapshots render a Scalar reference with schemas, generated code samples, and browser try-it. Nibleaf does not proxy requests or prefill or persist credentials.
 - GitHub supports two-way authoring through a dedicated branch, draft pull-request creation or updates, upstream reconciliation and conflict handling, and immutable noindex pull-request previews. GitLab and generic Git connections support the documented import/push-to-deploy paths, not the same encrypted two-way authoring workflow.
 - Private sites support reader accounts, audience and page-level access rules, and signed JWT/JWKS portal handoff. This is not enterprise workforce SSO or user provisioning: SAML and SCIM are not shipped.
 

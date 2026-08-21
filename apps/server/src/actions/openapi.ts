@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { GitConfig, OpenApiSourceInput, UpsertOpenApiBody } from '@nibleaf/validators';
+import { bundle, type LoaderPlugin } from '@scalar/json-magic/bundle';
 import { validate } from '@scalar/openapi-parser';
 import { Agent, type Response as UndiciResponse, fetch as undiciFetch } from 'undici';
 import { parseDocument } from 'yaml';
@@ -12,6 +13,8 @@ import { assertProjectInOrg } from './projects';
 export const MAX_OPENAPI_BYTES = 5_000_000;
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 10_000;
+const MAX_EXTERNAL_DOCUMENTS = 20;
+const EXTERNAL_DOCUMENTS_KEY = 'x-nibleaf-external';
 
 type OpenApiObject = Record<string, unknown>;
 
@@ -60,10 +63,9 @@ const collectExternalRefs = (value: unknown, path = '$', refs: string[] = []): s
   return refs;
 };
 
-/** Parse JSON/YAML with bounded aliases, require OpenAPI 3.x, reject remote
- *  references, then run Scalar's standards validator. Keeping references local
- *  makes the published document self-contained and prevents browser/server SSRF. */
-export const parseAndValidateOpenApi = async (content: string): Promise<OpenApiObject> => {
+/** Parse JSON/YAML with bounded aliases, require OpenAPI 3.x, securely bundle
+ * public external references, then run Scalar's standards validator. */
+export const parseAndValidateOpenApi = async (content: string, origin?: string): Promise<OpenApiObject> => {
   if (!content.trim()) {
     throw badRequest('The OpenAPI document is empty.');
   }
@@ -94,13 +96,77 @@ export const parseAndValidateOpenApi = async (content: string): Promise<OpenApiO
   }
 
   const externalRefs = collectExternalRefs(document);
+  let validatedDocument = document;
   if (externalRefs.length > 0) {
-    throw badRequest('External $ref values are not supported. Bundle the document so every $ref starts with "#/".', {
-      errors: externalRefs.slice(0, 10),
-    });
+    let totalBytes = Buffer.byteLength(content, 'utf8');
+    let referenceFailure: unknown;
+    const fetchedUrls = new Set<string>();
+    const unresolvedRefs: string[] = [];
+    const publicReferenceLoader: LoaderPlugin = {
+      type: 'loader',
+      validate: (value) => /^https?:\/\//i.test(value),
+      exec: async (url) => {
+        if (!fetchedUrls.has(url)) {
+          fetchedUrls.add(url);
+          if (fetchedUrls.size > MAX_EXTERNAL_DOCUMENTS) {
+            const error = badRequest(`The OpenAPI document references more than ${MAX_EXTERNAL_DOCUMENTS} external files.`);
+            referenceFailure = error;
+            return { ok: false };
+          }
+        }
+        try {
+          const referencedContent = await fetchPublicOpenApi(url, 'OpenAPI reference');
+          totalBytes += Buffer.byteLength(referencedContent, 'utf8');
+          if (totalBytes > MAX_OPENAPI_BYTES) {
+            throw badRequest('The OpenAPI document and its external references are larger than 5 MB.');
+          }
+          const referencedYaml = parseDocument(referencedContent, { uniqueKeys: true });
+          if (referencedYaml.errors.length > 0) {
+            throw badRequest('An external OpenAPI reference is not valid JSON or YAML.', {
+              errors: referencedYaml.errors.slice(0, 10).map((error) => error.message),
+            });
+          }
+          let data: unknown;
+          try {
+            data = referencedYaml.toJS({ maxAliasCount: 20 }) as unknown;
+          } catch (error) {
+            throw badRequest('An external OpenAPI reference uses unsafe or excessively complex YAML aliases.', {
+              errors: [error instanceof Error ? error.message : 'Could not expand YAML aliases.'],
+            });
+          }
+          return { ok: true, data, raw: referencedContent };
+        } catch (error) {
+          referenceFailure = error;
+          return { ok: false };
+        }
+      },
+    };
+
+    validatedDocument = (await bundle(document, {
+      plugins: [publicReferenceLoader],
+      treeShake: true,
+      urlMap: false,
+      depth: 12,
+      ...(origin ? { origin } : {}),
+      externalDocumentsKey: EXTERNAL_DOCUMENTS_KEY,
+      hooks: {
+        onResolveError: (node) => unresolvedRefs.push(String(node.$ref ?? 'unknown reference')),
+      },
+    })) as OpenApiObject;
+
+    if (referenceFailure) throw referenceFailure;
+    const remainingRefs = collectExternalRefs(validatedDocument);
+    if (unresolvedRefs.length > 0 || remainingRefs.length > 0) {
+      throw badRequest(
+        origin
+          ? 'One or more external OpenAPI references could not be resolved from a public HTTP(S) location.'
+          : 'Relative external references require a URL or repository source. Uploads may use absolute public HTTP(S) references.',
+        { errors: [...unresolvedRefs, ...remainingRefs].slice(0, 10) },
+      );
+    }
   }
 
-  const result = await validate(document);
+  const result = await validate(validatedDocument);
   if (!result.valid) {
     throw badRequest('The OpenAPI document failed validation.', {
       errors: result.errors.slice(0, 20).map((error) => ({
@@ -110,7 +176,7 @@ export const parseAndValidateOpenApi = async (content: string): Promise<OpenApiO
       })),
     });
   }
-  return document;
+  return validatedDocument;
 };
 
 /** Consume a fetch body incrementally so a missing or dishonest Content-Length
@@ -264,10 +330,13 @@ const repositorySpecUrl = async (organizationId: string, filePath: string): Prom
   throw badRequest('Repository-backed OpenAPI currently requires a configured public GitHub or GitLab repository.');
 };
 
-const sourceContent = async (organizationId: string, source: OpenApiSourceInput): Promise<string> => {
-  if (source.type === 'upload') return source.content;
-  if (source.type === 'url') return fetchPublicOpenApi(source.url);
-  return fetchPublicOpenApi(await repositorySpecUrl(organizationId, source.path), 'repository OpenAPI file');
+const sourceContent = async (organizationId: string, source: OpenApiSourceInput): Promise<{ content: string; origin?: string }> => {
+  if (source.type === 'upload') return { content: source.content };
+  const origin = source.type === 'url' ? source.url : await repositorySpecUrl(organizationId, source.path);
+  return {
+    content: await fetchPublicOpenApi(origin, source.type === 'url' ? 'OpenAPI URL' : 'repository OpenAPI file'),
+    origin,
+  };
 };
 
 export const getOpenApiDocument = async (organizationId: string, projectId: string) => {
@@ -289,8 +358,9 @@ export const upsertOpenApiDocument = async (organizationId: string, projectId: s
   if (!(body.source || existing)) {
     throw badRequest('Choose an OpenAPI upload, URL, or repository file for the first save.');
   }
-  const document = body.source
-    ? await parseAndValidateOpenApi(await sourceContent(organizationId, body.source))
+  const sourceDocument = body.source ? await sourceContent(organizationId, body.source) : null;
+  const document = sourceDocument
+    ? await parseAndValidateOpenApi(sourceDocument.content, sourceDocument.origin)
     : (existing?.document as OpenApiObject);
   const contentHash = body.source ? createHash('sha256').update(JSON.stringify(document)).digest('hex') : (existing?.contentHash as string);
   const sourceType = body.source

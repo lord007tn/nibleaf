@@ -44,6 +44,7 @@ components:
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   network.agentOptions.length = 0;
   network.lookup.mockImplementation(async (hostname: string) => [{ address: hostname === '127.0.0.1' ? '127.0.0.1' : '203.0.113.10', family: 4 }]);
   network.fetch.mockResolvedValue(new Response(valid));
@@ -69,12 +70,68 @@ describe('parseAndValidateOpenApi', () => {
     );
   });
 
-  it('rejects Swagger 2 and external references before publication', async () => {
+  it('rejects Swagger 2 documents before publication', async () => {
     await expect(parseAndValidateOpenApi('{"swagger":"2.0","info":{"title":"Old","version":"1"},"paths":{}}')).rejects.toThrow(
       'Only OpenAPI 3.x documents are supported.',
     );
-    await expect(parseAndValidateOpenApi(valid.replace('type: object', '$ref: https://internal.example/schema.json'))).rejects.toThrow(
-      'External $ref values are not supported.',
+  });
+
+  it('securely bundles relative external references for URL and repository sources', async () => {
+    network.fetch.mockResolvedValue(new Response('type: object\nproperties:\n  id: { type: string }'));
+    const document = await parseAndValidateOpenApi(
+      valid.replace('type: object\n      properties:\n        name: { type: string }', '$ref: ./schemas/pet.yaml'),
+      'https://public.example/openapi.yaml',
+    );
+
+    expect(network.fetch).toHaveBeenCalledOnce();
+    expect((network.fetch.mock.calls[0]?.[0] as URL).toString()).toBe('https://public.example/schemas/pet.yaml');
+    expect(document).toHaveProperty('x-nibleaf-external');
+    expect(JSON.stringify(document)).not.toContain('./schemas/pet.yaml');
+  });
+
+  it('resolves nested relative references and enforces the external-document limit', async () => {
+    network.fetch.mockImplementation(async (input: URL) =>
+      input.pathname.endsWith('/pet.yaml')
+        ? new Response('type: object\nproperties:\n  owner:\n    $ref: ./owner.yaml')
+        : new Response('type: object\nproperties:\n  name: { type: string }'),
+    );
+    const nested = await parseAndValidateOpenApi(
+      valid.replace('type: object\n      properties:\n        name: { type: string }', '$ref: ./schemas/pet.yaml'),
+      'https://public.example/openapi.yaml',
+    );
+    expect(network.fetch.mock.calls.map(([input]) => (input as URL).toString())).toEqual([
+      'https://public.example/schemas/pet.yaml',
+      'https://public.example/schemas/owner.yaml',
+    ]);
+    expect(JSON.stringify(nested)).not.toContain('./owner.yaml');
+
+    vi.clearAllMocks();
+    network.lookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    network.fetch.mockResolvedValue(new Response('type: object'));
+    const tooMany = JSON.stringify({
+      openapi: '3.1.0',
+      info: { title: 'Many references', version: '1' },
+      paths: {},
+      components: {
+        schemas: Object.fromEntries(Array.from({ length: 21 }, (_, index) => [`Schema${index}`, { $ref: `https://public.example/${index}.yaml` }])),
+      },
+    });
+    await expect(parseAndValidateOpenApi(tooMany)).rejects.toThrow('references more than 20 external files');
+  });
+
+  it('allows absolute public references in uploads but rejects relative or private references', async () => {
+    network.fetch.mockResolvedValue(new Response('type: object\nproperties:\n  id: { type: string }'));
+    await expect(
+      parseAndValidateOpenApi(
+        valid.replace('type: object\n      properties:\n        name: { type: string }', '$ref: https://public.example/pet.yaml'),
+      ),
+    ).resolves.toHaveProperty('x-nibleaf-external');
+
+    await expect(parseAndValidateOpenApi(valid.replace('type: object', '$ref: ./pet.yaml'))).rejects.toThrow(
+      'Relative external references require a URL or repository source.',
+    );
+    await expect(parseAndValidateOpenApi(valid.replace('type: object', '$ref: http://127.0.0.1/pet.yaml'))).rejects.toThrow(
+      'must resolve only to public IP addresses',
     );
   });
 

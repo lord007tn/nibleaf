@@ -3,7 +3,7 @@ title: 'Known limitations and product boundaries'
 description: 'Evaluate Nibleaf honestly against beta operations, identity, Git workflows, API portals, exports, private readers, and search requirements.'
 audience: 'technical evaluators, operators, and documentation leads'
 content_type: 'reference'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-21'
 verified_against: 'README.md, apps/app/src/lib/comparison-data.ts, and current main branch'
 lang: 'en'
 dir: 'ltr'
@@ -20,9 +20,10 @@ Nibleaf Cloud is a free beta and does not currently promise enterprise uptime
 or public-support response times. Export critical content and keep an operational
 fallback.
 
-Email/password and Google OAuth are available. SAML and a general enterprise SSO
-offering are not. Do not infer an identity compliance claim from the presence of
-OAuth or private-site controls.
+Passwordless email one-time codes and Google OAuth are available. Password login
+and password-reset links are intentionally not part of the current identity model.
+SAML and a general enterprise SSO offering are not. Do not infer an identity
+compliance claim from the presence of OAuth or private-site controls.
 
 ## Content and Git authority
 
@@ -41,11 +42,14 @@ both sides change.
 ## API reference boundaries
 
 The platform server publishes its own OpenAPI reference. A project can publish
-one self-contained OpenAPI 3.x document from upload/paste, a safe public URL, or
-a connected public GitHub/GitLab repository. External `$ref` resolution and a
-server-side try-it proxy are not provided. Test one representative specification,
-large schemas, code samples, mobile navigation, keyboard use, CORS, authentication,
-and the browser try-it path before choosing Nibleaf for an API-first portal.
+one OpenAPI 3.x document from upload/paste, a safe public URL, or a connected
+public GitHub/GitLab repository. Public external `$ref` files are bundled with
+strict count, size, timeout, redirect, and network-destination bounds. Relative
+references require a URL or repository source; uploads can use absolute public
+HTTP(S) references. A server-side try-it proxy is not provided. Test one
+representative specification, large schemas, code samples, mobile navigation,
+keyboard use, CORS, authentication, and the browser try-it path before choosing
+Nibleaf for an API-first portal.
 
 Never publish live credentials inside an OpenAPI example. A reader-side try-it
 request also depends on the documented API accepting the documentation origin.
