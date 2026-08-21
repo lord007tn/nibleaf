@@ -121,9 +121,15 @@ paths:
       'https://public.example/openapi.yaml',
     );
 
-    expect(document).toHaveProperty('x-ext');
-    expect(JSON.stringify(document)).not.toContain('#/components/schemas/Pet');
-    expect(JSON.stringify(document)).toContain('#/x-ext/');
+    const bundled = document as {
+      paths: { '/pets': { get: { responses: { '200': { content: { 'application/json': { schema: { $ref: string } } } } } } } };
+      'x-ext': Record<string, { components?: { schemas?: { Pet?: unknown } } }>;
+    };
+    const responseSchemaRef = bundled.paths['/pets'].get.responses['200'].content['application/json'].schema.$ref;
+    const externalDocumentKey = responseSchemaRef.match(/^#\/x-ext\/([^/]+)\/components\/schemas\/Pet$/)?.[1];
+
+    expect(externalDocumentKey).toBeTruthy();
+    expect(bundled['x-ext'][externalDocumentKey as string]?.components?.schemas?.Pet).toMatchObject({ type: 'object' });
   });
 
   it('resolves nested relative references and enforces the external-document limit', async () => {
