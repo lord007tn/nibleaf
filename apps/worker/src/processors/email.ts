@@ -56,7 +56,7 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
     log.info({ jobId: job.id, messageId: response.messageId, provider: 'smtp' }, 'email sent');
     return { sent: true };
   } catch (error) {
-    log.error({ error, jobId: job.id, provider: delivery.provider ?? 'none' }, 'email delivery failed');
+    log.error({ jobId: job.id, provider: delivery.provider ?? 'none' }, 'email delivery failed');
     throw error;
   }
 }

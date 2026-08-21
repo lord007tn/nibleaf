@@ -14,9 +14,9 @@ export const env = createEnv({
     POSTMARK_MESSAGE_STREAM: z.string().optional(),
     SMTP_URL: z.string().optional(),
     EMAIL_DELIVERY_REQUIRED: z
-      .string()
+      .enum(['true', 'false', '1', '0'])
       .optional()
-      .transform((value) => value === 'true' || value === '1'),
+      .transform((value) => (value === undefined ? process.env.NODE_ENV === 'production' : value === 'true' || value === '1')),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),
