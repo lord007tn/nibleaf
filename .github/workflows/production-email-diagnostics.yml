@@ -43,8 +43,11 @@ jobs:
               "${coolify_api_base}$1"
           }
 
-          services=$(coolify_get "/services")
-          resource_uuid=$(printf '%s' "$services" | jq --exit-status --raw-output '[.[] | select((.name // "") == "nibleaf")][0].uuid // empty')
+          resource_uuid=$(node -e 'const url = new URL(process.env.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK); process.stdout.write(url.searchParams.get("uuid") ?? "")')
+          if [[ -z "$resource_uuid" ]]; then
+            services=$(coolify_get "/services")
+            resource_uuid=$(printf '%s' "$services" | jq --raw-output '[.[] | select(((.name // "") | ascii_downcase) == "nibleaf")][0].uuid // empty')
+          fi
           if [[ -z "$resource_uuid" ]]; then
             echo "::error::Could not find the Nibleaf production service"
             exit 1
