@@ -86,7 +86,7 @@ jobs:
               --retry-all-errors \
               --location \
               --proto-redir '=https' \
-              --request PATCH \
+              --request POST \
               --header "Accept: application/json" \
               --header "Content-Type: application/json" \
               --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
