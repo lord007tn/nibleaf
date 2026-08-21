@@ -46,6 +46,28 @@ describe('buildTransactionalEmail', () => {
     expect(email.subject).toBe('Security alert Injected header');
   });
 
+  it('uses escaped fallback HTML when the React Email renderer rejects', async () => {
+    const email = await buildTransactionalEmail(
+      {
+        subject: 'Reset access',
+        preheader: 'Reset <access>',
+        title: 'Choose a <password>',
+        message: 'Use the secure link.',
+        action: { label: 'Reset now', url: 'https://example.com/reset?token=abc&next=<home>' },
+        detail: 'Expires soon.',
+      },
+      async () => {
+        throw new Error('renderer unavailable');
+      },
+    );
+
+    expect(email.html).toContain('<!doctype html>');
+    expect(email.html).toContain('Choose a &lt;password&gt;');
+    expect(email.html).toContain('token=abc&amp;next=&lt;home&gt;');
+    expect(email.html).not.toContain('<password>');
+    expect(email.text).toContain('Reset now: https://example.com/reset?token=abc&next=<home>');
+  });
+
   it('uses the Better Auth reset callback URL unchanged', async () => {
     const resetUrl = 'https://nibleaf.com/api/auth/reset-password/test-token?callbackURL=https%3A%2F%2Fnibleaf.com%2Freset-password';
     const email = await buildPasswordResetEmail(resetUrl);

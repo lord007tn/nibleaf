@@ -14,10 +14,17 @@ import { googleOAuthEnabled } from './providers';
 const env = keys();
 const log = createLogger({ module: 'auth' });
 
+const sanitizeEmailErrorField = (value: string) => value.replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500);
+
+const safeEmailError = (error: unknown) => ({
+  name: error instanceof Error ? sanitizeEmailErrorField(error.name) : 'UnknownError',
+  message: sanitizeEmailErrorField(error instanceof Error ? error.message : String(error)),
+});
+
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
 const sendMail = (to: string, email: TransactionalEmail) =>
   createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
-    log.warn({ error }, 'transactional email enqueue failed');
+    log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
 /** Render and queue without making public auth response timing account-dependent. */
@@ -25,7 +32,7 @@ function queueRenderedEmail(to: string, email: Promise<TransactionalEmail>): voi
   void email
     .then((message) => sendMail(to, message))
     .catch((error) => {
-      log.warn({ error }, 'transactional email rendering failed');
+      log.warn({ error: safeEmailError(error) }, 'transactional email rendering failed');
     });
 }
 
