@@ -2,6 +2,12 @@ name: Production email diagnostics
 
 on:
   workflow_dispatch:
+    inputs:
+      repair_provider:
+        description: Configure Coolify from the temporary NIBLEAF_POSTMARK_API_KEY repository secret when delivery is missing
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -18,6 +24,8 @@ jobs:
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
           COOLIFY_CF_ACCESS_CLIENT_ID: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_ID }}
           COOLIFY_CF_ACCESS_CLIENT_SECRET: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_SECRET }}
+          NIBLEAF_POSTMARK_API_KEY: ${{ secrets.NIBLEAF_POSTMARK_API_KEY }}
+          REPAIR_PROVIDER: ${{ inputs.repair_provider }}
         run: |
           if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" || -z "$COOLIFY_CF_ACCESS_CLIENT_ID" || -z "$COOLIFY_CF_ACCESS_CLIENT_SECRET" ]]; then
             echo "::error::Missing a Coolify or Cloudflare Access secret"
@@ -64,6 +72,32 @@ jobs:
             echo "::add-mask::$smtp_url"
           fi
 
+          provider_repaired=false
+          if [[ -z "$postmark_token" && -z "$smtp_url" && "$REPAIR_PROVIDER" == "true" ]]; then
+            if [[ -z "$NIBLEAF_POSTMARK_API_KEY" ]]; then
+              echo "::error::Repair requested but the temporary NIBLEAF_POSTMARK_API_KEY repository secret is missing"
+              exit 1
+            fi
+
+            echo "::add-mask::$NIBLEAF_POSTMARK_API_KEY"
+            provider_payload=$(jq --null-input --compact-output --arg value "$NIBLEAF_POSTMARK_API_KEY" '{key:"POSTMARK_API_KEY", value:$value, is_preview:false, is_literal:true}')
+            curl --fail-with-body --silent --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --location \
+              --proto-redir '=https' \
+              --request PATCH \
+              --header "Accept: application/json" \
+              --header "Content-Type: application/json" \
+              --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
+              --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
+              --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
+              --data "$provider_payload" \
+              "${coolify_api_base}/applications/${resource_uuid}/envs" >/dev/null
+            postmark_token="$NIBLEAF_POSTMARK_API_KEY"
+            provider_repaired=true
+          fi
+
           if [[ -z "$postmark_token" && -z "$smtp_url" ]]; then
             echo "::error::Production has neither POSTMARK_API_KEY nor SMTP_URL configured"
             exit 1
@@ -92,6 +126,7 @@ jobs:
             echo "- Successful email jobs in sample: ${sent_count}"
             echo "- Failed email jobs in sample: ${failed_count}"
             echo "- Undelivered optional jobs in sample: ${skipped_count}"
+            echo "- Provider configuration repaired: ${provider_repaired}"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [[ -n "$postmark_token" ]]; then
