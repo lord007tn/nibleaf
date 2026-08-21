@@ -6,6 +6,22 @@ export type RouteSession = {
   user?: { email?: string | null; id?: string | null; name?: string | null; role?: string | null };
 } | null;
 
+export function isRouteSession(value: unknown): value is Exclude<RouteSession, null> {
+  if (!(value && typeof value === 'object') || Array.isArray(value)) return false;
+  const candidate = value as Exclude<RouteSession, null>;
+  const sessionId = candidate.session?.id;
+  const sessionUserId = candidate.session?.userId;
+  const userId = candidate.user?.id;
+  return (
+    typeof sessionId === 'string' &&
+    sessionId.trim().length > 0 &&
+    typeof sessionUserId === 'string' &&
+    sessionUserId.trim().length > 0 &&
+    typeof userId === 'string' &&
+    userId === sessionUserId
+  );
+}
+
 export const resolveRouteSession = <TClient, TInitial>(
   clientSession: TClient | null | undefined,
   initialSession: TInitial | null,
@@ -33,7 +49,7 @@ export async function getRouteSession(): Promise<RouteSession> {
     });
     if (!response.ok) return null;
     const session = (await response.json().catch(() => null)) as unknown;
-    return session && typeof session === 'object' ? (session as Exclude<RouteSession, null>) : null;
+    return isRouteSession(session) ? session : null;
   } catch {
     return null;
   } finally {
