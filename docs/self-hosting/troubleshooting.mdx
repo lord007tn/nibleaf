@@ -51,12 +51,11 @@ An internal storage health check can pass while the public upload path fails.
 
 ## Email does not arrive
 
-Confirm that `REQUIRE_EMAIL_VERIFICATION` matches the intended policy, then
-check the worker log, sender verification, Postmark message stream or SMTP URL,
-recipient spam folder, and provider activity. Without Postmark or SMTP, the
-worker logs development mail instead of delivering it.
-
-Do not disable verification as a permanent workaround for a public deployment.
+Check the worker log, sender verification, Postmark message stream or SMTP URL,
+recipient spam folder, and provider activity. Passwordless sign-in requires
+delivery of a one-time code. In development, or when delivery is optional, the
+worker can log development mail instead. Required production delivery fails
+when neither Postmark nor SMTP is configured.
 
 ## A publish stays queued or fails
 

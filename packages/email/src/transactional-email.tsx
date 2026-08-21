@@ -20,15 +20,6 @@ export interface TransactionalEmailOptions {
   detail?: string;
 }
 
-export const passwordResetEmailOptions = (url: string): TransactionalEmailOptions => ({
-  subject: 'Reset your Nibleaf password',
-  preheader: 'Choose a new password for your Nibleaf account.',
-  title: 'Reset your password',
-  message: 'A password reset was requested for your Nibleaf account. Use the secure button below to choose a new password.',
-  action: { label: 'Choose a new password', url },
-  detail: 'This single-use link expires in one hour. If you did not request it, no action is required.',
-});
-
 const colors = {
   background: '#f1f5f9',
   border: '#e2e8f0',
@@ -131,14 +122,6 @@ export function TransactionalEmailTemplate({ options }: { options: Transactional
       </Body>
     </Html>
   );
-}
-
-export function PasswordResetEmailTemplate({ url }: { url: string }) {
-  return <TransactionalEmailTemplate options={passwordResetEmailOptions(url)} />;
-}
-
-export function buildPasswordResetEmail(url: string): Promise<TransactionalEmail> {
-  return buildTransactionalEmail(passwordResetEmailOptions(url));
 }
 
 type TransactionalEmailRenderer = (element: React.ReactElement) => Promise<string>;

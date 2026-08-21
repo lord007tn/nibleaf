@@ -27,13 +27,7 @@ export const keys = () =>
       TRUSTED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4311,http://localhost:4315').transform(csv),
       GOOGLE_CLIENT_ID: z.string().optional(),
       GOOGLE_CLIENT_SECRET: z.string().optional(),
-      // Optional: require a verified email before sign-in (off by default so a
-      // private self-host works without SMTP; turn on for public instances).
-      REQUIRE_EMAIL_VERIFICATION: z
-        .string()
-        .optional()
-        .transform((value) => value === 'true' || value === '1'),
-      // Optional: refuse ALL new sign-ups (email/password and social). Existing
+      // Optional: refuse ALL new sign-ups (email OTP and social). Existing
       // accounts keep signing in. Useful for closed self-hosted instances and as
       // an emergency brake on the public cloud. Default off.
       DISABLE_SIGNUP: z

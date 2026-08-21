@@ -88,8 +88,7 @@ EMAIL_FROM='nibleaf@localhost'
 POSTMARK_API_KEY=''
 POSTMARK_MESSAGE_STREAM=''
 SMTP_URL=''
-REQUIRE_EMAIL_VERIFICATION=false
-if confirm 'Enable email verification and invitation delivery?' y; then
+if confirm 'Enable transactional email delivery for sign-in codes and invitations?' y; then
   EMAIL_FROM=$(prompt 'From address (Nibleaf <no-reply@example.com>)' '')
   require_value 'From address' "$EMAIL_FROM"
   EMAIL_PROVIDER=$(prompt 'Mail provider: postmark or smtp' 'postmark')
@@ -105,7 +104,6 @@ if confirm 'Enable email verification and invitation delivery?' y; then
       ;;
     *) fail 'Mail provider must be postmark or smtp.' ;;
   esac
-  REQUIRE_EMAIL_VERIFICATION=true
 fi
 
 if [ -e "$INSTALL_DIR/.env" ] || [ -e "$INSTALL_DIR/docker-compose.yml" ]; then
@@ -135,7 +133,6 @@ env_line STORAGE_REGION auto
 env_line STORAGE_FORCE_PATH_STYLE true
 env_line SITE_BASE_DOMAIN "$SITE_BASE_DOMAIN"
 env_line CUSTOM_DOMAIN_CNAME_TARGET "$CUSTOM_DOMAIN_CNAME_TARGET"
-env_line REQUIRE_EMAIL_VERIFICATION "$REQUIRE_EMAIL_VERIFICATION"
 env_line DISABLE_SIGNUP false
 env_line EMAIL_FROM "$EMAIL_FROM"
 env_line POSTMARK_API_KEY "$POSTMARK_API_KEY"

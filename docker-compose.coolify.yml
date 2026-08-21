@@ -59,7 +59,6 @@ x-service-env: &service-env
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   # Public-instance default: require a verified email before sign-in. Needs
   # POSTMARK_API_KEY (or SMTP_URL) configured so the mail can be delivered.
-  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
   TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   API_PORT: "4311"

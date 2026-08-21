@@ -59,16 +59,19 @@ function NameForm({ initialName }: { initialName: string }) {
   );
 }
 
-type Stage = 'idle' | 'editing' | 'pending';
+type Stage = 'idle' | 'editing' | 'verify-current' | 'pending';
 
 function EmailRow({ email, verified }: { email: string; verified: boolean }) {
   const t = useT();
   const [stage, setStage] = useState<Stage>('idle');
   const [newEmail, setNewEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const reset = () => {
     setStage('idle');
     setNewEmail('');
+    setOtp('');
   };
 
   const editForm = useForm({
@@ -76,19 +79,56 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     onSubmit: async ({ value }) => {
       const next = value.newEmail.trim();
       try {
-        const res = await authClient.changeEmail({ newEmail: next, callbackURL: '/app/settings?tab=account' });
+        const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (res.error) {
           toast.error(res.error.message ?? t('settings.account.email.sendError'));
           return;
         }
-        toast.success(t('settings.account.email.verificationSent', { email: next }));
+        toast.success(t('settings.account.email.currentVerificationSent'));
         setNewEmail(next);
-        setStage('pending');
+        setStage('verify-current');
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t('settings.account.email.sendError'));
       }
     },
   });
+
+  const verifyCurrentEmail = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsVerifying(true);
+    try {
+      const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
+      if (res.error) {
+        toast.error(res.error.message ?? t('settings.account.email.verifyError'));
+        return;
+      }
+      toast.success(t('settings.account.email.verificationSent', { email: newEmail }));
+      setOtp('');
+      setStage('pending');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('settings.account.email.verifyError'));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const verifyEmailChange = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsVerifying(true);
+    try {
+      const res = await authClient.emailOtp.changeEmail({ newEmail, otp: otp.trim() });
+      if (res.error) {
+        toast.error(res.error.message ?? t('settings.account.email.verifyError'));
+        return;
+      }
+      toast.success(t('settings.account.email.changed'));
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('settings.account.email.verifyError'));
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -150,11 +190,66 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         </form>
       ) : null}
 
+      {stage === 'verify-current' ? (
+        <form className="rounded-xl border border-primary/30 bg-primary/10 p-4" onSubmit={verifyCurrentEmail}>
+          <div className="mb-3 flex items-center gap-3 text-primary">
+            <Mail className="size-4 shrink-0" />
+            <span className="font-medium text-sm">{t('settings.account.email.currentVerification', { email })}</span>
+          </div>
+          <Label htmlFor="acct-current-email-otp">{t('auth.otp.label')}</Label>
+          <Input
+            autoComplete="one-time-code"
+            autoFocus
+            className="mt-1.5 bg-background"
+            id="acct-current-email-otp"
+            inputMode="numeric"
+            maxLength={6}
+            onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            pattern="[0-9]{6}"
+            placeholder="000000"
+            required
+            value={otp}
+          />
+          <div className="mt-3 flex gap-2">
+            <Button disabled={isVerifying || otp.length !== 6} type="submit">
+              {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.verifyCurrent')}
+            </Button>
+            <Button onClick={reset} type="button" variant="outline">
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
       {stage === 'pending' ? (
-        <div className="flex items-center gap-3 rounded-md border border-primary/30 bg-primary/10 px-4 py-3 text-primary">
-          <Mail className="size-4 shrink-0" />
-          <span className="font-medium text-sm">{t('settings.account.email.pendingVerification', { email: newEmail })}</span>
-        </div>
+        <form className="rounded-xl border border-primary/30 bg-primary/10 p-4" onSubmit={verifyEmailChange}>
+          <div className="mb-3 flex items-center gap-3 text-primary">
+            <Mail className="size-4 shrink-0" />
+            <span className="font-medium text-sm">{t('settings.account.email.pendingVerification', { email: newEmail })}</span>
+          </div>
+          <Label htmlFor="acct-email-otp">{t('auth.otp.label')}</Label>
+          <Input
+            autoComplete="one-time-code"
+            autoFocus
+            className="mt-1.5 bg-background"
+            id="acct-email-otp"
+            inputMode="numeric"
+            maxLength={6}
+            onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            pattern="[0-9]{6}"
+            placeholder="000000"
+            required
+            value={otp}
+          />
+          <div className="mt-3 flex gap-2">
+            <Button disabled={isVerifying || otp.length !== 6} type="submit">
+              {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.confirm')}
+            </Button>
+            <Button onClick={reset} type="button" variant="outline">
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </form>
       ) : null}
     </div>
   );

@@ -1,98 +1,26 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
-import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
-import { Input } from '@nibleaf/design-system/components/ui/input';
-import { Label } from '@nibleaf/design-system/components/ui/label';
-import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useState } from 'react';
+import { KeyRound } from 'lucide-react';
 import { AuthLayout } from '@/layouts/auth';
-import { authClient } from '@/lib/auth-client';
-import { email as validateEmail } from '@/lib/form';
 import { useT } from '@/lib/i18n';
 
-export const Route = createFileRoute('/(auth)/forgot-password')({
-  component: ForgotPasswordPage,
-});
+export const Route = createFileRoute('/(auth)/forgot-password')({ component: ForgotPasswordPage });
 
 function ForgotPasswordPage() {
   const t = useT();
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const form = useForm({
-    defaultValues: { email: '' },
-    onSubmit: async ({ value }) => {
-      setError(null);
-      const { error: resetError } = await authClient.requestPasswordReset({
-        email: value.email,
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      if (resetError) {
-        setError(resetError.message ?? t('auth.forgot.error'));
-        return;
-      }
-      setSentTo(value.email);
-    },
-  });
-
-  if (sentTo) {
-    return (
-      <AuthLayout subtitle={t('auth.forgot.checkEmail')}>
-        <p className="text-center text-muted-foreground text-sm">
-          {t('auth.forgot.sentPrefix')} <span className="font-medium text-foreground">{sentTo}</span>
-          {t('auth.forgot.sentSuffix')}
-        </p>
-        <p className="mt-5 text-center text-muted-foreground text-sm">
-          <Link className="text-primary hover:underline" to="/sign-in">
-            {t('auth.backToSignIn')}
-          </Link>
-        </p>
-      </AuthLayout>
-    );
-  }
-
   return (
-    <AuthLayout subtitle={t('auth.forgot.subtitle')}>
-      <form
-        className="flex flex-col gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          form.handleSubmit();
-        }}
-      >
-        <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value) }}>
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">{t('auth.field.email')}</Label>
-              <Input
-                autoComplete="email"
-                autoFocus
-                id="email"
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="you@company.com"
-                type="email"
-                value={field.state.value}
-              />
-              <FieldError errors={field.state.meta.errors} />
-            </div>
-          )}
-        </form.Field>
-        {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button className="mt-1 w-full" disabled={isSubmitting} type="submit">
-              {isSubmitting ? t('auth.forgot.submitting') : t('auth.forgot.submit')}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
-      <p className="mt-5 text-center text-muted-foreground text-sm">
-        {t('auth.forgot.remembered')}{' '}
-        <Link className="text-primary hover:underline" to="/sign-in">
-          {t('auth.signIn.submit')}
+    <AuthLayout subtitle={t('auth.passwordless.subtitle')}>
+      <div className="flex flex-col items-center rounded-xl border border-border bg-muted/40 px-5 py-6 text-center">
+        <span className="mb-3 grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+          <KeyRound className="size-5" />
+        </span>
+        <p className="text-muted-foreground text-sm leading-relaxed">{t('auth.passwordless.description')}</p>
+        <Link
+          className="mt-5 inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 font-medium text-primary-foreground text-sm shadow-xs hover:bg-primary/90"
+          to="/sign-in"
+        >
+          {t('auth.passwordless.continue')}
         </Link>
-      </p>
+      </div>
     </AuthLayout>
   );
 }

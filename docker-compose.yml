@@ -47,7 +47,6 @@ x-service-env: &service-env
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
   BETTER_AUTH_URL: ${APP_URL:-http://localhost:4310}
-  REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
   TRUSTED_ORIGINS: ${APP_URL:-http://localhost:4310}
   CORS_ALLOWED_ORIGINS: ${APP_URL:-http://localhost:4310}
   API_PORT: "4311"

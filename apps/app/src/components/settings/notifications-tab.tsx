@@ -72,11 +72,6 @@ const GROUPS: Array<{ titleKey: MessageKey; items: NotifItem[] }> = [
         labelKey: 'settings.notifications.securityLogin.label',
         descriptionKey: 'settings.notifications.securityLogin.description',
       },
-      {
-        id: 'security_password',
-        labelKey: 'settings.notifications.securityPassword.label',
-        descriptionKey: 'settings.notifications.securityPassword.description',
-      },
     ],
   },
 ];
