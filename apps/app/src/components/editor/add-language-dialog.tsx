@@ -55,9 +55,14 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
 
   const handleCustomAdd = async () => {
     const label = customLabel.trim();
+    const rawCode = customCode.trim();
+    if (rawCode.length > 35) {
+      toast.error(t('editor.addLanguage.codeInvalid'));
+      return;
+    }
     let code = '';
     try {
-      code = Intl.getCanonicalLocales(customCode.trim())[0] ?? '';
+      code = Intl.getCanonicalLocales(rawCode)[0] ?? '';
     } catch {
       toast.error(t('editor.addLanguage.codeInvalid'));
       return;

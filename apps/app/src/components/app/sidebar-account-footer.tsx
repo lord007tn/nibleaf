@@ -52,7 +52,7 @@ export function SidebarAccountFooter() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-start leading-tight">
-                      <span className="truncate font-medium text-sm">{session?.user?.name ?? 'Account'}</span>
+                      <span className="truncate font-medium text-sm">{session?.user?.name ?? t('nav.account')}</span>
                       <span className="truncate text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
                     </div>
                     <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
@@ -66,7 +66,7 @@ export function SidebarAccountFooter() {
                     <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                   </Avatar>
                   <span className="min-w-0">
-                    <span className="block truncate font-medium">{session?.user?.name ?? 'Account'}</span>
+                    <span className="block truncate font-medium">{session?.user?.name ?? t('nav.account')}</span>
                     <span className="block truncate font-normal text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
                   </span>
                 </DropdownMenuLabel>

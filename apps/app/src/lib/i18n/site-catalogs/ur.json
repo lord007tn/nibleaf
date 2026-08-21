@@ -21,7 +21,7 @@
   "pageUnavailable": "یہ صفحہ دستیاب نہیں ہے۔",
   "changelogSubtitle": "ہر اپ ڈیٹ ان دستاویزات کو بھیج دیا جاتا ہے۔",
   "changelogEmpty": "ابھی تک کوئی ریلیز نہیں ہوئی۔",
-  "changelogRelease": "رہائی",
+  "changelogRelease": "ریلیز",
   "changelogPage": "صفحہ",
   "changelogPages": "صفحات",
   "feedbackQuestion": "کیا یہ صفحہ مددگار تھا؟",
@@ -32,7 +32,7 @@
   "raiseIssue": "ایک مسئلہ اٹھائیں",
   "analyticsConsentBody": "یہ سائٹ ٹریفک کو سمجھنے کے لیے اختیاری تجزیاتی کوکیز کا استعمال کرتی ہے۔",
   "analyticsConsentAccept": "قبول کریں۔",
-  "analyticsConsentDecline": "رد کرنا",
+  "analyticsConsentDecline": "مسترد کریں",
   "changeLanguage": "زبان بدلو",
   "toggleTheme": "تھیم کو ٹوگل کریں۔",
   "articleDetails": "مضمون کی تفصیلات",
@@ -47,6 +47,6 @@
   "viewDetails": "تفصیلات دیکھیں",
   "dismissBanner": "بینر برخاست کریں۔",
   "changeVersion": "دستاویزات کا ورژن تبدیل کریں۔",
-  "defaultVersion": "طے شدہ",
+  "defaultVersion": "پہلے سے طے شدہ",
   "tags": "ٹیگز"
 }

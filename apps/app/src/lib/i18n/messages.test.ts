@@ -41,9 +41,7 @@ describe('i18n message tables', () => {
       expect(Object.keys(table).sort(), `${locale} key set`).toEqual(englishKeys);
       for (const [key, value] of Object.entries(table)) {
         expect(value, `${locale}.${key} should be non-empty`).not.toBe('');
-        if (locale !== 'ar') {
-          expect(placeholders(value), `${locale}.${key} placeholders`).toEqual(placeholders(messages.en[key as keyof typeof messages.en]));
-        }
+        expect(placeholders(value), `${locale}.${key} placeholders`).toEqual(placeholders(messages.en[key as keyof typeof messages.en]));
       }
     }
   });

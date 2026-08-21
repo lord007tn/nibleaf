@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
-import { canonicalSiteBase, pageHead, siteHead } from './site-seo';
+import { canonicalSiteBase, changelogFeedUrl, pageHead, siteHead } from './site-seo';
 
 // Keep the canonical tests hermetic: a developer's local .env may configure a
 // VITE_SITE_BASE_DOMAIN, which would flip the default canonical to a subdomain.
@@ -279,6 +279,12 @@ describe('canonicalSiteBase priority', () => {
 
   it('normalizes the primary domain host', () => {
     expect(canonicalSiteBase('p1', { primaryDomain: ' Docs.Acme.COM ' })).toBe('https://docs.acme.com');
+  });
+});
+
+describe('changelogFeedUrl', () => {
+  it('appends rss.xml before a localized page query string', () => {
+    expect(changelogFeedUrl('https://docs.example.com/changelog?lang=fr')).toBe('https://docs.example.com/changelog/rss.xml?lang=fr');
   });
 });
 

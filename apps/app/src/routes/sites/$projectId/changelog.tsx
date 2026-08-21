@@ -5,7 +5,7 @@ import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { sitePageUrl } from '@/lib/site-seo';
+import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -56,7 +56,7 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
       meta: [{ title: `Changelog — ${name}` }, { name: 'description', content: description }],
       links: [
         { rel: 'canonical', href: url },
-        { rel: 'alternate', type: 'application/rss+xml', title: `${name} changelog`, href: `${url}/rss.xml` },
+        { rel: 'alternate', type: 'application/rss+xml', title: `${name} changelog`, href: changelogFeedUrl(url) },
       ],
     };
   },

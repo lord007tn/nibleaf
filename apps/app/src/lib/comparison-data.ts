@@ -336,7 +336,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'Can I migrate docs from Mintlify to Nibleaf?',
-      a: 'Yes. Nibleaf imports a public Mintlify GitHub repository that contains docs.json or mint.json, including navigation, pages, and site branding. The current importer accepts up to 500 nodes; Mintlify-specific components outside Nibleaf’s portable component set still need review.',
+      a: 'Yes. Nibleaf imports public GitHub repositories that contain docs.json or mint.json and maps navigation, pages, and site branding. The 500-node limit counts both groups and pages, and any remaining entries are skipped. Unsupported components stay in the imported MDX for manual review because Nibleaf cannot guarantee that Mintlify-specific rendering will carry over.',
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',

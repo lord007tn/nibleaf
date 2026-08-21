@@ -237,7 +237,7 @@
   "editor.pageSettings.saveError": "无法保存设置",
   "editor.pageSettings.pageTitle": "标题",
   "editor.pageSettings.pageTitleHint": "显示在编辑器、导航和已发布的页面标题中。",
-  "editor.pageSettings.slug": "蛞蝓",
+  "editor.pageSettings.slug": "URL slug",
   "editor.pageSettings.slugHint": "已发布网站上页面的 URL 段。",
   "editor.pageSettings.icon": "图标",
   "editor.pageSettings.description": "描述",

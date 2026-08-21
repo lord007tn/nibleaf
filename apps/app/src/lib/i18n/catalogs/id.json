@@ -237,7 +237,7 @@
   "editor.pageSettings.saveError": "Tidak dapat menyimpan setelan",
   "editor.pageSettings.pageTitle": "Judul",
   "editor.pageSettings.pageTitleHint": "Ditampilkan di editor, navigasi, dan header halaman yang diterbitkan.",
-  "editor.pageSettings.slug": "Siput",
+  "editor.pageSettings.slug": "Slug URL",
   "editor.pageSettings.slugHint": "Segmen URL halaman di situs yang dipublikasikan.",
   "editor.pageSettings.icon": "Ikon",
   "editor.pageSettings.description": "Deskripsi",

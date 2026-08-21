@@ -10,7 +10,7 @@ const targetLocales = {
   es: 'es',
   fr: 'fr',
   bn: 'bn',
-  'pt-BR': 'pt',
+  'pt-BR': 'pt-BR',
   ru: 'ru',
   ur: 'ur',
   id: 'id',
@@ -70,7 +70,7 @@ const englishCatalog = async ({ file, variable }) => {
 };
 
 const protectedPattern =
-  /(\{[A-Za-z0-9_]+\}|`[^`]+`|https?:\/\/[^\s)]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b(?:Nibleaf|Mintlify|GitHub|GitLab|OpenAPI|Scalar|Postmark|Cloudflare|Coolify|Markdown|MDX|Docker|Compose|JWT|OAuth|SAML|SCIM|SEO|API|PDF|HTML|CSS|JavaScript|Discord|Slack|Google|Microsoft|Stripe|AGPL-3\.0|BCP-47|RTL|LTR|CLI|CORS|GHCR|Postgres|Redis|Dragonfly|S3|R2|YAML|JSON)\b)/gu;
+  /(\{[A-Za-z0-9_]+\}|`[^`]+`|https?:\/\/[^\s)]+|[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}|\b(?:Nibleaf|Mintlify|GitHub|GitLab|OpenAPI|Scalar|Postmark|Cloudflare|Coolify|Markdown|MDX|Docker|Compose|JWT|OAuth|SAML|SCIM|SEO|API|PDF|HTML|CSS|JavaScript|Discord|Slack|Google|Microsoft|Stripe|AGPL-3\.0|BCP-47|RTL|LTR|CLI|CORS|GHCR|Postgres|Redis|Dragonfly|S3|R2|YAML|JSON|slug)\b)/gu;
 
 const shield = (value) => {
   const tokens = [];
@@ -167,6 +167,18 @@ const translateCatalog = async (catalog, target) => {
 for (const source of sources) {
   const catalog = await englishCatalog(source);
   await mkdir(source.output, { recursive: true });
+  const sourceSnapshotFile = resolve(source.output, '_source.json');
+  let previousSource = {};
+  let hasSourceSnapshot = false;
+  if (!force) {
+    try {
+      previousSource = JSON.parse(await readFile(sourceSnapshotFile, 'utf8'));
+      hasSourceSnapshot = true;
+    } catch {
+      // The first incremental run establishes a source baseline without
+      // discarding already-reviewed translations.
+    }
+  }
   for (const [locale, target] of Object.entries(targetLocales)) {
     const outputFile = resolve(source.output, `${locale}.json`);
     let existing = {};
@@ -177,10 +189,13 @@ for (const source of sources) {
         // A missing or invalid catalog is regenerated below.
       }
     }
-    const missing = Object.fromEntries(Object.entries(catalog).filter(([key]) => !(key in existing)));
-    process.stdout.write(`${source.variable}: ${locale} (${Object.keys(missing).length}/${Object.keys(catalog).length} messages) `);
-    const additions = Object.keys(missing).length > 0 ? await translateCatalog(missing, target) : {};
+    const pending = Object.fromEntries(
+      Object.entries(catalog).filter(([key, value]) => !(key in existing) || (hasSourceSnapshot && previousSource[key] !== value)),
+    );
+    process.stdout.write(`${source.variable}: ${locale} (${Object.keys(pending).length}/${Object.keys(catalog).length} messages) `);
+    const additions = Object.keys(pending).length > 0 ? await translateCatalog(pending, target) : {};
     const translated = Object.fromEntries(Object.keys(catalog).map((key) => [key, additions[key] ?? existing[key]]));
     await writeFile(outputFile, `${JSON.stringify(translated, null, 2)}\n`, 'utf8');
   }
+  await writeFile(sourceSnapshotFile, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
 }

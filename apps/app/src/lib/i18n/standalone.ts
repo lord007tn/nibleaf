@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { type Locale, resolveLocale } from './locales';
+import { type Locale, localeDetails, resolveLocale } from './locales';
 import bengali from './standalone-catalogs/bn.json';
 import german from './standalone-catalogs/de.json';
 import spanish from './standalone-catalogs/es.json';
@@ -57,6 +57,15 @@ const readStoredLocale = (): Locale => {
   return resolveLocale(window.localStorage.getItem(STORAGE_KEY)) ?? 'en';
 };
 
+export const syncStandaloneLocale = (): Locale => {
+  const locale = readStoredLocale();
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = localeDetails(locale).direction;
+  }
+  return locale;
+};
+
 /** Tiny fallback translator for global loading, error, and 404 boundaries.
  * Keeping it separate prevents the complete dashboard catalog from entering
  * every marketing and published-site route. */
@@ -66,6 +75,8 @@ export const translateStandalone = (key: StandaloneMessageKey): string => standa
  * claims its English SSR text before applying a persisted client preference. */
 export const useStandaloneT = () => {
   const [locale, setLocale] = useState<Locale>('en');
-  useEffect(() => setLocale(readStoredLocale()), []);
+  useEffect(() => {
+    setLocale(syncStandaloneLocale());
+  }, []);
   return useCallback((key: StandaloneMessageKey) => standaloneMessages[locale][key], [locale]);
 };

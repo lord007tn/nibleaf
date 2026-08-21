@@ -114,7 +114,7 @@ const compareRows: { label: string; nibleaf: boolean; them: boolean }[] = [
   { label: 'Markdown editor + live preview', nibleaf: true, them: true },
   { label: 'Built-in search', nibleaf: true, them: true },
   { label: 'Custom domains', nibleaf: true, them: true },
-  { label: 'First-class Arabic & RTL', nibleaf: true, them: false },
+  { label: '12 interface languages + first-class RTL', nibleaf: true, them: false },
   { label: 'No per-seat lock-in', nibleaf: true, them: false },
 ];
 
@@ -201,8 +201,8 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Hosted documentation sites, free during beta</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics, and Arabic-ready
-            authoring.
+            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics, and multilingual authoring
+            with first-class RTL.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
@@ -250,8 +250,8 @@ function Hero({ stars }: { stars: number }) {
           </a>
           <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The visual Markdown alternative to Mintlify.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and
-            first-class Arabic/RTL. Use the free cloud beta or install the public AGPL-3.0 release on your own infrastructure.
+            Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and 12
+            interface languages and first-class RTL. Use the free cloud beta or install the public AGPL-3.0 release on your own infrastructure.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
@@ -384,7 +384,7 @@ function ShowcasePublish() {
       bullets={[
         'Immutable snapshots — no live-editing accidents in production',
         'Full-text + fuzzy search rebuilt on every publish, no Algolia bill',
-        'Cmd+K search UI with a bilingual Arabic-aware tokenizer',
+        'Cmd+K multilingual search UI with an Arabic-aware tokenizer',
       ]}
       cta={{ href: '/pricing', label: 'See what ships on every plan' }}
       visual={<PublishMock />}
@@ -395,8 +395,8 @@ function ShowcasePublish() {
 function ShowcaseBilingual() {
   return (
     <ShowcaseRow
-      eyebrow="Bilingual by design"
-      title="Arabic-first. RTL that actually works."
+      eyebrow="Arabic & RTL deep dive"
+      title="RTL that actually works."
       body="Most docs platforms bolt RTL on as an afterthought. Nibleaf supports 12 interface languages, arbitrary BCP-47 content languages, per-language page trees, mirrored layouts, localized chrome, and hreflang for every page."
       bullets={[
         'Per-language page trees — structure each language independently',

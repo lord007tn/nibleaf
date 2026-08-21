@@ -150,6 +150,14 @@ export function sitePageUrl(projectId: string, path: string, lang?: string, opti
   return `${canonicalSiteBase(projectId, options)}${clean}${query}`;
 }
 
+/** Changelog RSS URL derived from its page URL without corrupting a language
+ * query string (for example, `?lang=fr` remains a query on `/rss.xml`). */
+export function changelogFeedUrl(pageUrl: string): string {
+  const feedUrl = new URL(pageUrl);
+  feedUrl.pathname = `${feedUrl.pathname.replace(/\/$/u, '')}/rss.xml`;
+  return feedUrl.toString();
+}
+
 const seoConfig = (config: ProjectConfig | null) => config;
 
 /**
