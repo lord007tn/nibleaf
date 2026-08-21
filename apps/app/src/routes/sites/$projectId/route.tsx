@@ -365,7 +365,7 @@ function SiteChrome() {
     >
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: accent is regex-guarded hex, radius is enum-derived, font names are charset-guarded above. */}
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
-      <SiteBanner projectId={projectId} banner={config?.banner} />
+      <SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} />
 
       {/* Header block (main row + optional tab row) sticks as one unit. */}
       <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md">
@@ -439,7 +439,7 @@ function SiteChrome() {
 
           <div className="flex shrink-0 items-center gap-1.5">
             <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
-            <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} />
+            <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} lang={activeLanguage?.code} />
             <button
               className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               onClick={toggleSiteTheme}

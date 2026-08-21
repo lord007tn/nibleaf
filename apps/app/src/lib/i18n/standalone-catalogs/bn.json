@@ -1,0 +1,12 @@
+{
+  "common.loading": "লোড হচ্ছে...",
+  "error.badge": "ত্রুটি",
+  "error.title": "কিছু ভুল হয়েছে",
+  "error.unexpected": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে৷",
+  "error.tryAgain": "আবার চেষ্টা করুন",
+  "error.backHome": "বাড়ি ফিরে",
+  "notFound.badge": "404",
+  "notFound.title": "পেজ পাওয়া যায়নি",
+  "notFound.body": "আপনি যে পৃষ্ঠাটি খুঁজছেন সেটি বিদ্যমান নেই বা সরানো হয়েছে৷",
+  "notFound.backHome": "বাড়ি ফিরে"
+}

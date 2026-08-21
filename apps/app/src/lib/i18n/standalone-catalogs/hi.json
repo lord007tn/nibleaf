@@ -1,0 +1,12 @@
+{
+  "common.loading": "लोड हो रहा है...",
+  "error.badge": "त्रुटि",
+  "error.title": "कुछ ग़लत हो गया",
+  "error.unexpected": "एक अप्रत्याशित त्रुटि उत्पन्न हुई.",
+  "error.tryAgain": "पुनः प्रयास करें",
+  "error.backHome": "घर वापस",
+  "notFound.badge": "404",
+  "notFound.title": "पेज नहीं मिला",
+  "notFound.body": "आप जिस पृष्ठ की तलाश कर रहे हैं वह मौजूद नहीं है या स्थानांतरित हो गया है।",
+  "notFound.backHome": "घर वापस"
+}

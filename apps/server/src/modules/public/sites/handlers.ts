@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   getSite,
   getSiteChangelog,
+  getSiteChangelogRss,
   getSiteLlmsFullTxt,
   getSiteLlmsTxt,
   getSiteOpenApi,
@@ -82,6 +83,9 @@ const app = new Hono<HonoEnv>()
     ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await getSiteChangelog(ctx.req.param('id')) }, 200);
   })
+  .get('/:id/changelog/rss.xml', ...sitesRoutes.changelogRss, async (ctx) =>
+    textDocument(ctx, await getSiteChangelogRss(ctx.req.param('id')), 'application/rss+xml; charset=utf-8'),
+  )
   .get('/:id/sitemap.xml', ...sitesRoutes.sitemap, async (ctx) =>
     textDocument(ctx, await getSiteSitemap(ctx.req.param('id')), 'application/xml; charset=utf-8'),
   )

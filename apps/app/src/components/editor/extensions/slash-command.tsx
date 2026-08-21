@@ -40,21 +40,9 @@ import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, use
 import { useLocale } from '@/lib/i18n';
 import { type MessageKey, messages } from '@/lib/i18n/messages';
 
-/** An inline en+ar label pair, for slash items whose strings are not (yet) in
- *  the shared messages catalog. Resolved the same way as a `MessageKey`. */
-interface InlineLabel {
-  en: string;
-  ar: string;
-}
-
-/** A slash-item label: either a shared i18n key or an inline en/ar pair. */
-type SlashLabel = MessageKey | InlineLabel;
-
-const isMessageKey = (label: SlashLabel): label is MessageKey => typeof label === 'string';
-
 interface SlashItem {
-  titleKey: SlashLabel;
-  descKey: SlashLabel;
+  titleKey: MessageKey;
+  descKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   /** Short mono glyph shown in the 32px tile (matches the design's monospace tiles). */
   glyph: string;
@@ -191,48 +179,48 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock({ language: 'mermaid' }).run(),
   },
   {
-    titleKey: { en: 'Note', ar: 'ملاحظة' },
-    descKey: { en: 'A neutral informational note.', ar: 'ملاحظة معلوماتية محايدة.' },
+    titleKey: 'editor.slash.note.title',
+    descKey: 'editor.slash.note.desc',
     icon: Lightbulb,
     glyph: '!',
     keywords: ['note', 'admonition', 'warning', 'info'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'note' }).run(),
   },
   {
-    titleKey: { en: 'Info', ar: 'معلومة' },
-    descKey: { en: 'Helpful context for the reader.', ar: 'سياق مفيد للقارئ.' },
+    titleKey: 'editor.slash.info.title',
+    descKey: 'editor.slash.info.desc',
     icon: Info,
     glyph: 'i',
     keywords: ['callout', 'information', 'important'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'info' }).run(),
   },
   {
-    titleKey: { en: 'Tip', ar: 'نصيحة' },
-    descKey: { en: 'A practical recommendation.', ar: 'توصية عملية.' },
+    titleKey: 'editor.slash.tip.title',
+    descKey: 'editor.slash.tip.desc',
     icon: Lightbulb,
     glyph: '✦',
     keywords: ['callout', 'hint', 'recommendation'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'tip' }).run(),
   },
   {
-    titleKey: { en: 'Check', ar: 'تم' },
-    descKey: { en: 'A successful or verified outcome.', ar: 'نتيجة ناجحة أو تم التحقق منها.' },
+    titleKey: 'editor.slash.check.title',
+    descKey: 'editor.slash.check.desc',
     icon: CircleCheck,
     glyph: '✓',
     keywords: ['callout', 'success', 'done'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'check' }).run(),
   },
   {
-    titleKey: { en: 'Warning', ar: 'تحذير' },
-    descKey: { en: 'Something the reader should avoid.', ar: 'أمر ينبغي للقارئ تجنبه.' },
+    titleKey: 'editor.slash.warning.title',
+    descKey: 'editor.slash.warning.desc',
     icon: TriangleAlert,
     glyph: '△',
     keywords: ['callout', 'caution', 'alert'],
     command: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCallout({ variant: 'warning' }).run(),
   },
   {
-    titleKey: { en: 'Danger', ar: 'خطر' },
-    descKey: { en: 'A destructive or high-risk action.', ar: 'إجراء مدمر أو عالي المخاطر.' },
+    titleKey: 'editor.slash.danger.title',
+    descKey: 'editor.slash.danger.desc',
     icon: OctagonAlert,
     glyph: '!',
     keywords: ['callout', 'danger', 'destructive'],
@@ -259,8 +247,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Card', ar: 'بطاقة' },
-    descKey: { en: 'A linkable card for a related resource.', ar: 'بطاقة قابلة للربط بمورد ذي صلة.' },
+    titleKey: 'editor.slash.card.title',
+    descKey: 'editor.slash.card.desc',
     icon: LayoutGrid,
     glyph: '□',
     keywords: ['card', 'link', 'resource'],
@@ -292,8 +280,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
   },
   ...([3, 4] as const).map(
     (count): SlashItem => ({
-      titleKey: { en: `${count}-card grid`, ar: `شبكة من ${count} بطاقات` },
-      descKey: { en: `A responsive grid with ${count} cards.`, ar: `شبكة متجاوبة تضم ${count} بطاقات.` },
+      titleKey: count === 3 ? 'editor.slash.cardGrid3.title' : 'editor.slash.cardGrid4.title',
+      descKey: count === 3 ? 'editor.slash.cardGrid3.desc' : 'editor.slash.cardGrid4.desc',
       icon: LayoutGrid,
       glyph: `▦${count}`,
       keywords: ['card', 'cards', 'grid', 'tiles'],
@@ -375,8 +363,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Tooltip', ar: 'تلميح' },
-    descKey: { en: 'Inline text with a hover tooltip.', ar: 'نص مضمّن مع تلميح عند التمرير.' },
+    titleKey: 'editor.slash.tooltip.title',
+    descKey: 'editor.slash.tooltip.desc',
     icon: MessageCircle,
     glyph: '?',
     keywords: ['tooltip', 'hint', 'hover', 'inline'],
@@ -390,8 +378,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Icon', ar: 'أيقونة' },
-    descKey: { en: 'An inline icon by name.', ar: 'أيقونة مضمّنة بالاسم.' },
+    titleKey: 'editor.slash.icon.title',
+    descKey: 'editor.slash.icon.desc',
     icon: Sparkles,
     glyph: '✦',
     keywords: ['icon', 'glyph', 'symbol', 'inline'],
@@ -461,8 +449,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: '2 columns', ar: 'عمودان' },
-    descKey: { en: 'A responsive two-column layout.', ar: 'تخطيط متجاوب من عمودين.' },
+    titleKey: 'editor.slash.columns2.title',
+    descKey: 'editor.slash.columns2.desc',
     icon: Columns3,
     glyph: '▥',
     keywords: ['columns', 'layout', 'grid'],
@@ -479,8 +467,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
   },
   ...([3, 4] as const).map(
     (count): SlashItem => ({
-      titleKey: { en: `${count} columns`, ar: `${count} أعمدة` },
-      descKey: { en: `A responsive ${count}-column layout.`, ar: `تخطيط متجاوب من ${count} أعمدة.` },
+      titleKey: count === 3 ? 'editor.slash.columns3.title' : 'editor.slash.columns4.title',
+      descKey: count === 3 ? 'editor.slash.columns3.desc' : 'editor.slash.columns4.desc',
       icon: Columns3,
       glyph: `▥${count}`,
       keywords: ['columns', 'layout', 'grid'],
@@ -494,8 +482,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     }),
   ),
   {
-    titleKey: { en: 'Banner', ar: 'شريط إعلان' },
-    descKey: { en: 'A prominent announcement block.', ar: 'كتلة إعلان بارزة.' },
+    titleKey: 'editor.slash.banner.title',
+    descKey: 'editor.slash.banner.desc',
     icon: PanelTop,
     glyph: '▰',
     keywords: ['banner', 'announcement'],
@@ -508,8 +496,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Badge', ar: 'شارة' },
-    descKey: { en: 'A compact inline status label.', ar: 'تسمية حالة مضمّنة.' },
+    titleKey: 'editor.slash.badge.title',
+    descKey: 'editor.slash.badge.desc',
     icon: BadgeIcon,
     glyph: '●',
     keywords: ['badge', 'label', 'status'],
@@ -522,8 +510,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .run(),
   },
   {
-    titleKey: { en: 'Button', ar: 'زر' },
-    descKey: { en: 'An inline action linking to another page.', ar: 'إجراء مضمّن يربط بصفحة أخرى.' },
+    titleKey: 'editor.slash.button.title',
+    descKey: 'editor.slash.button.desc',
     icon: MousePointerClick,
     glyph: '↗',
     keywords: ['button', 'cta', 'link', 'action'],
@@ -564,8 +552,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
   },
 ];
 
-/** Resolve a slash label in one locale (message key or inline pair). */
-const labelIn = (label: SlashLabel, locale: 'en' | 'ar'): string => (isMessageKey(label) ? messages[locale][label] : label[locale]);
+/** Resolve a slash label in one canonical catalog for locale-independent search. */
+const labelIn = (label: MessageKey, locale: 'en' | 'ar'): string => messages[locale][label];
 
 /** Search haystack across BOTH locales (+ keywords) so filtering works whatever
  *  language the menu is displayed in. */
@@ -626,9 +614,8 @@ export const resolveSlashAnchor = (
 };
 
 const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
-  const { t, locale } = useLocale();
-  /** Resolve a slash label in the active locale (shared key or inline pair). */
-  const label = (value: SlashLabel): string => (isMessageKey(value) ? t(value) : labelIn(value, locale));
+  const { t } = useLocale();
+  const label = (value: MessageKey): string => t(value);
   const [selected, setSelected] = useState(0);
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);

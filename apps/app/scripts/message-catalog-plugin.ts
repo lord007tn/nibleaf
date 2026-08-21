@@ -6,9 +6,14 @@ import type { Plugin } from 'vite';
 const virtualPrefix = 'virtual:nibleaf-messages/';
 const resolvedPrefix = `\0${virtualPrefix}`;
 const sourceFile = resolve(import.meta.dirname, '../src/lib/i18n/messages.ts');
+const generatedCatalogDirectory = resolve(import.meta.dirname, '../src/lib/i18n/catalogs');
 
 type CatalogNamespace = 'app' | 'auth';
-type CatalogLocale = 'ar' | 'en';
+type CatalogLocale = 'ar' | 'bn' | 'de' | 'en' | 'es' | 'fr' | 'hi' | 'id' | 'pt-BR' | 'ru' | 'ur' | 'zh-CN';
+
+const catalogLocales = new Set<CatalogLocale>(['ar', 'bn', 'de', 'en', 'es', 'fr', 'hi', 'id', 'pt-BR', 'ru', 'ur', 'zh-CN']);
+const isAuthMessage = (key: string | undefined) =>
+  Boolean(key?.startsWith('common.') || key?.startsWith('auth.') || key?.startsWith('account.language'));
 
 const propertyName = (property: ts.ObjectLiteralElementLike): string | undefined => {
   const name = property.name;
@@ -21,6 +26,11 @@ const propertyName = (property: ts.ObjectLiteralElementLike): string | undefined
  * authoring and lock-step tests in one place while emitting independent chunks
  * instead of an eager object containing every locale. */
 export function buildMessageCatalogModule(locale: CatalogLocale, namespace: CatalogNamespace, source = readFileSync(sourceFile, 'utf8')): string {
+  if (locale !== 'ar' && locale !== 'en') {
+    const catalog = JSON.parse(readFileSync(resolve(generatedCatalogDirectory, `${locale}.json`), 'utf8')) as Record<string, string>;
+    const entries = Object.entries(catalog).filter(([key]) => namespace === 'app' || isAuthMessage(key));
+    return `export default ${JSON.stringify(Object.fromEntries(entries))};\n`;
+  }
   const file = ts.createSourceFile('messages.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   let messagesObject: ts.ObjectLiteralExpression | undefined;
   file.forEachChild((node) => {
@@ -42,7 +52,7 @@ export function buildMessageCatalogModule(locale: CatalogLocale, namespace: Cata
 
   const properties = localeProperty.initializer.properties.filter((property) => {
     const key = propertyName(property);
-    return namespace === 'app' || Boolean(key?.startsWith('common.') || key?.startsWith('auth.'));
+    return namespace === 'app' || isAuthMessage(key);
   });
   return `export default {\n${properties.map((property) => property.getText(file)).join(',\n')}\n};\n`;
 }
@@ -57,10 +67,10 @@ export function messageCatalogPlugin(): Plugin {
     load(id) {
       if (!id.startsWith(resolvedPrefix)) return undefined;
       const [locale, namespace] = id.slice(resolvedPrefix.length).split('/');
-      if ((locale !== 'ar' && locale !== 'en') || (namespace !== 'app' && namespace !== 'auth')) {
+      if (!catalogLocales.has(locale as CatalogLocale) || (namespace !== 'app' && namespace !== 'auth')) {
         throw new Error(`Unknown message catalog: ${id.slice(resolvedPrefix.length)}`);
       }
-      return buildMessageCatalogModule(locale, namespace);
+      return buildMessageCatalogModule(locale as CatalogLocale, namespace);
     },
   };
 }

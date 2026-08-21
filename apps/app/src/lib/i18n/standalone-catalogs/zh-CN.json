@@ -1,0 +1,12 @@
+{
+  "common.loading": "加载中...",
+  "error.badge": "错误",
+  "error.title": "出了点问题",
+  "error.unexpected": "发生意外错误。",
+  "error.tryAgain": "再试一次",
+  "error.backHome": "返回首页",
+  "notFound.badge": "404",
+  "notFound.title": "找不到页面",
+  "notFound.body": "您要查找的页面不存在或已移动。",
+  "notFound.backHome": "返回首页"
+}

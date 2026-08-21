@@ -7,44 +7,36 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Validators run client-side, so localize the message to the user's chosen locale
-// (the same `nibleaf.locale` key the i18n provider persists). Arabic messages are
-// generic (no English field label injected) to read naturally in RTL.
-const isArabic = (): boolean => {
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem('nibleaf.locale') === 'ar';
-  } catch {
-    return false;
-  }
-};
+import type { MessageKey } from './i18n/messages';
+
+type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 export const required =
-  (label = 'This field') =>
+  (label = 'This field', t?: Translator) =>
   (value: string) => {
     if (value.trim().length > 0) {
       return undefined;
     }
-    return isArabic() ? 'هذا الحقل مطلوب' : `${label} is required`;
+    return t ? t('validation.required', { label }) : `${label} is required`;
   };
 
-export const email = (value: string) => {
-  const ar = isArabic();
+export const email = (value: string, t?: Translator) => {
   if (value.trim().length === 0) {
-    return ar ? 'البريد الإلكتروني مطلوب' : 'Email is required';
+    return t ? t('validation.emailRequired') : 'Email is required';
   }
   if (EMAIL_RE.test(value.trim())) {
     return undefined;
   }
-  return ar ? 'أدخل بريدًا إلكترونيًا صالحًا' : 'Enter a valid email address';
+  return t ? t('validation.emailInvalid') : 'Enter a valid email address';
 };
 
 export const minLength =
-  (min: number, label = 'Password') =>
+  (min: number, label = 'Password', t?: Translator) =>
   (value: string) => {
     if (value.length >= min) {
       return undefined;
     }
-    return isArabic() ? `يجب ألا يقل عن ${min} أحرف` : `${label} must be at least ${min} characters`;
+    return t ? t('validation.minLength', { label, min }) : `${label} must be at least ${min} characters`;
   };
 
 /** Normalise a TanStack Form field's `meta.errors` into clean strings to render. */

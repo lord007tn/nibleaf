@@ -48,7 +48,7 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
             <DialogDescription>{t('newSite.desc')}</DialogDescription>
           </DialogHeader>
           <div className="my-4 flex flex-col gap-1.5">
-            <form.Field name="name" validators={{ onChange: ({ value }) => required('Name')(value) }}>
+            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('newSite.name'), t)(value) }}>
               {(field) => (
                 <>
                   <Label htmlFor="new-project-name">{t('newSite.name')}</Label>

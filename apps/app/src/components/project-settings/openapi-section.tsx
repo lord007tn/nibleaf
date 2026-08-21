@@ -114,7 +114,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => setEditing(true)} size="sm">
-                Edit configuration
+                {t('settings.openapi.edit')}
               </Button>
               {current.source.type !== 'upload' ? (
                 <Button variant="outline" disabled={sync.isPending} onClick={() => void refresh()} size="sm">
@@ -132,12 +132,10 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
       {!current && !editing ? (
         <div className="rounded-xl border border-dashed p-6 text-center">
           <Braces className="mx-auto size-6 text-muted-foreground" />
-          <h3 className="mt-3 font-semibold">Publish an interactive API reference</h3>
-          <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">
-            Validate one OpenAPI 3.x source, preview the configured route, then include it in the next immutable site publish.
-          </p>
+          <h3 className="mt-3 font-semibold">{t('settings.openapi.emptyTitle')}</h3>
+          <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">{t('settings.openapi.emptyDescription')}</p>
           <Button className="mt-4" onClick={() => setEditing(true)}>
-            Add API reference
+            {t('settings.openapi.add')}
           </Button>
         </div>
       ) : null}

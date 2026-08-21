@@ -5,7 +5,7 @@ import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { sitePageUrl } from '@/lib/site-seo';
+import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -54,7 +54,10 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
     });
     return {
       meta: [{ title: `Changelog — ${name}` }, { name: 'description', content: description }],
-      links: [{ rel: 'canonical', href: url }],
+      links: [
+        { rel: 'canonical', href: url },
+        { rel: 'alternate', type: 'application/rss+xml', title: `${name} changelog`, href: changelogFeedUrl(url) },
+      ],
     };
   },
 });
@@ -122,7 +125,11 @@ function SiteChangelog() {
                 <h2 className="mb-4 font-semibold text-[11px] text-muted-foreground/80 uppercase tracking-wider">{group.label}</h2>
                 <div className="space-y-2.5">
                   {group.entries.map((entry) => (
-                    <article key={entry.version} className="flex items-start gap-4 rounded-xl border border-border bg-card p-4">
+                    <article
+                      id={`release-v${entry.version}`}
+                      key={entry.version}
+                      className="scroll-mt-24 flex items-start gap-4 rounded-xl border border-border bg-card p-4"
+                    >
                       <div className="flex h-11 w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-primary/10 leading-none">
                         <span className="font-mono font-bold text-[15px] text-primary">v{entry.version}</span>
                       </div>

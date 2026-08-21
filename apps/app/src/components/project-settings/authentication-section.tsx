@@ -5,7 +5,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { usePages } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
+import { useLocale } from '@/lib/i18n';
 import { Field, SectionHeader, Segmented } from './shared';
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
@@ -64,7 +64,7 @@ const Panel = ({ title, description, children }: { title: string; description: s
 );
 
 export function AuthenticationSection({ project }: { project: Project }) {
-  const t = useT();
+  const { locale, t } = useLocale();
   const { data: pages = [] } = usePages(project.id);
   const [data, setData] = useState<ReaderAccessData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,11 +101,11 @@ export function AuthenticationSection({ project }: { project: Project }) {
         setClaimMapping(JSON.stringify(next.jwt.claimMapping ?? {}, null, 2));
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not load reader access.');
+      toast.error(error instanceof Error ? error.message : t('settings.authentication.reader.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [base]);
+  }, [base, t]);
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -113,14 +113,14 @@ export function AuthenticationSection({ project }: { project: Project }) {
 
   const saveMode = async () => {
     await request(`${base}/mode`, { method: 'PUT', body: JSON.stringify({ mode }) });
-    toast.success('Access mode updated.');
+    toast.success(t('settings.authentication.reader.modeSaved'));
     await refresh();
   };
   const addAudience = async () => {
     await request(`${base}/audiences`, { method: 'POST', body: JSON.stringify({ name: audienceName, pageIds: audiencePages }) });
     setAudienceName('');
     setAudiencePages([]);
-    toast.success('Audience created.');
+    toast.success(t('settings.authentication.reader.audienceCreated'));
     await refresh();
   };
   const invite = async () => {
@@ -131,7 +131,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
     setReaderEmail('');
     setReaderName('');
     if (navigator.clipboard) await navigator.clipboard.writeText(result.activationUrl).catch(() => undefined);
-    toast.success('Reader invited. The one-time link was copied when clipboard access was available.');
+    toast.success(t('settings.authentication.reader.invited'));
     await refresh();
   };
   const saveJwt = async () => {
@@ -141,7 +141,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
       mapping = JSON.parse(claimMapping) as Record<string, string>;
       keys = publicJwks.trim() ? JSON.parse(publicJwks) : null;
     } catch {
-      toast.error('JWKS and claim mapping must be valid JSON.');
+      toast.error(t('settings.authentication.reader.jsonError'));
       return;
     }
     await request(`${base}/jwt`, {
@@ -161,40 +161,38 @@ export function AuthenticationSection({ project }: { project: Project }) {
         clockToleranceSecs: 30,
       }),
     });
-    toast.success('JWT configuration saved.');
+    toast.success(t('settings.authentication.reader.jwtSaved'));
     await refresh();
   };
 
   return (
     <div>
       <SectionHeader description={t('settings.authentication.description')} icon="◉" title={t('settings.authentication.title')} />
-      <Field
-        hint="Public is the backward-compatible default. Workspace requires an author account. Readers uses dedicated identities and audiences."
-        label="Access mode"
-      >
+      <Field hint={t('settings.authentication.reader.modeHint')} label={t('settings.authentication.reader.mode')}>
         <Segmented
           className="max-w-[540px]"
           onChange={setMode}
           options={[
-            { value: 'PUBLIC', label: 'Public' },
-            { value: 'WORKSPACE', label: 'Workspace members' },
-            { value: 'READERS', label: 'Private readers' },
+            { value: 'PUBLIC', label: t('settings.authentication.mode.public') },
+            { value: 'WORKSPACE', label: t('settings.authentication.reader.workspace') },
+            { value: 'READERS', label: t('settings.authentication.reader.private') },
           ]}
           value={mode}
         />
         <Button className="mt-3" disabled={loading} onClick={() => void saveMode().catch((error) => toast.error(error.message))} type="button">
-          Save access mode
+          {t('settings.authentication.reader.saveMode')}
         </Button>
       </Field>
 
       {data?.accessMode === 'READERS' ? (
         <>
-          <Panel
-            title="Audiences and content rules"
-            description="Grant an audience the whole site, or select individual pages. Navigation and search are filtered server-side."
-          >
+          <Panel title={t('settings.authentication.reader.audiencesTitle')} description={t('settings.authentication.reader.audiencesDescription')}>
             <div className="grid gap-3 md:grid-cols-2">
-              <Input onChange={(event) => setAudienceName(event.target.value)} placeholder="Customers" value={audienceName} />
+              <Input
+                onChange={(event) => setAudienceName(event.target.value)}
+                placeholder={t('settings.authentication.reader.audiencePlaceholder')}
+                value={audienceName}
+              />
               <select
                 className="min-h-9 rounded-md border border-input bg-background px-3 text-sm"
                 multiple
@@ -208,14 +206,14 @@ export function AuthenticationSection({ project }: { project: Project }) {
                 ))}
               </select>
             </div>
-            <p className="mt-2 text-muted-foreground text-xs">Leave every page unselected to grant the entire site.</p>
+            <p className="mt-2 text-muted-foreground text-xs">{t('settings.authentication.reader.audienceAllPages')}</p>
             <Button
               className="mt-3"
               disabled={!audienceName.trim()}
               onClick={() => void addAudience().catch((error) => toast.error(error.message))}
               type="button"
             >
-              Create audience
+              {t('settings.authentication.reader.createAudience')}
             </Button>
             <div className="mt-4 divide-y rounded-md border">
               {(data?.audiences ?? []).map((audience) => (
@@ -223,13 +221,15 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   <div>
                     <div className="font-medium">{audience.name}</div>
                     <div className="text-muted-foreground text-xs">
-                      {audience.grants.some((grant) => !grant.pageId) ? 'Entire site' : `${audience.grants.length} pages`} · {audience._count.readers}{' '}
-                      readers
+                      {audience.grants.some((grant) => !grant.pageId)
+                        ? t('settings.authentication.reader.entireSite')
+                        : t('settings.authentication.reader.pageCount', { count: audience.grants.length })}{' '}
+                      · {t('settings.authentication.reader.readerCount', { count: audience._count.readers })}
                     </div>
                   </div>
                   <Button
                     onClick={() =>
-                      window.confirm(`Delete the ${audience.name} audience and remove its reader assignments?`)
+                      window.confirm(t('settings.authentication.reader.deleteAudienceConfirm', { name: audience.name }))
                         ? void request(`${base}/audiences/${audience.id}`, { method: 'DELETE' })
                             .then(refresh)
                             .catch((error) => toast.error(error.message))
@@ -239,20 +239,21 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     type="button"
                     variant="outline"
                   >
-                    Delete
+                    {t('common.delete')}
                   </Button>
                 </div>
               ))}
             </div>
           </Panel>
 
-          <Panel
-            title="Dedicated readers"
-            description="Readers do not receive dashboard access or author seats. Invitations are single-use and expire after seven days."
-          >
+          <Panel title={t('settings.authentication.reader.readersTitle')} description={t('settings.authentication.reader.readersDescription')}>
             <div className="grid gap-3 md:grid-cols-3">
               <Input onChange={(event) => setReaderEmail(event.target.value)} placeholder="reader@example.com" type="email" value={readerEmail} />
-              <Input onChange={(event) => setReaderName(event.target.value)} placeholder="Name (optional)" value={readerName} />
+              <Input
+                onChange={(event) => setReaderName(event.target.value)}
+                placeholder={t('settings.authentication.reader.nameOptional')}
+                value={readerName}
+              />
               <select
                 className="min-h-9 rounded-md border border-input bg-background px-3 text-sm"
                 multiple
@@ -272,21 +273,26 @@ export function AuthenticationSection({ project }: { project: Project }) {
               onClick={() => void invite().catch((error) => toast.error(error.message))}
               type="button"
             >
-              Invite reader
+              {t('settings.authentication.reader.invite')}
             </Button>
             <div className="mt-4 divide-y rounded-md border">
               {(data?.readers ?? []).map((reader) => (
                 <div className="flex items-center justify-between gap-3 p-3 text-sm" key={reader.id}>
                   <div>
-                    <div className="font-medium">{reader.name || reader.email || 'Portal reader'}</div>
+                    <div className="font-medium">{reader.name || reader.email || t('settings.authentication.reader.portalReader')}</div>
                     <div className="text-muted-foreground text-xs">
-                      {reader.status} · {reader.audiences.map((item) => item.audience.name).join(', ')} · {reader._count.sessions} active sessions
+                      {reader.status} · {reader.audiences.map((item) => item.audience.name).join(', ')} ·{' '}
+                      {t('settings.authentication.reader.sessionCount', { count: reader._count.sessions })}
                     </div>
                   </div>
                   <Button
                     disabled={reader.status === 'REVOKED'}
                     onClick={() =>
-                      window.confirm(`Revoke access and active sessions for ${reader.name || reader.email || 'this reader'}?`)
+                      window.confirm(
+                        t('settings.authentication.reader.revokeConfirm', {
+                          name: reader.name || reader.email || t('settings.authentication.reader.thisReader'),
+                        }),
+                      )
                         ? void request(`${base}/readers/${reader.id}/revoke`, { method: 'POST' })
                             .then(refresh)
                             .catch((error) => toast.error(error.message))
@@ -296,24 +302,26 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     type="button"
                     variant="outline"
                   >
-                    Revoke
+                    {t('settings.authentication.reader.revoke')}
                   </Button>
                 </div>
               ))}
             </div>
           </Panel>
 
-          <Panel
-            title="JWT portal handoff"
-            description="Accept short-lived asymmetric JWTs. Issuer, audience, expiry, signature, token age, jti replay, and claims are verified."
-          >
+          <Panel title={t('settings.authentication.reader.jwtTitle')} description={t('settings.authentication.reader.jwtDescription')}>
             <Button onClick={() => setShowJwt((value) => !value)} type="button" variant="outline">
-              {showJwt ? 'Hide JWT configuration' : jwtEnabled ? 'Manage JWT configuration' : 'Configure JWT handoff'}
+              {showJwt
+                ? t('settings.authentication.reader.jwtHide')
+                : jwtEnabled
+                  ? t('settings.authentication.reader.jwtManage')
+                  : t('settings.authentication.reader.jwtConfigure')}
             </Button>
             {showJwt ? (
               <div className="mt-4">
                 <label className="mb-3 flex items-center gap-2 text-sm">
-                  <input checked={jwtEnabled} onChange={(event) => setJwtEnabled(event.target.checked)} type="checkbox" /> Enable JWT handoff
+                  <input checked={jwtEnabled} onChange={(event) => setJwtEnabled(event.target.checked)} type="checkbox" />{' '}
+                  {t('settings.authentication.reader.jwtEnable')}
                 </label>
                 <div className="grid gap-3 md:grid-cols-2">
                   <Input onChange={(event) => setIssuer(event.target.value)} placeholder="https://portal.example.com" value={issuer} />
@@ -328,7 +336,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
                 <Textarea
                   className="mt-3 font-mono text-xs"
                   onChange={(event) => setPublicJwks(event.target.value)}
-                  placeholder="Or paste a public JWKS (never a private key)"
+                  placeholder={t('settings.authentication.reader.jwksPlaceholder')}
                   value={publicJwks}
                 />
                 <Textarea
@@ -338,13 +346,13 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   value={claimMapping}
                 />
                 <Button className="mt-3" onClick={() => void saveJwt().catch((error) => toast.error(error.message))} type="button">
-                  Save JWT configuration
+                  {t('settings.authentication.reader.jwtSave')}
                 </Button>
                 <div className="mt-5 border-t pt-4">
                   <Textarea
                     className="font-mono text-xs"
                     onChange={(event) => setTestToken(event.target.value)}
-                    placeholder="Paste a signed test JWT; it is validated but never stored"
+                    placeholder={t('settings.authentication.reader.jwtTestPlaceholder')}
                     value={testToken}
                   />
                   <Button
@@ -352,31 +360,31 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     disabled={!testToken}
                     onClick={() =>
                       void request(`${base}/jwt/test`, { method: 'POST', body: JSON.stringify({ token: testToken }) })
-                        .then((result) => toast.success(`JWT valid: ${JSON.stringify(result)}`))
+                        .then((result) => toast.success(`${t('settings.authentication.reader.jwtValid')}: ${JSON.stringify(result)}`))
                         .catch((error) => toast.error(error.message))
                     }
                     type="button"
                     variant="outline"
                   >
-                    Test JWT
+                    {t('settings.authentication.reader.jwtTest')}
                   </Button>
                 </div>
               </div>
             ) : null}
           </Panel>
 
-          <Panel title="Audit and emergency revocation" description="Security-sensitive actions are retained without tokens, JWTs, or keys.">
+          <Panel title={t('settings.authentication.reader.auditTitle')} description={t('settings.authentication.reader.auditDescription')}>
             <Button onClick={() => setShowAudit((value) => !value)} type="button" variant="outline">
-              {showAudit ? 'Hide security activity' : 'Review security activity'}
+              {showAudit ? t('settings.authentication.reader.auditHide') : t('settings.authentication.reader.auditReview')}
             </Button>
             {showAudit ? (
               <div className="mt-4">
                 <Button
                   onClick={() =>
-                    window.confirm('Emergency revoke every reader session and disable JWT handoff? Readers will immediately lose access.')
+                    window.confirm(t('settings.authentication.reader.emergencyConfirm'))
                       ? void request(`${base}/emergency-revoke`, { method: 'POST' })
                           .then(() => {
-                            toast.success('All reader sessions revoked and JWT handoff disabled.');
+                            toast.success(t('settings.authentication.reader.emergencySuccess'));
                             return refresh();
                           })
                           .catch((error) => toast.error(error.message))
@@ -385,13 +393,13 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   type="button"
                   variant="destructive"
                 >
-                  Emergency revoke all access
+                  {t('settings.authentication.reader.emergencyAction')}
                 </Button>
                 <div className="mt-4 max-h-56 divide-y overflow-auto rounded-md border">
                   {(data?.audit ?? []).map((event) => (
                     <div className="flex justify-between gap-3 p-2 text-xs" key={event.id}>
                       <span>{event.action}</span>
-                      <time className="text-muted-foreground">{new Date(event.createdAt).toLocaleString()}</time>
+                      <time className="text-muted-foreground">{new Date(event.createdAt).toLocaleString(locale)}</time>
                     </div>
                   ))}
                 </div>
@@ -401,11 +409,8 @@ export function AuthenticationSection({ project }: { project: Project }) {
         </>
       ) : (
         <div className="mt-6 rounded-xl border border-dashed p-6 text-center">
-          <h3 className="font-semibold">Reader controls are inactive</h3>
-          <p className="mx-auto mt-1 max-w-xl text-muted-foreground text-sm">
-            Choose Private readers and save the access mode before creating audiences, invitations, or a portal handoff. Existing reader records
-            remain stored when another mode is active.
-          </p>
+          <h3 className="font-semibold">{t('settings.authentication.reader.inactiveTitle')}</h3>
+          <p className="mx-auto mt-1 max-w-xl text-muted-foreground text-sm">{t('settings.authentication.reader.inactiveDescription')}</p>
         </div>
       )}
     </div>

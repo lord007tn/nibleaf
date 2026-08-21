@@ -18,8 +18,9 @@ describe('published-site reader localization', () => {
     expect(t('showProperties')).toBe('عرض الخصائص');
   });
 
-  it('preserves English and uses it as the fallback for unshipped locales', () => {
+  it('localizes shipped LTR languages and uses English for unshipped locales', () => {
     expect(siteT('en')('copyCode')).toBe('Copy code');
-    expect(siteT('fr')('showProperties')).toBe('Show properties');
+    expect(siteT('fr-CA')('showProperties')).toBe('Afficher les propriétés');
+    expect(siteT('it')('showProperties')).toBe('Show properties');
   });
 });

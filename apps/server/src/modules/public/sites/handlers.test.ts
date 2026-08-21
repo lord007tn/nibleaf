@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
 
-const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn() }));
 
 vi.mock('@/actions/sites', () => ({
   getSite: vi.fn(),
@@ -11,6 +11,7 @@ vi.mock('@/actions/sites', () => ({
   searchSite: vi.fn(),
   recordSiteEvent: vi.fn(),
   getSiteChangelog: vi.fn(),
+  getSiteChangelogRss: mocks.getSiteChangelogRss,
   getSiteSitemap: vi.fn(),
   getSiteRobots: vi.fn(),
   getSiteLlmsTxt: vi.fn(),
@@ -53,5 +54,16 @@ describe('published OpenAPI endpoint', () => {
     });
     const response = await app.request('/sites/project/openapi.json');
     expect(response.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+describe('published changelog RSS endpoint', () => {
+  it('serves an RSS document with shared-cache headers for a public site', async () => {
+    mocks.getSiteChangelogRss.mockResolvedValueOnce({ body: '<rss version="2.0"></rss>', isPrivate: false });
+    const response = await app.request('/sites/project/changelog/rss.xml');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/rss+xml');
+    expect(response.headers.get('cache-control')).toContain('public');
+    expect(await response.text()).toContain('<rss');
   });
 });

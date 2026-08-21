@@ -6,6 +6,7 @@ describe('message catalog compiler', () => {
     const catalog = buildMessageCatalogModule('en', 'auth');
     expect(catalog).toContain("'auth.signIn.subtitle'");
     expect(catalog).toContain("'common.cancel'");
+    expect(catalog).toContain("'account.language'");
     expect(catalog).not.toContain("'editor.title'");
     expect(catalog).not.toContain("'analytics.title'");
   });
@@ -21,5 +22,12 @@ describe('message catalog compiler', () => {
     expect(arabic).toContain("'auth.google.signIn': 'تسجيل الدخول باستخدام Google'");
     expect(arabic).not.toContain("'auth.signIn.submit': 'Log in'");
     expect(arabic).not.toContain("'auth.google.signIn': 'Log in with Google'");
+  });
+
+  it('builds a namespace-filtered generated locale catalog', () => {
+    const spanish = buildMessageCatalogModule('es', 'auth');
+    expect(spanish).toContain('Iniciar sesión');
+    expect(spanish).toContain('auth.signIn.subtitle');
+    expect(spanish).not.toContain('analytics.title');
   });
 });

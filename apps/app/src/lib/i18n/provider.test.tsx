@@ -56,19 +56,19 @@ describe('LocaleProvider', () => {
   it('hydrates in English, then loads a persisted Arabic catalog and RTL direction', async () => {
     window.localStorage.setItem('nibleaf.locale', 'ar');
     window.localStorage.setItem('nibleaf.direction', 'rtl');
-    const loadArabicMessages = vi.fn(async () => ({ default: arabicMessages }));
+    const loadMessages = vi.fn(async () => ({ default: arabicMessages }));
 
     await act(async () => {
       root.render(
         <DirectionProvider>
-          <LocaleProvider englishMessages={englishMessages} loadArabicMessages={loadArabicMessages}>
+          <LocaleProvider englishMessages={englishMessages} loadMessages={loadMessages}>
             <LocaleControl />
           </LocaleProvider>
         </DirectionProvider>,
       );
     });
 
-    expect(loadArabicMessages).toHaveBeenCalledOnce();
+    expect(loadMessages).toHaveBeenCalledWith('ar');
     expect(container.querySelector('output')?.textContent).toBe('ar:إلغاء');
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
@@ -76,7 +76,7 @@ describe('LocaleProvider', () => {
 
   it('switches locales, persists the choice, and ignores a stale Arabic load', async () => {
     let finishArabic: ((value: { default: typeof arabicMessages }) => void) | undefined;
-    const loadArabicMessages = vi.fn(
+    const loadMessages = vi.fn(
       () =>
         new Promise<{ default: typeof arabicMessages }>((resolve) => {
           finishArabic = resolve;
@@ -86,7 +86,7 @@ describe('LocaleProvider', () => {
     act(() => {
       root.render(
         <DirectionProvider>
-          <LocaleProvider englishMessages={englishMessages} loadArabicMessages={loadArabicMessages}>
+          <LocaleProvider englishMessages={englishMessages} loadMessages={loadMessages}>
             <LocaleControl />
           </LocaleProvider>
         </DirectionProvider>,

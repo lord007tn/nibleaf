@@ -194,7 +194,7 @@ export function GeneralSection({ project }: { project: Project }) {
               </div>
             </div>
 
-            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
+            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'), t)(value) }}>
               {(field) => {
                 const draft = translations[selectedLanguage.id] ?? draftOf(selectedLanguage);
                 return (
@@ -261,7 +261,7 @@ export function GeneralSection({ project }: { project: Project }) {
         </div>
       ) : (
         <>
-          <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'))(value) }}>
+          <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.general.name.label'), t)(value) }}>
             {(field) => (
               <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
                 <Input

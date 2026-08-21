@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getData, mutateData } from '@/hooks/api/client-helpers';
 import { api } from '@/lib/api';
+import { useLocale } from '@/lib/i18n';
+import type { MessageKey } from '@/lib/i18n/messages';
 import { SectionHeader } from './shared';
 
 type ExportFormat = 'MARKDOWN' | 'PDF' | 'STATIC_HTML';
@@ -45,12 +47,17 @@ interface ExportSchedule {
   _count: { jobs: number };
 }
 
-const labels: Record<ExportFormat, string> = { MARKDOWN: 'Markdown ZIP', PDF: 'PDF', STATIC_HTML: 'Static HTML ZIP' };
+const labelKeys: Record<ExportFormat, MessageKey> = {
+  MARKDOWN: 'settings.exports.workflow.format.markdown',
+  PDF: 'settings.exports.workflow.format.pdf',
+  STATIC_HTML: 'settings.exports.workflow.format.html',
+};
 const sizeLabel = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
-const formatDate = (date: string | null) => (date ? new Date(date).toLocaleString() : '—');
+const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(locale) : '—');
 const queryKey = (projectId: string, type: 'runs' | 'schedules') => ['projects', projectId, 'exports', type] as const;
 
 export function ExportsSection({ projectId }: { projectId: string }) {
+  const { locale, t } = useLocale();
   const qc = useQueryClient();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -69,10 +76,10 @@ export function ExportsSection({ projectId }: { projectId: string }) {
     mutationFn: async () =>
       mutateData<ExportRun>(
         await api.app.projects[':projectId'].exports.$post({ param: { projectId }, json: { formats } }),
-        'Could not queue the export.',
+        t('settings.exports.workflow.queueError'),
       ),
     onSuccess: () => {
-      toast.success('Export queued from the latest published revision.');
+      toast.success(t('settings.exports.workflow.queued'));
       qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') });
     },
     onError: (error) => toast.error(error.message),
@@ -81,7 +88,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
     mutationFn: async (id: string) =>
       mutateData<ExportRun>(
         await api.app.projects[':projectId'].exports[':id'].cancel.$post({ param: { projectId, id } }),
-        'Could not cancel the export.',
+        t('settings.exports.workflow.cancelError'),
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') }),
     onError: (error) => toast.error(error.message),
@@ -96,7 +103,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
       );
       window.location.assign(result.url);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not download the export.');
+      toast.error(error instanceof Error ? error.message : t('settings.exports.workflow.downloadError'));
     }
   };
   const toggleFormat = (format: ExportFormat) =>
@@ -106,13 +113,13 @@ export function ExportsSection({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-7">
-      <SectionHeader icon="⇩" title="Exports" description="Portable exports are rendered in the background from one immutable published revision." />
-      <nav aria-label="Export workflows" className="grid gap-2 sm:grid-cols-3">
+      <SectionHeader icon="⇩" title={t('settings.exports.title')} description={t('settings.exports.workflow.description')} />
+      <nav aria-label={t('settings.exports.workflow.navLabel')} className="grid gap-2 sm:grid-cols-3">
         {(
           [
-            ['create', 'One-time export', 'Download the latest published revision'],
-            ['schedules', 'Schedules', 'Automate archival snapshots and retention'],
-            ['history', 'Run history', 'Monitor, recover, and download artifacts'],
+            ['create', t('settings.exports.workflow.oneTime'), t('settings.exports.workflow.oneTimeDesc')],
+            ['schedules', t('settings.exports.workflow.schedules'), t('settings.exports.workflow.schedulesDesc')],
+            ['history', t('settings.exports.workflow.history'), t('settings.exports.workflow.historyDesc')],
           ] as const
         ).map(([value, title, description]) => (
           <button
@@ -129,26 +136,25 @@ export function ExportsSection({ projectId }: { projectId: string }) {
       </nav>
       {runs.isError || schedules.isError ? (
         <div aria-live="polite" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-destructive text-sm">
-          Export data could not be loaded. Check the connection and try this page again.
+          {t('settings.exports.workflow.loadError')}
         </div>
       ) : null}
       {surface === 'create' ? (
         <section className="space-y-3">
-          <div className="font-semibold text-sm">Create export</div>
+          <div className="font-semibold text-sm">{t('settings.exports.workflow.create')}</div>
           <div className="rounded-lg border border-border p-4">
             <div className="flex flex-wrap gap-3">
-              {(Object.keys(labels) as ExportFormat[]).map((format) => (
+              {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
                 <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
-                  <input checked={formats.includes(format)} onChange={() => toggleFormat(format)} type="checkbox" /> {labels[format]}
+                  <input checked={formats.includes(format)} onChange={() => toggleFormat(format)} type="checkbox" /> {t(labelKeys[format])}
                 </label>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-muted-foreground text-xs">
-                PDF uses print-safe typography and RTL; static HTML includes offline navigation, search, themes, and assets.
-              </p>
+              <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.formatHint')}</p>
               <Button disabled={create.isPending} onClick={() => create.mutate()}>
-                {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />} Create export
+                {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />}{' '}
+                {t('settings.exports.workflow.create')}
               </Button>
             </div>
           </div>
@@ -158,9 +164,9 @@ export function ExportsSection({ projectId }: { projectId: string }) {
       {surface === 'schedules' ? (
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <div className="font-semibold text-sm">Archive schedules</div>
+            <div className="font-semibold text-sm">{t('settings.exports.workflow.archiveSchedules')}</div>
             <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
-              <Plus className="size-3.5" /> New schedule
+              <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
             </Button>
           </div>
           {showSchedule ? (
@@ -187,8 +193,8 @@ export function ExportsSection({ projectId }: { projectId: string }) {
             {!schedules.isLoading && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
                 <Archive className="mx-auto size-5 text-muted-foreground" />
-                <p className="mt-2 font-medium text-sm">No archival schedules</p>
-                <p className="mt-1 text-muted-foreground text-xs">Create one when exports need to run automatically across time zones.</p>
+                <p className="mt-2 font-medium text-sm">{t('settings.exports.workflow.noSchedules')}</p>
+                <p className="mt-1 text-muted-foreground text-xs">{t('settings.exports.workflow.noSchedulesDesc')}</p>
               </div>
             ) : null}
           </div>
@@ -197,7 +203,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
 
       {surface === 'history' ? (
         <section className="space-y-3">
-          <div className="font-semibold text-sm">Run history</div>
+          <div className="font-semibold text-sm">{t('settings.exports.workflow.history')}</div>
           <div className="space-y-2">
             {runs.data?.map((run) => (
               <div className="rounded-lg border border-border p-4" key={run.id}>
@@ -205,29 +211,33 @@ export function ExportsSection({ projectId }: { projectId: string }) {
                   <div>
                     <div className="flex items-center gap-2 font-medium text-sm">
                       <Archive className="size-4" />
-                      {run.formats.map((format) => labels[format]).join(', ')} <StatusBadge status={run.status} />
+                      {run.formats.map((format) => t(labelKeys[format])).join(', ')} <StatusBadge status={run.status} />
                     </div>
                     <div className="mt-1 text-muted-foreground text-xs">
-                      Published v{run.snapshot.deploymentVersion} · {run.snapshot.pagesCount} pages ·{' '}
-                      {run.trigger === 'SCHEDULED' ? (run.schedule?.name ?? 'Scheduled') : 'Manual'} · {formatDate(run.createdAt)}
+                      {t('settings.exports.workflow.publishedVersion', { version: run.snapshot.deploymentVersion })} ·{' '}
+                      {t('settings.exports.workflow.pageCount', { count: run.snapshot.pagesCount })} ·{' '}
+                      {run.trigger === 'SCHEDULED'
+                        ? (run.schedule?.name ?? t('settings.exports.workflow.scheduled'))
+                        : t('settings.exports.workflow.manual')}{' '}
+                      · {formatDate(run.createdAt, locale)}
                     </div>
                   </div>
                   {run.status === 'PENDING' || run.status === 'RUNNING' ? (
                     <Button disabled={cancel.isPending} onClick={() => cancel.mutate(run.id)} size="sm" variant="outline">
-                      <Ban className="size-3.5" /> Cancel
+                      <Ban className="size-3.5" /> {t('common.cancel')}
                     </Button>
                   ) : null}
                 </div>
                 {run.error ? (
                   <p className="mt-3 rounded-md bg-destructive/10 p-2 text-destructive text-xs">
-                    Attempt {run.attempts}: {run.error}
+                    {t('settings.exports.workflow.attempt', { count: run.attempts })}: {run.error}
                   </p>
                 ) : null}
                 {run.artifacts.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {run.artifacts.map((artifact) => (
                       <Button key={artifact.id} onClick={() => download(run, artifact)} size="sm" variant="outline">
-                        <Download className="size-3.5" /> {labels[artifact.format]} · {sizeLabel(artifact.size)}
+                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {sizeLabel(artifact.size)}
                       </Button>
                     ))}
                   </div>
@@ -237,8 +247,8 @@ export function ExportsSection({ projectId }: { projectId: string }) {
             {!runs.isLoading && !runs.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
                 <FileArchive className="mx-auto size-5 text-muted-foreground" />
-                <p className="mt-2 font-medium text-sm">No export runs yet</p>
-                <p className="mt-1 text-muted-foreground text-xs">Create a one-time export or run a schedule to see status and downloads here.</p>
+                <p className="mt-2 font-medium text-sm">{t('settings.exports.workflow.noRuns')}</p>
+                <p className="mt-1 text-muted-foreground text-xs">{t('settings.exports.workflow.noRunsDesc')}</p>
               </div>
             ) : null}
           </div>
@@ -247,9 +257,9 @@ export function ExportsSection({ projectId }: { projectId: string }) {
 
       {surface === 'create' ? (
         <p className="text-muted-foreground text-xs">
-          Need the legacy all-drafts archive?{' '}
+          {t('settings.exports.workflow.legacyPrompt')}{' '}
           <a className="underline" download href={`/api/app/projects/${projectId}/export`}>
-            Download the original Markdown ZIP
+            {t('settings.exports.workflow.legacyDownload')}
           </a>
           .
         </p>
@@ -259,12 +269,18 @@ export function ExportsSection({ projectId }: { projectId: string }) {
 }
 
 function StatusBadge({ status }: { status: ExportStatus }) {
-  return <Badge variant={status === 'FAILED' ? 'destructive' : status === 'SUCCEEDED' ? 'default' : 'secondary'}>{status.toLowerCase()}</Badge>;
+  const { t } = useLocale();
+  return (
+    <Badge variant={status === 'FAILED' ? 'destructive' : status === 'SUCCEEDED' ? 'default' : 'secondary'}>
+      {t(`settings.exports.workflow.status.${status.toLowerCase()}` as MessageKey)}
+    </Badge>
+  );
 }
 
 function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
+  const { t } = useLocale();
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-  const [name, setName] = useState('Nightly archive');
+  const [name, setName] = useState(() => t('settings.exports.workflow.defaultScheduleName'));
   const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('DAILY');
   const [time, setTime] = useState('02:00');
   const [weekday, setWeekday] = useState(1);
@@ -295,48 +311,48 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
             retentionDays,
           },
         }),
-        'Could not create the schedule.',
+        t('settings.exports.workflow.scheduleCreateError'),
       );
     },
     onSuccess: () => {
-      toast.success('Archive schedule created.');
+      toast.success(t('settings.exports.workflow.scheduleCreated'));
       onCreated();
     },
     onError: (error) => toast.error(error.message),
   });
   return (
     <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-      <Input aria-label="Schedule name" onChange={(event) => setName(event.target.value)} value={name} />
-      <Input aria-label="IANA timezone" onChange={(event) => setTimezone(event.target.value)} value={timezone} />
+      <Input aria-label={t('settings.exports.workflow.scheduleName')} onChange={(event) => setName(event.target.value)} value={name} />
+      <Input aria-label={t('settings.exports.workflow.timezone')} onChange={(event) => setTimezone(event.target.value)} value={timezone} />
       <select
         className="h-9 rounded-md border bg-background px-3 text-sm"
         onChange={(event) => setCadence(event.target.value as typeof cadence)}
         value={cadence}
       >
-        <option value="DAILY">Daily</option>
-        <option value="WEEKLY">Weekly</option>
-        <option value="MONTHLY">Monthly</option>
+        <option value="DAILY">{t('settings.exports.workflow.daily')}</option>
+        <option value="WEEKLY">{t('settings.exports.workflow.weekly')}</option>
+        <option value="MONTHLY">{t('settings.exports.workflow.monthly')}</option>
       </select>
-      <Input aria-label="Local run time" onChange={(event) => setTime(event.target.value)} type="time" value={time} />
+      <Input aria-label={t('settings.exports.workflow.localTime')} onChange={(event) => setTime(event.target.value)} type="time" value={time} />
       {cadence === 'WEEKLY' ? (
         <select
-          aria-label="Weekday"
+          aria-label={t('settings.exports.workflow.weekday')}
           className="h-9 rounded-md border bg-background px-3 text-sm"
           onChange={(event) => setWeekday(Number(event.target.value))}
           value={weekday}
         >
-          <option value={0}>Sunday</option>
-          <option value={1}>Monday</option>
-          <option value={2}>Tuesday</option>
-          <option value={3}>Wednesday</option>
-          <option value={4}>Thursday</option>
-          <option value={5}>Friday</option>
-          <option value={6}>Saturday</option>
+          <option value={0}>{t('settings.exports.workflow.day.sunday')}</option>
+          <option value={1}>{t('settings.exports.workflow.day.monday')}</option>
+          <option value={2}>{t('settings.exports.workflow.day.tuesday')}</option>
+          <option value={3}>{t('settings.exports.workflow.day.wednesday')}</option>
+          <option value={4}>{t('settings.exports.workflow.day.thursday')}</option>
+          <option value={5}>{t('settings.exports.workflow.day.friday')}</option>
+          <option value={6}>{t('settings.exports.workflow.day.saturday')}</option>
         </select>
       ) : null}
       {cadence === 'MONTHLY' ? (
         <Input
-          aria-label="Day of month"
+          aria-label={t('settings.exports.workflow.monthDay')}
           max={31}
           min={1}
           onChange={(event) => setMonthday(Number(event.target.value))}
@@ -345,7 +361,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         />
       ) : null}
       <Input
-        aria-label="Runs to retain"
+        aria-label={t('settings.exports.workflow.retainRuns')}
         max={100}
         min={1}
         onChange={(event) => setRetentionCount(Number(event.target.value))}
@@ -353,7 +369,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         value={retentionCount}
       />
       <Input
-        aria-label="Retention days"
+        aria-label={t('settings.exports.workflow.retentionDays')}
         max={3650}
         min={1}
         onChange={(event) => setRetentionDays(Number(event.target.value))}
@@ -361,16 +377,16 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         value={retentionDays}
       />
       <div className="flex flex-wrap gap-2 sm:col-span-2">
-        {(Object.keys(labels) as ExportFormat[]).map((format) => (
+        {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
           <label className="flex items-center gap-1.5 text-xs" key={format}>
             <input checked={scheduleFormats.includes(format)} onChange={() => toggleScheduleFormat(format)} type="checkbox" />
-            {labels[format]}
+            {t(labelKeys[format])}
           </label>
         ))}
       </div>
       <div className="flex items-center justify-end sm:col-span-2">
         <Button disabled={!name.trim() || !timezone.trim() || create.isPending} onClick={() => create.mutate()} size="sm">
-          Create schedule
+          {t('settings.exports.workflow.createSchedule')}
         </Button>
       </div>
     </div>
@@ -378,6 +394,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
 }
 
 function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; schedule: ExportSchedule; onChanged: () => void }) {
+  const { locale, t } = useLocale();
   const update = useMutation({
     mutationFn: async () =>
       mutateData(
@@ -385,7 +402,7 @@ function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; sc
           param: { projectId, scheduleId: schedule.id },
           json: { enabled: !schedule.enabled },
         }),
-        'Could not update the schedule.',
+        t('settings.exports.workflow.scheduleUpdateError'),
       ),
     onSuccess: onChanged,
     onError: (error) => toast.error(error.message),
@@ -394,10 +411,10 @@ function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; sc
     mutationFn: async () =>
       mutateData(
         await api.app.projects[':projectId'].exports.schedules[':scheduleId'].run.$post({ param: { projectId, scheduleId: schedule.id } }),
-        'Could not run the schedule.',
+        t('settings.exports.workflow.scheduleRunError'),
       ),
     onSuccess: () => {
-      toast.success('Archive run queued.');
+      toast.success(t('settings.exports.workflow.runQueued'));
       onChanged();
     },
     onError: (error) => toast.error(error.message),
@@ -407,20 +424,22 @@ function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; sc
       <div>
         <div className="flex items-center gap-2 font-medium text-sm">
           {schedule.name}
-          <Badge variant="secondary">{schedule.enabled ? 'enabled' : 'disabled'}</Badge>
+          <Badge variant="secondary">{schedule.enabled ? t('settings.exports.workflow.enabled') : t('settings.exports.workflow.disabled')}</Badge>
         </div>
         <div className="mt-1 text-muted-foreground text-xs">
-          {schedule.cadence.toLowerCase()} at {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} {schedule.timezone}{' '}
-          · next {formatDate(schedule.nextRunAt)} · {schedule._count.jobs} runs
+          {t(`settings.exports.workflow.${schedule.cadence.toLowerCase()}` as MessageKey)} {t('settings.exports.workflow.at')}{' '}
+          {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} {schedule.timezone} ·{' '}
+          {t('settings.exports.workflow.next')} {formatDate(schedule.nextRunAt, locale)} ·{' '}
+          {t('settings.exports.workflow.runCount', { count: schedule._count.jobs })}
         </div>
         {schedule.lastError ? <div className="mt-1 text-destructive text-xs">{schedule.lastError}</div> : null}
       </div>
       <div className="flex gap-2">
         <Button disabled={run.isPending} onClick={() => run.mutate()} size="sm" variant="outline">
-          <Play className="size-3.5" /> Run now
+          <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
         </Button>
         <Button disabled={update.isPending} onClick={() => update.mutate()} size="sm" variant="outline">
-          {schedule.enabled ? 'Disable' : 'Enable'}
+          {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
         </Button>
       </div>
     </div>
