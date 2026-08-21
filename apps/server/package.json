@@ -32,6 +32,7 @@
     "@nibleaf/storage": "workspace:*",
     "@nibleaf/validators": "workspace:*",
     "@scalar/hono-api-reference": "^0.10.19",
+    "@scalar/json-magic": "0.13.0",
     "@scalar/openapi-parser": "^0.28.14",
     "@t3-oss/env-core": "^0.13.11",
     "diff": "^9.0.0",

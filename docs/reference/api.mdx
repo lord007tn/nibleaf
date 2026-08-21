@@ -70,10 +70,12 @@ Reference**, choose its navigation label and path, then use one supported source
 - read a repository-relative file from a connected public GitHub or GitLab
   repository.
 
-Nibleaf validates OpenAPI 3.x before saving. The document must be self-contained;
-bundle multi-file specifications because external `$ref` values are rejected.
-URL fetches are time- and size-bounded and reject private-network destinations,
-credentials, and unsafe redirects.
+Nibleaf validates OpenAPI 3.x before saving. It resolves and bundles public
+external `$ref` files into the stored document. Relative references work for URL
+and repository sources; uploaded or pasted documents can reference absolute public
+HTTP(S) URLs. The combined document is limited to 5 MB and 20 external files.
+Every fetch is time- and size-bounded and rejects private-network destinations,
+credentials, unsafe redirects, and DNS rebinding.
 
 Publish after saving or refreshing the specification. The validated document
 is frozen into that immutable deployment, so an older deployment or rollback

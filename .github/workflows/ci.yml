@@ -40,6 +40,9 @@ jobs:
       - name: Check documentation
         run: pnpm docs:check
 
+      - name: Check for unused source files
+        run: pnpm check:dead-code
+
       - name: Typecheck
         run: pnpm typecheck
 

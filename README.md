@@ -115,15 +115,17 @@ one of these sources:
 - a repository-relative file in the site's connected public GitHub/GitLab repository.
 
 Nibleaf parses and validates OpenAPI 3.x before saving it. Validation errors identify the
-first failing path in the settings toast. Publish the site after saving or refreshing a spec:
-the validated document is frozen into that immutable deployment, while the editable source
-configuration remains available for later refreshes. Older deployments and rollbacks keep
-their own spec revision.
+first failing path in the settings toast. Public external `$ref` files are resolved and bundled
+into the stored document: relative references work for URL and repository sources, while an
+upload can use absolute public HTTP(S) references. The combined document is limited to 5 MB
+and 20 external files; every fetch rejects credentials, private-network targets, unsafe
+redirects, and DNS rebinding.
 
-For safety, documents must be self-contained: external `$ref` values are rejected, so bundle
-multi-file specs before importing. URL fetches are size/time bounded and reject credentials,
-private-network targets, and unsafe redirects. Repository-backed specs currently support the
-public GitHub and GitLab providers; generic clone URLs can use the URL or upload option.
+Publish the site after saving or refreshing a spec. The validated, self-contained document is
+frozen into that immutable deployment, while the editable source configuration remains
+available for later refreshes. Older deployments and rollbacks keep their own spec revision.
+Repository-backed specs currently support the public GitHub and GitLab providers; generic
+clone URLs can use the URL or upload option.
 
 Scalar sends try-it requests directly from the reader's browser. Nibleaf does not provide a
 request proxy, prefill credentials, persist authentication, or log request secrets. Your API
