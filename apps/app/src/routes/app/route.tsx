@@ -1,12 +1,19 @@
-import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSession } from '@/lib/auth-client';
+import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
+  beforeLoad: async () => {
+    const routeSession = await getRouteSession();
+    if (!routeSession) {
+      throw redirect({ to: '/sign-in' });
+    }
+    return { routeSession };
+  },
   head: () => ({
     meta: [{ name: 'robots', content: 'noindex' }],
   }),
@@ -25,18 +32,14 @@ function AppRoute() {
 }
 
 function AppGuard() {
+  const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
+  const resolvedSession = resolveRouteSession(session, routeSession, isPending);
 
-  useEffect(() => {
-    if (!(isPending || session)) {
-      navigate({ to: '/sign-in' });
-    }
-  }, [isPending, session, navigate]);
-
-  if (isPending || !session) {
+  if (shouldShowInitialSessionLoader(isPending, resolvedSession)) {
     return <PageLoader />;
   }
+  if (!resolvedSession) return <Navigate to="/sign-in" />;
   return (
     <ProjectProvider>
       <Outlet />

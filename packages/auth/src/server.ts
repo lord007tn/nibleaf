@@ -28,13 +28,16 @@ const sendMail = (to: string, email: TransactionalEmail) =>
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
-/** Render and queue without making public auth response timing account-dependent. */
-function queueRenderedEmail(to: string, email: Promise<TransactionalEmail>): void {
-  void email
-    .then((message) => sendMail(to, message))
-    .catch((error) => {
-      log.warn({ error: safeEmailError(error) }, 'transactional email rendering failed');
-    });
+/** Auth codes are required delivery: do not tell the browser a code was sent
+ * until rendering succeeded and Redis accepted the email job. */
+async function deliverRequiredAuthEmail(to: string, email: Promise<TransactionalEmail>): Promise<void> {
+  try {
+    const message = await email;
+    await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message } }), ENQUEUE_TIMEOUT_MS);
+  } catch (error) {
+    log.error({ error: safeEmailError(error) }, 'required auth email enqueue failed');
+    throw error;
+  }
 }
 
 /** Workspace notification prefs are a JSON blob on Organization.metadata. Default ON. */
@@ -745,8 +748,7 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         const purpose = type === 'sign-in' ? 'sign in' : type === 'change-email' ? 'change your email' : 'verify your email';
         const subject = type === 'sign-in' ? 'Your Nibleaf sign-in code' : `Your Nibleaf code to ${purpose}`;
-        // Do not make the auth response timing depend on the mail provider.
-        queueRenderedEmail(
+        await deliverRequiredAuthEmail(
           email,
           buildTransactionalEmail({
             subject,
