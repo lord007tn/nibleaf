@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
+import { APP_URL } from '@/lib/links';
 
 /** Pull the server's message out of the `{ error: { message } }` envelope so
  *  validation failures surface instead of a generic toast. Empty when the body
@@ -12,6 +13,35 @@ async function serverErrorMessage(res: { json: () => Promise<unknown> }): Promis
   } catch {
     return '';
   }
+}
+
+export function useStartSupportAccess() {
+  return useMutation({
+    mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+      const grantResponse = await api.admin.users[':id']['impersonation-grant'].$post({
+        param: { id: userId },
+        json: { organizationId },
+      });
+      if (!grantResponse.ok) {
+        throw new Error((await serverErrorMessage(grantResponse)) || 'Could not authorize support access.');
+      }
+      const grant = (await grantResponse.json()).data;
+      const consumeResponse = await fetch(`${APP_URL}/api/auth/support-impersonation/consume`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: grant.token }),
+      });
+      if (!consumeResponse.ok) {
+        throw new Error((await serverErrorMessage(consumeResponse)) || 'The support session could not be started.');
+      }
+      return grant;
+    },
+    onSuccess: () => {
+      window.location.assign(`${APP_URL}/app`);
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Could not start support access.'),
+  });
 }
 
 export function useSetUserRole() {

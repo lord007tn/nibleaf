@@ -26,6 +26,12 @@ const adminRoutes = {
     description: 'Get privacy-minimized authentication, workspace, and activity context for one user.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  impersonateUser: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Create a short-lived, single-use grant for support access as a non-admin customer.',
+    responses: { 201: { description: 'created' }, ...errorResponses },
+  }),
   setRole: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],

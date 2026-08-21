@@ -5,6 +5,7 @@ import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@
 import { adminContentSecurityPolicy } from '@/lib/content-security-policy';
 
 const ssrNonce = new AsyncLocalStorage<string>();
+const appOrigin = process.env.VITE_APP_URL ?? (process.env.NODE_ENV === 'production' ? 'https://nibleaf.com' : 'http://localhost:4310');
 
 const startHandler = createStartHandler((context) => {
   const nonce = ssrNonce.getStore();
@@ -23,7 +24,7 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     }
 
     const headers = new Headers(response.headers);
-    headers.set('Content-Security-Policy', adminContentSecurityPolicy(nonce));
+    headers.set('Content-Security-Policy', adminContentSecurityPolicy(nonce, appOrigin));
     headers.set('cache-control', 'private, no-store');
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   });
