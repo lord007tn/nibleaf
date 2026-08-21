@@ -1,5 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Input } from '@nibleaf/design-system/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
@@ -90,8 +90,7 @@ function VerifyEmailPage() {
     toast.success(t('auth.verify.sentToast', { email }));
   };
 
-  const verifyCode = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const verifyCode = async () => {
     if (!email || otp.length !== 6) {
       setError(t('auth.verify.invalidCode'));
       return;
@@ -132,20 +131,37 @@ function VerifyEmailPage() {
       </div>
 
       {email && !search.token ? (
-        <form className="mt-6 flex flex-col gap-4" onSubmit={verifyCode}>
-          <div className="flex flex-col gap-1.5">
+        <form
+          className="mt-6 flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void verifyCode();
+          }}
+        >
+          <div className="flex flex-col items-center gap-2" dir="ltr">
             <Label htmlFor="verification-code">{t('auth.verify.codeLabel')}</Label>
-            <Input
+            <InputOTP
+              aria-invalid={Boolean(error)}
               autoComplete="one-time-code"
               autoFocus
-              className="text-center font-mono text-lg tracking-[0.35em]"
+              containerClassName="justify-center"
+              disabled={verifying}
               id="verification-code"
               inputMode="numeric"
               maxLength={6}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="000000"
+              onChange={setOtp}
+              onComplete={verifyCode}
               value={otp}
-            />
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
           </div>
           {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
           <Button className="w-full" disabled={verifying || otp.length !== 6} type="submit">

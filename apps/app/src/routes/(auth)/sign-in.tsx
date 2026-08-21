@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
@@ -153,21 +154,31 @@ function SignInPage() {
             />
           </div>
         ) : (
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col items-center gap-2" dir="ltr">
             <Label htmlFor="otp">{t('auth.otp.label')}</Label>
-            <Input
+            <InputOTP
+              aria-invalid={Boolean(error)}
               autoComplete="one-time-code"
               autoFocus
+              containerClassName="justify-center"
+              disabled={isSubmitting}
               id="otp"
               inputMode="numeric"
               maxLength={6}
-              onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              pattern="[0-9]{6}"
-              placeholder="000000"
-              required
+              onChange={setOtp}
+              onComplete={verifyCode}
               value={otp}
-            />
-            <p className="text-muted-foreground text-xs">{t('auth.otp.hint')}</p>
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            <p className="text-center text-muted-foreground text-xs">{t('auth.otp.hint')}</p>
           </div>
         )}
         {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}

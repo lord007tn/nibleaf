@@ -2,6 +2,7 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
@@ -93,8 +94,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     },
   });
 
-  const verifyCurrentEmail = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const verifyCurrentEmail = async () => {
     setIsVerifying(true);
     try {
       const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
@@ -112,8 +112,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     }
   };
 
-  const verifyEmailChange = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const verifyEmailChange = async () => {
     setIsVerifying(true);
     try {
       const res = await authClient.emailOtp.changeEmail({ newEmail, otp: otp.trim() });
@@ -191,25 +190,39 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       ) : null}
 
       {stage === 'verify-current' ? (
-        <form className="rounded-xl border border-primary/30 bg-primary/10 p-4" onSubmit={verifyCurrentEmail}>
+        <form
+          className="rounded-xl border border-primary/30 bg-primary/10 p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void verifyCurrentEmail();
+          }}
+        >
           <div className="mb-3 flex items-center gap-3 text-primary">
             <Mail className="size-4 shrink-0" />
             <span className="font-medium text-sm">{t('settings.account.email.currentVerification', { email })}</span>
           </div>
           <Label htmlFor="acct-current-email-otp">{t('auth.otp.label')}</Label>
-          <Input
+          <InputOTP
             autoComplete="one-time-code"
             autoFocus
-            className="mt-1.5 bg-background"
+            containerClassName="mt-1.5"
+            disabled={isVerifying}
             id="acct-current-email-otp"
             inputMode="numeric"
             maxLength={6}
-            onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            pattern="[0-9]{6}"
-            placeholder="000000"
-            required
+            onChange={setOtp}
+            onComplete={verifyCurrentEmail}
             value={otp}
-          />
+          >
+            <InputOTPGroup>
+              <InputOTPSlot className="bg-background" index={0} />
+              <InputOTPSlot className="bg-background" index={1} />
+              <InputOTPSlot className="bg-background" index={2} />
+              <InputOTPSlot className="bg-background" index={3} />
+              <InputOTPSlot className="bg-background" index={4} />
+              <InputOTPSlot className="bg-background" index={5} />
+            </InputOTPGroup>
+          </InputOTP>
           <div className="mt-3 flex gap-2">
             <Button disabled={isVerifying || otp.length !== 6} type="submit">
               {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.verifyCurrent')}
@@ -222,25 +235,39 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       ) : null}
 
       {stage === 'pending' ? (
-        <form className="rounded-xl border border-primary/30 bg-primary/10 p-4" onSubmit={verifyEmailChange}>
+        <form
+          className="rounded-xl border border-primary/30 bg-primary/10 p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void verifyEmailChange();
+          }}
+        >
           <div className="mb-3 flex items-center gap-3 text-primary">
             <Mail className="size-4 shrink-0" />
             <span className="font-medium text-sm">{t('settings.account.email.pendingVerification', { email: newEmail })}</span>
           </div>
           <Label htmlFor="acct-email-otp">{t('auth.otp.label')}</Label>
-          <Input
+          <InputOTP
             autoComplete="one-time-code"
             autoFocus
-            className="mt-1.5 bg-background"
+            containerClassName="mt-1.5"
+            disabled={isVerifying}
             id="acct-email-otp"
             inputMode="numeric"
             maxLength={6}
-            onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
-            pattern="[0-9]{6}"
-            placeholder="000000"
-            required
+            onChange={setOtp}
+            onComplete={verifyEmailChange}
             value={otp}
-          />
+          >
+            <InputOTPGroup>
+              <InputOTPSlot className="bg-background" index={0} />
+              <InputOTPSlot className="bg-background" index={1} />
+              <InputOTPSlot className="bg-background" index={2} />
+              <InputOTPSlot className="bg-background" index={3} />
+              <InputOTPSlot className="bg-background" index={4} />
+              <InputOTPSlot className="bg-background" index={5} />
+            </InputOTPGroup>
+          </InputOTP>
           <div className="mt-3 flex gap-2">
             <Button disabled={isVerifying || otp.length !== 6} type="submit">
               {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.confirm')}
