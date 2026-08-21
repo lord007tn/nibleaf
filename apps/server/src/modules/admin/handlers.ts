@@ -2,7 +2,10 @@ import { adminSetRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import {
+  getAdminOperations,
   getAdminOverview,
+  getAdminSite,
+  getAdminUser,
   inviteOrganizationOwner,
   listAdminSites,
   listAdminUsers,
@@ -43,12 +46,15 @@ const app = new Hono<HonoEnv>()
   .get('/overview', ...adminRoutes.overview, async (ctx) => ctx.json({ data: await getAdminOverview() }, 200))
   .get('/funnel', ...adminRoutes.funnel, async (ctx) => ctx.json({ data: await getActivationFunnel() }, 200))
   .get('/users', ...adminRoutes.users, async (ctx) => ctx.json({ data: await listAdminUsers() }, 200))
+  .get('/users/:id', ...adminRoutes.user, async (ctx) => ctx.json({ data: await getAdminUser(ctx.req.param('id')) }, 200))
   .post('/users/:id/role', ...adminRoutes.setRole, validator('json', adminSetRoleBody), async (ctx) =>
     ctx.json({ data: await setUserRole(ctx.req.param('id'), ctx.req.valid('json').role) }, 200),
   )
   .post('/users/:id/suspend', ...adminRoutes.suspendUser, async (ctx) => ctx.json({ data: await suspendUser(ctx.req.param('id')) }, 200))
   .post('/users/:id/unsuspend', ...adminRoutes.unsuspendUser, async (ctx) => ctx.json({ data: await unsuspendUser(ctx.req.param('id')) }, 200))
   .get('/sites', ...adminRoutes.sites, async (ctx) => ctx.json({ data: await listAdminSites() }, 200))
+  .get('/sites/:id', ...adminRoutes.site, async (ctx) => ctx.json({ data: await getAdminSite(ctx.req.param('id')) }, 200))
+  .get('/operations', ...adminRoutes.operations, async (ctx) => ctx.json({ data: await getAdminOperations() }, 200))
   .post('/organizations/invite', ...adminRoutes.inviteOrganization, validator('json', adminInviteOrganizationBody), async (ctx) => {
     const user = getContextUserOrThrow();
     return ctx.json({ data: await inviteOrganizationOwner(user.id, ctx.req.valid('json')) }, 201);

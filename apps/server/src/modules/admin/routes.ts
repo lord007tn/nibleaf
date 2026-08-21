@@ -20,6 +20,12 @@ const adminRoutes = {
     description: 'List every user with role and workspace count.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  user: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Get privacy-minimized authentication, workspace, and activity context for one user.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
   setRole: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],
@@ -42,6 +48,18 @@ const adminRoutes = {
     guard: adminGuard,
     tags: ['admin'],
     description: 'List every documentation site with owner and counts.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  site: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'Get operational status, usage, access, domains, deployments, and activity for one site.',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
+  operations: createRouteConfig({
+    guard: adminGuard,
+    tags: ['admin'],
+    description: 'List recent deployment, domain, export, and Git operation statuses for support triage.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
   inviteOrganization: createRouteConfig({

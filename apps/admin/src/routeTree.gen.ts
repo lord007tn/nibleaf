@@ -14,7 +14,10 @@ import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as dashboardIndexRouteImport } from './routes/(dashboard)/index'
 import { Route as dashboardUsersRouteImport } from './routes/(dashboard)/users'
 import { Route as dashboardSitesRouteImport } from './routes/(dashboard)/sites'
+import { Route as dashboardOperationsRouteImport } from './routes/(dashboard)/operations'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
+import { Route as dashboardUsersUserIdRouteImport } from './routes/(dashboard)/users.$userId'
+import { Route as dashboardSitesSiteIdRouteImport } from './routes/(dashboard)/sites.$siteId'
 
 const dashboardRouteRoute = dashboardRouteRouteImport.update({
   id: '/(dashboard)',
@@ -39,46 +42,87 @@ const dashboardSitesRoute = dashboardSitesRouteImport.update({
   path: '/sites',
   getParentRoute: () => dashboardRouteRoute,
 } as any)
+const dashboardOperationsRoute = dashboardOperationsRouteImport.update({
+  id: '/operations',
+  path: '/operations',
+  getParentRoute: () => dashboardRouteRoute,
+} as any)
 const authSignInRoute = authSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
   getParentRoute: () => authRouteRoute,
 } as any)
+const dashboardUsersUserIdRoute = dashboardUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => dashboardUsersRoute,
+} as any)
+const dashboardSitesSiteIdRoute = dashboardSitesSiteIdRouteImport.update({
+  id: '/$siteId',
+  path: '/$siteId',
+  getParentRoute: () => dashboardSitesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/sign-in': typeof authSignInRoute
-  '/sites': typeof dashboardSitesRoute
-  '/users': typeof dashboardUsersRoute
+  '/operations': typeof dashboardOperationsRoute
+  '/sites': typeof dashboardSitesRouteWithChildren
+  '/users': typeof dashboardUsersRouteWithChildren
   '/': typeof dashboardIndexRoute
+  '/sites/$siteId': typeof dashboardSitesSiteIdRoute
+  '/users/$userId': typeof dashboardUsersUserIdRoute
 }
 export interface FileRoutesByTo {
   '/sign-in': typeof authSignInRoute
-  '/sites': typeof dashboardSitesRoute
-  '/users': typeof dashboardUsersRoute
+  '/operations': typeof dashboardOperationsRoute
+  '/sites': typeof dashboardSitesRouteWithChildren
+  '/users': typeof dashboardUsersRouteWithChildren
   '/': typeof dashboardIndexRoute
+  '/sites/$siteId': typeof dashboardSitesSiteIdRoute
+  '/users/$userId': typeof dashboardUsersUserIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(auth)': typeof authRouteRouteWithChildren
   '/(dashboard)': typeof dashboardRouteRouteWithChildren
   '/(auth)/sign-in': typeof authSignInRoute
-  '/(dashboard)/sites': typeof dashboardSitesRoute
-  '/(dashboard)/users': typeof dashboardUsersRoute
+  '/(dashboard)/operations': typeof dashboardOperationsRoute
+  '/(dashboard)/sites': typeof dashboardSitesRouteWithChildren
+  '/(dashboard)/users': typeof dashboardUsersRouteWithChildren
   '/(dashboard)/': typeof dashboardIndexRoute
+  '/(dashboard)/sites/$siteId': typeof dashboardSitesSiteIdRoute
+  '/(dashboard)/users/$userId': typeof dashboardUsersUserIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/sign-in' | '/sites' | '/users' | '/'
+  fullPaths:
+    | '/sign-in'
+    | '/operations'
+    | '/sites'
+    | '/users'
+    | '/'
+    | '/sites/$siteId'
+    | '/users/$userId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/sign-in' | '/sites' | '/users' | '/'
+  to:
+    | '/sign-in'
+    | '/operations'
+    | '/sites'
+    | '/users'
+    | '/'
+    | '/sites/$siteId'
+    | '/users/$userId'
   id:
     | '__root__'
     | '/(auth)'
     | '/(dashboard)'
     | '/(auth)/sign-in'
+    | '/(dashboard)/operations'
     | '/(dashboard)/sites'
     | '/(dashboard)/users'
     | '/(dashboard)/'
+    | '/(dashboard)/sites/$siteId'
+    | '/(dashboard)/users/$userId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -123,12 +167,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardSitesRouteImport
       parentRoute: typeof dashboardRouteRoute
     }
+    '/(dashboard)/operations': {
+      id: '/(dashboard)/operations'
+      path: '/operations'
+      fullPath: '/operations'
+      preLoaderRoute: typeof dashboardOperationsRouteImport
+      parentRoute: typeof dashboardRouteRoute
+    }
     '/(auth)/sign-in': {
       id: '/(auth)/sign-in'
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof authSignInRouteImport
       parentRoute: typeof authRouteRoute
+    }
+    '/(dashboard)/users/$userId': {
+      id: '/(dashboard)/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof dashboardUsersUserIdRouteImport
+      parentRoute: typeof dashboardUsersRoute
+    }
+    '/(dashboard)/sites/$siteId': {
+      id: '/(dashboard)/sites/$siteId'
+      path: '/$siteId'
+      fullPath: '/sites/$siteId'
+      preLoaderRoute: typeof dashboardSitesSiteIdRouteImport
+      parentRoute: typeof dashboardSitesRoute
     }
   }
 }
@@ -145,15 +210,41 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
   authRouteRouteChildren,
 )
 
+interface dashboardSitesRouteChildren {
+  dashboardSitesSiteIdRoute: typeof dashboardSitesSiteIdRoute
+}
+
+const dashboardSitesRouteChildren: dashboardSitesRouteChildren = {
+  dashboardSitesSiteIdRoute: dashboardSitesSiteIdRoute,
+}
+
+const dashboardSitesRouteWithChildren = dashboardSitesRoute._addFileChildren(
+  dashboardSitesRouteChildren,
+)
+
+interface dashboardUsersRouteChildren {
+  dashboardUsersUserIdRoute: typeof dashboardUsersUserIdRoute
+}
+
+const dashboardUsersRouteChildren: dashboardUsersRouteChildren = {
+  dashboardUsersUserIdRoute: dashboardUsersUserIdRoute,
+}
+
+const dashboardUsersRouteWithChildren = dashboardUsersRoute._addFileChildren(
+  dashboardUsersRouteChildren,
+)
+
 interface dashboardRouteRouteChildren {
-  dashboardSitesRoute: typeof dashboardSitesRoute
-  dashboardUsersRoute: typeof dashboardUsersRoute
+  dashboardOperationsRoute: typeof dashboardOperationsRoute
+  dashboardSitesRoute: typeof dashboardSitesRouteWithChildren
+  dashboardUsersRoute: typeof dashboardUsersRouteWithChildren
   dashboardIndexRoute: typeof dashboardIndexRoute
 }
 
 const dashboardRouteRouteChildren: dashboardRouteRouteChildren = {
-  dashboardSitesRoute: dashboardSitesRoute,
-  dashboardUsersRoute: dashboardUsersRoute,
+  dashboardOperationsRoute: dashboardOperationsRoute,
+  dashboardSitesRoute: dashboardSitesRouteWithChildren,
+  dashboardUsersRoute: dashboardUsersRouteWithChildren,
   dashboardIndexRoute: dashboardIndexRoute,
 }
 
