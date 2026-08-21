@@ -14,7 +14,6 @@ export const MAX_OPENAPI_BYTES = 5_000_000;
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_EXTERNAL_DOCUMENTS = 20;
-const EXTERNAL_DOCUMENTS_KEY = 'x-nibleaf-external';
 
 type OpenApiObject = Record<string, unknown>;
 
@@ -148,7 +147,6 @@ export const parseAndValidateOpenApi = async (content: string, origin?: string):
       urlMap: false,
       depth: 12,
       ...(origin ? { origin } : {}),
-      externalDocumentsKey: EXTERNAL_DOCUMENTS_KEY,
       hooks: {
         onResolveError: (node) => unresolvedRefs.push(String(node.$ref ?? 'unknown reference')),
       },

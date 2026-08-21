@@ -85,8 +85,59 @@ describe('parseAndValidateOpenApi', () => {
 
     expect(network.fetch).toHaveBeenCalledOnce();
     expect((network.fetch.mock.calls[0]?.[0] as URL).toString()).toBe('https://public.example/schemas/pet.yaml');
-    expect(document).toHaveProperty('x-nibleaf-external');
+    expect(document).toHaveProperty('x-ext');
     expect(JSON.stringify(document)).not.toContain('./schemas/pet.yaml');
+  });
+
+  it('resolves local component references inside external documents', async () => {
+    network.fetch.mockResolvedValue(
+      new Response(`
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name: { type: string }
+`),
+    );
+    const document = await parseAndValidateOpenApi(
+      `
+openapi: 3.1.0
+info: { title: Pets, version: 1.0.0 }
+paths:
+  /pets:
+    $ref: ./pet-api.yaml#/paths/~1pets
+`,
+      'https://public.example/openapi.yaml',
+    );
+
+    const bundled = document as {
+      paths: { '/pets': { $ref: string } };
+      'x-ext': Record<
+        string,
+        {
+          paths?: { '/pets'?: { get?: { responses?: { '200'?: { content?: { 'application/json'?: { schema?: { $ref?: string } } } } } } } };
+          components?: { schemas?: { Pet?: unknown } };
+        }
+      >;
+    };
+    const externalDocumentKey = bundled.paths['/pets'].$ref.match(/^#\/x-ext\/([^/]+)\/paths\/~1pets$/)?.[1];
+    const externalDocument = bundled['x-ext'][externalDocumentKey as string];
+    const responseSchemaRef = externalDocument?.paths?.['/pets']?.get?.responses?.['200']?.content?.['application/json']?.schema?.$ref;
+
+    expect(externalDocumentKey).toBeTruthy();
+    expect(responseSchemaRef).toBe(`#/x-ext/${externalDocumentKey}/components/schemas/Pet`);
+    expect(externalDocument?.components?.schemas?.Pet).toMatchObject({ type: 'object' });
   });
 
   it('resolves nested relative references and enforces the external-document limit', async () => {
@@ -125,7 +176,7 @@ describe('parseAndValidateOpenApi', () => {
       parseAndValidateOpenApi(
         valid.replace('type: object\n      properties:\n        name: { type: string }', '$ref: https://public.example/pet.yaml'),
       ),
-    ).resolves.toHaveProperty('x-nibleaf-external');
+    ).resolves.toHaveProperty('x-ext');
 
     await expect(parseAndValidateOpenApi(valid.replace('type: object', '$ref: ./pet.yaml'))).rejects.toThrow(
       'Relative external references require a URL or repository source.',
