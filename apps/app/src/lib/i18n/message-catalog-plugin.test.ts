@@ -13,9 +13,13 @@ describe('message catalog compiler', () => {
   it('emits only the requested locale', () => {
     const english = buildMessageCatalogModule('en', 'auth');
     const arabic = buildMessageCatalogModule('ar', 'auth');
-    expect(english).toContain('Log in');
-    expect(english).not.toContain('تسجيل الدخول');
-    expect(arabic).toContain('تسجيل الدخول');
-    expect(arabic).not.toContain('Log in');
+    expect(english).toContain("'auth.signIn.submit': 'Log in'");
+    expect(english).toContain("'auth.google.signIn': 'Log in with Google'");
+    expect(english).not.toContain("'auth.signIn.submit': 'تسجيل الدخول'");
+    expect(english).not.toContain("'auth.google.signIn': 'تسجيل الدخول باستخدام Google'");
+    expect(arabic).toContain("'auth.signIn.submit': 'تسجيل الدخول'");
+    expect(arabic).toContain("'auth.google.signIn': 'تسجيل الدخول باستخدام Google'");
+    expect(arabic).not.toContain("'auth.signIn.submit': 'Log in'");
+    expect(arabic).not.toContain("'auth.google.signIn': 'Log in with Google'");
   });
 });
