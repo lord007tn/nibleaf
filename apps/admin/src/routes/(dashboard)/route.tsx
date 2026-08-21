@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { useAdminOverview } from '@/hooks/api/queries';
+import { AdminApiError, useAdminOverview } from '@/hooks/api/queries';
 import { signOut, useSession } from '@/lib/auth-client';
 import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 
@@ -46,7 +46,7 @@ function AdminGate() {
     return <PageLoader />;
   }
   if (overview.isError) {
-    const unauthorized = overview.error instanceof Error && ['401', '403'].includes(overview.error.message);
+    const unauthorized = overview.error instanceof AdminApiError && [401, 403].includes(overview.error.status);
     return (
       <FullScreen>
         <div className="flex flex-col items-center gap-3 text-center">

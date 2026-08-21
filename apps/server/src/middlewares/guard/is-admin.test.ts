@@ -13,8 +13,10 @@ describe('platform admin guard', () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it.each([{ role: 'user' }, null])('rejects non-admin and missing accounts', async (record) => {
+  it.each([{ role: 'user' }, null])('rejects the account record %j', async (record) => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(record as never);
-    await expect(isAdmin({} as never, vi.fn())).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    const next = vi.fn(async () => undefined);
+    await expect(isAdmin({} as never, next)).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    expect(next).not.toHaveBeenCalled();
   });
 });

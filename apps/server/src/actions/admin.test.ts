@@ -60,8 +60,8 @@ describe('admin operations privacy boundary', () => {
 
   it('selects only the domain fields needed for operations', async () => {
     await getAdminOperations();
-    expect(mocks.prisma.domain.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ select: expect.not.objectContaining({ providerData: expect.anything(), verificationToken: expect.anything() }) }),
-    );
+    const select = mocks.prisma.domain.findMany.mock.calls[0]?.[0].select;
+    expect(select).not.toHaveProperty('providerData');
+    expect(select).not.toHaveProperty('verificationToken');
   });
 });

@@ -106,7 +106,7 @@ export async function getAdminOverview() {
     prisma.project.count(),
     prisma.deployment.count(),
     prisma.deployment.count({ where: { status: 'READY' } }),
-    prisma.user.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+    prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.user.count({ where: { emailVerified: true } }),
     prisma.user.count({ where: { suspendedAt: { not: null } } }),
     prisma.deployment.count({ where: { status: 'FAILED', createdAt: { gte: dayAgo } } }),
@@ -192,12 +192,13 @@ export async function getAdminUser(userId: string) {
       updatedAt: true,
       accounts: { select: { providerId: true, createdAt: true, updatedAt: true } },
       sessions: {
-        where: { expiresAt: { gt: now } },
         orderBy: { updatedAt: 'desc' },
+        take: 500,
         select: { updatedAt: true, expiresAt: true },
       },
       members: {
         orderBy: { createdAt: 'desc' },
+        take: 500,
         select: {
           id: true,
           role: true,
@@ -208,6 +209,7 @@ export async function getAdminUser(userId: string) {
               name: true,
               metadata: true,
               projects: {
+                orderBy: { createdAt: 'asc' },
                 take: 1,
                 select: {
                   id: true,
@@ -244,6 +246,11 @@ export async function getAdminUser(userId: string) {
     ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true } })
     : [];
   const projectNames = new Map(eventProjects.map((project) => [project.id, project.name]));
+  const activeSessions = user.sessions.filter((session) => session.expiresAt > now);
+  const nextExpiry = activeSessions.reduce<Date | null>((earliest, session) => {
+    if (!earliest || session.expiresAt < earliest) return session.expiresAt;
+    return earliest;
+  }, null);
 
   return {
     id: user.id,
@@ -261,9 +268,9 @@ export async function getAdminUser(userId: string) {
       updatedAt: account.updatedAt.toISOString(),
     })),
     sessions: {
-      active: user.sessions.length,
+      active: activeSessions.length,
       lastActiveAt: user.sessions[0]?.updatedAt.toISOString() ?? null,
-      nextExpiryAt: user.sessions[0]?.expiresAt.toISOString() ?? null,
+      nextExpiryAt: nextExpiry?.toISOString() ?? null,
     },
     workspaces: user.members.map((member) => {
       const project = member.organization.projects[0];
@@ -353,40 +360,38 @@ export async function listAdminSites() {
     orderBy: { createdAt: 'desc' },
     take: 500,
   });
-  return sites.map((s) => ({
-    ...(() => {
-      const latestDeployment = s.deployments[0];
-      return {
-        latestDeployment: latestDeployment
-          ? {
-              version: latestDeployment.version,
-              status: latestDeployment.status,
-              at: (latestDeployment.completedAt ?? latestDeployment.createdAt).toISOString(),
-            }
-          : null,
-      };
-    })(),
-    id: s.id,
-    name: s.name,
-    slug: s.slug,
-    org: s.organization?.name ?? '—',
-    organizationId: s.organization?.id ?? null,
-    plan: parseWorkspaceMetadata(s.organization?.metadata ?? null).plan,
-    owner: s.organization?.members[0]?.user.email ?? s.organization?.invitations[0]?.email ?? '—',
-    ownerStatus: s.organization?.members[0] ? ('active' as const) : s.organization?.invitations[0] ? ('invited' as const) : ('missing' as const),
-    ownerInvitationId: s.organization?.invitations[0]?.id ?? null,
-    pages: s._count.pages,
-    deployments: s._count.deployments,
-    languages: s._count.languages,
-    members: s.organization?._count.members ?? 0,
-    domains: s.domains.length,
-    domainIssues: s.domains.filter((domain) => domain.dnsStatus === 'ERROR' || domain.sslStatus === 'ERROR').length,
-    accessMode: s.accessMode,
-    takedownAt: s.takedownAt?.toISOString() ?? null,
-    takedownReason: s.takedownReason,
-    createdAt: s.createdAt.toISOString(),
-    updatedAt: s.updatedAt.toISOString(),
-  }));
+  return sites.map((s) => {
+    const latestDeployment = s.deployments[0];
+    return {
+      latestDeployment: latestDeployment
+        ? {
+            version: latestDeployment.version,
+            status: latestDeployment.status,
+            at: (latestDeployment.completedAt ?? latestDeployment.createdAt).toISOString(),
+          }
+        : null,
+      id: s.id,
+      name: s.name,
+      slug: s.slug,
+      org: s.organization?.name ?? '—',
+      organizationId: s.organization?.id ?? null,
+      plan: parseWorkspaceMetadata(s.organization?.metadata ?? null).plan,
+      owner: s.organization?.members[0]?.user.email ?? s.organization?.invitations[0]?.email ?? '—',
+      ownerStatus: s.organization?.members[0] ? ('active' as const) : s.organization?.invitations[0] ? ('invited' as const) : ('missing' as const),
+      ownerInvitationId: s.organization?.invitations[0]?.id ?? null,
+      pages: s._count.pages,
+      deployments: s._count.deployments,
+      languages: s._count.languages,
+      members: s.organization?._count.members ?? 0,
+      domains: s.domains.length,
+      domainIssues: s.domains.filter((domain) => domain.dnsStatus === 'ERROR' || domain.sslStatus === 'ERROR').length,
+      accessMode: s.accessMode,
+      takedownAt: s.takedownAt?.toISOString() ?? null,
+      takedownReason: s.takedownReason,
+      createdAt: s.createdAt.toISOString(),
+      updatedAt: s.updatedAt.toISOString(),
+    };
+  });
 }
 
 /** Full operational context for one site/workspace. Sensitive document content,

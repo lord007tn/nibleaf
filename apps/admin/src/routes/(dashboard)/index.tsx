@@ -38,7 +38,8 @@ function buildSignupSeries(users: AdminUser[] | undefined): { date: string; sign
 const chartConfig = { signups: { label: 'New customers', color: 'var(--chart-1)' } } satisfies ChartConfig;
 
 function OverviewPage() {
-  const { data, isPending } = useAdminOverview();
+  const overview = useAdminOverview();
+  const { data, isPending } = overview;
   const users = useAdminUsers();
   const sites = useAdminSites();
   const funnel = useAdminFunnel();
@@ -64,11 +65,11 @@ function OverviewPage() {
     { label: 'Verified customers', value: data?.verifiedUsers, hint: `${verifiedPct}% of all customers`, icon: CheckCircle2 },
   ];
 
-  if (users.isError || sites.isError || funnel.isError) {
+  if (overview.isError || users.isError || sites.isError || funnel.isError) {
     return (
       <DataError
         message="One or more overview data sources could not be loaded."
-        retry={() => void Promise.all([users.refetch(), sites.refetch(), funnel.refetch()])}
+        retry={() => void Promise.all([overview.refetch(), users.refetch(), sites.refetch(), funnel.refetch()])}
       />
     );
   }
@@ -87,9 +88,11 @@ function OverviewPage() {
             Operator attention
           </CardTitle>
           <CardDescription>
-            {attentionCount > 0
-              ? `${attentionCount} current signals need review across recent failures, domains, moderation, invitations, exports, and Git.`
-              : 'No current failure or moderation signals in the operational summary.'}
+            {isPending
+              ? 'Loading operational signals…'
+              : attentionCount > 0
+                ? `${attentionCount} current signals need review across recent failures, domains, moderation, invitations, exports, and Git.`
+                : 'No current failure or moderation signals in the operational summary.'}
           </CardDescription>
           <CardAction>
             <Button nativeButton={false} render={<Link to="/operations" />} size="sm" variant="outline">
@@ -108,7 +111,7 @@ function OverviewPage() {
           ].map(([label, value]) => (
             <div className="rounded-lg border p-3" key={String(label)}>
               <p className="text-muted-foreground text-xs">{label}</p>
-              <p className="mt-1 font-semibold text-xl tabular-nums">{value}</p>
+              <p className="mt-1 font-semibold text-xl tabular-nums">{isPending ? '—' : value}</p>
             </div>
           ))}
         </CardContent>

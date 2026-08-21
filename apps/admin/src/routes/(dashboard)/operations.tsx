@@ -99,13 +99,13 @@ function OperationsPage() {
           <CardDescription>Raw errors, document content, repository locations, provider payloads, and credentials are not exposed.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Operational queue">
+          <fieldset className="flex gap-2 overflow-x-auto pb-1">
+            <legend className="sr-only">Operational queue</legend>
             {queueButtons.map((item) => (
               <Button
-                aria-selected={queue === item.id}
+                aria-pressed={queue === item.id}
                 key={item.id}
                 onClick={() => setQueue(item.id)}
-                role="tab"
                 size="sm"
                 variant={queue === item.id ? 'default' : 'outline'}
               >
@@ -114,7 +114,7 @@ function OperationsPage() {
                 <Badge variant={queue === item.id ? 'secondary' : 'outline'}>{item.count}</Badge>
               </Button>
             ))}
-          </div>
+          </fieldset>
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <label className="relative" htmlFor="operations-search">
               <span className="sr-only">Search operations</span>

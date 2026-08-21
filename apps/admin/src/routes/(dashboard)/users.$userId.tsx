@@ -146,7 +146,9 @@ function UserDetailPage() {
                         <dt className="text-muted-foreground">Domains</dt>
                         <dd className="mt-0.5 font-medium">
                           {workspace.project.domains}
-                          {workspace.project.domainIssues ? ` · ${workspace.project.domainIssues} issue` : ''}
+                          {workspace.project.domainIssues
+                            ? ` · ${workspace.project.domainIssues} issue${workspace.project.domainIssues === 1 ? '' : 's'}`
+                            : ''}
                         </dd>
                       </div>
                       <div>

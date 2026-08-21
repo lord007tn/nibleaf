@@ -210,6 +210,7 @@ function UsersPage() {
                   </dl>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
+                      disabled={setRole.isPending && setRole.variables?.id === user.id}
                       onClick={() => setRole.mutate({ id: user.id, role: user.role === 'admin' ? 'user' : 'admin' })}
                       size="sm"
                       variant="outline"
@@ -217,7 +218,12 @@ function UsersPage() {
                       {user.role === 'admin' ? 'Revoke admin' : 'Make admin'}
                     </Button>
                     {user.role !== 'admin' ? (
-                      <Button onClick={() => onToggleSuspend(user)} size="sm" variant={user.suspendedAt ? 'outline' : 'destructive'}>
+                      <Button
+                        disabled={suspend.isPending && suspend.variables?.id === user.id}
+                        onClick={() => onToggleSuspend(user)}
+                        size="sm"
+                        variant={user.suspendedAt ? 'outline' : 'destructive'}
+                      >
                         {user.suspendedAt ? 'Unsuspend' : 'Suspend'}
                       </Button>
                     ) : (

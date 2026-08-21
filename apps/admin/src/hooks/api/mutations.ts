@@ -72,6 +72,7 @@ export function useTakedownSite() {
       qc.invalidateQueries({ queryKey: ['admin', 'sites'] });
       qc.invalidateQueries({ queryKey: ['admin', 'sites', id] });
       qc.invalidateQueries({ queryKey: ['admin', 'operations'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'overview'] });
       toast.success(takedown ? 'Site taken down' : 'Site restored');
     },
     onError: (err, { takedown }) => {
