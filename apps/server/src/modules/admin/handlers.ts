@@ -2,6 +2,7 @@ import { adminSetRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import {
+  createAdminImpersonationGrant,
   getAdminOperations,
   getAdminOverview,
   getAdminSite,
@@ -41,12 +42,17 @@ const adminInviteOrganizationBody = z
     delivery: z.enum(['email', 'link']).default('email'),
   })
   .strict();
+const adminImpersonationBody = z.object({ organizationId: z.string().min(1).optional() }).strict();
 
 const app = new Hono<HonoEnv>()
   .get('/overview', ...adminRoutes.overview, async (ctx) => ctx.json({ data: await getAdminOverview() }, 200))
   .get('/funnel', ...adminRoutes.funnel, async (ctx) => ctx.json({ data: await getActivationFunnel() }, 200))
   .get('/users', ...adminRoutes.users, async (ctx) => ctx.json({ data: await listAdminUsers() }, 200))
   .get('/users/:id', ...adminRoutes.user, async (ctx) => ctx.json({ data: await getAdminUser(ctx.req.param('id')) }, 200))
+  .post('/users/:id/impersonation-grant', ...adminRoutes.impersonateUser, validator('json', adminImpersonationBody), async (ctx) => {
+    const actor = getContextUserOrThrow();
+    return ctx.json({ data: await createAdminImpersonationGrant(actor.id, ctx.req.param('id'), ctx.req.valid('json').organizationId) }, 201);
+  })
   .post('/users/:id/role', ...adminRoutes.setRole, validator('json', adminSetRoleBody), async (ctx) =>
     ctx.json({ data: await setUserRole(ctx.req.param('id'), ctx.req.valid('json').role) }, 200),
   )

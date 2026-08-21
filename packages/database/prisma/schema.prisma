@@ -53,8 +53,12 @@ model Session {
   userId               String
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   activeOrganizationId String?
+  /// Present only for short-lived support sessions created by a platform admin.
+  /// The customer app uses it to show a persistent warning and a safe exit.
+  impersonatedBy       String?
 
   @@index([userId])
+  @@index([impersonatedBy])
   @@map("session")
 }
 

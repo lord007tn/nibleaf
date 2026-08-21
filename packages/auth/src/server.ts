@@ -10,6 +10,7 @@ import { APIError } from 'better-auth/api';
 import { emailOTP, organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
 import { googleOAuthEnabled } from './providers';
+import { supportImpersonation } from './support-impersonation';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -731,6 +732,7 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    supportImpersonation(),
     emailOTP({
       // Customer sign-in doubles as passwordless sign-up. The API gateway adds
       // an admin-origin guard so this can never create an admin account.
@@ -853,6 +855,12 @@ export const auth = betterAuth({
         },
         after: async (session) => {
           try {
+            // Support access is an explicit admin workflow, not a customer
+            // sign-in. It has its own audit event and must not trigger a false
+            // "new device" security email to the customer.
+            if (session.impersonatedBy) {
+              return;
+            }
             const known = await prisma.session.count({
               where: { userId: session.userId, id: { not: session.id }, ...(session.ipAddress ? { ipAddress: session.ipAddress } : {}) },
             });

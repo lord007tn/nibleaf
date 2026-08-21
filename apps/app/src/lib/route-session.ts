@@ -2,7 +2,7 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 
 export type RouteSession = {
-  session?: { id?: string | null; userId?: string | null };
+  session?: { id?: string | null; userId?: string | null; impersonatedBy?: string | null };
   user?: { email?: string | null; id?: string | null; name?: string | null; role?: string | null };
 } | null;
 
