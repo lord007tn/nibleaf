@@ -85,8 +85,45 @@ describe('parseAndValidateOpenApi', () => {
 
     expect(network.fetch).toHaveBeenCalledOnce();
     expect((network.fetch.mock.calls[0]?.[0] as URL).toString()).toBe('https://public.example/schemas/pet.yaml');
-    expect(document).toHaveProperty('x-nibleaf-external');
+    expect(document).toHaveProperty('x-ext');
     expect(JSON.stringify(document)).not.toContain('./schemas/pet.yaml');
+  });
+
+  it('resolves local component references inside external documents', async () => {
+    network.fetch.mockResolvedValue(
+      new Response(`
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name: { type: string }
+`),
+    );
+    const document = await parseAndValidateOpenApi(
+      `
+openapi: 3.1.0
+info: { title: Pets, version: 1.0.0 }
+paths:
+  /pets:
+    $ref: ./pet-api.yaml#/paths/~1pets
+`,
+      'https://public.example/openapi.yaml',
+    );
+
+    expect(document).toHaveProperty('x-ext');
+    expect(JSON.stringify(document)).not.toContain('#/components/schemas/Pet');
+    expect(JSON.stringify(document)).toContain('#/x-ext/');
   });
 
   it('resolves nested relative references and enforces the external-document limit', async () => {
@@ -125,7 +162,7 @@ describe('parseAndValidateOpenApi', () => {
       parseAndValidateOpenApi(
         valid.replace('type: object\n      properties:\n        name: { type: string }', '$ref: https://public.example/pet.yaml'),
       ),
-    ).resolves.toHaveProperty('x-nibleaf-external');
+    ).resolves.toHaveProperty('x-ext');
 
     await expect(parseAndValidateOpenApi(valid.replace('type: object', '$ref: ./pet.yaml'))).rejects.toThrow(
       'Relative external references require a URL or repository source.',
