@@ -75,6 +75,7 @@ actually consumes. Never commit a populated `.env`.
 | `POSTMARK_API_KEY` | For Postmark | Empty | Server token; preferred when set. |
 | `POSTMARK_MESSAGE_STREAM` | No | Empty | Postmark stream. |
 | `SMTP_URL` | For SMTP fallback | Empty | Full SMTP connection URL. Protect it as a secret. |
+| `EMAIL_DELIVERY_REQUIRED` | No | `true` in production | Return an unhealthy worker status and fail queued email jobs when no provider is configured. |
 
 ### Google OAuth
 

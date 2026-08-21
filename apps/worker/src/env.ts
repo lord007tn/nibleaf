@@ -13,6 +13,10 @@ export const env = createEnv({
     POSTMARK_API_KEY: z.string().optional(),
     POSTMARK_MESSAGE_STREAM: z.string().optional(),
     SMTP_URL: z.string().optional(),
+    EMAIL_DELIVERY_REQUIRED: z
+      .string()
+      .optional()
+      .transform((value) => value === 'true' || value === '1'),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),

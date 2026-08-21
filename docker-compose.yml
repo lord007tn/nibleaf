@@ -67,6 +67,7 @@ x-service-env: &service-env
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   SMTP_URL: ${SMTP_URL:-}
+  EMAIL_DELIVERY_REQUIRED: ${EMAIL_DELIVERY_REQUIRED:-false}
   # Basic auth for the worker's BullMQ dashboard at :4312/jobs. Set BOTH —
   # this compose file publishes the worker port, and without credentials the
   # dashboard is UNAUTHENTICATED.
