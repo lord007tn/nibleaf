@@ -13,6 +13,7 @@ import { googleOAuthEnabled } from './providers';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
+const OTP_EXPIRY_SECONDS = 10 * 60;
 
 const sanitizeEmailErrorField = (value: string) => value.replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500);
 
@@ -736,8 +737,10 @@ export const auth = betterAuth({
         enabled: true,
         verifyCurrentEmail: true,
       },
-      expiresIn: 10 * 60,
-      allowedAttempts: 5,
+      expiresIn: OTP_EXPIRY_SECONDS,
+      allowedAttempts: 3,
+      rateLimit: { window: 5 * 60, max: 3 },
+      resendStrategy: 'rotate',
       storeOTP: 'hashed',
       async sendVerificationOTP({ email, otp, type }) {
         const purpose = type === 'sign-in' ? 'sign in' : type === 'change-email' ? 'change your email' : 'verify your email';

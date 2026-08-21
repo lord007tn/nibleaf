@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -55,6 +56,7 @@ function SignInPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
   const googleEnabled = useGoogleEnabled();
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -79,6 +81,7 @@ function SignInPage() {
         return;
       }
       setCodeSent(true);
+      startCountdown();
     } catch {
       setError(t('auth.otp.sendError'));
     } finally {
@@ -184,6 +187,7 @@ function SignInPage() {
                 setCodeSent(false);
                 setOtp('');
                 setError(null);
+                resetCountdown();
               }}
               size="sm"
               type="button"
@@ -191,8 +195,8 @@ function SignInPage() {
             >
               <ArrowLeft className="size-4" /> {t('auth.otp.differentEmail')}
             </Button>
-            <Button disabled={isSubmitting} onClick={requestCode} size="sm" type="button" variant="ghost">
-              {t('auth.otp.resend')}
+            <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
+              {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}
             </Button>
           </div>
         ) : null}
