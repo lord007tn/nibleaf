@@ -4,6 +4,7 @@ import {
   buildNavTree,
   defaultLanguage,
   extractHeadings,
+  isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
   pageDescription,
@@ -413,12 +414,7 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   // excluded entirely — their pages aren't served, so they must not be linked.
   const alternates = servedLanguages.map((l) => {
     const sibling = versionPages.find(
-      (p) =>
-        p.languageCode === l.code &&
-        p.kind === 'PAGE' &&
-        !p.hidden &&
-        p.config?.seo?.noindex !== true &&
-        (page.translationKey ? p.translationKey === page.translationKey : p.path === page.path),
+      (p) => p.languageCode === l.code && p.kind === 'PAGE' && !p.hidden && p.config?.seo?.noindex !== true && isPageTranslation(page, p),
     );
     const languageIndexable = l.config?.seo?.allowIndex !== false;
     return { code: l.code, isDefault: l.isDefault, path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null };

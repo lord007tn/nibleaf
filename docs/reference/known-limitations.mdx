@@ -34,6 +34,12 @@ dedicated branch, draft pull request, and explicit conflict reconciliation.
 Public GitHub and GitLab repositories can still serve one-way import and
 repository-backed OpenAPI workflows.
 
+The Mintlify importer reads a public GitHub source repository, not a hosted
+Mintlify Cloud editor URL. Each run creates at most 500 navigation nodes,
+including groups and pages. Larger sources need an explicit split-and-reconcile
+plan; a successful import summary is not proof that the original site is at or
+below the boundary.
+
 Before using a Git-centered workflow, test pull, push, conflict reconciliation,
 branch protection, and preview behavior with the same provider and repository
 shape you will use. Name one authoritative source and document recovery when
@@ -76,7 +82,10 @@ that every inflected or synonymous term resolves to the intended page. Build
 acceptance queries from real reader vocabulary.
 
 Each language has an independent page tree. Nibleaf does not translate source
-content automatically or guarantee parity between languages.
+content automatically or guarantee parity between languages. The Languages
+settings report default-branch coverage using explicit translation keys and the
+same-path fallback used by published `hreflang`; operators still own translation
+quality and cutover parity.
 
 ## Report a blocking gap
 

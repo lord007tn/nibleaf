@@ -18,6 +18,15 @@ export interface Language {
    *  published site. Optional for rows fetched before the flag existed. */
   enabled?: boolean;
   position: number;
+  /** Default-branch PAGE coverage compared with the default language. */
+  coverage?: {
+    pageCount: number;
+    sourcePageCount: number;
+    matchedPages: number;
+    missingPages: number;
+    extraPages: number;
+    percentage: number | null;
+  };
 }
 
 export interface Project {

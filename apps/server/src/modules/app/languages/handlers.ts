@@ -1,6 +1,6 @@
 import { createLanguageBody, updateLanguageBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { createLanguage, deleteLanguage, listLanguages, updateLanguage } from '@/actions/languages';
+import { createLanguage, deleteLanguage, listLanguagesWithCoverage, updateLanguage } from '@/actions/languages';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -16,7 +16,7 @@ const projectScope = async (ctx: { req: { param: (k: string) => string } }) => {
 const app = new Hono<HonoEnv>()
   .get('/', ...languagesRoutes.list, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await listLanguages(projectId) }, 200);
+    return ctx.json({ data: await listLanguagesWithCoverage(projectId) }, 200);
   })
   .post('/', ...languagesRoutes.create, validator('json', createLanguageBody), async (ctx) => {
     const projectId = await projectScope(ctx);

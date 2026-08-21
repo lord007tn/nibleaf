@@ -5,6 +5,7 @@ import {
   defaultLanguage,
   extractHeadings,
   interpolateVariables,
+  isPageTranslation,
   mergeLanguageChrome,
   pageDescription,
   projectSlugFromSubdomainHost,
@@ -17,6 +18,18 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from './site';
+
+describe('isPageTranslation', () => {
+  it('uses an explicit translation key when localized paths differ', () => {
+    expect(isPageTranslation({ path: 'guides/start', translationKey: 'start' }, { path: 'ar/bidaya', translationKey: 'start' })).toBe(true);
+    expect(isPageTranslation({ path: 'guides/start', translationKey: 'start' }, { path: 'guides/start', translationKey: null })).toBe(false);
+  });
+
+  it('falls back to the same path for pages without a translation key', () => {
+    expect(isPageTranslation({ path: 'guides/start', translationKey: null }, { path: 'guides/start', translationKey: 'localized-start' })).toBe(true);
+    expect(isPageTranslation({ path: 'guides/start', translationKey: null }, { path: 'ar/bidaya', translationKey: null })).toBe(false);
+  });
+});
 
 describe('extractHeadings', () => {
   it('extracts h1–h4 with depths and ignores h5+', () => {
