@@ -1,16 +1,24 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
-import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
-import { type ReactNode, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAdminOverview } from '@/hooks/api/queries';
 import { signOut, useSession } from '@/lib/auth-client';
+import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 
 export const Route = createFileRoute('/(dashboard)')({
+  beforeLoad: async () => {
+    const routeSession = await getRouteSession();
+    if (!routeSession) {
+      throw redirect({ to: '/sign-in' });
+    }
+    return { routeSession };
+  },
   component: DashboardRoute,
 });
 
@@ -19,17 +27,14 @@ function FullScreen({ children }: { children: ReactNode }) {
 }
 
 function DashboardRoute() {
+  const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isPending && !session) {
-      navigate({ to: '/sign-in' });
-    }
-  }, [isPending, session, navigate]);
+  const resolvedSession = resolveRouteSession(session, routeSession, isPending);
 
-  if (isPending || !session) {
+  if (shouldShowInitialSessionLoader(isPending, resolvedSession)) {
     return <PageLoader />;
   }
+  if (!resolvedSession) return <Navigate to="/sign-in" />;
   return <AdminGate />;
 }
 

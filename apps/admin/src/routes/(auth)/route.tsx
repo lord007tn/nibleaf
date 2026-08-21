@@ -1,25 +1,23 @@
-import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
-import { PageLoader } from '@/components/page-loader';
+import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
 import { useSession } from '@/lib/auth-client';
+import { getRouteSession } from '@/lib/route-session';
 
 export const Route = createFileRoute('/(auth)')({
+  beforeLoad: async () => {
+    if (await getRouteSession()) {
+      throw redirect({ to: '/' });
+    }
+  },
   component: AuthRoute,
 });
 
 /** Reverse guard: a signed-in user never sees sign-in — sent to the dashboard. */
 function AuthRoute() {
-  const { data: session, isPending } = useSession();
-  const navigate = useNavigate();
+  const { data: session } = useSession();
 
-  useEffect(() => {
-    if (!isPending && session) {
-      navigate({ to: '/' });
-    }
-  }, [isPending, session, navigate]);
-
-  if (isPending || session) {
-    return <PageLoader />;
+  // Keep the OTP screen mounted while the session hook revalidates on focus.
+  if (session) {
+    return <Navigate to="/" />;
   }
   return <Outlet />;
 }
