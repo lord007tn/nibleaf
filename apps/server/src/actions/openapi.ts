@@ -245,7 +245,13 @@ const normalizePublicUrl = async (value: string, label: string): Promise<PinnedP
 const pinnedDispatcher = ({ address, family }: PinnedPublicUrl): Agent =>
   new Agent({
     connect: {
-      lookup: (_hostname, _options, callback) => callback(null, address, family),
+      lookup: (_hostname, options, callback) => {
+        if (options.all) {
+          callback(null, [{ address, family }]);
+          return;
+        }
+        callback(null, address, family);
+      },
     },
   });
 
