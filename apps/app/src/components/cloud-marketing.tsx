@@ -157,11 +157,10 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
               {resolvedTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
             </button>
             <a className="hidden h-9 items-center rounded-md px-3 text-sm hover:bg-muted sm:inline-flex" href="/sign-in">
-              Sign in
+              Log in
             </a>
-            <a aria-label="Get started" className={cn(primaryButton, 'h-9 px-3')} href="/sign-up">
-              <span className="sm:hidden">Start</span>
-              <span className="hidden sm:inline">Get started</span>
+            <a aria-label="Create account" className={cn(primaryButton, 'h-9 px-2.5 text-xs sm:px-3 sm:text-sm')} href="/sign-up">
+              Create account
             </a>
           </div>
         </div>
@@ -207,7 +206,7 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
-              Start on Cloud <ArrowRight className="size-4" />
+              Create free account <ArrowRight className="size-4" />
             </a>
             <a className={outlineButton} href="/pricing">
               View pricing
@@ -231,7 +230,7 @@ function Announcement() {
       <Sparkles className="size-3.5 text-primary" />
       <span>Free cloud beta or self-host with the public AGPL-3.0 release.</span>
       <span className="inline-flex items-center gap-1 font-medium text-foreground">
-        Learn more <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
+        Compare options <ArrowRight className="size-3 transition-transform group-hover:translate-x-0.5" />
       </span>
     </a>
   );
@@ -269,7 +268,7 @@ function Hero({ stars }: { stars: number }) {
               className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-4 font-medium text-sm transition-colors hover:bg-muted"
               href="/self-hosting"
             >
-              Guide <ArrowRight className="size-4" />
+              Self-hosting guide <ArrowRight className="size-4" />
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
@@ -544,7 +543,7 @@ function ChooseYourPath() {
             ))}
           </ul>
           <a className={`${primaryButton} mt-7 w-full`} href="/sign-up">
-            Start on Cloud <ArrowRight className="size-4" />
+            Create free account <ArrowRight className="size-4" />
           </a>
           <p className="mt-3 text-center text-muted-foreground text-xs">No credit card required.</p>
         </div>
@@ -700,7 +699,7 @@ function FinalCta() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
-              Get started free <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+              Create free account <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
             <a className={invertedOutlineButton} href="/self-hosting">
               <Server className="size-4" /> Self-hosting guide

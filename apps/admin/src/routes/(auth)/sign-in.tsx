@@ -129,15 +129,15 @@ function SignInPage() {
           )}
           {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
           <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent ? otp.length !== 6 : !email.trim())} type="submit">
-            {isSubmitting ? (codeSent ? 'Verifying…' : 'Sending…') : codeSent ? 'Verify and sign in' : 'Email me a code'}
+            {isSubmitting ? (codeSent ? 'Verifying…' : 'Sending…') : 'Log in'}
           </Button>
           {codeSent ? (
             <div className="flex items-center justify-between">
               <Button onClick={useDifferentEmail} size="sm" type="button" variant="ghost">
-                <ArrowLeft className="size-4" /> Different email
+                <ArrowLeft className="size-4" /> Change email
               </Button>
               <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
-                {resendIn > 0 ? `Send a new code in ${resendIn}s` : 'Send a new code'}
+                {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
               </Button>
             </div>
           ) : null}

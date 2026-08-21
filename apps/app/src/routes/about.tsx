@@ -112,7 +112,7 @@ function AboutPage() {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={`${primaryButton} group`} href="/sign-up">
-                Get started free
+                Create free account
                 <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </a>
               <a className={invertedOutlineButton} href="/self-hosting">

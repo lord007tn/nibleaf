@@ -119,7 +119,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             ))}
           </ul>
           <a className={`${primaryButton} mt-7`} href="/sign-up">
-            Start on Cloud <ArrowRight className="size-4" />
+            Create free account <ArrowRight className="size-4" />
           </a>
           <p className="mt-3 text-center text-muted-foreground text-xs">Live in about 60 seconds.</p>
         </div>
@@ -241,7 +241,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a className={primaryButton} href="/sign-up">
-                Get started free <ArrowRight className="size-4" />
+                Create free account <ArrowRight className="size-4" />
               </a>
               <a className={invertedOutlineButton} href="/self-hosting">
                 Self-hosting guide

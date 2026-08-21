@@ -400,7 +400,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
                   onClick={() => setConnectStep(3)}
                 >
-                  Continue <ArrowRight className="size-4" />
+                  Review connection <ArrowRight className="size-4" />
                 </Button>
               )
             ) : (

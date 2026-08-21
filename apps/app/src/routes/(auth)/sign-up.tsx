@@ -155,7 +155,7 @@ function SignUpPage() {
             variant="outline"
           >
             <GoogleIcon className="size-4" />
-            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.continue')}
+            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.signUp')}
           </Button>
           <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
             <span className="h-px flex-1 bg-border" />
