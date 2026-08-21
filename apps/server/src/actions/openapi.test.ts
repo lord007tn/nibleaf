@@ -193,6 +193,23 @@ describe('parseAndValidateOpenApi', () => {
       { address: '203.0.113.11', family: 4 },
       { address: '198.51.100.22', family: 4 },
     ]);
+
+    const pinnedLists = await Promise.all(
+      network.agentOptions.map(
+        (options) =>
+          new Promise<Array<{ address: string; family: number }>>((resolve, reject) => {
+            options.connect?.lookup?.(
+              'rebinding.example',
+              { all: true },
+              (error: Error | null, addresses: Array<{ address: string; family: number }>) => {
+                if (error) reject(error);
+                else resolve(addresses);
+              },
+            );
+          }),
+      ),
+    );
+    expect(pinnedLists).toEqual([[{ address: '203.0.113.11', family: 4 }], [{ address: '198.51.100.22', family: 4 }]]);
     expect(network.close).toHaveBeenCalledTimes(2);
   });
 
