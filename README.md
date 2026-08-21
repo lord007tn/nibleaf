@@ -100,7 +100,7 @@ Private customer documentation supports dedicated reader accounts, audience/page
 
 Honesty over marketing — if you need these today, Nibleaf isn't there yet:
 
-- **SSO / SAML** — email/password + Google OAuth only; no enterprise SSO.
+- **SSO / SAML** — passwordless email OTP + Google OAuth only; no enterprise SSO.
 
 Want one of these sooner? Open or upvote an issue —
 [github.com/lord007tn/nibleaf/issues](https://github.com/lord007tn/nibleaf/issues).
@@ -208,7 +208,7 @@ apps/
   admin    Platform admin panel        TanStack Start                 :4315
 packages/
   database    Prisma schema + client (PostgreSQL)
-  auth        better-auth (email/password + organizations)
+  auth        better-auth (email OTP + Google OAuth + organizations)
   storage     S3-compatible object storage
   bullmq      Typed queues/workers (publish, search, email, analytics, export)
   search      Orama full-text + fuzzy search (bilingual)

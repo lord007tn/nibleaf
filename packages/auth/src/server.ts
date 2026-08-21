@@ -1,7 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
-import { buildPasswordResetEmail, buildTransactionalEmail, type TransactionalEmail } from '@nibleaf/email';
+import { buildTransactionalEmail, type TransactionalEmail } from '@nibleaf/email';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
@@ -705,44 +705,19 @@ export const auth = betterAuth({
     },
   },
   emailAndPassword: {
-    enabled: true,
-    resetPasswordTokenExpiresIn: 60 * 60,
-    revokeSessionsOnPasswordReset: true,
-    // DISABLE_SIGNUP=true refuses new email/password accounts while existing
-    // users keep signing in (closed self-hosts, or an emergency cloud brake).
-    disableSignUp: env.DISABLE_SIGNUP,
-    // Off by default (private self-host without SMTP); set REQUIRE_EMAIL_VERIFICATION=true
-    // for public instances. The verify-email UI + resend then work via the queue below.
-    requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
-    sendResetPassword: async ({ user, url }) => {
-      // Keep the public response timing independent of whether the address
-      // exists. The queue persists delivery after this callback returns.
-      queueRenderedEmail(user.email, buildPasswordResetEmail(url));
-    },
+    // Nibleaf is passwordless. Existing credential records may remain in the
+    // database for backwards compatibility, but no password endpoint is exposed.
+    enabled: false,
   },
   emailVerification: {
-    // Verification is completed in-app with the email OTP plugin. Creating the
-    // session here lets a newly verified invitee continue without entering the
-    // same password a second time.
+    // Verification is completed in-app with the email OTP plugin.
     autoSignInAfterVerification: true,
     sendOnSignUp: false,
-    sendVerificationEmail: async ({ user, url }) => {
-      await sendMail(
-        user.email,
-        await buildTransactionalEmail({
-          subject: 'Verify your Nibleaf email',
-          preheader: 'Confirm your email address to finish setting up Nibleaf.',
-          title: 'Verify your email address',
-          message: 'Confirm this email address to finish setting up your Nibleaf account.',
-          action: { label: 'Verify email', url },
-          detail: 'This verification link is single-use. If it expires, request a new one from the sign-in page.',
-        }),
-      );
-    },
   },
   user: {
     changeEmail: {
-      enabled: true,
+      // Email changes use the email-OTP plugin below, not verification links.
+      enabled: false,
     },
     deleteUser: {
       enabled: true,
@@ -753,15 +728,20 @@ export const auth = betterAuth({
   },
   plugins: [
     emailOTP({
-      // Admin sign-in is passwordless. Keep this endpoint account-only so a
-      // mistyped address can never create a customer or admin account.
-      disableSignUp: true,
+      // Customer sign-in doubles as passwordless sign-up. The API gateway adds
+      // an admin-origin guard so this can never create an admin account.
+      disableSignUp: env.DISABLE_SIGNUP,
+      overrideDefaultEmailVerification: true,
+      changeEmail: {
+        enabled: true,
+        verifyCurrentEmail: true,
+      },
       expiresIn: 10 * 60,
       allowedAttempts: 5,
       storeOTP: 'hashed',
       async sendVerificationOTP({ email, otp, type }) {
-        const purpose = type === 'sign-in' ? 'sign in' : type === 'forget-password' ? 'reset your password' : 'verify your email';
-        const subject = type === 'sign-in' ? 'Your Nibleaf Admin sign-in code' : `Your Nibleaf code to ${purpose}`;
+        const purpose = type === 'sign-in' ? 'sign in' : type === 'change-email' ? 'change your email' : 'verify your email';
+        const subject = type === 'sign-in' ? 'Your Nibleaf sign-in code' : `Your Nibleaf code to ${purpose}`;
         // Do not make the auth response timing depend on the mail provider.
         queueRenderedEmail(
           email,
@@ -889,43 +869,11 @@ export const auth = betterAuth({
                 preheader: 'We noticed a sign-in from a new device or location.',
                 title: 'New sign-in detected',
                 message: `We noticed a new sign-in to your account${where}.`,
-                detail: 'If this was not you, reset your password immediately and review your active sessions.',
+                detail: 'If this was not you, sign out other sessions immediately and contact support@nibleaf.com.',
               }),
             );
           } catch {
             // never block sign-in
-          }
-        },
-      },
-    },
-    // Password-changed alert — credential-account updates are password changes for an
-    // email/password user (logins create sessions, not account rows). Honors `security_password`.
-    account: {
-      update: {
-        after: async (account) => {
-          try {
-            if (account.providerId !== 'credential') {
-              return;
-            }
-            if (!(await userNotificationEnabled(account.userId, 'security_password'))) {
-              return;
-            }
-            const user = await prisma.user.findUnique({ where: { id: account.userId }, select: { email: true } });
-            if (!user?.email) {
-              return;
-            }
-            await sendMail(
-              user.email,
-              await buildTransactionalEmail({
-                subject: 'Your Nibleaf password was changed',
-                preheader: 'The password for your Nibleaf account was changed.',
-                title: 'Password changed',
-                message: 'The password for your Nibleaf account was just changed.',
-                detail: 'If this was not you, reset your password immediately and review your active sessions.',
-              }),
-            );
-          } catch {
-            // never block the password update
           }
         },
       },

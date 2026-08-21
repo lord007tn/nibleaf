@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPasswordResetEmail, buildTransactionalEmail } from './transactional-email';
+import { buildTransactionalEmail } from './transactional-email';
 
 describe('buildTransactionalEmail', () => {
   it('renders a branded HTML action and plain-text fallback', async () => {
@@ -68,14 +68,20 @@ describe('buildTransactionalEmail', () => {
     expect(email.text).toContain('Reset now: https://example.com/reset?token=abc&next=<home>');
   });
 
-  it('uses the Better Auth reset callback URL unchanged', async () => {
-    const resetUrl = 'https://nibleaf.com/api/auth/reset-password/test-token?callbackURL=https%3A%2F%2Fnibleaf.com%2Freset-password';
-    const email = await buildPasswordResetEmail(resetUrl);
+  it('renders a passwordless sign-in code without an API link', async () => {
+    const email = await buildTransactionalEmail({
+      subject: 'Your Nibleaf sign-in code',
+      preheader: 'Use this one-time code to sign in.',
+      title: 'Your Nibleaf code',
+      message: 'Use this one-time code to sign in.',
+      code: '123456',
+      detail: 'The code expires in 10 minutes and can be used only once.',
+    });
 
-    expect(email.subject).toBe('Reset your Nibleaf password');
-    expect(email.html).toContain('Choose a new password');
-    expect(email.html).toContain(resetUrl.replaceAll('&', '&amp;'));
-    expect(email.text).toContain(`Choose a new password: ${resetUrl}`);
-    expect(email.text).toContain('single-use link expires in one hour');
+    expect(email.subject).toBe('Your Nibleaf sign-in code');
+    expect(email.html).toContain('123456');
+    expect(email.text).toContain('Code: 123456');
+    expect(email.html).not.toContain('/api/auth/reset-password');
+    expect(email.text).not.toContain('/api/auth/reset-password');
   });
 });

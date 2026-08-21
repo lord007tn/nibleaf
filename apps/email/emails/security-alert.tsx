@@ -8,7 +8,7 @@ export default function SecurityAlertEmail() {
         preheader: 'We noticed a sign-in from a new device or location.',
         title: 'New sign-in detected',
         message: 'We noticed a new sign-in to your account from a new device.',
-        detail: 'If this was not you, reset your password immediately and review your active sessions.',
+        detail: 'If this was not you, sign out other sessions immediately and contact support@nibleaf.com.',
       }}
     />
   );
