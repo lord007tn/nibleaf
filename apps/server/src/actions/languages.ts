@@ -1,4 +1,5 @@
 import { Prisma, prisma } from '@nibleaf/database';
+import { isPageTranslation } from '@nibleaf/shared/site';
 import type { CreateLanguageBody, UpdateLanguageBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
@@ -20,6 +21,48 @@ export const listLanguages = (projectId: string) =>
       include: { projectTranslations: { where: { projectId }, take: 1 } },
     })
     .then((languages) => languages.map(({ projectTranslations, ...language }) => ({ ...language, translation: projectTranslations[0] ?? null })));
+
+/** Languages plus default-branch content coverage for the settings dashboard.
+ * Matching deliberately mirrors published hreflang behavior: translation keys
+ * win, while pages without one pair by path. A target page can satisfy only one
+ * source page, so duplicate keys never inflate coverage. */
+export const listLanguagesWithCoverage = async (projectId: string) => {
+  const [languages, pages] = await Promise.all([
+    listLanguages(projectId),
+    prisma.page.findMany({
+      where: { projectId, kind: 'PAGE', branch: { isDefault: true } },
+      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, languageId: true, path: true, translationKey: true },
+    }),
+  ]);
+  const defaultLanguage = languages.find((language) => language.isDefault);
+  const sourcePages = defaultLanguage ? pages.filter((page) => page.languageId === defaultLanguage.id) : [];
+
+  return languages.map((language) => {
+    const languagePages = pages.filter((page) => page.languageId === language.id);
+    const unmatched = language.isDefault ? [] : [...languagePages];
+    let matchedPages = language.isDefault ? sourcePages.length : 0;
+    for (const source of language.isDefault ? [] : sourcePages) {
+      const matchIndex = unmatched.findIndex((candidate) => isPageTranslation(source, candidate));
+      if (matchIndex >= 0) {
+        matchedPages++;
+        unmatched.splice(matchIndex, 1);
+      }
+    }
+    const sourcePageCount = sourcePages.length;
+    return {
+      ...language,
+      coverage: {
+        pageCount: languagePages.length,
+        sourcePageCount,
+        matchedPages,
+        missingPages: Math.max(0, sourcePageCount - matchedPages),
+        extraPages: language.isDefault ? 0 : unmatched.length,
+        percentage: sourcePageCount === 0 ? null : Math.round((matchedPages / sourcePageCount) * 100),
+      },
+    };
+  });
+};
 
 /** The project's required default language. Missing data is an invariant error. */
 export const getDefaultLanguage = async (projectId: string) => {

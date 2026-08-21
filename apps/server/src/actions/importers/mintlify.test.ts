@@ -249,7 +249,7 @@ describe('mintlify import cap', () => {
     const summary = await runImport();
     const groups = mem.rows.filter((row) => row.kind === 'GROUP');
     const pages = mem.rows.filter((row) => row.kind === 'PAGE');
-    // Groups and leaves alternate, so the 250-node budget is 125 of each.
+    // Groups and leaves alternate, so half the node budget goes to each.
     expect(groups).toHaveLength(MAX_IMPORT_FILES / 2);
     expect(pages).toHaveLength(MAX_IMPORT_FILES / 2);
     expect(mem.rows).toHaveLength(MAX_IMPORT_FILES);

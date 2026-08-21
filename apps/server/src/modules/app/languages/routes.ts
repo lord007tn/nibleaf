@@ -10,7 +10,7 @@ const languagesRoutes = {
   list: createRouteConfig({
     guard: [isAuthenticated, requireProjectMember()],
     tags: ['languages'],
-    description: "List a project's languages.",
+    description: "List a project's languages and default-branch translation coverage.",
     responses: ok,
   }),
   create: createRouteConfig({

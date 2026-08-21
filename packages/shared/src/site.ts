@@ -136,6 +136,14 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
 export const publicLanguages = (languages: SnapshotLanguage[]): SnapshotLanguage[] =>
   languages.filter((language) => language.isDefault || language.enabled !== false);
 
+/** Match a page to the same logical page in another language. Explicit
+ * translation keys take precedence so localized slugs can differ; older pages
+ * without a key retain the established same-path fallback. */
+export const isPageTranslation = (
+  source: Pick<SnapshotPage, 'path' | 'translationKey'>,
+  candidate: Pick<SnapshotPage, 'path' | 'translationKey'>,
+): boolean => (source.translationKey ? candidate.translationKey === source.translationKey : candidate.path === source.path);
+
 /** Chrome sections a language may override on top of the project config. */
 const LANGUAGE_CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
 

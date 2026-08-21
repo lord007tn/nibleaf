@@ -3,7 +3,7 @@ title: 'Migrate documentation into Nibleaf'
 description: 'Plan a reversible migration from Mintlify, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
 audience: 'documentation owners planning a platform migration'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-21'
 verified_against: 'apps/server/src/actions/importers and apps/server/src/actions/export.ts'
 lang: 'en'
 dir: 'ltr'
@@ -24,8 +24,15 @@ traffic only after a crawl and rollback rehearsal.
 
 For a Mintlify import, enter `owner/repository` and an optional branch. Nibleaf
 prefers `docs.json`, reads navigation relative to that file, imports linked
-internal pages omitted from navigation up to its safety limit, and preserves
-existing target settings when they are already populated.
+internal pages omitted from navigation, and preserves existing target settings
+when they are already populated. A single import creates at most 500 navigation
+nodes, including groups and pages; sources above that boundary must be split and
+their totals reconciled before cutover.
+
+Nibleaf does not read a private Mintlify Cloud editor URL. If the workspace is
+not backed by a public GitHub repository, export or publish its source to a
+disposable public repository first, remove secrets and private content, and use
+that repository for the migration rehearsal.
 
 ## Establish a baseline
 
@@ -58,10 +65,11 @@ Use this order:
 2. Preview one page for every content pattern.
 3. Crawl internal links, images, downloads, redirects, and missing paths.
 4. Test the baseline search queries in every language.
-5. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
+5. Open **Settings → Languages** and resolve every missing default-language page.
+6. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
    structured data on the initial HTML response.
-6. Verify keyboard and mobile behavior on representative pages.
-7. Publish to a non-primary hostname and repeat the checks while signed out.
+7. Verify keyboard and mobile behavior on representative pages.
+8. Publish to a non-primary hostname and repeat the checks while signed out.
 
 Do not delete the source or change DNS until the replacement has a tested
 rollback copy.

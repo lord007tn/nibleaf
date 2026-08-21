@@ -77,6 +77,7 @@ export function LanguagesSection({ project }: { project: Project }) {
         <div className="mb-3 overflow-hidden rounded-xl border border-border">
           {rows.map((language) => {
             const enabled = language.enabled !== false;
+            const coverage = language.coverage;
             return (
               <div className="flex items-center gap-3 border-border border-b p-3.5 last:border-b-0" key={language.id}>
                 <div className="min-w-0 flex-1">
@@ -87,6 +88,41 @@ export function LanguagesSection({ project }: { project: Project }) {
                     {language.isDefault ? <Chip tone="primary">{t('settings.languages.defaultBadge')}</Chip> : null}
                     {!enabled ? <Chip tone="warning">{t('settings.languages.hiddenBadge')}</Chip> : null}
                   </div>
+                  {coverage ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
+                      <span>
+                        {language.isDefault
+                          ? t('settings.languages.coverage.sourcePages', { count: coverage.pageCount })
+                          : coverage.sourcePageCount === 0
+                            ? t('settings.languages.coverage.noSourcePages')
+                            : t('settings.languages.coverage.summary', {
+                                matched: coverage.matchedPages,
+                                total: coverage.sourcePageCount,
+                              })}
+                      </span>
+                      {!language.isDefault && coverage.percentage !== null ? (
+                        <>
+                          <div
+                            aria-label={t('settings.languages.coverage.percent', { percent: coverage.percentage })}
+                            aria-valuemax={100}
+                            aria-valuemin={0}
+                            aria-valuenow={coverage.percentage}
+                            className="h-1.5 w-20 overflow-hidden rounded-full bg-muted"
+                            role="progressbar"
+                          >
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${coverage.percentage}%` }} />
+                          </div>
+                          <span>{t('settings.languages.coverage.percent', { percent: coverage.percentage })}</span>
+                        </>
+                      ) : null}
+                      {coverage.missingPages > 0 ? (
+                        <span className="font-medium text-amber-600 dark:text-amber-400">
+                          {t('settings.languages.coverage.missing', { count: coverage.missingPages })}
+                        </span>
+                      ) : null}
+                      {coverage.extraPages > 0 ? <span>{t('settings.languages.coverage.extra', { count: coverage.extraPages })}</span> : null}
+                    </div>
+                  ) : null}
                 </div>
                 {!language.isDefault ? (
                   <Button

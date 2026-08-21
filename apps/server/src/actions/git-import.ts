@@ -31,9 +31,6 @@ export interface GitImportSummary {
   skipped: number;
 }
 
-/** Hard cap so an accidental import of a huge repo can't fan out unbounded. */
-const MAX_FILES = MAX_IMPORT_FILES;
-
 const normalizeRemoteUrl = (value: string, label: string): URL => {
   let url: URL;
   try {
@@ -115,7 +112,7 @@ const listGitLabFiles = async (
   const files: Array<{ path: string; type: 'blob' | 'tree' }> = [];
   let page = 1;
 
-  while (files.length < MAX_FILES) {
+  while (files.length < MAX_IMPORT_FILES) {
     const url = new URL(`${base}/api/v4/projects/${project}/repository/tree`);
     url.searchParams.set('ref', branch);
     url.searchParams.set('recursive', 'true');
@@ -166,7 +163,7 @@ const assertSafeCloneUrl = async (value: string): Promise<string> => {
 const walkMarkdownFiles = async (root: string, rel = '', found: string[] = []): Promise<string[]> => {
   const entries = await readdir(path.join(root, rel), { withFileTypes: true });
   for (const entry of entries) {
-    if (found.length >= MAX_FILES) {
+    if (found.length >= MAX_IMPORT_FILES) {
       return found;
     }
     if (entry.name === '.git') {
@@ -269,7 +266,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         : await listGitLabFiles(repo, branch, basePath, safeGitLabInstance);
     mdFiles = tree
       .filter((i) => i.type === 'blob' && (i.path.endsWith('.md') || i.path.endsWith('.mdx')) && i.path.startsWith(prefix))
-      .slice(0, MAX_FILES)
+      .slice(0, MAX_IMPORT_FILES)
       .map((file) => ({
         path: file.path,
         read: async () => {
