@@ -2,6 +2,7 @@ import { workbench } from '@getworkbench/hono';
 import { queues } from '@nibleaf/bullmq/queues';
 import { Hono } from 'hono';
 import { env } from '../../env';
+import { resolveEmailDelivery } from '../../processors/email-delivery';
 
 let workerReady = false;
 
@@ -13,7 +14,28 @@ export const setWorkerReady = (ready: boolean): void => {
 const workbenchAuth = env.WORKBENCH_USER && env.WORKBENCH_PASS ? { username: env.WORKBENCH_USER, password: env.WORKBENCH_PASS } : undefined;
 
 const app = new Hono()
-  .get('/health', (ctx) => ctx.json({ status: workerReady ? 'ok' : 'starting', service: 'worker' }, workerReady ? 200 : 503))
+  .get('/health', (ctx) => {
+    const email = resolveEmailDelivery({
+      postmarkApiKey: env.POSTMARK_API_KEY,
+      smtpUrl: env.SMTP_URL,
+      required: env.EMAIL_DELIVERY_REQUIRED,
+    });
+    const ready = workerReady && email.ready;
+    const status = !workerReady ? 'starting' : email.ready ? 'ok' : 'degraded';
+
+    return ctx.json(
+      {
+        status,
+        service: 'worker',
+        email: {
+          status: email.provider ? 'ok' : email.required ? 'misconfigured' : 'disabled',
+          provider: email.provider ?? 'none',
+          required: email.required,
+        },
+      },
+      ready ? 200 : 503,
+    );
+  })
   .route(
     '/jobs',
     workbench({

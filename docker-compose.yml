@@ -62,11 +62,12 @@ x-service-env: &service-env
   CUSTOM_DOMAIN_EDGE_SECRET: ${CUSTOM_DOMAIN_EDGE_SECRET:-}
   WORKER_PORT: "4312"
   # Email delivery (optional). Postmark is preferred when POSTMARK_API_KEY is set;
-  # SMTP_URL remains a fallback. Without either, the worker logs mail.
+  # SMTP_URL remains a fallback. This local quick-start keeps delivery optional.
   EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   SMTP_URL: ${SMTP_URL:-}
+  EMAIL_DELIVERY_REQUIRED: ${EMAIL_DELIVERY_REQUIRED:-false}
   # Basic auth for the worker's BullMQ dashboard at :4312/jobs. Set BOTH —
   # this compose file publishes the worker port, and without credentials the
   # dashboard is UNAUTHENTICATED.

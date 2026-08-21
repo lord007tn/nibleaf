@@ -1,0 +1,149 @@
+name: Production email diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email:
+    name: Verify production email delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect Coolify worker and email provider
+        env:
+          COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
+          COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
+          COOLIFY_CF_ACCESS_CLIENT_ID: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_ID }}
+          COOLIFY_CF_ACCESS_CLIENT_SECRET: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" || -z "$COOLIFY_CF_ACCESS_CLIENT_ID" || -z "$COOLIFY_CF_ACCESS_CLIENT_SECRET" ]]; then
+            echo "::error::Missing a Coolify or Cloudflare Access secret"
+            exit 1
+          fi
+
+          coolify_api_base="${COOLIFY_NIBLEAF_DEPLOY_WEBHOOK%%/deploy*}"
+          if [[ "$coolify_api_base" == "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" ]]; then
+            echo "::error::Could not derive the Coolify API base URL"
+            exit 1
+          fi
+
+          coolify_get() {
+            curl --fail-with-body --silent --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --location \
+              --proto-redir '=https' \
+              --header "Accept: application/json" \
+              --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
+              --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
+              --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
+              "${coolify_api_base}$1"
+          }
+
+          services=$(coolify_get "/services")
+          resource_uuid=$(printf '%s' "$services" | jq --exit-status --raw-output '[.[] | select((.name // "") == "nibleaf")][0].uuid // empty')
+          if [[ -z "$resource_uuid" ]]; then
+            echo "::error::Could not find the Nibleaf production service"
+            exit 1
+          fi
+
+          service=$(coolify_get "/services/${resource_uuid}")
+          envs=$(coolify_get "/services/${resource_uuid}/envs")
+          postmark_token=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_API_KEY" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
+          smtp_url=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "SMTP_URL" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
+          message_stream=$(printf '%s' "$envs" | jq --raw-output '[.[] | select(.key == "POSTMARK_MESSAGE_STREAM" and .is_preview != true) | (.real_value // .value // "") | select(length > 0)][0] // empty')
+          if [[ -n "$postmark_token" ]]; then
+            echo "::add-mask::$postmark_token"
+          fi
+          if [[ -n "$smtp_url" ]]; then
+            echo "::add-mask::$smtp_url"
+          fi
+
+          if [[ -z "$postmark_token" && -z "$smtp_url" ]]; then
+            echo "::error::Production has neither POSTMARK_API_KEY nor SMTP_URL configured"
+            exit 1
+          fi
+
+          worker_name=$(printf '%s' "$service" | jq --raw-output '[.applications[]? | select((.name // "") == "worker" or ((.name // "") | endswith("-worker")))][0].name // "worker"')
+          worker_logs=$(curl --fail-with-body --silent --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --location \
+            --proto-redir '=https' \
+            --get \
+            --header "Accept: application/json" \
+            --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
+            --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
+            --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
+            --data-urlencode "sub_service_name=${worker_name}" \
+            --data-urlencode "lines=500" \
+            --data-urlencode "show_timestamps=true" \
+            "${coolify_api_base}/services/${resource_uuid}/logs")
+          log_text=$(printf '%s' "$worker_logs" | jq --raw-output '.logs // ""')
+          sent_count=$(grep -c 'email sent' <<<"$log_text" || true)
+          failed_count=$(grep -c 'email delivery failed' <<<"$log_text" || true)
+          skipped_count=$(grep -c 'logged, not sent\|no provider is configured' <<<"$log_text" || true)
+
+          {
+            echo "### Production email diagnostics"
+            echo "- Worker logs sampled: last 500 lines"
+            echo "- Successful email jobs in sample: ${sent_count}"
+            echo "- Failed email jobs in sample: ${failed_count}"
+            echo "- Undelivered optional jobs in sample: ${skipped_count}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -n "$postmark_token" ]]; then
+            server=$(curl --fail-with-body --silent --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --header "Accept: application/json" \
+              --header "X-Postmark-Server-Token: ${postmark_token}" \
+              "https://api.postmarkapp.com/server")
+            server_id=$(printf '%s' "$server" | jq --exit-status --raw-output '.ID')
+            delivery_type=$(printf '%s' "$server" | jq --exit-status --raw-output '.DeliveryType')
+            if [[ "$delivery_type" != "Live" ]]; then
+              echo "::error::Postmark is authenticated but the production server is not in Live delivery mode"
+              exit 1
+            fi
+
+            messages_url="https://api.postmarkapp.com/messages/outbound"
+            message_query=(
+              --data-urlencode "count=10"
+              --data-urlencode "offset=0"
+              --data-urlencode "subject=Reset your Nibleaf password"
+            )
+            if [[ -n "$message_stream" ]]; then
+              message_query+=(--data-urlencode "messagestream=${message_stream}")
+            fi
+            messages=$(curl --fail-with-body --silent --show-error \
+              --retry 3 \
+              --retry-all-errors \
+              --get \
+              --header "Accept: application/json" \
+              --header "X-Postmark-Server-Token: ${postmark_token}" \
+              "${message_query[@]}" \
+              "$messages_url")
+            reset_count=$(printf '%s' "$messages" | jq --exit-status --raw-output '.TotalCount')
+            latest_status=$(printf '%s' "$messages" | jq --raw-output '.Messages[0].Status // "none"')
+            latest_received=$(printf '%s' "$messages" | jq --raw-output '.Messages[0].ReceivedAt // "none"')
+            latest_message_id=$(printf '%s' "$messages" | jq --raw-output '.Messages[0].MessageID // "none"')
+
+            {
+              echo "- Provider: Postmark (authenticated)"
+              echo "- Postmark server ID: ${server_id}"
+              echo "- Postmark delivery type: ${delivery_type}"
+              echo "- Password-reset messages retained by provider: ${reset_count}"
+              echo "- Latest reset status: ${latest_status}"
+              echo "- Latest reset received at: ${latest_received}"
+              echo "- Latest reset message ID: ${latest_message_id}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- Provider: SMTP (configuration present; remote authentication not probed)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if (( failed_count > 0 || skipped_count > 0 )); then
+            echo "::warning::Recent worker logs contain failed or undelivered email jobs"
+          fi

@@ -71,11 +71,13 @@ x-service-env: &service-env
   CUSTOM_DOMAIN_EDGE_SECRET: ${CUSTOM_DOMAIN_EDGE_SECRET:-}
   WORKER_PORT: "4312"
   # Email delivery. Postmark is preferred when POSTMARK_API_KEY is set;
-  # SMTP_URL is the generic fallback. Without either, the worker logs mail.
+  # SMTP_URL is the generic fallback. Production fails readiness when delivery
+  # is required and neither provider is configured.
   EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
   SMTP_URL: ${SMTP_URL:-}
+  EMAIL_DELIVERY_REQUIRED: ${EMAIL_DELIVERY_REQUIRED:-true}
   # Optional AI writing assist (off unless a key is set).
   OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   # Two-way Git: envelope encryption plus API/worker callback authentication.
