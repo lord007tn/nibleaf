@@ -17,6 +17,7 @@ describe('marketing analytics', () => {
   afterEach(() => {
     suspendMarketingAnalytics('G-ABC123');
     document.head.replaceChildren();
+    window.history.replaceState({}, '', '/');
     window.localStorage.clear();
     Reflect.deleteProperty(window, 'dataLayer');
     Reflect.deleteProperty(window, 'gtag');
@@ -31,6 +32,17 @@ describe('marketing analytics', () => {
     sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
 
     expect(unrelatedGtag).not.toHaveBeenCalled();
+  });
+
+  it('rejects unapproved events and extra properties at the final GA boundary', () => {
+    initializeMarketingAnalytics('G-ABC123');
+    const before = window.dataLayer?.length;
+
+    sendMarketingAnalyticsEvent('newsletter_subscribed', { email: 'private@example.com' });
+    sendMarketingAnalyticsEvent('sign_up', { email: 'private@example.com', method: 'email_otp' });
+
+    expect(window.dataLayer).toHaveLength(before ?? 0);
+    expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
   });
 
   it('accepts real GA4 measurement IDs and rejects placeholders or injection', () => {
@@ -58,6 +70,7 @@ describe('marketing analytics', () => {
   });
 
   it('sends a query-free pageview and allowlisted Arabic CTA dimensions', () => {
+    window.history.replaceState({}, '', '/ar');
     initializeMarketingAnalytics('G-ABC123');
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
     sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' });
