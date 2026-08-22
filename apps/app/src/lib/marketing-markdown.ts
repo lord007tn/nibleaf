@@ -11,6 +11,8 @@ const turndown = new TurndownService({
 });
 turndown.use(gfm);
 
+const escapeMarkdownTableCell = (value: string): string => value.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
+
 function extractMarkdownTables(content: Element, document: Document): Map<string, string> {
   const replacements = new Map<string, string>();
   for (const [index, table] of Array.from(content.querySelectorAll('table')).entries()) {
@@ -18,7 +20,7 @@ function extractMarkdownTables(content: Element, document: Document): Map<string
       .map((row) =>
         Array.from(row.children)
           .filter((cell) => cell.nodeName === 'TH' || cell.nodeName === 'TD')
-          .map((cell) => (cell.textContent ?? '').replace(/\s+/g, ' ').trim().replace(/\|/g, '\\|')),
+          .map((cell) => escapeMarkdownTableCell((cell.textContent ?? '').replace(/\s+/g, ' ').trim())),
       )
       .filter((row) => row.length > 0);
     if (rows.length === 0) continue;

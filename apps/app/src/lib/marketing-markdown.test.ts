@@ -17,12 +17,12 @@ describe('marketingHtmlToMarkdown', () => {
 
   it('serializes server-rendered tables as GitHub-flavored Markdown', () => {
     const markdown = marketingHtmlToMarkdown(
-      '<main><table><thead><tr><th>Capability</th><th>Status</th></tr></thead><tbody><tr><td>Arabic | RTL</td><td>Supported</td></tr></tbody></table></main>',
+      '<main><table><thead><tr><th>Capability</th><th>Status</th></tr></thead><tbody><tr><td>SDK \\ path | Arabic RTL</td><td>Supported</td></tr></tbody></table></main>',
       'https://nibleaf.com/compare',
     );
     expect(markdown).toContain('| Capability | Status |');
     expect(markdown).toContain('| --- | --- |');
-    expect(markdown).toContain('| Arabic \\| RTL | Supported |');
+    expect(markdown).toContain(String.raw`| SDK \\ path \| Arabic RTL | Supported |`);
   });
 });
 
