@@ -54,7 +54,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
           </button>
           <NotificationsPopover />
         </header>
-        <main className="mx-auto w-full max-w-[1200px] flex-1 px-6 py-8">{children}</main>
+        <main className="w-full flex-1 px-6 py-8">{children}</main>
       </SidebarInset>
       <CommandPalette onOpenChange={setPaletteOpen} open={paletteOpen} />
     </SidebarProvider>
