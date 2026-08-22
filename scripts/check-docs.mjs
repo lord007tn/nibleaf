@@ -229,6 +229,10 @@ function checkPage(file, route, expectedLanguage, routes) {
     if (/^(?:https?:|mailto:|#)/.test(target)) continue;
     const clean = target.split('#')[0].split('?')[0];
     if (!clean) continue;
+    const extension = extname(clean).toLowerCase();
+    if (!imageMarker && extension && !['.md', '.mdx'].includes(extension)) {
+      fail(file, `local media link "${clean}" must use a durable absolute URL; the hosted importer migrates images only`);
+    }
     if (target.startsWith('/')) {
       const routeTarget = clean.replace(/^\/+|\/$/g, '');
       if (!routes.has(routeTarget)) fail(file, `local route "${clean}" is absent from docs.json navigation`);
