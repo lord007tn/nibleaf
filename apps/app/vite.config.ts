@@ -7,9 +7,8 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig } from 'vite';
-import viteTsConfigPaths from 'vite-tsconfig-paths';
-import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin';
-import { messageCatalogPlugin } from './scripts/message-catalog-plugin';
+import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
+import { messageCatalogPlugin } from './scripts/message-catalog-plugin.ts';
 
 const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
 
@@ -24,6 +23,7 @@ const SECURITY_HEADERS = {
 };
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   server: {
     port: 4310,
     // Vite's static middleware claims unknown dotted paths before Nitro in
@@ -39,7 +39,6 @@ export default defineConfig({
     // comes from the lightweight manifest; a test deep-compares it to every MDX
     // frontmatter block so bodies never enter the homepage bundle.
     { enforce: 'pre', ...mdx({ remarkPlugins: [remarkFrontmatter, [remarkMdxFrontmatter, { name: 'frontmatter' }], remarkGfm] }) },
-    viteTsConfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),
     // Same-origin /api proxy: the browser only talks to the dashboard origin, so
     // better-auth session cookies stay first-party. All /api/** → the Nibleaf API.
