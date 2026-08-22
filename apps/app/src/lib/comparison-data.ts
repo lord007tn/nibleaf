@@ -119,6 +119,14 @@ export const nibleafPricing: PricingTable = {
   note: 'No paid cloud plan is currently offered. Self-hosting requires your own DNS, TLS, backups, monitoring, and upgrades.',
 };
 
+/** Product gaps that must stay consistent across comparison and machine-readable marketing surfaces. */
+export const nibleafProductLimitations = [
+  'Live multi-user co-editing is not currently available.',
+  'SAML/SCIM is not currently available.',
+  'Adaptive content is not currently available.',
+  'A built-in AI assistant is not currently available.',
+] as const;
+
 const mintlifyPricing: PricingTable = {
   productName: 'Mintlify',
   sourceUrl: 'https://www.mintlify.com/pricing',

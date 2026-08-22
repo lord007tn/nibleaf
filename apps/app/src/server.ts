@@ -3,6 +3,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
+import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { marketingSitemap } from '@/lib/marketing-sitemap';
 import { acceptsHtml, isDocumentPath, notAcceptableHtmlResponse } from '@/lib/request-negotiation';
@@ -312,6 +313,7 @@ const SEO_CONTENT_TYPE: Record<string, string> = {
   'sitemap.xml': 'application/xml; charset=utf-8',
   'llms.txt': 'text/plain; charset=utf-8',
   'llms-full.txt': 'text/plain; charset=utf-8',
+  'pricing.md': 'text/markdown; charset=utf-8',
   'changelog/rss.xml': 'application/rss+xml; charset=utf-8',
 };
 
@@ -455,6 +457,8 @@ function marketingLlms(origin: string): string {
 
 > Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
+Last reviewed: 2026-08-22
+
 ## Key facts
 
 - Public AGPL-3.0 source repository with an anonymously accessible pinned GHCR container release
@@ -471,6 +475,8 @@ function marketingLlms(origin: string): string {
 ## Pages
 
 - [Home](${origin}/): overview and features
+- [Arabic home](${origin}/ar): Arabic product overview and RTL-first workflow
+- [Documentation platforms for Arabic teams](${origin}/ar/documentation-platforms): source-backed Arabic buyer guide
 - [Nibleaf Cloud](${origin}/cloud): hosted documentation sites, free during beta
 - [Pricing](${origin}/pricing): free cloud beta and self-hosting requirements
 - [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
@@ -485,6 +491,19 @@ function marketingLlms(origin: string): string {
 - [ReadMe alternatives](${origin}/alternatives/readme)
 - [Terms of Service](${origin}/terms)
 - [Privacy Policy](${origin}/privacy)
+
+## Product truth and source
+
+- [Public source repository](https://github.com/lord007tn/nibleaf): AGPL-3.0 code, issues, releases, and implementation details
+- [Product documentation](https://docs.nibleaf.com): current public user and operator documentation
+- [Machine-readable pricing](${origin}/pricing.md): current plans, limits, and operational responsibilities
+- [Security contact](${origin}/.well-known/security.txt): supported disclosure channel
+
+## Current limitations
+
+- No paid Nibleaf Cloud plan is offered while the service is in beta.
+${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
+- GitHub has a two-way authoring workflow; public GitLab and generic Git imports are currently one-way.
 
 ## Blog
 
@@ -539,8 +558,11 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 ## Links
 
 - Home: ${origin}/
+- Arabic home: ${origin}/ar
+- Arabic platform comparison: ${origin}/ar/documentation-platforms
 - Cloud: ${origin}/cloud
 - Pricing: ${origin}/pricing
+- Machine-readable pricing: ${origin}/pricing.md
 - Self-hosting: ${origin}/self-hosting
 - Blog: ${origin}/blog
 - About: ${origin}/about
@@ -548,6 +570,52 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Privacy Policy: ${origin}/privacy
 - Support: support@nibleaf.com
 - RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
+- Product documentation: https://docs.nibleaf.com
+- Public source: https://github.com/lord007tn/nibleaf
+`;
+}
+
+/** Stable, non-JavaScript pricing truth for search engines and software agents.
+ * Keep this synchronized with /pricing and lib/comparison-data.ts. */
+function marketingPricingMarkdown(origin: string): string {
+  const cloud = nibleafPricing.rows.find((row) => row.plan === 'Cloud');
+  const selfHosted = nibleafPricing.rows.find((row) => row.plan === 'Self-hosted');
+
+  return `# Nibleaf pricing
+
+Last reviewed: 2026-08-22
+
+Nibleaf currently has no paid cloud plan. The managed cloud is free while in beta, and the self-hosted codebase is available under AGPL-3.0. No credit card is required to create a cloud account.
+
+## Nibleaf Cloud beta
+
+- Price: ${cloud?.price ?? 'Free while in beta'}
+- Billing: no paid plan is currently offered
+- Includes: ${cloud?.includes ?? 'Hosted dashboard and documentation sites, managed database and storage, custom domains, analytics, and search.'}
+- Limits: fair-use controls apply; product limits can change during beta
+- Sign up: ${origin}/sign-up
+
+## Self-hosted Nibleaf
+
+- Software price: ${selfHosted?.price ?? 'Free under AGPL-3.0'}
+- Source: https://github.com/lord007tn/nibleaf
+- Includes: ${selfHosted?.includes ?? 'App, API, worker, PostgreSQL, cache, object storage, installer, and production Docker Compose configuration.'}
+- Operator responsibilities: infrastructure, DNS, TLS, secrets, backups, monitoring, upgrades, incident response, and restore testing
+- Deployment guide: ${origin}/self-hosting
+
+## Important limitations
+
+- There is no committed date or price for a future paid cloud plan.
+${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
+- Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
+
+## العربية
+
+- سحابة Nibleaf مجانية خلال المرحلة التجريبية، ولا توجد خطة مدفوعة حاليًا.
+- يمكن تشغيل المنظومة كاملة من المصدر العام بترخيص AGPL-3.0، مع تحمّل المشغّل مسؤولية البنية وDNS وTLS والنسخ الاحتياطي والمراقبة والترقيات.
+- الصفحة العربية: ${origin}/ar
+
+For the human-readable plan comparison and current policy details, see ${origin}/pricing.
 `;
 }
 
@@ -579,7 +647,8 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
       },
     });
   }
-  if (!DOMAIN_SEO_FILE.test(pathname)) {
+  const isMarketingPricing = pathname === '/pricing.md';
+  if (!DOMAIN_SEO_FILE.test(pathname) && !isMarketingPricing) {
     return null;
   }
   const file = pathname.slice(1);
@@ -593,13 +662,15 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
   const proto = request.headers.get('x-forwarded-proto') || 'https';
   const origin = `${proto}://${host}`;
   const body =
-    file === 'robots.txt'
-      ? marketingRobots(origin)
-      : file === 'sitemap.xml'
-        ? marketingSitemap(origin)
-        : file === 'llms.txt'
-          ? marketingLlms(origin)
-          : marketingLlmsFull(origin);
+    file === 'pricing.md'
+      ? marketingPricingMarkdown(origin)
+      : file === 'robots.txt'
+        ? marketingRobots(origin)
+        : file === 'sitemap.xml'
+          ? marketingSitemap(origin)
+          : file === 'llms.txt'
+            ? marketingLlms(origin)
+            : marketingLlmsFull(origin);
   return new Response(body, { status: 200, headers: { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' } });
 }
 
