@@ -70,7 +70,7 @@ function WorkspaceSettingsPage() {
           ))}
         </nav>
 
-        <div className="min-w-0 w-full max-w-2xl flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
+        <div className="min-w-0 w-full flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
       </div>
     </div>
   );

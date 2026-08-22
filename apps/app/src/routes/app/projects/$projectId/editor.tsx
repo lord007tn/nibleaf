@@ -667,7 +667,7 @@ function EditorPage() {
             <div className="border-border border-b px-6 py-3">
               <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
             </div>
-            <div className="mx-auto max-w-[660px] px-8 pt-7 pb-32">
+            <div className="w-full px-8 pt-7 pb-32">
               {project ? (
                 <ConfigSection project={project} section={configSection} />
               ) : (

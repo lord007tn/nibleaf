@@ -127,7 +127,7 @@ function ProjectSettingsPage() {
       </aside>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[660px] px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
+        <div className="w-full px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
           {isLoading || !project ? <SectionSkeleton /> : <ActiveSection projectId={projectId} project={project} section={section} />}
         </div>
       </div>

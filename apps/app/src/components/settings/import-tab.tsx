@@ -179,7 +179,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
 
   return (
     <SettingsSection description={t('settings.import.description')} title={t('settings.import.title')}>
-      <div className="mx-auto w-full max-w-2xl py-2">
+      <div className="w-full py-2">
         <div className="mb-5 text-center">
           <h3 className="font-semibold text-base tracking-tight">{t('settings.import.workspace.title')}</h3>
           <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">{t('settings.import.workspace.description')}</p>
@@ -199,7 +199,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
               ) : null}
 
               {source === 'mintlify' ? (
-                <div className="mx-auto flex max-w-lg flex-col gap-4">
+                <div className="flex flex-col gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -237,7 +237,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
               ) : null}
 
               {source === 'ghost' ? (
-                <div className="mx-auto flex max-w-lg flex-col gap-4">
+                <div className="flex flex-col gap-4">
                   <div className="flex items-center gap-2">
                     <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
                       <Ghost className="size-4" />
