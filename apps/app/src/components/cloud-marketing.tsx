@@ -32,10 +32,10 @@ import { type ComponentType, type ReactNode, type SVGProps, useState } from 'rea
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
+import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
-const INSTALL_COMMAND = 'curl -fsSL https://nibleaf.com/install.sh | sh';
 const compactNumberFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 1,
   notation: 'compact',
@@ -261,7 +261,7 @@ function Hero({ stars }: { stars: number }) {
           </div>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <div className="min-w-0 flex-1">
-              <CopyCommand command={INSTALL_COMMAND} />
+              <CopyCommand command={SELF_HOST_INSTALL_COMMAND} />
             </div>
             <a
               aria-label="Read the self-hosting guide"

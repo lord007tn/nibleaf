@@ -40,9 +40,23 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Build and verify self-host release assets
+        run: |
+          manifest_version=$(node -e "import('./release/self-host.json', { with: { type: 'json' } }).then(({ default: value }) => process.stdout.write(value.version))")
+          if [[ "$manifest_version" != "$GITHUB_REF_NAME" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match release/self-host.json version $manifest_version"
+            exit 1
+          fi
+          node scripts/self-host-release.mjs --output "$RUNNER_TEMP/self-host-release"
+
       # Generates the GitHub release notes from conventional commits since the
       # previous tag and publishes the release for this tag.
       - name: Publish release notes
         run: pnpm release:notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload versioned installer, Compose, and checksums
+        run: gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/self-host-release"/* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

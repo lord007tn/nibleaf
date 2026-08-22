@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - uses: actions/checkout@v7
+
       - name: Install expect
         run: |
           sudo apt-get update
@@ -23,12 +25,14 @@ jobs:
           NIBLEAF_INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
           NIBLEAF_APP_URL: http://127.0.0.1:4310
           NIBLEAF_STORAGE_PUBLIC_ENDPOINT: http://127.0.0.1:9300
-          NIBLEAF_VERSION: v0.1.1
+          NIBLEAF_VERSION: v0.1.2
         run: |
+          INSTALL_COMMAND=$(node scripts/self-host-release.mjs --print-command)
+          export INSTALL_COMMAND
           cat >"$RUNNER_TEMP/run-installer.exp" <<'EXPECT'
           set timeout 1500
           log_user 1
-          spawn sh -c {curl -fsSL https://nibleaf.com/install.sh | sh}
+          spawn sh -c $env(INSTALL_COMMAND)
           expect "Install directory"
           send "\r"
           expect "Base domain for published sites (optional)"
@@ -37,7 +41,7 @@ jobs:
           send "\r"
           expect "Nibleaf image tag"
           send "\r"
-          expect "Enable email verification and invitation delivery?"
+          expect "Enable transactional email delivery for sign-in codes and invitations?"
           send "n\r"
           expect eof
           catch wait result

@@ -24,6 +24,7 @@
     "test": "turbo run test",
     "check:dead-code": "knip --files",
     "release:notes": "pnpm dlx changelogithub@14.0.0",
+    "self-host:check": "node scripts/self-host-release.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "db:generate": "pnpm --filter @nibleaf/database generate",
     "db:migrate": "pnpm --filter @nibleaf/database migrate:dev",

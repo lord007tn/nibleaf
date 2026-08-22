@@ -134,12 +134,13 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
-On a Linux server, the guided installer downloads the production Compose file,
-prompts for the public URLs and optional mail provider, generates fresh secrets
-locally, writes a mode-600 `.env`, and starts the stack:
+On a Linux server, the pinned bootstrap downloads the v0.1.2 installer, verifies
+its committed SHA-256 digest, and only then executes it. The verified installer
+also verifies the release's production Compose file before it writes a mode-600
+`.env` or starts the stack:
 
 ```bash
-curl -fsSL https://nibleaf.com/install.sh | sh
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "c8a70540c371d39dad366ea8ec8ce37893a3a0b664cacc0cfd96118740c48587" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 For manual setup, the recommended path below **pulls the prebuilt image** from
@@ -194,7 +195,7 @@ docker compose up -d --build
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
   `SERVICE_*` secrets), set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`,
-  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.1`.
+  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.2`.
 - **Nibleaf Cloud** — don't want to run servers? The hosted beta at
   [nibleaf.com](https://nibleaf.com) is free while in beta.
 

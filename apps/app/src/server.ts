@@ -16,6 +16,7 @@ import {
   notAcceptableHtmlResponse,
   preferredRepresentation,
 } from '@/lib/request-negotiation';
+import { renderSelfHostInstaller } from '@/lib/self-host-release';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -74,15 +75,15 @@ const CONFIGURED_HOST = (process.env.APP_URL || '')
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
 
-/** Public, version-controlled self-hosting artifacts. The installer and Compose
- * file are served from the marketing origin so the documented command always
- * downloads files from the same release as the product site. */
+/** Compatibility copies of the public self-hosting artifacts. The documented
+ * command uses versioned GitHub release assets and verifies their committed
+ * digests; these routes remain available for existing operators. */
 function serveSelfHostingArtifact(pathname: string, bare: string): Response | null {
   if (!IS_CLOUD_MARKETING || bare !== MARKETING_HOST) {
     return null;
   }
   const artifacts: Record<string, { body: string; type: string; filename: string }> = {
-    '/install.sh': { body: INSTALL_SCRIPT, type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
+    '/install.sh': { body: renderSelfHostInstaller(INSTALL_SCRIPT), type: 'text/x-shellscript; charset=utf-8', filename: 'nibleaf-install.sh' },
     '/docker-compose.yml': { body: PRODUCTION_COMPOSE, type: 'application/yaml; charset=utf-8', filename: 'docker-compose.yml' },
   };
   const artifact = artifacts[pathname];
