@@ -19,6 +19,20 @@ jobs:
     name: Typecheck, lint & test
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nibleaf
+          POSTGRES_PASSWORD: nibleaf
+          POSTGRES_USER: nibleaf
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nibleaf -d nibleaf"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v7
 
@@ -36,6 +50,14 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Exercise Prisma migrations and runtime database access
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+        run: |
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/database exec prisma migrate status
+          pnpm --filter @nibleaf/database smoke
 
       - name: Check documentation
         run: pnpm docs:check

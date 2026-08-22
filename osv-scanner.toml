@@ -1,4 +1,2 @@
-[[IgnoredVulns]]
-id = "GHSA-ggr8-5vv4-36mx"
-ignoreUntil = 2026-10-01
-reason = "deepmerge-ts 7.1.5 is only reached through Prisma configuration tooling; Nibleaf does not pass request-controlled recursive object graphs to it. The patched 8.x release is a transitive major that requires upstream Prisma compatibility. Tracked for removal in https://github.com/lord007tn/nibleaf/issues/49."
+# All dependency findings are enforced. Temporary exceptions require a tracked
+# removal issue, an expiry date, and a documented exposure analysis.
