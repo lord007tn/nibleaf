@@ -7,6 +7,8 @@ describe('marketing sitemap', () => {
 
     expect(lastmodByPath).toEqual({
       '/': '2026-08-17',
+      '/ar': '2026-08-22',
+      '/ar/documentation-platforms': '2026-08-22',
       '/cloud': '2026-07-13',
       '/pricing': '2026-08-15',
       '/self-hosting': '2026-08-15',

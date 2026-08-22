@@ -16,16 +16,19 @@ import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as ArRouteRouteImport } from './routes/ar/route'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as ArIndexRouteImport } from './routes/ar/index'
 import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
 import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
 import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
 import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
 import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
@@ -87,6 +90,11 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArRouteRoute = ArRouteRouteImport.update({
+  id: '/ar',
+  path: '/ar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/app',
   path: '/app',
@@ -105,6 +113,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ArIndexRoute = ArIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArRouteRoute,
 } as any)
 const ToolsRtlDocumentationReadinessRoute =
   ToolsRtlDocumentationReadinessRouteImport.update({
@@ -139,6 +152,12 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArDocumentationPlatformsRoute =
+  ArDocumentationPlatformsRouteImport.update({
+    id: '/documentation-platforms',
+    path: '/documentation-platforms',
+    getParentRoute: () => ArRouteRoute,
+  } as any)
 const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
   id: '/alternatives/readme',
   path: '/alternatives/readme',
@@ -274,6 +293,7 @@ const AppProjectsProjectIdAnalyticsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardRouteRouteWithChildren
+  '/ar': typeof ArRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
@@ -291,12 +311,14 @@ export interface FileRoutesByFullPath {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
@@ -332,12 +354,14 @@ export interface FileRoutesByTo {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/ar': typeof ArIndexRoute
   '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -357,6 +381,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(auth)': typeof authRouteRouteWithChildren
   '/app': typeof AppRouteRouteWithChildren
+  '/ar': typeof ArRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
@@ -375,12 +400,14 @@ export interface FileRoutesById {
   '/alternatives/gitbook': typeof AlternativesGitbookRoute
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
+  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
@@ -402,6 +429,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/ar'
     | '/about'
     | '/cloud'
     | '/contact'
@@ -419,12 +447,14 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/ar/documentation-platforms'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
     | '/tools/rtl-documentation-readiness'
+    | '/ar/'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/analytics'
@@ -460,12 +490,14 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/ar/documentation-platforms'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
     | '/tools/rtl-documentation-readiness'
+    | '/ar'
     | '/blog'
     | '/app/analytics'
     | '/app/members'
@@ -484,6 +516,7 @@ export interface FileRouteTypes {
     | '/'
     | '/(auth)'
     | '/app'
+    | '/ar'
     | '/about'
     | '/cloud'
     | '/contact'
@@ -502,12 +535,14 @@ export interface FileRouteTypes {
     | '/alternatives/gitbook'
     | '/alternatives/mintlify'
     | '/alternatives/readme'
+    | '/ar/documentation-platforms'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
     | '/tools/rtl-documentation-readiness'
+    | '/ar/'
     | '/blog/'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
@@ -529,6 +564,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   authRouteRoute: typeof authRouteRouteWithChildren
   AppRouteRoute: typeof AppRouteRouteWithChildren
+  ArRouteRoute: typeof ArRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   CloudRoute: typeof CloudRoute
   ContactRoute: typeof ContactRoute
@@ -601,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ar': {
+      id: '/ar'
+      path: '/ar'
+      fullPath: '/ar'
+      preLoaderRoute: typeof ArRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -628,6 +671,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/ar/': {
+      id: '/ar/'
+      path: '/'
+      fullPath: '/ar/'
+      preLoaderRoute: typeof ArIndexRouteImport
+      parentRoute: typeof ArRouteRoute
     }
     '/tools/rtl-documentation-readiness': {
       id: '/tools/rtl-documentation-readiness'
@@ -670,6 +720,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/blog/$slug'
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/ar/documentation-platforms': {
+      id: '/ar/documentation-platforms'
+      path: '/documentation-platforms'
+      fullPath: '/ar/documentation-platforms'
+      preLoaderRoute: typeof ArDocumentationPlatformsRouteImport
+      parentRoute: typeof ArRouteRoute
     }
     '/alternatives/readme': {
       id: '/alternatives/readme'
@@ -924,6 +981,19 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
+interface ArRouteRouteChildren {
+  ArDocumentationPlatformsRoute: typeof ArDocumentationPlatformsRoute
+  ArIndexRoute: typeof ArIndexRoute
+}
+
+const ArRouteRouteChildren: ArRouteRouteChildren = {
+  ArDocumentationPlatformsRoute: ArDocumentationPlatformsRoute,
+  ArIndexRoute: ArIndexRoute,
+}
+
+const ArRouteRouteWithChildren =
+  ArRouteRoute._addFileChildren(ArRouteRouteChildren)
+
 interface SitesProjectIdRouteRouteChildren {
   SitesProjectIdSplatRoute: typeof SitesProjectIdSplatRoute
   SitesProjectIdChangelogRoute: typeof SitesProjectIdChangelogRoute
@@ -943,6 +1013,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   authRouteRoute: authRouteRouteWithChildren,
   AppRouteRoute: AppRouteRouteWithChildren,
+  ArRouteRoute: ArRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   CloudRoute: CloudRoute,
   ContactRoute: ContactRoute,

@@ -11,7 +11,12 @@ export const Route = createFileRoute('/')({
         'A documentation platform with a Notion-style Markdown editor, built-in search, versioned publishing, Arabic and RTL support, and a free cloud beta.',
       path: '/',
     }),
-    links: [{ rel: 'canonical', href: canonicalHref('/') }],
+    links: [
+      { rel: 'canonical', href: canonicalHref('/') },
+      { rel: 'alternate', hrefLang: 'en', href: canonicalHref('/') },
+      { rel: 'alternate', hrefLang: 'ar', href: canonicalHref('/ar') },
+      { rel: 'alternate', hrefLang: 'x-default', href: canonicalHref('/') },
+    ],
     scripts: [marketingLd()],
   }),
   component: Landing,

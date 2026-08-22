@@ -10,6 +10,8 @@ export interface MarketingSitemapEntry {
  * appended from the article frontmatter registry. */
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/', lastmod: '2026-08-17' },
+  { path: '/ar', lastmod: '2026-08-22' },
+  { path: '/ar/documentation-platforms', lastmod: '2026-08-22' },
   { path: '/cloud', lastmod: '2026-07-13' },
   { path: '/pricing', lastmod: '2026-08-15' },
   { path: '/self-hosting', lastmod: '2026-08-15' },

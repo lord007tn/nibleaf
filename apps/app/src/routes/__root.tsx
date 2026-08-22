@@ -45,7 +45,8 @@ function RootDocument({ children }: { children: ReactNode }) {
       if (!site) {
         const articleMatch = state.matches.find((m) => m.routeId === '/blog/$slug');
         const language = (articleMatch?.loaderData as { language?: 'ar' | 'en' } | undefined)?.language ?? 'en';
-        if (language === 'ar') {
+        const arabicMarketingRoute = state.location.pathname === '/ar' || state.location.pathname.startsWith('/ar/');
+        if (language === 'ar' || arabicMarketingRoute) {
           return { lang: 'ar', dir: 'rtl' as const, siteProjectId: undefined };
         }
         return { lang: 'en', dir: 'ltr' as const, siteProjectId: undefined };
