@@ -30,7 +30,8 @@ export async function buildSelfHostRelease() {
     readFile(readmePath, 'utf8'),
   ]);
   const manifest = JSON.parse(manifestSource);
-  if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) throw new Error(`Invalid self-host release version: ${manifest.version}`);
+  if (!/^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(manifest.version))
+    throw new Error(`Invalid self-host release version: ${manifest.version}`);
 
   const composeDigest = sha256(compose);
   const installer = renderInstaller(installerTemplate, manifest.version, composeDigest);

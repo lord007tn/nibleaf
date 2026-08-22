@@ -18,7 +18,7 @@ actually consumes. Never commit a populated `.env`.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `NIBLEAF_VERSION` | Yes in practice | `v0.1.2` in the current template | GHCR release tag. Pin an existing release; avoid floating tags. Release tags are published by the manual Docker workflow; verify the selected tag exists before upgrading. |
+| `NIBLEAF_VERSION` | Yes in practice | `v0.1.2` in the current template | GHCR release tag. Pin an existing release; avoid floating tags. The manual Docker workflow rejects overwriting an existing `v*` release tag, making published version tags immutable by repository policy. |
 | `APP_URL` | Yes | None | Browser-facing dashboard and normal authentication origin, without a trailing slash. |
 | `ADMIN_URL` | Only when admin is exposed | `http://localhost:4315` | Public origin for the optional operator console. |
 | `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
