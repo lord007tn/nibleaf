@@ -37,8 +37,8 @@
     "@types/node": "^22.15.0",
     "@types/nodemailer": "^8.0.1",
     "dotenv-cli": "^11.0.0",
-    "tsdown": "^0.22.3",
+    "tsdown": "^0.22.14",
     "tsx": "^4.22.3",
-    "typescript": "^5.9.2"
+    "typescript": "^7.0.2"
   }
 }

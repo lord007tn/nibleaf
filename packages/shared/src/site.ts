@@ -15,12 +15,12 @@ export interface SnapshotPageConfig {
   hideToc?: boolean;
 }
 
-interface SnapshotNavLink {
+export interface SnapshotNavLink {
   label: string;
   href: string;
   external?: boolean;
 }
-interface SnapshotNavAnchor extends SnapshotNavLink {
+export interface SnapshotNavAnchor extends SnapshotNavLink {
   icon?: string;
 }
 

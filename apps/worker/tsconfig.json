@@ -1,7 +1,6 @@
 {
   "extends": "@nibleaf/tsconfig/hono.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }

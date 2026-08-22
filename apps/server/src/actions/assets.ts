@@ -1,4 +1,4 @@
-import { prisma } from '@nibleaf/database';
+import { type Asset, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
 import { slugify } from '@nibleaf/shared/utils';
 import { presignPutUrl, putObject } from '@nibleaf/storage';
@@ -62,8 +62,8 @@ export const storeAsset = async ({
   });
 };
 
-export const findImportedAsset = (projectId: string, importId: string, filename: string) =>
-  prisma.asset.findUnique({ where: { key: importedAssetKey(projectId, importId, filename) } });
+export const findImportedAsset = async (projectId: string, importId: string, filename: string): Promise<Asset | null> =>
+  await prisma.asset.findUnique({ where: { key: importedAssetKey(projectId, importId, filename) } });
 
 export const presignAsset = async (organizationId: string, projectId: string, body: PresignAssetBody) => {
   await assertProjectInOrg(organizationId, projectId);
@@ -80,4 +80,5 @@ export const confirmAsset = async (organizationId: string, projectId: string, us
   });
 };
 
-export const listAssets = (projectId: string) => prisma.asset.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 200 });
+export const listAssets = async (projectId: string): Promise<Asset[]> =>
+  await prisma.asset.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 200 });

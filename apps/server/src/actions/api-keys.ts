@@ -1,4 +1,4 @@
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { hashApiKeySecret } from '@nibleaf/shared/crypto';
 import { newApiKeySecret } from '@nibleaf/shared/ids';
 import type { CreateApiKeyBody } from '@nibleaf/validators';
@@ -15,8 +15,10 @@ const publicSelect = {
   revokedAt: true,
 } as const;
 
-export const listApiKeys = (projectId: string) =>
-  prisma.apiKey.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, select: publicSelect });
+type PublicApiKey = Prisma.ApiKeyGetPayload<{ select: typeof publicSelect }>;
+
+export const listApiKeys = async (projectId: string): Promise<PublicApiKey[]> =>
+  await prisma.apiKey.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, select: publicSelect });
 
 /** Create a key and return the full secret ONCE (only its hash is stored). */
 export const createApiKey = async (organizationId: string, projectId: string, body: CreateApiKeyBody) => {
