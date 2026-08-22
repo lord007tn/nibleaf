@@ -1,0 +1,5 @@
+{
+  "extends": "@nibleaf/tsconfig/hono.json",
+  "include": ["src", "tsdown.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

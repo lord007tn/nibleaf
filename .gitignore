@@ -40,11 +40,12 @@ Open source documentation platform.zip
 coverage
 playwright-report
 test-results
+*.tgz
 
 # dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
-dogfood-output
-output
-.playwright-cli/
+/dogfood-output/
+/output/
+/.playwright-cli/
 
 # cross-skill SEO evidence cache (local only)
 .seo-cache/

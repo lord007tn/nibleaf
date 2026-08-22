@@ -5,8 +5,17 @@ import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
-import { marketingSitemap } from '@/lib/marketing-sitemap';
-import { acceptsHtml, isDocumentPath, notAcceptableHtmlResponse } from '@/lib/request-negotiation';
+import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
+import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
+import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
+import {
+  acceptsHtml,
+  appendVary,
+  asHtmlRenderRequest,
+  isDocumentPath,
+  notAcceptableHtmlResponse,
+  preferredRepresentation,
+} from '@/lib/request-negotiation';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -314,6 +323,7 @@ const SEO_CONTENT_TYPE: Record<string, string> = {
   'llms.txt': 'text/plain; charset=utf-8',
   'llms-full.txt': 'text/plain; charset=utf-8',
   'pricing.md': 'text/markdown; charset=utf-8',
+  'openapi.json': 'application/json; charset=utf-8',
   'changelog/rss.xml': 'application/rss+xml; charset=utf-8',
 };
 
@@ -482,6 +492,7 @@ Last reviewed: 2026-08-22
 - [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
 - [About](${origin}/about): mission and stack
 - [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
+- [Nibleaf developer resources](${origin}/developers): public API contract, agent access, authentication boundaries, and CLI status
 - [RTL documentation readiness grader](${origin}/tools/rtl-documentation-readiness): browser-only static HTML checks with transparent unknowns
 - [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
 - [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
@@ -497,7 +508,20 @@ Last reviewed: 2026-08-22
 - [Public source repository](https://github.com/lord007tn/nibleaf): AGPL-3.0 code, issues, releases, and implementation details
 - [Product documentation](https://docs.nibleaf.com): current public user and operator documentation
 - [Machine-readable pricing](${origin}/pricing.md): current plans, limits, and operational responsibilities
+- [Nibleaf public OpenAPI specification](${origin}/openapi.json): typed public reader endpoints with unique operation IDs
 - [Security contact](${origin}/.well-known/security.txt): supported disclosure channel
+
+## When to use Nibleaf
+
+Use Nibleaf when a team needs to author, publish, search, or self-host versioned Markdown documentation, especially for bilingual English/Arabic sites, right-to-left interfaces, portable MDX content, or immutable release snapshots. Do not use Nibleaf as a general-purpose CMS, transactional database, or hosted write API: the supported developer contract currently covers public read access only.
+
+## How agents should call Nibleaf
+
+1. Read this file for product routing, then use [llms-full.txt](${origin}/llms-full.txt) when the complete product description is needed.
+2. Request a human-facing Nibleaf URL with \`Accept: text/markdown\` for its clean Markdown representation.
+3. Read [openapi.json](${origin}/openapi.json) before calling public reader endpoints. Use the \`siteId\` from a published site's URL and do not assume dashboard session endpoints are a supported write API.
+4. For a published documentation site, prefer its own \`/llms.txt\`, \`/llms-full.txt\`, \`/sitemap.xml\`, and, when configured by that site owner, \`/openapi.json\`.
+5. If a path returns 404, follow the sitemap or llms index instead of guessing paths.
 
 ## Current limitations
 
@@ -566,6 +590,8 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Self-hosting: ${origin}/self-hosting
 - Blog: ${origin}/blog
 - About: ${origin}/about
+- Developer resources: ${origin}/developers
+- Nibleaf public OpenAPI specification: ${origin}/openapi.json
 - Terms of Service: ${origin}/terms
 - Privacy Policy: ${origin}/privacy
 - Support: support@nibleaf.com
@@ -647,8 +673,8 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
       },
     });
   }
-  const isMarketingPricing = pathname === '/pricing.md';
-  if (!DOMAIN_SEO_FILE.test(pathname) && !isMarketingPricing) {
+  const isMarketingMachineFile = pathname === '/pricing.md' || pathname === '/openapi.json';
+  if (!DOMAIN_SEO_FILE.test(pathname) && !isMarketingMachineFile) {
     return null;
   }
   const file = pathname.slice(1);
@@ -662,16 +688,25 @@ function serveRootSeo(pathname: string, host: string, bare: string, request: Req
   const proto = request.headers.get('x-forwarded-proto') || 'https';
   const origin = `${proto}://${host}`;
   const body =
-    file === 'pricing.md'
-      ? marketingPricingMarkdown(origin)
-      : file === 'robots.txt'
-        ? marketingRobots(origin)
-        : file === 'sitemap.xml'
-          ? marketingSitemap(origin)
-          : file === 'llms.txt'
-            ? marketingLlms(origin)
-            : marketingLlmsFull(origin);
-  return new Response(body, { status: 200, headers: { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' } });
+    file === 'openapi.json'
+      ? `${JSON.stringify(nibleafPublicOpenApi(origin), null, 2)}\n`
+      : file === 'pricing.md'
+        ? marketingPricingMarkdown(origin)
+        : file === 'robots.txt'
+          ? marketingRobots(origin)
+          : file === 'sitemap.xml'
+            ? marketingSitemap(origin)
+            : file === 'llms.txt'
+              ? marketingLlms(origin)
+              : marketingLlmsFull(origin);
+  return new Response(body, {
+    status: 200,
+    headers: {
+      'cache-control': 'public, max-age=300',
+      'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8',
+      ...(file === 'openapi.json' ? { 'content-disposition': 'inline; filename="openapi.json"', 'x-content-type-options': 'nosniff' } : {}),
+    },
+  });
 }
 
 const APP_SECURITY_HEADERS = {
@@ -748,12 +783,41 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
     return Response.redirect(`${proto}://${host}${url.pathname.replace(/\/+$/, '')}${url.search}`, 308);
   }
 
-  const renderHtml = (documentRequest: Request): Promise<Response> | Response => {
+  const isMarketingOrigin = IS_CLOUD_MARKETING && (bare === MARKETING_HOST || host === MARKETING_HOST);
+  const marketingMarkdownPaths = new Set(marketingSitemapEntries().map((entry) => entry.path));
+  const renderHtml = async (documentRequest: Request): Promise<Response> => {
     const documentUrl = new URL(documentRequest.url);
-    if (isGetLike && isDocumentPath(documentUrl.pathname) && !acceptsHtml(documentRequest.headers.get('accept'))) {
-      return notAcceptableHtmlResponse();
+    if (!(isGetLike && isDocumentPath(documentUrl.pathname))) return startHandler(documentRequest, ...rest);
+
+    if (!isMarketingOrigin) {
+      if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
+      return startHandler(documentRequest, ...rest);
     }
-    return startHandler(documentRequest, ...rest);
+
+    const preferred = preferredRepresentation(documentRequest.headers.get('accept'));
+    if (!preferred) return notAcceptableHtmlResponse();
+
+    const isMarkdownCandidate = marketingMarkdownPaths.has(documentUrl.pathname);
+    const renderRequest = preferred === 'text/markdown' ? asHtmlRenderRequest(documentRequest) : documentRequest;
+    const rendered = await startHandler(renderRequest, ...rest);
+
+    if (rendered.status === 404) {
+      const response = preferred === 'text/markdown' ? agentFriendlyNotFoundMarkdown(documentUrl.origin) : new Response(rendered.body, rendered);
+      appendVary(response.headers, 'Accept');
+      return withoutHeadBody(response, documentRequest.method);
+    }
+
+    if (preferred === 'text/markdown') {
+      if (!isMarkdownCandidate) {
+        if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
+        return rendered;
+      }
+      return withoutHeadBody(await marketingMarkdownResponse(rendered, documentUrl.toString()), documentRequest.method);
+    }
+
+    const response = new Response(rendered.body, rendered);
+    if (isMarkdownCandidate) appendVary(response.headers, 'Accept');
+    return response;
   };
 
   const serve = async (): Promise<Response> => {
