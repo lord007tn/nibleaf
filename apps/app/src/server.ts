@@ -3,6 +3,7 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { BLOG_ENTRIES } from '@/lib/blog';
+import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { marketingSitemap } from '@/lib/marketing-sitemap';
 import { acceptsHtml, isDocumentPath, notAcceptableHtmlResponse } from '@/lib/request-negotiation';
@@ -501,7 +502,7 @@ Last reviewed: 2026-08-22
 ## Current limitations
 
 - No paid Nibleaf Cloud plan is offered while the service is in beta.
-- Live multi-user co-editing, SAML/SCIM, adaptive content, and a built-in AI assistant are not currently available.
+${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - GitHub has a two-way authoring workflow; public GitLab and generic Git imports are currently one-way.
 
 ## Blog
@@ -577,6 +578,9 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 /** Stable, non-JavaScript pricing truth for search engines and software agents.
  * Keep this synchronized with /pricing and lib/comparison-data.ts. */
 function marketingPricingMarkdown(origin: string): string {
+  const cloud = nibleafPricing.rows.find((row) => row.plan === 'Cloud');
+  const selfHosted = nibleafPricing.rows.find((row) => row.plan === 'Self-hosted');
+
   return `# Nibleaf pricing
 
 Last reviewed: 2026-08-22
@@ -585,24 +589,24 @@ Nibleaf currently has no paid cloud plan. The managed cloud is free while in bet
 
 ## Nibleaf Cloud beta
 
-- Price: USD 0 while the public beta continues
+- Price: ${cloud?.price ?? 'Free while in beta'}
 - Billing: no paid plan is currently offered
-- Includes: hosted dashboard and documentation sites, managed database and storage, custom domains, analytics, search, multilingual authoring, and versioned publishing
+- Includes: ${cloud?.includes ?? 'Hosted dashboard and documentation sites, managed database and storage, custom domains, analytics, and search.'}
 - Limits: fair-use controls apply; product limits can change during beta
 - Sign up: ${origin}/sign-up
 
 ## Self-hosted Nibleaf
 
-- Software price: USD 0 under AGPL-3.0
+- Software price: ${selfHosted?.price ?? 'Free under AGPL-3.0'}
 - Source: https://github.com/lord007tn/nibleaf
-- Includes: app, API, worker, PostgreSQL, cache, object storage, installer, and production Docker Compose configuration
+- Includes: ${selfHosted?.includes ?? 'App, API, worker, PostgreSQL, cache, object storage, installer, and production Docker Compose configuration.'}
 - Operator responsibilities: infrastructure, DNS, TLS, secrets, backups, monitoring, upgrades, incident response, and restore testing
 - Deployment guide: ${origin}/self-hosting
 
 ## Important limitations
 
 - There is no committed date or price for a future paid cloud plan.
-- Nibleaf does not currently offer live multi-user co-editing, SAML/SCIM, adaptive content, or a built-in AI assistant.
+${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
 
 ## العربية

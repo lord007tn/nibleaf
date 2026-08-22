@@ -24,6 +24,10 @@ describe('Arabic marketing pages', () => {
     expect(html).toContain('Material for MkDocs');
     expect(html).toContain('Apidog');
     expect(html).toContain('22 أغسطس 2026');
-    expect(html.match(/المصدر الرسمي/g)?.length).toBeGreaterThanOrEqual(5);
+    expect(html).toContain('https://www.mintlify.com/pricing');
+    expect(html).toContain('https://www.gitbook.com/pricing');
+    expect(html).toContain('https://docusaurus.io/docs/i18n/introduction');
+    expect(html).toContain('https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/');
+    expect(html).toContain('https://apidog.com/ar/blog/documentation-tools-ar/');
   });
 });

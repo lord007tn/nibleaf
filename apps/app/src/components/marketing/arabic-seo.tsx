@@ -7,7 +7,7 @@ const REVIEWED_ON = '22 أغسطس 2026';
 
 interface Platform {
   name: string;
-  href: string;
+  sources: Array<{ href: string; label: string }>;
   summary: string;
   bestFor: string;
   arabic: string;
@@ -19,7 +19,10 @@ interface Platform {
 const platforms: Platform[] = [
   {
     name: 'Nibleaf',
-    href: '/ar',
+    sources: [
+      { href: '/pricing', label: 'الأسعار' },
+      { href: 'https://github.com/lord007tn/nibleaf', label: 'المصدر العام' },
+    ],
     summary: 'محرر مرئي فوق Markdown، ونشر بإصدارات ثابتة، وبحث عربي، وخيار سحابي مجاني خلال المرحلة التجريبية أو استضافة كاملة من المصدر العام.',
     bestFor: 'الفِرق التي تريد الكتابة من المتصفح مع الاحتفاظ بـ Markdown، وتحتاج تجربة عربية وRTL داخل المحرر وموقع القارئ معًا.',
     arabic: 'واجهة عربية، واتجاه RTL، وشجرة مستقلة لكل لغة، وعزل للشيفرة داخل السطر، وبحث بتقطيع عربي وتطبيع إملائي محافظ.',
@@ -29,7 +32,10 @@ const platforms: Platform[] = [
   },
   {
     name: 'Mintlify',
-    href: 'https://www.mintlify.com/docs/guides/internationalization',
+    sources: [
+      { href: 'https://www.mintlify.com/docs/guides/internationalization', label: 'دعم اللغات' },
+      { href: 'https://www.mintlify.com/pricing', label: 'الأسعار' },
+    ],
     summary: 'منصة مُدارة ومصقولة لوثائق المطورين، مع محرر ويب وأدوات قوية لمراجع API وميزات ذكاء اصطناعي.',
     bestFor: 'الفِرق التي تفضل خدمة مُدارة ناضجة وتحتاج مساعدًا ووكيلاً للذكاء الاصطناعي وتكاملات مؤسسية.',
     arabic: 'تدرج Mintlify العربية ضمن اللغات المدعومة وتحوّل تخطيط العربية والعبرية إلى RTL تلقائيًا عند ضبط اللغة.',
@@ -39,7 +45,10 @@ const platforms: Platform[] = [
   },
   {
     name: 'GitBook',
-    href: 'https://gitbook.com/docs/help-center/editing-content/writing-and-editing',
+    sources: [
+      { href: 'https://gitbook.com/docs/help-center/editing-content/writing-and-editing', label: 'حالة RTL' },
+      { href: 'https://www.gitbook.com/pricing', label: 'الأسعار' },
+    ],
     summary: 'مساحة تحرير كتلية مُدارة مع مزامنة GitHub وGitLab، ومعاينات، وملعب API، وميزات بحث ومساعدة بالذكاء الاصطناعي في الخطط الأعلى.',
     bestFor: 'الفِرق التي تحتاج مزامنة GitLab ثنائية الاتجاه أو محتوى متكيفًا أو حوكمة مؤسسية ناضجة الآن.',
     arabic:
@@ -49,7 +58,7 @@ const platforms: Platform[] = [
   },
   {
     name: 'Docusaurus',
-    href: 'https://docusaurus.io/docs/i18n/introduction',
+    sources: [{ href: 'https://docusaurus.io/docs/i18n/introduction', label: 'التوثيق الرسمي' }],
     summary: 'مولّد مواقع ثابتة مفتوح المصدر مبني على React، وله منظومة إضافات ناضجة وتحكم واسع في الواجهة والبناء.',
     bestFor: 'الفِرق الهندسية التي تريد docs-as-code وتحكمًا كاملاً ومستعدة لبناء تجربة التحرير والاستضافة والبحث بنفسها.',
     arabic: 'توثيقه الرسمي يذكر دعم RTL للعربية والعبرية وإصدار hreflang افتراضيًا ضمن نظام التدويل.',
@@ -58,7 +67,7 @@ const platforms: Platform[] = [
   },
   {
     name: 'Material for MkDocs',
-    href: 'https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/',
+    sources: [{ href: 'https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/', label: 'التوثيق الرسمي' }],
     summary: 'قالب قوي لمولد MkDocs، مناسب لمشاريع Python والفرق التي تريد موقعًا ثابتًا سريعًا بإعداد مفهوم.',
     bestFor: 'المشاريع التي تفضل Markdown وملف إعداد بسيطًا ولا تحتاج مساحة عمل تحريرية متكاملة.',
     arabic: 'العربية ضمن اللغات المدعومة؛ النهج الموصى به للمواقع متعددة اللغات هو مشروع فرعي لكل لغة مع مبدّل يربط بينها.',
@@ -67,7 +76,7 @@ const platforms: Platform[] = [
   },
   {
     name: 'Apidog',
-    href: 'https://apidog.com/ar/blog/documentation-tools-ar/',
+    sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools-ar/', label: 'المصدر الرسمي' }],
     summary: 'منصة لدورة حياة API تجمع التصميم والتصحيح والمحاكاة والاختبار وتوليد الوثائق التفاعلية، ولها مكتبة محتوى عربية نشطة.',
     bestFor: 'فرق API التي تريد أداة واحدة لتصميم الواجهة واختبارها ونشر مرجع تفاعلي، لا منصة عامة لوثائق المنتج فقط.',
     arabic: 'تملك صفحات ودروسًا عربية كثيرة، ما يمنحها حضورًا واضحًا في نتائج البحث العربية المتعلقة بتوثيق API والبدائل.',
@@ -400,18 +409,21 @@ export function ArabicDocumentationPlatformsPage() {
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="font-mono text-muted-foreground/50">{String(index + 1).padStart(2, '0')}</span>
                     <h3 className="font-semibold text-xl">{platform.name}</h3>
-                    {platform.nibleaf ? (
-                      <span className="rounded-full bg-primary px-2.5 py-1 text-primary-foreground text-xs">منتجنا</span>
-                    ) : (
-                      <a
-                        className="inline-flex items-center gap-1 text-muted-foreground text-xs underline underline-offset-2"
-                        href={platform.href}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        المصدر الرسمي <ExternalLink className="size-3" />
-                      </a>
-                    )}
+                    {platform.nibleaf ? <span className="rounded-full bg-primary px-2.5 py-1 text-primary-foreground text-xs">منتجنا</span> : null}
+                    {platform.sources.map((source) => {
+                      const external = source.href.startsWith('http');
+                      return (
+                        <a
+                          className="inline-flex items-center gap-1 text-muted-foreground text-xs underline underline-offset-2"
+                          href={source.href}
+                          key={source.href}
+                          rel={external ? 'noopener noreferrer' : undefined}
+                          target={external ? '_blank' : undefined}
+                        >
+                          {source.label} {external ? <ExternalLink className="size-3" /> : null}
+                        </a>
+                      );
+                    })}
                   </div>
                   <p className="mt-4 text-muted-foreground leading-8">{platform.summary}</p>
                   <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
