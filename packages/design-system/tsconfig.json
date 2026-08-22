@@ -1,7 +1,6 @@
 {
   "extends": "@nibleaf/tsconfig/react.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@nibleaf/design-system/*": ["./src/*"]
     }

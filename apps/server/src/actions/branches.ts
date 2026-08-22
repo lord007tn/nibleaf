@@ -1,11 +1,11 @@
-import { prisma } from '@nibleaf/database';
+import { type Branch, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
 import type { CreateBranchBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 /** Every branch of a project, default ('main') first. */
-export const listBranches = (projectId: string) =>
-  prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] });
+export const listBranches = async (projectId: string): Promise<Branch[]> =>
+  await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] });
 
 /** The project's required default branch. Missing data is an invariant error. */
 export const getDefaultBranch = async (projectId: string) => {

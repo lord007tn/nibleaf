@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import ts from 'typescript';
+import { parse } from '@babel/parser';
+import type { Expression, ObjectExpression } from '@babel/types';
 import type { Plugin } from 'vite';
 
 const virtualPrefix = 'virtual:nibleaf-messages/';
@@ -15,10 +16,11 @@ const catalogLocales = new Set<CatalogLocale>(['ar', 'bn', 'de', 'en', 'es', 'fr
 const isAuthMessage = (key: string | undefined) =>
   Boolean(key?.startsWith('common.') || key?.startsWith('auth.') || key?.startsWith('account.language'));
 
-const propertyName = (property: ts.ObjectLiteralElementLike): string | undefined => {
-  const name = property.name;
-  if (!name) return undefined;
-  if (ts.isStringLiteral(name) || ts.isIdentifier(name)) return name.text;
+const propertyName = (property: ObjectExpression['properties'][number]): string | undefined => {
+  if (property.type === 'SpreadElement') return undefined;
+  const name = property.key;
+  if (name.type === 'StringLiteral') return name.value;
+  if (name.type === 'Identifier') return name.name;
   return undefined;
 };
 
@@ -31,30 +33,32 @@ export function buildMessageCatalogModule(locale: CatalogLocale, namespace: Cata
     const entries = Object.entries(catalog).filter(([key]) => namespace === 'app' || isAuthMessage(key));
     return `export default ${JSON.stringify(Object.fromEntries(entries))};\n`;
   }
-  const file = ts.createSourceFile('messages.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  let messagesObject: ts.ObjectLiteralExpression | undefined;
-  file.forEachChild((node) => {
-    if (!ts.isVariableStatement(node)) return;
-    for (const declaration of node.declarationList.declarations) {
-      if (ts.isIdentifier(declaration.name) && declaration.name.text === 'messages' && declaration.initializer) {
-        let initializer: ts.Expression = declaration.initializer;
-        if (ts.isAsExpression(initializer)) initializer = initializer.expression;
-        if (ts.isObjectLiteralExpression(initializer)) messagesObject = initializer;
+  const file = parse(source, { sourceType: 'module', plugins: ['typescript'] });
+  let messagesObject: ObjectExpression | undefined;
+  for (const statement of file.program.body) {
+    const variableStatement = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+    if (variableStatement?.type !== 'VariableDeclaration') continue;
+    for (const declaration of variableStatement.declarations) {
+      if (declaration.id.type !== 'Identifier' || declaration.id.name !== 'messages' || !declaration.init) continue;
+      let initializer: Expression = declaration.init;
+      while (initializer.type === 'TSAsExpression' || initializer.type === 'TSSatisfiesExpression') {
+        initializer = initializer.expression;
       }
+      if (initializer.type === 'ObjectExpression') messagesObject = initializer;
     }
-  });
+  }
   if (!messagesObject) throw new Error('Unable to find the messages registry.');
 
   const localeProperty = messagesObject.properties.find((property) => propertyName(property) === locale);
-  if (!localeProperty || !ts.isPropertyAssignment(localeProperty) || !ts.isObjectLiteralExpression(localeProperty.initializer)) {
+  if (localeProperty?.type !== 'ObjectProperty' || localeProperty.value.type !== 'ObjectExpression') {
     throw new Error(`Unable to find the ${locale} message catalog.`);
   }
 
-  const properties = localeProperty.initializer.properties.filter((property) => {
+  const properties = localeProperty.value.properties.filter((property) => {
     const key = propertyName(property);
     return namespace === 'app' || isAuthMessage(key);
   });
-  return `export default {\n${properties.map((property) => property.getText(file)).join(',\n')}\n};\n`;
+  return `export default {\n${properties.map((property) => source.slice(property.start ?? 0, property.end ?? 0)).join(',\n')}\n};\n`;
 }
 
 export function messageCatalogPlugin(): Plugin {
