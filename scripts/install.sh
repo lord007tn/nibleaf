@@ -1,10 +1,14 @@
 #!/bin/sh
 set -eu
 
-# Nibleaf interactive production installer. It deliberately reads prompts from
-# /dev/tty so it remains interactive when invoked as: curl ... | sh
+# Nibleaf interactive production installer. Release automation replaces both
+# placeholders before publishing this file as a versioned, checksummed asset.
 
-COMPOSE_URL=${NIBLEAF_COMPOSE_URL:-https://nibleaf.com/docker-compose.yml}
+RELEASE_VERSION='{{NIBLEAF_RELEASE_VERSION}}'
+RELEASE_COMPOSE_SHA256='{{NIBLEAF_COMPOSE_SHA256}}'
+RELEASE_BASE_URL="https://github.com/lord007tn/nibleaf/releases/download/$RELEASE_VERSION"
+COMPOSE_URL=${NIBLEAF_COMPOSE_URL:-$RELEASE_BASE_URL/docker-compose.yml}
+COMPOSE_SHA256=${NIBLEAF_COMPOSE_SHA256:-$RELEASE_COMPOSE_SHA256}
 DEFAULT_INSTALL_DIR=${NIBLEAF_INSTALL_DIR:-"$PWD/nibleaf"}
 TTY=/dev/tty
 
@@ -58,6 +62,16 @@ env_line() {
 
 random_hex() { openssl rand -hex "$1"; }
 
+verify_sha256() {
+  _file=$1
+  _expected=$2
+  case $_expected in ''|*[!0-9a-fA-F]*) fail 'The expected Compose SHA-256 must be 64 hexadecimal characters.' ;; esac
+  [ "${#_expected}" -eq 64 ] || fail 'The expected Compose SHA-256 must be 64 hexadecimal characters.'
+  _digest=$(openssl dgst -sha256 "$_file") || fail "Could not hash $_file"
+  _actual=${_digest##* }
+  [ "$_actual" = "$_expected" ] || fail "Compose checksum mismatch: expected $_expected but received $_actual. No configuration was installed."
+}
+
 [ -r "$TTY" ] || fail 'Run this command from an interactive SSH terminal.'
 has curl || fail 'curl is required.'
 has sed || fail 'sed is required.'
@@ -82,7 +96,7 @@ STORAGE_PUBLIC_ENDPOINT=${STORAGE_PUBLIC_ENDPOINT%/}
 
 SITE_BASE_DOMAIN=$(prompt 'Base domain for published sites (optional)' '')
 CUSTOM_DOMAIN_CNAME_TARGET=$(prompt 'CNAME target for customer domains (optional)' "$SITE_BASE_DOMAIN")
-NIBLEAF_VERSION=$(prompt 'Nibleaf image tag' "${NIBLEAF_VERSION:-v0.1.1}")
+NIBLEAF_VERSION=$(prompt 'Nibleaf image tag' "${NIBLEAF_VERSION:-$RELEASE_VERSION}")
 
 EMAIL_FROM='nibleaf@localhost'
 POSTMARK_API_KEY=''
@@ -145,6 +159,8 @@ env_line NIBLEAF_RUN_SEED false
 say ''
 say 'Downloading the production Compose file...'
 curl -fsSL "$COMPOSE_URL" -o "$COMPOSE_TMP" || fail "Could not download $COMPOSE_URL"
+verify_sha256 "$COMPOSE_TMP" "$COMPOSE_SHA256"
+say "Verified Docker Compose SHA-256: $COMPOSE_SHA256"
 mv -f "$ENV_TMP" "$INSTALL_DIR/.env"
 mv -f "$COMPOSE_TMP" "$INSTALL_DIR/docker-compose.yml"
 chmod 600 "$INSTALL_DIR/.env"

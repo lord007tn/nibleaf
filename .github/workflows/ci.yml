@@ -40,6 +40,18 @@ jobs:
       - name: Check documentation
         run: pnpm docs:check
 
+      - name: Check self-host release integrity
+        run: |
+          pnpm self-host:check
+          artifact_dir="$(mktemp -d)"
+          node scripts/self-host-release.mjs --output "$artifact_dir"
+          (cd "$artifact_dir" && sha256sum --check SHA256SUMS)
+          printf '\n# CI tamper proof\n' >> "$artifact_dir/docker-compose.yml"
+          if (cd "$artifact_dir" && sha256sum --check SHA256SUMS); then
+            echo "::error::Tampered self-host assets passed checksum verification"
+            exit 1
+          fi
+
       - name: Check for unused source files
         run: pnpm check:dead-code
 

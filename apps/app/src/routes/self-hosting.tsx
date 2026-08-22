@@ -2,8 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
 import { CopyCommand, Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
-
-const INSTALL_COMMAND = 'curl -fsSL https://nibleaf.com/install.sh | sh';
+import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
 
 export const Route = createFileRoute('/self-hosting')({
   loader: async () => ({ stars: await getGithubStars() }),
@@ -33,21 +32,22 @@ function SelfHostingPage() {
           <Eyebrow>Self-hosting status</Eyebrow>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Run Nibleaf on your own infrastructure</h1>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
-            The AGPL-3.0 source repository and pinned GHCR release are publicly accessible. The guided installer generates local secrets, downloads
-            the production Compose file, and starts the application, worker, PostgreSQL, cache, and object-storage services.
+            The AGPL-3.0 source repository and pinned GHCR release are publicly accessible. The guided installer is fetched from a versioned release,
+            verified before execution, then verifies the production Compose file before it writes configuration or starts any service.
           </p>
           <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
             <h2 className="font-semibold text-xl">Distribution checks completed</h2>
             <ul className="mt-4 space-y-2 text-muted-foreground text-sm leading-relaxed">
               <li>The repository can be cloned without GitHub credentials.</li>
               <li>The pinned container release can be fetched anonymously from GHCR.</li>
+              <li>The installer and production Compose file are pinned to one release and protected by committed SHA-256 digests.</li>
               <li>The production Compose file keeps PostgreSQL, cache, workers, and storage on the internal network.</li>
               <li>The install path is tested on a disposable Linux runner before release.</li>
             </ul>
           </div>
           <div className="mt-8 flex flex-col items-start gap-3">
             <div className="w-full">
-              <CopyCommand command={INSTALL_COMMAND} />
+              <CopyCommand command={SELF_HOST_INSTALL_COMMAND} />
             </div>
             <a className={outlineButton} href="/blog/self-host-documentation-site-docker-compose">
               Follow the deployment guide <ArrowRight className="size-4" />

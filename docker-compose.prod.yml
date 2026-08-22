@@ -24,7 +24,7 @@ name: nibleaf
 # The internal admin panel is behind the "admin" profile:
 #   docker compose -f docker-compose.prod.yml --profile admin up -d
 
-x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.1.1}
+x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.1.2}
 
 x-service-env: &service-env
   NODE_ENV: production
