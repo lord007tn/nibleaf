@@ -11,6 +11,7 @@ import { AuthLayout } from '@/layouts/auth';
 import { authClient, signIn } from '@/lib/auth-client';
 import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
+import { sendMarketingAnalyticsEvent } from '@/lib/marketing-analytics';
 
 interface AuthSearch {
   invite?: string;
@@ -103,6 +104,7 @@ function SignUpPage() {
         setError(result.error.message ?? t('auth.otp.invalid'));
         return;
       }
+      sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
       await finishSignUp();
     } catch {
       setError(t('auth.otp.invalid'));

@@ -54,6 +54,7 @@ x-service-env: &service-env
   # POSTMARK_API_KEY or SMTP_URL so the verification mail can be delivered;
   # set to "false" for a private instance without email.
   DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+  MARKETING_GA4_ID: ${MARKETING_GA4_ID:-}
   TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-${APP_URL:-}}
   CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-${APP_URL:-}}
   API_PORT: "4311"

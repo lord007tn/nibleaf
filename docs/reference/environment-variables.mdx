@@ -3,7 +3,7 @@ title: 'Production environment variables'
 description: 'Look up the production image, origin, domain, secret, storage, authentication, email, proxy, worker, and lifecycle settings Nibleaf consumes.'
 audience: 'self-hosted operators and infrastructure reviewers'
 content_type: 'reference'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-22'
 verified_against: '.env.production.example and docker-compose.prod.yml'
 lang: 'en'
 dir: 'ltr'
@@ -92,6 +92,7 @@ Both variables must be present and non-blank after trimming surrounding whitespa
 | --- | --- | --- | --- |
 | `OPENAI_API_KEY` | Only for AI assist | Empty | Enables explicit AI writing actions. |
 | `AI_DAILY_LIMIT` | No | Application default | Per-workspace daily AI request limit; `0` disables drafting. |
+| `MARKETING_GA4_ID` | No | Empty | GA4 measurement ID for public instance marketing pages. It is public metadata and loads only after explicit visitor consent; update your privacy notice before enabling it. |
 | `RATE_LIMIT_PUBLIC_PER_MIN` | No | Application default | Public site-serving requests per address per minute. |
 | `TRUSTED_PROXY_HOPS` | No | `0` | Count of trusted public proxies that append to the forwarding chain. |
 
