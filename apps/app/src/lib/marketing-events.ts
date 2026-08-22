@@ -1,3 +1,5 @@
+import { sendMarketingAnalyticsEvent } from './marketing-analytics';
+
 export type MarketingEventName = 'free_tool_started' | 'free_tool_completed' | 'free_tool_cta_clicked';
 
 type MarketingEventProperties = {
@@ -74,6 +76,7 @@ function allowlistedProperties<E extends MarketingEventName>(event: E, value: Ma
  * never blocks the tool result or navigation. */
 export function trackMarketingEvent<E extends MarketingEventName>(event: E, properties: MarketingEventProperties[E]): void {
   if (typeof window === 'undefined' || !allowlistedProperties(event, properties)) return;
+  sendMarketingAnalyticsEvent(event, properties);
   void fetch('/api/public/marketing-events', {
     body: JSON.stringify({ event, properties }),
     headers: { 'content-type': 'application/json' },

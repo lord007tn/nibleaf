@@ -2,6 +2,7 @@ import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import { ArrowLeft, Check, ExternalLink, Languages, Search, Server, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { primaryButton } from '@/components/cloud-marketing';
+import { sendMarketingCtaEvent } from '@/lib/marketing-analytics';
 
 const REVIEWED_ON = '22 أغسطس 2026';
 
@@ -115,7 +116,11 @@ function ArabicShell({ children }: { children: ReactNode }) {
             <a className="hidden h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-muted sm:inline-flex" href="/" hrefLang="en">
               English
             </a>
-            <a className={`${primaryButton} h-9 px-3 text-sm`} href="/sign-up">
+            <a
+              className={`${primaryButton} h-9 px-3 text-sm`}
+              href="/sign-up"
+              onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'header' })}
+            >
               ابدأ مجانًا
             </a>
           </div>
@@ -197,12 +202,17 @@ export function ArabicLandingPage() {
               لغة. استخدم السحابة مجانًا خلال المرحلة التجريبية أو شغّل المنظومة الكاملة على بنيتك.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a className={`${primaryButton} group`} href="/sign-up">
+              <a
+                className={`${primaryButton} group`}
+                href="/sign-up"
+                onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' })}
+              >
                 أنشئ حسابًا مجانيًا <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
               </a>
               <a
                 className="inline-flex h-11 items-center rounded-md border border-border px-5 font-medium text-sm hover:bg-muted"
                 href="/ar/documentation-platforms"
+                onClick={() => sendMarketingCtaEvent({ destination: 'comparison', language: 'ar', placement: 'hero' })}
               >
                 قارن منصات التوثيق
               </a>
@@ -328,12 +338,17 @@ export function ArabicLandingPage() {
           محليًا في متصفحك ولا ترفع الملف إلى خادمنا.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <a className={primaryButton} href="/tools/rtl-documentation-readiness">
+          <a
+            className={primaryButton}
+            href="/tools/rtl-documentation-readiness"
+            onClick={() => sendMarketingCtaEvent({ destination: 'rtl_tool', language: 'ar', placement: 'resource_bridge' })}
+          >
             افحص جاهزية RTL
           </a>
           <a
             className="inline-flex h-11 items-center rounded-md border border-border px-5 font-medium text-sm hover:bg-muted"
             href="/blog/arabic-technical-documentation-rtl-checklist"
+            onClick={() => sendMarketingCtaEvent({ destination: 'rtl_guide', language: 'ar', placement: 'resource_bridge' })}
           >
             اقرأ قائمة الفحص
           </a>
@@ -540,12 +555,17 @@ export function ArabicDocumentationPlatformsPage() {
               أنشئ مشروعًا مجانيًا في Nibleaf، وانشر صفحة اختبار مختلطة الاتجاه، ثم قارنها بالمنصة التي تستخدمها اليوم. لا تحتاج بطاقة دفع.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <a className={`${primaryButton} group`} href="/sign-up">
+              <a
+                className={`${primaryButton} group`}
+                href="/sign-up"
+                onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'final' })}
+              >
                 ابدأ مجانًا <ArrowLeft className="size-4" />
               </a>
               <a
                 className="inline-flex h-11 items-center rounded-md border border-background/30 px-5 font-medium text-sm hover:bg-background/10"
                 href="/tools/rtl-documentation-readiness"
+                onClick={() => sendMarketingCtaEvent({ destination: 'rtl_tool', language: 'ar', placement: 'final' })}
               >
                 افحص HTML موجودًا
               </a>

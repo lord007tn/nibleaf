@@ -17,6 +17,14 @@ export const envExtras = createEnv({
       .string()
       .optional()
       .transform((value) => value === 'true' || value === '1'),
+    /** Optional GA4 measurement ID for the instance's public marketing pages.
+     *  It is deliberately public and is loaded only after explicit consent. */
+    MARKETING_GA4_ID: z
+      .string()
+      .regex(/^G-[A-Z0-9]{6,}$/i)
+      .refine((value) => !/^G-X+$/i.test(value), 'Use the real GA4 measurement ID, not the G-XXXXXXXXXX placeholder.')
+      .optional()
+      .transform((value) => value?.toUpperCase()),
     /** Number of PUBLIC proxy hops appended by edge infrastructure you operate
      *  (e.g. 1 behind Cloudflare). Private-network hops (nginx/Traefik/the app's
      *  own proxy) are always skipped and must NOT be counted. Raising this past

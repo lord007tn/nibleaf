@@ -52,6 +52,7 @@ x-service-env: &service-env
   API_PORT: "4311"
   API_URL: http://server:4311
   APP_URL: ${APP_URL:-http://localhost:4310}
+  MARKETING_GA4_ID: ${MARKETING_GA4_ID:-}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
   CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.nibleaf.com}
   CUSTOM_DOMAIN_PROVIDER: ${CUSTOM_DOMAIN_PROVIDER:-ingress}
