@@ -1,0 +1,41 @@
+{
+  "name": "@nibleaf/cli",
+  "version": "0.1.0",
+  "description": "Official CLI for inspecting and fetching agent-readable Nibleaf sites.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "bin": {
+    "nibleaf": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "clean": "git clean -xdf .cache .turbo dist node_modules",
+    "prepublishOnly": "pnpm test && pnpm typecheck && pnpm build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@nibleaf/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "tsdown": "^0.22.3",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

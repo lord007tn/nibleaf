@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, BookOpenCheck, LifeBuoy, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
+import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
 import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
 
 const CONTACTS = [
@@ -58,8 +59,9 @@ export const Route = createFileRoute('/contact')({
           url: canonicalHref('/contact'),
           mainEntity: {
             '@type': 'Organization',
-            name: 'Nibleaf',
+            name: NIBLEAF_ORGANIZATION.name,
             url: canonicalHref('/'),
+            address: NIBLEAF_ORGANIZATION.address,
             contactPoint: CONTACTS.map((contact) => ({
               '@type': 'ContactPoint',
               contactType: contact.title,

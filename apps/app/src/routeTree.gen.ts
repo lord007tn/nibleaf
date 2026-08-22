@@ -13,6 +13,7 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SelfHostingRouteImport } from './routes/self-hosting'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as DevelopersRouteImport } from './routes/developers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as AboutRouteImport } from './routes/about'
@@ -73,6 +74,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRoute = DevelopersRouteImport.update({
+  id: '/developers',
+  path: '/developers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -297,6 +303,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
+  '/developers': typeof DevelopersRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
+  '/developers': typeof DevelopersRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -385,6 +393,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
+  '/developers': typeof DevelopersRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -433,6 +442,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/cloud'
     | '/contact'
+    | '/developers'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -477,6 +487,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/cloud'
     | '/contact'
+    | '/developers'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -520,6 +531,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/cloud'
     | '/contact'
+    | '/developers'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -568,6 +580,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   CloudRoute: typeof CloudRoute
   ContactRoute: typeof ContactRoute
+  DevelopersRoute: typeof DevelopersRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SelfHostingRoute: typeof SelfHostingRoute
@@ -614,6 +627,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/developers': {
+      id: '/developers'
+      path: '/developers'
+      fullPath: '/developers'
+      preLoaderRoute: typeof DevelopersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -1017,6 +1037,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   CloudRoute: CloudRoute,
   ContactRoute: ContactRoute,
+  DevelopersRoute: DevelopersRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SelfHostingRoute: SelfHostingRoute,

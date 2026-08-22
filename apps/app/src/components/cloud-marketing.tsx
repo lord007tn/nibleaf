@@ -738,6 +738,7 @@ const footerColumns: { title: string; links: { href: string; label: string; exte
       { href: '/blog', label: 'Blog' },
       { href: '/tools/rtl-documentation-readiness', label: 'RTL grader' },
       { href: 'https://docs.nibleaf.com', label: 'Documentation', external: true },
+      { href: '/developers', label: 'Developers' },
       { href: '/about', label: 'About' },
       { href: '/self-hosting', label: 'Self-hosting' },
       { href: '/contact', label: 'Contact' },

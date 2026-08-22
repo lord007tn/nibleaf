@@ -1,4 +1,5 @@
 import { APP_URL, GITHUB_URL } from '@/lib/links';
+import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
 
 /**
  * SEO helpers for the marketing + legal routes served from the cloud app
@@ -112,16 +113,12 @@ export function marketingLd() {
         {
           '@type': 'Organization',
           '@id': `${homepage}#organization`,
-          name: SITE_NAME,
+          name: NIBLEAF_ORGANIZATION.name,
           url: homepage,
           logo: canonicalHref('/brand/raster/logo/nibleaf-logo-horizontal-ltr.png'),
           sameAs: [GITHUB_URL],
-          contactPoint: {
-            '@type': 'ContactPoint',
-            contactType: 'Product support',
-            email: 'support@nibleaf.com',
-            availableLanguage: ['English', 'Arabic'],
-          },
+          address: NIBLEAF_ORGANIZATION.address,
+          contactPoint: NIBLEAF_ORGANIZATION.supportContact,
         },
         {
           '@type': 'WebSite',

@@ -1,0 +1,45 @@
+name: Publish Nibleaf CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref containing the reviewed CLI version
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Test and publish @nibleaf/cli
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the selected ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package
+        run: pnpm --filter @nibleaf/cli prepublishOnly
+
+      - name: Publish package
+        run: pnpm --filter @nibleaf/cli publish --access public --provenance --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
