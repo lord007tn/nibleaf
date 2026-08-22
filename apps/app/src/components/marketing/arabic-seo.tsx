@@ -47,15 +47,15 @@ const platforms: Platform[] = [
   {
     name: 'GitBook',
     sources: [
-      { href: 'https://gitbook.com/docs/help-center/editing-content/writing-and-editing', label: 'حالة RTL' },
+      { href: 'https://gitbook.com/docs/publishing-documentation/customization/extra-configuration', label: 'تعريب الواجهة' },
+      { href: 'https://gitbook.com/docs/publishing-documentation/site-structure/variants', label: 'اللغات والنسخ' },
       { href: 'https://www.gitbook.com/pricing', label: 'الأسعار' },
     ],
     summary: 'مساحة تحرير كتلية مُدارة مع مزامنة GitHub وGitLab، ومعاينات، وملعب API، وميزات بحث ومساعدة بالذكاء الاصطناعي في الخطط الأعلى.',
     bestFor: 'الفِرق التي تحتاج مزامنة GitLab ثنائية الاتجاه أو محتوى متكيفًا أو حوكمة مؤسسية ناضجة الآن.',
-    arabic:
-      'يذكر مركز المساعدة أن الفقرات والعناوين تكتشف RTL، لكن القوائم وكتل المحتوى الأخرى قد لا تُحاذى جيدًا، وأن مساهمات RTL ليست مدعومة بالكامل.',
+    arabic: 'توثّق GitBook تعريب واجهة الموقع ونشر اللغات كنسخ يختار بينها القارئ، لكن صفحاتها الحالية لا تقدّم وعدًا صريحًا بتوافق كل مكوّن مع RTL.',
     model: 'خطة مجانية لفرد واحد؛ Premium من 65 دولارًا للموقع و12 دولارًا للمستخدم شهريًا عند الفوترة السنوية.',
-    caveat: 'يحتاج دعم العربية العملي إلى اختبار كل كتلة، لا الاكتفاء بفقرة عربية تبدو صحيحة.',
+    caveat: 'اختبر القوائم والجداول وكتل الشيفرة والتنقل بالعربية؛ مبدّل اللغة وتعريب الواجهة لا يثبتان وحدهما تجربة RTL كاملة.',
   },
   {
     name: 'Docusaurus',
@@ -495,8 +495,8 @@ export function ArabicDocumentationPlatformsPage() {
                 وحدود الاعتمادات وخيار الاستضافة المؤسسي كما تصفه الشركة.
               </p>
               <p>
-                <strong className="text-foreground">مؤسسة تعتمد GitLab والمحتوى المتكيف:</strong> GitBook يقدم سيرًا ناضجًا، لكن وثائقه نفسها تحذر من أن
-                مساهمات RTL ليست كاملة؛ نفّذ تجربة عربية قبل العقد.
+                <strong className="text-foreground">مؤسسة تعتمد GitLab والمحتوى المتكيف:</strong> GitBook يقدم سيرًا ناضجًا، وتوثيقه يشرح تعريب الواجهة
+                والنسخ اللغوية، لكنه لا يقدّم ضمانًا صريحًا لكل كتل RTL؛ نفّذ تجربة عربية قبل العقد.
               </p>
               <p>
                 <strong className="text-foreground">فريق هندسي يحب Git والبناء:</strong> Docusaurus أو Material for MkDocs خياران منطقيان. ستحصل على
@@ -524,7 +524,7 @@ export function ArabicDocumentationPlatformsPage() {
               ],
               [
                 'هل GitBook يدعم RTL بالكامل؟',
-                'لا وفق صياغة مركز المساعدة الحالي. GitBook يذكر أن الفقرات والعناوين تكتشف RTL، لكنه يحذر من أن القوائم وكتلًا أخرى قد لا تُحاذى جيدًا وأن مساهمات RTL غير مدعومة بالكامل.',
+                'لا يمكن إثبات دعم كامل من التوثيق العام الحالي. GitBook يشرح تعريب واجهة الموقع ونشر المحتوى بلغات متعددة، لكنه لا يقدّم في الصفحات المرتبطة ضمانًا صريحًا لكل القوائم والجداول وكتل الشيفرة في RTL؛ اختبر محتوى عربيًا فعليًا قبل القرار.',
               ],
               [
                 'هل الاستضافة الذاتية أرخص دائمًا؟',
