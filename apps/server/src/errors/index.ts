@@ -12,8 +12,11 @@ export type ErrorCode =
   | 'auth:no_user'
   | 'auth:invalid_session'
   | 'auth:invalid_api_key'
-  | 'auth:insufficient_role'
   | 'auth:insufficient_scope'
+  | 'auth:insufficient_role'
+  | 'mcp:disabled'
+  | 'mcp:invalid_request'
+  | 'mcp:scope_required'
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
@@ -65,8 +68,11 @@ const ERROR_STATUS = {
   'auth:no_user': 401,
   'auth:invalid_session': 401,
   'auth:invalid_api_key': 401,
-  'auth:insufficient_role': 403,
   'auth:insufficient_scope': 403,
+  'auth:insufficient_role': 403,
+  'mcp:disabled': 503,
+  'mcp:invalid_request': 400,
+  'mcp:scope_required': 403,
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,

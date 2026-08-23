@@ -15,7 +15,7 @@ app.use(
   cors({
     origin: env.CORS_ALLOWED_ORIGINS,
     credentials: true,
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Nibleaf-Locale'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Nibleaf-Locale', 'MCP-Protocol-Version', 'Mcp-Method', 'Mcp-Name', 'Last-Event-ID'],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );

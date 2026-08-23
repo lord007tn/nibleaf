@@ -1,0 +1,157 @@
+---
+title: 'Connect MCP clients securely'
+description: 'Enable the project-bound Nibleaf MCP endpoint, issue least-privilege keys, configure a client, rotate access, and operate the audit and rate-limit boundaries.'
+audience: 'self-hosted Nibleaf operators and project administrators'
+content_type: 'how-to'
+last_reviewed: '2026-08-23'
+verified_against: 'apps/server/src/mcp and the official Model Context Protocol server SDK 2.0.0'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/mcp'
+---
+
+Nibleaf exposes an authenticated HTTP MCP endpoint at `/api/mcp`. It is off by
+default. Every key is bound to one project, carries explicit scopes, expires,
+and can be revoked or atomically rotated by a project administrator. The server
+derives the project and organization from the key; tools never accept either as
+caller authority.
+
+The initial surface is read-only, except for `preview_theme_import`, which
+validates and previews a theme without writing project state. Publishing,
+deletion, provider credentials, payment actions, database primitives, arbitrary
+files, and code execution are not available.
+
+## Enable the endpoint
+
+Set the API service environment:
+
+```dotenv
+MCP_ENABLED=true
+MCP_ALLOWED_HOSTS=mcp.docs.example.com
+MCP_RATE_LIMIT_PER_MIN=120
+```
+
+`API_URL` and `APP_URL` hostnames are always allowed. Add only additional public
+hostnames to `MCP_ALLOWED_HOSTS`; do not add schemes, paths, user information,
+commas inside one host, or wildcard values. Recreate the API service after a
+change.
+
+The endpoint validates `Host`, `Origin`, `X-Forwarded-Host`, and
+`X-Forwarded-Proto` before authentication. Configure the public proxy to replace
+untrusted forwarded headers and pass one unambiguous host and protocol. Keep MCP
+disabled until the public TLS and proxy path return the expected hostname.
+
+## Create a project-bound key
+
+Sign in through Better Auth, open the project's **Settings → API keys** tab,
+choose only the required read scopes and an expiration, then create the key.
+API-key lifecycle routes require a project `ADMIN` or `OWNER` role. The secret
+is displayed once; store it in the client's secret store, not source control,
+shell history, support messages, logs, screenshots, or an MCP configuration
+committed to a repository.
+
+Every MCP key needs `mcp:connect`. A scope controls only its named surface and
+never widens the key's project binding. Capability discovery reports the tools
+and resources registered for the exact key. Do not assume a documented future
+capability exists if it is absent from `tools/list` or `nibleaf://capabilities`.
+
+Legacy wildcard keys are intentionally unable to connect. A null expiration,
+missing `mcp:connect`, or migrated legacy state appears as rotation required in
+the dashboard. Rotate it into an explicit, expiring scope set rather than
+editing its database row.
+
+## Configure a client
+
+Use the public API origin and pass the key as a bearer token. A client that
+supports remote HTTP MCP servers commonly accepts a configuration shaped like:
+
+```json
+{
+  "mcpServers": {
+    "nibleaf": {
+      "url": "https://api.docs.example.com/api/mcp",
+      "headers": {
+        "Authorization": "Bearer ${NIBLEAF_MCP_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Client configuration names differ. Use its HTTP or remote-server option, not a
+local command or filesystem adapter. Supply `NIBLEAF_MCP_API_KEY` through the
+client's supported secret mechanism. First call `tools/list`, then
+`get_capabilities`. A successful response includes both MCP protocol content and
+a structured envelope with the request ID, bound project ID, and required
+capability.
+
+## Current capability boundary
+
+The capability resource is authoritative. On this release the stable surface
+includes project metadata; page metadata and authored page content; languages
+and versions; aggregate analytics without search terms; safe theme template
+export and non-writing import preview; redacted export and deployment summaries;
+pending publish-change metadata; and redacted Git integration status.
+
+Project resources use bound URIs such as:
+
+```text
+nibleaf://projects/{boundProjectId}
+nibleaf://projects/{boundProjectId}/pages
+nibleaf://projects/{boundProjectId}/pages/{pageId}
+nibleaf://projects/{boundProjectId}/languages
+nibleaf://projects/{boundProjectId}/versions
+nibleaf://projects/{boundProjectId}/theme-template
+nibleaf://projects/{boundProjectId}/deployments/latest
+```
+
+A different project ID or a page outside the bound project returns the same
+not-found protocol result as a missing resource. Read projections omit provider
+payloads, preview bearer URLs, storage keys and checksums, deployment snapshots,
+theme filesystem state, raw errors, credentials, and analytics search terms.
+The `pages:read` scope does include authored content inside the one bound project;
+grant it only when the client needs document bodies.
+
+## Audit and rate-limit operations
+
+Every successful or failed tool/resource call must append a privacy-minimized
+audit event before success is returned. The event records project, API-key
+provenance, request ID, operation, capability, outcome, stable error code,
+duration, and timestamp. It never stores arguments, results, content, bearer
+tokens, provider payloads, IP addresses, or raw client keys. If audit persistence
+fails, the operation fails closed with a sanitized storage error.
+
+`MCP_RATE_LIMIT_PER_MIN` is a bounded, per-key, per-API-process defense. It is
+not deployment-global across replicas. Enforce a deployment-wide limit at the
+trusted ingress or shared edge and monitor HTTP `429`, `Retry-After`, and
+`X-RateLimit-*` headers. Never describe an individual process's counter as the
+global customer allowance.
+
+## Rotate, revoke, and roll back
+
+Rotation atomically revokes the old key and creates a new expiring key. Update
+the client with the once-visible secret, verify `tools/list`, then remove the old
+secret from its store. Revocation is irreversible and requires the dashboard
+confirmation dialog. It takes effect on the next request. A database backup is
+not a reason to re-enable a leaked key.
+
+Before application rollback, disable MCP and stop MCP clients. Apply
+`rollback.sql` from the MCP migration only after deploying an application that
+does not read MCP audit data or MCP-owned API-key provenance columns. The
+rollback drops MCP audit data and those provenance columns, but deliberately
+preserves the shared `ApiKey.expiresAt` field and does not restore wildcard
+authority. Back up audit records first if your retention policy requires them.
+
+## Troubleshoot safely
+
+- `503 mcp:disabled`: enable MCP on the API service and recreate it.
+- `400 mcp:invalid_request`: correct malformed or ambiguous host/origin forwarding.
+- `401 auth:invalid_api_key`: replace a malformed, expired, revoked, or null-expiry key.
+- `403 auth:insufficient_scope`: rotate the key with `mcp:connect` and the exact read scope.
+- `404` resource error: confirm the URI uses the key's bound project and an in-project resource.
+- `429 http:rate_limited`: honor `Retry-After`; inspect both ingress and instance-local limits.
+- `503 storage:error`: restore audit persistence before retrying; a read is not reported as successful without its audit event.
+
+Correlate failures with the safe request ID. Never paste an Authorization header,
+raw MCP arguments/results, document content, or provider response into logs or a
+support ticket.

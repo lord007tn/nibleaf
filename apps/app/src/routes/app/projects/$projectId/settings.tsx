@@ -14,6 +14,7 @@ import {
   GitBranch,
   Globe2,
   Import,
+  KeyRound,
   Languages,
   LockKeyhole,
   type LucideIcon,
@@ -34,6 +35,7 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
+import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
@@ -58,6 +60,7 @@ type SectionId =
   | 'openapi'
   | 'contentImport'
   | 'members'
+  | 'apiKeys'
   | 'plan'
   | 'usage'
   | 'integrations'
@@ -83,9 +86,7 @@ const SECTIONS = [
   { id: 'openapi', group: 'deployment', icon: Braces },
   { id: 'contentImport', group: 'deployment', icon: Import },
   { id: 'members', group: 'workspace', icon: Users },
-  // 'apiKeys' is intentionally hidden: no API route mounts requireApiKey yet, so
-  // keys can't be used anywhere. Restore the entry (and the ApiKeysTab wiring in
-  // ActiveSection) once a content API actually accepts them.
+  { id: 'apiKeys', group: 'workspace', icon: KeyRound },
   { id: 'plan', group: 'workspace', icon: Gem },
   { id: 'usage', group: 'workspace', icon: ChartNoAxesCombined },
   { id: 'integrations', group: 'workspace', icon: Plug },
@@ -186,6 +187,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
+    apiKeys: <ApiKeysTab key={`api-keys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,

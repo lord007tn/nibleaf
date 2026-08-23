@@ -59,6 +59,9 @@ x-service-env: &service-env
   BETTER_AUTH_URL: ${APP_URL:-http://localhost:4310}
   TRUSTED_ORIGINS: ${APP_URL:-http://localhost:4310}
   CORS_ALLOWED_ORIGINS: ${APP_URL:-http://localhost:4310}
+  MCP_ENABLED: ${MCP_ENABLED:-false}
+  MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
+  MCP_RATE_LIMIT_PER_MIN: ${MCP_RATE_LIMIT_PER_MIN:-120}
   API_PORT: "4311"
   API_URL: http://server:4311
   APP_URL: ${APP_URL:-http://localhost:4310}

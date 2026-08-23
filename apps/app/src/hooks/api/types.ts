@@ -45,6 +45,24 @@ export interface Project {
   _count?: { pages: number; deployments: number; domains?: number };
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  lastFour: string;
+  scopes: string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  rotatedFromId: string | null;
+  legacy: boolean;
+  state: 'active' | 'expired' | 'revoked' | 'rotation_required';
+}
+
+export interface ApiKeySecret extends ApiKey {
+  secret: string;
+}
+
 export interface OpenApiConfiguration {
   title: string;
   path: string;

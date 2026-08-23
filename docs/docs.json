@@ -52,6 +52,7 @@
             "x-nibleaf": { "slug": "self-hosting" },
             "pages": [
               "self-hosting/configuration",
+              "self-hosting/mcp",
               "self-hosting/search-ai",
               "self-hosting/production",
               "self-hosting/clickhouse-analytics",
@@ -129,6 +130,7 @@
             "x-nibleaf": { "slug": "self-hosting" },
             "pages": [
               "ar/self-hosting/configuration",
+              "ar/self-hosting/mcp",
               "ar/self-hosting/search-ai",
               "ar/self-hosting/production",
               "ar/self-hosting/clickhouse-analytics",

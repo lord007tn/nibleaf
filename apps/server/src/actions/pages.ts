@@ -19,6 +19,7 @@ export const listPages = async (projectId: string, languageId?: string, branchId
     select: {
       id: true,
       parentId: true,
+      branchId: true,
       languageId: true,
       kind: true,
       title: true,

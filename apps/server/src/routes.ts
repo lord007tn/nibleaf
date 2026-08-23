@@ -5,6 +5,7 @@ import { env } from './env';
 import type { HonoEnv } from './lib/hono/context';
 import { rateLimit } from './middlewares/rate-limit';
 import modules from './modules';
+import mcp from './modules/mcp';
 import baseApp from './server';
 
 const adminOrigin = new URL(env.ADMIN_URL);
@@ -68,6 +69,7 @@ const apiApp = new Hono<HonoEnv>()
   // auth is disabled now, so take those recipients to the passwordless flow.
   .get('/auth/reset-password/:token', (ctx) => ctx.redirect(new URL('/sign-in', env.APP_URL).toString(), 302))
   .on(['POST', 'GET'], '/auth/*', (ctx) => auth.handler(ctx.req.raw))
+  .route('/mcp', mcp)
   .route('/', modules);
 
 const app = baseApp.route('/api', apiApp);
