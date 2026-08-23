@@ -94,6 +94,7 @@ x-service-env: &service-env
   # https://docs.nibleaf.com/self-hosting/production
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
+  MARKETING_GTM_ID: ${MARKETING_GTM_ID:-}
   MARKETING_GA4_ID: ${MARKETING_GA4_ID:-}
   # Shared secret letting the app's SSR proxy attribute published-site traffic
   # to the real visitor IP for rate limiting (openssl rand -hex 32).

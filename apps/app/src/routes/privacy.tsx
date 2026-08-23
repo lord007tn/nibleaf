@@ -38,7 +38,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '4. Subprocessors',
-    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where application data is stored), Cloudflare (DNS, traffic delivery, security, and aggregate web telemetry), Postmark / ActiveCampaign (transactional email such as sign-in verification and invitations), OpenAI (processes document text only when a user explicitly invokes the AI writing assistant), and, when enabled, Google Analytics (optional public-site measurement only after a visitor accepts the analytics prompt).',
+    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where application data is stored), Cloudflare (DNS, traffic delivery, security, and aggregate web telemetry), Postmark / ActiveCampaign (transactional email such as sign-in verification and invitations), OpenAI (processes document text only when a user explicitly invokes the AI writing assistant), and, when enabled, Google Tag Manager and Google Analytics (optional public-site measurement only after a visitor accepts the analytics prompt).',
   },
   {
     heading: '5. Built-in analytics',
@@ -46,7 +46,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '6. Cookies',
-    body: 'Authentication uses first-party session cookies and related security cookies to keep you signed in and protect your account. Google Analytics remains disabled until you accept optional analytics; declining does not load its script. If accepted, it may set analytics cookies for public page views and allowlisted conversion events. We do not use advertising cookies, send account or document content to Google Analytics, or include email addresses and form text in analytics events. You can reopen Privacy choices on a public page and withdraw consent.',
+    body: 'Authentication uses first-party session cookies and related security cookies to keep you signed in and protect your account. Google Tag Manager and Google Analytics remain disabled until you accept optional analytics; declining does not load their scripts. If accepted, Google Analytics may set analytics cookies for public page views and allowlisted conversion events delivered through Google Tag Manager. We do not use advertising cookies, send account or document content to Google, or include email addresses and form text in analytics events. You can reopen Privacy choices on a public page and withdraw consent.',
   },
   {
     heading: '7. Account deletion and data requests',

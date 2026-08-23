@@ -3,17 +3,18 @@ import { useEffect, useRef, useState } from 'react';
 import {
   declineMarketingAnalytics,
   initializeMarketingAnalytics,
-  isGa4MeasurementId,
   type MarketingAnalyticsConsent as MarketingAnalyticsChoice,
   type MarketingAnalyticsLanguage,
+  type MarketingAnalyticsTarget,
   persistMarketingAnalyticsConsent,
   readMarketingAnalyticsConsent,
+  selectMarketingAnalyticsTarget,
   sendMarketingPageView,
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
 
 interface PublicMeta {
-  marketingAnalytics?: { consentRequired: true; ga4MeasurementId: string | null };
+  marketingAnalytics?: { consentRequired: true; ga4MeasurementId: string | null; gtmContainerId: string | null };
 }
 
 const copy = {
@@ -44,7 +45,7 @@ export function marketingAnalyticsEnabled(pathname: string, siteProjectId?: stri
 
 export function MarketingAnalyticsConsent({ enabled, language }: { enabled: boolean; language: MarketingAnalyticsLanguage }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const [measurementId, setMeasurementId] = useState<string | null>(null);
+  const [target, setTarget] = useState<MarketingAnalyticsTarget | null>(null);
   const [choice, setChoice] = useState<MarketingAnalyticsChoice>('pending');
   const lastPageView = useRef<string | null>(null);
   const t = copy[language];
@@ -56,8 +57,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
       .then(async (response) => (response.ok ? ((await response.json()) as { data: PublicMeta }) : null))
       .then((response) => {
         if (cancelled) return;
-        const candidate = response?.data.marketingAnalytics?.ga4MeasurementId;
-        setMeasurementId(isGa4MeasurementId(candidate) ? candidate : null);
+        setTarget(selectMarketingAnalyticsTarget(response?.data.marketingAnalytics));
         setChoice(readMarketingAnalyticsConsent());
       })
       .catch(() => undefined);
@@ -67,19 +67,19 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   }, [enabled]);
 
   useEffect(() => {
-    if (!measurementId) return;
+    if (!target) return;
     if (!enabled) {
-      suspendMarketingAnalytics(measurementId);
+      suspendMarketingAnalytics(target);
       return;
     }
-    if (choice !== 'accepted' || !initializeMarketingAnalytics(measurementId)) return;
-    const pageKey = `${measurementId}:${pathname}:${language}`;
+    if (choice !== 'accepted' || !initializeMarketingAnalytics(target)) return;
+    const pageKey = `${target.provider}:${target.id}:${pathname}:${language}`;
     if (lastPageView.current === pageKey) return;
     lastPageView.current = pageKey;
     sendMarketingPageView(pathname, language);
-  }, [choice, enabled, language, measurementId, pathname]);
+  }, [choice, enabled, language, pathname, target]);
 
-  if (!enabled || !measurementId) return null;
+  if (!enabled || !target) return null;
 
   if (choice !== 'pending') {
     return (
@@ -109,7 +109,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
         <button
           className="cursor-pointer rounded-md border border-border px-3 py-1.5 text-muted-foreground text-sm hover:bg-muted"
           onClick={() => {
-            declineMarketingAnalytics(measurementId);
+            declineMarketingAnalytics(target);
             setChoice('declined');
           }}
           type="button"
