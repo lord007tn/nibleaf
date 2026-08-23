@@ -1,11 +1,12 @@
 import type { AiDraftBody } from '@nibleaf/validators';
+import OpenAI from 'openai';
 import { env } from '@/env';
 
 const SYSTEM_PROMPT =
   'You are an expert technical documentation writer. Write clear, concise, accurate Markdown suitable for a developer documentation site. ' +
   'Prefer short paragraphs, fenced code blocks where helpful, and a neutral, professional tone. Return only the requested content, with no preamble or commentary.';
 
-const userPrompt = ({ mode, content, instruction }: AiDraftBody): string => {
+const userPrompt = ({ mode, content, instruction }: AiDraftBody) => {
   const base = (() => {
     switch (mode) {
       case 'continue':
@@ -28,40 +29,24 @@ const userPrompt = ({ mode, content, instruction }: AiDraftBody): string => {
   return parts.join('\n');
 };
 
-interface OpenAIChatResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
-}
-
-const callOpenAI = async (body: AiDraftBody): Promise<{ text: string; promptTokens?: number; completionTokens?: number }> => {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt(body) },
-      ],
-      temperature: 0.4,
-    }),
+const callOpenAI = async (body: AiDraftBody) => {
+  const completion = await new OpenAI({ apiKey: env.OPENAI_API_KEY }).chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt(body) },
+    ],
+    temperature: 0.4,
   });
-  if (!res.ok) {
-    throw new Error(`OpenAI request failed with status ${res.status}`);
-  }
-  const json = (await res.json()) as OpenAIChatResponse;
-  const text = json.choices?.[0]?.message?.content?.trim();
+  const text = completion.choices[0]?.message.content?.trim();
   if (!text) {
     throw new Error('OpenAI returned an empty completion.');
   }
-  return { text, promptTokens: json.usage?.prompt_tokens, completionTokens: json.usage?.completion_tokens };
+  return { text, promptTokens: completion.usage?.prompt_tokens, completionTokens: completion.usage?.completion_tokens };
 };
 
 /** Deterministic, offline fallback so the assistant always returns something useful. */
-const fallback = ({ mode, content, instruction }: AiDraftBody): string => {
+const fallback = ({ mode, content, instruction }: AiDraftBody) => {
   const trimmed = content.trim();
   const hint = instruction ? ` (${instruction})` : '';
   switch (mode) {
@@ -87,50 +72,38 @@ const fallback = ({ mode, content, instruction }: AiDraftBody): string => {
   }
 };
 
-/** Draft documentation content. Uses OpenAI when configured, otherwise a deterministic fallback. Never throws on missing key. */
-export const draftContent = async (body: AiDraftBody): Promise<{ text: string }> => {
-  const result = await draftContentWithTelemetry(body);
-  return { text: result.text };
-};
-
-export interface AiDraftTelemetry {
-  text: string;
-  provider: 'nibleaf_offline' | 'openai';
-  model: string;
-  outcome: 'completed' | 'fallback';
-  latencyMs: number;
-  promptTokens?: number;
-  completionTokens?: number;
-}
-
 /** Internal variant used by the API to emit content-free operational metrics. */
-export const draftContentWithTelemetry = async (body: AiDraftBody): Promise<AiDraftTelemetry> => {
+export const draftContentWithTelemetry = async (body: AiDraftBody) => {
   const started = performance.now();
   if (env.OPENAI_API_KEY) {
     try {
       const result = await callOpenAI(body);
       return {
         ...result,
-        provider: 'openai',
+        provider: 'openai' as const,
         model: 'gpt-4o-mini',
-        outcome: 'completed',
+        outcome: 'completed' as const,
         latencyMs: Math.round(performance.now() - started),
       };
     } catch {
       return {
         text: fallback(body),
-        provider: 'nibleaf_offline',
+        promptTokens: undefined,
+        completionTokens: undefined,
+        provider: 'nibleaf_offline' as const,
         model: 'deterministic-fallback',
-        outcome: 'fallback',
+        outcome: 'fallback' as const,
         latencyMs: Math.round(performance.now() - started),
       };
     }
   }
   return {
     text: fallback(body),
-    provider: 'nibleaf_offline',
+    promptTokens: undefined,
+    completionTokens: undefined,
+    provider: 'nibleaf_offline' as const,
     model: 'deterministic-fallback',
-    outcome: 'completed',
+    outcome: 'completed' as const,
     latencyMs: Math.round(performance.now() - started),
   };
 };

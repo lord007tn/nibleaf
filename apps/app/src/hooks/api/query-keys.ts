@@ -50,6 +50,9 @@ export const queryKeys = {
     /** Per-site members + invitations (each site owns its own member list). */
     forProject: (projectId: string) => ['members', projectId] as const,
   },
+  readerAccess: {
+    detail: (projectId: string) => ['reader-access', projectId] as const,
+  },
   notifications: {
     list: () => ['notifications'] as const,
     unreadCount: () => ['notifications', 'unread-count'] as const,
@@ -58,6 +61,9 @@ export const queryKeys = {
     all: (projectId: string) => ['projects', projectId, 'exports'] as const,
     runs: (projectId: string) => ['projects', projectId, 'exports', 'runs'] as const,
     schedules: (projectId: string) => ['projects', projectId, 'exports', 'schedules'] as const,
+  },
+  gitWorkflow: {
+    detail: (projectId: string) => ['git-workflow', projectId] as const,
   },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,

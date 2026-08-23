@@ -3,6 +3,7 @@ import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { buildSnapshot } from '@nibleaf/shared/site';
+import { z } from 'zod';
 import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
@@ -544,7 +545,7 @@ class GitOperationBusyError extends Error {
   }
 }
 
-const isSerializationFailure = (error: unknown): boolean => typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2034';
+const isSerializationFailure = (error: unknown) => z.object({ code: z.literal('P2034') }).safeParse(error).success;
 
 /**
  * Claim one operation while holding a serializable transaction on its

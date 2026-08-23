@@ -7,11 +7,13 @@ import { promisify } from 'node:util';
 import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { GitConfig } from '@nibleaf/validators';
+import got from 'got';
+import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
-import { githubRawUrl, listGitHubFiles } from './importers/github';
+import { fetchRawText, githubRawUrl, listGitHubFiles } from './importers/github';
 import { ensureGroupPage, type ImportTarget, upsertLeafPage } from './importers/persistence';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { assertProjectInOrg } from './projects';
@@ -63,14 +65,16 @@ const assertPublicRemoteUrl = async (value: string, label: string): Promise<URL>
   return url;
 };
 
-const fetchGitLab = async (url: URL | string): Promise<Response> => {
+const fetchGitLab = async (url: URL | string) => {
   try {
-    return await fetch(url, {
+    const response = await got(url, {
       headers: { 'User-Agent': 'nibleaf' },
-      // A custom GitLab host is user-controlled. Following a redirect could
-      // bypass the public-host DNS check above and reach an internal service.
-      redirect: 'error',
+      followRedirect: false,
+      retry: { limit: 0 },
+      throwHttpErrors: false,
     });
+    if (response.statusCode >= 300 && response.statusCode < 400) throw new Error('redirect rejected');
+    return response;
   } catch {
     throw badRequest('Could not reach the public GitLab instance without following a redirect. Check its URL and availability.');
   }
@@ -125,12 +129,12 @@ const listGitLabFiles = async (
     const res = await fetchGitLab(url);
     if (!res.ok) {
       throw badRequest(
-        res.status === 404
+        res.statusCode === 404
           ? 'Project, branch, or path not found. Imports support public GitLab repositories only.'
-          : `GitLab API error (${res.status}). Try again shortly.`,
+          : `GitLab API error (${res.statusCode}). Try again shortly.`,
       );
     }
-    const chunk = (await res.json()) as Array<{ path: string; type: 'blob' | 'tree' }>;
+    const chunk = z.array(z.object({ path: z.string(), type: z.enum(['blob', 'tree']) })).parse(JSON.parse(res.body));
     files.push(...chunk.map((item) => ({ path: item.path, type: item.type })));
 
     if (chunk.length < 100) {
@@ -271,13 +275,9 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         path: file.path,
         read: async () => {
           const rawUrl = rawFileUrl(provider, repo, branch, file.path, safeGitLabInstance);
-          const rawRes =
-            provider === 'gitlab'
-              ? await fetchGitLab(rawUrl)
-              : await fetch(rawUrl, {
-                  headers: { 'User-Agent': 'nibleaf' },
-                });
-          return rawRes.ok ? rawRes.text() : null;
+          if (provider !== 'gitlab') return fetchRawText(rawUrl);
+          const response = await fetchGitLab(rawUrl);
+          return response.ok ? response.body : null;
         },
       }));
   }

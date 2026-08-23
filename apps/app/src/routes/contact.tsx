@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, BookOpenCheck, LifeBuoy, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 const CONTACTS = [
   {
@@ -36,7 +36,7 @@ const CONTACTS = [
 ] as const;
 
 export const Route = createFileRoute('/contact')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Contact Nibleaf: support, privacy, security, and corrections',

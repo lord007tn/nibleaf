@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { inferSafeInlineAssetContentType, isSafeInlineAssetContentType, normalizeAssetContentType } from '@nibleaf/validators';
+import got from 'got';
 import { isPrivateIp } from '@/lib/client-ip';
 import { findImportedAsset, storeAsset } from '../assets';
 
@@ -51,26 +52,28 @@ const importIdForSource = (namespace: string, source: string): string =>
 const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
   let url = await publicHttpUrl(source);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-    const response = await fetch(url, {
+    const response = await got(url, {
       headers: { 'User-Agent': 'nibleaf-content-importer/1.0' },
-      redirect: 'manual',
-      signal: AbortSignal.timeout(20_000),
+      followRedirect: false,
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+      timeout: { request: 20_000 },
     });
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
+    if (response.statusCode >= 300 && response.statusCode < 400) {
+      const location = response.headers.location;
       if (!(location && redirect < MAX_REDIRECTS)) throw new Error('too many redirects');
       url = await publicHttpUrl(new URL(location, url).toString());
       continue;
     }
-    if (!response.ok) throw new Error(`remote response ${response.status}`);
+    if (!response.ok) throw new Error(`remote response ${response.statusCode}`);
 
-    const announcedSize = Number(response.headers.get('content-length') ?? 0);
+    const announcedSize = Number(response.headers['content-length'] ?? 0);
     if (announcedSize > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
     const filename = filenameFromUrl(url);
-    const contentType = normalizeAssetContentType(response.headers.get('content-type') ?? '') || inferSafeInlineAssetContentType(filename) || '';
+    const contentType = normalizeAssetContentType(response.headers['content-type'] ?? '') || inferSafeInlineAssetContentType(filename) || '';
     if (!isSafeInlineAssetContentType(contentType)) throw new Error('unsupported image type');
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const bytes = new Uint8Array(response.rawBody);
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_REMOTE_ASSET_BYTES) throw new Error('invalid image size');
     return { bytes, contentType, filename };
   }

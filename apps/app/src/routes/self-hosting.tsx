@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
 import { CopyCommand, Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
 
 export const Route = createFileRoute('/self-hosting')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf self-hosting status and deployment architecture',

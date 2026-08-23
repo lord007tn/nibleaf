@@ -1,5 +1,6 @@
 import { slugify } from '@nibleaf/shared';
 import { type LanguageConfig, languageConfigSchema, type ProjectConfig, projectConfigSchema } from '@nibleaf/validators';
+import { z } from 'zod';
 
 /**
  * Pure mapping logic for the Mintlify importer: locate the config file,
@@ -57,8 +58,11 @@ export interface MintlifyLanguageResult {
 
 type Dict = Record<string, unknown>;
 
-const isDict = (value: unknown): value is Dict => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-const asString = (value: unknown): string | undefined => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+const isDict = (value: unknown): value is Dict => z.record(z.string(), z.unknown()).safeParse(value).success;
+const asString = (value: unknown) => {
+  const parsed = z.string().trim().min(1).safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+};
 const isExternalUrl = (value: string): boolean => /^https?:\/\//i.test(value);
 
 const LANGUAGE_LABELS: Record<string, string> = {

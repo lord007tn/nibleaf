@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
@@ -64,10 +65,13 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
   // publish-check issue), `?publish=true` opens the publish flow directly.
-  validateSearch: (search: Record<string, unknown>): { page?: string; publish?: boolean } => ({
-    page: typeof search.page === 'string' && search.page ? search.page : undefined,
-    publish: search.publish === true || search.publish === 'true' || search.publish === '1' ? true : undefined,
-  }),
+  validateSearch: (search) =>
+    z
+      .object({
+        page: z.string().min(1).optional().catch(undefined),
+        publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
+      })
+      .parse(search),
 });
 
 function EditorPage() {

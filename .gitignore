@@ -33,10 +33,6 @@ Thumbs.db
 # docker volumes
 .docker-data
 
-# design reference (kept locally, not part of the repo)
-_ui_zip
-Open source documentation platform.zip
-
 # test artifacts
 coverage
 playwright-report

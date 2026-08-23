@@ -178,7 +178,7 @@ export const configureUploadCors = (origins: string[], target?: StorageTarget): 
   );
 
 const isNotFound = (error: unknown): boolean => {
-  if (typeof error !== 'object' || error === null) {
+  if (!(error instanceof Object)) {
     return false;
   }
   const { name, $metadata } = error as { name?: string; $metadata?: { httpStatusCode?: number } };

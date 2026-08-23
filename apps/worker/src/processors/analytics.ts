@@ -14,6 +14,7 @@ import {
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { Job } from 'bullmq';
+import { z } from 'zod';
 import { legacyAnalyticsJobToEnvelope } from '../analytics/legacy-job';
 
 const log = createLogger({ processor: 'analytics' });
@@ -70,10 +71,10 @@ type TrackEventJobData = TrackAnalyticsEventJobData | LegacyTrackAnalyticsEventJ
 const isTrackEvent = (data: AnalyticsJobData): data is TrackEventJobData => (data as { kind?: string }).kind === 'track-event';
 
 const hasEnvelope = (data: AnalyticsJobData): data is TrackAnalyticsEventJobData =>
-  isTrackEvent(data) && typeof (data as { envelope?: unknown }).envelope === 'object' && (data as { envelope?: unknown }).envelope !== null;
+  isTrackEvent(data) && z.object({ envelope: z.record(z.string(), z.unknown()) }).safeParse(data).success;
 
 const isLegacyTrackEvent = (data: AnalyticsJobData): data is LegacyTrackAnalyticsEventJobData =>
-  isTrackEvent(data) && typeof (data as { projectId?: unknown }).projectId === 'string';
+  isTrackEvent(data) && z.object({ projectId: z.string() }).safeParse(data).success;
 
 async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId: string): Promise<AnalyticsEventEnvelope | null> {
   const config = clickHouseKeys();

@@ -2,10 +2,10 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BookOpen, Globe, Server, Unlock } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Eyebrow, iconTile, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, ENTITY_SENTENCE, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/about')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'About Nibleaf: documentation ownership and Arabic support',

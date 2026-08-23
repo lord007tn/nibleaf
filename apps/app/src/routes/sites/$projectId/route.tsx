@@ -4,6 +4,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { z } from 'zod';
 import { DocumentationReaderLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
@@ -28,9 +29,7 @@ import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
   // The active language lives in the URL so it survives reloads and is shareable.
-  validateSearch: (search: Record<string, unknown>): { lang?: string } => ({
-    lang: typeof search.lang === 'string' && search.lang ? search.lang : undefined,
-  }),
+  validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined) }).parse(search),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Fetch the site shell on the server so the chrome (nav, branding) is in the
   // initial HTML; the result also feeds site-level SEO tags via head(). The

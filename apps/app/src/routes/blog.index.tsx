@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { BlogIndexPage } from '@/components/marketing/blog';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/blog/')({
   loader: async () => {
-    const [{ BLOG_ENTRIES: entries }, stars] = await Promise.all([import('@/lib/blog'), getGithubStars()]);
+    const [{ BLOG_ENTRIES: entries }, stars] = await Promise.all([import('@/lib/blog'), getGithubStarsFn()]);
     return { entries, stars };
   },
   head: () => ({

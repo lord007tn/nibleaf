@@ -7,22 +7,16 @@ import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
+import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
-interface AuthSearch {
-  invite?: string;
-  email?: string;
-}
-
 export const Route = createFileRoute('/(auth)/sign-in')({
-  validateSearch: (search: Record<string, unknown>): AuthSearch => ({
-    invite: typeof search.invite === 'string' ? search.invite : undefined,
-    email: typeof search.email === 'string' ? search.email : undefined,
-  }),
+  validateSearch: (search) =>
+    z.object({ invite: z.string().optional().catch(undefined), email: z.string().optional().catch(undefined) }).parse(search),
   head: () => ({ meta: [{ title: 'Log in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignInPage,
 });

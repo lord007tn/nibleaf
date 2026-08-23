@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Activity, Database, ExternalLink, FileText, Globe2, LockKeyhole, Rocket, TriangleAlert, Users } from 'lucide-react';
+import { z } from 'zod';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
 import { SupportAccessDialog } from '@/components/support-access-dialog';
@@ -21,13 +22,10 @@ import { useAdminSite } from '@/hooks/api/queries';
 import { fmtBytes, fmtDate, fmtDateTime, fmtRelative } from '@/lib/format';
 import { APP_URL } from '@/lib/links';
 
-const SITE_TABS = ['overview', 'deployments', 'domains', 'access', 'activity'] as const;
-type SiteTab = (typeof SITE_TABS)[number];
-const isSiteTab = (value: unknown): value is SiteTab => typeof value === 'string' && SITE_TABS.includes(value as SiteTab);
-
 export const Route = createFileRoute('/(dashboard)/sites/$siteId')({
   component: SiteDetailPage,
-  validateSearch: (search: Record<string, unknown>): { tab?: SiteTab } => ({ tab: isSiteTab(search.tab) ? search.tab : undefined }),
+  validateSearch: (search) =>
+    z.object({ tab: z.enum(['overview', 'deployments', 'domains', 'access', 'activity']).optional().catch(undefined) }).parse(search),
 });
 
 const activityLabels: Record<string, string> = {
@@ -127,7 +125,12 @@ function SiteDetailPage() {
         </Alert>
       ) : null}
 
-      <Tabs onValueChange={(value) => navigate({ search: { tab: value as SiteTab }, replace: true })} value={tab}>
+      <Tabs
+        onValueChange={(value) =>
+          navigate({ search: { tab: z.enum(['overview', 'deployments', 'domains', 'access', 'activity']).parse(value) }, replace: true })
+        }
+        value={tab}
+      >
         <div className="overflow-x-auto pb-1">
           <TabsList aria-label="Website details" className="min-w-max" variant="line">
             <TabsTrigger value="overview">Overview</TabsTrigger>

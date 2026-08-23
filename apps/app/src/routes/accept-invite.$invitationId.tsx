@@ -4,8 +4,9 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AuthProviders } from '@/components/auth-providers';
+import { useGetInvitationInfo } from '@/hooks/api';
 import { AuthLayout } from '@/layouts/auth';
-import { clearPendingInvitation, fetchInvitationInfo, type InvitationInfo, setPendingInvitation } from '@/lib/invitations';
+import { clearPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
@@ -33,21 +34,8 @@ function AcceptInviteContent() {
   const navigate = useNavigate();
   const [accepting, setAccepting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<InvitationInfo | null>(null);
-  const [infoLoaded, setInfoLoaded] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    fetchInvitationInfo(invitationId).then((result) => {
-      if (active) {
-        setInfo(result);
-        setInfoLoaded(true);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, [invitationId]);
+  const invitation = useGetInvitationInfo(invitationId);
+  const info = invitation.data ?? null;
 
   // Stash the invitation so sign-in/up can route back here afterwards.
   useEffect(() => {
@@ -79,7 +67,7 @@ function AcceptInviteContent() {
 
   const subtitle = info?.organizationName ? t('auth.invite.joinPrompt', { org: info.organizationName }) : t('auth.invite.subtitle');
 
-  if (isPending || !infoLoaded) {
+  if (isPending || invitation.isPending) {
     return (
       <AuthLayout subtitle={subtitle}>
         <p className="text-center text-muted-foreground text-sm">{t('common.loading')}</p>

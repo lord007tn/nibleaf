@@ -610,8 +610,6 @@ export const useImportFromGit = (projectId: string) => {
   });
 };
 
-export const useImportFromGitHub = useImportFromGit;
-
 /** Generate or rotate the push-to-deploy webhook secret (admin only). The
  *  secret is server-generated; the settings PATCH can never set it. */
 export const useRotateGitWebhookSecret = (projectId: string) => {

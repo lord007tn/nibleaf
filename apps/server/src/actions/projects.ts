@@ -125,9 +125,9 @@ const mergeConfig = (existing: ProjectConfig, incoming: ProjectConfig): ProjectC
   for (const [key, value] of Object.entries(incoming)) {
     if (Array.isArray(value)) {
       merged[key] = value;
-    } else if (value && typeof value === 'object') {
+    } else if (value instanceof Object) {
       const prev = merged[key];
-      merged[key] = { ...(prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {}), ...value };
+      merged[key] = { ...(prev instanceof Object && !Array.isArray(prev) ? prev : {}), ...value };
     } else {
       merged[key] = value;
     }

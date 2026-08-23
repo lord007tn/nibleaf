@@ -6,6 +6,7 @@ import { bundle, type LoaderPlugin } from '@scalar/json-magic/bundle';
 import { validate } from '@scalar/openapi-parser';
 import { Agent, type Response as UndiciResponse, fetch as undiciFetch } from 'undici';
 import { parseDocument } from 'yaml';
+import { z } from 'zod';
 import { badRequest, notFound } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertProjectInOrg } from './projects';
@@ -31,7 +32,7 @@ export const publicOpenApiMetadata = (row: { title: string; path: string; conten
   updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
 });
 
-export const openApiRecordView = (row: {
+const openApiRecordView = (row: {
   title: string;
   path: string;
   sourceType: 'UPLOAD' | 'URL' | 'REPOSITORY';
@@ -48,13 +49,14 @@ const collectExternalRefs = (value: unknown, path = '$', refs: string[] = []): s
     });
     return refs;
   }
-  if (!value || typeof value !== 'object') {
+  if (!(value instanceof Object)) {
     return refs;
   }
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     const childPath = `${path}.${key}`;
-    if (key === '$ref' && typeof child === 'string' && !child.startsWith('#/')) {
-      refs.push(`${childPath}: ${child}`);
+    const reference = z.string().safeParse(child);
+    if (key === '$ref' && reference.success && !reference.data.startsWith('#/')) {
+      refs.push(`${childPath}: ${reference.data}`);
     } else {
       collectExternalRefs(child, childPath, refs);
     }
@@ -86,11 +88,16 @@ export const parseAndValidateOpenApi = async (content: string, origin?: string):
       errors: [error instanceof Error ? error.message : 'Could not expand YAML aliases.'],
     });
   }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  const object = z.record(z.string(), z.unknown()).safeParse(parsed);
+  if (!object.success) {
     throw badRequest('The OpenAPI document must be an object.');
   }
-  const document = parsed as OpenApiObject;
-  if (typeof document.openapi !== 'string' || !/^3\.\d+\.\d+(?:[-+].*)?$/.test(document.openapi)) {
+  const document: OpenApiObject = object.data;
+  const version = z
+    .string()
+    .regex(/^3\.\d+\.\d+(?:[-+].*)?$/)
+    .safeParse(document.openapi);
+  if (!version.success) {
     throw badRequest('Only OpenAPI 3.x documents are supported. Add an openapi field such as "3.1.0".');
   }
 

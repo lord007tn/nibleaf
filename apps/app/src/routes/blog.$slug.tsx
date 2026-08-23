@@ -2,7 +2,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router';
 import { ArticlePage, articleMdxComponents } from '@/components/marketing/blog';
 import { blogComponent } from '@/lib/blog-components';
 import { articleHead } from '@/lib/blog-seo';
-import { getGithubStars } from '@/lib/marketing-seo';
+import { getGithubStarsFn } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/blog/$slug')({
   loader: async ({ params }) => {
@@ -12,7 +12,7 @@ export const Route = createFileRoute('/blog/$slug')({
       throw notFound();
     }
     const translation = entry.translationOf ? blogEntry(entry.translationOf) : undefined;
-    return { entry, translation, language: entry.language ?? 'en', stars: await getGithubStars() };
+    return { entry, translation, language: entry.language ?? 'en', stars: await getGithubStarsFn() };
   },
   head: ({ loaderData }) => (loaderData?.entry ? articleHead(loaderData.entry, loaderData.translation) : {}),
   component: ArticleRoute,

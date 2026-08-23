@@ -7,13 +7,13 @@ import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { getSessionFn } from '@/functions/session';
 import { AdminApiError, useAdminOverview } from '@/hooks/api/queries';
-import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 import { signOut, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(dashboard)')({
   beforeLoad: async () => {
-    const routeSession = await getRouteSession();
+    const routeSession = await getSessionFn();
     if (!routeSession) {
       throw redirect({ to: '/sign-in' });
     }
@@ -29,9 +29,9 @@ function FullScreen({ children }: { children: ReactNode }) {
 function DashboardRoute() {
   const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const resolvedSession = resolveRouteSession(session, routeSession, isPending);
+  const resolvedSession = session ?? (isPending ? routeSession : null);
 
-  if (shouldShowInitialSessionLoader(isPending, resolvedSession)) {
+  if (isPending && !resolvedSession) {
     return <PageLoader />;
   }
   if (!resolvedSession) return <Navigate to="/sign-in" />;

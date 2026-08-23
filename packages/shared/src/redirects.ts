@@ -521,7 +521,7 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
   const raw = (config as { redirects?: unknown }).redirects;
   const redirects = Array.isArray(raw)
     ? raw.map((redirect, index): RedirectPair => {
-        const record = redirect && typeof redirect === 'object' ? (redirect as Partial<RedirectPair>) : {};
+        const record = redirect instanceof Object ? (redirect as Partial<RedirectPair>) : {};
         // Preserve malformed legacy rows as an intentionally half-filled rule
         // so validation blocks publication instead of silently dropping data.
         return {

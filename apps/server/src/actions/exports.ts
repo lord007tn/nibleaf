@@ -23,7 +23,7 @@ const assertQuota = async (projectId: string) => {
   if (daily >= env.EXPORT_MAX_DAILY_PER_PROJECT) throw conflict(`The daily export limit of ${env.EXPORT_MAX_DAILY_PER_PROJECT} has been reached.`);
 };
 
-export const createPublishedSnapshot = async (projectId: string) => {
+const createPublishedSnapshot = async (projectId: string) => {
   const deployment = await prisma.deployment.findFirst({
     where: { projectId, status: 'READY', snapshot: { not: Prisma.DbNull } },
     orderBy: { version: 'desc' },

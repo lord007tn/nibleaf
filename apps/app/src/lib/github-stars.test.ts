@@ -1,30 +1,31 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const request = vi.hoisted(() => vi.fn());
+
+vi.mock('got', () => ({ default: request }));
+
 afterEach(() => {
-  vi.unstubAllGlobals();
+  request.mockReset();
   vi.resetModules();
 });
 
 describe('getGithubStars', () => {
   it('returns immediately on a cold render and caches the background response', async () => {
-    let finishRequest: ((response: Response) => void) | undefined;
-    const response = new Promise<Response>((resolve) => {
+    let finishRequest: ((response: { body: unknown; ok: boolean }) => void) | undefined;
+    const response = new Promise<{ body: unknown; ok: boolean }>((resolve) => {
       finishRequest = resolve;
     });
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => response),
-    );
-    const { getGithubStars } = await import('@/lib/marketing-seo');
+    request.mockReturnValue(response);
+    const { getGithubStars } = await import('@/functions/marketing');
 
     await expect(getGithubStars()).resolves.toBe(0);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(1);
 
-    finishRequest?.(new Response(JSON.stringify({ stargazers_count: 12 }), { status: 200 }));
+    finishRequest?.({ body: { stargazers_count: 12 }, ok: true });
     await vi.waitFor(async () => {
       await expect(getGithubStars()).resolves.toBe(12);
     });
     await expect(getGithubStars()).resolves.toBe(12);
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

@@ -11,19 +11,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nibl
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Activity, Building2, Clock3, KeyRound, ShieldCheck } from 'lucide-react';
+import { z } from 'zod';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
 import { SupportAccessDialog } from '@/components/support-access-dialog';
 import { useAdminUser } from '@/hooks/api/queries';
 import { fmtDate, fmtDateTime, fmtRelative } from '@/lib/format';
 
-const USER_TABS = ['overview', 'workspaces', 'security', 'activity'] as const;
-type UserTab = (typeof USER_TABS)[number];
-const isUserTab = (value: unknown): value is UserTab => typeof value === 'string' && USER_TABS.includes(value as UserTab);
-
 export const Route = createFileRoute('/(dashboard)/users/$userId')({
   component: UserDetailPage,
-  validateSearch: (search: Record<string, unknown>): { tab?: UserTab } => ({ tab: isUserTab(search.tab) ? search.tab : undefined }),
+  validateSearch: (search) => z.object({ tab: z.enum(['overview', 'workspaces', 'security', 'activity']).optional().catch(undefined) }).parse(search),
 });
 
 const activityLabels: Record<string, string> = {
@@ -127,7 +124,12 @@ function UserDetailPage() {
         <SupportAccessDialog subject={user.name || user.email} targets={supportTargets} />
       </div>
 
-      <Tabs onValueChange={(value) => navigate({ search: { tab: value as UserTab }, replace: true })} value={tab}>
+      <Tabs
+        onValueChange={(value) =>
+          navigate({ search: { tab: z.enum(['overview', 'workspaces', 'security', 'activity']).parse(value) }, replace: true })
+        }
+        value={tab}
+      >
         <div className="overflow-x-auto pb-1">
           <TabsList aria-label="Customer details" className="min-w-max" variant="line">
             <TabsTrigger value="overview">Overview</TabsTrigger>

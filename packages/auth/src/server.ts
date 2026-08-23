@@ -1,7 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
-import { buildTransactionalEmail, type TransactionalEmail } from '@nibleaf/email';
+import { type RenderedEmail, renderMemberJoinedEmail, renderNewSignInEmail, renderVerificationCodeEmail } from '@nibleaf/email';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
@@ -23,14 +23,14 @@ const safeEmailError = (error: unknown) => ({
 });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
-const sendMail = (to: string, email: TransactionalEmail) =>
+const sendMail = (to: string, email: RenderedEmail) =>
   createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
 /** Auth codes are required delivery: do not tell the browser a code was sent
  * until rendering succeeded and Redis accepted the email job. */
-async function deliverRequiredAuthEmail(to: string, email: Promise<TransactionalEmail>): Promise<void> {
+async function deliverRequiredAuthEmail(to: string, email: Promise<RenderedEmail>): Promise<void> {
   try {
     const message = await email;
     await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message } }), ENQUEUE_TIMEOUT_MS);
@@ -751,19 +751,7 @@ export const auth = betterAuth({
       resendStrategy: 'rotate',
       storeOTP: 'hashed',
       async sendVerificationOTP({ email, otp, type }) {
-        const purpose = type === 'sign-in' ? 'sign in' : type === 'change-email' ? 'change your email' : 'verify your email';
-        const subject = type === 'sign-in' ? 'Your Nibleaf sign-in code' : `Your Nibleaf code to ${purpose}`;
-        await deliverRequiredAuthEmail(
-          email,
-          buildTransactionalEmail({
-            subject,
-            preheader: `Use this one-time code to ${purpose}.`,
-            title: 'Your Nibleaf code',
-            message: `Use this one-time code to ${purpose}.`,
-            code: otp,
-            detail: 'The code expires in 10 minutes and can be used only once.',
-          }),
-        );
+        await deliverRequiredAuthEmail(email, renderVerificationCodeEmail({ code: otp, purpose: type }));
       },
     }),
     organization({
@@ -820,13 +808,7 @@ export const auth = betterAuth({
               where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: member.userId } },
               select: { user: { select: { email: true } } },
             });
-            const subject = `${who} joined ${org.name}`;
-            const email = await buildTransactionalEmail({
-              subject,
-              preheader: `${who} joined ${org.name}.`,
-              title: `New teammate in ${org.name}`,
-              message: `${who} just joined ${org.name} and can now collaborate on its documentation.`,
-            });
+            const email = await renderMemberJoinedEmail({ memberName: who, organizationName: org.name });
             await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
           } catch {
             // never block the join
@@ -881,17 +863,7 @@ export const auth = betterAuth({
             if (!user?.email) {
               return;
             }
-            const where = session.ipAddress ? ` from a new location (IP ${session.ipAddress})` : ' from a new device';
-            await sendMail(
-              user.email,
-              await buildTransactionalEmail({
-                subject: 'New sign-in to your Nibleaf account',
-                preheader: 'We noticed a sign-in from a new device or location.',
-                title: 'New sign-in detected',
-                message: `We noticed a new sign-in to your account${where}.`,
-                detail: 'If this was not you, sign out other sessions immediately and contact support@nibleaf.com.',
-              }),
-            );
+            await sendMail(user.email, await renderNewSignInEmail({ ipAddress: session.ipAddress ?? undefined }));
           } catch {
             // never block sign-in
           }

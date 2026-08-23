@@ -1,6 +1,7 @@
 import { slugify } from '@nibleaf/shared';
 import TurndownService from 'turndown';
 import { strikethrough, tables } from 'turndown-plugin-gfm';
+import { z } from 'zod';
 import { stableHash } from './content';
 
 /**
@@ -46,8 +47,11 @@ export interface GhostContentItem {
 }
 
 type Dict = Record<string, unknown>;
-const isDict = (value: unknown): value is Dict => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-const str = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value : null);
+const isDict = (value: unknown): value is Dict => z.record(z.string(), z.unknown()).safeParse(value).success;
+const str = (value: unknown) => {
+  const parsed = z.string().trim().min(1).safeParse(value);
+  return parsed.success ? parsed.data : null;
+};
 
 const toItem = (row: Dict, tagsByPostId: ReadonlyMap<string, string[]>): GhostContentItem | null => {
   const title = str(row.title);

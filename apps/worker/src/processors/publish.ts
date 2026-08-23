@@ -94,7 +94,7 @@ export class PublishChecksError extends Error {
 }
 
 const objectValue = (value: unknown): Record<string, unknown> =>
-  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  value instanceof Object && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 
 const normalizedPagePath = (path: string): string => path.replace(/^\/+|\/+$/g, '').replace(/\.(mdx?|html)$/i, '');
 

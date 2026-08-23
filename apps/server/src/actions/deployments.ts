@@ -40,7 +40,7 @@ export const getDeployment = async (projectId: string, id: string) => {
   return deployment;
 };
 
-export const getLatestReadyDeployment = (projectId: string): Promise<Prisma.DeploymentGetPayload<object> | null> =>
+export const getLatestReadyDeployment = (projectId: string) =>
   prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
 
 /** One page's status relative to the last published snapshot. */
@@ -76,12 +76,6 @@ export interface DeploymentPageDiff {
   deletions: number;
   lines: DeploymentDiffLine[];
   truncated: boolean;
-}
-
-export interface DeploymentDiff {
-  deployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'>;
-  previousDeployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'> | null;
-  changes: DeploymentPageDiff[];
 }
 
 /** Read the complete effective publish input once and compose the same snapshot
@@ -123,7 +117,7 @@ function stableEqual(a: unknown, b: unknown): boolean {
     if (Array.isArray(v)) {
       return v.map(norm);
     }
-    if (typeof v === 'object') {
+    if (v instanceof Object) {
       return Object.fromEntries(
         Object.entries(v as Record<string, unknown>)
           .filter(([, val]) => val !== undefined)
@@ -298,7 +292,7 @@ const stripSnapshot = <T extends { snapshot: unknown }>(deployment: T): Omit<T, 
   return rest;
 };
 
-export const getDeploymentDiff = async (projectId: string, id: string): Promise<DeploymentDiff> => {
+export const getDeploymentDiff = async (projectId: string, id: string) => {
   const deployment = await getDeployment(projectId, id);
   if (deployment.status !== 'READY' || !deployment.snapshot) {
     throw badRequest('Only a published deployment with a snapshot has a diff.', { id });

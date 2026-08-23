@@ -1,7 +1,7 @@
 import { resolve4, resolve6, resolveCname, resolveTxt } from 'node:dns/promises';
 import { request as httpsRequest } from 'node:https';
 import { connect } from 'node:tls';
-import { type Prisma, prisma } from '@nibleaf/database';
+import { prisma } from '@nibleaf/database';
 import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
@@ -13,7 +13,6 @@ import {
   createCustomHostnameRoute,
   customHostnameRecords,
   customHostnameState,
-  type DomainRecord,
   deleteCustomHostname,
   deleteCustomHostnameRoute,
   getCustomHostname,
@@ -27,7 +26,7 @@ import { assertProjectInOrg } from './projects';
 const cnameTarget = (): string => normalizeDnsName(env.CUSTOM_DOMAIN_CNAME_TARGET || env.SITE_BASE_DOMAIN || new URL(env.APP_URL).host);
 
 /** DNS records the user must create to point a custom domain at Nibleaf. */
-export const dnsRecords = (domain: Domain) =>
+const dnsRecords = (domain: Domain) =>
   domain.provider === 'CLOUDFLARE_SAAS' && domain.providerData
     ? customHostnameRecords(domain.providerData as unknown as CloudflareCustomHostname, cnameTarget())
     : [
@@ -42,15 +41,12 @@ interface Domain {
   providerData?: unknown;
 }
 
-type StoredDomain = Prisma.DomainGetPayload<object>;
-type DomainWithRecords = StoredDomain & { records: DomainRecord[] };
-
-export const listDomains = async (projectId: string): Promise<DomainWithRecords[]> => {
+export const listDomains = async (projectId: string) => {
   const domains = await prisma.domain.findMany({ where: { projectId }, orderBy: { createdAt: 'asc' } });
   return domains.map((domain) => ({ ...domain, records: dnsRecords(domain) }));
 };
 
-export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody): Promise<DomainWithRecords> => {
+export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody) => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = body.domain.toLowerCase();
   const existing = await prisma.domain.findUnique({ where: { domain }, select: { id: true } });
@@ -204,7 +200,7 @@ const probeRoute = async (domain: string, addresses: string[], projectId: string
  * domain verified before the TLS probe is intentional: Caddy's on-demand `ask`
  * endpoint must see the verified row before the first certificate handshake.
  */
-export const verifyDomain = async (organizationId: string, projectId: string, id: string): Promise<StoredDomain> => {
+export const verifyDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {
@@ -293,7 +289,7 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
   });
 };
 
-export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string): Promise<StoredDomain | null> => {
+export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {

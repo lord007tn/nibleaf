@@ -7,6 +7,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { type ContentImportSummary, useImportFromGhost, useImportFromMintlify } from '@/hooks/api';
 import { SettingsSection } from './section';
 
@@ -162,14 +163,12 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       toast.error(t('settings.import.ghost.invalidJson'));
       return;
     }
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const document = z.record(z.string(), z.unknown()).safeParse(parsed);
+    if (!document.success) {
       toast.error(t('settings.import.ghost.invalidJson'));
       return;
     }
-    ghost.mutate(
-      { ...(parsed as Record<string, unknown>), __nibleafImport: { ghostUrl: ghostUrl.trim() } },
-      { onSuccess: handleSuccess, onError: handleError },
-    );
+    ghost.mutate({ ...document.data, __nibleafImport: { ghostUrl: ghostUrl.trim() } }, { onSuccess: handleSuccess, onError: handleError });
   };
 
   const canImport =

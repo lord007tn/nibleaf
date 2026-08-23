@@ -1,6 +1,7 @@
 import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
+import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
@@ -54,10 +55,11 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     let config: Record<string, unknown>;
     try {
       const parsed = JSON.parse(rawConfig) as unknown;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      const object = z.record(z.string(), z.unknown()).safeParse(parsed);
+      if (!object.success) {
         throw new Error('not an object');
       }
-      config = parsed as Record<string, unknown>;
+      config = object.data;
     } catch {
       throw badRequest(`Could not parse ${configPath} — it is not valid JSON.`);
     }

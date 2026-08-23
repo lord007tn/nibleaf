@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { env } from '@/env';
@@ -238,24 +239,22 @@ function SiteOverviewPage() {
   );
 }
 
-/** One structured publish-check failure (Deployment.errorDetails entry). Typed
- *  locally because the client Deployment type doesn't carry the field yet. */
-interface PublishIssue {
-  type: 'broken-link' | 'grammar';
-  pageTitle: string;
-  pagePath: string;
-  detail: string;
-}
-
-const publishIssuesOf = (deployment: Deployment): PublishIssue[] => {
+const publishIssuesOf = (deployment: Deployment) => {
   const details = (deployment as Deployment & { errorDetails?: unknown }).errorDetails;
   if (!Array.isArray(details)) {
     return [];
   }
-  return details.filter(
-    (issue): issue is PublishIssue =>
-      !!issue && typeof issue === 'object' && ((issue as PublishIssue).type === 'broken-link' || (issue as PublishIssue).type === 'grammar'),
-  );
+  return details.flatMap((issue) => {
+    const parsed = z
+      .object({
+        type: z.enum(['broken-link', 'grammar']),
+        pageTitle: z.string(),
+        pagePath: z.string(),
+        detail: z.string(),
+      })
+      .safeParse(issue);
+    return parsed.success ? [parsed.data] : [];
+  });
 };
 
 /** Why the last publish failed: the structured check issues, each linking into

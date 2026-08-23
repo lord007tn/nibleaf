@@ -24,11 +24,7 @@ const gtagCommands = (): IArguments[] => (window.dataLayer ?? []).filter(isGtagC
 const gtagCommandValues = (): unknown[][] => gtagCommands().map((command) => Array.from(command));
 type GtmMarketingEvent = Record<string, unknown> & { event: typeof GTM_MARKETING_EVENT; event_name: string };
 const isGtmMarketingEvent = (entry: unknown): entry is GtmMarketingEvent =>
-  typeof entry === 'object' &&
-  entry !== null &&
-  !Array.isArray(entry) &&
-  !isGtagCommand(entry) &&
-  (entry as Record<string, unknown>).event === GTM_MARKETING_EVENT;
+  entry instanceof Object && !Array.isArray(entry) && !isGtagCommand(entry) && (entry as Record<string, unknown>).event === GTM_MARKETING_EVENT;
 const gtmMarketingEvents = (): GtmMarketingEvent[] => (window.dataLayer ?? []).filter(isGtmMarketingEvent);
 const GTM_MARKETING_EVENT_NAMES_FOR_TEST = new Set([
   'cta_clicked',

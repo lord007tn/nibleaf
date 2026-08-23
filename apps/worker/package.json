@@ -19,6 +19,7 @@
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
+    "@nibleaf/email": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/qdrant": "workspace:*",
     "@nibleaf/search": "workspace:*",
