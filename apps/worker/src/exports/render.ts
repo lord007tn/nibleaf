@@ -565,22 +565,100 @@ const plainText = (markdown: string): string =>
     .trim()
     .slice(0, 2000);
 
-const sanitizeAuthoredMarkdown = (markdown: string): string => {
-  const withoutActiveBlocks = markdown.replace(/<(script|style|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '');
-  let inFence = false;
-  return withoutActiveBlocks
+const activeBlockTag = /<\/?(?:script|style|iframe|object|embed)\b[^>]*>/gi;
+
+const stripActiveMarkup = (source: string): string => {
+  let output = '';
+  let cursor = 0;
+  let blockedDepth = 0;
+  for (const match of source.matchAll(activeBlockTag)) {
+    const token = match[0];
+    const index = match.index;
+    if (blockedDepth === 0) output += source.slice(cursor, index);
+    if (token.startsWith('</')) {
+      blockedDepth = Math.max(0, blockedDepth - 1);
+      cursor = index + token.length;
+    } else if (token.endsWith('/>')) {
+      cursor = index + token.length;
+    } else {
+      blockedDepth += 1;
+      if (blockedDepth === 1) cursor = index;
+    }
+  }
+  if (blockedDepth === 0) output += source.slice(cursor);
+  return output;
+};
+
+const stripMdxExpressions = (source: string): string => {
+  let output = '';
+  let expressionDepth = 0;
+  for (const character of source) {
+    if (character === '{') {
+      expressionDepth += 1;
+      continue;
+    }
+    if (character === '}') {
+      expressionDepth = Math.max(0, expressionDepth - 1);
+      continue;
+    }
+    if (expressionDepth === 0) output += character;
+  }
+  return output;
+};
+
+const sanitizeAuthoredProse = (source: string): string => {
+  const withoutActiveBlocks = stripActiveMarkup(portableMdxMarkdown(source));
+  return stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
-    .map((line) => {
-      if (/^\s*```/.test(line)) {
-        inFence = !inFence;
-        return line;
-      }
-      if (inFence) return line;
-      if (/^\s*(?:import|export)\s/.test(line)) return '';
-      return line.replace(/<\/?[A-Za-z][^>\n]*>/g, '').replace(/\{[^{}\n]*\}/g, '');
-    })
-    .join('\n')
-    .trim();
+    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
+    .join('\n');
+};
+
+interface MarkdownFence {
+  marker: '`' | '~';
+  length: number;
+}
+
+const openingMarkdownFence = (line: string): MarkdownFence | undefined => {
+  const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+  const token = match?.[1];
+  if (!token) return undefined;
+  return { marker: token.startsWith('`') ? '`' : '~', length: token.length };
+};
+
+const closesMarkdownFence = (line: string, fence: MarkdownFence): boolean => {
+  const match = /^ {0,3}(\S+)\s*$/.exec(line);
+  const token = match?.[1];
+  return Boolean(token && token.length >= fence.length && [...token].every((character) => character === fence.marker));
+};
+
+const sanitizeAuthoredMarkdown = (markdown: string): string => {
+  const output: string[] = [];
+  const prose: string[] = [];
+  let fence: MarkdownFence | undefined;
+  const flushProse = () => {
+    if (prose.length === 0) return;
+    output.push(sanitizeAuthoredProse(prose.join('\n')));
+    prose.length = 0;
+  };
+
+  for (const line of markdown.split('\n')) {
+    if (fence) {
+      output.push(line);
+      if (closesMarkdownFence(line, fence)) fence = undefined;
+      continue;
+    }
+    const openingFence = openingMarkdownFence(line);
+    if (openingFence) {
+      flushProse();
+      output.push(line);
+      fence = openingFence;
+      continue;
+    }
+    prose.push(line);
+  }
+  flushProse();
+  return output.join('\n').trim();
 };
 
 const oneLine = (value: string): string => value.replace(/\s+/g, ' ').trim();
