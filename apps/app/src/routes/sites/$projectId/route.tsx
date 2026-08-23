@@ -15,6 +15,7 @@ import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
+import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { api } from '@/lib/api';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { siteT } from '@/lib/site-i18n';
@@ -23,7 +24,7 @@ import { siteHref } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId')({
-  component: SiteChrome,
+  component: SiteRoute,
   // The active language lives in the URL so it survives reloads and is shareable.
   validateSearch: (search: Record<string, unknown>): { lang?: string } => ({
     lang: typeof search.lang === 'string' && search.lang ? search.lang : undefined,
@@ -52,6 +53,14 @@ export const Route = createFileRoute('/sites/$projectId')({
   },
   head: ({ loaderData }) => siteHead(loaderData?.site ?? null, loaderData?.siteOrigin),
 });
+
+function SiteRoute() {
+  return (
+    <QueryProvider>
+      <SiteChrome />
+    </QueryProvider>
+  );
+}
 
 // Brand glyphs as inline SVG — lucide-react no longer ships GitHub/X/LinkedIn icons.
 function GithubIcon({ className }: { className?: string }) {

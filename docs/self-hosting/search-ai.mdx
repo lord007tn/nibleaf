@@ -20,9 +20,12 @@ instance and site opt-in.
 `@nibleaf/search` owns language-aware chunking, normalization, sparse vectors,
 fusion result shaping, citation validation, prompt hardening, and the versioned
 analytics event contract. `@nibleaf/qdrant` owns only the versioned collection,
-payload indexes, alias, and filtered REST operations. The server derives every
-project, deployment, version, language, visibility, and reader page-grant filter;
-the worker indexes immutable published snapshots. Clients cannot submit scope.
+payload indexes, alias, and tenant-checked operations through Qdrant's official
+JavaScript SDK. The server derives every project, deployment, version, language,
+visibility, and reader page-grant filter; the worker indexes immutable published
+snapshots. Clients cannot submit scope. The published reader calls TanStack Start
+server functions through TanStack Query hooks; only the server function reaches
+the Hono RPC endpoint, preserving its request context and authorization checks.
 
 The collection name is
 `<QDRANT_COLLECTION_ALIAS>_<QDRANT_COLLECTION_VERSION>_<dimensions>`. The alias
@@ -36,8 +39,9 @@ as the query.
 Start from `.env.production.example`. Keep `SEARCH_RUNTIME=shadow`. Set a
 Qdrant API key when Qdrant is reachable outside a private container network.
 Configure `SEARCH_EMBEDDING_*` for OpenAI or another API-compatible embedding
-provider. The configured dimension must match `QDRANT_VECTOR_SIZE`; changing it
-requires a new collection version.
+provider. Embeddings use the official OpenAI SDK with a configurable base URL.
+The configured dimension must match `QDRANT_VECTOR_SIZE`; changing the embedding
+model, dimension, or embedding-input format requires a new collection version.
 
 For the portable production stack, add the v0.2 search overlay to every Compose
 operation (including pull, up, config checks, and backup automation):
@@ -50,7 +54,9 @@ The overlay is separate so the checksummed v0.1.2 self-host release artifacts
 remain immutable. Coolify and the development stack include Qdrant directly.
 
 To offer answers, set `SEARCH_ANSWER_ENABLED=true`, configure a separate
-least-privilege `SEARCH_ANSWER_API_KEY`, and pin `SEARCH_ANSWER_MODEL`. Then an
+least-privilege OpenRouter `SEARCH_ANSWER_API_KEY`, and pin
+`SEARCH_ANSWER_MODEL`. Answer generation uses TanStack AI's OpenRouter adapter,
+which uses OpenRouter's official SDK and native structured output. Then an
 administrator must enable **Grounded AI answers** for each intended site.
 Quotas are atomic per project and day in Redis. Requests also have a separate
 per-IP minute limit, provider timeout, and request cancellation. If Redis is
@@ -63,10 +69,15 @@ model text. Search results remain immediate and non-generative.
 
 ## Index and evaluate
 
-Publishing enqueues an idempotent deployment index job. Access-mode changes
-reindex the latest deployment; a visibility mismatch returns no hybrid result
-until convergence. To rebuild existing data, enqueue `reindex-project` through
-the search queue. Writes always target the configured versioned physical
+Publishing enqueues an idempotent deployment index job. A retry diffs chunk IDs
+and payloads, skips unchanged chunks, updates metadata without embedding, and
+deletes only stale points inside the project and deployment filter. A new
+deployment reuses dense vectors from the nearest READY predecessor when the
+complete embedding-input hash matches, so unchanged documentation is not fully
+re-embedded. Only new or changed chunks call the embedding provider. Access-mode
+changes reindex the latest deployment; a visibility mismatch returns no hybrid
+result until convergence. To rebuild existing data, enqueue `reindex-project`
+through the search queue. Writes always target the configured versioned physical
 collection rather than the active read alias, so a new collection can be fully
 populated before cutover without clearing the serving collection.
 

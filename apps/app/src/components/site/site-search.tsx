@@ -5,9 +5,8 @@ import { useDebouncedValue } from '@tanstack/react-pacer';
 import { AlertCircle, FileText, Loader2, Search, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { getData } from '@/hooks/api/client-helpers';
-import type { SearchAnswer, SearchHit } from '@/hooks/api/types';
-import { api } from '@/lib/api';
+import { useAnswerSite } from '@/hooks/api/mutations';
+import { useSiteSearch } from '@/hooks/api/queries';
 import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
 
@@ -69,68 +68,39 @@ export function SiteSearch({
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
-  const [hits, setHits] = useState<SearchHit[]>([]);
   const [mode, setMode] = useState<'search' | 'answer'>('search');
-  const [answer, setAnswer] = useState<SearchAnswer | null>(null);
-  const [answerError, setAnswerError] = useState<string | null>(null);
-  const [answerLoading, setAnswerLoading] = useState(false);
   const arabic = lang?.toLowerCase().startsWith('ar') ?? false;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
-  useEffect(() => {
-    const q = debouncedQuery.trim();
-    if (!q) {
-      setHits([]);
-      return;
-    }
-    let active = true;
-    if (mode !== 'search') return;
-    const controller = new AbortController();
-    const loadHits = async () =>
-      getData<{ hits: SearchHit[] }>(
-        await api.public.sites[':id'].search.$get(
-          {
-            param: { id: projectId },
-            query: { q, ...(maxResults ? { limit: String(maxResults) } : {}), ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
-          },
-          { init: { signal: controller.signal } },
-        ),
-        'search',
-      );
-    loadHits()
-      .then((result) => {
-        if (active) setHits(result.hits);
-      })
-      .catch(() => {
-        if (active) setHits([]);
-      });
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, [debouncedQuery, lang, maxResults, mode, projectId, version]);
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), lang, version, maxResults, open && mode === 'search');
+  const answerMutation = useAnswerSite();
+  const hits = hitsQuery.data ?? [];
+  const answer = answerMutation.isPending ? null : (answerMutation.data ?? null);
+  const answerError =
+    !answerMutation.isPending && answerMutation.error
+      ? arabic
+        ? 'تعذر إنشاء الإجابة. حاول مرة أخرى لاحقاً.'
+        : answerMutation.error instanceof Error
+          ? answerMutation.error.message
+          : 'Could not generate an answer.'
+      : null;
+  const searchMessage = !query.trim()
+    ? t('searchPrompt')
+    : hitsQuery.isFetching
+      ? arabic
+        ? 'جارٍ البحث…'
+        : 'Searching…'
+      : hitsQuery.error
+        ? arabic
+          ? 'تعذر البحث. حاول مرة أخرى.'
+          : 'Search failed. Try again.'
+        : t('searchEmpty');
 
-  const ask = async () => {
+  const ask = () => {
     const q = query.trim();
-    if (q.length < 2 || answerLoading) return;
-    setAnswerLoading(true);
-    setAnswerError(null);
-    setAnswer(null);
-    try {
-      const result = await getData<SearchAnswer>(
-        await api.public.sites[':id'].answer.$post({
-          param: { id: projectId },
-          json: { q, ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
-        }),
-        'answer',
-      );
-      setAnswer(result);
-    } catch (error) {
-      setAnswerError(error instanceof Error ? error.message : arabic ? 'تعذر إنشاء الإجابة.' : 'Could not generate an answer.');
-    } finally {
-      setAnswerLoading(false);
-    }
+    if (q.length < 2 || answerMutation.isPending) return;
+    answerMutation.mutate({ projectId, query: q, ...(lang ? { language: lang } : {}), ...(version ? { version } : {}) });
   };
 
   useEffect(() => {
@@ -190,7 +160,7 @@ export function SiteSearch({
           <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
           {mode === 'search' ? (
             <CommandList>
-              <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
+              <CommandEmpty>{searchMessage}</CommandEmpty>
               <CommandGroup heading={t('results')}>
                 {hits.map((hit) => (
                   <CommandItem
@@ -266,9 +236,9 @@ export function SiteSearch({
                 <p className="text-muted-foreground text-xs">
                   {arabic ? 'قد لا تتوفر إجابة عندما لا تدعمها الوثائق.' : 'No answer is returned when the docs do not support one.'}
                 </p>
-                <Button disabled={query.trim().length < 2 || answerLoading} onClick={ask} size="sm" type="button">
-                  {answerLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                  {answerLoading ? (arabic ? 'جارٍ التحقق…' : 'Checking…') : arabic ? 'إجابة' : 'Answer'}
+                <Button disabled={query.trim().length < 2 || answerMutation.isPending} onClick={ask} size="sm" type="button">
+                  {answerMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {answerMutation.isPending ? (arabic ? 'جارٍ التحقق…' : 'Checking…') : arabic ? 'إجابة' : 'Answer'}
                 </Button>
               </div>
             </div>

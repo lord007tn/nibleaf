@@ -1,62 +1,100 @@
+import type { QdrantClient as QdrantSdkClient } from '@qdrant/js-client-rest';
 import { describe, expect, it, vi } from 'vitest';
 import { QdrantClient, type QdrantFilter } from './client';
 
-const ok = (result: unknown) => new Response(JSON.stringify({ result }), { status: 200, headers: { 'content-type': 'application/json' } });
+const sdkClient = () => ({
+  collectionExists: vi.fn(async (_collection: string) => ({ exists: true })),
+  createCollection: vi.fn(async (_collection: string, _config: Record<string, unknown>) => true),
+  createPayloadIndex: vi.fn(async (_collection: string, _config: Record<string, unknown>) => ({ status: 'completed' })),
+  getAliases: vi.fn(async () => ({ aliases: [{ alias_name: 'search_active', collection_name: 'search_active_v1_1' }] })),
+  updateCollectionAliases: vi.fn(async (_input: Record<string, unknown>) => true),
+  versionInfo: vi.fn(async () => ({ title: 'qdrant', version: '1.19.0' })),
+  upsert: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ status: 'completed' })),
+  delete: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ status: 'completed' })),
+  overwritePayload: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ status: 'completed' })),
+  getCollections: vi.fn(async () => ({ collections: [] as Array<{ name: string }> })),
+  count: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ count: 0 })),
+  scroll: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({
+    points: [] as Array<{ id: string | number; payload?: Record<string, unknown> | null }>,
+    next_page_offset: null as string | number | null,
+  })),
+  query: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ points: [] })),
+});
 
-describe('QdrantClient tenant safety', () => {
-  it('passes the mandatory retrieval filter to both lanes and scopes IDF to the tenant corpus', async () => {
-    const request = vi.fn<typeof fetch>().mockResolvedValue(ok({ points: [] }));
-    const client = new QdrantClient({ url: 'http://qdrant.test:6333', fetch: request, timeoutMs: 1000, vectorSize: 1 });
-    const filter: QdrantFilter = {
-      must: [
-        { key: 'project_id', match: { value: 'tenant-a' } },
-        { key: 'deployment_id', match: { value: 'dep-1' } },
-        { key: 'version_slug', match: { value: 'main' } },
-        { key: 'language', match: { value: 'ar' } },
-        { key: 'visibility', match: { value: 'private' } },
-        { key: 'visible', match: { value: true } },
-        { key: 'page_id', match: { any: ['page-a'] } },
-      ],
-    };
-    const idfCorpus = filter;
+const harness = (options: { alias?: string; schemaVersion?: string } = {}) => {
+  const sdk = sdkClient();
+  const client = new QdrantClient({
+    url: 'https://qdrant.test',
+    alias: options.alias,
+    schemaVersion: options.schemaVersion,
+    vectorSize: 1,
+    client: sdk as unknown as QdrantSdkClient,
+  });
+  return { client, sdk };
+};
 
-    await client.queryHybrid({ dense: [0.1], sparse: { indices: [1], values: [1] }, filter, idfCorpus, limit: 5 });
+const retrievalFilter = (): QdrantFilter => ({
+  must: [
+    { key: 'project_id', match: { value: 'tenant-a' } },
+    { key: 'deployment_id', match: { value: 'dep-1' } },
+    { key: 'version_slug', match: { value: 'main' } },
+    { key: 'language', match: { value: 'ar' } },
+    { key: 'visibility', match: { value: 'private' } },
+    { key: 'visible', match: { value: true } },
+    { key: 'page_id', match: { any: ['page-a'] } },
+  ],
+});
 
-    const init = request.mock.calls[0]?.[1];
-    const body = JSON.parse(String(init?.body));
-    expect(body.filter).toEqual(filter);
-    expect(body.prefetch[0].filter).toEqual(filter);
-    expect(body.prefetch[1].filter).toEqual(filter);
-    expect(body.prefetch[0].params.idf.corpus).toEqual(idfCorpus);
-    expect(JSON.stringify(body)).not.toContain('tenant-b');
+describe('QdrantClient official SDK boundary', () => {
+  it('creates a missing hybrid collection, indexes its tenant fields, and establishes the read alias', async () => {
+    const { client, sdk } = harness();
+    sdk.collectionExists.mockResolvedValueOnce({ exists: false });
+    sdk.getAliases.mockResolvedValueOnce({ aliases: [] });
+
+    await expect(client.ensureHybridCollection()).resolves.toEqual({
+      alias: 'nibleaf_search_active',
+      collection: 'nibleaf_search_active_v1_1',
+      created: true,
+    });
+
+    expect(sdk.createCollection).toHaveBeenCalledWith(
+      'nibleaf_search_active_v1_1',
+      expect.objectContaining({
+        sparse_vectors: { bm25: { modifier: 'idf' } },
+        vectors: { dense: { distance: 'Cosine', size: 1 } },
+      }),
+    );
+    expect(sdk.createPayloadIndex).toHaveBeenCalledTimes(8);
+    expect(sdk.updateCollectionAliases).toHaveBeenCalledWith({
+      actions: [{ create_alias: { collection_name: 'nibleaf_search_active_v1_1', alias_name: 'nibleaf_search_active' } }],
+    });
   });
 
-  it('never sends API credentials in the URL or body', async () => {
-    const request = vi.fn<typeof fetch>().mockResolvedValue(ok({ count: 0 }));
-    const client = new QdrantClient({ url: 'https://qdrant.test', apiKey: 'top-secret', fetch: request });
-    await client.count({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
-    const [url, init] = request.mock.calls[0] ?? [];
-    expect(String(url)).not.toContain('top-secret');
-    expect(String(init?.body)).not.toContain('top-secret');
-    expect(new Headers(init?.headers).get('api-key')).toBe('top-secret');
+  it('passes mandatory filters to both hybrid lanes and scopes IDF to the same authorized corpus', async () => {
+    const { client, sdk } = harness();
+    const filter = retrievalFilter();
+
+    await client.queryHybrid({ dense: [0.1], sparse: { indices: [1], values: [1] }, filter, idfCorpus: filter, limit: 5 });
+
+    expect(sdk.query).toHaveBeenCalledOnce();
+    const call = sdk.query.mock.calls[0];
+    if (!call) throw new Error('Expected the Qdrant SDK query to be called.');
+    const [collection, input] = call;
+    expect(collection).toBe('nibleaf_search_active');
+    expect(input.filter).toEqual(filter);
+    expect(input.prefetch).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ filter, params: { idf: { corpus: filter } }, using: 'bm25' }),
+        expect.objectContaining({ filter, using: 'dense' }),
+      ]),
+    );
+    expect(JSON.stringify(input)).not.toContain('tenant-b');
   });
 
-  it('writes to the versioned physical collection and sweeps only owned versions during erasure', async () => {
-    const request = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(ok({}))
-      .mockResolvedValueOnce(
-        ok({
-          collections: [{ name: 'search_active_v1_1' }, { name: 'search_active_v2_1' }, { name: 'unrelated_collection' }],
-        }),
-      )
-      .mockImplementation(async () => ok({}));
-    const client = new QdrantClient({
-      url: 'https://qdrant.test',
-      alias: 'search_active',
-      schemaVersion: 'v2',
-      vectorSize: 1,
-      fetch: request,
+  it('writes through the official SDK to the versioned physical collection and sweeps only owned rollback versions', async () => {
+    const { client, sdk } = harness({ alias: 'search_active', schemaVersion: 'v2' });
+    sdk.getCollections.mockResolvedValueOnce({
+      collections: [{ name: 'search_active_v1_1' }, { name: 'search_active_v2_1' }, { name: 'unrelated_collection' }],
     });
     await client.upsert([
       {
@@ -77,22 +115,46 @@ describe('QdrantClient tenant safety', () => {
     const filter: QdrantFilter = { must: [{ key: 'project_id', match: { value: 'tenant-a' } }] };
     await expect(client.deleteByFilterAllVersions(filter)).resolves.toBe(2);
 
-    expect(String(request.mock.calls[0]?.[0])).toContain('/collections/search_active_v2_1/points');
-    const deletionUrls = request.mock.calls.slice(2).map(([url]) => String(url));
-    expect(deletionUrls).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('/collections/search_active_v1_1/points/delete'),
-        expect.stringContaining('/collections/search_active_v2_1/points/delete'),
-      ]),
-    );
-    expect(JSON.stringify(deletionUrls)).not.toContain('unrelated_collection');
+    expect(sdk.upsert.mock.calls[0]?.[0]).toBe('search_active_v2_1');
+    expect(sdk.delete.mock.calls.map(([collection]) => collection)).toEqual(['search_active_v1_1', 'search_active_v2_1']);
   });
 
-  it('fails before I/O when counts, deletes, or retrieval omit mandatory tenant scope', async () => {
-    const request = vi.fn<typeof fetch>();
-    const client = new QdrantClient({ url: 'https://qdrant.test', fetch: request, vectorSize: 1 });
+  it('supports scoped differential reads, metadata replacement, and stale-id deletion without returning vectors', async () => {
+    const { client, sdk } = harness();
+    sdk.scroll
+      .mockResolvedValueOnce({ points: [{ id: 'point-a', payload: { project_id: 'tenant-a', content_hash: 'hash-a' } }], next_page_offset: 2 })
+      .mockResolvedValueOnce({ points: [{ id: 'point-b', payload: { project_id: 'tenant-a', content_hash: 'hash-b' } }], next_page_offset: null });
+    const filter: QdrantFilter = {
+      must: [
+        { key: 'project_id', match: { value: 'tenant-a' } },
+        { key: 'deployment_id', match: { value: 'deployment-a' } },
+      ],
+    };
+
+    await expect(client.listIndexedPoints(filter)).resolves.toEqual([
+      { id: 'point-a', payload: { project_id: 'tenant-a', content_hash: 'hash-a' } },
+      { id: 'point-b', payload: { project_id: 'tenant-a', content_hash: 'hash-b' } },
+    ]);
+    expect(sdk.scroll.mock.calls[0]?.[1]).toMatchObject({ filter, with_payload: true, with_vector: false });
+    expect(sdk.scroll.mock.calls[1]?.[1]).toMatchObject({ filter, offset: 2 });
+
+    await client.replacePayload('point-a', { project_id: 'tenant-a', content_hash: 'hash-a' }, filter);
+    await client.deletePoints(['point-b'], filter);
+    expect(sdk.overwritePayload).toHaveBeenCalledWith(
+      'nibleaf_search_active_v1_1',
+      expect.objectContaining({ filter: { must: [...filter.must, { has_id: ['point-a'] }] } }),
+    );
+    expect(sdk.delete).toHaveBeenCalledWith(
+      'nibleaf_search_active_v1_1',
+      expect.objectContaining({ filter: { must: [...filter.must, { has_id: ['point-b'] }] } }),
+    );
+  });
+
+  it('fails before SDK I/O when counts, deletes, diffs, or retrieval omit mandatory tenant scope', async () => {
+    const { client, sdk } = harness();
     await expect(client.count({ must: [] })).rejects.toThrow('project_id');
     await expect(client.deleteByFilter({ must: [{ key: 'deployment_id', match: { value: 'dep' } }] })).rejects.toThrow('project_id');
+    await expect(client.listIndexedPoints({ must: [] })).rejects.toThrow('project_id');
     await expect(
       client.queryHybrid({
         dense: [0.1],
@@ -102,32 +164,24 @@ describe('QdrantClient tenant safety', () => {
         limit: 1,
       }),
     ).rejects.toThrow('deployment_id');
-    expect(request).not.toHaveBeenCalled();
+    expect(sdk.count).not.toHaveBeenCalled();
+    expect(sdk.delete).not.toHaveBeenCalled();
+    expect(sdk.scroll).not.toHaveBeenCalled();
+    expect(sdk.query).not.toHaveBeenCalled();
   });
 
   it('rejects a broader IDF corpus so unauthorized pages cannot affect scores', async () => {
-    const request = vi.fn<typeof fetch>();
-    const client = new QdrantClient({ url: 'https://qdrant.test', fetch: request, vectorSize: 1 });
-    const filter: QdrantFilter = {
-      must: [
-        { key: 'project_id', match: { value: 'tenant-a' } },
-        { key: 'deployment_id', match: { value: 'dep' } },
-        { key: 'version_slug', match: { value: 'main' } },
-        { key: 'language', match: { value: 'en' } },
-        { key: 'visibility', match: { value: 'private' } },
-        { key: 'visible', match: { value: true } },
-        { key: 'page_id', match: { any: ['allowed'] } },
-      ],
-    };
+    const { client, sdk } = harness();
+    const filter = retrievalFilter();
     await expect(
       client.queryHybrid({
         dense: [0.1],
         sparse: { indices: [1], values: [1] },
         filter,
-        idfCorpus: { must: filter.must.filter((condition) => condition.key !== 'page_id') },
+        idfCorpus: { must: filter.must.filter((condition) => !('key' in condition) || condition.key !== 'page_id') },
         limit: 1,
       }),
     ).rejects.toThrow('IDF corpus');
-    expect(request).not.toHaveBeenCalled();
+    expect(sdk.query).not.toHaveBeenCalled();
   });
 });

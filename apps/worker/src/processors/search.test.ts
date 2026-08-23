@@ -1,13 +1,17 @@
 import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
-import type { QdrantPoint } from '@nibleaf/qdrant';
+import type { QdrantFilter, QdrantIndexedPoint, QdrantPoint } from '@nibleaf/qdrant';
 import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   apiKey: 'embedding-key' as string | undefined,
   accessMode: 'READERS' as 'PUBLIC' | 'WORKSPACE' | 'READERS',
+  currentPoints: [] as QdrantIndexedPoint[],
+  previousPoints: [] as QdrantIndexedPoint[],
+  previousDeployment: null as { id: string } | null,
   deployment: {
     id: 'deployment-a',
+    version: 2,
     snapshot: {
       project: { versions: [{ id: 'version-main', slug: 'main' }] },
       pages: [
@@ -41,11 +45,25 @@ const mocks = vi.hoisted(() => ({
     },
   },
   ensureHybridCollection: vi.fn(async () => ({ alias: 'active', collection: 'physical', created: false })),
-  upsert: vi.fn(async () => undefined),
-  deleteByFilter: vi.fn(async () => undefined),
-  deleteByFilterAllVersions: vi.fn(async () => 1),
+  upsert: vi.fn(async (_points: QdrantPoint[]) => undefined),
+  replacePayload: vi.fn(async (_id: string | number, _payload: Record<string, unknown>, _filter: QdrantFilter) => undefined),
+  deletePoints: vi.fn(async (_ids: Array<string | number>, _filter: QdrantFilter) => undefined),
+  deleteByFilterAllVersions: vi.fn(async (_filter: QdrantFilter) => 1),
   embed: vi.fn(async (inputs: string[]) => ({ vectors: inputs.map(() => [0.1, 0.2]), model: 'test' })),
 }));
+
+const deploymentIdFrom = (filter: QdrantFilter) => {
+  for (const condition of filter.must) {
+    if ('key' in condition && condition.key === 'deployment_id') return condition.match.value;
+  }
+  return undefined;
+};
+
+const listIndexedPoints = vi.fn(async (filter: QdrantFilter, includeVectors = false) => {
+  const deploymentId = deploymentIdFrom(filter);
+  if (deploymentId === 'deployment-old') return includeVectors ? mocks.previousPoints : [];
+  return mocks.currentPoints;
+});
 
 vi.mock('../env', () => ({
   env: {
@@ -62,7 +80,9 @@ vi.mock('../env', () => ({
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
-    deployment: { findFirst: vi.fn(async () => mocks.deployment) },
+    deployment: {
+      findFirst: vi.fn(async (args: { select?: { snapshot?: boolean } }) => (args.select?.snapshot ? mocks.deployment : mocks.previousDeployment)),
+    },
     project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode })) },
   },
 }));
@@ -72,16 +92,18 @@ vi.mock('@nibleaf/qdrant', () => ({
     vectorSize: 2,
     ensureHybridCollection: mocks.ensureHybridCollection,
     upsert: mocks.upsert,
-    deleteByFilter: mocks.deleteByFilter,
+    replacePayload: mocks.replacePayload,
+    deletePoints: mocks.deletePoints,
     deleteByFilterAllVersions: mocks.deleteByFilterAllVersions,
+    listIndexedPoints,
   }),
 }));
 
-vi.mock('@nibleaf/search', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@nibleaf/search')>();
+vi.mock('@nibleaf/search', async () => {
+  const hybrid = await import('../../../../packages/search/src/hybrid');
   return {
-    ...actual,
-    OpenAICompatibleEmbeddingProvider: class {
+    ...hybrid,
+    OpenAIEmbeddingProvider: class {
       dimensions = 2;
       embed = mocks.embed;
     },
@@ -93,19 +115,26 @@ import { handleSearchJobs } from './search';
 const job = (name: string, data: ReindexProjectJobData = { projectId: 'tenant-a', deploymentId: 'deployment-a' }) =>
   ({ name, data, updateProgress: vi.fn(async () => undefined) }) as unknown as Job<ReindexProjectJobData>;
 
-describe('hybrid search indexing jobs', () => {
+const firstUpsertedPoint = () => {
+  const call = mocks.upsert.mock.calls[0];
+  if (!call?.[0]?.[0]) throw new Error('Expected an indexed point.');
+  return call[0][0];
+};
+
+describe('hybrid search differential indexing jobs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.apiKey = 'embedding-key';
     mocks.accessMode = 'READERS';
+    mocks.currentPoints = [];
+    mocks.previousPoints = [];
+    mocks.previousDeployment = null;
   });
 
-  it('indexes only visible pages with deterministic tenant/deployment/language/private payloads', async () => {
-    const first = job('index-deployment');
-    await expect(handleSearchJobs(first)).resolves.toMatchObject({ indexed: 1 });
-    const firstPoints = (mocks.upsert.mock.calls as unknown as Array<[QdrantPoint[]]>)[0]?.[0] ?? [];
-    expect(firstPoints).toHaveLength(1);
-    expect(firstPoints[0]).toMatchObject({
+  it('embeds only visible pages and stamps deterministic tenant/deployment/language/private payloads', async () => {
+    await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ indexed: 1, embedded: 1, reused: 0 });
+    const point = firstUpsertedPoint();
+    expect(point).toMatchObject({
       payload: {
         project_id: 'tenant-a',
         deployment_id: 'deployment-a',
@@ -117,16 +146,80 @@ describe('hybrid search indexing jobs', () => {
         direction: 'rtl',
       },
     });
-
-    mocks.upsert.mockClear();
-    await handleSearchJobs(job('index-deployment'));
-    expect((mocks.upsert.mock.calls as unknown as Array<[QdrantPoint[]]>)[0]?.[0]?.[0]?.id).toBe(firstPoints[0]?.id);
+    expect(mocks.embed).toHaveBeenCalledOnce();
   });
 
-  it('reindexes idempotently without clearing the active alias before replacement points exist', async () => {
-    await handleSearchJobs(job('reindex-project', { projectId: 'tenant-a' }));
-    expect(mocks.deleteByFilter).not.toHaveBeenCalled();
-    expect(mocks.upsert).toHaveBeenCalled();
+  it('skips unchanged current-deployment chunks without embedding or writing them again', async () => {
+    await handleSearchJobs(job('index-deployment'));
+    const point = firstUpsertedPoint();
+    mocks.currentPoints = [{ id: point.id, payload: point.payload }];
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+
+    await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({
+      indexed: 0,
+      embedded: 0,
+      reused: 0,
+      metadataUpdated: 0,
+      unchanged: 1,
+      deleted: 0,
+    });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+
+  it('copies a matching predecessor vector for a new deployment instead of re-embedding unchanged content', async () => {
+    await handleSearchJobs(job('index-deployment'));
+    const point = firstUpsertedPoint();
+    mocks.previousDeployment = { id: 'deployment-old' };
+    mocks.previousPoints = [
+      {
+        id: 'old-point',
+        payload: { ...point.payload, deployment_id: 'deployment-old' },
+        vector: { dense: [0.7, 0.8], bm25: { indices: [1], values: [1] } },
+      },
+    ];
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+
+    await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ indexed: 1, embedded: 0, reused: 1 });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(firstUpsertedPoint().vector.dense).toEqual([0.7, 0.8]);
+  });
+
+  it('updates metadata without embeddings and deletes stale ids only inside the deployment tenant filter', async () => {
+    await handleSearchJobs(job('index-deployment'));
+    const point = firstUpsertedPoint();
+    mocks.currentPoints = [
+      { id: point.id, payload: { ...point.payload, visibility: 'public' } },
+      { id: 'stale-point', payload: { ...point.payload, page_id: 'stale-page' } },
+    ];
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+
+    await expect(handleSearchJobs(job('reindex-project', { projectId: 'tenant-a' }))).resolves.toMatchObject({
+      embedded: 0,
+      metadataUpdated: 1,
+      deleted: 1,
+    });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.replacePayload).toHaveBeenCalledWith(
+      point.id,
+      expect.objectContaining({ project_id: 'tenant-a', deployment_id: 'deployment-a', visibility: 'private' }),
+      {
+        must: [
+          { key: 'project_id', match: { value: 'tenant-a' } },
+          { key: 'deployment_id', match: { value: 'deployment-a' } },
+        ],
+      },
+    );
+    expect(mocks.deletePoints).toHaveBeenCalledWith(['stale-point'], {
+      must: [
+        { key: 'project_id', match: { value: 'tenant-a' } },
+        { key: 'deployment_id', match: { value: 'deployment-a' } },
+      ],
+    });
+    expect(JSON.stringify(mocks.deletePoints.mock.calls)).not.toContain('tenant-b');
   });
 
   it('can delete tenant data even when no embedding credential is configured', async () => {

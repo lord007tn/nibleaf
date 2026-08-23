@@ -42,7 +42,7 @@ const point = (id: string, projectId: string, pageId: string, content: string): 
 
 describe.skipIf(!client)('Qdrant live tenant isolation', () => {
   afterAll(async () => {
-    if (url && client) await fetch(`${url}/collections/${encodeURIComponent(client.collection)}`, { method: 'DELETE' });
+    if (url && client) await client.dropVersionedCollection();
   });
 
   it('creates a versioned hybrid collection and isolates retrieval, counts, IDF, and deletion', async () => {

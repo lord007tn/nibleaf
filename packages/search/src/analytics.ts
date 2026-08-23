@@ -3,7 +3,7 @@
 export const SEARCH_ANALYTICS_VERSION = 1 as const;
 
 interface SearchAnalyticsBase {
-  contractVersion: typeof SEARCH_ANALYTICS_VERSION;
+  contractVersion: 1;
   eventId: string;
   occurredAt: string;
   projectId: string;

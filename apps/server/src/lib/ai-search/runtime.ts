@@ -5,8 +5,7 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
-  OpenAICompatibleChatProvider,
-  OpenAICompatibleEmbeddingProvider,
+  OpenAIEmbeddingProvider,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -14,7 +13,9 @@ import {
   type SearchScope,
   searchCacheKey,
   sparseVectorForQuery,
+  TanStackOpenRouterChatProvider,
 } from '@nibleaf/search';
+import { z } from 'zod';
 import { env } from '@/env';
 import { TtlCache } from '@/lib/lru';
 
@@ -23,12 +24,32 @@ const retrievalCache = new TtlCache<string, HybridChunkHit[]>(500, env.SEARCH_CA
 const answerCache = new TtlCache<string, GroundedAnswer>(250, env.SEARCH_CACHE_TTL_MS);
 const qdrant = getQdrantClient();
 
+const indexedChunkPayloadSchema = z.object({
+  project_id: z.string(),
+  deployment_id: z.string(),
+  version_slug: z.string(),
+  language: z.string(),
+  visibility: z.enum(['public', 'private']),
+  visible: z.literal(true),
+  page_id: z.string(),
+  ordinal: z.number().int().nonnegative(),
+  title: z.string(),
+  path: z.string(),
+  description: z.string().default(''),
+  heading: z.string().default(''),
+  heading_path: z.array(z.string()).default([]),
+  content: z.string(),
+  content_hash: z.string(),
+  direction: z.enum(['ltr', 'rtl']),
+  icon: z.string().optional(),
+});
+
 const embeddingApiKey = (): string | undefined => env.SEARCH_EMBEDDING_API_KEY ?? env.OPENAI_API_KEY;
 
 const embeddings = () => {
   const apiKey = embeddingApiKey();
   if (!apiKey) return null;
-  return new OpenAICompatibleEmbeddingProvider({
+  return new OpenAIEmbeddingProvider({
     apiKey,
     baseUrl: env.SEARCH_EMBEDDING_BASE_URL,
     model: env.SEARCH_EMBEDDING_MODEL,
@@ -55,49 +76,39 @@ export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null =>
   };
 };
 
-const stringPayload = (payload: Record<string, unknown>, key: string): string | null =>
-  typeof payload[key] === 'string' ? (payload[key] as string) : null;
-
 /** Treat Qdrant payload as untrusted. Recheck every server-derived scope field
  * after retrieval so stale/misindexed points cannot cross an authorization boundary. */
 export const chunkFromPoint = (point: QdrantScoredPoint, scope: SearchScope): HybridChunkHit | null => {
-  const payload = point.payload;
-  if (!payload) return null;
+  const parsed = indexedChunkPayloadSchema.safeParse(point.payload);
+  if (!parsed.success) return null;
+  const payload = parsed.data;
   if (
-    stringPayload(payload, 'project_id') !== scope.projectId ||
-    stringPayload(payload, 'deployment_id') !== scope.deploymentId ||
-    stringPayload(payload, 'version_slug') !== scope.versionSlug ||
-    stringPayload(payload, 'language') !== scope.language ||
-    stringPayload(payload, 'visibility') !== scope.visibility ||
-    payload.visible !== true
+    payload.project_id !== scope.projectId ||
+    payload.deployment_id !== scope.deploymentId ||
+    payload.version_slug !== scope.versionSlug ||
+    payload.language !== scope.language ||
+    payload.visibility !== scope.visibility
   ) {
     return null;
   }
-  const pageId = stringPayload(payload, 'page_id');
-  if (!pageId || (scope.allowedPageIds !== null && !scope.allowedPageIds.has(pageId))) return null;
+  if (!payload.page_id || (scope.allowedPageIds !== null && !scope.allowedPageIds.has(payload.page_id))) return null;
   const id = String(point.id);
-  const title = stringPayload(payload, 'title');
-  const path = stringPayload(payload, 'path');
-  const content = stringPayload(payload, 'content');
-  const contentHash = stringPayload(payload, 'content_hash');
-  if (!title || path === null || !content || !contentHash) return null;
-  const direction = payload.direction === 'rtl' ? 'rtl' : 'ltr';
-  const headingPath = Array.isArray(payload.heading_path) ? payload.heading_path.filter((item): item is string => typeof item === 'string') : [];
+  if (!payload.title || !payload.content || !payload.content_hash) return null;
   const chunk: SearchChunk = {
     id,
-    pageId,
-    ordinal: typeof payload.ordinal === 'number' ? payload.ordinal : 0,
-    title,
-    path,
-    description: stringPayload(payload, 'description') ?? '',
-    heading: stringPayload(payload, 'heading') ?? '',
-    headingPath,
-    content,
-    contentHash,
+    pageId: payload.page_id,
+    ordinal: payload.ordinal,
+    title: payload.title,
+    path: payload.path,
+    description: payload.description,
+    heading: payload.heading,
+    headingPath: payload.heading_path,
+    content: payload.content,
+    contentHash: payload.content_hash,
     language: scope.language,
-    direction,
+    direction: payload.direction,
     visible: true,
-    icon: stringPayload(payload, 'icon') ?? undefined,
+    icon: payload.icon,
   };
   return { chunk, score: Number.isFinite(point.score) ? point.score : 0 };
 };
@@ -201,7 +212,7 @@ export const answerPublishedSearch = async (
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
   const retrieval = await retrieveHybrid(scope, query, 12, signal);
-  const provider = new OpenAICompatibleChatProvider({
+  const provider = new TanStackOpenRouterChatProvider({
     apiKey: env.SEARCH_ANSWER_API_KEY,
     baseUrl: env.SEARCH_ANSWER_BASE_URL,
     model: env.SEARCH_ANSWER_MODEL,

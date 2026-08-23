@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { OpenRouter } from '@openrouter/sdk';
 import { generateGroundedAnswer, type SearchChunk } from '../src/index';
-import { OpenAICompatibleChatProvider } from '../src/providers';
+import { TanStackOpenRouterChatProvider } from '../src/providers';
 
 interface Fixture {
   id: string;
@@ -14,9 +15,18 @@ interface Fixture {
   expectedNoAnswer: boolean;
 }
 
-interface ModelRecord {
-  id: string;
-  pricing?: { prompt?: string; completion?: string };
+interface EvaluationRecord {
+  model: string;
+  fixture: string;
+  status: 'answered' | 'no_answer';
+  citationFaithfulness: number;
+  groundedness: number;
+  noAnswerCorrect: boolean;
+  languageQuality: number;
+  latencyMs?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,9 +39,8 @@ const models = (process.env.OPENROUTER_EVAL_MODELS ?? 'openai/gpt-5.6-luna,deeps
   .filter(Boolean);
 
 const fixtures = JSON.parse(await readFile(resolve(here, '../eval/rag-answer-fixtures.json'), 'utf8')) as Fixture[];
-const modelResponse = await fetch('https://openrouter.ai/api/v1/models');
-if (!modelResponse.ok) throw new Error(`OpenRouter model discovery failed (${modelResponse.status}).`);
-const catalog = ((await modelResponse.json()) as { data?: ModelRecord[] }).data ?? [];
+const openRouter = new OpenRouter({ apiKey, timeoutMs: 30_000 });
+const catalog = (await openRouter.models.list()).data;
 
 for (const model of models) {
   if (!catalog.some((candidate) => candidate.id === model)) throw new Error(`Configured evaluation model is not currently available: ${model}`);
@@ -55,9 +64,9 @@ const chunks = (fixture: Fixture): SearchChunk[] =>
     visible: true,
   }));
 
-const records: Array<Record<string, unknown>> = [];
+const records: EvaluationRecord[] = [];
 for (const model of models) {
-  const provider = new OpenAICompatibleChatProvider({
+  const provider = new TanStackOpenRouterChatProvider({
     apiKey,
     baseUrl: 'https://openrouter.ai/api/v1',
     model,
@@ -79,9 +88,11 @@ for (const model of models) {
     const letters = (answer.answer.match(/[\p{L}]/gu) ?? []).length || 1;
     const languageQuality = fixture.language.startsWith('ar') ? arabicCharacters / letters : 1 - arabicCharacters / letters;
     const pricing = catalog.find((candidate) => candidate.id === model)?.pricing;
+    const inputTokens = answer.usage?.inputTokens;
+    const outputTokens = answer.usage?.outputTokens;
     const calculatedCostUsd =
-      typeof answer.usage?.inputTokens === 'number' && typeof answer.usage.outputTokens === 'number' && pricing
-        ? answer.usage.inputTokens * Number(pricing.prompt ?? 0) + answer.usage.outputTokens * Number(pricing.completion ?? 0)
+      inputTokens !== undefined && outputTokens !== undefined && pricing
+        ? inputTokens * Number(pricing.prompt) + outputTokens * Number(pricing.completion)
         : undefined;
     records.push({
       model,
@@ -92,8 +103,8 @@ for (const model of models) {
       noAnswerCorrect,
       languageQuality,
       latencyMs: answer.latencyMs,
-      inputTokens: answer.usage?.inputTokens,
-      outputTokens: answer.usage?.outputTokens,
+      inputTokens,
+      outputTokens,
       costUsd: answer.usage?.costUsd ?? calculatedCostUsd,
     });
   }
@@ -101,20 +112,23 @@ for (const model of models) {
 
 const summary = models.map((model) => {
   const rows = records.filter((record) => record.model === model);
-  const mean = (key: string) => rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0) / Math.max(1, rows.length);
-  const sumWhenKnown = (key: string): number | undefined =>
-    rows.every((row) => typeof row[key] === 'number') ? rows.reduce((sum, row) => sum + (row[key] as number), 0) : undefined;
+  const mean = (select: (row: EvaluationRecord) => number | undefined) =>
+    rows.reduce((sum, row) => sum + (select(row) ?? 0), 0) / Math.max(1, rows.length);
+  const sumWhenKnown = (select: (row: EvaluationRecord) => number | undefined) => {
+    const values = rows.map(select);
+    return values.some((value) => value === undefined) ? undefined : values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+  };
   return {
     model,
     cases: rows.length,
-    citationFaithfulness: mean('citationFaithfulness'),
-    groundedness: mean('groundedness'),
+    citationFaithfulness: mean((row) => row.citationFaithfulness),
+    groundedness: mean((row) => row.groundedness),
     noAnswerAccuracy: rows.filter((row) => row.noAnswerCorrect === true).length / Math.max(1, rows.length),
-    languageQuality: mean('languageQuality'),
-    latencyMs: mean('latencyMs'),
-    inputTokens: sumWhenKnown('inputTokens'),
-    outputTokens: sumWhenKnown('outputTokens'),
-    costUsd: sumWhenKnown('costUsd'),
+    languageQuality: mean((row) => row.languageQuality),
+    latencyMs: mean((row) => row.latencyMs),
+    inputTokens: sumWhenKnown((row) => row.inputTokens),
+    outputTokens: sumWhenKnown((row) => row.outputTokens),
+    costUsd: sumWhenKnown((row) => row.costUsd),
   };
 });
 

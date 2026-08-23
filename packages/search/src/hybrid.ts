@@ -250,7 +250,11 @@ export const chunkSearchDocument = (
   let ordinal = 0;
   return markdownSections(source.content).flatMap((section) =>
     splitSection(section.body, maxChars, overlapChars).map((content) => {
-      const contentHash = sha256([source.title, section.headingPath.join(' > '), content].join('\0'));
+      // Hash every field that enters the dense embedding. Metadata-only fields
+      // (path/icon/visibility) can then update in place without paying for a new
+      // embedding, while title/description/language/content changes cannot reuse
+      // a stale vector.
+      const contentHash = sha256([source.language, source.title, section.headingPath.join(' > '), source.description, content].join('\0'));
       const chunk: SearchChunk = {
         id: deterministicChunkId(scope, source.id, ordinal, contentHash),
         pageId: source.id,

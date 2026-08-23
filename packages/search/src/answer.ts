@@ -1,5 +1,5 @@
 import type { SearchChunk } from './hybrid';
-import type { ChatProvider, ChatUsage } from './providers';
+import { answerOutputSchema, type ChatProvider, type ChatUsage } from './providers';
 
 export interface GroundedCitation {
   id: string;
@@ -39,15 +39,6 @@ export const answerUserPrompt = (query: string, chunks: SearchChunk[]): string =
   return `Question:\n${safeSource(query)}\n\nSources:\n${sources}`;
 };
 
-const parsedObject = (text: string): Record<string, unknown> | null => {
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-};
-
 export const noAnswer = (language: string, confidence = 0): GroundedAnswer => ({
   status: 'no_answer',
   answer: language.toLowerCase().startsWith('ar')
@@ -74,9 +65,18 @@ export const generateGroundedAnswer = async (
     ],
     signal,
   );
-  const parsed = parsedObject(completion.text);
-  const status = parsed?.status === 'answered' ? 'answered' : 'no_answer';
-  const ids = Array.isArray(parsed?.citations) ? parsed.citations.filter((id): id is string => typeof id === 'string') : [];
+  const validated = answerOutputSchema.safeParse(completion.value);
+  if (!validated.success) {
+    return {
+      ...noAnswer(language, Math.min(retrievalConfidence, 0.25)),
+      model: completion.model,
+      usage: completion.usage,
+      latencyMs: completion.latencyMs,
+    };
+  }
+  const parsed = validated.data;
+  const status = parsed.status;
+  const ids = parsed.citations;
   const uniqueIds = [...new Set(ids)];
   const knownIds = new Set(chunks.map((_, index) => `S${index + 1}`));
   if (uniqueIds.some((id) => !knownIds.has(id))) {
@@ -103,12 +103,12 @@ export const generateGroundedAnswer = async (
       } satisfies GroundedCitation,
     ];
   });
-  const answer = typeof parsed?.answer === 'string' ? parsed.answer.trim() : '';
-  const inlineIds = [...answer.matchAll(/\[(S[1-9][0-9]*)\]/g)].map((match) => match[1] as string);
+  const answer = parsed.answer.trim();
+  const inlineIds = [...answer.matchAll(/\[(S[1-9][0-9]*)\]/g)].flatMap((match) => (match[1] ? [match[1]] : []));
   const paragraphsAreCited = answer
     .split(/\n\s*\n/)
     .filter((paragraph) => paragraph.trim().length > 0)
-    .every((paragraph) => [...paragraph.matchAll(/\[(S[1-9][0-9]*)\]/g)].some((match) => knownIds.has(match[1] as string)));
+    .every((paragraph) => [...paragraph.matchAll(/\[(S[1-9][0-9]*)\]/g)].some((match) => Boolean(match[1] && knownIds.has(match[1]))));
   const inlineCitationsAreAuthorized = inlineIds.length > 0 && inlineIds.every((id) => knownIds.has(id) && uniqueIds.includes(id));
   if (status !== 'answered' || !answer || citations.length === 0 || !inlineCitationsAreAuthorized || !paragraphsAreCited) {
     return {
@@ -118,7 +118,7 @@ export const generateGroundedAnswer = async (
       latencyMs: completion.latencyMs,
     };
   }
-  const claimed = typeof parsed?.confidence === 'number' ? parsed.confidence : retrievalConfidence;
+  const claimed = parsed.confidence;
   return {
     status: 'answered',
     answer,

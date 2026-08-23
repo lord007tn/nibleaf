@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { searchSiteFn } from '@/functions/site-search';
 import { api } from '@/lib/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -22,7 +23,6 @@ import type {
   PendingChanges,
   Project,
   ProjectUsage,
-  SearchHit,
   SitePage,
   SiteShell,
   WorkspaceAnalytics,
@@ -310,20 +310,20 @@ export const useSitePage = (id: string | undefined, path: string, lang?: string,
       ),
   });
 
-export const useSiteSearch = (id: string | undefined, q: string, lang?: string, version?: string, limit?: number) =>
+export const useSiteSearch = (id: string | undefined, q: string, lang?: string, version?: string, limit?: number, enabled = true) =>
   useQuery({
     queryKey: queryKeys.site.search(id ?? '', q, lang, version, limit),
-    enabled: Boolean(id && q.trim()),
-    queryFn: async () => {
-      const data = await getData<{ hits: SearchHit[] }>(
-        await api.public.sites[':id'].search.$get({
-          param: { id: requireQueryValue(id, 'Site ID') },
-          query: { q, ...(limit ? { limit: String(limit) } : {}), ...siteQuery(lang, version) },
-        }),
-        'search',
-      );
-      return data.hits;
-    },
+    enabled: Boolean(enabled && id && q.trim()),
+    queryFn: () =>
+      searchSiteFn({
+        data: {
+          projectId: requireQueryValue(id, 'Site ID'),
+          query: q,
+          ...(lang ? { language: lang } : {}),
+          ...(version ? { version } : {}),
+          ...(limit ? { limit } : {}),
+        },
+      }),
   });
 
 export const useSiteChangelog = (id: string | undefined) =>

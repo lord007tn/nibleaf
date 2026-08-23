@@ -565,7 +565,6 @@ export const searchAnswerBody = z
     version: z.string().trim().min(1).max(120).optional(),
   })
   .strict();
-export type SearchAnswerBody = z.infer<typeof searchAnswerBody>;
 
 export const analyticsRangeEnum = z.enum(['24h', '7d', '30d', '90d']);
 export type AnalyticsRange = z.infer<typeof analyticsRangeEnum>;

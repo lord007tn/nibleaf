@@ -90,7 +90,7 @@ export function asHtmlRenderRequest(request: Request): Request {
 
 /** Paths without a file extension are handled as browser documents. */
 export function isDocumentPath(pathname: string): boolean {
-  if (/^\/(?:api|assets|_)\b/.test(pathname)) {
+  if (/^\/(?:api|assets)(?:\/|$)/.test(pathname) || pathname.startsWith('/_')) {
     return false;
   }
   const lastSegment = pathname.split('/').pop() ?? '';
