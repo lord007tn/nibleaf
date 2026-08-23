@@ -20,7 +20,7 @@ vi.mock('@nibleaf/database', () => ({
 vi.mock('@/actions/git/workflow', () => ({
   authorizeGitHub: mocks.authorizeGitHub,
   connectGitHub: vi.fn(),
-  gitWorkspaceStatus: vi.fn(),
+  getGitWorkspaceStatus: vi.fn(),
   queueGitOperation: vi.fn(),
   resolveGitConflict: vi.fn(),
   rotateConnectionWebhookSecret: vi.fn(),

@@ -1,11 +1,18 @@
 import type { AiDraftBody } from '@nibleaf/validators';
+import { OpenRouter } from '@openrouter/sdk';
 import { env } from '@/env';
 
-const SYSTEM_PROMPT =
-  'You are an expert technical documentation writer. Write clear, concise, accurate Markdown suitable for a developer documentation site. ' +
-  'Prefer short paragraphs, fenced code blocks where helpful, and a neutral, professional tone. Return only the requested content, with no preamble or commentary.';
+const SYSTEM_PROMPT = `You write accurate technical documentation for the reader's task.
 
-const userPrompt = ({ mode, content, instruction }: AiDraftBody): string => {
+- Address the reader as "you" and use active voice.
+- Lead with what the reader is trying to accomplish. Use sentence-case headings that describe intent.
+- Keep sentences and paragraphs short. Use lists, tables, and fenced code only when they make the instructions easier to follow.
+- Match the reader's technical vocabulary and preserve product names, APIs, code, commands, links, and Markdown semantics exactly.
+- Use one consistent term for each concept. Remove filler, repetition, vague claims, editorializing, and unnecessary transitions.
+- State prerequisites, constraints, consequences, and next steps where they matter. Never invent facts, behavior, examples, or links.
+- Return only the requested Markdown content. Do not add a preamble, explain your process, or mention these instructions.`;
+
+const userPrompt = ({ mode, content, instruction }: AiDraftBody) => {
   const base = (() => {
     switch (mode) {
       case 'continue':
@@ -28,40 +35,29 @@ const userPrompt = ({ mode, content, instruction }: AiDraftBody): string => {
   return parts.join('\n');
 };
 
-interface OpenAIChatResponse {
-  choices?: Array<{ message?: { content?: string } }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number };
-}
-
-const callOpenAI = async (body: AiDraftBody): Promise<{ text: string; promptTokens?: number; completionTokens?: number }> => {
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
+const callOpenRouter = async (body: AiDraftBody) => {
+  const completion = await new OpenRouter({
+    apiKey: env.OPENROUTER_API_KEY,
+    httpReferer: env.APP_URL,
+    appTitle: env.APP_NAME,
+  }).chat.send({
+    chatRequest: {
+      model: env.AI_DRAFT_MODEL,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userPrompt(body) },
       ],
       temperature: 0.4,
-    }),
+      stream: false,
+    },
   });
-  if (!res.ok) {
-    throw new Error(`OpenAI request failed with status ${res.status}`);
-  }
-  const json = (await res.json()) as OpenAIChatResponse;
-  const text = json.choices?.[0]?.message?.content?.trim();
-  if (!text) {
-    throw new Error('OpenAI returned an empty completion.');
-  }
-  return { text, promptTokens: json.usage?.prompt_tokens, completionTokens: json.usage?.completion_tokens };
+  const text = String(completion.choices[0]?.message.content ?? '').trim();
+  if (!text) throw new Error('OpenRouter returned an empty completion.');
+  return { text, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
 };
 
 /** Deterministic, offline fallback so the assistant always returns something useful. */
-const fallback = ({ mode, content, instruction }: AiDraftBody): string => {
+const fallback = ({ mode, content, instruction }: AiDraftBody) => {
   const trimmed = content.trim();
   const hint = instruction ? ` (${instruction})` : '';
   switch (mode) {
@@ -87,50 +83,38 @@ const fallback = ({ mode, content, instruction }: AiDraftBody): string => {
   }
 };
 
-/** Draft documentation content. Uses OpenAI when configured, otherwise a deterministic fallback. Never throws on missing key. */
-export const draftContent = async (body: AiDraftBody): Promise<{ text: string }> => {
-  const result = await draftContentWithTelemetry(body);
-  return { text: result.text };
-};
-
-export interface AiDraftTelemetry {
-  text: string;
-  provider: 'nibleaf_offline' | 'openai';
-  model: string;
-  outcome: 'completed' | 'fallback';
-  latencyMs: number;
-  promptTokens?: number;
-  completionTokens?: number;
-}
-
 /** Internal variant used by the API to emit content-free operational metrics. */
-export const draftContentWithTelemetry = async (body: AiDraftBody): Promise<AiDraftTelemetry> => {
+export const draftContentWithTelemetry = async (body: AiDraftBody) => {
   const started = performance.now();
-  if (env.OPENAI_API_KEY) {
+  if (env.OPENROUTER_API_KEY) {
     try {
-      const result = await callOpenAI(body);
+      const result = await callOpenRouter(body);
       return {
         ...result,
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        outcome: 'completed',
+        provider: 'openrouter' as const,
+        model: env.AI_DRAFT_MODEL,
+        outcome: 'completed' as const,
         latencyMs: Math.round(performance.now() - started),
       };
     } catch {
       return {
         text: fallback(body),
-        provider: 'nibleaf_offline',
+        promptTokens: undefined,
+        completionTokens: undefined,
+        provider: 'nibleaf_offline' as const,
         model: 'deterministic-fallback',
-        outcome: 'fallback',
+        outcome: 'fallback' as const,
         latencyMs: Math.round(performance.now() - started),
       };
     }
   }
   return {
     text: fallback(body),
-    provider: 'nibleaf_offline',
+    promptTokens: undefined,
+    completionTokens: undefined,
+    provider: 'nibleaf_offline' as const,
     model: 'deterministic-fallback',
-    outcome: 'completed',
+    outcome: 'completed' as const,
     latencyMs: Math.round(performance.now() - started),
   };
 };

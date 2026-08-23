@@ -1,114 +1,77 @@
-import { chat } from '@tanstack/ai';
-import { createOpenRouterText } from '@tanstack/ai-openrouter';
-import { OPENROUTER_CHAT_MODELS } from '@tanstack/ai-openrouter/model-meta';
-import OpenAI, { type ClientOptions } from 'openai';
+import { type Fetcher, HTTPClient, OpenRouter } from '@openrouter/sdk';
 import { z } from 'zod';
+import { answerOutputSchema, embeddingResponseSchema, nonEmptyProviderTextSchema } from './validators/provider';
 
-export interface EmbeddingUsage {
-  promptTokens?: number;
-  totalTokens?: number;
-}
-
-export interface EmbeddingBatch {
-  vectors: number[][];
-  model: string;
-  usage?: EmbeddingUsage;
-}
-
-export interface EmbeddingProvider {
-  readonly dimensions: number;
-  readonly model: string;
-  embed(inputs: string[], signal?: AbortSignal): Promise<EmbeddingBatch>;
-}
-
-export interface OpenAIEmbeddingOptions {
+export interface OpenRouterEmbeddingOptions {
   apiKey: string;
-  baseUrl?: string;
   dimensions?: number;
-  fetch?: NonNullable<ClientOptions['fetch']>;
+  fetch?: Fetcher;
   maxBatchSize?: number;
   model?: string;
+  siteUrl?: string;
   timeoutMs?: number;
+  title?: string;
 }
 
-/** OpenAI-compatible embeddings through the official OpenAI SDK. A custom
- * base URL keeps self-hosted and compatible providers configurable without
- * maintaining a second wire client. */
-export class OpenAIEmbeddingProvider implements EmbeddingProvider {
+/** Dense embeddings through OpenRouter's official TypeScript SDK. */
+export class OpenRouterEmbeddingProvider {
   readonly dimensions: number;
   readonly model: string;
-  private readonly client: OpenAI;
+  private readonly client: OpenRouter;
   private readonly maxBatchSize: number;
 
-  constructor(options: OpenAIEmbeddingOptions) {
-    this.model = options.model ?? 'text-embedding-3-small';
+  constructor(options: OpenRouterEmbeddingOptions) {
+    this.model = options.model ?? 'openai/text-embedding-3-small';
     this.dimensions = options.dimensions ?? 1536;
     this.maxBatchSize = options.maxBatchSize ?? 96;
-    this.client = new OpenAI({
+    this.client = new OpenRouter({
       apiKey: options.apiKey,
-      baseURL: options.baseUrl ?? 'https://api.openai.com/v1',
-      timeout: options.timeoutMs ?? 20_000,
-      maxRetries: 0,
-      fetch: options.fetch,
+      httpReferer: options.siteUrl,
+      appTitle: options.title,
+      timeoutMs: options.timeoutMs ?? 20_000,
+      ...(options.fetch ? { httpClient: new HTTPClient({ fetcher: options.fetch }) } : {}),
     });
   }
 
-  async embed(inputs: string[], signal?: AbortSignal): Promise<EmbeddingBatch> {
+  async embed(inputs: string[], signal?: AbortSignal) {
     if (inputs.length === 0) return { vectors: [], model: this.model };
     if (inputs.length > this.maxBatchSize) throw new RangeError(`Embedding batch exceeds ${this.maxBatchSize} inputs.`);
     if (inputs.some((input) => input.trim().length === 0)) throw new TypeError('Embedding inputs cannot be empty.');
-    const response = await this.client.embeddings.create(
-      {
-        model: this.model,
-        input: inputs,
-        dimensions: this.dimensions,
-        encoding_format: 'float',
-      },
-      { signal },
+    const response = embeddingResponseSchema.parse(
+      await this.client.embeddings.generate(
+        {
+          requestBody: {
+            model: this.model,
+            input: inputs,
+            dimensions: this.dimensions,
+            encodingFormat: 'float',
+          },
+        },
+        { signal },
+      ),
     );
-    const vectors = [...response.data].sort((left, right) => left.index - right.index).map((item) => item.embedding);
+    const vectors = [...response.data].sort((left, right) => (left.index ?? 0) - (right.index ?? 0)).map((item) => item.embedding);
     if (vectors.length !== inputs.length || vectors.some((vector) => vector.length !== this.dimensions)) {
       throw new Error('Embedding provider returned an unexpected vector count or dimension.');
     }
     return {
       vectors,
       model: response.model || this.model,
-      usage: { promptTokens: response.usage.prompt_tokens, totalTokens: response.usage.total_tokens },
+      ...(response.usage ? { usage: response.usage } : {}),
     };
   }
 }
 
-export const answerOutputSchema = z
-  .object({
-    status: z.enum(['answered', 'no_answer']),
-    answer: z.string(),
-    confidence: z.number().min(0).max(1),
-    citations: z.array(z.string()),
-  })
-  .strict();
-
-export interface ChatUsage {
+interface ChatUsage {
   inputTokens?: number;
   outputTokens?: number;
   totalTokens?: number;
   costUsd?: number;
 }
 
-export interface ChatCompletion {
-  value: unknown;
-  model: string;
-  usage?: ChatUsage;
-  latencyMs: number;
-}
-
-export interface ChatProvider {
-  readonly model: string;
-  complete(messages: Array<{ role: 'system' | 'user'; content: string }>, signal?: AbortSignal): Promise<ChatCompletion>;
-}
-
-export interface TanStackOpenRouterOptions {
+export interface OpenRouterChatOptions {
   apiKey: string;
-  baseUrl?: string;
+  fetch?: Fetcher;
   model: string;
   siteUrl?: string;
   temperature?: number;
@@ -116,59 +79,70 @@ export interface TanStackOpenRouterOptions {
   title?: string;
 }
 
-/** Grounded answer generation through TanStack AI's OpenRouter adapter. The
- * adapter itself uses OpenRouter's official SDK and native structured output. */
-export class TanStackOpenRouterChatProvider implements ChatProvider {
+/** Grounded answer generation through OpenRouter's official TypeScript SDK. */
+export class OpenRouterChatProvider {
   readonly model: string;
-  private readonly options: TanStackOpenRouterOptions;
+  private readonly client: OpenRouter;
+  private readonly options: OpenRouterChatOptions;
 
-  constructor(options: TanStackOpenRouterOptions) {
+  constructor(options: OpenRouterChatOptions) {
     this.options = options;
     this.model = options.model;
+    this.client = new OpenRouter({
+      apiKey: options.apiKey,
+      httpReferer: options.siteUrl,
+      appTitle: options.title,
+      timeoutMs: options.timeoutMs ?? 30_000,
+      ...(options.fetch ? { httpClient: new HTTPClient({ fetcher: options.fetch }) } : {}),
+    });
   }
 
-  async complete(messages: Array<{ role: 'system' | 'user'; content: string }>, signal?: AbortSignal): Promise<ChatCompletion> {
+  async complete(messages: Array<{ role: 'system' | 'user'; content: string }>, signal?: AbortSignal) {
     const started = performance.now();
-    const controller = new AbortController();
-    const abort = () => controller.abort(signal?.reason);
-    if (signal?.aborted) abort();
-    else signal?.addEventListener('abort', abort, { once: true });
-    const timeout = setTimeout(() => controller.abort(new Error('OpenRouter answer generation timed out.')), this.options.timeoutMs ?? 30_000);
-    let usage: ChatUsage | undefined;
-    try {
-      const value = await chat({
-        adapter: createOpenRouterText(z.enum(OPENROUTER_CHAT_MODELS).parse(this.model), this.options.apiKey, {
-          serverURL: this.options.baseUrl ?? 'https://openrouter.ai/api/v1',
-          httpReferer: this.options.siteUrl,
-          appTitle: this.options.title,
-        }),
-        systemPrompts: messages.filter((message) => message.role === 'system').map((message) => message.content),
-        messages: messages.flatMap((message) => (message.role === 'user' ? [{ role: 'user' as const, content: message.content }] : [])),
-        outputSchema: answerOutputSchema,
-        abortController: controller,
-        modelOptions: {
+    const completion = await this.client.chat.send(
+      {
+        chatRequest: {
+          model: this.model,
+          messages,
           temperature: this.options.temperature ?? 0,
           maxCompletionTokens: 1200,
-        },
-        middleware: [
-          {
-            name: 'nibleaf-answer-usage',
-            onFinish: (_context, info) => {
-              if (!info.usage) return;
-              usage = {
-                inputTokens: info.usage.promptTokens,
-                outputTokens: info.usage.completionTokens,
-                totalTokens: info.usage.totalTokens,
-                costUsd: info.usage.cost,
-              };
+          stream: false,
+          responseFormat: {
+            type: 'json_schema',
+            jsonSchema: {
+              name: 'grounded_answer',
+              strict: true,
+              schema: z.toJSONSchema(answerOutputSchema),
             },
           },
-        ],
-      });
-      return { value, model: this.model, usage, latencyMs: performance.now() - started };
-    } finally {
-      clearTimeout(timeout);
-      signal?.removeEventListener('abort', abort);
-    }
+        },
+      },
+      { signal },
+    );
+    const value = answerOutputSchema.parse(JSON.parse(nonEmptyProviderTextSchema.parse(completion.choices[0]?.message.content)));
+    return {
+      value,
+      model: completion.model || this.model,
+      ...(completion.usage
+        ? {
+            usage: {
+              inputTokens: completion.usage.promptTokens,
+              outputTokens: completion.usage.completionTokens,
+              totalTokens: completion.usage.totalTokens,
+              costUsd: completion.usage.cost ?? undefined,
+            },
+          }
+        : {}),
+      latencyMs: performance.now() - started,
+    };
   }
 }
+
+export type ChatProvider = {
+  readonly model: string;
+  complete(
+    messages: Array<{ role: 'system' | 'user'; content: string }>,
+    signal?: AbortSignal,
+  ): Promise<{ value: unknown; model: string; usage?: ChatUsage; latencyMs: number }>;
+};
+export type { ChatUsage };

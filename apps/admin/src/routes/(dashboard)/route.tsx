@@ -1,19 +1,20 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { getSessionFn } from '@/functions/session';
 import { AdminApiError, useAdminOverview } from '@/hooks/api/queries';
-import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 import { signOut, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(dashboard)')({
   beforeLoad: async () => {
-    const routeSession = await getRouteSession();
+    const routeSession = await getSessionFn();
     if (!routeSession) {
       throw redirect({ to: '/sign-in' });
     }
@@ -29,9 +30,9 @@ function FullScreen({ children }: { children: ReactNode }) {
 function DashboardRoute() {
   const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const resolvedSession = resolveRouteSession(session, routeSession, isPending);
+  const resolvedSession = session ?? (isPending ? routeSession : null);
 
-  if (shouldShowInitialSessionLoader(isPending, resolvedSession)) {
+  if (isPending && !resolvedSession) {
     return <PageLoader />;
   }
   if (!resolvedSession) return <Navigate to="/sign-in" />;
@@ -41,6 +42,7 @@ function DashboardRoute() {
 /** Admin-role gate: the overview endpoint 403s for non-admins, so if it fails we
  *  render "not authorized" instead of the panel (server-enforced regardless). */
 function AdminGate() {
+  const t = useT();
   const overview = useAdminOverview();
   if (overview.isPending) {
     return <PageLoader />;
@@ -51,19 +53,19 @@ function AdminGate() {
       <FullScreen>
         <div className="flex flex-col items-center gap-3 text-center">
           {unauthorized ? <ShieldCheck className="size-8 text-muted-foreground" /> : <AlertCircle className="size-8 text-destructive" />}
-          <h1 className="font-semibold text-foreground text-xl tracking-tight">{unauthorized ? 'Not authorized' : 'Admin data unavailable'}</h1>
+          <h1 className="font-semibold text-foreground text-xl tracking-tight">
+            {unauthorized ? t('admin.auth.unauthorized') : t('admin.auth.dataUnavailable')}
+          </h1>
           <p className="max-w-sm text-muted-foreground text-sm">
-            {unauthorized
-              ? "Your account doesn't have admin access to this panel."
-              : 'Your session is valid, but the admin API could not be reached. No authorization conclusion was inferred from this failure.'}
+            {unauthorized ? t('admin.auth.unauthorizedBody') : t('admin.auth.dataUnavailableBody')}
           </p>
           {unauthorized ? (
             <Button className="mt-1" onClick={() => void signOut().then(() => window.location.assign('/sign-in'))} variant="outline">
-              Sign out
+              {t('account.signOut')}
             </Button>
           ) : (
             <Button className="mt-1" onClick={() => void overview.refetch()} variant="outline">
-              Try again
+              {t('common.retry')}
             </Button>
           )}
         </div>
@@ -73,23 +75,16 @@ function AdminGate() {
   return <AdminShell />;
 }
 
-/** Derive the header title from the current admin route. */
-function titleFromPathname(pathname: string): string {
-  if (pathname.startsWith('/users')) {
-    return 'Customers';
-  }
-  if (pathname.startsWith('/sites')) {
-    return 'Sites';
-  }
-  if (pathname.startsWith('/operations')) {
-    return 'Operations';
-  }
-  return 'Overview';
-}
-
 function AdminShell() {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = titleFromPathname(pathname);
+  const title = pathname.startsWith('/users')
+    ? t('admin.nav.customers')
+    : pathname.startsWith('/sites')
+      ? t('nav.sites')
+      : pathname.startsWith('/operations')
+        ? t('admin.nav.operations')
+        : t('nav.overview');
 
   return (
     <SidebarProvider>

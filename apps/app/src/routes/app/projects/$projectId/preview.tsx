@@ -5,6 +5,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Eye, FileText } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { z } from 'zod';
 import { Markdown } from '@/components/markdown';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
@@ -14,14 +15,23 @@ import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   component: ProjectPreview,
-  validateSearch: (search: Record<string, unknown>): { branchId?: string; languageId?: string; pageId?: string } => ({
-    branchId: typeof search.branchId === 'string' && search.branchId ? search.branchId : undefined,
-    languageId: typeof search.languageId === 'string' && search.languageId ? search.languageId : undefined,
-    pageId: typeof search.pageId === 'string' && search.pageId ? search.pageId : undefined,
-  }),
+  validateSearch: (search) =>
+    z
+      .object({
+        branchId: z.string().min(1).optional().catch(undefined),
+        languageId: z.string().min(1).optional().catch(undefined),
+        pageId: z.string().min(1).optional().catch(undefined),
+      })
+      .parse(search),
 });
 
 const firstPage = (pages: PageNode[] | undefined): PageNode | undefined => pages?.find((page) => page.kind === 'PAGE' && !page.hidden);
+
+interface PreviewSearch {
+  branchId?: string;
+  languageId?: string;
+  pageId?: string;
+}
 
 function ProjectPreview() {
   const { projectId } = Route.useParams();
@@ -46,7 +56,7 @@ function ProjectPreview() {
   const theme = resolveProjectTheme(project?.config);
   const previewMode = project?.config?.styling?.theme === 'dark' ? 'dark' : 'light';
 
-  const updateSearch = (patch: Partial<typeof search>) => {
+  const updateSearch = (patch: Partial<PreviewSearch>) => {
     navigate({ search: (prev) => ({ ...prev, ...patch }) });
   };
 

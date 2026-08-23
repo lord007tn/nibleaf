@@ -209,8 +209,9 @@ export const parseThemeTemplate = (input: unknown): ThemeTemplateParseResult => 
   const inspection = inspectThemeTemplateInput(input);
   if (!inspection.ok) return { success: false, message: inspection.message };
 
-  const record = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : null;
-  if (!record) return { success: false, message: 'Theme template must be a JSON object.' };
+  const object = z.record(z.string(), z.unknown()).safeParse(input);
+  if (!object.success) return { success: false, message: 'Theme template must be a JSON object.' };
+  const record = object.data;
   if (record.kind !== THEME_TEMPLATE_KIND) return { success: false, message: `Theme template kind must be "${THEME_TEMPLATE_KIND}".` };
 
   if (record.version === 0) {

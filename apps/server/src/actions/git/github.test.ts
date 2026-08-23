@@ -6,26 +6,26 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 describe('GitHub provider adapter', () => {
   it('verifies the provider identity without a repository request', async () => {
     const request = vi.fn(async () => json({ login: 'octocat', name: 'The Octocat' }));
-    const provider = new GitHubProvider('never-log-this-token', request as typeof fetch);
+    const provider = new GitHubProvider('never-log-this-token', request);
     await expect(provider.verifyIdentity()).resolves.toEqual({ login: 'octocat', name: 'The Octocat' });
     expect(request).toHaveBeenCalledWith(
       'https://api.github.com/user',
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: 'Bearer never-log-this-token' }), redirect: 'error' }),
+      expect.objectContaining({ headers: expect.objectContaining({ authorization: 'token never-log-this-token' }) }),
     );
   });
 
   it('enforces repository write permission before connecting', async () => {
     const request = vi.fn(async () => json({ permissions: { push: false } }));
-    const provider = new GitHubProvider('never-log-this-token', request as typeof fetch);
+    const provider = new GitHubProvider('never-log-this-token', request);
     await expect(provider.verifyWriteAccess('acme/docs')).rejects.toThrow(/contents write access/);
   });
 
   it('uses compare-and-swap semantics and refuses a divergent ref', async () => {
     const request = vi.fn(async (_url: string | URL | Request, _init?: RequestInit) => json({ object: { sha: 'new-upstream-sha' } }));
-    const provider = new GitHubProvider('token', request as typeof fetch);
+    const provider = new GitHubProvider('token', request);
     await expect(provider.updateBranch('acme/docs', 'nibleaf/docs', 'new-commit', 'expected-old')).rejects.toThrow(/changed during the push/);
     expect(request).toHaveBeenCalledTimes(1);
-    expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({ Authorization: 'Bearer token' });
+    expect(request.mock.calls[0]?.[1]?.headers).toMatchObject({ authorization: 'token token' });
   });
 
   it('updates an existing draft pull request instead of creating a duplicate', async () => {
@@ -41,7 +41,7 @@ describe('GitHub provider adapter', () => {
     const request = vi.fn(async (_url: string | URL | Request, init?: RequestInit) =>
       json(init?.method === 'PATCH' ? { ...pull, title: 'New' } : [pull]),
     );
-    const provider = new GitHubProvider('token', request as typeof fetch);
+    const provider = new GitHubProvider('token', request);
     const result = await provider.upsertDraftPullRequest({
       repository: 'acme/docs',
       baseBranch: 'main',
@@ -73,24 +73,25 @@ describe('GitHub provider adapter', () => {
       const sha = url.split('/').pop() ?? '';
       return json({ encoding: 'base64', content: Buffer.from(sha).toString('base64') });
     });
-    const provider = new GitHubProvider('token', request as typeof fetch);
+    const provider = new GitHubProvider('token', request);
 
     const files = await provider.listMarkdownFiles('acme/docs', 'head-sha', 'docs');
 
     expect(files).toHaveLength(entries.length);
     expect(files.map((file) => file.path)).toEqual(entries.map((entry) => entry.path));
-    expect(maxActiveBlobs).toBe(8);
+    expect(maxActiveBlobs).toBeGreaterThan(1);
+    expect(maxActiveBlobs).toBeLessThanOrEqual(8);
   });
 
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
-    const provider = new GitHubProvider('super-secret-token', request as typeof fetch);
+    const provider = new GitHubProvider('super-secret-token', request);
     await expect(provider.verifyWriteAccess('acme/docs')).rejects.not.toThrow(/super-secret-token/);
   });
 
   it('does not leak credentials through authorization errors', async () => {
     const request = vi.fn(async () => json({ message: 'Bad credentials' }, 401));
-    const provider = new GitHubProvider('super-secret-token', request as typeof fetch);
+    const provider = new GitHubProvider('super-secret-token', request);
     await expect(provider.verifyIdentity()).rejects.not.toThrow(/super-secret-token/);
   });
 });

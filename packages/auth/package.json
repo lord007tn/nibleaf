@@ -19,6 +19,7 @@
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/email": "workspace:*",
+    "@nibleaf/i18n": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",

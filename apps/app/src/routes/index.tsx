@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { LandingPage } from '@/components/cloud-marketing';
-import { canonicalHref, getGithubStars, marketingLd, pageMeta } from '@/lib/marketing-seo';
+import { canonicalHref, getGithubStarsFn, marketingLd, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf: visual Markdown docs with Arabic and RTL',

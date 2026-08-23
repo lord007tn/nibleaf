@@ -1,6 +1,30 @@
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 
-export const ErrorCode = {
+export type ErrorCode =
+  | 'http:bad_request'
+  | 'http:unauthorized'
+  | 'http:forbidden'
+  | 'http:not_found'
+  | 'http:conflict'
+  | 'http:unprocessable'
+  | 'http:rate_limited'
+  | 'http:internal'
+  | 'auth:no_user'
+  | 'auth:invalid_session'
+  | 'auth:invalid_api_key'
+  | 'auth:insufficient_role'
+  | 'validation:failed'
+  | 'database:not_found'
+  | 'database:conflict'
+  | 'storage:error'
+  | 'search:unavailable'
+  | 'ai:provider_response'
+  | 'import:invalid_document'
+  | 'import:not_found'
+  | 'import:unsupported'
+  | 'provider:unavailable';
+
+const ERROR_STATUS = {
   'http:bad_request': 400,
   'http:unauthorized': 401,
   'http:forbidden': 403,
@@ -18,9 +42,12 @@ export const ErrorCode = {
   'database:conflict': 409,
   'storage:error': 502,
   'search:unavailable': 503,
-} as const;
-
-export type ErrorCode = keyof typeof ErrorCode;
+  'ai:provider_response': 502,
+  'import:invalid_document': 422,
+  'import:not_found': 404,
+  'import:unsupported': 422,
+  'provider:unavailable': 502,
+} as const satisfies Record<ErrorCode, ContentfulStatusCode>;
 
 export interface AppErrorOptions {
   cause?: unknown;
@@ -41,7 +68,7 @@ export class AppError extends Error {
     super(options.message ?? options.code);
     this.name = 'AppError';
     this.code = options.code;
-    this.status = ErrorCode[options.code] as ContentfulStatusCode;
+    this.status = ERROR_STATUS[options.code];
     this.entityType = options.entityType;
     this.details = options.details;
     if (options.cause !== undefined) {
@@ -69,3 +96,10 @@ export const conflict = (message: string, details?: Record<string, unknown>) => 
 export const badRequest = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'http:bad_request', message, details });
 
 export const forbidden = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'auth:insufficient_role', message, details });
+
+export class ImportError extends AppError {
+  constructor(options: Omit<AppErrorOptions, 'code'> & { code: 'import:invalid_document' | 'import:not_found' | 'import:unsupported' }) {
+    super(options);
+    this.name = 'ImportError';
+  }
+}

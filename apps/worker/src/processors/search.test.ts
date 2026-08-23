@@ -66,11 +66,10 @@ const listIndexedPoints = vi.fn(async (filter: QdrantFilter, includeVectors = fa
 
 vi.mock('../env', () => ({
   env: {
-    get SEARCH_EMBEDDING_API_KEY() {
+    get OPENROUTER_API_KEY() {
       return mocks.apiKey;
     },
-    OPENAI_API_KEY: undefined,
-    SEARCH_EMBEDDING_BASE_URL: 'https://embeddings.test/v1',
+    APP_URL: 'https://nibleaf.test',
     SEARCH_EMBEDDING_MODEL: 'test-embedding',
     SEARCH_EMBEDDING_DIMENSIONS: 2,
     SEARCH_EMBEDDING_TIMEOUT_MS: 1000,
@@ -102,7 +101,7 @@ vi.mock('@nibleaf/search', async () => {
   const hybrid = await import('../../../../packages/search/src/hybrid');
   return {
     ...hybrid,
-    OpenAIEmbeddingProvider: class {
+    OpenRouterEmbeddingProvider: class {
       dimensions = 2;
       embed = mocks.embed;
     },

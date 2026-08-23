@@ -12,8 +12,6 @@
 .env.*
 !.env.example
 *.log
-_ui_zip
-Open source documentation platform.zip
 **/.DS_Store
 /docs
 dogfood-output

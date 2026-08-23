@@ -30,6 +30,28 @@ export default defineConfig(({ mode }) => {
   });
   const apiTarget = configEnv.VITE_API_URL;
   return {
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                name: 'public-site-i18n',
+                test: (id) =>
+                  /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),
+              },
+              {
+                name: 'standalone-i18n',
+                test: (id) =>
+                  /\/packages\/i18n\/src\/paraglide\/messages\/(?:common_loading|error_(?:backhome|badge|title|tryagain|unexpected)|notfound_(?:backhome|badge|body|title))\.js$/.test(
+                    id.replaceAll('\\', '/'),
+                  ),
+              },
+            ],
+          },
+        },
+      },
+    },
     resolve: { tsconfigPaths: true },
     server: {
       port: 4310,
@@ -41,6 +63,7 @@ export default defineConfig(({ mode }) => {
       paraglideVitePlugin({
         project: '../../packages/i18n/project.inlang',
         outdir: '../../packages/i18n/src/paraglide',
+        emitTsDeclarations: true,
         strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
         cookieName: 'NIBLEAF_LOCALE',
       }),

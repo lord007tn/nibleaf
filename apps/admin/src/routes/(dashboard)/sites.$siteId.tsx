@@ -12,32 +12,32 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Activity, Database, ExternalLink, FileText, Globe2, LockKeyhole, Rocket, TriangleAlert, Users } from 'lucide-react';
+import { z } from 'zod';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
 import { SupportAccessDialog } from '@/components/support-access-dialog';
 import { useAdminSite } from '@/hooks/api/queries';
-import { fmtBytes, fmtDate, fmtDateTime, fmtRelative } from '@/lib/format';
+import { fmtBytes, fmtDateTime, fmtRelative, useFormatters } from '@/lib/format';
 import { APP_URL } from '@/lib/links';
-
-const SITE_TABS = ['overview', 'deployments', 'domains', 'access', 'activity'] as const;
-type SiteTab = (typeof SITE_TABS)[number];
-const isSiteTab = (value: unknown): value is SiteTab => typeof value === 'string' && SITE_TABS.includes(value as SiteTab);
 
 export const Route = createFileRoute('/(dashboard)/sites/$siteId')({
   component: SiteDetailPage,
-  validateSearch: (search: Record<string, unknown>): { tab?: SiteTab } => ({ tab: isSiteTab(search.tab) ? search.tab : undefined }),
+  validateSearch: (search) =>
+    z.object({ tab: z.enum(['overview', 'deployments', 'domains', 'access', 'activity']).optional().catch(undefined) }).parse(search),
 });
 
-const activityLabels: Record<string, string> = {
-  page_edited: 'Content edited',
-  publish_clicked: 'Publish started',
-  publish_ready: 'Publish completed',
-  publish_failed: 'Publish failed',
-};
-
 function SiteDetailPage() {
+  const t = useT();
+  const format = useFormatters();
+  const activityLabels: Record<string, string> = {
+    page_edited: t('admin.activity.contentEdited'),
+    publish_clicked: t('admin.activity.publishClicked'),
+    publish_ready: t('admin.activity.publishCompleted'),
+    publish_failed: t('admin.activity.publishFailed'),
+  };
   const { siteId } = Route.useParams();
   const { tab: selectedTab } = Route.useSearch();
   const tab = selectedTab ?? 'overview';
@@ -46,11 +46,10 @@ function SiteDetailPage() {
   if (query.isPending)
     return (
       <div className="py-16 text-center text-muted-foreground text-sm" role="status">
-        Loading site operations…
+        {t('admin.site.loading')}
       </div>
     );
-  if (query.isError || !query.data)
-    return <DataError message="This site could not be loaded or no longer exists." retry={() => void query.refetch()} />;
+  if (query.isError || !query.data) return <DataError message={t('admin.site.loadError')} retry={() => void query.refetch()} />;
 
   const site = query.data;
   const latest = site.deployments[0];
@@ -73,7 +72,7 @@ function SiteDetailPage() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/sites" />}>Sites</BreadcrumbLink>
+            <BreadcrumbLink render={<Link to="/sites" />}>{t('nav.sites')}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
@@ -87,11 +86,11 @@ function SiteDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="truncate font-semibold text-2xl tracking-tight">{site.name}</h1>
             {site.takedownAt ? (
-              <StatusBadge label="taken down" value="taken-down" />
+              <StatusBadge label={t('admin.status.takenDown')} value="taken-down" />
             ) : latest ? (
               <StatusBadge value={latest.status} />
             ) : (
-              <Badge variant="outline">not published</Badge>
+              <Badge variant="outline">{t('admin.status.unpublished')}</Badge>
             )}
             <Badge variant="outline">{site.accessMode.toLowerCase()}</Badge>
           </div>
@@ -101,14 +100,16 @@ function SiteDetailPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button nativeButton={false} render={<Link to="/operations" />} variant="outline">
-            View operations
+            {t('admin.site.viewOperations')}
           </Button>
           <Button
             nativeButton={false}
-            render={<a aria-label={`Open ${site.name} live site`} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />}
+            render={
+              <a aria-label={t('admin.site.openLive', { site: site.name })} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />
+            }
             variant="outline"
           >
-            <ExternalLink className="size-4" /> Live site
+            <ExternalLink className="size-4" /> {t('admin.site.liveSite')}
           </Button>
           <SupportAccessDialog subject={site.name} targets={supportTargets} />
         </div>
@@ -117,45 +118,50 @@ function SiteDetailPage() {
       {needsAttention ? (
         <Alert variant="destructive">
           <TriangleAlert />
-          <AlertTitle>Operator attention required</AlertTitle>
+          <AlertTitle>{t('admin.site.attention')}</AlertTitle>
           <AlertDescription>
-            {site.takedownAt ? `Taken down ${fmtDate(site.takedownAt)}. ` : ''}
-            {domainIssues.length ? `${domainIssues.length} domain issue${domainIssues.length === 1 ? '' : 's'}. ` : ''}
-            {latest?.status === 'FAILED' ? 'The latest publish failed. ' : ''}
-            {site.invitations.some((invitation) => invitation.expired) ? 'An owner or member invitation has expired.' : ''}
+            {site.takedownAt ? t('admin.site.takenDownOn', { date: format.date(site.takedownAt) }) : ''}
+            {domainIssues.length ? t('admin.site.domainIssues', { count: format.number(domainIssues.length) }) : ''}
+            {latest?.status === 'FAILED' ? t('admin.site.latestPublishFailed') : ''}
+            {site.invitations.some((invitation) => invitation.expired) ? t('admin.site.invitationExpired') : ''}
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <Tabs onValueChange={(value) => navigate({ search: { tab: value as SiteTab }, replace: true })} value={tab}>
+      <Tabs
+        onValueChange={(value) =>
+          navigate({ search: { tab: z.enum(['overview', 'deployments', 'domains', 'access', 'activity']).parse(value) }, replace: true })
+        }
+        value={tab}
+      >
         <div className="overflow-x-auto pb-1">
-          <TabsList aria-label="Website details" className="min-w-max" variant="line">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="deployments">Deployments</TabsTrigger>
-            <TabsTrigger value="domains">Domains</TabsTrigger>
-            <TabsTrigger value="access">Access</TabsTrigger>
-            <TabsTrigger value="activity">Activity & operations</TabsTrigger>
+          <TabsList aria-label={t('admin.site.details')} className="min-w-max" variant="line">
+            <TabsTrigger value="overview">{t('nav.overview')}</TabsTrigger>
+            <TabsTrigger value="deployments">{t('admin.overview.deployments')}</TabsTrigger>
+            <TabsTrigger value="domains">{t('admin.operations.domains')}</TabsTrigger>
+            <TabsTrigger value="access">{t('admin.support.access')}</TabsTrigger>
+            <TabsTrigger value="activity">{t('admin.site.activityOperations')}</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent className="space-y-4 pt-4" value="overview">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <MetricCard label="Plan metadata" value={site.workspace.plan} />
+            <MetricCard label={t('admin.site.planMetadata')} value={site.workspace.plan} />
             <MetricCard
               icon={<FileText className="size-4 text-muted-foreground" />}
-              label="Content"
+              label={t('admin.site.content')}
               value={`${site.usage.pages} page${site.usage.pages === 1 ? '' : 's'} · ${site.usage.languages} lang.`}
             />
             <Card>
               <CardHeader>
-                <CardDescription>Traffic (30d)</CardDescription>
+                <CardDescription>{t('admin.site.traffic30d')}</CardDescription>
                 <CardTitle className="font-semibold text-2xl tabular-nums">{site.usage.traffic.pageviews30d}</CardTitle>
                 <CardDescription>{site.usage.traffic.searches30d} searches</CardDescription>
               </CardHeader>
             </Card>
             <Card>
               <CardHeader>
-                <CardDescription>Storage</CardDescription>
+                <CardDescription>{t('admin.site.storage')}</CardDescription>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Database className="size-4 text-muted-foreground" />
                   {fmtBytes(site.usage.storage.bytes)}
@@ -165,7 +171,7 @@ function SiteDetailPage() {
             </Card>
             <Card>
               <CardHeader>
-                <CardDescription>Access</CardDescription>
+                <CardDescription>{t('admin.support.access')}</CardDescription>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <LockKeyhole className="size-4 text-muted-foreground" />
                   {site.access.mode.toLowerCase()}
@@ -178,27 +184,27 @@ function SiteDetailPage() {
           </div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Website identity</CardTitle>
-              <CardDescription>Product and workspace identifiers useful for support; document content remains private.</CardDescription>
+              <CardTitle className="text-base">{t('admin.site.identity')}</CardTitle>
+              <CardDescription>{t('admin.site.identityPrivacy')}</CardDescription>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <dt className="text-muted-foreground">Website ID</dt>
+                  <dt className="text-muted-foreground">{t('admin.site.id')}</dt>
                   <dd className="mt-1 break-all font-mono text-xs">{site.id}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Workspace</dt>
+                  <dt className="text-muted-foreground">{t('admin.common.workspace')}</dt>
                   <dd className="mt-1 font-medium">{site.workspace.name}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Languages</dt>
+                  <dt className="text-muted-foreground">{t('admin.site.languages')}</dt>
                   <dd className="mt-1 font-medium">
                     {site.languages.map((language) => `${language.code}${language.isDefault ? ' (default)' : ''}`).join(', ') || 'None'}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Updated</dt>
+                  <dt className="text-muted-foreground">{t('admin.common.updated')}</dt>
                   <dd className="mt-1 font-medium">{fmtDateTime(site.updatedAt)}</dd>
                 </div>
               </dl>
@@ -213,21 +219,21 @@ function SiteDetailPage() {
                 <Rocket className="size-4 text-muted-foreground" />
                 Deployments
               </CardTitle>
-              <CardDescription>Latest 30 immutable publish attempts; raw build errors and document snapshots stay private.</CardDescription>
+              <CardDescription>{t('admin.site.deploymentsPrivacy')}</CardDescription>
             </CardHeader>
             <CardContent>
               {site.deployments.length === 0 ? (
-                <DataEmpty title="Not published" description="This site has no deployment attempts yet." />
+                <DataEmpty title={t('admin.status.unpublished')} description={t('admin.site.noDeployments')} />
               ) : (
                 <div className="overflow-x-auto">
                   <Table className="min-w-[620px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Version</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Pages</TableHead>
-                        <TableHead>Started</TableHead>
-                        <TableHead>Completed</TableHead>
+                        <TableHead>{t('admin.site.version')}</TableHead>
+                        <TableHead>{t('admin.common.status')}</TableHead>
+                        <TableHead>{t('admin.common.pages')}</TableHead>
+                        <TableHead>{t('admin.site.started')}</TableHead>
+                        <TableHead>{t('admin.site.completed')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,11 +272,11 @@ function SiteDetailPage() {
                 <Globe2 className="size-4 text-muted-foreground" />
                 Custom domains
               </CardTitle>
-              <CardDescription>DNS, certificate, and provider state without provider payloads.</CardDescription>
+              <CardDescription>{t('admin.site.domainsPrivacy')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {site.domains.length === 0 ? (
-                <DataEmpty title="No custom domains" description="The default Nibleaf site URL remains available after publishing." />
+                <DataEmpty title={t('admin.site.noDomains')} description={t('admin.site.noDomainsBody')} />
               ) : (
                 site.domains.map((domain) => (
                   <div className="rounded-lg border p-3" key={domain.id}>
@@ -279,8 +285,8 @@ function SiteDetailPage() {
                         {domain.domain}
                       </a>
                       <div className="flex gap-1.5">
-                        {domain.isPrimary ? <Badge>primary</Badge> : null}
-                        {domain.hasError ? <Badge variant="destructive">provider error</Badge> : null}
+                        {domain.isPrimary ? <Badge>{t('admin.operations.primary')}</Badge> : null}
+                        {domain.hasError ? <Badge variant="destructive">{t('admin.site.providerError')}</Badge> : null}
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -304,11 +310,11 @@ function SiteDetailPage() {
                 <Users className="size-4 text-muted-foreground" />
                 Workspace access
               </CardTitle>
-              <CardDescription>Authors and pending invitations in this site’s isolated workspace.</CardDescription>
+              <CardDescription>{t('admin.site.accessBody')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {site.members.length === 0 ? (
-                <DataEmpty title="No active members" description="This workspace currently has no accepted members." />
+                <DataEmpty title={t('admin.site.noMembers')} description={t('admin.site.noMembersBody')} />
               ) : (
                 site.members.map((member) => (
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3" key={member.id}>
@@ -320,11 +326,11 @@ function SiteDetailPage() {
                     </div>
                     <div className="flex gap-1.5">
                       <Badge variant="outline">{member.role}</Badge>
-                      {member.user.role === 'admin' ? <Badge>platform admin</Badge> : null}
+                      {member.user.role === 'admin' ? <Badge>{t('admin.users.platformAdmins')}</Badge> : null}
                       {member.user.suspendedAt ? (
-                        <Badge variant="destructive">suspended</Badge>
+                        <Badge variant="destructive">{t('admin.status.suspended')}</Badge>
                       ) : !member.user.emailVerified ? (
-                        <Badge variant="outline">unverified</Badge>
+                        <Badge variant="outline">{t('admin.status.unverified')}</Badge>
                       ) : null}
                     </div>
                   </div>
@@ -350,11 +356,11 @@ function SiteDetailPage() {
                 <Activity className="size-4 text-muted-foreground" />
                 Recent product activity
               </CardTitle>
-              <CardDescription>Allowlisted activity labels only; content and metadata stay private.</CardDescription>
+              <CardDescription>{t('admin.site.activityPrivacy')}</CardDescription>
             </CardHeader>
             <CardContent>
               {site.activity.length === 0 ? (
-                <DataEmpty title="No recorded activity" description="No platform events are available for this site." />
+                <DataEmpty title={t('admin.user.noActivity')} description={t('admin.site.noActivityBody')} />
               ) : (
                 <ol className="space-y-4">
                   {site.activity.map((event) => (
@@ -377,30 +383,32 @@ function SiteDetailPage() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Connected operations</CardTitle>
-              <CardDescription>Git and export state without repository names, credentials, changed files, or raw errors.</CardDescription>
+              <CardTitle className="text-base">{t('admin.site.connectedOperations')}</CardTitle>
+              <CardDescription>{t('admin.site.connectedPrivacy')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg border p-4">
-                <p className="text-muted-foreground text-xs">Git authoring</p>
+                <p className="text-muted-foreground text-xs">{t('admin.site.gitAuthoring')}</p>
                 {site.git ? (
                   <>
                     <div className="mt-2 flex items-center gap-2">
                       <p className="font-medium capitalize">{site.git.provider}</p>
                       <StatusBadge value={site.git.status} />
-                      {site.git.hasError ? <Badge variant="destructive">error recorded</Badge> : null}
+                      {site.git.hasError ? <Badge variant="destructive">{t('admin.site.errorRecorded')}</Badge> : null}
                     </div>
                     <p className="mt-1 text-muted-foreground text-xs">
                       {site.git.lastSyncedAt ? `Last synced ${fmtRelative(site.git.lastSyncedAt)}` : 'Connected; no completed sync recorded'}
                     </p>
                   </>
                 ) : (
-                  <p className="mt-2 font-medium text-sm">Not connected</p>
+                  <p className="mt-2 font-medium text-sm">{t('admin.site.notConnected')}</p>
                 )}
               </div>
               <div className="rounded-lg border p-4">
-                <p className="text-muted-foreground text-xs">Exports</p>
-                <p className="mt-2 font-medium text-sm">{Object.values(site.exports).reduce((total, count) => total + count, 0)} total jobs</p>
+                <p className="text-muted-foreground text-xs">{t('admin.operations.exports')}</p>
+                <p className="mt-2 font-medium text-sm">
+                  {t('admin.site.totalJobs', { count: format.number(Object.values(site.exports).reduce((total, count) => total + count, 0)) })}
+                </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {Object.entries(site.exports).length ? (
                     Object.entries(site.exports).map(([status, count]) => (
@@ -409,7 +417,7 @@ function SiteDetailPage() {
                       </Badge>
                     ))
                   ) : (
-                    <Badge variant="outline">none yet</Badge>
+                    <Badge variant="outline">{t('admin.site.noneYet')}</Badge>
                   )}
                 </div>
               </div>

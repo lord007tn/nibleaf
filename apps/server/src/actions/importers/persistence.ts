@@ -1,5 +1,5 @@
 import { prisma } from '@nibleaf/database';
-import type { PageConfig } from '@nibleaf/validators';
+import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
 import { createPage } from '../pages';
@@ -118,7 +118,8 @@ export const upsertLeafPage = async (
     select: { id: true, config: true },
   });
   if (found) {
-    const existingConfig = found.config && typeof found.config === 'object' && !Array.isArray(found.config) ? (found.config as PageConfig) : {};
+    const parsedConfig = pageConfigSchema.safeParse(found.config);
+    const existingConfig: PageConfig = parsedConfig.success ? parsedConfig.data : {};
     await prisma.page.update({
       where: { id: found.id },
       data: {

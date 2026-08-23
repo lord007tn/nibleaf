@@ -380,7 +380,7 @@ export interface TrackEventContext {
 /** Queue one server-enriched event. Tenant/project identity never comes from the
  * public body. Queue and ClickHouse failures are deliberately non-fatal to the
  * docs product; relational fallback is retained until the final cutover. */
-export const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput): Promise<void> => {
+const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput): Promise<void> => {
   const config = clickHouseKeys();
   const parsed = body;
   const hashSalt = config.ANALYTICS_HASH_SALT;

@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
-import { ChevronRight, FileText, HardDrive, Languages, Rocket, Search, TrendingUp, Users } from 'lucide-react';
+import { ChevronRight, FileText, HardDrive, Languages, type LucideIcon, Rocket, Search, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Project } from '@/hooks/api';
 import { useProjectUsage } from '@/hooks/api';
@@ -18,7 +18,7 @@ const BYTES_PER_GB = 1024 * BYTES_PER_MB;
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
 interface Metric {
-  icon: typeof FileText;
+  icon: LucideIcon;
   labelKey: MessageKey;
   used: number | null;
   /** null = surfaced but unmetered during the beta. */

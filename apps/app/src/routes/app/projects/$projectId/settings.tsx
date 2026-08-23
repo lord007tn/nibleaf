@@ -3,6 +3,25 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import {
+  Archive,
+  Bell,
+  Blocks,
+  Braces,
+  ChartNoAxesCombined,
+  CirclePlus,
+  Gem,
+  GitBranch,
+  Globe2,
+  Import,
+  Languages,
+  LockKeyhole,
+  type LucideIcon,
+  Plug,
+  Search,
+  TriangleAlert,
+  Users,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
@@ -26,36 +45,54 @@ import { useProject } from '@/hooks/api';
 // Site settings = the ADMIN/operational slice. The docs-website appearance
 // (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)
 // lives in the editor's Configuration tab — Mintlify keeps the two separate.
+type SettingsGroupId = 'site' | 'deployment' | 'workspace' | 'advanced';
+
+type SectionId =
+  | 'general'
+  | 'languages'
+  | 'domain'
+  | 'authentication'
+  | 'search'
+  | 'addons'
+  | 'git'
+  | 'openapi'
+  | 'contentImport'
+  | 'members'
+  | 'plan'
+  | 'usage'
+  | 'integrations'
+  | 'notifications'
+  | 'exports'
+  | 'danger';
+
 const GROUPS = [
   { id: 'site', labelKey: 'settings.group.site' },
   { id: 'deployment', labelKey: 'settings.group.deployment' },
   { id: 'workspace', labelKey: 'settings.group.workspace' },
   { id: 'advanced', labelKey: 'settings.group.advanced' },
-] as const satisfies ReadonlyArray<{ id: string; labelKey: MessageKey }>;
+] as const satisfies ReadonlyArray<{ id: SettingsGroupId; labelKey: MessageKey }>;
 
 const SECTIONS = [
-  { id: 'general', group: 'site', icon: '⊕' },
-  { id: 'languages', group: 'site', icon: '◫' },
-  { id: 'domain', group: 'site', icon: '◷' },
-  { id: 'authentication', group: 'site', icon: '◉' },
-  { id: 'search', group: 'site', icon: '⌕' },
-  { id: 'addons', group: 'site', icon: '◩' },
-  { id: 'git', group: 'deployment', icon: '⎇' },
-  { id: 'openapi', group: 'deployment', icon: '{}' },
-  { id: 'contentImport', group: 'deployment', icon: '⤓' },
-  { id: 'members', group: 'workspace', icon: '⧉' },
+  { id: 'general', group: 'site', icon: CirclePlus },
+  { id: 'languages', group: 'site', icon: Languages },
+  { id: 'domain', group: 'site', icon: Globe2 },
+  { id: 'authentication', group: 'site', icon: LockKeyhole },
+  { id: 'search', group: 'site', icon: Search },
+  { id: 'addons', group: 'site', icon: Blocks },
+  { id: 'git', group: 'deployment', icon: GitBranch },
+  { id: 'openapi', group: 'deployment', icon: Braces },
+  { id: 'contentImport', group: 'deployment', icon: Import },
+  { id: 'members', group: 'workspace', icon: Users },
   // 'apiKeys' is intentionally hidden: no API route mounts requireApiKey yet, so
   // keys can't be used anywhere. Restore the entry (and the ApiKeysTab wiring in
   // ActiveSection) once a content API actually accepts them.
-  { id: 'plan', group: 'workspace', icon: '◇' },
-  { id: 'usage', group: 'workspace', icon: '▤' },
-  { id: 'integrations', group: 'workspace', icon: '⚙' },
-  { id: 'notifications', group: 'workspace', icon: '✉' },
-  { id: 'exports', group: 'advanced', icon: '⇩' },
-  { id: 'danger', group: 'advanced', icon: '⚠' },
-] as const satisfies ReadonlyArray<{ id: string; group: (typeof GROUPS)[number]['id']; icon: string }>;
-
-type SectionId = (typeof SECTIONS)[number]['id'];
+  { id: 'plan', group: 'workspace', icon: Gem },
+  { id: 'usage', group: 'workspace', icon: ChartNoAxesCombined },
+  { id: 'integrations', group: 'workspace', icon: Plug },
+  { id: 'notifications', group: 'workspace', icon: Bell },
+  { id: 'exports', group: 'advanced', icon: Archive },
+  { id: 'danger', group: 'advanced', icon: TriangleAlert },
+] as const satisfies ReadonlyArray<{ id: SectionId; group: SettingsGroupId; icon: LucideIcon }>;
 
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
 
@@ -106,6 +143,7 @@ function ProjectSettingsPage() {
               <div className="px-3 pb-1 font-semibold text-[10.5px] text-muted-foreground/70 uppercase tracking-wider">{t(group.labelKey)}</div>
               {SECTIONS.filter((item) => item.group === group.id).map((item) => {
                 const active = item.id === section;
+                const Icon = item.icon;
                 return (
                   <button
                     className={cn(
@@ -116,7 +154,7 @@ function ProjectSettingsPage() {
                     onClick={() => navigate({ search: { section: item.id }, replace: true })}
                     type="button"
                   >
-                    <span className="inline-flex w-[18px] justify-center text-[13px]">{item.icon}</span>
+                    <Icon aria-hidden className="size-4 shrink-0" />
                     {t(`settings.${item.id}` as MessageKey)}
                   </button>
                 );

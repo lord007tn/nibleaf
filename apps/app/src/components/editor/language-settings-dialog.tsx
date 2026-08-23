@@ -16,6 +16,7 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { CirclePlus, type LucideIcon, SearchCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, LanguageConfig } from '@/hooks/api';
@@ -25,9 +26,9 @@ type Direction = 'LTR' | 'RTL';
 type LangSettingsSection = 'general' | 'seo';
 
 const LANG_SETTINGS_SECTIONS = [
-  { id: 'general', labelKey: 'editor.langSettings.tab.general', icon: '⊕' },
-  { id: 'seo', labelKey: 'editor.langSettings.tab.seo', icon: '◎' },
-] as const satisfies ReadonlyArray<{ id: LangSettingsSection; labelKey: MessageKey; icon: string }>;
+  { id: 'general', labelKey: 'editor.langSettings.tab.general', icon: CirclePlus },
+  { id: 'seo', labelKey: 'editor.langSettings.tab.seo', icon: SearchCheck },
+] as const satisfies ReadonlyArray<{ id: LangSettingsSection; labelKey: MessageKey; icon: LucideIcon }>;
 
 /** Per-language settings: label, direction, default flag (General) and the SEO
  *  defaults that apply to every page in this language (SEO). The SEO fields
@@ -108,20 +109,23 @@ export function LanguageSettingsDialog({
               <p className="truncate text-muted-foreground text-xs">{language.label}</p>
             </DialogHeader>
             <nav className="flex flex-col gap-0.5">
-              {LANG_SETTINGS_SECTIONS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSection(item.id)}
-                  className={cn(
-                    'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-                    section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>
-                  {t(item.labelKey)}
-                </button>
-              ))}
+              {LANG_SETTINGS_SECTIONS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSection(item.id)}
+                    className={cn(
+                      'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                      section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {t(item.labelKey)}
+                  </button>
+                );
+              })}
             </nav>
           </aside>
 

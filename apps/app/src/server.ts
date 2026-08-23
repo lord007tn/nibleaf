@@ -1,7 +1,10 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { translateFn } from '@nibleaf/i18n';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import got from 'got';
+import { z } from 'zod';
 import { serverEnv } from '@/env.server';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
@@ -240,6 +243,16 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
   return baseFetch(input, init);
 }) as typeof fetch;
 
+const internalRequestHeaders = () => {
+  const requestAuth = publishedRequestAuth.getStore();
+  return {
+    ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
+    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(requestAuth?.cookie ? { cookie: requestAuth.cookie } : {}),
+    ...(requestAuth?.authorization ? { authorization: requestAuth.authorization } : {}),
+  };
+};
+
 // ─── Custom-domain host → project resolution ─────────────────────────────────
 
 const cache = new Map<string, { projectId: string | null; at: number }>();
@@ -251,9 +264,14 @@ async function resolveHost(host: string): Promise<string | null> {
     return hit.projectId;
   }
   try {
-    const res = await fetch(`${SELF}/api/public/domains/resolve?host=${encodeURIComponent(host)}`);
-    const json = (await res.json()) as { data?: { projectId?: string | null } };
-    const projectId = json?.data?.projectId ?? null;
+    const response = await got(`${SELF}/api/public/domains/resolve?host=${encodeURIComponent(host)}`, {
+      headers: internalRequestHeaders(),
+      responseType: 'json',
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    const parsed = z.object({ data: z.object({ projectId: z.string().nullable().optional() }).optional() }).safeParse(response.body);
+    const projectId = response.ok && parsed.success ? (parsed.data.data?.projectId ?? null) : null;
     cache.set(host, { projectId, at: Date.now() });
     return projectId;
   } catch {
@@ -285,14 +303,30 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
   }
   let meta: SiteMeta | null = null;
   try {
-    const res = await fetch(`${SELF}/api/public/sites/${projectId}`);
-    if (res.ok) {
-      const json = (await res.json()) as {
-        data?: { project?: { config?: Record<string, unknown> | null; primaryDomain: string | null } };
-      };
-      const project = json?.data?.project;
+    const response = await got(`${SELF}/api/public/sites/${projectId}`, {
+      headers: internalRequestHeaders(),
+      responseType: 'json',
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    if (response.ok) {
+      const parsed = z
+        .object({
+          data: z
+            .object({
+              project: z
+                .object({
+                  config: z.looseObject({ visibility: z.string().optional() }).nullable().optional(),
+                  primaryDomain: z.string().nullable(),
+                })
+                .optional(),
+            })
+            .optional(),
+        })
+        .safeParse(response.body);
+      const project = parsed.success ? parsed.data.data?.project : undefined;
       if (project) {
-        const primary = typeof project.primaryDomain === 'string' ? project.primaryDomain.trim().toLowerCase() : '';
+        const primary = project.primaryDomain?.trim().toLowerCase() ?? '';
         meta = {
           primaryDomain: primary || null,
           isPrivate: (project.config as { visibility?: string } | null)?.visibility === 'private',
@@ -345,33 +379,27 @@ type SeoProxyResult = { ok: true; response: Response } | { ok: false; status: nu
  *  ONLY on a network error; an upstream error status is surfaced as
  *  `{ ok: false, status }`. */
 async function proxySeoDocument(projectId: string, file: string, origin?: string): Promise<SeoProxyResult | null> {
-  let res: Response;
   try {
-    res = await fetch(`${SELF}/api/public/sites/${projectId}/${file}`);
+    const response = await got(`${SELF}/api/public/sites/${projectId}/${file}`, {
+      headers: internalRequestHeaders(),
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    if (!response.ok) return { ok: false, status: response.statusCode };
+    let body = response.body;
+    if (origin) {
+      body = body
+        .replace(new RegExp(`https?://[^/]+/sites/${projectId}`, 'g'), origin)
+        // robots.txt points at the API-served sitemap; on a domain it lives at the root.
+        .replace(new RegExp(`https?://[^/]+/api/public/sites/${projectId}/sitemap\\.xml`, 'g'), `${origin}/sitemap.xml`);
+    }
+    const headers: Record<string, string> = { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' };
+    const cacheControl = response.headers['cache-control'];
+    if (cacheControl) headers['cache-control'] = cacheControl;
+    return { ok: true, response: new Response(body, { status: 200, headers }) };
   } catch {
     return null;
   }
-  if (!res.ok) {
-    return { ok: false, status: res.status };
-  }
-  let body: string;
-  try {
-    body = await res.text();
-  } catch {
-    return null;
-  }
-  if (origin) {
-    body = body
-      .replace(new RegExp(`https?://[^/]+/sites/${projectId}`, 'g'), origin)
-      // robots.txt points at the API-served sitemap; on a domain it lives at the root.
-      .replace(new RegExp(`https?://[^/]+/api/public/sites/${projectId}/sitemap\\.xml`, 'g'), `${origin}/sitemap.xml`);
-  }
-  const headers: Record<string, string> = { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' };
-  const cacheControl = res.headers.get('cache-control');
-  if (cacheControl) {
-    headers['cache-control'] = cacheControl;
-  }
-  return { ok: true, response: new Response(body, { status: 200, headers }) };
 }
 
 /** Response for a site whose SEO doc the API refused (private/unpublished/taken
@@ -636,11 +664,11 @@ Nibleaf currently has no paid cloud plan. The managed cloud is free while in bet
 ${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
 
-## العربية
+## ${translateFn('marketing.machine.arabic.heading', undefined, 'ar')}
 
-- سحابة Nibleaf مجانية خلال المرحلة التجريبية، ولا توجد خطة مدفوعة حاليًا.
-- يمكن تشغيل المنظومة كاملة من المصدر العام بترخيص AGPL-3.0، مع تحمّل المشغّل مسؤولية البنية وDNS وTLS والنسخ الاحتياطي والمراقبة والترقيات.
-- الصفحة العربية: ${origin}/ar
+- ${translateFn('marketing.machine.arabic.betaPricing', undefined, 'ar')}
+- ${translateFn('marketing.machine.arabic.selfHosting', undefined, 'ar')}
+- ${translateFn('marketing.machine.arabic.pageLabel', undefined, 'ar')}: ${origin}/ar
 
 For the human-readable plan comparison and current policy details, see ${origin}/pricing.
 `;

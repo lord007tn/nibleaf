@@ -6,25 +6,22 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
-interface VerifyEmailSearch {
-  email?: string;
-  token?: string;
-  invite?: string;
-  delivery?: 'sent' | 'failed';
-}
-
 export const Route = createFileRoute('/(auth)/verify-email')({
   component: VerifyEmailPage,
-  validateSearch: (search: Record<string, unknown>): VerifyEmailSearch => ({
-    email: typeof search.email === 'string' ? search.email : undefined,
-    token: typeof search.token === 'string' ? search.token : undefined,
-    invite: typeof search.invite === 'string' ? search.invite : undefined,
-    delivery: search.delivery === 'sent' || search.delivery === 'failed' ? search.delivery : undefined,
-  }),
+  validateSearch: (search) =>
+    z
+      .object({
+        email: z.string().optional().catch(undefined),
+        token: z.string().optional().catch(undefined),
+        invite: z.string().optional().catch(undefined),
+        delivery: z.enum(['sent', 'failed']).optional().catch(undefined),
+      })
+      .parse(search),
 });
 
 function VerifyEmailPage() {

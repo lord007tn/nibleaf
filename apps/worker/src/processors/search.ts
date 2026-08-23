@@ -2,7 +2,7 @@ import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
-import { chunkSearchDocument, OpenAIEmbeddingProvider, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
+import { chunkSearchDocument, OpenRouterEmbeddingProvider, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { z } from 'zod';
@@ -132,8 +132,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     await client.deleteByFilterAllVersions(deploymentFilter(job.data.projectId, job.data.deploymentId));
     return { deleted: true };
   }
-  const apiKey = env.SEARCH_EMBEDDING_API_KEY ?? env.OPENAI_API_KEY;
-  if (!apiKey) {
+  if (!env.OPENROUTER_API_KEY) {
     log.info({ projectId: job.data.projectId, job: job.name }, 'hybrid search embedding provider is not configured; indexing skipped');
     return { disabled: true };
   }
@@ -158,13 +157,14 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
   ]);
   if (!project) throw new Error(`project ${job.data.projectId} was not found.`);
   const snapshot = deployment.snapshot as unknown as SiteSnapshot;
-  const provider = new OpenAIEmbeddingProvider({
-    apiKey,
-    baseUrl: env.SEARCH_EMBEDDING_BASE_URL,
+  const provider = new OpenRouterEmbeddingProvider({
+    apiKey: env.OPENROUTER_API_KEY,
     model: env.SEARCH_EMBEDDING_MODEL,
     dimensions: env.SEARCH_EMBEDDING_DIMENSIONS,
     timeoutMs: env.SEARCH_EMBEDDING_TIMEOUT_MS,
     maxBatchSize: BATCH_SIZE,
+    siteUrl: env.APP_URL,
+    title: 'Nibleaf',
   });
   if (provider.dimensions !== client.vectorSize) throw new Error('Qdrant vector size and embedding dimensions must match.');
 

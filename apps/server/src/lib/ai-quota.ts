@@ -8,7 +8,7 @@ import { envExtras } from './env-extras';
  * Per-workspace daily quota for the AI draft endpoint — the only place the
  * platform spends money per request, so it must be bounded. Backed by a redis
  * INCR with a 24h TTL (same Dragonfly instance BullMQ uses). Only enforced
- * when OPENAI_API_KEY is configured: the deterministic offline fallback is
+ * when OPENROUTER_API_KEY is configured: the deterministic offline fallback is
  * free and stays unlimited.
  */
 
@@ -42,7 +42,7 @@ const DAY_SECONDS = 24 * 60 * 60;
  * drafting must not hard-depend on redis for self-hosters.
  */
 export const assertAiQuota = async (organizationId: string): Promise<void> => {
-  if (!env.OPENAI_API_KEY) {
+  if (!env.OPENROUTER_API_KEY) {
     return; // Offline fallback only — nothing to meter.
   }
   const limit = envExtras.AI_DAILY_LIMIT;

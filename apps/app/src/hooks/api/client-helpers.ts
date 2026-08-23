@@ -1,43 +1,58 @@
-/** Extract a readable error message from a non-2xx response. */
-export async function errorMessage(res: Response, fallback: string): Promise<string> {
+interface ApiErrorBody {
+  error?: {
+    code?: string;
+    message?: string;
+    details?: { errors?: Array<string | { path?: string; message?: string }> };
+  };
+}
+
+type ResponseData<TResponse extends Response> = Awaited<ReturnType<TResponse['json']>> extends { data: infer TData } ? TData : never;
+type ResolvedData<TData, TResponse extends Response> = [TData] extends [never] ? ResponseData<TResponse> : TData;
+
+const readApiError = async (res: Response, fallback: string) => {
   try {
-    const body = (await res.json()) as {
-      error?: { message?: string; details?: { errors?: Array<string | { path?: string; message?: string }> } };
-    };
+    const body = (await res.json()) as ApiErrorBody;
     const message = body.error?.message ?? fallback;
     const issue = body.error?.details?.errors?.[0];
-    if (typeof issue === 'string') return `${message} ${issue}`;
-    if (issue?.message) return `${message} ${issue.path && issue.path !== '$' ? `${issue.path}: ` : ''}${issue.message}`;
-    return message;
+    const detailMessage = typeof issue === 'string' ? issue : issue?.message;
+    const detailPath = typeof issue === 'string' ? undefined : issue?.path;
+    if (detailMessage) {
+      return {
+        code: body.error?.code,
+        message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
+      };
+    }
+    return { code: body.error?.code, message };
   } catch {
-    return fallback;
+    return { code: undefined, message: fallback };
   }
-}
+};
 
 /** Unwrap a `{ data }` envelope, throwing a readable error on failure. */
 export class ApiResponseError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
     this.name = 'ApiResponseError';
   }
 }
 
-export async function getData<T>(res: Response, what: string): Promise<T> {
+export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string) {
   if (!res.ok) {
-    throw new ApiResponseError(await errorMessage(res, `Failed to load ${what}.`), res.status);
+    const error = await readApiError(res, `Failed to load ${what}.`);
+    throw new ApiResponseError(error.message, res.status, error.code);
   }
-  const json = (await res.json()) as { data: T };
-  return json.data;
+  return (await res.json()).data as ResolvedData<TData, TResponse>;
 }
 
 /** Unwrap a `{ data }` envelope for a mutation, throwing a readable error. */
-export async function mutateData<T>(res: Response, fallback: string): Promise<T> {
+export async function mutateData<TData = never, TResponse extends Response = Response>(res: TResponse, fallback: string) {
   if (!res.ok) {
-    throw new Error(await errorMessage(res, fallback));
+    const error = await readApiError(res, fallback);
+    throw new ApiResponseError(error.message, res.status, error.code);
   }
-  const json = (await res.json()) as { data: T };
-  return json.data;
+  return (await res.json()).data as ResolvedData<TData, TResponse>;
 }

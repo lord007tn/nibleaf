@@ -4,24 +4,6 @@ import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
-import { assertProjectInOrg } from './projects';
-
-const pageListSelect = {
-  id: true,
-  parentId: true,
-  languageId: true,
-  kind: true,
-  title: true,
-  slug: true,
-  path: true,
-  icon: true,
-  description: true,
-  config: true,
-  translationKey: true,
-  position: true,
-  hidden: true,
-  updatedAt: true,
-} as const;
 
 /** Flat list of a project's pages on one branch (the default branch when none is
  *  given), ordered for tree assembly on the client. Scoped to a single language
@@ -34,7 +16,22 @@ export const listPages = async (projectId: string, languageId?: string, branchId
   return prisma.page.findMany({
     where: { projectId, branchId: resolvedBranchId, ...(languageId ? { languageId } : {}) },
     orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    select: pageListSelect,
+    select: {
+      id: true,
+      parentId: true,
+      languageId: true,
+      kind: true,
+      title: true,
+      slug: true,
+      path: true,
+      icon: true,
+      description: true,
+      config: true,
+      translationKey: true,
+      position: true,
+      hidden: true,
+      updatedAt: true,
+    },
   });
 };
 
@@ -281,5 +278,3 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
   const firstMoved = body.items[0] ? byPage.get(body.items[0].id) : undefined;
   return listPages(projectId, undefined, firstMoved?.branchId ?? undefined);
 };
-
-export { assertProjectInOrg };

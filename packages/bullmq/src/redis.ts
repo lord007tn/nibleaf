@@ -1,6 +1,5 @@
-import { Redis, type RedisOptions } from 'ioredis';
+import type { RedisOptions } from 'ioredis';
 import { keys } from './keys';
-import { queueLogger } from './utils/logger';
 
 const env = keys();
 
@@ -34,14 +33,3 @@ export const producerConnectionConfig: RedisOptions = {
   ...redisConnectionConfig,
   enableOfflineQueue: false,
 };
-
-export function createRedisConnection(): Redis {
-  return new Redis(redisConnectionConfig);
-}
-
-export const redis = createRedisConnection();
-
-redis.on('connect', () => queueLogger.info('Connected to Redis'));
-redis.on('error', (err) => queueLogger.error({ err }, 'Redis error'));
-
-export { redis as default };

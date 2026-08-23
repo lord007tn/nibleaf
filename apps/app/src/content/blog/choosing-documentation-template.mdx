@@ -1,0 +1,98 @@
+---
+title: 'How to choose a documentation template: reference, editorial, or code-first'
+metaTitle: 'How to choose a documentation template for your content'
+description: 'A practical framework for choosing Harbor, Manuscript, or Signal based on reader intent, content shape, navigation depth, and code density.'
+datePublished: '2026-08-23'
+dateModified: '2026-08-23'
+tags: ['guide', 'templates', 'information-architecture']
+related: ['documentation-templates-harbor-manuscript-signal', 'docs-should-live-in-plain-markdown', 'arabic-documentation-rtl']
+readingMinutes: 7
+faqs:
+  - question: 'Which Nibleaf template should a new project use?'
+    answer: 'Start with Harbor when the content mixes guides and reference material. Move to Manuscript for chapter-led reading or Signal when code and API scanning dominate the experience.'
+  - question: 'Should every section of a documentation site use a different template?'
+    answer: 'Usually not. A consistent site-level structure is easier to learn. Choose the layout that fits the dominant reader task, then use cards, tabs, callouts, and page organization for local variation.'
+  - question: 'What should I test before publishing a template change?'
+    answer: 'Review representative short and long pages, deep navigation, search, tables, code, mobile behavior, light and dark appearances, and every supported writing direction.'
+---
+
+A documentation template should make the dominant reader task easier. It should not be chosen from a screenshot alone, and it should not force every page into the same density or visual treatment.
+
+Nibleaf provides three structural templates: Harbor for mixed product and reference libraries, Manuscript for chapter-led reading, and Signal for code-first technical material. Use the questions below to choose between them.
+
+## Start with reader intent
+
+Ask what a reader is usually trying to do.
+
+- **Find one answer and leave:** favor visible navigation and fast section scanning. Start with Harbor.
+- **Learn a subject in sequence:** favor a focused reading surface and chapter context. Start with Manuscript.
+- **Inspect syntax, parameters, or responses:** favor density, width, and code contrast. Start with Signal.
+
+This is more reliable than choosing by industry. The same software company may publish a learning center that fits Manuscript and an API reference that fits Signal.
+
+## Compare the content shape
+
+| Question | Harbor | Manuscript | Signal |
+| --- | --- | --- | --- |
+| Many short reference pages? | Strong fit | Possible, but less direct | Strong fit |
+| Long narrative chapters? | Good | Strongest fit | Usually too dense |
+| Deep library navigation? | Strongest fit | Better with fewer top-level chapters | Good when labels stay compact |
+| Wide tables and code samples? | Good | Use selectively | Strongest fit |
+| Readers move sequentially? | Supported | Strongest fit | Secondary |
+| Readers scan many endpoints? | Good | Weak fit | Strongest fit |
+
+The table is a starting point, not a scoring system. Test actual pages because title length, nesting depth, language, and code density change how the shell feels.
+
+## Choose Harbor for a mixed documentation library
+
+Harbor is the safest default when a site combines onboarding, feature guides, troubleshooting, and reference pages. The library tree stays visible, the article remains readable, and the page outline gives readers a second level of orientation.
+
+Harbor is a good choice when:
+
+- navigation has several groups and nested pages;
+- readers jump between related topics;
+- pages vary from short answers to medium-length guides; or
+- the team wants a familiar documentation model with strong wayfinding.
+
+## Choose Manuscript for learning and policy content
+
+Manuscript works when the publication has a chapter model. Its horizontal chapter deck keeps the wider structure available without leaving a navigation rail beside every paragraph. The paper-like reading frame separates the article from the application chrome.
+
+Manuscript is a good choice when:
+
+- pages are read in sequence;
+- the content uses longer explanations and fewer endpoint-style entries;
+- the top-level information architecture can be expressed as clear chapters; or
+- typography and reading rhythm matter more than maximum information density.
+
+Avoid forcing a very deep, frequently changing page tree into the chapter deck. Harbor will usually make that tree easier to scan.
+
+## Choose Signal for APIs and technical operations
+
+Signal uses a compact command rail and a wide workbench. It gives signatures, code blocks, response examples, and dense tables the space they need while keeping technical navigation close.
+
+Signal is a good choice when:
+
+- most pages contain code or structured reference data;
+- readers already know the product area and need quick lookup;
+- labels are concise and repeatable; or
+- a developer-portal visual language matches the product.
+
+Signal can feel unnecessarily intense for prose-first help centers. Do not select it only because the dark code surfaces look technical.
+
+## Test the template with real edge cases
+
+Before publishing, preview at least:
+
+1. the shortest and longest page;
+2. the deepest navigation branch;
+3. a page with a wide table;
+4. a page with inline code and several code blocks;
+5. search results and a no-results state;
+6. desktop and mobile widths;
+7. light and dark appearances; and
+8. LTR and RTL content when the site supports both.
+
+The theme editor keeps changes in the draft until publication. Use that boundary: compare structures, ask writers and support teammates to complete real tasks, and publish only after the selected layout makes those tasks easier.
+
+For a visual overview of each structure, read [Introducing Harbor, Manuscript, and Signal](/blog/documentation-templates-harbor-manuscript-signal).

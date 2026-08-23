@@ -6,7 +6,7 @@ import { BubbleMenu } from '@tiptap/react/menus';
 /** Curated fence languages (lowlight `common` grammars + mermaid). The value is
  *  what lands after the ``` fence in Markdown, so it must stay highlightable on
  *  the live site too. */
-export const CODE_BLOCK_LANGUAGES = [
+const CODE_BLOCK_LANGUAGES = [
   'bash',
   'c',
   'cpp',
@@ -81,5 +81,3 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
     </BubbleMenu>
   );
 }
-
-export default CodeBlockMenu;

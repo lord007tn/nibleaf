@@ -1,37 +1,68 @@
+import { prisma } from '@nibleaf/database';
 import { createCommentBody, resolveCommentBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { createComment, deleteComment, listComments, resolveComment } from '@/actions/comments';
 import { assertProjectInOrg } from '@/actions/projects';
+import { notFound } from '@/errors';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import commentsRoutes from './routes';
 
-const scope = async (ctx: { req: { param: (k: string) => string } }) => {
-  const organizationId = getContextOrganizationIdOrThrow();
-  const projectId = ctx.req.param('projectId');
-  await assertProjectInOrg(organizationId, projectId);
-  return { organizationId, projectId };
-};
-
 const app = new Hono<HonoEnv>()
   .get('/', ...commentsRoutes.list, validator('query', z.object({ pageId: z.string().optional() })), async (ctx) => {
-    const { organizationId, projectId } = await scope(ctx);
+    const projectId = z.string().parse(ctx.req.param('projectId'));
+    await assertProjectInOrg(getContextOrganizationIdOrThrow(), projectId);
     const { pageId } = ctx.req.valid('query');
-    return ctx.json({ data: await listComments(organizationId, projectId, pageId) }, 200);
+    const comments = await prisma.comment.findMany({
+      where: { projectId, ...(pageId ? { pageId } : {}) },
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { id: true, name: true, image: true } } },
+    });
+    return ctx.json({ data: comments }, 200);
   })
   .post('/', ...commentsRoutes.create, validator('json', createCommentBody), async (ctx) => {
-    const { organizationId, projectId } = await scope(ctx);
+    const projectId = z.string().parse(ctx.req.param('projectId'));
+    await assertProjectInOrg(getContextOrganizationIdOrThrow(), projectId);
     const user = getContextUserOrThrow();
-    return ctx.json({ data: await createComment(organizationId, projectId, user.id, ctx.req.valid('json')) }, 201);
+    const body = ctx.req.valid('json');
+    if (body.pageId && !(await prisma.page.findFirst({ where: { id: body.pageId, projectId }, select: { id: true } }))) {
+      throw notFound('page', { id: body.pageId });
+    }
+    const comment = await prisma.comment.create({
+      data: {
+        projectId,
+        userId: user.id,
+        body: body.body,
+        ...(body.pageId ? { pageId: body.pageId } : {}),
+        ...(body.anchor ? { anchor: body.anchor } : {}),
+      },
+      include: { user: { select: { id: true, name: true, image: true } } },
+    });
+    return ctx.json({ data: comment }, 201);
   })
   .patch('/:id', ...commentsRoutes.resolve, validator('json', resolveCommentBody), async (ctx) => {
-    const { organizationId, projectId } = await scope(ctx);
-    return ctx.json({ data: await resolveComment(organizationId, projectId, ctx.req.param('id'), ctx.req.valid('json').resolved) }, 200);
+    const projectId = z.string().parse(ctx.req.param('projectId'));
+    await assertProjectInOrg(getContextOrganizationIdOrThrow(), projectId);
+    const id = z.string().parse(ctx.req.param('id'));
+    if (!(await prisma.comment.findFirst({ where: { id, projectId }, select: { id: true } }))) {
+      throw notFound('comment', { id });
+    }
+    const comment = await prisma.comment.update({
+      where: { id },
+      data: { resolved: ctx.req.valid('json').resolved },
+      include: { user: { select: { id: true, name: true, image: true } } },
+    });
+    return ctx.json({ data: comment }, 200);
   })
   .delete('/:id', ...commentsRoutes.remove, async (ctx) => {
-    const { organizationId, projectId } = await scope(ctx);
-    return ctx.json({ data: await deleteComment(organizationId, projectId, ctx.req.param('id')) }, 200);
+    const projectId = z.string().parse(ctx.req.param('projectId'));
+    await assertProjectInOrg(getContextOrganizationIdOrThrow(), projectId);
+    const id = z.string().parse(ctx.req.param('id'));
+    if (!(await prisma.comment.findFirst({ where: { id, projectId }, select: { id: true } }))) {
+      throw notFound('comment', { id });
+    }
+    await prisma.comment.delete({ where: { id } });
+    return ctx.json({ data: { id } }, 200);
   });
 
 export default app;

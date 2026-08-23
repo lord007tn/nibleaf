@@ -1,0 +1,77 @@
+---
+title: 'Introducing Harbor, Manuscript, and Signal: three layouts for three kinds of documentation'
+metaTitle: 'New Nibleaf documentation templates: Harbor, Manuscript, and Signal'
+description: 'Nibleaf now includes three structural documentation templates for product guides, editorial knowledge, and code-first API references.'
+datePublished: '2026-08-23'
+dateModified: '2026-08-23'
+tags: ['announcement', 'templates', 'theming']
+related: ['choosing-documentation-template', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
+readingMinutes: 6
+faqs:
+  - question: 'Are Nibleaf templates only color themes?'
+    answer: 'No. Each template owns the placement and behavior of the header, navigation, content frame, page outline, and preview. Colors and component treatments remain customizable inside that structure.'
+  - question: 'Can a project switch templates without rewriting its pages?'
+    answer: 'Yes. Templates render the same portable Markdown and MDX content. Switching changes the reader structure and design tokens, not the stored page source.'
+  - question: 'Do all three templates support Arabic and RTL?'
+    answer: 'Yes. The templates use logical layout properties, flip navigation correctly for RTL, and preserve left-to-right direction for code and commands.'
+---
+
+Documentation is not one visual problem. A product guide, a policy handbook, and an API reference may contain Markdown, but readers move through each one differently. Applying a new accent color to the same shell does not solve that difference.
+
+Nibleaf now includes three documentation templates with their own page structures: **Harbor**, **Manuscript**, and **Signal**. They share the same accessible tokens, Markdown renderer, search, localization, and publishing system. What changes is the layout itself: how navigation is placed, how the reading surface is framed, where the page outline lives, and how dense the interface feels.
+
+## Harbor: dependable product and reference navigation
+
+Harbor is the conventional documentation layout, deliberately refined rather than reinvented. It uses persistent library navigation on one side, a balanced article column in the center, and a page outline alongside the article on wide screens.
+
+Choose Harbor when readers frequently move between guides and reference pages. It keeps the information architecture visible without crowding the prose, which makes it a strong default for product documentation with several sections.
+
+Harbor includes:
+
+- a stable header and search position;
+- persistent section navigation;
+- a balanced reading measure;
+- a separate on-page outline on large screens; and
+- a compact mobile navigation drawer using the same page tree.
+
+## Manuscript: a chapter-led editorial reading experience
+
+Manuscript treats documentation more like a handbook. The global navigation becomes a horizontal chapter deck, while the article sits on a focused paper-like surface separated from the surrounding canvas. The page outline moves to the reading margin instead of competing with a permanent library sidebar.
+
+This structure works well for onboarding manuals, internal handbooks, learning centers, policy libraries, and long-form knowledge bases. Readers are encouraged to stay with the current chapter while the wider publication remains one step away.
+
+Manuscript includes:
+
+- an editorial masthead instead of a utility-heavy top bar;
+- chapter navigation above the reading surface;
+- a narrower, calmer article measure;
+- margin-style page navigation; and
+- more relaxed vertical rhythm for long-form prose.
+
+## Signal: a code-first technical workbench
+
+Signal is designed for dense technical material. It places the library inside a high-contrast command rail and gives the main canvas more horizontal room for signatures, parameter tables, code samples, and API response bodies. The page index becomes a compact command strip above the article.
+
+Choose Signal for API references, SDK documentation, infrastructure runbooks, and developer portals where scanning speed matters more than a book-like reading flow.
+
+Signal includes:
+
+- a compact workbench header;
+- a command-style navigation rail;
+- a wide content canvas;
+- an inline section index; and
+- vivid, high-contrast code surfaces.
+
+## Layout and appearance stay separate
+
+Each template has an opinionated structure, but teams can still change semantic colors, typography, density, corner radius, code blocks, callouts, cards, tabs, and tables. This separation matters: a brand adjustment should not silently reorganize a documentation site, and a layout switch should not rewrite page content.
+
+The theme editor now previews the real structure of every template instead of showing three color swatches. It can also switch the preview between LTR and RTL so teams can inspect navigation, mixed-direction prose, and code before publishing.
+
+## Safe to switch, safe to export
+
+Templates operate on the same Markdown and MDX source. A team can try a different layout in the draft theme, compare it in preview, and publish only when it is ready. Readers continue to receive the last published theme until a new deployment succeeds.
+
+Theme exports remain bounded, schema-validated JSON. They contain design tokens and supported layout choices, never executable CSS or JavaScript.
+
+If you are deciding which structure fits your content, continue with [How to choose a documentation template](/blog/choosing-documentation-template).

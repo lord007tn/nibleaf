@@ -1,10 +1,11 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
+import { type MessageKey, type MessageVariables, translateFn } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
+import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Check, ExternalLink, Languages, Search, Server, ShieldCheck } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { type ReactNode, useCallback } from 'react';
 import { primaryButton } from '@/components/cloud-marketing';
 import { sendMarketingCtaEvent } from '@/lib/marketing-analytics';
-
-const REVIEWED_ON = '22 أغسطس 2026';
 
 interface Platform {
   name: string;
@@ -17,99 +18,120 @@ interface Platform {
   nibleaf?: boolean;
 }
 
-const platforms: Platform[] = [
-  {
-    name: 'Nibleaf',
-    sources: [
-      { href: '/pricing', label: 'الأسعار' },
-      { href: 'https://github.com/lord007tn/nibleaf', label: 'المصدر العام' },
-    ],
-    summary: 'محرر مرئي فوق Markdown، ونشر بإصدارات ثابتة، وبحث عربي، وخيار سحابي مجاني خلال المرحلة التجريبية أو استضافة كاملة من المصدر العام.',
-    bestFor: 'الفِرق التي تريد الكتابة من المتصفح مع الاحتفاظ بـ Markdown، وتحتاج تجربة عربية وRTL داخل المحرر وموقع القارئ معًا.',
-    arabic: 'واجهة عربية، واتجاه RTL، وشجرة مستقلة لكل لغة، وعزل للشيفرة داخل السطر، وبحث بتقطيع عربي وتطبيع إملائي محافظ.',
-    model: 'سحابة مجانية خلال المرحلة التجريبية، أو نشر ذاتي للمنظومة الكاملة بترخيص AGPL-3.0.',
-    caveat: 'لا يقدم حاليًا تحريرًا متزامنًا لحظيًا، ولا SAML/SCIM، ولا مساعد ذكاء اصطناعي مدمجًا.',
-    nibleaf: true,
-  },
-  {
-    name: 'Mintlify',
-    sources: [
-      { href: 'https://www.mintlify.com/docs/guides/internationalization', label: 'دعم اللغات' },
-      { href: 'https://www.mintlify.com/pricing', label: 'الأسعار' },
-    ],
-    summary: 'منصة مُدارة ومصقولة لوثائق المطورين، مع محرر ويب وأدوات قوية لمراجع API وميزات ذكاء اصطناعي.',
-    bestFor: 'الفِرق التي تفضل خدمة مُدارة ناضجة وتحتاج مساعدًا ووكيلاً للذكاء الاصطناعي وتكاملات مؤسسية.',
-    arabic: 'تدرج Mintlify العربية ضمن اللغات المدعومة وتحوّل تخطيط العربية والعبرية إلى RTL تلقائيًا عند ضبط اللغة.',
-    model: 'Starter مجاني، وPro بسعر 450 دولارًا شهريًا، وEnterprise بسعر مخصص عند آخر مراجعة.',
-    caveat:
-      'المنصة الأساسية مُدارة ومغلقة المصدر؛ خيار Enterprise للاستضافة الذاتية يخص الواجهة المخصصة بينما تبقى خدمات المحتوى والبحث والذكاء الاصطناعي مُدارة.',
-  },
-  {
-    name: 'GitBook',
-    sources: [
-      { href: 'https://gitbook.com/docs/publishing-documentation/customization/extra-configuration', label: 'تعريب الواجهة' },
-      { href: 'https://gitbook.com/docs/publishing-documentation/site-structure/variants', label: 'اللغات والنسخ' },
-      { href: 'https://www.gitbook.com/pricing', label: 'الأسعار' },
-    ],
-    summary: 'مساحة تحرير كتلية مُدارة مع مزامنة GitHub وGitLab، ومعاينات، وملعب API، وميزات بحث ومساعدة بالذكاء الاصطناعي في الخطط الأعلى.',
-    bestFor: 'الفِرق التي تحتاج مزامنة GitLab ثنائية الاتجاه أو محتوى متكيفًا أو حوكمة مؤسسية ناضجة الآن.',
-    arabic: 'توثّق GitBook تعريب واجهة الموقع ونشر اللغات كنسخ يختار بينها القارئ، لكن صفحاتها الحالية لا تقدّم وعدًا صريحًا بتوافق كل مكوّن مع RTL.',
-    model: 'خطة مجانية لفرد واحد؛ Premium من 65 دولارًا للموقع و12 دولارًا للمستخدم شهريًا عند الفوترة السنوية.',
-    caveat: 'اختبر القوائم والجداول وكتل الشيفرة والتنقل بالعربية؛ مبدّل اللغة وتعريب الواجهة لا يثبتان وحدهما تجربة RTL كاملة.',
-  },
-  {
-    name: 'Docusaurus',
-    sources: [{ href: 'https://docusaurus.io/docs/i18n/introduction', label: 'التوثيق الرسمي' }],
-    summary: 'مولّد مواقع ثابتة مفتوح المصدر مبني على React، وله منظومة إضافات ناضجة وتحكم واسع في الواجهة والبناء.',
-    bestFor: 'الفِرق الهندسية التي تريد docs-as-code وتحكمًا كاملاً ومستعدة لبناء تجربة التحرير والاستضافة والبحث بنفسها.',
-    arabic: 'توثيقه الرسمي يذكر دعم RTL للعربية والعبرية وإصدار hreflang افتراضيًا ضمن نظام التدويل.',
-    model: 'مفتوح المصدر بترخيص MIT؛ التكلفة هي الاستضافة ووقت التطوير والصيانة وخدمة البحث إن استُخدمت.',
-    caveat: 'ليس منصة تحرير مرئي مُدارة؛ المترجمون والكتّاب غير التقنيين يحتاجون عادةً سير عمل Git وأدوات مراجعة إضافية.',
-  },
-  {
-    name: 'Material for MkDocs',
-    sources: [{ href: 'https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/', label: 'التوثيق الرسمي' }],
-    summary: 'قالب قوي لمولد MkDocs، مناسب لمشاريع Python والفرق التي تريد موقعًا ثابتًا سريعًا بإعداد مفهوم.',
-    bestFor: 'المشاريع التي تفضل Markdown وملف إعداد بسيطًا ولا تحتاج مساحة عمل تحريرية متكاملة.',
-    arabic: 'العربية ضمن اللغات المدعومة؛ النهج الموصى به للمواقع متعددة اللغات هو مشروع فرعي لكل لغة مع مبدّل يربط بينها.',
-    model: 'مفتوح المصدر، مع مسؤولية الفريق عن البناء والاستضافة وسير الترجمة.',
-    caveat: 'تعدد اللغات موزع على مشاريع، وتظل تجربة التحرير والمراجعة والنشر مسؤولية الفريق.',
-  },
-  {
-    name: 'Apidog',
-    sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools-ar/', label: 'المصدر الرسمي' }],
-    summary: 'منصة لدورة حياة API تجمع التصميم والتصحيح والمحاكاة والاختبار وتوليد الوثائق التفاعلية، ولها مكتبة محتوى عربية نشطة.',
-    bestFor: 'فرق API التي تريد أداة واحدة لتصميم الواجهة واختبارها ونشر مرجع تفاعلي، لا منصة عامة لوثائق المنتج فقط.',
-    arabic: 'تملك صفحات ودروسًا عربية كثيرة، ما يمنحها حضورًا واضحًا في نتائج البحث العربية المتعلقة بتوثيق API والبدائل.',
-    model: 'خدمة مُدارة بخطط متعددة؛ راجع صفحة السعر الرسمية قبل اتخاذ قرار لأن هذه المقارنة لا تنقل رقمًا لم نتحقق منه.',
-    caveat: 'المقارنة مع Nibleaf جزئية: Apidog منصة دورة حياة API، بينما Nibleaf يركز على موقع وثائق المنتج والتحرير والنشر متعدد اللغات.',
-  },
-];
+type T = (key: MessageKey, variables?: MessageVariables) => string;
+
+function useArabicT() {
+  const { locale, t } = useLocale();
+  return useCallback<T>((key, variables) => (locale === 'ar' ? t(key, variables) : translateFn(key, variables, 'ar')), [locale, t]);
+}
+
+function getPlatforms(t: T): Platform[] {
+  return [
+    {
+      name: 'Nibleaf',
+      sources: [
+        { href: '/pricing', label: t('marketing.arabicSeo.source.pricing') },
+        { href: 'https://github.com/lord007tn/nibleaf', label: t('marketing.arabicSeo.source.public') },
+      ],
+      summary: t('marketing.arabicSeo.platform.nibleaf.summary'),
+      bestFor: t('marketing.arabicSeo.platform.nibleaf.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.nibleaf.arabic'),
+      model: t('marketing.arabicSeo.platform.nibleaf.model'),
+      caveat: t('marketing.arabicSeo.platform.nibleaf.caveat'),
+      nibleaf: true,
+    },
+    {
+      name: 'Mintlify',
+      sources: [
+        { href: 'https://www.mintlify.com/docs/guides/internationalization', label: t('marketing.arabicSeo.source.languages') },
+        { href: 'https://www.mintlify.com/pricing', label: t('marketing.arabicSeo.source.pricing') },
+      ],
+      summary: t('marketing.arabicSeo.platform.mintlify.summary'),
+      bestFor: t('marketing.arabicSeo.platform.mintlify.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.mintlify.arabic'),
+      model: t('marketing.arabicSeo.platform.mintlify.model'),
+      caveat: t('marketing.arabicSeo.platform.mintlify.caveat'),
+    },
+    {
+      name: 'GitBook',
+      sources: [
+        {
+          href: 'https://gitbook.com/docs/publishing-documentation/customization/extra-configuration',
+          label: t('marketing.arabicSeo.source.interfaceLocale'),
+        },
+        {
+          href: 'https://gitbook.com/docs/publishing-documentation/site-structure/variants',
+          label: t('marketing.arabicSeo.source.languagesVersions'),
+        },
+        { href: 'https://www.gitbook.com/pricing', label: t('marketing.arabicSeo.source.pricing') },
+      ],
+      summary: t('marketing.arabicSeo.platform.gitbook.summary'),
+      bestFor: t('marketing.arabicSeo.platform.gitbook.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.gitbook.arabic'),
+      model: t('marketing.arabicSeo.platform.gitbook.model'),
+      caveat: t('marketing.arabicSeo.platform.gitbook.caveat'),
+    },
+    {
+      name: 'Docusaurus',
+      sources: [{ href: 'https://docusaurus.io/docs/i18n/introduction', label: t('marketing.arabicSeo.source.officialDocs') }],
+      summary: t('marketing.arabicSeo.platform.docusaurus.summary'),
+      bestFor: t('marketing.arabicSeo.platform.docusaurus.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.docusaurus.arabic'),
+      model: t('marketing.arabicSeo.platform.docusaurus.model'),
+      caveat: t('marketing.arabicSeo.platform.docusaurus.caveat'),
+    },
+    {
+      name: 'Material for MkDocs',
+      sources: [
+        { href: 'https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/', label: t('marketing.arabicSeo.source.officialDocs') },
+      ],
+      summary: t('marketing.arabicSeo.platform.mkdocs.summary'),
+      bestFor: t('marketing.arabicSeo.platform.mkdocs.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.mkdocs.arabic'),
+      model: t('marketing.arabicSeo.platform.mkdocs.model'),
+      caveat: t('marketing.arabicSeo.platform.mkdocs.caveat'),
+    },
+    {
+      name: 'Apidog',
+      sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools-ar/', label: t('marketing.arabicSeo.source.official') }],
+      summary: t('marketing.arabicSeo.platform.apidog.summary'),
+      bestFor: t('marketing.arabicSeo.platform.apidog.bestFor'),
+      arabic: t('marketing.arabicSeo.platform.apidog.arabic'),
+      model: t('marketing.arabicSeo.platform.apidog.model'),
+      caveat: t('marketing.arabicSeo.platform.apidog.caveat'),
+    },
+  ];
+}
 
 function ArabicShell({ children }: { children: ReactNode }) {
+  const t = useArabicT();
   return (
     <div className="min-h-screen bg-background text-foreground" dir="rtl">
       <div className="border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs">
-        Nibleaf Cloud مجاني خلال المرحلة التجريبية، أو استضف المنظومة الكاملة من المصدر العام بترخيص AGPL-3.0.
+        {t('marketing.arabicSeo.shell.notice')}
       </div>
       <header className="sticky top-0 z-40 border-border/70 border-b bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
-          <a aria-label="الرئيسية العربية لـ Nibleaf" className="flex items-center gap-2 font-semibold text-lg tracking-tight" href="/ar">
+          <a
+            aria-label={t('marketing.arabicSeo.shell.homeLabel')}
+            className="flex items-center gap-2 font-semibold text-lg tracking-tight"
+            href="/ar"
+          >
             <NibleafMark aria-hidden="true" className="size-8" />
             <NibleafWordmark aria-hidden="true" />
           </a>
-          <nav aria-label="التنقل العربي" className="ms-8 hidden items-center gap-6 text-muted-foreground text-sm md:flex">
+          <nav aria-label={t('marketing.arabicSeo.shell.navLabel')} className="ms-8 hidden items-center gap-6 text-muted-foreground text-sm md:flex">
             <a className="hover:text-foreground" href="/ar#features">
-              المزايا
+              {t('marketing.arabicSeo.shell.features')}
             </a>
             <a className="hover:text-foreground" href="/ar/documentation-platforms">
-              مقارنة المنصات
+              {t('marketing.arabicSeo.shell.comparison')}
             </a>
             <a className="hover:text-foreground" href="/blog/arabic-technical-documentation-rtl-checklist">
-              دليل RTL
+              {t('marketing.arabicSeo.shell.rtlGuide')}
             </a>
             <a className="hover:text-foreground" href="https://docs.nibleaf.com">
-              التوثيق
+              {t('marketing.arabicSeo.shell.docs')}
             </a>
           </nav>
           <div className="ms-auto flex items-center gap-2">
@@ -121,7 +143,7 @@ function ArabicShell({ children }: { children: ReactNode }) {
               href="/sign-up"
               onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'header' })}
             >
-              ابدأ مجانًا
+              {t('marketing.arabicSeo.cta.startFree')}
             </a>
           </div>
         </div>
@@ -133,26 +155,24 @@ function ArabicShell({ children }: { children: ReactNode }) {
             <div className="flex items-center gap-2 font-semibold">
               <NibleafMark className="size-6" /> Nibleaf
             </div>
-            <p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">
-              منصة توثيق بصرية فوق Markdown، صُممت للعربية وRTL من المحرر إلى البحث والموقع المنشور.
-            </p>
+            <p className="mt-3 max-w-sm text-muted-foreground leading-relaxed">{t('marketing.arabicSeo.shell.footerDescription')}</p>
           </div>
           <div>
-            <p className="font-medium">روابط مفيدة</p>
+            <p className="font-medium">{t('marketing.arabicSeo.shell.usefulLinks')}</p>
             <div className="mt-3 grid gap-2 text-muted-foreground">
               <a className="hover:text-foreground" href="/pricing">
-                الأسعار الحالية
+                {t('marketing.arabicSeo.shell.currentPricing')}
               </a>
               <a className="hover:text-foreground" href="/self-hosting">
-                دليل الاستضافة الذاتية
+                {t('marketing.arabicSeo.shell.selfHosting')}
               </a>
               <a className="hover:text-foreground" href="/tools/rtl-documentation-readiness">
-                أداة فحص جاهزية RTL
+                {t('marketing.arabicSeo.shell.rtlTool')}
               </a>
             </div>
           </div>
           <div>
-            <p className="font-medium">المصدر والشفافية</p>
+            <p className="font-medium">{t('marketing.arabicSeo.shell.sourceTransparency')}</p>
             <div className="mt-3 grid gap-2 text-muted-foreground">
               <a
                 className="inline-flex items-center gap-2 hover:text-foreground"
@@ -160,13 +180,13 @@ function ArabicShell({ children }: { children: ReactNode }) {
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                المستودع العام
+                {t('marketing.arabicSeo.shell.publicRepository')}
               </a>
               <a className="hover:text-foreground" href="/about">
-                عن Nibleaf ومنهج المقارنات
+                {t('marketing.arabicSeo.shell.aboutComparisons')}
               </a>
               <a className="hover:text-foreground" href="/contact">
-                تصحيح معلومة أو ترجمة
+                {t('marketing.arabicSeo.shell.correctInformation')}
               </a>
             </div>
           </div>
@@ -177,6 +197,13 @@ function ArabicShell({ children }: { children: ReactNode }) {
 }
 
 export function ArabicLandingPage() {
+  const t = useArabicT();
+  const features: Array<{ icon: LucideIcon; title: string; body: string }> = [
+    { icon: Languages, title: t('marketing.arabicSeo.landing.featureLanguageTitle'), body: t('marketing.arabicSeo.landing.featureLanguageBody') },
+    { icon: Search, title: t('marketing.arabicSeo.landing.featureSearchTitle'), body: t('marketing.arabicSeo.landing.featureSearchBody') },
+    { icon: Server, title: t('marketing.arabicSeo.landing.featureHostingTitle'), body: t('marketing.arabicSeo.landing.featureHostingBody') },
+    { icon: ShieldCheck, title: t('marketing.arabicSeo.landing.featureOwnershipTitle'), body: t('marketing.arabicSeo.landing.featureOwnershipBody') },
+  ];
   return (
     <ArabicShell>
       <section className="relative overflow-hidden border-border border-b">
@@ -192,63 +219,60 @@ export function ArabicLandingPage() {
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-[1fr_0.82fr] lg:py-28">
           <div>
             <p className="inline-flex rounded-full border border-border bg-card px-3 py-1 font-medium text-primary text-xs">
-              منصة توثيق عربية وRTL فوق Markdown
+              {t('marketing.arabicSeo.landing.eyebrow')}
             </p>
             <h1 className="mt-6 text-balance font-semibold text-5xl leading-[1.18] tracking-tight sm:text-6xl">
-              اكتب وثائق المنتج بالعربية من دون أن تتنازل عن Markdown.
+              {t('marketing.arabicSeo.landing.heading')}
             </h1>
-            <p className="mt-6 max-w-2xl text-balance text-lg text-muted-foreground leading-8">
-              Nibleaf يجمع محررًا بصريًا قريبًا من Notion، ومحتوى قابلًا للتصدير بصيغة Markdown، ونشرًا بإصدارات ثابتة، وبحثًا عربيًا، وشجرة صفحات مستقلة لكل
-              لغة. استخدم السحابة مجانًا خلال المرحلة التجريبية أو شغّل المنظومة الكاملة على بنيتك.
-            </p>
+            <p className="mt-6 max-w-2xl text-balance text-lg text-muted-foreground leading-8">{t('marketing.arabicSeo.landing.intro')}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a
                 className={`${primaryButton} group`}
                 href="/sign-up"
                 onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' })}
               >
-                أنشئ حسابًا مجانيًا <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
+                {t('marketing.arabicSeo.cta.createFree')} <ArrowLeft className="size-4 transition-transform group-hover:-translate-x-0.5" />
               </a>
               <a
                 className="inline-flex h-11 items-center rounded-md border border-border px-5 font-medium text-sm hover:bg-muted"
                 href="/ar/documentation-platforms"
                 onClick={() => sendMarketingCtaEvent({ destination: 'comparison', language: 'ar', placement: 'hero' })}
               >
-                قارن منصات التوثيق
+                {t('marketing.arabicSeo.cta.compare')}
               </a>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-muted-foreground text-sm">
               <span className="inline-flex items-center gap-2">
-                <Check className="size-4 text-primary" /> لا تحتاج بطاقة دفع
+                <Check className="size-4 text-primary" /> {t('marketing.arabicSeo.landing.noCard')}
               </span>
               <span className="inline-flex items-center gap-2">
-                <Check className="size-4 text-primary" /> المحتوى يبقى Markdown
+                <Check className="size-4 text-primary" /> {t('marketing.arabicSeo.landing.markdownOwned')}
               </span>
               <span className="inline-flex items-center gap-2">
-                <Check className="size-4 text-primary" /> العربية وRTL من الأساس
+                <Check className="size-4 text-primary" /> {t('marketing.arabicSeo.landing.arabicFirst')}
               </span>
             </div>
           </div>
           <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/5">
             <div className="flex items-center justify-between border-border border-b pb-4 text-sm">
-              <span className="font-medium">صفحة عربية حقيقية</span>
-              <span className="rounded-md bg-primary/10 px-2 py-1 text-primary">العربية · RTL</span>
+              <span className="font-medium">{t('marketing.arabicSeo.landing.demoTitle')}</span>
+              <span className="rounded-md bg-primary/10 px-2 py-1 text-primary">{t('marketing.arabicSeo.landing.demoBadge')}</span>
             </div>
             <div className="mt-6 space-y-5">
               <div>
-                <p className="text-muted-foreground text-xs">العنوان</p>
-                <p className="mt-1 font-semibold text-xl">ابدأ التكامل مع واجهة API</p>
+                <p className="text-muted-foreground text-xs">{t('marketing.arabicSeo.landing.demoLabel')}</p>
+                <p className="mt-1 font-semibold text-xl">{t('marketing.arabicSeo.landing.demoHeading')}</p>
               </div>
               <p className="text-muted-foreground leading-7">
-                شغّل الأمر{' '}
+                {t('marketing.arabicSeo.landing.demoRun')}{' '}
                 <code className="rounded bg-muted px-1.5 py-0.5" dir="ltr">
                   curl https://api.example.com/v1
                 </code>{' '}
-                ثم انسخ المفتاح إلى المتغير{' '}
+                {t('marketing.arabicSeo.landing.demoCopy')}{' '}
                 <code className="rounded bg-muted px-1.5 py-0.5" dir="ltr">
                   API_KEY
                 </code>
-                .
+                {t('marketing.arabicSeo.landing.demoPeriod')}
               </p>
               <div className="rounded-xl border border-border bg-background p-4" dir="ltr">
                 <code>
@@ -257,7 +281,7 @@ export function ArabicLandingPage() {
                 </code>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Search className="size-4" /> جرّب البحث: إعدادات · الاعدادات · للمستخدمين
+                <Search className="size-4" /> {t('marketing.arabicSeo.landing.demoSearch')}
               </div>
             </div>
           </div>
@@ -266,43 +290,32 @@ export function ArabicLandingPage() {
 
       <section className="mx-auto max-w-6xl px-6 py-24" id="features">
         <div className="max-w-3xl">
-          <p className="font-medium text-primary text-sm">العربية ليست ترجمة للواجهة فقط</p>
-          <h2 className="mt-3 font-semibold text-4xl tracking-tight">اتجاه وكتابة وبحث ونشر في نظام واحد</h2>
-          <p className="mt-5 text-lg text-muted-foreground leading-8">
-            قد تعرض منصة ما فقرة عربية من اليمين إلى اليسار، لكن تجربة التوثيق الكاملة تشمل المحرر، وشجرة الصفحات، والتنقل، والشيفرة داخل النص، ونتائج
-            البحث، ووسوم اللغة لمحركات البحث. صُممت هذه الطبقات معًا في Nibleaf.
-          </p>
+          <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.landing.featuresEyebrow')}</p>
+          <h2 className="mt-3 font-semibold text-4xl tracking-tight">{t('marketing.arabicSeo.landing.featuresHeading')}</h2>
+          <p className="mt-5 text-lg text-muted-foreground leading-8">{t('marketing.arabicSeo.landing.featuresBody')}</p>
         </div>
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            [Languages, 'لغة واتجاه', 'lang="ar" وdir="rtl" في الصفحة المنشورة، مع شجرة وعناوين تنقل خاصة بالعربية.'],
-            [Search, 'بحث عربي', 'تقطيع عربي وتطبيع للتشكيل والتطويل وصور الألف، مع مسار صرفي خفيف ومعلن الحدود.'],
-            [Server, 'سحابة أو استضافة ذاتية', 'نسخة سحابية مجانية خلال المرحلة التجريبية، أو Compose للمنظومة الكاملة من المصدر العام.'],
-            [ShieldCheck, 'ملكية وشفافية', 'تصدير Markdown، وإصدارات نشر ثابتة، ومقارنات تذكر ما لا يقدمه المنتج بوضوح.'],
-          ].map(([Icon, title, body]) => {
-            const FeatureIcon = Icon as typeof Languages;
-            return (
-              <article className="rounded-xl border border-border bg-card p-6" key={title as string}>
-                <FeatureIcon className="size-6 text-primary" />
-                <h3 className="mt-5 font-semibold text-lg">{title as string}</h3>
-                <p className="mt-2 text-muted-foreground text-sm leading-7">{body as string}</p>
-              </article>
-            );
-          })}
+          {features.map(({ icon: FeatureIcon, title, body }) => (
+            <article className="rounded-xl border border-border bg-card p-6" key={title}>
+              <FeatureIcon className="size-6 text-primary" />
+              <h3 className="mt-5 font-semibold text-lg">{title}</h3>
+              <p className="mt-2 text-muted-foreground text-sm leading-7">{body}</p>
+            </article>
+          ))}
         </div>
       </section>
 
       <section className="border-border border-y bg-card/50">
         <div className="mx-auto grid max-w-6xl gap-12 px-6 py-24 lg:grid-cols-2">
           <div>
-            <p className="font-medium text-primary text-sm">اختر على أساس سير العمل</p>
-            <h2 className="mt-3 font-semibold text-3xl tracking-tight">متى يكون Nibleaf مناسبًا؟</h2>
+            <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.landing.fitEyebrow')}</p>
+            <h2 className="mt-3 font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.landing.fitHeading')}</h2>
             <ul className="mt-6 space-y-4 text-muted-foreground leading-7">
               {[
-                'عندما يكتب المطورون والكتّاب ومديرو المنتج في المساحة نفسها، لكن يجب أن يبقى المحتوى Markdown قابلًا للنقل.',
-                'عندما تحتاج العربية إلى تجربة كاملة في المحرر والقارئ والبحث، لا مجرد محاذاة فقرة.',
-                'عندما تريد خيارًا مُدارًا اليوم مع مسار حقيقي للاستضافة الذاتية لاحقًا.',
-                'عندما تفضّل نشرًا بإصدارات ثابتة ومعاينات ومراجعة GitHub على تعديل الموقع الحي مباشرة.',
+                t('marketing.arabicSeo.landing.fitOne'),
+                t('marketing.arabicSeo.landing.fitTwo'),
+                t('marketing.arabicSeo.landing.fitThree'),
+                t('marketing.arabicSeo.landing.fitFour'),
               ].map((item) => (
                 <li className="flex gap-3" key={item}>
                   <Check className="mt-1 size-5 shrink-0 text-primary" />
@@ -312,14 +325,14 @@ export function ArabicLandingPage() {
             </ul>
           </div>
           <div>
-            <p className="font-medium text-primary text-sm">اختر المنافس عندما يناسبك أكثر</p>
-            <h2 className="mt-3 font-semibold text-3xl tracking-tight">متى لا يكون Nibleaf الخيار الأفضل؟</h2>
+            <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.landing.alternativeEyebrow')}</p>
+            <h2 className="mt-3 font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.landing.alternativeHeading')}</h2>
             <ul className="mt-6 space-y-4 text-muted-foreground leading-7">
               {[
-                'اختر Mintlify إذا كانت ميزات الوكيل والمساعد بالذكاء الاصطناعي والتكاملات المُدارة أولوية فورية.',
-                'اختر GitBook إذا كنت تحتاج مزامنة GitLab ثنائية الاتجاه أو المحتوى المتكيف أو SAML اليوم.',
-                'اختر Docusaurus أو Material for MkDocs إذا كان فريقك هندسيًا بالكامل ويريد موقعًا ثابتًا يتحكم بكل سطر في بنائه.',
-                'اختر Apidog إذا كانت حاجتك الأساسية إدارة دورة حياة API من التصميم والاختبار إلى المحاكاة والتوثيق.',
+                t('marketing.arabicSeo.landing.alternativeMintlify'),
+                t('marketing.arabicSeo.landing.alternativeGitbook'),
+                t('marketing.arabicSeo.landing.alternativeStatic'),
+                t('marketing.arabicSeo.landing.alternativeApidog'),
               ].map((item) => (
                 <li className="flex gap-3" key={item}>
                   <Check className="mt-1 size-5 shrink-0 text-muted-foreground" />
@@ -332,25 +345,22 @@ export function ArabicLandingPage() {
       </section>
 
       <section className="mx-auto max-w-4xl px-6 py-24 text-center">
-        <h2 className="text-balance font-semibold text-4xl tracking-tight">ابدأ بصفحة عربية واحدة واختبرها جيدًا</h2>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground leading-8">
-          أنشئ صفحة، واخلط فيها العربية مع أمر ومسار وجدول، ثم اختبرها على الهاتف وفي البحث قبل نقل بقية المحتوى. أداة Nibleaf المجانية تفحص HTML
-          محليًا في متصفحك ولا ترفع الملف إلى خادمنا.
-        </p>
+        <h2 className="text-balance font-semibold text-4xl tracking-tight">{t('marketing.arabicSeo.landing.resourceHeading')}</h2>
+        <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground leading-8">{t('marketing.arabicSeo.landing.resourceBody')}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <a
             className={primaryButton}
             href="/tools/rtl-documentation-readiness"
             onClick={() => sendMarketingCtaEvent({ destination: 'rtl_tool', language: 'ar', placement: 'resource_bridge' })}
           >
-            افحص جاهزية RTL
+            {t('marketing.arabicSeo.cta.checkRtl')}
           </a>
           <a
             className="inline-flex h-11 items-center rounded-md border border-border px-5 font-medium text-sm hover:bg-muted"
             href="/blog/arabic-technical-documentation-rtl-checklist"
             onClick={() => sendMarketingCtaEvent({ destination: 'rtl_guide', language: 'ar', placement: 'resource_bridge' })}
           >
-            اقرأ قائمة الفحص
+            {t('marketing.arabicSeo.cta.readChecklist')}
           </a>
         </div>
       </section>
@@ -359,43 +369,36 @@ export function ArabicLandingPage() {
 }
 
 export function ArabicDocumentationPlatformsPage() {
+  const t = useArabicT();
+  const platforms = getPlatforms(t);
   return (
     <ArabicShell>
       <article>
         <header className="border-border border-b">
           <div className="mx-auto max-w-4xl px-6 py-20">
-            <p className="font-medium text-primary text-sm">دليل شراء ومقارنة مستقلة المصادر</p>
+            <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.comparison.eyebrow')}</p>
             <h1 className="mt-4 text-balance font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
-              أفضل منصات التوثيق للفرق العربية: مقارنة RTL وMarkdown والاستضافة
+              {t('marketing.arabicSeo.comparison.heading')}
             </h1>
-            <p className="mt-6 text-lg text-muted-foreground leading-8">
-              لا توجد منصة واحدة أفضل للجميع. Nibleaf مناسب لفريق يريد محررًا بصريًا فوق Markdown ودعمًا عربيًا كاملاً وخيار استضافة ذاتية. Mintlify أقوى
-              في الذكاء الاصطناعي المُدار، وGitBook ناضج في التعاون المؤسسي، وDocusaurus وMaterial for MkDocs يمنحان الفريق الهندسي تحكمًا واسعًا،
-              وApidog يتفوق عندما تكون دورة حياة API هي المشكلة الأساسية.
-            </p>
+            <p className="mt-6 text-lg text-muted-foreground leading-8">{t('marketing.arabicSeo.comparison.intro')}</p>
             <p className="mt-5 border-border border-t pt-5 text-muted-foreground text-sm leading-7">
-              الإفصاح: نحن نبني Nibleaf، لذلك لنا مصلحة تجارية واضحة. راجعنا المصادر الرسمية لكل منافس في {REVIEWED_ON}، وربطناها مباشرة، وذكرنا
-              الحالات التي يكون فيها المنافس اختيارًا أفضل. الأسعار والميزات تتغير؛ افحص المصدر قبل الشراء.
+              {t('marketing.arabicSeo.comparison.disclosure', { reviewedOn: t('marketing.arabicSeo.comparison.reviewedOn') })}
             </p>
           </div>
         </header>
 
         <section className="mx-auto max-w-4xl px-6 py-16">
-          <h2 className="font-semibold text-3xl tracking-tight">كيف أجرينا المقارنة؟</h2>
-          <p className="mt-5 text-muted-foreground leading-8">
-            قارنّا ستة خيارات تخدم نوايا مختلفة: منصة توثيق مُدارة، ومساحة تحرير تعاونية، ومولدات مواقع ثابتة، ومنصة دورة حياة API. لم نعامل ظهور كلمة
-            «العربية» في قائمة اللغات على أنه دليل كافٍ. بحثنا عن اتجاه الصفحة، وسلوك كتل المحتوى، وبنية اللغات، ووسوم hreflang، وسير التحرير، وملكية
-            Markdown، ونموذج الاستضافة، والسعر المنشور. لم نختبر حسابًا مدفوعًا لدى كل منافس؛ عندما اعتمدنا على التوثيق الرسمي نقول ذلك صراحة.
-          </p>
+          <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.methodHeading')}</h2>
+          <p className="mt-5 text-muted-foreground leading-8">{t('marketing.arabicSeo.comparison.methodBody')}</p>
           <div className="mt-8 overflow-x-auto rounded-xl border border-border bg-card">
             <table className="w-full min-w-[46rem] text-sm">
-              <caption className="sr-only">ملخص مقارنة منصات التوثيق للفرق العربية</caption>
+              <caption className="sr-only">{t('marketing.arabicSeo.comparison.tableCaption')}</caption>
               <thead>
                 <tr className="border-border border-b bg-muted/50">
-                  <th className="px-4 py-3 text-start">المنصة</th>
-                  <th className="px-4 py-3 text-start">الأنسب لـ</th>
-                  <th className="px-4 py-3 text-start">حالة العربية وRTL</th>
-                  <th className="px-4 py-3 text-start">نموذج التشغيل</th>
+                  <th className="px-4 py-3 text-start">{t('marketing.arabicSeo.comparison.platform')}</th>
+                  <th className="px-4 py-3 text-start">{t('marketing.arabicSeo.comparison.bestFor')}</th>
+                  <th className="px-4 py-3 text-start">{t('marketing.arabicSeo.comparison.arabicStatus')}</th>
+                  <th className="px-4 py-3 text-start">{t('marketing.arabicSeo.comparison.operatingModel')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -414,7 +417,7 @@ export function ArabicDocumentationPlatformsPage() {
 
         <section className="border-border border-y bg-card/40">
           <div className="mx-auto max-w-4xl px-6 py-16">
-            <h2 className="font-semibold text-3xl tracking-tight">الخيارات الستة، بلا إخفاء للمقايضات</h2>
+            <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.optionsHeading')}</h2>
             <div className="mt-10 space-y-6">
               {platforms.map((platform, index) => (
                 <section
@@ -424,7 +427,11 @@ export function ArabicDocumentationPlatformsPage() {
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="font-mono text-muted-foreground/50">{String(index + 1).padStart(2, '0')}</span>
                     <h3 className="font-semibold text-xl">{platform.name}</h3>
-                    {platform.nibleaf ? <span className="rounded-full bg-primary px-2.5 py-1 text-primary-foreground text-xs">منتجنا</span> : null}
+                    {platform.nibleaf ? (
+                      <span className="rounded-full bg-primary px-2.5 py-1 text-primary-foreground text-xs">
+                        {t('marketing.arabicSeo.comparison.ourProduct')}
+                      </span>
+                    ) : null}
                     {platform.sources.map((source) => {
                       const external = source.href.startsWith('http');
                       return (
@@ -443,11 +450,11 @@ export function ArabicDocumentationPlatformsPage() {
                   <p className="mt-4 text-muted-foreground leading-8">{platform.summary}</p>
                   <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
                     <div>
-                      <dt className="font-medium">اختره عندما</dt>
+                      <dt className="font-medium">{t('marketing.arabicSeo.comparison.chooseWhen')}</dt>
                       <dd className="mt-1 text-muted-foreground leading-7">{platform.bestFor}</dd>
                     </div>
                     <div>
-                      <dt className="font-medium">انتبه إلى</dt>
+                      <dt className="font-medium">{t('marketing.arabicSeo.comparison.watchFor')}</dt>
                       <dd className="mt-1 text-muted-foreground leading-7">{platform.caveat}</dd>
                     </div>
                   </dl>
@@ -458,21 +465,15 @@ export function ArabicDocumentationPlatformsPage() {
         </section>
 
         <section className="mx-auto max-w-4xl px-6 py-16">
-          <h2 className="font-semibold text-3xl tracking-tight">كيف تختار منصة توثيق عربية؟</h2>
+          <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.criteriaHeading')}</h2>
           <div className="mt-8 grid gap-6 sm:grid-cols-2">
             {[
-              ['اختبر سطرًا مختلطًا', 'اكتب جملة عربية فيها أمر CLI ومسار ورقم إصدار. يجب أن تبقى الشيفرة LTR وقابلة للنسخ، بينما تظل الجملة RTL.'],
-              [
-                'اختبر أكثر من فقرة',
-                'راجع القوائم والجداول والتنبيهات والتنقل و«السابق/التالي» والبحث على الهاتف. نجاح الفقرات وحدها لا يعني نجاح RTL.',
-              ],
-              [
-                'افصل التحرير عن القراءة',
-                'قد يكون الموقع المنشور جيدًا بينما يظل المحرر أو التعليقات أو شجرة الصفحات صعبة بالعربية. اختبر دورة العمل كاملة.',
-              ],
-              ['راجع ملكية المحتوى', 'اسأل أين يعيش المصدر، وكيف تصدّره، وما الذي يحدث للروابط والوسائط والمكونات إن قررت المغادرة.'],
-              ['قارن التكلفة الكاملة', 'السعر ليس الاشتراك فقط: أضف المقاعد، والبحث، والترجمة، والاستضافة، والنسخ الاحتياطي، ووقت الصيانة.'],
-              ['انشر تدريجيًا', 'ابدأ بالبدء السريع والتثبيت وحل الأخطاء الأكثر شيوعًا. عشر صفحات مراجعة أفضل من خمسين ترجمة آلية قديمة.'],
+              [t('marketing.arabicSeo.comparison.criteriaMixedTitle'), t('marketing.arabicSeo.comparison.criteriaMixedBody')],
+              [t('marketing.arabicSeo.comparison.criteriaBlocksTitle'), t('marketing.arabicSeo.comparison.criteriaBlocksBody')],
+              [t('marketing.arabicSeo.comparison.criteriaWorkflowTitle'), t('marketing.arabicSeo.comparison.criteriaWorkflowBody')],
+              [t('marketing.arabicSeo.comparison.criteriaOwnershipTitle'), t('marketing.arabicSeo.comparison.criteriaOwnershipBody')],
+              [t('marketing.arabicSeo.comparison.criteriaCostTitle'), t('marketing.arabicSeo.comparison.criteriaCostBody')],
+              [t('marketing.arabicSeo.comparison.criteriaRolloutTitle'), t('marketing.arabicSeo.comparison.criteriaRolloutBody')],
             ].map(([title, body]) => (
               <div className="rounded-xl border border-border bg-card p-6" key={title}>
                 <h3 className="font-semibold">{title}</h3>
@@ -484,56 +485,41 @@ export function ArabicDocumentationPlatformsPage() {
 
         <section className="border-border border-y bg-card/40">
           <div className="mx-auto max-w-4xl px-6 py-16">
-            <h2 className="font-semibold text-3xl tracking-tight">توصية سريعة حسب نوع الفريق</h2>
+            <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.recommendationHeading')}</h2>
             <div className="mt-8 space-y-5 text-muted-foreground leading-8">
               <p>
-                <strong className="text-foreground">فريق منتج عربي متعدد التخصصات:</strong> ابدأ بـ Nibleaf إذا كانت أولوية الفريق محررًا بصريًا
-                وMarkdown ودعم RTL في دورة العمل كاملة. جرّب صفحة فعلية قبل نقل المحتوى.
+                <strong className="text-foreground">{t('marketing.arabicSeo.comparison.recommendationProductLabel')}</strong>{' '}
+                {t('marketing.arabicSeo.comparison.recommendationProductBody')}
               </p>
               <p>
-                <strong className="text-foreground">فريق يحتاج AI مُدارًا الآن:</strong> Mintlify هو المرشح الأقوى في هذه المجموعة، لكن راجع سعر Pro
-                وحدود الاعتمادات وخيار الاستضافة المؤسسي كما تصفه الشركة.
+                <strong className="text-foreground">{t('marketing.arabicSeo.comparison.recommendationAiLabel')}</strong>{' '}
+                {t('marketing.arabicSeo.comparison.recommendationAiBody')}
               </p>
               <p>
-                <strong className="text-foreground">مؤسسة تعتمد GitLab والمحتوى المتكيف:</strong> GitBook يقدم سيرًا ناضجًا، وتوثيقه يشرح تعريب الواجهة
-                والنسخ اللغوية، لكنه لا يقدّم ضمانًا صريحًا لكل كتل RTL؛ نفّذ تجربة عربية قبل العقد.
+                <strong className="text-foreground">{t('marketing.arabicSeo.comparison.recommendationGitbookLabel')}</strong>{' '}
+                {t('marketing.arabicSeo.comparison.recommendationGitbookBody')}
               </p>
               <p>
-                <strong className="text-foreground">فريق هندسي يحب Git والبناء:</strong> Docusaurus أو Material for MkDocs خياران منطقيان. ستحصل على
-                تحكم وملكية، مقابل أن تبني الاستضافة والبحث والمراجعة والتحرير بنفسك.
+                <strong className="text-foreground">{t('marketing.arabicSeo.comparison.recommendationEngineeringLabel')}</strong>{' '}
+                {t('marketing.arabicSeo.comparison.recommendationEngineeringBody')}
               </p>
               <p>
-                <strong className="text-foreground">فريق API أولاً:</strong> Apidog مناسب عندما تحتاج التصميم والمحاكاة والاختبار والتوثيق في منتج
-                واحد. أما إن كان OpenAPI جزءًا من موقع وثائق منتج أوسع، فقارن بينه وبين مرجع Scalar المدمج في Nibleaf.
+                <strong className="text-foreground">{t('marketing.arabicSeo.comparison.recommendationApiLabel')}</strong>{' '}
+                {t('marketing.arabicSeo.comparison.recommendationApiBody')}
               </p>
             </div>
           </div>
         </section>
 
         <section className="mx-auto max-w-4xl px-6 py-16">
-          <h2 className="font-semibold text-3xl tracking-tight">أسئلة شائعة</h2>
+          <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.faqHeading')}</h2>
           <div className="mt-8 divide-y divide-border rounded-xl border border-border bg-card">
             {[
-              [
-                'ما أفضل بديل عربي لـ Mintlify؟',
-                'يعتمد على سبب المغادرة. Nibleaf مناسب للاستضافة الكاملة وMarkdown والتحرير العربي. Docusaurus وMaterial for MkDocs مناسبان لفريق هندسي يريد مولدًا ثابتًا. Apidog مناسب أكثر لدورة حياة API. لا يوجد بديل واحد يكرر كل ميزات Mintlify.',
-              ],
-              [
-                'هل Mintlify يدعم العربية وRTL؟',
-                'نعم، توثيقه الرسمي يدرج العربية ويقول إن التخطيط يتحول إلى RTL عند ضبط اللغة. مع ذلك، اختبر الجداول والتنقل والشيفرة داخل النص في مشروعك، لأن دعم اللغة في الإعداد لا يثبت كل حالة عرض.',
-              ],
-              [
-                'هل GitBook يدعم RTL بالكامل؟',
-                'لا يمكن إثبات دعم كامل من التوثيق العام الحالي. GitBook يشرح تعريب واجهة الموقع ونشر المحتوى بلغات متعددة، لكنه لا يقدّم في الصفحات المرتبطة ضمانًا صريحًا لكل القوائم والجداول وكتل الشيفرة في RTL؛ اختبر محتوى عربيًا فعليًا قبل القرار.',
-              ],
-              [
-                'هل الاستضافة الذاتية أرخص دائمًا؟',
-                'لا. قد يلغي البرنامج رسوم الترخيص لكنه ينقل إليك DNS وTLS وقاعدة البيانات والتخزين والنسخ الاحتياطي والمراقبة والترقية والاستعادة. احسب وقت التشغيل والمخاطر، لا سعر الخادم فقط.',
-              ],
-              [
-                'هل يجب ترجمة كل الوثائق قبل إطلاق العربية؟',
-                'لا. ابدأ بالصفحات التي تحل أول مشكلة للقارئ: البدء السريع والتثبيت والمصادقة والأخطاء الشائعة. اربط الترجمات المتقابلة بـ hreflang، وانشر بقية الصفحات عندما تراجعها.',
-              ],
+              [t('marketing.arabicSeo.comparison.faqAlternativeQuestion'), t('marketing.arabicSeo.comparison.faqAlternativeAnswer')],
+              [t('marketing.arabicSeo.comparison.faqMintlifyQuestion'), t('marketing.arabicSeo.comparison.faqMintlifyAnswer')],
+              [t('marketing.arabicSeo.comparison.faqGitbookQuestion'), t('marketing.arabicSeo.comparison.faqGitbookAnswer')],
+              [t('marketing.arabicSeo.comparison.faqHostingQuestion'), t('marketing.arabicSeo.comparison.faqHostingAnswer')],
+              [t('marketing.arabicSeo.comparison.faqTranslationQuestion'), t('marketing.arabicSeo.comparison.faqTranslationAnswer')],
             ].map(([question, answer]) => (
               <details className="group px-6 py-1 open:bg-muted/30" key={question}>
                 <summary className="flex list-none items-center justify-between gap-4 py-5 font-medium">
@@ -550,24 +536,22 @@ export function ArabicDocumentationPlatformsPage() {
 
         <section className="mx-auto max-w-5xl px-6 pb-24">
           <div className="rounded-2xl bg-foreground px-8 py-14 text-center text-background">
-            <h2 className="font-semibold text-3xl tracking-tight">اختبر قرارك على محتوى عربي حقيقي</h2>
-            <p className="mx-auto mt-4 max-w-2xl text-background/75 leading-7">
-              أنشئ مشروعًا مجانيًا في Nibleaf، وانشر صفحة اختبار مختلطة الاتجاه، ثم قارنها بالمنصة التي تستخدمها اليوم. لا تحتاج بطاقة دفع.
-            </p>
+            <h2 className="font-semibold text-3xl tracking-tight">{t('marketing.arabicSeo.comparison.finalHeading')}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-background/75 leading-7">{t('marketing.arabicSeo.comparison.finalBody')}</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <a
                 className={`${primaryButton} group`}
                 href="/sign-up"
                 onClick={() => sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'final' })}
               >
-                ابدأ مجانًا <ArrowLeft className="size-4" />
+                {t('marketing.arabicSeo.cta.startFree')} <ArrowLeft className="size-4" />
               </a>
               <a
                 className="inline-flex h-11 items-center rounded-md border border-background/30 px-5 font-medium text-sm hover:bg-background/10"
                 href="/tools/rtl-documentation-readiness"
                 onClick={() => sendMarketingCtaEvent({ destination: 'rtl_tool', language: 'ar', placement: 'final' })}
               >
-                افحص HTML موجودًا
+                {t('marketing.arabicSeo.cta.checkExistingHtml')}
               </a>
             </div>
           </div>

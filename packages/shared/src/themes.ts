@@ -445,6 +445,7 @@ export const themeContrastIssues = (theme: ResolvedTheme): ThemeContrastIssue[] 
 };
 
 const dangerousKeys = new Set(['__proto__', 'prototype', 'constructor']);
+const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
 
 export const inspectThemeTemplateInput = (input: unknown): { ok: true } | { ok: false; message: string } => {
   let encoded: string;
@@ -461,10 +462,17 @@ export const inspectThemeTemplateInput = (input: unknown): { ok: true } | { ok: 
     nodes += 1;
     if (nodes > MAX_THEME_TEMPLATE_NODES) return `Theme template exceeds the ${MAX_THEME_TEMPLATE_NODES}-node complexity limit.`;
     if (depth > MAX_THEME_TEMPLATE_DEPTH) return `Theme template exceeds the maximum depth of ${MAX_THEME_TEMPLATE_DEPTH}.`;
-    if (!value || typeof value !== 'object') return null;
-    for (const key of Object.keys(value)) {
+    if (Array.isArray(value)) {
+      for (const child of value) {
+        const issue = visit(child, depth + 1);
+        if (issue) return issue;
+      }
+      return null;
+    }
+    if (!isPlainObject(value)) return null;
+    for (const [key, child] of Object.entries(value)) {
       if (dangerousKeys.has(key)) return `Theme template contains the unsafe key "${key}".`;
-      const issue = visit((value as Record<string, unknown>)[key], depth + 1);
+      const issue = visit(child, depth + 1);
       if (issue) return issue;
     }
     return null;
@@ -475,11 +483,11 @@ export const inspectThemeTemplateInput = (input: unknown): { ok: true } | { ok: 
 
 const sorted = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sorted);
-  if (!value || typeof value !== 'object') return value;
+  if (!isPlainObject(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
       .sort()
-      .map((key) => [key, sorted((value as Record<string, unknown>)[key])]),
+      .map((key) => [key, sorted(value[key])]),
   );
 };
 
@@ -497,14 +505,12 @@ export const themeOwnedConfig = (config: Record<string, unknown> | null | undefi
 };
 
 const deepMerge = (current: unknown, incoming: unknown): unknown => {
-  if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) return incoming;
-  const base = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
+  if (!isPlainObject(incoming)) return incoming;
+  const base = isPlainObject(current) ? current : {};
   return Object.fromEntries(
     [...new Set([...Object.keys(base), ...Object.keys(incoming)])].map((key) => [
       key,
-      key in (incoming as Record<string, unknown>)
-        ? deepMerge((base as Record<string, unknown>)[key], (incoming as Record<string, unknown>)[key])
-        : (base as Record<string, unknown>)[key],
+      key in incoming ? deepMerge(base[key], incoming[key]) : base[key],
     ]),
   );
 };
@@ -520,8 +526,8 @@ export const applyThemeTemplateConfig = (
 };
 
 const flat = (value: unknown, prefix = ''): Record<string, unknown> => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return { [prefix || '$']: value };
-  const entries = Object.entries(value as Record<string, unknown>);
+  if (!isPlainObject(value)) return { [prefix || '$']: value };
+  const entries = Object.entries(value);
   if (entries.length === 0) return { [prefix || '$']: {} };
   return Object.assign({}, ...entries.map(([key, child]) => flat(child, prefix ? `${prefix}.${key}` : key)));
 };

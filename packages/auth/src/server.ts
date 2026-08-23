@@ -1,7 +1,15 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
-import { buildTransactionalEmail, type TransactionalEmail } from '@nibleaf/email';
+import {
+  createEmailTranslator,
+  type RenderedEmail,
+  renderMemberJoinedEmail,
+  renderNewSignInEmail,
+  renderVerificationCodeEmail,
+  resolveEmailLanguage,
+} from '@nibleaf/email';
+import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
@@ -23,14 +31,14 @@ const safeEmailError = (error: unknown) => ({
 });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
-const sendMail = (to: string, email: TransactionalEmail) =>
+const sendMail = (to: string, email: RenderedEmail) =>
   createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
 /** Auth codes are required delivery: do not tell the browser a code was sent
  * until rendering succeeded and Redis accepted the email job. */
-async function deliverRequiredAuthEmail(to: string, email: Promise<TransactionalEmail>): Promise<void> {
+async function deliverRequiredAuthEmail(to: string, email: Promise<RenderedEmail>): Promise<void> {
   try {
     const message = await email;
     await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message } }), ENQUEUE_TIMEOUT_MS);
@@ -622,7 +630,7 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
     );
   });
 
-async function publishStarterSite(projectId: string, userId: string): Promise<void> {
+async function publishStarterSite(projectId: string, userId: string, locale?: string): Promise<void> {
   try {
     const last = await prisma.deployment.aggregate({ where: { projectId }, _max: { version: true } });
     const deployment = await prisma.deployment.create({
@@ -636,7 +644,7 @@ async function publishStarterSite(projectId: string, userId: string): Promise<vo
     });
     // `auto: true` marks this as a system publish for the activation funnel;
     // user-initiated publishes send `auto: false`.
-    const jobData: PublishDeploymentJobData = { deploymentId: deployment.id, projectId, auto: true };
+    const jobData: PublishDeploymentJobData = { deploymentId: deployment.id, projectId, auto: true, locale };
     await withTimeout(createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData }), ENQUEUE_TIMEOUT_MS);
     await logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: true } });
   } catch (error) {
@@ -645,7 +653,7 @@ async function publishStarterSite(projectId: string, userId: string): Promise<vo
 }
 
 /** Auto-provision a workspace + starter project so a new user lands in a usable app. */
-async function provisionWorkspace(user: { id: string; name?: string | null; email: string }): Promise<void> {
+async function provisionWorkspace(user: { id: string; name?: string | null; email: string }, locale?: string): Promise<void> {
   try {
     const existing = await prisma.member.findFirst({ where: { userId: user.id } });
     if (existing) {
@@ -672,7 +680,7 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
     await logPlatformEvent('signup_completed', { userId: user.id });
     const project = await createStarterProject(org.id);
     if (project) {
-      await publishStarterSite(project.id, user.id);
+      await publishStarterSite(project.id, user.id, locale);
     }
   } catch (error) {
     // Never block sign-up on provisioning; the user can create a workspace later.
@@ -750,19 +758,10 @@ export const auth = betterAuth({
       rateLimit: { window: 5 * 60, max: 3 },
       resendStrategy: 'rotate',
       storeOTP: 'hashed',
-      async sendVerificationOTP({ email, otp, type }) {
-        const purpose = type === 'sign-in' ? 'sign in' : type === 'change-email' ? 'change your email' : 'verify your email';
-        const subject = type === 'sign-in' ? 'Your Nibleaf sign-in code' : `Your Nibleaf code to ${purpose}`;
+      async sendVerificationOTP({ email, otp, type }, context) {
         await deliverRequiredAuthEmail(
           email,
-          buildTransactionalEmail({
-            subject,
-            preheader: `Use this one-time code to ${purpose}.`,
-            title: 'Your Nibleaf code',
-            message: `Use this one-time code to ${purpose}.`,
-            code: otp,
-            detail: 'The code expires in 10 minutes and can be used only once.',
-          }),
+          renderVerificationCodeEmail({ code: otp, purpose: type, language: resolveRequestLocale(context?.headers) }),
         );
       },
     }),
@@ -794,21 +793,27 @@ export const auth = betterAuth({
               return;
             }
             const who = user.name || user.email || 'A new member';
+            const project = await prisma.project.findFirst({
+              where: { organizationId: org.id },
+              select: { id: true, languages: { where: { isDefault: true }, select: { code: true }, take: 1 } },
+            });
+            const language = resolveEmailLanguage(project?.languages[0]?.code);
             // In-app bell: every existing member sees the join (the email below stays
             // admin-only). Each site owns its org 1:1, so the org's project is the link target.
             try {
-              const [project, others] = await Promise.all([
-                prisma.project.findFirst({ where: { organizationId: org.id }, select: { id: true } }),
-                prisma.member.findMany({ where: { organizationId: org.id, userId: { not: member.userId } }, select: { userId: true } }),
-              ]);
+              const others = await prisma.member.findMany({
+                where: { organizationId: org.id, userId: { not: member.userId } },
+                select: { userId: true },
+              });
+              const notificationT = createEmailTranslator(language);
               if (others.length > 0) {
                 await prisma.notification.createMany({
                   data: others.map((existing) => ({
                     userId: existing.userId,
                     projectId: project?.id ?? null,
                     type: 'member_joined',
-                    title: `${who} joined ${org.name}`,
-                    body: 'They accepted their invitation and can now collaborate on the docs.',
+                    title: notificationT('email.memberJoined.title', { memberName: who, organizationName: org.name }),
+                    body: notificationT('email.memberJoined.message', { memberName: who, organizationName: org.name }),
                     href: project ? `/app/projects/${project.id}/settings?section=members` : null,
                   })),
                 });
@@ -820,12 +825,10 @@ export const auth = betterAuth({
               where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: member.userId } },
               select: { user: { select: { email: true } } },
             });
-            const subject = `${who} joined ${org.name}`;
-            const email = await buildTransactionalEmail({
-              subject,
-              preheader: `${who} joined ${org.name}.`,
-              title: `New teammate in ${org.name}`,
-              message: `${who} just joined ${org.name} and can now collaborate on its documentation.`,
+            const email = await renderMemberJoinedEmail({
+              memberName: who,
+              organizationName: org.name,
+              language,
             });
             await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
           } catch {
@@ -838,7 +841,7 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: (user) => provisionWorkspace(user),
+        after: (user, context) => provisionWorkspace(user, resolveRequestLocale(context?.headers)),
       },
     },
     // New sign-in alert — only on a sign-in from an IP we haven't seen for this user
@@ -856,7 +859,7 @@ export const auth = betterAuth({
           }
           return { data: session };
         },
-        after: async (session) => {
+        after: async (session, context) => {
           try {
             // Support access is an explicit admin workflow, not a customer
             // sign-in. It has its own audit event and must not trigger a false
@@ -881,16 +884,9 @@ export const auth = betterAuth({
             if (!user?.email) {
               return;
             }
-            const where = session.ipAddress ? ` from a new location (IP ${session.ipAddress})` : ' from a new device';
             await sendMail(
               user.email,
-              await buildTransactionalEmail({
-                subject: 'New sign-in to your Nibleaf account',
-                preheader: 'We noticed a sign-in from a new device or location.',
-                title: 'New sign-in detected',
-                message: `We noticed a new sign-in to your account${where}.`,
-                detail: 'If this was not you, sign out other sessions immediately and contact support@nibleaf.com.',
-              }),
+              await renderNewSignInEmail({ ipAddress: session.ipAddress ?? undefined, language: resolveRequestLocale(context?.headers) }),
             );
           } catch {
             // never block sign-in
@@ -910,7 +906,3 @@ export const auth = betterAuth({
     },
   },
 });
-
-export type Auth = typeof auth;
-export type Session = typeof auth.$Infer.Session;
-export type AuthUser = (typeof auth.$Infer.Session)['user'];

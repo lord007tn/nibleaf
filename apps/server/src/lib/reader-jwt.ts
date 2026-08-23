@@ -1,7 +1,9 @@
 import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import got from 'got';
 import { createLocalJWKSet, createRemoteJWKSet, customFetch, errors, type JSONWebKeySet, type JWTPayload, jwtVerify } from 'jose';
+import { z } from 'zod';
 
 const ALGORITHMS = ['RS256', 'PS256', 'ES256', 'EdDSA'] as const;
 const remoteSets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
@@ -41,7 +43,20 @@ export const assertPublicJwksUrl = async (raw: string): Promise<void> => {
 
 const guardedFetch = async (url: string, options: Parameters<typeof fetch>[1]): Promise<Response> => {
   await assertPublicJwksUrl(url);
-  return fetch(url, { ...options, redirect: 'manual' });
+  const response = await got(url, {
+    followRedirect: false,
+    headers: options?.headers ? Object.fromEntries(new Headers(options.headers)) : undefined,
+    retry: { limit: 0 },
+    signal: options?.signal ?? undefined,
+    throwHttpErrors: false,
+  });
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(response.headers)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined) headers.append(name, item);
+    }
+  }
+  return new Response(response.rawBody, { headers, status: response.statusCode, statusText: response.statusMessage });
 };
 
 export interface ReaderJwtConfiguration {
@@ -58,16 +73,21 @@ export const jwtReplayHash = (issuer: string, jti: string): string => createHash
 export const claimAt = (payload: JWTPayload, path: string): unknown => {
   let value: unknown = payload;
   for (const segment of path.split('.')) {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-    value = (value as Record<string, unknown>)[segment];
+    const record = z.record(z.string(), z.unknown()).safeParse(value);
+    if (!record.success) return undefined;
+    value = record.data[segment];
   }
   return value;
 };
 
 export const claimStrings = (value: unknown): string[] => {
-  if (typeof value === 'string') return [value];
+  const string = z.string().safeParse(value);
+  if (string.success) return [string.data];
   if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === 'string');
+  return value.flatMap((item) => {
+    const parsed = z.string().safeParse(item);
+    return parsed.success ? [parsed.data] : [];
+  });
 };
 
 const publicKeySet = (configuration: ReaderJwtConfiguration) => {

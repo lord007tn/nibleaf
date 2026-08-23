@@ -1,4 +1,4 @@
-export type EmailDeliveryProvider = 'postmark' | 'smtp';
+type EmailDeliveryProvider = 'postmark' | 'smtp';
 
 export interface EmailDeliveryConfig {
   postmarkApiKey?: string;

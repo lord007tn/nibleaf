@@ -52,7 +52,7 @@ const socketAddress = (ctx: Context<HonoEnv>): string | null => {
  * Never a shared constant: worst case is 'unknown', which only happens when a
  * runtime has neither headers nor socket info.
  */
-export const resolveClientKey = (ctx: Context<HonoEnv>): string => {
+const resolveClientKey = (ctx: Context<HonoEnv>): string => {
   const peer = socketAddress(ctx);
   const hinted = ctx.req.header('x-nibleaf-client-ip')?.trim();
   const secret = envExtras.INTERNAL_API_SECRET;

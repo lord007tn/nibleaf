@@ -5,7 +5,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { GitOperationBody } from '@nibleaf/validators';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -21,65 +21,31 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { API_URL } from '@/services/api';
+import { env } from '@/env';
+import {
+  type GitConflict as Conflict,
+  useAuthorizeGitWorkflow,
+  useConnectGitWorkflow,
+  useDisconnectGitWorkflow,
+  useGitWorkflow,
+  useQueueGitOperation,
+  useResolveGitConflict,
+  useRotateGitWorkflowWebhookSecret,
+} from '@/hooks/api';
 
-type Conflict = { id: string; path: string; status: string; baseContent: string | null; oursContent: string | null; theirsContent: string | null };
-type Operation = {
-  id: string;
-  kind: string;
-  status: string;
-  commitMessage: string | null;
-  changedFiles: Array<{ path: string; status: string }> | null;
-  pullRequestNo: number | null;
-  pullRequestUrl: string | null;
-  error: string | null;
-  createdAt: string;
-  conflicts: Conflict[];
-};
-type Preview = { id: string; status: string; url: string | null; error: string | null };
-type PullRequest = { id: string; number: number; url: string; title: string; draft: boolean; state: string; previews: Preview[] };
-type GitStatus = {
-  id: string;
-  repository: string;
-  baseBranch: string;
-  headBranch: string;
-  contentPath: string;
-  credentialConfigured: boolean;
-  webhookConfigured: boolean;
-  lastSyncStatus: string;
-  lastSyncError: string | null;
-  lastSyncedAt: string | null;
-  operations: Operation[];
-  pullRequests: PullRequest[];
-  files: Array<{ path: string }>;
-};
 type GitIdentity = { login: string; name: string | null };
-
-const request = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-    credentials: 'include',
-  });
-  const body = (await response.json().catch(() => ({}))) as { data?: T; error?: { message?: string }; message?: string };
-  if (!response.ok) throw new Error(body.error?.message ?? body.message ?? `Request failed (${response.status}).`);
-  return body.data as T;
-};
-
-const keyFor = (projectId: string) => ['git-workflow', projectId] as const;
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
   status === 'FAILED' || status === 'CONFLICT' ? 'destructive' : status === 'SUCCEEDED' || status === 'READY' ? 'default' : 'secondary';
 
 function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Conflict }) {
   const { t } = useLocale();
-  const client = useQueryClient();
   const [custom, setCustom] = useState(conflict.oursContent ?? '');
-  const resolve = useMutation({
-    mutationFn: (body: { resolution: 'OURS' | 'THEIRS' | 'CUSTOM'; content?: string | null }) =>
-      request(`/api/app/projects/${projectId}/git/conflicts/${conflict.id}/resolve`, { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => client.invalidateQueries({ queryKey: keyFor(projectId) }),
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.conflict.error')),
-  });
+  const resolve = useResolveGitConflict(projectId, conflict.id);
+  const resolveConflict = (resolution: 'OURS' | 'THEIRS' | 'CUSTOM', content?: string | null) =>
+    resolve.mutate(
+      { resolution, ...(resolution === 'CUSTOM' ? { content: content ?? null } : {}) },
+      { onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.conflict.error')) },
+    );
   return (
     <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
       <div className="mb-3 flex items-center justify-between">
@@ -112,16 +78,16 @@ function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Co
         value={custom}
       />
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button disabled={resolve.isPending} onClick={() => resolve.mutate({ resolution: 'OURS' })} size="sm">
+        <Button disabled={resolve.isPending} onClick={() => resolveConflict('OURS')} size="sm">
           {t('settings.git.workflow.conflict.useNibleaf')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolve.mutate({ resolution: 'THEIRS' })} size="sm" variant="outline">
+        <Button disabled={resolve.isPending} onClick={() => resolveConflict('THEIRS')} size="sm" variant="outline">
           {t('settings.git.workflow.conflict.useGit')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolve.mutate({ resolution: 'CUSTOM', content: custom })} size="sm" variant="secondary">
+        <Button disabled={resolve.isPending} onClick={() => resolveConflict('CUSTOM', custom)} size="sm" variant="secondary">
           {t('settings.git.workflow.conflict.useCustom')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolve.mutate({ resolution: 'CUSTOM', content: null })} size="sm" variant="destructive">
+        <Button disabled={resolve.isPending} onClick={() => resolveConflict('CUSTOM', null)} size="sm" variant="destructive">
           {t('settings.git.workflow.conflict.delete')}
         </Button>
       </div>
@@ -131,7 +97,6 @@ function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Co
 
 export function GitWorkflow({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
-  const client = useQueryClient();
   const [repository, setRepository] = useState('');
   const [baseBranch, setBaseBranch] = useState('main');
   const [headBranch, setHeadBranch] = useState('nibleaf/docs');
@@ -145,62 +110,35 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   const [webhookSecret, setWebhookSecret] = useState<string | null>(null);
   const [connectStep, setConnectStep] = useState<1 | 2 | 3>(1);
   const [intent, setIntent] = useState<'overview' | 'sync' | 'publish' | 'connection'>('overview');
-  const query = useQuery({
-    queryKey: keyFor(projectId),
-    queryFn: () => request<GitStatus | null>(`/api/app/projects/${projectId}/git`),
-    refetchInterval: (state) => (state.state.data?.operations.some((operation) => ['QUEUED', 'RUNNING'].includes(operation.status)) ? 2500 : false),
-  });
+  const query = useGitWorkflow(projectId);
   const connection = query.data;
-  const authorize = useMutation({
-    mutationFn: () =>
-      request<GitIdentity>(`/api/app/projects/${projectId}/git/authorize`, {
-        method: 'POST',
-        body: JSON.stringify({ token }),
-      }),
-    onSuccess: (identity) => {
-      setAuthorizedAccount(identity);
-      setConnectStep(2);
-    },
-  });
-  const connect = useMutation({
-    mutationFn: () =>
-      request<{ connection: GitStatus; webhookSecret: string | null }>(`/api/app/projects/${projectId}/git/connection`, {
-        method: 'PUT',
-        body: JSON.stringify({ repository, baseBranch, headBranch, contentPath, token: token || undefined }),
-      }),
-    onSuccess: (data) => {
-      setWebhookSecret(data.webhookSecret);
-      setToken('');
-      setAuthorizedAccount(null);
-      client.invalidateQueries({ queryKey: keyFor(projectId) });
-      toast.success(t('settings.git.workflow.connected'));
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.connectError')),
-  });
-  const disconnect = useMutation({
-    mutationFn: () => request<{ disconnected: boolean }>(`/api/app/projects/${projectId}/git/connection`, { method: 'DELETE' }),
-    onSuccess: () => {
-      client.setQueryData(keyFor(projectId), null);
-      toast.success(t('settings.git.workflow.disconnected'));
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.disconnectError')),
-  });
-  const operation = useMutation({
-    mutationFn: (body: Record<string, unknown>) =>
-      request<Operation>(`/api/app/projects/${projectId}/git/operations`, { method: 'POST', body: JSON.stringify(body) }),
-    onSuccess: () => client.invalidateQueries({ queryKey: keyFor(projectId) }),
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.operationError')),
-  });
-  const rotate = useMutation({
-    mutationFn: () => request<{ webhookSecret: string }>(`/api/app/projects/${projectId}/git/webhook-secret`, { method: 'POST' }),
-    onSuccess: (data) => setWebhookSecret(data.webhookSecret),
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.rotateError')),
-  });
+  const authorize = useAuthorizeGitWorkflow(projectId);
+  const connect = useConnectGitWorkflow(projectId);
+  const disconnect = useDisconnectGitWorkflow(projectId);
+  const operation = useQueueGitOperation(projectId);
+  const rotate = useRotateGitWorkflowWebhookSecret(projectId);
+  const connectRepository = () =>
+    connect.mutate(
+      { repository, baseBranch, headBranch, contentPath, token: token || undefined },
+      {
+        onSuccess: (result) => {
+          setWebhookSecret(result.webhookSecret);
+          setToken('');
+          setAuthorizedAccount(null);
+          toast.success(t('settings.git.workflow.connected'));
+        },
+        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.connectError')),
+      },
+    );
+  const queueOperation = (body: GitOperationBody) =>
+    operation.mutate(body, {
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.operationError')),
+    });
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
     [connection],
   );
-  const webhookUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/api/public/git/webhook/${projectId}`;
+  const webhookUrl = new URL(`/api/public/git/webhook/${projectId}`, env.VITE_APP_URL).toString();
 
   useEffect(() => {
     if (!connection) return;
@@ -385,7 +323,18 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             </Button>
             {connectStep < 3 ? (
               connectStep === 1 ? (
-                <Button className="w-full sm:w-auto" disabled={authorize.isPending || token.trim().length < 20} onClick={() => authorize.mutate()}>
+                <Button
+                  className="w-full sm:w-auto"
+                  disabled={authorize.isPending || token.trim().length < 20}
+                  onClick={() =>
+                    authorize.mutate(token, {
+                      onSuccess: (identity) => {
+                        setAuthorizedAccount(identity);
+                        setConnectStep(2);
+                      },
+                    })
+                  }
+                >
                   {authorize.isPending ? t('settings.git.workflow.authorizing') : t('settings.git.workflow.authorize')}{' '}
                   <ArrowRight className="size-4" />
                 </Button>
@@ -402,7 +351,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               <Button
                 className="w-full sm:w-auto"
                 disabled={connect.isPending || !authorizedAccount || !repository || !token}
-                onClick={() => connect.mutate()}
+                onClick={connectRepository}
               >
                 {connect.isPending ? t('settings.git.workflow.verifying') : t('settings.git.workflow.connect')}
               </Button>
@@ -486,7 +435,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           <Button
             className="mt-4"
             disabled={operation.isPending || activeConflicts.length > 0}
-            onClick={() => operation.mutate({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
+            onClick={() => queueOperation({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
           >
             <RefreshCw className={`size-4 ${operation.isPending ? 'animate-spin' : ''}`} />{' '}
             {connection.lastSyncedAt ? t('settings.git.workflow.syncLatest') : t('settings.git.workflow.importExisting')}
@@ -525,7 +474,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <Button
               disabled={operation.isPending}
               onClick={() =>
-                operation.mutate({
+                queueOperation({
                   idempotencyKey: crypto.randomUUID(),
                   kind: 'PUSH',
                   commitMessage: message,
@@ -589,7 +538,18 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                 <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
               </Alert>
             ) : null}
-            <Button className="mt-3" disabled={rotate.isPending} onClick={() => rotate.mutate()} size="sm" variant="outline">
+            <Button
+              className="mt-3"
+              disabled={rotate.isPending}
+              onClick={() =>
+                rotate.mutate(undefined, {
+                  onSuccess: (result) => setWebhookSecret(result.webhookSecret),
+                  onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.rotateError')),
+                })
+              }
+              size="sm"
+              variant="outline"
+            >
               {t('settings.git.workflow.rotateSecret')}
             </Button>
           </section>
@@ -626,13 +586,18 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               <Button
                 disabled={disconnect.isPending}
                 onClick={() => {
-                  if (window.confirm(t('settings.git.workflow.disconnectConfirm'))) disconnect.mutate();
+                  if (window.confirm(t('settings.git.workflow.disconnectConfirm'))) {
+                    disconnect.mutate(undefined, {
+                      onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
+                      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.disconnectError')),
+                    });
+                  }
                 }}
                 variant="destructive"
               >
                 {t('settings.git.disconnect')}
               </Button>
-              <Button disabled={connect.isPending} onClick={() => connect.mutate()} variant="outline">
+              <Button disabled={connect.isPending} onClick={connectRepository} variant="outline">
                 {connect.isPending ? t('common.saving') : t('settings.git.workflow.saveConnection')}
               </Button>
             </div>

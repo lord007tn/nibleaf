@@ -1,6 +1,7 @@
 import { Prisma, prisma } from '@nibleaf/database';
 import { isPageTranslation } from '@nibleaf/shared/site';
 import type { CreateLanguageBody, UpdateLanguageBody } from '@nibleaf/validators';
+import { z } from 'zod';
 import { conflict, notFound } from '@/errors';
 
 /** Throw unless the language exists and belongs to the project. Returns it. */
@@ -111,8 +112,10 @@ export const createLanguage = async (projectId: string, body: CreateLanguageBody
  *  wholesale on merge instead of merging key-by-key like `seo`. */
 const CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
 
-const isEmptyObject = (value: unknown): boolean =>
-  Boolean(value) && typeof value === 'object' && !Array.isArray(value) && Object.keys(value as object).length === 0;
+const isEmptyObject = (value: unknown) => {
+  const parsed = z.record(z.string(), z.unknown()).safeParse(value);
+  return parsed.success && Object.keys(parsed.data).length === 0;
+};
 
 /** Deep-merge a language-config patch: `seo` merges key-by-key, and `null` clears the whole
  *  config. Omitted keys keep their stored value — the UI sends explicit empty

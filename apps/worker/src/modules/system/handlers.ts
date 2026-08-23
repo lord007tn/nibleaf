@@ -53,6 +53,4 @@ const app = new Hono()
     }),
   );
 
-export type SystemApp = typeof app;
-
 export default app;

@@ -2,9 +2,9 @@ import { parseHTML } from 'linkedom';
 
 export const RTL_RUBRIC_VERSION = '0.1.0';
 
-export type RtlCheckStatus = 'pass' | 'fail' | 'unknown';
+type RtlCheckStatus = 'pass' | 'fail' | 'unknown';
 
-export interface RtlReadinessCheck {
+interface RtlReadinessCheck {
   actual: string;
   category: string;
   expected: string;
@@ -14,7 +14,7 @@ export interface RtlReadinessCheck {
   weight: number;
 }
 
-export interface RtlReadinessCategory {
+interface RtlReadinessCategory {
   id: string;
   label: string;
   knownWeight: number;
@@ -470,7 +470,7 @@ const CHECKS: CheckDefinition[] = [
   },
 ];
 
-export function gradeRtlDocument(document: Document, source = ''): RtlReadinessResult {
+function gradeRtlDocument(document: Document, source = ''): RtlReadinessResult {
   const checks = CHECKS.map(
     (definition): RtlReadinessCheck => ({
       ...definition,

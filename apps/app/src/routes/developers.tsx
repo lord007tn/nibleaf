@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Bot, Braces, ShieldCheck, Terminal } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/developers')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf developer resources: OpenAPI, agents, and CLI',

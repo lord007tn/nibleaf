@@ -1,5 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
+import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import type { UpdateMemberRoleBody } from '@nibleaf/validators';
@@ -8,9 +9,6 @@ import { conflict, forbidden, notFound } from '@/errors';
 import { notificationEnabled } from './notifications';
 
 const INVITE_TTL_DAYS = 7;
-
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
 
 /** Public-safe metadata for an invitation, used by the accept page and sign-up prefill. */
 export const getInvitationInfo = async (invitationId: string) => {
@@ -51,7 +49,7 @@ export const inviteMember = async (
   // Wider than `InviteMemberBody` (whose schema excludes `owner`) so the
   // platform-admin bootstrap below can mint a brand-new org's FIRST owner.
   body: { email: string; role: MemberRole },
-  options: { sendEmail?: boolean; bootstrapOwner?: boolean } = {},
+  options: { sendEmail?: boolean; bootstrapOwner?: boolean; language?: EmailLanguage } = {},
 ) => {
   if (body.role === MemberRole.OWNER) {
     // Single-owner rule: `owner` can never be granted through a workspace
@@ -102,26 +100,17 @@ export const inviteMember = async (
   const acceptUrl = `${env.APP_URL}/accept-invite/${invitation.id}`;
   const siteName = org?.name ?? 'a Nibleaf workspace';
   const inviterName = inviter?.name || inviter?.email || 'A teammate';
-  const subject = `${inviterName} invited you to ${siteName} on Nibleaf`;
-  const text = [
-    `${inviterName} invited you to join ${siteName} as ${body.role} on Nibleaf.`,
-    '',
-    'Accept your invitation:',
+  const message = await renderMemberInvitationEmail({
     acceptUrl,
-    '',
-    `This invitation expires in ${INVITE_TTL_DAYS} days.`,
-  ].join('\n');
-  const html = `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;color:#0f172a">
-  <h2 style="font-size:18px;margin:0 0 12px">You're invited to ${escapeHtml(siteName)}</h2>
-  <p style="margin:0 0 16px;color:#475569;line-height:1.6"><strong>${escapeHtml(inviterName)}</strong> invited you to collaborate on documentation in <strong>${escapeHtml(siteName)}</strong> as <strong>${escapeHtml(body.role)}</strong> on Nibleaf.</p>
-  <p style="margin:0 0 24px"><a href="${acceptUrl}" style="display:inline-block;background:#5546e8;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600">Accept invitation</a></p>
-  <p style="margin:0 0 8px;color:#94a3b8;font-size:13px">Or paste this link into your browser:</p>
-  <p style="margin:0 0 16px;font-size:13px"><a href="${acceptUrl}" style="color:#5546e8">${acceptUrl}</a></p>
-  <p style="margin:0;color:#94a3b8;font-size:12px">This invitation expires in ${INVITE_TTL_DAYS} days.</p>
-</div>`;
+    days: INVITE_TTL_DAYS,
+    inviterName,
+    language: options.language,
+    organizationName: siteName,
+    role: body.role,
+  });
   await createJob(QueueNames.EMAIL, {
     name: 'send-email',
-    data: { to: email, subject, html, text },
+    data: { to: email, ...message },
   }).catch(() => undefined);
   return invitation;
 };

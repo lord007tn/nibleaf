@@ -6,6 +6,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
+import { CirclePlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { env } from '@/env';
@@ -114,7 +115,7 @@ export function GeneralSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="⊕" title={t('settings.general.title')} />
+      <SectionHeader icon={<CirclePlus className="size-4" />} title={t('settings.general.title')} />
 
       <div className="mb-3.5 flex items-center gap-3.5">
         <span className="grid size-[46px] place-items-center rounded-xl bg-primary/10 text-2xl text-primary">{icon}</span>

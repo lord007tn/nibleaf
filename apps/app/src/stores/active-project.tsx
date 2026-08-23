@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useProjects } from '@/hooks/api';
 
@@ -64,12 +64,4 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   );
 
   return <ProjectContext value={value}>{children}</ProjectContext>;
-}
-
-export function useActiveProject(): ProjectContextValue {
-  const ctx = useContext(ProjectContext);
-  if (!ctx) {
-    throw new Error('useActiveProject must be used within a ProjectProvider');
-  }
-  return ctx;
 }

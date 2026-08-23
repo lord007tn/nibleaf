@@ -115,11 +115,11 @@ const inlineWrapperNode = (config: { name: string; tag: string; className: strin
   });
 
 // ─── Steps ──────────────────────────────────────────────────────────────────
-export const Steps = containerNode({ name: 'mdxSteps', tag: 'Steps', content: 'mdxStep+', className: 'pl-steps' });
-export const Step = titledNode({ name: 'mdxStep', tag: 'Step', className: 'pl-step', attrs: stringAttr('title'), attrKeys: ['title'] });
+const Steps = containerNode({ name: 'mdxSteps', tag: 'Steps', content: 'mdxStep+', className: 'pl-steps' });
+const Step = titledNode({ name: 'mdxStep', tag: 'Step', className: 'pl-step', attrs: stringAttr('title'), attrKeys: ['title'] });
 
 // ─── Cards ──────────────────────────────────────────────────────────────────
-export const CardGroup = containerNode({
+const CardGroup = containerNode({
   name: 'mdxCardGroup',
   tag: 'CardGroup',
   content: 'mdxCard+',
@@ -133,7 +133,7 @@ export const CardGroup = containerNode({
   },
   attrKeys: ['cols'],
 });
-export const Card = titledNode({
+const Card = titledNode({
   name: 'mdxCard',
   tag: 'Card',
   className: 'pl-card',
@@ -142,17 +142,17 @@ export const Card = titledNode({
 });
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
-export const Tabs = containerNode({ name: 'mdxTabs', tag: 'Tabs', content: 'mdxTab+', className: 'pl-tabs' });
-export const Tab = titledNode({ name: 'mdxTab', tag: 'Tab', className: 'pl-tab', attrs: stringAttr('title'), attrKeys: ['title'] });
+const Tabs = containerNode({ name: 'mdxTabs', tag: 'Tabs', content: 'mdxTab+', className: 'pl-tabs' });
+const Tab = titledNode({ name: 'mdxTab', tag: 'Tab', className: 'pl-tab', attrs: stringAttr('title'), attrKeys: ['title'] });
 
 // ─── Accordions ─────────────────────────────────────────────────────────────
-export const AccordionGroup = containerNode({
+const AccordionGroup = containerNode({
   name: 'mdxAccordionGroup',
   tag: 'AccordionGroup',
   content: 'mdxAccordion+',
   className: 'pl-accordiongroup',
 });
-export const Accordion = titledNode({
+const Accordion = titledNode({
   name: 'mdxAccordion',
   tag: 'Accordion',
   className: 'pl-accordion',
@@ -161,10 +161,10 @@ export const Accordion = titledNode({
 });
 
 // ─── Frame ──────────────────────────────────────────────────────────────────
-export const Frame = titledNode({ name: 'mdxFrame', tag: 'Frame', className: 'pl-frame', attrs: stringAttr('caption'), attrKeys: ['caption'] });
+const Frame = titledNode({ name: 'mdxFrame', tag: 'Frame', className: 'pl-frame', attrs: stringAttr('caption'), attrKeys: ['caption'] });
 
 // ─── Expandable (collapsible disclosure) ──────────────────────────────────────
-export const Expandable = titledNode({
+const Expandable = titledNode({
   name: 'mdxExpandable',
   tag: 'Expandable',
   className: 'pl-expandable',
@@ -173,7 +173,7 @@ export const Expandable = titledNode({
 });
 
 // ─── Update (changelog entry) ─────────────────────────────────────────────────
-export const Update = containerNode({
+const Update = containerNode({
   name: 'mdxUpdate',
   tag: 'Update',
   content: 'block+',
@@ -186,7 +186,7 @@ export const Update = containerNode({
 // Modeled as block components so they round-trip losslessly (their attributes are
 // preserved through serialize/parse). Inline attribute editing is a follow-up; the
 // body (description) is fully editable.
-export const ParamField = containerNode({
+const ParamField = containerNode({
   name: 'mdxParamField',
   tag: 'ParamField',
   content: 'block+',
@@ -194,7 +194,7 @@ export const ParamField = containerNode({
   attrs: stringAttrs('path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'),
   attrKeys: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
 });
-export const ResponseField = containerNode({
+const ResponseField = containerNode({
   name: 'mdxResponseField',
   tag: 'ResponseField',
   content: 'block+',
@@ -204,12 +204,12 @@ export const ResponseField = containerNode({
 });
 
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
-export const CodeGroup = containerNode({ name: 'mdxCodeGroup', tag: 'CodeGroup', content: 'block+', className: 'pl-codegroup' });
+const CodeGroup = containerNode({ name: 'mdxCodeGroup', tag: 'CodeGroup', content: 'block+', className: 'pl-codegroup' });
 
 // ─── Layout and inline UI ────────────────────────────────────────────────────
-export const Columns = containerNode({ name: 'mdxColumns', tag: 'Columns', content: 'mdxColumn+', className: 'pl-columns' });
-export const Column = containerNode({ name: 'mdxColumn', tag: 'Column', content: 'block+', className: 'pl-column' });
-export const Banner = containerNode({
+const Columns = containerNode({ name: 'mdxColumns', tag: 'Columns', content: 'mdxColumn+', className: 'pl-columns' });
+const Column = containerNode({ name: 'mdxColumn', tag: 'Column', content: 'block+', className: 'pl-column' });
+const Banner = containerNode({
   name: 'mdxBanner',
   tag: 'Banner',
   content: 'block+',
@@ -217,8 +217,8 @@ export const Banner = containerNode({
   attrs: stringAttrs('type', 'dismissible'),
   attrKeys: ['type', 'dismissible'],
 });
-export const Badge = inlineWrapperNode({ name: 'mdxBadge', tag: 'Badge', className: 'pl-badge', attrs: stringAttr('color'), attrKeys: ['color'] });
-export const MdxButton = inlineWrapperNode({
+const Badge = inlineWrapperNode({ name: 'mdxBadge', tag: 'Badge', className: 'pl-badge', attrs: stringAttr('color'), attrKeys: ['color'] });
+const MdxButton = inlineWrapperNode({
   name: 'mdxButton',
   tag: 'Button',
   className: 'pl-button',
@@ -230,7 +230,7 @@ export const MdxButton = inlineWrapperNode({
 // `<Tooltip tip="…">text</Tooltip>` — an inline wrapper whose children stay
 // editable. Serializes with `renderInline` (NOT the block factory's
 // renderContent/closeBlock) so the tag and its text stay on the same line.
-export const Tooltip = Node.create({
+const Tooltip = Node.create({
   name: 'mdxTooltip',
   group: 'inline',
   inline: true,
@@ -254,7 +254,7 @@ export const Tooltip = Node.create({
 // `<Icon icon|name color size />` — a self-closing inline atom. It carries no
 // content, so it parses as a leaf (atom) that never absorbs following siblings,
 // and serializes as a self-closing tag.
-export const Icon = Node.create({
+const Icon = Node.create({
   name: 'mdxIcon',
   group: 'inline',
   inline: true,

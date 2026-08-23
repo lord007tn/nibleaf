@@ -37,7 +37,8 @@ export const env = createEnv({
     SERVICE_NAME: z.string().default('nibleaf-api'),
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4315').transform(csv),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
-    OPENAI_API_KEY: z.string().optional(),
+    OPENROUTER_API_KEY: z.string().optional(),
+    AI_DRAFT_MODEL: z.string().default('openai/gpt-4o-mini'),
     EXPORT_MAX_ACTIVE_PER_PROJECT: z.coerce.number().int().min(1).max(20).default(3),
     EXPORT_MAX_DAILY_PER_PROJECT: z.coerce.number().int().min(1).max(1000).default(20),
     EXPORT_MAX_PAGES: z.coerce.number().int().positive().default(5000),
@@ -53,6 +54,11 @@ export const env = createEnv({
     GIT_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
     /** Shared API/worker authentication secret for opaque Git job execution. */
     GIT_WORKER_SECRET: z.string().min(32).optional(),
+    /** Explicit override required before the demo seed may touch production. */
+    ALLOW_SEED: z
+      .enum(['true', 'false', '1', '0'])
+      .optional()
+      .transform((value) => value === 'true' || value === '1'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

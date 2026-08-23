@@ -16,7 +16,7 @@ type SupportedDefinition = {
 };
 
 /** The single capability inventory used by the source adapter and safety UX. */
-export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = {
+const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = {
   steps: { canonical: 'Steps', attrs: [] },
   step: { canonical: 'Step', attrs: ['title'], defaults: { title: '' } },
   cardgroup: { canonical: 'CardGroup', attrs: ['cols'], defaults: { cols: '2' } },
@@ -333,7 +333,7 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
  * Converts MDX-only syntax into HTML that markdown-it/DOMParser can safely feed
  * to ProseMirror. Serializers restore the source metadata before persistence.
  */
-export function prepareMdxForEditor(source: string): string {
+function prepareMdxForEditor(source: string): string {
   if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
   const mask = codeMask(source);
   const tokens = scanTags(source, mask);
@@ -521,7 +521,7 @@ const opaqueHtml = (node: PMNode, inline: boolean): DOMOutputSpec => {
 
 const installedMarkdownParsers = new WeakSet<object>();
 
-export const MdxOpaqueBlock = Node.create({
+const MdxOpaqueBlock = Node.create({
   name: 'mdxOpaqueBlock',
   group: 'block',
   atom: true,
@@ -549,7 +549,7 @@ export const MdxOpaqueBlock = Node.create({
   }),
 });
 
-export const MdxOpaqueInline = Node.create({
+const MdxOpaqueInline = Node.create({
   name: 'mdxOpaqueInline',
   group: 'inline',
   inline: true,

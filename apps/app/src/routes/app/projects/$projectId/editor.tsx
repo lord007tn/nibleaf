@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
@@ -64,10 +65,13 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
   // publish-check issue), `?publish=true` opens the publish flow directly.
-  validateSearch: (search: Record<string, unknown>): { page?: string; publish?: boolean } => ({
-    page: typeof search.page === 'string' && search.page ? search.page : undefined,
-    publish: search.publish === true || search.publish === 'true' || search.publish === '1' ? true : undefined,
-  }),
+  validateSearch: (search) =>
+    z
+      .object({
+        page: z.string().min(1).optional().catch(undefined),
+        publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
+      })
+      .parse(search),
 });
 
 function EditorPage() {
@@ -871,7 +875,7 @@ function EditorPage() {
         {/* Right rail: Figma-style tabbed panel — Comments / AI */}
         {showRail && activeId ? (
           <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
-            <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
+            <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
               <TabsList className="m-2 self-start">
                 <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
                 <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>

@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { createEnv } from '@t3-oss/env-core';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
@@ -25,6 +26,13 @@ export default defineConfig(({ mode }) => {
     resolve: { tsconfigPaths: true },
     server: { port: 4315 },
     plugins: [
+      paraglideVitePlugin({
+        project: '../../packages/i18n/project.inlang',
+        outdir: '../../packages/i18n/src/paraglide',
+        emitTsDeclarations: true,
+        strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
+        cookieName: 'NIBLEAF_LOCALE',
+      }),
       tailwindcss(),
       // Same-origin /api proxy: the browser only talks to the admin origin, so the
       // better-auth session cookie stays first-party. All /api/** → the Nibleaf API.

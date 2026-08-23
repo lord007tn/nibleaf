@@ -6,15 +6,16 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./locales": "./src/locales.ts",
     "./react": "./src/react.ts",
     "./standalone": "./src/standalone.ts",
+    "./email": "./src/email.ts",
     "./site": "./src/site.ts",
     "./messages": "./src/paraglide/messages.js",
     "./runtime": "./src/paraglide/runtime.js"
   },
   "scripts": {
-    "setup": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie preferredLanguage baseLocale",
-    "build": "pnpm run setup",
+    "setup": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie preferredLanguage baseLocale --emit-ts-declarations",
     "clean": "git clean -xdf .cache .turbo dist node_modules src/paraglide",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

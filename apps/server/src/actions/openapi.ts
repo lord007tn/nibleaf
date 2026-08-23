@@ -1,11 +1,15 @@
 import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
+import { once } from 'node:events';
+import type { IncomingMessage } from 'node:http';
+import type { LookupFunction } from 'node:net';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { GitConfig, OpenApiSourceInput, UpsertOpenApiBody } from '@nibleaf/validators';
 import { bundle, type LoaderPlugin } from '@scalar/json-magic/bundle';
 import { validate } from '@scalar/openapi-parser';
-import { Agent, type Response as UndiciResponse, fetch as undiciFetch } from 'undici';
+import got from 'got';
 import { parseDocument } from 'yaml';
+import { z } from 'zod';
 import { badRequest, notFound } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertProjectInOrg } from './projects';
@@ -31,7 +35,7 @@ export const publicOpenApiMetadata = (row: { title: string; path: string; conten
   updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt,
 });
 
-export const openApiRecordView = (row: {
+const openApiRecordView = (row: {
   title: string;
   path: string;
   sourceType: 'UPLOAD' | 'URL' | 'REPOSITORY';
@@ -48,13 +52,15 @@ const collectExternalRefs = (value: unknown, path = '$', refs: string[] = []): s
     });
     return refs;
   }
-  if (!value || typeof value !== 'object') {
+  const object = z.record(z.string(), z.unknown()).safeParse(value);
+  if (!object.success) {
     return refs;
   }
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, child] of Object.entries(object.data)) {
     const childPath = `${path}.${key}`;
-    if (key === '$ref' && typeof child === 'string' && !child.startsWith('#/')) {
-      refs.push(`${childPath}: ${child}`);
+    const reference = z.string().safeParse(child);
+    if (key === '$ref' && reference.success && !reference.data.startsWith('#/')) {
+      refs.push(`${childPath}: ${reference.data}`);
     } else {
       collectExternalRefs(child, childPath, refs);
     }
@@ -86,11 +92,16 @@ export const parseAndValidateOpenApi = async (content: string, origin?: string):
       errors: [error instanceof Error ? error.message : 'Could not expand YAML aliases.'],
     });
   }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+  const object = z.record(z.string(), z.unknown()).safeParse(parsed);
+  if (!object.success) {
     throw badRequest('The OpenAPI document must be an object.');
   }
-  const document = parsed as OpenApiObject;
-  if (typeof document.openapi !== 'string' || !/^3\.\d+\.\d+(?:[-+].*)?$/.test(document.openapi)) {
+  const document: OpenApiObject = object.data;
+  const version = z
+    .string()
+    .regex(/^3\.\d+\.\d+(?:[-+].*)?$/)
+    .safeParse(document.openapi);
+  if (!version.success) {
     throw badRequest('Only OpenAPI 3.x documents are supported. Add an openapi field such as "3.1.0".');
   }
 
@@ -177,30 +188,24 @@ export const parseAndValidateOpenApi = async (content: string, origin?: string):
   return validatedDocument;
 };
 
-/** Consume a fetch body incrementally so a missing or dishonest Content-Length
- *  cannot make the server buffer an unbounded document. */
-export const readBoundedOpenApiResponse = async (response: Response | UndiciResponse): Promise<string> => {
-  if (!response.body) return '';
-  const reader = response.body.getReader();
+/** Consume a response body incrementally so a missing or dishonest
+ * Content-Length cannot make the server buffer an unbounded document. */
+const readBoundedOpenApiBody = async (body: AsyncIterable<Uint8Array>) => {
   const chunks: Uint8Array[] = [];
   let total = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
+  for await (const chunk of body) {
+    total += chunk.byteLength;
     if (total > MAX_OPENAPI_BYTES) {
-      await reader.cancel();
       throw badRequest('The OpenAPI document is larger than 5 MB.');
     }
-    chunks.push(value);
+    chunks.push(chunk);
   }
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(bytes);
+  return Buffer.concat(chunks, total).toString('utf8');
+};
+
+export const readBoundedOpenApiResponse = async (response: Response) => {
+  if (!response.body) return '';
+  return readBoundedOpenApiBody(response.body);
 };
 
 type PinnedPublicUrl = {
@@ -238,67 +243,62 @@ const normalizePublicUrl = async (value: string, label: string): Promise<PinnedP
   return { url, address: selected.address, family: selected.family };
 };
 
-/** Bind an Undici connection to the address that passed the public-network
- * check. This closes the DNS-rebinding gap between validation and connect. */
-const pinnedDispatcher = ({ address, family }: PinnedPublicUrl): Agent =>
-  new Agent({
-    connect: {
-      lookup: (_hostname, options, callback) => {
-        if (options.all) {
-          callback(null, [{ address, family }]);
-          return;
-        }
-        callback(null, address, family);
-      },
-    },
-  });
+/** Bind Got's connection to the address that passed the public-network check.
+ * This closes the DNS-rebinding gap while preserving Host and TLS SNI. */
+const pinnedDnsLookup =
+  ({ address, family }: PinnedPublicUrl): LookupFunction =>
+  (_hostname, options, callback) => {
+    if (options.all) {
+      callback(null, [{ address, family }]);
+      return;
+    }
+    callback(null, address, family);
+  };
 
 /** Fetch a public spec without credentials, following only a small number of
  *  revalidated public redirects. The response body is bounded before parsing. */
 export const fetchPublicOpenApi = async (value: string, label = 'OpenAPI URL'): Promise<string> => {
   let current = await normalizePublicUrl(value, label);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-    const dispatcher = pinnedDispatcher(current);
-    let response: Awaited<ReturnType<typeof undiciFetch>>;
+    const request = got.stream(current.url, {
+      headers: { Accept: 'application/json, application/yaml, text/yaml, text/plain', 'User-Agent': 'nibleaf-openapi' },
+      followRedirect: false,
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+      timeout: { request: FETCH_TIMEOUT_MS },
+      dnsLookup: pinnedDnsLookup(current),
+    });
+    let response: IncomingMessage;
     try {
-      response = await undiciFetch(current.url, {
-        headers: { Accept: 'application/json, application/yaml, text/yaml, text/plain', 'User-Agent': 'nibleaf-openapi' },
-        redirect: 'manual',
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        dispatcher,
-      });
+      [response] = (await once(request, 'response')) as [IncomingMessage];
     } catch {
-      await dispatcher.close();
+      request.destroy();
       throw badRequest(`Could not fetch the ${label.toLowerCase()}. Check that it is publicly reachable.`);
     }
-    if (response.status >= 300 && response.status < 400) {
-      const location = response.headers.get('location');
+    const status = response.statusCode ?? 0;
+    if (status >= 300 && status < 400) {
+      const location = Array.isArray(response.headers.location) ? response.headers.location[0] : response.headers.location;
       if (!location || redirect === MAX_REDIRECTS) {
-        await response.body?.cancel();
-        await dispatcher.close();
+        request.destroy();
         throw badRequest(`The ${label.toLowerCase()} redirected too many times.`);
       }
-      await response.body?.cancel();
-      await dispatcher.close();
+      request.destroy();
       current = await normalizePublicUrl(new URL(location, current.url).toString(), label);
       continue;
     }
-    if (!response.ok) {
-      await response.body?.cancel();
-      await dispatcher.close();
-      throw badRequest(`The ${label.toLowerCase()} returned HTTP ${response.status}.`);
+    if (status < 200 || status >= 300) {
+      request.destroy();
+      throw badRequest(`The ${label.toLowerCase()} returned HTTP ${status}.`);
     }
-    const declared = Number(response.headers.get('content-length') ?? '0');
+    const declaredHeader = Array.isArray(response.headers['content-length'])
+      ? response.headers['content-length'][0]
+      : response.headers['content-length'];
+    const declared = Number(declaredHeader ?? '0');
     if (Number.isFinite(declared) && declared > MAX_OPENAPI_BYTES) {
-      await response.body?.cancel();
-      await dispatcher.close();
+      request.destroy();
       throw badRequest('The OpenAPI document is larger than 5 MB.');
     }
-    try {
-      return await readBoundedOpenApiResponse(response);
-    } finally {
-      await dispatcher.close();
-    }
+    return readBoundedOpenApiBody(request);
   }
   throw badRequest(`Could not fetch the ${label.toLowerCase()}.`);
 };

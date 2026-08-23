@@ -1,13 +1,37 @@
-import type { CommitFile, GitCommitInput, GitProviderClient, RemoteFile, RemotePullRequest } from './types';
-
-interface GitHubErrorBody {
-  message?: string;
-  documentation_url?: string;
-}
+import { Octokit, RequestError } from 'octokit';
+import { AppError } from '@/errors';
+import type { GitCommitInput, GitProviderClient, RemotePullRequest } from './types';
 
 const BLOB_FETCH_CONCURRENCY = 8;
 
-const mapWithConcurrency = async <T, R>(values: readonly T[], concurrency: number, mapper: (value: T, index: number) => Promise<R>): Promise<R[]> => {
+type GitHubFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+interface GitHubPull {
+  number: number;
+  html_url: string;
+  title: string;
+  state: string;
+  draft?: boolean | null;
+  base: { ref: string };
+  head: { ref: string; sha: string };
+}
+
+class GitHubProviderError extends AppError {
+  readonly providerStatus?: number;
+
+  constructor(message: string, options?: { cause?: unknown; status?: number }) {
+    super({
+      code: 'provider:unavailable',
+      message,
+      ...(options?.cause === undefined ? {} : { cause: options.cause }),
+      ...(options?.status === undefined ? {} : { details: { provider: 'github', status: options.status } }),
+    });
+    this.name = 'GitHubProviderError';
+    this.providerStatus = options?.status;
+  }
+}
+
+const mapWithConcurrency = async <T, R>(values: readonly T[], concurrency: number, mapper: (value: T, index: number) => Promise<R>) => {
   const results = new Array<R>(values.length);
   let nextIndex = 0;
   const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
@@ -23,22 +47,12 @@ const mapWithConcurrency = async <T, R>(values: readonly T[], concurrency: numbe
 const repoParts = (repository: string): [string, string] => {
   const parts = repository.split('/');
   if (parts.length !== 2 || parts.some((part) => !/^[A-Za-z0-9_.-]+$/.test(part))) {
-    throw new Error('GitHub repository must use owner/repository.');
+    throw new GitHubProviderError('GitHub repository must use owner/repository.');
   }
   return [parts[0] as string, parts[1] as string];
 };
 
-const encodePath = (value: string): string => value.split('/').map(encodeURIComponent).join('/');
-
-const asPullRequest = (value: {
-  number: number;
-  html_url: string;
-  title: string;
-  state: string;
-  draft?: boolean;
-  base: { ref: string };
-  head: { ref: string; sha: string };
-}): RemotePullRequest => ({
+const asPullRequest = (value: GitHubPull): RemotePullRequest => ({
   number: value.number,
   url: value.html_url,
   title: value.title,
@@ -51,190 +65,205 @@ const asPullRequest = (value: {
 
 export class GitHubProvider implements GitProviderClient {
   readonly provider = 'github' as const;
-  constructor(
-    private readonly token: string,
-    private readonly request: typeof fetch = fetch,
-  ) {}
+  private readonly client: Octokit;
 
-  private async api<T>(repository: string, path: string, init: RequestInit = {}, allowed: number[] = []): Promise<T> {
+  constructor(token: string, request: GitHubFetch = fetch) {
+    this.client = new Octokit({ auth: token, request: { fetch: request }, userAgent: 'nibleaf-git-sync' });
+  }
+
+  private async request<T>(operation: () => Promise<T>, fallback: string) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof GitHubProviderError) throw error;
+      if (error instanceof RequestError) {
+        throw new GitHubProviderError(`GitHub ${error.status}: ${error.message.slice(0, 180)}`, {
+          cause: error,
+          status: error.status,
+        });
+      }
+      throw new GitHubProviderError(fallback, { cause: error });
+    }
+  }
+
+  async verifyIdentity() {
+    const response = await this.request(() => this.client.rest.users.getAuthenticated(), 'GitHub authorization failed.');
+    if (!response.data.login) throw new GitHubProviderError('GitHub authorization did not return an account identity.');
+    return { login: response.data.login, name: response.data.name ?? null };
+  }
+
+  async verifyWriteAccess(repository: string) {
     const [owner, repo] = repoParts(repository);
-    const response = await this.request(`https://api.github.com/repos/${owner}/${repo}${path}`, {
-      ...init,
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'nibleaf-git-sync',
-        'X-GitHub-Api-Version': '2022-11-28',
-        ...init.headers,
-      },
-      redirect: 'error',
-    });
-    if (!response.ok && !allowed.includes(response.status)) {
-      const body = (await response.json().catch(() => ({}))) as GitHubErrorBody;
-      // Never include request headers/token or provider response bodies in the
-      // exception: provider messages are bounded and the status is sufficient.
-      throw new Error(`GitHub API ${response.status}: ${(body.message ?? 'request failed').slice(0, 180)}`);
-    }
-    if (response.status === 204 || response.status === 404) {
-      return null as T;
-    }
-    return (await response.json()) as T;
-  }
-
-  async verifyIdentity(): Promise<{ login: string; name: string | null }> {
-    const response = await this.request('https://api.github.com/user', {
-      headers: {
-        Accept: 'application/vnd.github+json',
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'nibleaf-git-sync',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-      redirect: 'error',
-    });
-    if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as GitHubErrorBody;
-      throw new Error(`GitHub authorization failed (${response.status}): ${(body.message ?? 'request failed').slice(0, 180)}`);
-    }
-    const identity = (await response.json()) as { login?: string; name?: string | null };
-    if (!identity.login) throw new Error('GitHub authorization did not return an account identity.');
-    return { login: identity.login, name: identity.name ?? null };
-  }
-
-  async verifyWriteAccess(repository: string): Promise<void> {
-    const repo = await this.api<{ permissions?: { push?: boolean } }>(repository, '');
-    if (repo.permissions?.push !== true) {
-      throw new Error('The GitHub credential does not have repository contents write access.');
+    const response = await this.request(() => this.client.rest.repos.get({ owner, repo }), 'Could not inspect the GitHub repository.');
+    if (response.data.permissions?.push !== true) {
+      throw new GitHubProviderError('The GitHub credential does not have repository contents write access.');
     }
   }
 
-  async getBranchSha(repository: string, branch: string): Promise<string | null> {
-    const ref = await this.api<{ object: { sha: string } } | null>(repository, `/git/ref/heads/${encodePath(branch)}`, {}, [404]);
-    return ref?.object.sha ?? null;
-  }
-
-  private async getBlob(repository: string, sha: string): Promise<string> {
-    const blob = await this.api<{ content: string; encoding: string }>(repository, `/git/blobs/${encodeURIComponent(sha)}`);
-    if (blob.encoding !== 'base64') {
-      throw new Error('GitHub returned an unsupported blob encoding.');
+  async getBranchSha(repository: string, branch: string) {
+    const [owner, repo] = repoParts(repository);
+    try {
+      const response = await this.client.rest.git.getRef({ owner, repo, ref: `heads/${branch}` });
+      return response.data.object.sha;
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 404) return null;
+      if (error instanceof RequestError) {
+        throw new GitHubProviderError(`GitHub ${error.status}: ${error.message.slice(0, 180)}`, { cause: error, status: error.status });
+      }
+      throw new GitHubProviderError('Could not read the GitHub branch.', { cause: error });
     }
-    return Buffer.from(blob.content.replace(/\s/g, ''), 'base64').toString('utf8');
   }
 
-  async listMarkdownFiles(repository: string, ref: string, contentPath: string): Promise<RemoteFile[]> {
-    const tree = await this.api<{ truncated: boolean; tree: Array<{ path: string; type: string; sha: string; size?: number }> }>(
-      repository,
-      `/git/trees/${encodeURIComponent(ref)}?recursive=1`,
+  private async getBlob(repository: string, sha: string) {
+    const [owner, repo] = repoParts(repository);
+    const response = await this.request(
+      () => this.client.rest.git.getBlob({ owner, repo, file_sha: sha }),
+      'Could not read a GitHub repository file.',
     );
-    if (tree.truncated) {
-      throw new Error('The repository tree is too large for safe Git sync. Narrow the content path.');
+    if (response.data.encoding !== 'base64') throw new GitHubProviderError('GitHub returned an unsupported blob encoding.');
+    return Buffer.from(response.data.content.replace(/\s/g, ''), 'base64').toString('utf8');
+  }
+
+  async listMarkdownFiles(repository: string, ref: string, contentPath: string) {
+    const [owner, repo] = repoParts(repository);
+    const response = await this.request(
+      () => this.client.rest.git.getTree({ owner, repo, tree_sha: ref, recursive: 'true' }),
+      'Could not list the GitHub repository.',
+    );
+    if (response.data.truncated) {
+      throw new GitHubProviderError('The repository tree is too large for safe Git sync. Narrow the content path.');
     }
     const prefix = contentPath ? `${contentPath.replace(/^\/+|\/+$/g, '')}/` : '';
-    const entries = tree.tree.filter(
-      (entry) => entry.type === 'blob' && entry.path.startsWith(prefix) && /\.mdx?$/i.test(entry.path) && (entry.size ?? 0) <= 2_000_000,
+    const entries = response.data.tree.filter(
+      (entry) =>
+        entry.type === 'blob' &&
+        Boolean(entry.path && entry.sha) &&
+        entry.path?.startsWith(prefix) &&
+        /\.mdx?$/i.test(entry.path) &&
+        (entry.size ?? 0) <= 2_000_000,
     );
-    if (entries.length > 2000) {
-      throw new Error('Git sync is limited to 2,000 Markdown files per connection.');
-    }
-    // Large documentation repositories can contain thousands of Markdown
-    // blobs. Fetch a small parallel window instead of bursting all requests at
-    // GitHub at once, which otherwise triggers secondary rate limits and holds
-    // thousands of response bodies in memory.
+    if (entries.length > 2000) throw new GitHubProviderError('Git sync is limited to 2,000 Markdown files per connection.');
     return mapWithConcurrency(entries, BLOB_FETCH_CONCURRENCY, async (entry) => ({
-      path: entry.path,
-      sha: entry.sha,
-      content: await this.getBlob(repository, entry.sha),
+      path: entry.path as string,
+      sha: entry.sha as string,
+      content: await this.getBlob(repository, entry.sha as string),
     }));
   }
 
-  private async createBlob(repository: string, file: Exclude<CommitFile, { content: null }>): Promise<string> {
-    const blob = await this.api<{ sha: string }>(repository, '/git/blobs', {
-      method: 'POST',
-      body: JSON.stringify({ content: file.content, encoding: 'utf-8' }),
-    });
-    return blob.sha;
+  private async createBlob(repository: string, content: string) {
+    const [owner, repo] = repoParts(repository);
+    const response = await this.request(
+      () => this.client.rest.git.createBlob({ owner, repo, content, encoding: 'utf-8' }),
+      'Could not create a GitHub blob.',
+    );
+    return response.data.sha;
   }
 
-  async createCommit(input: GitCommitInput): Promise<string> {
-    const base = await this.api<{ tree: { sha: string } }>(input.repository, `/git/commits/${encodeURIComponent(input.baseSha)}`);
+  async createCommit(input: GitCommitInput) {
+    const [owner, repo] = repoParts(input.repository);
+    const base = await this.request(
+      () => this.client.rest.git.getCommit({ owner, repo, commit_sha: input.baseSha }),
+      'Could not read the base GitHub commit.',
+    );
     const entries = await Promise.all(
       input.files.map(async (file) => ({
         path: file.path,
-        mode: '100644',
-        type: 'blob',
-        sha: file.content === null ? null : await this.createBlob(input.repository, file as Exclude<CommitFile, { content: null }>),
+        mode: '100644' as const,
+        type: 'blob' as const,
+        sha: file.content === null ? null : await this.createBlob(input.repository, file.content),
       })),
     );
-    const tree = await this.api<{ sha: string }>(input.repository, '/git/trees', {
-      method: 'POST',
-      body: JSON.stringify({ base_tree: base.tree.sha, tree: entries }),
-    });
-    const commit = await this.api<{ sha: string }>(input.repository, '/git/commits', {
-      method: 'POST',
-      body: JSON.stringify({ message: input.message, tree: tree.sha, parents: [input.baseSha], author: input.author }),
-    });
-    return commit.sha;
+    const tree = await this.request(
+      () => this.client.rest.git.createTree({ owner, repo, base_tree: base.data.tree.sha, tree: entries }),
+      'Could not create the GitHub tree.',
+    );
+    const commit = await this.request(
+      () =>
+        this.client.rest.git.createCommit({
+          owner,
+          repo,
+          message: input.message,
+          tree: tree.data.sha,
+          parents: [input.baseSha],
+          author: input.author,
+        }),
+      'Could not create the GitHub commit.',
+    );
+    return commit.data.sha;
   }
 
-  async createBranch(repository: string, branch: string, sha: string): Promise<void> {
-    await this.api(repository, '/git/refs', { method: 'POST', body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }) });
+  async createBranch(repository: string, branch: string, sha: string) {
+    const [owner, repo] = repoParts(repository);
+    await this.request(
+      () => this.client.rest.git.createRef({ owner, repo, ref: `refs/heads/${branch}`, sha }),
+      'Could not create the GitHub branch.',
+    );
   }
 
-  async updateBranch(repository: string, branch: string, sha: string, expectedOldSha: string): Promise<void> {
+  async updateBranch(repository: string, branch: string, sha: string, expectedOldSha: string) {
     const current = await this.getBranchSha(repository, branch);
     if (current !== expectedOldSha) {
-      throw new Error('The remote branch changed during the push. Retry after reconciliation.');
+      throw new GitHubProviderError('The remote branch changed during the push. Retry after reconciliation.');
     }
-    await this.api(repository, `/git/refs/heads/${encodePath(branch)}`, { method: 'PATCH', body: JSON.stringify({ sha, force: false }) });
-  }
-
-  async upsertDraftPullRequest(input: {
-    repository: string;
-    baseBranch: string;
-    headBranch: string;
-    title: string;
-    body: string;
-  }): Promise<RemotePullRequest> {
-    const [owner] = repoParts(input.repository);
-    const existing = await this.api<
-      Array<{
-        number: number;
-        html_url: string;
-        title: string;
-        state: string;
-        draft?: boolean;
-        base: { ref: string };
-        head: { ref: string; sha: string };
-      }>
-    >(
-      input.repository,
-      `/pulls?state=open&head=${encodeURIComponent(`${owner}:${input.headBranch}`)}&base=${encodeURIComponent(input.baseBranch)}&per_page=1`,
+    const [owner, repo] = repoParts(repository);
+    await this.request(
+      () => this.client.rest.git.updateRef({ owner, repo, ref: `heads/${branch}`, sha, force: false }),
+      'Could not update the GitHub branch.',
     );
-    if (existing[0]) {
-      const updated = await this.api<(typeof existing)[number]>(input.repository, `/pulls/${existing[0].number}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ title: input.title, body: input.body, base: input.baseBranch }),
-      });
-      return asPullRequest(updated);
-    }
-    const created = await this.api<(typeof existing)[number]>(input.repository, '/pulls', {
-      method: 'POST',
-      body: JSON.stringify({ title: input.title, body: input.body, head: input.headBranch, base: input.baseBranch, draft: true }),
-    });
-    return asPullRequest(created);
   }
 
-  async getPullRequest(repository: string, number: number): Promise<RemotePullRequest> {
-    const pull = await this.api<{
-      number: number;
-      html_url: string;
-      title: string;
-      state: string;
-      draft?: boolean;
-      base: { ref: string };
-      head: { ref: string; sha: string };
-    }>(repository, `/pulls/${number}`);
-    return asPullRequest(pull);
+  async upsertDraftPullRequest(input: { repository: string; baseBranch: string; headBranch: string; title: string; body: string }) {
+    const [owner, repo] = repoParts(input.repository);
+    const existing = await this.request(
+      () =>
+        this.client.rest.pulls.list({
+          owner,
+          repo,
+          state: 'open',
+          head: `${owner}:${input.headBranch}`,
+          base: input.baseBranch,
+          per_page: 1,
+        }),
+      'Could not inspect GitHub pull requests.',
+    );
+    const openPull = existing.data[0];
+    if (openPull) {
+      const updated = await this.request(
+        () =>
+          this.client.rest.pulls.update({
+            owner,
+            repo,
+            pull_number: openPull.number,
+            title: input.title,
+            body: input.body,
+            base: input.baseBranch,
+          }),
+        'Could not update the GitHub pull request.',
+      );
+      return asPullRequest(updated.data);
+    }
+    const created = await this.request(
+      () =>
+        this.client.rest.pulls.create({
+          owner,
+          repo,
+          title: input.title,
+          body: input.body,
+          head: input.headBranch,
+          base: input.baseBranch,
+          draft: true,
+        }),
+      'Could not create the GitHub pull request.',
+    );
+    return asPullRequest(created.data);
+  }
+
+  async getPullRequest(repository: string, number: number) {
+    const [owner, repo] = repoParts(repository);
+    const response = await this.request(
+      () => this.client.rest.pulls.get({ owner, repo, pull_number: number }),
+      'Could not read the GitHub pull request.',
+    );
+    return asPullRequest(response.data);
   }
 }

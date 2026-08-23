@@ -1,9 +1,10 @@
 import { defineConfig } from 'prisma/config';
+import { keys } from './src/keys';
 
-const LOCAL_DATABASE_URL = 'postgresql://nibleaf:nibleaf@localhost:5442/nibleaf';
+const env = keys();
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: { path: 'prisma/migrations' },
-  datasource: { url: process.env.POSTGRES_URL ?? LOCAL_DATABASE_URL },
+  datasource: { url: env.POSTGRES_URL },
 });

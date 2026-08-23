@@ -9,6 +9,8 @@ import { badRequest, notFound } from '@/errors';
 import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
+
 /** List columns are explicitly selected so the multi-MB `snapshot` JSONB is
  *  never shipped for all 50 rows. `errorDetails` IS included — the dashboard's
  *  failure card reads it off the latest deployment in this list — but it's
@@ -40,11 +42,11 @@ export const getDeployment = async (projectId: string, id: string) => {
   return deployment;
 };
 
-export const getLatestReadyDeployment = (projectId: string): Promise<Prisma.DeploymentGetPayload<object> | null> =>
+export const getLatestReadyDeployment = (projectId: string) =>
   prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
 
 /** One page's status relative to the last published snapshot. */
-export interface PendingChange extends DeploymentPageDiff {}
+interface PendingChange extends DeploymentPageDiff {}
 
 /** What will change on the next publish, vs. the last READY deployment. */
 export interface PendingChanges {
@@ -57,7 +59,7 @@ export interface PendingChanges {
   redirectIssues: RedirectValidationIssue[];
 }
 
-export interface DeploymentDiffLine {
+interface DeploymentDiffLine {
   type: 'added' | 'removed' | 'unchanged';
   text: string;
   oldLine: number | null;
@@ -76,12 +78,6 @@ export interface DeploymentPageDiff {
   deletions: number;
   lines: DeploymentDiffLine[];
   truncated: boolean;
-}
-
-export interface DeploymentDiff {
-  deployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'>;
-  previousDeployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'> | null;
-  changes: DeploymentPageDiff[];
 }
 
 /** Read the complete effective publish input once and compose the same snapshot
@@ -123,9 +119,9 @@ function stableEqual(a: unknown, b: unknown): boolean {
     if (Array.isArray(v)) {
       return v.map(norm);
     }
-    if (typeof v === 'object') {
+    if (isPlainObject(v)) {
       return Object.fromEntries(
-        Object.entries(v as Record<string, unknown>)
+        Object.entries(v)
           .filter(([, val]) => val !== undefined)
           .sort(([x], [y]) => x.localeCompare(y))
           .map(([k, val]) => [k, norm(val)]),
@@ -298,7 +294,7 @@ const stripSnapshot = <T extends { snapshot: unknown }>(deployment: T): Omit<T, 
   return rest;
 };
 
-export const getDeploymentDiff = async (projectId: string, id: string): Promise<DeploymentDiff> => {
+export const getDeploymentDiff = async (projectId: string, id: string) => {
   const deployment = await getDeployment(projectId, id);
   if (deployment.status !== 'READY' || !deployment.snapshot) {
     throw badRequest('Only a published deployment with a snapshot has a diff.', { id });
@@ -415,7 +411,7 @@ export interface PublishDeploymentBody extends CreateDeploymentBody {
 }
 
 /** Create a PENDING deployment and enqueue the publish job for the worker to build. */
-export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: PublishDeploymentBody) => {
+export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: PublishDeploymentBody, locale?: string) => {
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
@@ -443,6 +439,7 @@ export const createDeployment = async (organizationId: string, projectId: string
     projectId,
     skipGrammarChecks: body.skipGrammarChecks === true,
     auto: false,
+    locale,
   };
   await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });
   logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: false, version: deployment.version } });

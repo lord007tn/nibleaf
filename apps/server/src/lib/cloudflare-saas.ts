@@ -1,7 +1,8 @@
+import got from 'got';
 import { env } from '@/env';
 import { type CloudflareCustomHostname, cloudflareCustomHostnameSsl } from './cloudflare-saas-state';
 
-export { type CloudflareCustomHostname, customHostnameRecords, customHostnameState, type DomainRecord } from './cloudflare-saas-state';
+export { type CloudflareCustomHostname, customHostnameRecords, customHostnameState } from './cloudflare-saas-state';
 
 interface CloudflareWorkerRoute {
   id: string;
@@ -24,21 +25,25 @@ const config = () => {
   return { zoneId: env.CLOUDFLARE_SAAS_ZONE_ID, token: env.CLOUDFLARE_SAAS_API_TOKEN };
 };
 
-const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
+const api = async <T>(path: string, options?: { json?: unknown; method?: 'DELETE' | 'PATCH' | 'POST' }): Promise<T> => {
   const { zoneId, token } = config();
-  const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}${path}`, {
-    ...init,
-    signal: AbortSignal.timeout(15_000),
-    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json', ...init?.headers },
+  const response = await got(`https://api.cloudflare.com/client/v4/zones/${zoneId}${path}`, {
+    headers: { authorization: `Bearer ${token}` },
+    json: options?.json,
+    method: options?.method,
+    responseType: 'json',
+    retry: { limit: 1 },
+    throwHttpErrors: false,
+    timeout: { request: 15_000 },
   });
-  const body = (await response.json().catch(() => null)) as CloudflareEnvelope<T> | null;
-  if (!response.ok || !body?.success || body.result === undefined) {
+  const body = response.body as CloudflareEnvelope<T>;
+  if (!response.ok || !body.success || body.result === undefined) {
     const detail = body?.errors
       ?.map((error) => error.message)
       .filter(Boolean)
       .join('; ');
-    const error = new Error(detail || `Cloudflare returned HTTP ${response.status}.`);
-    Object.assign(error, { status: response.status });
+    const error = new Error(detail || `Cloudflare returned HTTP ${response.statusCode}.`);
+    Object.assign(error, { status: response.statusCode });
     throw error;
   }
   return body.result;
@@ -47,13 +52,13 @@ const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
 export const createCustomHostname = (hostname: string): Promise<CloudflareCustomHostname> =>
   api('/custom_hostnames', {
     method: 'POST',
-    body: JSON.stringify({
+    json: {
       hostname,
       ssl: {
         ...cloudflareCustomHostnameSsl,
         settings: { min_tls_version: '1.2', tls_1_3: 'on' },
       },
-    }),
+    },
   });
 
 export const getCustomHostname = (id: string): Promise<CloudflareCustomHostname> => api(`/custom_hostnames/${encodeURIComponent(id)}`);
@@ -61,29 +66,29 @@ export const getCustomHostname = (id: string): Promise<CloudflareCustomHostname>
 export const retryCustomHostname = (id: string): Promise<CloudflareCustomHostname> =>
   api(`/custom_hostnames/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    body: JSON.stringify({
+    json: {
       ssl: cloudflareCustomHostnameSsl,
-    }),
+    },
   });
 
 export const deleteCustomHostname = async (id: string): Promise<void> => {
   try {
     await api(`/custom_hostnames/${encodeURIComponent(id)}`, { method: 'DELETE' });
   } catch (error) {
-    if ((error as { status?: number }).status !== 404) throw error;
+    if (!(error instanceof Error) || !('status' in error) || error.status !== 404) throw error;
   }
 };
 
 export const createCustomHostnameRoute = (hostname: string): Promise<CloudflareWorkerRoute> =>
   api('/workers/routes', {
     method: 'POST',
-    body: JSON.stringify({ pattern: `${hostname}/*`, script: env.CLOUDFLARE_SAAS_WORKER_SCRIPT }),
+    json: { pattern: `${hostname}/*`, script: env.CLOUDFLARE_SAAS_WORKER_SCRIPT },
   });
 
 export const deleteCustomHostnameRoute = async (id: string): Promise<void> => {
   try {
     await api(`/workers/routes/${encodeURIComponent(id)}`, { method: 'DELETE' });
   } catch (error) {
-    if ((error as { status?: number }).status !== 404) throw error;
+    if (!(error instanceof Error) || !('status' in error) || error.status !== 404) throw error;
   }
 };

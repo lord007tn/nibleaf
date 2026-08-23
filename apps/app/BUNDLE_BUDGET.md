@@ -2,7 +2,7 @@
 
 Public documentation pages have a 390,000-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
-`scripts/check-bundle-budget.mjs` and leaves roughly 10% headroom above the
+`scripts/check-bundle-budget.mjs` and keeps a regression buffer above the
 August 2026 baseline. CI also rejects public profiles that contain known
 dashboard/auth chunks or dashboard translation keys.
 

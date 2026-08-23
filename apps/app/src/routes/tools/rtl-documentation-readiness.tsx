@@ -5,7 +5,7 @@ import { AlertTriangle, ArrowRight, CheckCircle2, Clipboard, HelpCircle, ShieldC
 import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 import { trackMarketingEvent } from '@/lib/marketing-events';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION, type RtlReadinessResult } from '@/lib/rtl-readiness';
 
 const TOOL_PATH = '/tools/rtl-documentation-readiness';
@@ -18,7 +18,7 @@ const RESULT_EVENT_TYPES = {
 } as const;
 
 export const Route = createFileRoute('/tools/rtl-documentation-readiness')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Free RTL documentation readiness grader | Nibleaf',

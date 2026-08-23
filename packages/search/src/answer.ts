@@ -1,5 +1,7 @@
+import { siteT } from '@nibleaf/i18n/site';
 import type { SearchChunk } from './hybrid';
-import { answerOutputSchema, type ChatProvider, type ChatUsage } from './providers';
+import type { ChatProvider, ChatUsage } from './providers';
+import { answerOutputSchema } from './validators/provider';
 
 export interface GroundedCitation {
   id: string;
@@ -41,9 +43,7 @@ export const answerUserPrompt = (query: string, chunks: SearchChunk[]): string =
 
 export const noAnswer = (language: string, confidence = 0): GroundedAnswer => ({
   status: 'no_answer',
-  answer: language.toLowerCase().startsWith('ar')
-    ? 'لم أجد معلومات كافية في الوثائق المتاحة للإجابة بثقة.'
-    : 'I could not find enough information in the available documentation to answer confidently.',
+  answer: siteT(language)('noAnswerGrounded'),
   confidence,
   citations: [],
 });

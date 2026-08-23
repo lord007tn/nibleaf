@@ -1,6 +1,5 @@
 import { prisma } from '@nibleaf/database';
 import type { MemberRole } from '@nibleaf/shared/constants';
-import { hashApiKeySecret } from '@nibleaf/shared/crypto';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import type { Context, MiddlewareHandler } from 'hono';
 import { assertProjectAccess } from '@/actions/projects';
@@ -22,14 +21,6 @@ export const isAuthenticated: MiddlewareHandler<HonoEnv> = async (ctx, next) => 
       code: 'auth:invalid_session',
       message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.',
     });
-  }
-  await next();
-};
-
-/** Require an active organization (workspace) in the session. */
-export const hasOrganization: MiddlewareHandler<HonoEnv> = async (ctx, next) => {
-  if (!ctx.get('organizationId')) {
-    throw new AppError({ code: 'http:bad_request', message: 'No active workspace selected.' });
   }
   await next();
 };
@@ -97,24 +88,3 @@ export const requireProjectRole =
     }
     await next();
   };
-
-/** Authenticate an SDK request via `Authorization: Bearer plm_...`. */
-export const requireApiKey: MiddlewareHandler<HonoEnv> = async (ctx, next) => {
-  const header = ctx.req.header('authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
-  if (!token) {
-    throw new AppError({ code: 'auth:invalid_api_key', message: 'Missing API key.' });
-  }
-
-  const hashedSecret = hashApiKeySecret(token);
-  const key = await prisma.apiKey.findFirst({ where: { hashedSecret, revokedAt: null }, include: { project: true } });
-  if (!key) {
-    throw new AppError({ code: 'auth:invalid_api_key', message: 'Invalid or revoked API key.' });
-  }
-
-  await prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } });
-  ctx.set('apiKey', { id: key.id, projectId: key.projectId, scopes: key.scopes });
-  ctx.set('project', { id: key.project.id, organizationId: key.project.organizationId, name: key.project.name });
-  ctx.set('organizationId', key.project.organizationId);
-  await next();
-};

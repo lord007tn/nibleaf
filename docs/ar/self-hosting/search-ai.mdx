@@ -33,10 +33,10 @@ BM25 والمتجهات الكثيفة، مع فرض نطاق المستأجر �
 ## إعداد المزوّدين
 
 ابدأ من `.env.production.example` واترك `SEARCH_RUNTIME=shadow` أثناء الفهرسة
-والتقييم. اضبط `SEARCH_EMBEDDING_*` لمزوّد OpenAI أو مزوّد متوافق معه؛ تستخدم
-التضمينات حزمة OpenAI الرسمية مع عنوان أساسي قابل للضبط. يجب أن تساوي الأبعاد
-`QDRANT_VECTOR_SIZE`، ويتطلب تغيير النموذج أو الأبعاد أو نص إدخال التضمين إصدار
-مجموعة جديداً.
+والتقييم. اضبط `OPENROUTER_API_KEY` وثبّت `SEARCH_EMBEDDING_MODEL`؛ تستخدم
+التضمينات حزمة OpenRouter الرسمية لـ TypeScript، والنموذج الافتراضي هو
+`openai/text-embedding-3-small`. يجب أن تساوي الأبعاد `QDRANT_VECTOR_SIZE`،
+ويتطلب تغيير النموذج أو الأبعاد أو نص إدخال التضمين إصدار مجموعة جديداً.
 
 أضف ملف بحث v0.2 إلى كل أمر Compose في بيئة الإنتاج المحمولة:
 
@@ -47,9 +47,9 @@ docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 يبقى الملف منفصلاً حتى لا تتغير أصول الاستضافة الذاتية الموقعة للإصدار v0.1.2.
 ويتضمن إعداد Coolify وبيئة التطوير Qdrant مباشرة.
 
-للإجابات، فعّل `SEARCH_ANSWER_ENABLED`، واستخدم مفتاح OpenRouter منفصلاً بأقل
-صلاحيات، وثبّت `SEARCH_ANSWER_MODEL`. تستخدم الإجابات موصل OpenRouter في
-TanStack AI، المبني على حزمة OpenRouter الرسمية والمخرجات البنيوية الأصلية.
+للإجابات، فعّل `SEARCH_ANSWER_ENABLED` وثبّت `SEARCH_ANSWER_MODEL`. تستخدم
+الإجابات بيانات اعتماد OpenRouter نفسها عبر حزمة TypeScript الرسمية من
+OpenRouter والمخرجات البنيوية الأصلية.
 بعدها يفعّل المسؤول **Grounded AI answers** لكل موقع مقصود. الحصة اليومية ذرية
 لكل مشروع في Redis، ويوجد حد منفصل لكل عنوان IP ومهلة وإلغاء للطلب. عند تعطل
 Redis يفشل فحص الحصة بصورة مغلقة وآمنة.

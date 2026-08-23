@@ -12,7 +12,7 @@ import {
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookOpen, LayoutDashboard, Settings } from 'lucide-react';
+import { BarChart3, BookOpen, LayoutDashboard, type LucideIcon, Settings } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { SiteSwitcher } from '@/components/app/site-switcher';
 
@@ -23,7 +23,7 @@ const NAV = [
   { to: '/app/sites', labelKey: 'nav.sites', icon: BookOpen, exact: false },
   { to: '/app/analytics', labelKey: 'nav.analytics', icon: BarChart3, exact: false },
   { to: '/app/settings', labelKey: 'nav.settings', icon: Settings, exact: false },
-] as const satisfies ReadonlyArray<{ to: string; labelKey: MessageKey; icon: typeof BookOpen; exact: boolean }>;
+] as const satisfies ReadonlyArray<{ to: string; labelKey: MessageKey; icon: LucideIcon; exact: boolean }>;
 
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });

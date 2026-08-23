@@ -121,56 +121,68 @@ const HarborTemplate: DocumentationThemeTemplate = {
 const ManuscriptTemplate: DocumentationThemeTemplate = {
   id: 'manuscript',
   shell: 'editorial',
-  ReaderLayout: (slots) =>
-    readerFrame(
-      slots,
-      <div
-        className="mx-auto flex w-full max-w-[90rem] flex-1 flex-col px-4 sm:px-6"
+  ReaderLayout: (slots) => (
+    <>
+      {slots.banner}
+      <section
+        className="documentation-manuscript-reader flex flex-1 flex-col bg-(--theme-muted)/45"
         data-documentation-layout="manuscript-editorial"
-        data-theme-region="content-shell"
       >
-        <aside className="documentation-manuscript-reader-navigation hidden h-48 border-border/60 border-b lg:block" data-theme-region="sidebar">
-          <ScrollArea className="h-full">
-            <div className="documentation-manuscript-navigation py-4" data-theme-region="sidebar-content">
-              {slots.navigation}
-            </div>
-          </ScrollArea>
-        </aside>
-        {slots.content}
-      </div>,
-    ),
+        {slots.header}
+        <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-8 sm:px-6" data-theme-region="content-shell">
+          <aside
+            className="documentation-manuscript-reader-navigation hidden border-border/70 border-y bg-(--theme-canvas) lg:block"
+            data-theme-region="sidebar"
+          >
+            <ScrollArea className="h-full">
+              <div className="documentation-manuscript-navigation py-4" data-theme-region="sidebar-content">
+                {slots.navigation}
+              </div>
+            </ScrollArea>
+          </aside>
+          <div className="documentation-manuscript-paper min-w-0 flex-1 border-border/70 border-x bg-(--theme-canvas) shadow-[0_24px_70px_color-mix(in_oklab,var(--theme-foreground)_8%,transparent)]">
+            {slots.content}
+          </div>
+        </div>
+      </section>
+      {slots.footer}
+      {slots.overlays}
+    </>
+  ),
   ProjectPreviewLayout: ({ mobileNavigation, navigation, content }) => (
     <>
       {mobileNavigation}
-      <div className="flex min-h-0 flex-1 flex-col" data-documentation-layout="manuscript-editorial-preview" data-theme-region="preview-shell">
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-3 bg-(--theme-muted)/55 p-3"
+        data-documentation-layout="manuscript-editorial-preview"
+        data-theme-region="preview-shell"
+      >
         <aside
-          className="documentation-manuscript-preview-navigation hidden h-48 flex-col border-border border-b bg-card/40 md:flex"
+          className="documentation-manuscript-preview-navigation hidden max-h-40 flex-col border-border border-y bg-(--theme-canvas) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
         </aside>
-        {content}
+        <div className="mx-auto min-h-0 w-full max-w-[60rem] flex-1 overflow-y-auto border border-border bg-(--theme-canvas) shadow-lg">
+          {content}
+        </div>
       </div>
     </>
   ),
   StudioPreviewLayout: ({ header, navigation, content }) => (
-    <>
-      {header}
-      <div
-        className="grid min-h-[22rem] grid-cols-1 grid-rows-[auto_minmax(0,1fr)]"
-        data-documentation-layout="manuscript-editorial-studio"
-        data-theme-region="preview-shell"
-      >
-        <div className="documentation-manuscript-studio-navigation border-border border-b bg-card/45 p-2 text-xs" data-theme-region="sidebar">
+    <div className="bg-(--theme-muted)/60 p-3" data-documentation-layout="manuscript-editorial-studio" data-theme-region="preview-shell">
+      <div className="mx-auto max-w-[44rem] border border-border bg-(--theme-canvas) shadow-lg">
+        {header}
+        <div className="documentation-manuscript-studio-navigation border-border border-y px-3 py-2 text-xs" data-theme-region="sidebar">
           {navigation}
         </div>
-        {content}
+        <div className="min-h-[20rem]">{content}</div>
       </div>
-    </>
+    </div>
   ),
   PageLayout: ({ article, tableOfContents }) => (
     <div
-      className="grid min-w-0 justify-center gap-10 py-9 lg:py-12 xl:grid-cols-[11rem_minmax(0,46rem)]"
+      className="grid min-w-0 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-16 xl:grid-cols-[10rem_minmax(0,44rem)]"
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
     >
@@ -185,66 +197,67 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
 const SignalTemplate: DocumentationThemeTemplate = {
   id: 'signal',
   shell: 'console',
-  ReaderLayout: (slots) =>
-    readerFrame(
-      slots,
-      <div
-        className="mx-auto grid w-full max-w-[90rem] flex-1 grid-cols-1 px-4 sm:px-6 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-5 lg:pt-4"
-        data-documentation-layout="signal-console"
-        data-theme-region="content-shell"
-      >
-        <aside
-          className="sticky top-[calc(var(--site-header-h)+1rem)] hidden h-[calc(100dvh-var(--site-header-h)-2rem)] self-start rounded-(--radius) border border-border bg-(--theme-surface) lg:block"
-          data-theme-region="sidebar"
+  ReaderLayout: (slots) => (
+    <>
+      {slots.banner}
+      <section className="documentation-signal-reader flex flex-1 flex-col bg-(--theme-code) p-0 lg:p-3" data-documentation-layout="signal-console">
+        {slots.header}
+        <div
+          className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 overflow-hidden bg-(--theme-canvas) lg:grid-cols-[14.5rem_minmax(0,1fr)]"
+          data-theme-region="content-shell"
         >
-          <ScrollArea className="h-full">
-            <div className="p-3" data-theme-region="sidebar-content">
-              {slots.navigation}
-            </div>
-          </ScrollArea>
-        </aside>
-        {slots.content}
-      </div>,
-    ),
+          <aside
+            className="hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
+            data-theme-region="sidebar"
+          >
+            <ScrollArea className="sticky top-[4.75rem] h-[calc(100dvh-6.25rem)]">
+              <div className="p-3" data-theme-region="sidebar-content">
+                {slots.navigation}
+              </div>
+            </ScrollArea>
+          </aside>
+          <div className="min-w-0 border-(--theme-border) lg:border-y lg:border-e">{slots.content}</div>
+        </div>
+      </section>
+      {slots.footer}
+      {slots.overlays}
+    </>
+  ),
   ProjectPreviewLayout: ({ mobileNavigation, navigation, content }) => (
     <>
       {mobileNavigation}
       <div
-        className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[13rem_minmax(0,1fr)]"
+        className="grid min-h-0 flex-1 grid-cols-1 gap-2 bg-(--theme-code) p-2 md:grid-cols-[13rem_minmax(0,1fr)]"
         data-documentation-layout="signal-console-preview"
         data-theme-region="preview-shell"
       >
         <aside
-          className="m-3 me-0 hidden min-h-0 flex-col rounded-(--radius) border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
+          className="hidden min-h-0 flex-col border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
         </aside>
-        {content}
+        <div className="min-h-0 overflow-y-auto border border-border bg-(--theme-canvas)">{content}</div>
       </div>
     </>
   ),
   StudioPreviewLayout: ({ header, navigation, content }) => (
-    <>
+    <div className="bg-(--theme-code) p-2" data-documentation-layout="signal-console-studio" data-theme-region="preview-shell">
       {header}
-      <div
-        className="grid min-h-[22rem] grid-cols-[5.75rem_minmax(0,1fr)]"
-        data-documentation-layout="signal-console-studio"
-        data-theme-region="preview-shell"
-      >
+      <div className="grid min-h-[22rem] grid-cols-[6.5rem_minmax(0,1fr)] border border-border border-t-0 bg-(--theme-canvas)">
         <div className="border-border border-e bg-(--theme-code) p-2 text-(--theme-code-foreground) text-xs" data-theme-region="sidebar">
           {navigation}
         </div>
         {content}
       </div>
-    </>
+    </div>
   ),
   PageLayout: ({ article, tableOfContents }) => (
-    <div className="flex min-w-0 flex-col gap-8 py-9 lg:py-12" data-documentation-layout="signal-console-page" data-theme-region="page-shell">
-      <aside className="documentation-signal-command-index hidden border-border border-b pb-4 xl:block" data-theme-region="toc">
+    <div className="flex min-w-0 flex-col gap-6 p-4 sm:p-6 lg:p-8" data-documentation-layout="signal-console-page" data-theme-region="page-shell">
+      <aside className="documentation-signal-command-index hidden border border-border bg-(--theme-surface) p-3 xl:block" data-theme-region="toc">
         {tableOfContents}
       </aside>
-      {article}
+      <div className="min-w-0 border border-border bg-(--theme-canvas) p-4 sm:p-6">{article}</div>
     </div>
   ),
 };

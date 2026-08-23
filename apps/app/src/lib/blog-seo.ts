@@ -1,3 +1,4 @@
+import { siteT } from '@nibleaf/i18n/site';
 import type { BlogEntry } from './blog';
 import { breadcrumbLd, canonicalHref, faqLd, pageMeta } from './marketing-seo';
 
@@ -7,6 +8,7 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
   const path = `/blog/${entry.slug}`;
   const language = entry.language ?? 'en';
   const arabic = language === 'ar';
+  const t = siteT(language);
   const imagePath = arabic ? '/brand/raster/social/nibleaf-og-card-ar.png' : '/brand/raster/social/nibleaf-og-card.png';
   const scripts = [
     {
@@ -30,8 +32,8 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
       }),
     },
     breadcrumbLd([
-      { name: arabic ? 'الرئيسية' : 'Home', path: '/' },
-      { name: arabic ? 'المدونة' : 'Blog', path: '/blog' },
+      { name: t('home'), path: '/' },
+      { name: t('blog'), path: '/blog' },
       { name: entry.title, path },
     ]),
     ...(entry.faqs && entry.faqs.length > 0 ? [faqLd(entry.faqs.map((faq) => ({ q: faq.question, a: faq.answer })))] : []),

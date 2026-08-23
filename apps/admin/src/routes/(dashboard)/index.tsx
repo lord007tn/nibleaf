@@ -2,13 +2,14 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@nibleaf/design-system/components/ui/chart';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Activity, CheckCircle2, FileText, Filter, Globe2, Rocket, ShieldCheck, TrendingUp, TriangleAlert, UserPlus, Users } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { DataError } from '@/components/data-state';
 import { type AdminUser, useAdminFunnel, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
-import { fmtDate } from '@/lib/format';
+import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/(dashboard)/')({
   component: OverviewPage,
@@ -35,9 +36,9 @@ function buildSignupSeries(users: AdminUser[] | undefined): { date: string; sign
   return days;
 }
 
-const chartConfig = { signups: { label: 'New customers', color: 'var(--chart-1)' } } satisfies ChartConfig;
-
 function OverviewPage() {
+  const t = useT();
+  const format = useFormatters();
   const overview = useAdminOverview();
   const { data, isPending } = overview;
   const users = useAdminUsers();
@@ -58,17 +59,33 @@ function OverviewPage() {
     (data?.failedExports7d ?? 0) +
     (data?.gitIssues ?? 0);
 
+  const chartConfig = { signups: { label: t('admin.overview.newCustomers'), color: 'var(--chart-1)' } } satisfies ChartConfig;
   const stats: { label: string; value: number | undefined; hint: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
-    { label: 'Customers', value: data?.users, hint: `+${data?.recentUsers ?? 0} new this week`, icon: Users },
-    { label: 'Sites', value: data?.sites, hint: 'Across all workspaces', icon: FileText },
-    { label: 'Deployments', value: data?.deployments, hint: `${data?.publishedDeployments ?? 0} ready · ${publishedPct}%`, icon: Rocket },
-    { label: 'Verified customers', value: data?.verifiedUsers, hint: `${verifiedPct}% of all customers`, icon: CheckCircle2 },
+    {
+      label: t('admin.nav.customers'),
+      value: data?.users,
+      hint: t('admin.overview.newThisWeekCount', { count: format.number(data?.recentUsers ?? 0) }),
+      icon: Users,
+    },
+    { label: t('nav.sites'), value: data?.sites, hint: t('admin.overview.allWorkspaces'), icon: FileText },
+    {
+      label: t('admin.overview.deployments'),
+      value: data?.deployments,
+      hint: t('admin.overview.readyPercent', { count: format.number(data?.publishedDeployments ?? 0), percent: format.percent(publishedPct) }),
+      icon: Rocket,
+    },
+    {
+      label: t('admin.overview.verifiedCustomers'),
+      value: data?.verifiedUsers,
+      hint: t('admin.overview.customerPercent', { percent: format.percent(verifiedPct) }),
+      icon: CheckCircle2,
+    },
   ];
 
   if (overview.isError || users.isError || sites.isError || funnel.isError) {
     return (
       <DataError
-        message="One or more overview data sources could not be loaded."
+        message={t('admin.overview.loadError')}
         retry={() => void Promise.all([overview.refetch(), users.refetch(), sites.refetch(), funnel.refetch()])}
       />
     );
@@ -77,41 +94,41 @@ function OverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-semibold text-2xl tracking-tight">Overview</h1>
-        <p className="mt-1 text-muted-foreground text-sm">Customer, site, and deployment health for Nibleaf Cloud.</p>
+        <h1 className="font-semibold text-2xl tracking-tight">{t('nav.overview')}</h1>
+        <p className="mt-1 text-muted-foreground text-sm">{t('admin.overview.subtitle')}</p>
       </div>
 
       <Card className={attentionCount > 0 ? 'border-destructive/40' : undefined}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             {attentionCount > 0 ? <TriangleAlert className="size-4 text-destructive" /> : <Activity className="size-4 text-muted-foreground" />}
-            Operator attention
+            {t('admin.overview.attention')}
           </CardTitle>
           <CardDescription>
             {isPending
-              ? 'Loading operational signals…'
+              ? t('admin.overview.loadingSignals')
               : attentionCount > 0
-                ? `${attentionCount} current signals need review across recent failures, domains, moderation, invitations, exports, and Git.`
-                : 'No current failure or moderation signals in the operational summary.'}
+                ? t('admin.overview.attentionBody', { count: format.number(attentionCount) })
+                : t('admin.overview.noSignals')}
           </CardDescription>
           <CardAction>
             <Button nativeButton={false} render={<Link to="/operations" />} size="sm" variant="outline">
-              Open operations
+              {t('admin.overview.openOperations')}
             </Button>
           </CardAction>
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {[
-            ['Deploy failures (24h)', data?.failedDeployments24h ?? 0],
-            ['Domain errors', data?.domainIssues ?? 0],
-            ['Taken down', data?.takenDownSites ?? 0],
-            ['Expired owner invites', data?.expiredOwnerInvites ?? 0],
-            ['Export failures (7d)', data?.failedExports7d ?? 0],
-            ['Git issues', data?.gitIssues ?? 0],
+            [t('admin.overview.deployFailures'), data?.failedDeployments24h ?? 0],
+            [t('admin.overview.domainErrors'), data?.domainIssues ?? 0],
+            [t('admin.overview.takenDown'), data?.takenDownSites ?? 0],
+            [t('admin.overview.expiredInvites'), data?.expiredOwnerInvites ?? 0],
+            [t('admin.overview.exportFailures'), data?.failedExports7d ?? 0],
+            [t('admin.overview.gitIssues'), data?.gitIssues ?? 0],
           ].map(([label, value]) => (
             <div className="rounded-lg border p-3" key={String(label)}>
               <p className="text-muted-foreground text-xs">{label}</p>
-              <p className="mt-1 font-semibold text-xl tabular-nums">{isPending ? '—' : value}</p>
+              <p className="mt-1 font-semibold text-xl tabular-nums">{isPending ? '—' : format.number(Number(value))}</p>
             </div>
           ))}
         </CardContent>
@@ -123,7 +140,7 @@ function OverviewPage() {
           <Card key={stat.label}>
             <CardHeader>
               <CardDescription>{stat.label}</CardDescription>
-              <CardTitle className="font-semibold text-3xl tabular-nums tracking-tight">{isPending ? '—' : (stat.value ?? 0)}</CardTitle>
+              <CardTitle className="font-semibold text-3xl tabular-nums tracking-tight">{isPending ? '—' : format.number(stat.value ?? 0)}</CardTitle>
               <CardAction>
                 <stat.icon className="size-4 text-muted-foreground" />
               </CardAction>
@@ -138,9 +155,9 @@ function OverviewPage() {
         <Card className="@container/chart">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="size-4 text-muted-foreground" /> New customers
+              <TrendingUp className="size-4 text-muted-foreground" /> {t('admin.overview.newCustomers')}
             </CardTitle>
-            <CardDescription>Sign-ups over the last {SIGNUP_DAYS} days</CardDescription>
+            <CardDescription>{t('admin.overview.signupsPeriod', { days: format.number(SIGNUP_DAYS) })}</CardDescription>
           </CardHeader>
           <div className="px-2 pb-4 sm:px-6">
             {users.isPending ? (
@@ -159,11 +176,14 @@ function OverviewPage() {
                     axisLine={false}
                     dataKey="date"
                     minTickGap={24}
-                    tickFormatter={(v) => new Date(v).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tickFormatter={(value) => format.shortDate(String(value))}
                     tickLine={false}
                     tickMargin={8}
                   />
-                  <ChartTooltip content={<ChartTooltipContent indicator="dot" labelFormatter={(v) => fmtDate(v as string)} />} cursor={false} />
+                  <ChartTooltip
+                    content={<ChartTooltipContent indicator="dot" labelFormatter={(value) => format.date(String(value))} />}
+                    cursor={false}
+                  />
                   <Area dataKey="signups" fill="url(#fillSignups)" stroke="var(--color-signups)" strokeWidth={2} type="natural" />
                 </AreaChart>
               </ChartContainer>
@@ -171,7 +191,7 @@ function OverviewPage() {
               <div className="grid h-[220px] place-items-center text-center text-muted-foreground text-sm">
                 <div className="flex flex-col items-center gap-2">
                   <UserPlus className="size-6 text-muted-foreground/60" />
-                  No sign-ups in the last {SIGNUP_DAYS} days
+                  {t('admin.overview.noSignups', { days: format.number(SIGNUP_DAYS) })}
                 </div>
               </div>
             )}
@@ -182,9 +202,9 @@ function OverviewPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="size-4 text-muted-foreground" /> Recent sites
+              <FileText className="size-4 text-muted-foreground" /> {t('admin.overview.recentSites')}
             </CardTitle>
-            <CardDescription>Latest documentation sites created</CardDescription>
+            <CardDescription>{t('admin.overview.recentSitesBody')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
             {sites.isPending ? (
@@ -194,7 +214,7 @@ function OverviewPage() {
                 ))}
               </div>
             ) : recentSites.length === 0 ? (
-              <p className="py-6 text-center text-muted-foreground text-sm">No sites yet.</p>
+              <p className="py-6 text-center text-muted-foreground text-sm">{t('admin.overview.noSites')}</p>
             ) : (
               recentSites.map((site) => (
                 <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50" key={site.id}>
@@ -202,7 +222,7 @@ function OverviewPage() {
                     <p className="truncate font-medium">{site.name}</p>
                     <p className="truncate text-muted-foreground text-xs">{site.owner}</p>
                   </div>
-                  <span className="shrink-0 text-muted-foreground text-xs">{fmtDate(site.createdAt)}</span>
+                  <span className="shrink-0 text-muted-foreground text-xs">{format.date(site.createdAt)}</span>
                 </div>
               ))
             )}
@@ -214,11 +234,9 @@ function OverviewPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Filter className="size-4 text-muted-foreground" /> Activation funnel
+            <Filter className="size-4 text-muted-foreground" /> {t('admin.overview.activationFunnel')}
           </CardTitle>
-          <CardDescription>
-            Last {funnel.data?.days ?? 30} days — sign-up to first successful publish (starter auto-publishes excluded)
-          </CardDescription>
+          <CardDescription>{t('admin.overview.activationBody', { days: format.number(funnel.data?.days ?? 30) })}</CardDescription>
         </CardHeader>
         <CardContent>
           {funnel.isPending ? (
@@ -231,10 +249,10 @@ function OverviewPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               {(
                 [
-                  { label: 'Signed up', value: funnel.data?.signups ?? 0 },
-                  { label: 'Edited content', value: funnel.data?.edited ?? 0 },
-                  { label: 'Clicked publish', value: funnel.data?.published ?? 0 },
-                  { label: 'Publish ready', value: funnel.data?.ready ?? 0 },
+                  { label: t('admin.overview.signedUp'), value: funnel.data?.signups ?? 0, baseline: true },
+                  { label: t('admin.overview.editedContent'), value: funnel.data?.edited ?? 0, baseline: false },
+                  { label: t('admin.overview.clickedPublish'), value: funnel.data?.published ?? 0, baseline: false },
+                  { label: t('admin.overview.publishReady'), value: funnel.data?.ready ?? 0, baseline: false },
                 ] as const
               ).map((step) => {
                 const signups = funnel.data?.signups ?? 0;
@@ -242,8 +260,10 @@ function OverviewPage() {
                 return (
                   <div className="rounded-lg border border-border p-3" key={step.label}>
                     <p className="text-muted-foreground text-xs">{step.label}</p>
-                    <p className="mt-1 font-semibold text-2xl tabular-nums tracking-tight">{step.value}</p>
-                    <p className="text-muted-foreground text-xs">{step.label === 'Signed up' ? 'baseline' : `${pct}% of sign-ups`}</p>
+                    <p className="mt-1 font-semibold text-2xl tabular-nums tracking-tight">{format.number(step.value)}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {step.baseline ? t('admin.overview.baseline') : t('admin.overview.signupPercent', { percent: format.percent(pct) })}
+                    </p>
                   </div>
                 );
               })}
@@ -252,8 +272,11 @@ function OverviewPage() {
           {funnel.isSuccess ? (
             <p className="mt-4 text-muted-foreground text-xs">
               {funnel.data?.medianHoursToReady == null
-                ? 'Time to first successful publish: no converted sign-ups in this window.'
-                : `Median time to first successful publish: ${funnel.data.medianHoursToReady}h. ${funnel.data.readyWithin24Hours} sign-up${funnel.data.readyWithin24Hours === 1 ? '' : 's'} published successfully within 24h.`}
+                ? t('admin.overview.noConversion')
+                : t('admin.overview.medianPublish', {
+                    hours: format.number(funnel.data.medianHoursToReady),
+                    count: format.number(funnel.data.readyWithin24Hours),
+                  })}
             </p>
           ) : null}
         </CardContent>
@@ -263,40 +286,42 @@ function OverviewPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader>
-            <CardDescription>Admins</CardDescription>
+            <CardDescription>{t('admin.overview.admins')}</CardDescription>
             <CardTitle className="flex items-center gap-2 font-semibold text-2xl tabular-nums tracking-tight">
               <ShieldCheck className="size-4 text-muted-foreground" />
-              {isPending ? '—' : (data?.admins ?? 0)}
+              {isPending ? '—' : format.number(data?.admins ?? 0)}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Ready deployments</CardDescription>
+            <CardDescription>{t('admin.overview.readyDeployments')}</CardDescription>
             <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">
-              {isPending ? '—' : (data?.publishedDeployments ?? 0)}
+              {isPending ? '—' : format.number(data?.publishedDeployments ?? 0)}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Healthy domains</CardDescription>
+            <CardDescription>{t('admin.overview.healthyDomains')}</CardDescription>
             <CardTitle className="flex items-center gap-2 font-semibold text-2xl tabular-nums tracking-tight">
               <Globe2 className="size-4 text-muted-foreground" />
-              {isPending ? '—' : `${data?.healthyDomains ?? 0}/${data?.domains ?? 0}`}
+              {isPending ? '—' : `${format.number(data?.healthyDomains ?? 0)}/${format.number(data?.domains ?? 0)}`}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>New this week</CardDescription>
-            <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">{isPending ? '—' : (data?.recentUsers ?? 0)}</CardTitle>
+            <CardDescription>{t('admin.overview.newThisWeek')}</CardDescription>
+            <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">
+              {isPending ? '—' : format.number(data?.recentUsers ?? 0)}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
-            <CardDescription>Verified rate</CardDescription>
-            <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">{isPending ? '—' : `${verifiedPct}%`}</CardTitle>
+            <CardDescription>{t('admin.overview.verifiedRate')}</CardDescription>
+            <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight">{isPending ? '—' : format.percent(verifiedPct)}</CardTitle>
           </CardHeader>
         </Card>
       </div>

@@ -1,6 +1,7 @@
 import type { GitSyncJobData, GitSyncJobName } from '@nibleaf/bullmq/jobs/git';
 import { createLogger } from '@nibleaf/logger';
 import type { Job } from 'bullmq';
+import got from 'got';
 import { env } from '../env';
 
 const log = createLogger({ processor: 'git' });
@@ -13,13 +14,10 @@ export async function handleGitJobs(job: Job<GitSyncJobData, unknown, GitSyncJob
   if (!env.GIT_WORKER_SECRET) {
     throw new Error('GIT_WORKER_SECRET is required to process Git jobs.');
   }
-  const response = await fetch(`${env.API_URL.replace(/\/$/, '')}/api/public/git/jobs/${encodeURIComponent(job.data.operationId)}`, {
-    method: 'POST',
+  await got.post(`${env.API_URL.replace(/\/$/, '')}/api/public/git/jobs/${encodeURIComponent(job.data.operationId)}`, {
     headers: { 'X-Nibleaf-Git-Worker': env.GIT_WORKER_SECRET },
-    signal: AbortSignal.timeout(9 * 60_000),
+    retry: { limit: 0 },
+    timeout: { request: 9 * 60_000 },
   });
-  if (!response.ok) {
-    throw new Error(`Git operation endpoint returned ${response.status}.`);
-  }
   log.info({ operationId: job.data.operationId }, 'git operation processed');
 }

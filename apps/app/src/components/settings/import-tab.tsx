@@ -3,22 +3,39 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import { ghostImportBody } from '@nibleaf/validators';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { type ContentImportSummary, useImportFromGhost, useImportFromMintlify } from '@/hooks/api';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { SettingsSection } from './section';
 
 /** Matches the server-side body cap for Ghost exports. */
 const MAX_GHOST_FILE_BYTES = 15 * 1024 * 1024;
 type ImportSource = 'mintlify' | 'ghost';
 
+const IMPORT_SOURCE_TABS = [
+  { id: 'mintlify', icon: Leaf, label: 'settings.import.mintlify.title' },
+  { id: 'ghost', icon: Ghost, label: 'settings.import.ghost.title' },
+  { id: 'git', icon: GitBranch, label: 'settings.import.git.title' },
+] as const;
+
+class ImportFileReadError extends Error {
+  readonly code = 'import:file_read';
+
+  constructor() {
+    super('import:file_read');
+    this.name = 'ImportFileReadError';
+  }
+}
+
 const readFileText = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(reader.error ?? new Error('Could not read the file.'));
+    reader.onerror = () => reject(new ImportFileReadError());
     reader.readAsText(file);
   });
 
@@ -130,7 +147,17 @@ export function ImportTab({ projectId }: { projectId?: string }) {
     setResult(summary);
     toast.success(t('settings.import.success'));
   };
-  const handleError = (error: unknown) => toast.error(error instanceof Error ? error.message : t('settings.import.error'));
+  const handleError = (error: unknown) => {
+    if (error instanceof ApiResponseError && error.code === 'import:invalid_document') {
+      toast.error(source === 'ghost' ? t('settings.import.ghost.invalidJson') : t('settings.import.error'));
+      return;
+    }
+    if (error instanceof ImportFileReadError) {
+      toast.error(t('settings.import.error'));
+      return;
+    }
+    toast.error(error instanceof Error ? error.message : t('settings.import.error'));
+  };
 
   const runImport = async () => {
     if (source === 'mintlify') {
@@ -162,14 +189,12 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       toast.error(t('settings.import.ghost.invalidJson'));
       return;
     }
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const document = ghostImportBody.safeParse(parsed);
+    if (!document.success) {
       toast.error(t('settings.import.ghost.invalidJson'));
       return;
     }
-    ghost.mutate(
-      { ...(parsed as Record<string, unknown>), __nibleafImport: { ghostUrl: ghostUrl.trim() } },
-      { onSuccess: handleSuccess, onError: handleError },
-    );
+    ghost.mutate({ ...document.data, __nibleafImport: { ghostUrl: ghostUrl.trim() } }, { onSuccess: handleSuccess, onError: handleError });
   };
 
   const canImport =
@@ -261,7 +286,9 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                   </div>
                   <input
                     accept=".json,application/json"
+                    aria-label={t('settings.import.ghost.file')}
                     className="sr-only"
+                    id="import-ghost-file"
                     onChange={(event) => setGhostFile(event.target.files?.[0] ?? null)}
                     ref={fileInputRef}
                     type="file"
@@ -289,19 +316,15 @@ export function ImportTab({ projectId }: { projectId?: string }) {
           )}
 
           <div className="flex flex-wrap items-center gap-2 px-1 pt-2">
-            <SourceChip
-              active={source === 'mintlify' && !result}
-              icon={<Leaf className="size-3.5" />}
-              label={t('settings.import.mintlify.title')}
-              onClick={() => chooseSource('mintlify')}
-            />
-            <SourceChip
-              active={source === 'ghost' && !result}
-              icon={<Ghost className="size-3.5" />}
-              label={t('settings.import.ghost.title')}
-              onClick={() => chooseSource('ghost')}
-            />
-            <SourceChip icon={<GitBranch className="size-3.5" />} label={t('settings.import.git.title')} onClick={openGitSettings} />
+            {IMPORT_SOURCE_TABS.map((tab) => (
+              <SourceChip
+                active={tab.id !== 'git' && source === tab.id && !result}
+                icon={<tab.icon className="size-3.5" />}
+                key={tab.id}
+                label={t(tab.label)}
+                onClick={() => (tab.id === 'git' ? openGitSettings() : chooseSource(tab.id))}
+              />
+            ))}
             {result ? (
               <Button className="ms-auto" onClick={() => setResult(null)} size="sm" type="button" variant="outline">
                 {t('settings.import.again')}

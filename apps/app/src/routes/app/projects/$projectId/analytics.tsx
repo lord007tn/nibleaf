@@ -2,6 +2,7 @@ import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/comp
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { useT } from '@nibleaf/i18n/react';
+import type { AnalyticsRange } from '@nibleaf/validators';
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle } from 'lucide-react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -12,6 +13,8 @@ import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-pr
 export const Route = createFileRoute('/app/projects/$projectId/analytics')({
   component: ProjectAnalyticsRoute,
 });
+
+const RANGE_TABS: AnalyticsRange[] = ['24h', '7d', '30d', '90d'];
 
 function ProjectAnalyticsRoute() {
   return (
@@ -38,12 +41,13 @@ function AnalyticsPage() {
           <h1 className="font-semibold text-2xl tracking-tight">{t('analytics.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('analytics.subtitleSite')}</p>
         </div>
-        <Tabs onValueChange={(value) => setRange(value as typeof range)} value={range}>
+        <Tabs onValueChange={(value) => setRange(value as AnalyticsRange)} value={range}>
           <TabsList>
-            <TabsTrigger value="24h">24h</TabsTrigger>
-            <TabsTrigger value="7d">7d</TabsTrigger>
-            <TabsTrigger value="30d">30d</TabsTrigger>
-            <TabsTrigger value="90d">90d</TabsTrigger>
+            {RANGE_TABS.map((value) => (
+              <TabsTrigger key={value} value={value}>
+                {value}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       </div>

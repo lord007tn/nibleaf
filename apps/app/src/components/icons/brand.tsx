@@ -32,14 +32,6 @@ export function GoogleIcon({ className, ...props }: IconProps) {
   );
 }
 
-export function GitlabIcon({ className, ...props }: IconProps) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden {...props}>
-      <path d="m23.6 10.6-.03-.08-3.27-8.54a.85.85 0 0 0-.84-.54.85.85 0 0 0-.5.2.85.85 0 0 0-.28.43L16.48 8H7.52L5.32 2.07a.85.85 0 0 0-.28-.42.85.85 0 0 0-.5-.2.85.85 0 0 0-.84.53L.43 10.52l-.03.08a6.07 6.07 0 0 0 2.01 7.01l.01.01.03.02 4.98 3.73 2.46 1.86 1.5 1.13a1 1 0 0 0 1.21 0l1.5-1.13 2.46-1.86 5.01-3.75.01-.01a6.07 6.07 0 0 0 2.01-7.02Z" />
-    </svg>
-  );
-}
-
 export function SlackIcon({ className, ...props }: IconProps) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden {...props}>

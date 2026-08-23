@@ -3,6 +3,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/(auth)/sign-in')({
 });
 
 function SignInPage() {
+  const t = useT();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -27,13 +29,13 @@ function SignInPage() {
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: email.trim().toLowerCase(), type: 'sign-in' });
       if (result.error) {
-        setError(result.error.message ?? 'Could not send a sign-in code.');
+        setError(t('admin.signIn.sendError'));
         return;
       }
       setCodeSent(true);
       startCountdown();
     } catch {
-      setError('Could not send a sign-in code.');
+      setError(t('admin.signIn.sendError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -45,12 +47,12 @@ function SignInPage() {
     try {
       const result = await authClient.signIn.emailOtp({ email: email.trim().toLowerCase(), otp: otp.trim() });
       if (result.error) {
-        setError(result.error.message ?? 'That code is invalid or expired.');
+        setError(t('admin.signIn.codeError'));
         return;
       }
       navigate({ to: '/' });
     } catch {
-      setError('That code is invalid or expired.');
+      setError(t('admin.signIn.codeError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,15 +81,15 @@ function SignInPage() {
           <span className="grid size-11 place-items-center rounded-xl bg-primary text-primary-foreground">
             {codeSent ? <KeyRound className="size-5" /> : <ShieldCheck className="size-5" />}
           </span>
-          <h1 className="mt-2 font-semibold text-2xl tracking-tight">{codeSent ? 'Enter your sign-in code' : 'Nibleaf Admin'}</h1>
+          <h1 className="mt-2 font-semibold text-2xl tracking-tight">{codeSent ? t('admin.signIn.codeTitle') : t('admin.meta.title')}</h1>
           <p className="text-muted-foreground text-sm">
-            {codeSent ? `We sent a one-time code to ${email.trim().toLowerCase()}.` : 'Secure, passwordless access for platform administrators.'}
+            {codeSent ? t('admin.signIn.codeSent', { email: email.trim().toLowerCase() }) : t('admin.signIn.subtitle')}
           </p>
         </div>
         <form className="flex flex-col gap-4" onSubmit={submit}>
           {!codeSent ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">Admin email</Label>
+              <Label htmlFor="email">{t('admin.signIn.email')}</Label>
               <Input
                 autoComplete="email"
                 autoFocus
@@ -101,7 +103,7 @@ function SignInPage() {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2" dir="ltr">
-              <Label htmlFor="otp">One-time code</Label>
+              <Label htmlFor="otp">{t('admin.signIn.code')}</Label>
               <InputOTP
                 aria-invalid={Boolean(error)}
                 autoComplete="one-time-code"
@@ -124,20 +126,20 @@ function SignInPage() {
                   <InputOTPSlot index={5} />
                 </InputOTPGroup>
               </InputOTP>
-              <p className="text-center text-muted-foreground text-xs">The code expires in 10 minutes and can be used once.</p>
+              <p className="text-center text-muted-foreground text-xs">{t('admin.signIn.expiry')}</p>
             </div>
           )}
           {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
           <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent ? otp.length !== 6 : !email.trim())} type="submit">
-            {isSubmitting ? (codeSent ? 'Verifying…' : 'Sending…') : 'Log in'}
+            {isSubmitting ? (codeSent ? t('admin.signIn.verifying') : t('admin.signIn.sending')) : t('admin.signIn.submit')}
           </Button>
           {codeSent ? (
             <div className="flex items-center justify-between">
               <Button onClick={useDifferentEmail} size="sm" type="button" variant="ghost">
-                <ArrowLeft className="size-4" /> Change email
+                <ArrowLeft className="size-4 rtl:rotate-180" /> {t('admin.signIn.changeEmail')}
               </Button>
               <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
-                {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                {resendIn > 0 ? t('admin.signIn.resendIn', { seconds: resendIn }) : t('admin.signIn.resend')}
               </Button>
             </div>
           ) : null}

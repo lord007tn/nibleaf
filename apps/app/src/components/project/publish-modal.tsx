@@ -14,7 +14,7 @@ import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { ArrowLeft, FileText, Loader2, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
@@ -30,7 +30,7 @@ interface PublishModalProps {
 }
 
 /** Visual treatment per change status. */
-const STATUS_META: Record<PendingChange['status'], { icon: typeof Plus; dot: string; chip: string; labelKey: MessageKey; order: number }> = {
+const STATUS_META: Record<PendingChange['status'], { icon: LucideIcon; dot: string; chip: string; labelKey: MessageKey; order: number }> = {
   added: { icon: Plus, dot: 'bg-emerald-500', chip: 'text-emerald-600 dark:text-emerald-400', labelKey: 'publish.added', order: 0 },
   modified: { icon: Pencil, dot: 'bg-amber-500', chip: 'text-amber-600 dark:text-amber-400', labelKey: 'publish.modified', order: 1 },
   removed: { icon: Minus, dot: 'bg-rose-500', chip: 'text-rose-600 dark:text-rose-400', labelKey: 'publish.removed', order: 2 },

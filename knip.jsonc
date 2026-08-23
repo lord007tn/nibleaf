@@ -1,5 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["apps/docs/.source/**"],
   "workspaces": {
     ".": {
       "entry": ["scripts/split-ghost-by-language.mjs"]
@@ -10,9 +11,6 @@
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]
-    },
-    "packages/logger": {
-      "ignoreDependencies": ["pino-pretty"]
     },
     "packages/tsconfig": {
       "ignoreDependencies": ["vite"]

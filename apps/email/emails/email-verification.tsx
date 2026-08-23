@@ -1,16 +1,15 @@
-import { TransactionalEmailTemplate } from '@nibleaf/email';
+import { createEmailTranslator, TransactionalEmail } from '@nibleaf/email';
 
 export default function EmailVerificationEmail() {
+  const t = createEmailTranslator('en');
   return (
-    <TransactionalEmailTemplate
-      options={{
-        subject: 'Verify your Nibleaf email',
-        preheader: 'Confirm your email address to finish setting up Nibleaf.',
-        title: 'Verify your email address',
-        message: 'Confirm this email address to finish setting up your Nibleaf account.',
-        action: { label: 'Verify email', url: 'https://nibleaf.com/verify-email?token=preview-token' },
-        detail: 'This verification link is single-use. If it expires, request a new one from the sign-in page.',
-      }}
+    <TransactionalEmail
+      action={{ label: t('email.verifyEmail.action'), url: 'https://nibleaf.com/verify-email?token=preview-token' }}
+      detail={t('email.verifyEmail.detail')}
+      language="en"
+      message={t('email.verifyEmail.message')}
+      preview={t('email.verifyEmail.preview')}
+      title={t('email.verifyEmail.title')}
     />
   );
 }

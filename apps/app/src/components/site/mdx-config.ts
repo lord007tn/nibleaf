@@ -14,7 +14,7 @@ export const normalizeType = (raw?: string): CalloutType => {
 
 /** The custom component tag names the renderer understands (lowercased, as
  *  rehype-raw emits them). */
-export const COMPONENT_TAGS = [
+const COMPONENT_TAGS = [
   'callout',
   'note',
   'warning',

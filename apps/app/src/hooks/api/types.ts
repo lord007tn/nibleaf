@@ -3,7 +3,8 @@
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
-export type PublishedLanguageConfig = LanguageConfig & { name?: string; description?: string };
+
+type PublishedLanguageConfig = LanguageConfig & { name?: string; description?: string };
 
 export interface Language {
   id: string;
@@ -51,14 +52,14 @@ export interface OpenApiConfiguration {
   source: { type: 'upload' } | { type: 'url'; url: string } | { type: 'repository'; path: string };
 }
 
-export interface PublishedOpenApi {
+interface PublishedOpenApi {
   title: string;
   path: string;
   contentHash: string;
   updatedAt: string;
 }
 
-export type PageKind = 'PAGE' | 'GROUP';
+type PageKind = 'PAGE' | 'GROUP';
 
 export interface PageNode {
   id: string;
@@ -95,7 +96,7 @@ export interface Branch {
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';
 
 /** Structured publish-check failure (Deployment.errorDetails). */
-export interface DeploymentIssue {
+interface DeploymentIssue {
   type: 'broken-link' | 'grammar';
   pageTitle: string;
   pagePath: string;
@@ -130,57 +131,14 @@ export interface PendingChange {
   truncated: boolean;
 }
 
-/** What the next publish will change, relative to the last READY deployment. */
-export interface PendingChanges {
-  hasBaseline: boolean;
-  lastVersion: number | null;
-  lastPublishedAt: string | null;
-  changes: PendingChange[];
-  redirectIssues: Array<{
-    code: string;
-    message: string;
-    sequence: string[];
-    rowIndexes: number[];
-    field?: 'from' | 'to';
-  }>;
-}
-
-export interface DeploymentDiffLine {
+interface DeploymentDiffLine {
   type: 'added' | 'removed' | 'unchanged';
   text: string;
   oldLine: number | null;
   newLine: number | null;
 }
 
-export interface DeploymentPageDiff {
-  id: string;
-  title: string;
-  path: string;
-  languageCode: string;
-  kind: PageKind;
-  status: 'added' | 'modified' | 'removed';
-  fields: string[];
-  additions: number;
-  deletions: number;
-  lines: DeploymentDiffLine[];
-  truncated: boolean;
-}
-
-export interface DeploymentDiff {
-  deployment: Deployment;
-  previousDeployment: Deployment | null;
-  changes: DeploymentPageDiff[];
-}
-
-/** Result of a one-way public Git → pages import. */
-export interface GitImportSummary {
-  files: number;
-  imported: number;
-  updated: number;
-  skipped: number;
-}
-
-export interface DnsRecord {
+interface DnsRecord {
   type: string;
   name: string;
   value: string;
@@ -202,32 +160,6 @@ export interface Domain {
   records?: DnsRecord[];
 }
 
-export interface ApiKey {
-  id: string;
-  name: string;
-  lastFour: string;
-  scopes: string[];
-  createdAt: string;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
-  secret?: string;
-}
-
-export interface Member {
-  id: string;
-  role: string;
-  createdAt: string;
-  user: { id: string; name: string; email: string; image: string | null };
-}
-
-export interface Invitation {
-  id: string;
-  email: string;
-  role: string | null;
-  status: string;
-  expiresAt: string;
-}
-
 export interface Asset {
   id: string;
   key: string;
@@ -235,30 +167,6 @@ export interface Asset {
   contentType: string;
   size: number;
   createdAt: string;
-}
-
-/** Real per-site usage counters for the Usage settings tab. */
-export interface ProjectUsage {
-  /** Renderable pages (kind PAGE) on the default branch, across all languages. */
-  pages: number;
-  languages: number;
-  /** Members of the site's own organization. */
-  members: number;
-  deployments: {
-    /** Deployments started this calendar month (UTC). */
-    thisMonth: number;
-    /** Version of the latest READY deployment, or null if never published. */
-    latestVersion: number | null;
-    lastPublishedAt: string | null;
-  };
-  traffic: {
-    pageviews30d: number | null;
-    searches30d: number | null;
-  };
-  storage: {
-    bytes: number;
-    assets: number;
-  };
 }
 
 export interface WorkspaceSettings {
@@ -273,7 +181,7 @@ export interface WorkspaceSettings {
   [key: string]: unknown;
 }
 
-export interface CommentAnchor {
+interface CommentAnchor {
   /** The anchored text — the durable locator (re-found on load). */
   quote: string;
   /** Creation-time ProseMirror position hints. */
@@ -296,10 +204,6 @@ export interface ChangelogEntry {
   date: string | null;
   title: string;
   pages: number;
-}
-
-export interface AiDraftResult {
-  text: string;
 }
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
@@ -359,7 +263,7 @@ export interface SiteShell {
   openapi?: PublishedOpenApi | null;
 }
 
-export interface Heading {
+interface Heading {
   depth: number;
   text: string;
   id: string;
@@ -394,17 +298,7 @@ export interface SitePage {
   next: { title: string; path: string } | null;
 }
 
-export interface SearchHit {
-  id: string;
-  title: string;
-  path: string;
-  description: string;
-  icon?: string;
-  snippet: string;
-  score: number;
-}
-
-export interface SearchCitation {
+interface SearchCitation {
   id: string;
   pageId: string;
   title: string;
@@ -422,10 +316,4 @@ export interface SearchAnswer {
   model?: string;
   cacheHit: boolean;
   quotaRemaining: number;
-}
-
-export interface PublicMeta {
-  marketingAnalytics: { consentRequired: true; ga4MeasurementId: string | null; gtmContainerId: string | null };
-  providers: { google: boolean };
-  signupDisabled: boolean;
 }

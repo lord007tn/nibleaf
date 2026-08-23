@@ -2,6 +2,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import type { LanguageConfig } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
+import { Megaphone } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
@@ -43,7 +44,7 @@ export function BannerSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="⚑" title={t('settings.banner.title')} />
+      <SectionHeader icon={<Megaphone className="size-4" />} title={t('settings.banner.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}

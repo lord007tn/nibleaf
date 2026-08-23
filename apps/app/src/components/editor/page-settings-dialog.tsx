@@ -17,6 +17,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
+import { CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
@@ -26,10 +27,10 @@ type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
 
 const PAGE_SETTINGS_SECTIONS = [
-  { id: 'general', labelKey: 'editor.pageSettings.tab.general', icon: '⊕' },
-  { id: 'seo', labelKey: 'editor.pageSettings.tab.seo', icon: '◎' },
-  { id: 'behaviour', labelKey: 'editor.pageSettings.tab.behaviour', icon: '◐' },
-] as const satisfies ReadonlyArray<{ id: PageSettingsSection; labelKey: MessageKey; icon: string }>;
+  { id: 'general', labelKey: 'editor.pageSettings.tab.general', icon: CirclePlus },
+  { id: 'seo', labelKey: 'editor.pageSettings.tab.seo', icon: SearchCheck },
+  { id: 'behaviour', labelKey: 'editor.pageSettings.tab.behaviour', icon: PanelsTopLeft },
+] as const satisfies ReadonlyArray<{ id: PageSettingsSection; labelKey: MessageKey; icon: LucideIcon }>;
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
 
@@ -178,20 +179,23 @@ export function PageSettingsDialog({
               <DialogTitle className="text-start text-base">{t('editor.pageSettings.title')}</DialogTitle>
             </DialogHeader>
             <nav className="flex flex-col gap-0.5">
-              {PAGE_SETTINGS_SECTIONS.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSection(item.id)}
-                  className={cn(
-                    'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-                    section === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  )}
-                >
-                  <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>
-                  {t(item.labelKey)}
-                </button>
-              ))}
+              {PAGE_SETTINGS_SECTIONS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSection(item.id)}
+                    className={cn(
+                      'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                      section === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    <Icon aria-hidden className="size-4 shrink-0" />
+                    {t(item.labelKey)}
+                  </button>
+                );
+              })}
             </nav>
           </aside>
 

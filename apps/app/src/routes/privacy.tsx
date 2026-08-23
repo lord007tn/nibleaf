@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { MarketingShell } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/privacy')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud Privacy Policy and Data Practices',
@@ -38,7 +38,7 @@ const SECTIONS: { heading: string; body: string }[] = [
   },
   {
     heading: '4. Subprocessors',
-    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where application data is stored), Cloudflare (DNS, traffic delivery, security, and aggregate web telemetry), Postmark / ActiveCampaign (transactional email such as sign-in verification and invitations), OpenAI (processes document text only when a user explicitly invokes the AI writing assistant), and Google for optional public-site measurement after a visitor accepts the analytics prompt. When a deployment configures Google Tag Manager, it delivers allowlisted events to Google Analytics; the legacy direct Google Analytics fallback does not use Tag Manager.',
+    body: 'We use a small number of infrastructure providers to run the Service: Hetzner Online GmbH (server hosting in the EU, where application data is stored), Cloudflare (DNS, traffic delivery, security, and aggregate web telemetry), Postmark / ActiveCampaign (transactional email such as sign-in verification and invitations), OpenRouter (routes document text to the configured AI model only for explicit AI features), and Google for optional public-site measurement after a visitor accepts the analytics prompt. When a deployment configures Google Tag Manager, it delivers allowlisted events to Google Analytics; the legacy direct Google Analytics fallback does not use Tag Manager.',
   },
   {
     heading: '5. Built-in analytics',

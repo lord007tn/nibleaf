@@ -9,7 +9,7 @@ const STALE_MINUTES = 15;
 
 /** Flip deployments stranded in PENDING/BUILDING to FAILED so the dashboard
  *  doesn't show a perpetual in-progress publish after a worker crash. */
-export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
+async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
   const cutoff = new Date(Date.now() - staleMinutes * 60_000);
   const { count } = await prisma.deployment.updateMany({
     where: { status: { in: ['PENDING', 'BUILDING'] }, createdAt: { lt: cutoff } },

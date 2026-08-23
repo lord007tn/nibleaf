@@ -63,6 +63,7 @@ vi.mock('../projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ id: 'pr
 vi.mock('./github', () => ({
   getGitHubDefaultBranch: async () => 'main',
   listGitHubFiles: async () => [...mem.repoFiles.keys()].map((path) => ({ path, type: 'blob' as const })),
+  getGitHubTextFile: async (_owner: string, _name: string, _branch: string, path: string) => mem.repoFiles.get(path) ?? null,
   githubRawUrl: (_owner: string, _name: string, _branch: string, path: string) => path,
   fetchRawText: async (path: string) => mem.repoFiles.get(path) ?? null,
 }));

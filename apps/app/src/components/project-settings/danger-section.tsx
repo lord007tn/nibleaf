@@ -3,6 +3,7 @@ import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/conf
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
+import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -32,7 +33,7 @@ export function DangerSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="⚠" title={t('settings.danger.title')} />
+      <SectionHeader icon={<TriangleAlert className="size-4" />} title={t('settings.danger.title')} />
 
       <div className="mb-3.5 flex flex-col items-stretch gap-4 rounded-2xl border border-destructive/30 p-5 sm:flex-row sm:items-center sm:gap-3.5">
         <p className="flex-1 text-[13.5px] text-muted-foreground leading-relaxed">

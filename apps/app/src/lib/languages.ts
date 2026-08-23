@@ -3,8 +3,7 @@
  *
  * `code` is a BCP-47 tag, `label` is the English display name, `native` is the
  * endonym (the language's own name, in its own script), and `rtl` marks
- * right-to-left scripts. The server stores `direction` as 'LTR' | 'RTL'; use
- * {@link directionFor} to map a catalog code to that shape.
+ * right-to-left scripts.
  */
 export interface CatalogLanguage {
   code: string;
@@ -51,8 +50,3 @@ export const LANGUAGE_CATALOG: CatalogLanguage[] = [
   { code: 'ro', label: 'Romanian', native: 'Română', rtl: false },
   { code: 'hu', label: 'Hungarian', native: 'Magyar', rtl: false },
 ];
-
-/** Maps a catalog language code to the server's text-direction shape. */
-export function directionFor(code: string): 'LTR' | 'RTL' {
-  return LANGUAGE_CATALOG.find((lang) => lang.code === code)?.rtl ? 'RTL' : 'LTR';
-}

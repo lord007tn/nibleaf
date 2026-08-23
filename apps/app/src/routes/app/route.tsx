@@ -2,14 +2,14 @@ import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-rou
 import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
+import { getSessionFn } from '@/functions/session';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
-import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
 import { useSession } from '@/services/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
   beforeLoad: async () => {
-    const routeSession = await getRouteSession();
+    const routeSession = await getSessionFn();
     if (!routeSession) {
       throw redirect({ to: '/sign-in' });
     }
@@ -35,9 +35,9 @@ function AppRoute() {
 function AppGuard() {
   const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const resolvedSession = resolveRouteSession(session, routeSession, isPending);
+  const resolvedSession = session ?? (isPending ? routeSession : null);
 
-  if (shouldShowInitialSessionLoader(isPending, resolvedSession)) {
+  if (isPending && !resolvedSession) {
     return <PageLoader />;
   }
   if (!resolvedSession) return <Navigate to="/sign-in" />;

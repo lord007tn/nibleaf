@@ -1,6 +1,10 @@
+import { createRequire } from 'node:module';
 import { slugify } from '@nibleaf/shared';
+import type { LexicalHTMLRenderer as LexicalHTMLRendererInstance } from '@tryghost/kg-lexical-html-renderer';
+import type { MobiledocHtmlRenderer as MobiledocHtmlRendererInstance } from '@tryghost/kg-mobiledoc-html-renderer';
 import TurndownService from 'turndown';
 import { strikethrough, tables } from 'turndown-plugin-gfm';
+import { ghostMobiledocSchema, importDocumentSchema, nonEmptyImportStringSchema } from '@/validators/importers';
 import { stableHash } from './content';
 
 /**
@@ -12,7 +16,14 @@ import { stableHash } from './content';
 /** Ghost media URLs are exported with this placeholder in front of `/content/…`. */
 const GHOST_URL_PLACEHOLDER = '__GHOST_URL__';
 
-export class GhostExportError extends Error {}
+export class GhostExportError extends Error {
+  readonly code = 'import:invalid_document';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'GhostExportError';
+  }
+}
 
 /** Optional Nibleaf metadata added beside the untouched Ghost export by the
  * dashboard. Ghost's JSON does not contain the publication URL, but that URL
@@ -36,8 +47,11 @@ export interface GhostContentItem {
   title: string;
   slug: string;
   html: string | null;
+  lexical: string | null;
+  mobiledoc: string | null;
   plaintext: string | null;
   status: string | null;
+  visibility?: string | null;
   featureImage: string | null;
   description: string | null;
   publishedAt: string | null;
@@ -46,8 +60,11 @@ export interface GhostContentItem {
 }
 
 type Dict = Record<string, unknown>;
-const isDict = (value: unknown): value is Dict => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-const str = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value : null);
+const isDict = (value: unknown): value is Dict => importDocumentSchema.safeParse(value).success;
+const str = (value: unknown) => {
+  const parsed = nonEmptyImportStringSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+};
 
 const toItem = (row: Dict, tagsByPostId: ReadonlyMap<string, string[]>): GhostContentItem | null => {
   const title = str(row.title);
@@ -60,8 +77,11 @@ const toItem = (row: Dict, tagsByPostId: ReadonlyMap<string, string[]>): GhostCo
     title: title ?? (slug as string),
     slug: slug ?? '',
     html: str(row.html),
+    lexical: str(row.lexical),
+    mobiledoc: str(row.mobiledoc),
     plaintext: str(row.plaintext),
     status: str(row.status),
+    visibility: str(row.visibility),
     featureImage: str(row.feature_image),
     description: str(row.custom_excerpt) ?? str(row.excerpt),
     publishedAt: str(row.published_at),
@@ -71,12 +91,15 @@ const toItem = (row: Dict, tagsByPostId: ReadonlyMap<string, string[]>): GhostCo
 
 const isGhostPage = (row: Dict): boolean => row.type === 'page' || row.page === true || row.page === 1;
 
-/** Published items only — drafts and scheduled posts stay out of the docs site. */
-const isPublished = (item: GhostContentItem): boolean => item.status === null || item.status === 'published';
+/** Published, public items only. Member, paid, and tier-restricted Ghost
+ * content must never become public documentation through an import. */
+const isPubliclyPublished = (item: GhostContentItem) =>
+  (item.status === null || item.status === 'published') && (!item.visibility || item.visibility === 'public');
 
 export interface GhostExportContent {
   posts: GhostContentItem[];
   pages: GhostContentItem[];
+  restricted: number;
 }
 
 /**
@@ -119,6 +142,7 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
 
   const posts: GhostContentItem[] = [];
   const pages: GhostContentItem[] = [];
+  let restricted = 0;
   // Ghost stores static pages in the posts table (type: 'page' / legacy page: 1);
   // newer exports may also ship a separate `pages` collection.
   for (const row of rawPosts) {
@@ -126,8 +150,12 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
       continue;
     }
     const item = toItem(row, tagsByPostId);
-    if (item && isPublished(item)) {
-      (isGhostPage(row) ? pages : posts).push(item);
+    if (item) {
+      if (isPubliclyPublished(item)) {
+        (isGhostPage(row) ? pages : posts).push(item);
+      } else if ((item.status === null || item.status === 'published') && item.visibility && item.visibility !== 'public') {
+        restricted++;
+      }
     }
   }
   for (const row of rawPages) {
@@ -135,11 +163,15 @@ export const parseGhostExport = (input: unknown): GhostExportContent => {
       continue;
     }
     const item = toItem(row, tagsByPostId);
-    if (item && isPublished(item)) {
-      pages.push(item);
+    if (item) {
+      if (isPubliclyPublished(item)) {
+        pages.push(item);
+      } else if ((item.status === null || item.status === 'published') && item.visibility && item.visibility !== 'public') {
+        restricted++;
+      }
     }
   }
-  return { posts, pages };
+  return { posts, pages, restricted };
 };
 
 export type GhostLanguageResolution = {
@@ -234,6 +266,39 @@ const getTurndown = (): TurndownService => {
   return turndown;
 };
 
+// Both Ghost renderers publish a CommonJS build. Loading that build is
+// intentional: Lexical 0.13 exposes its runtime through CommonJS and cannot be
+// consumed through Node's synthetic ESM named exports.
+const require = createRequire(import.meta.url);
+const { LexicalHTMLRenderer } = require('@tryghost/kg-lexical-html-renderer') as {
+  LexicalHTMLRenderer: new () => LexicalHTMLRendererInstance;
+};
+const { MobiledocHtmlRenderer } = require('@tryghost/kg-mobiledoc-html-renderer') as {
+  MobiledocHtmlRenderer: new () => MobiledocHtmlRendererInstance;
+};
+const lexicalRenderer = new LexicalHTMLRenderer();
+const mobiledocRenderer = new MobiledocHtmlRenderer();
+
+const storedGhostHtml = async (item: GhostContentItem) => {
+  if (item.html) return { html: item.html, usedFallback: false };
+  if (item.lexical) {
+    try {
+      return { html: await lexicalRenderer.render(item.lexical), usedFallback: false };
+    } catch {
+      // Fall through to the legacy format or plaintext from the same export.
+    }
+  }
+  if (item.mobiledoc) {
+    try {
+      const document = ghostMobiledocSchema.parse(JSON.parse(item.mobiledoc));
+      return { html: mobiledocRenderer.render(document), usedFallback: false };
+    } catch {
+      // Fall through to plaintext from the same export.
+    }
+  }
+  return { html: item.plaintext ?? '', usedFallback: Boolean(item.lexical || item.mobiledoc) };
+};
+
 /** Last-resort conversion: strip tags and collapse whitespace. */
 const decodeHtmlEntity = (entity: string): string => {
   const entities: Record<string, string> = {
@@ -270,7 +335,11 @@ export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHt
   // Resolve placeholders to the source publication so the asset migrator can
   // download them. Legacy/direct API calls without a source URL retain the old
   // site-relative fallback and receive an explicit importer warning.
-  const prepared = html.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
+  const prepared = html
+    .replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '')
+    .replace(/(\b(?:src|poster)\s*=\s*["']?)(\/content\/[^"'\s>]+)/gi, (_match, prefix: string, path: string) =>
+      ghostSourceUrl ? `${prefix}${new URL(path, ghostSourceUrl).toString()}` : `${prefix}${path}`,
+    );
   try {
     return { markdown: getTurndown().turndown(prepared).trim(), usedFallback: false, hadGhostUrls };
   } catch {
@@ -279,13 +348,14 @@ export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHt
 };
 
 /** Full page body for one Ghost item: optional leading feature image + converted HTML. */
-export const ghostItemToMarkdown = (item: GhostContentItem, ghostSourceUrl?: string): GhostHtmlConversion => {
-  const source = item.html ?? '';
-  const conversion = source
-    ? convertGhostHtml(source, ghostSourceUrl)
-    : { markdown: item.plaintext?.trim() ?? '', usedFallback: false, hadGhostUrls: false };
+export const ghostItemToMarkdown = async (item: GhostContentItem, ghostSourceUrl?: string) => {
+  const source = await storedGhostHtml(item);
+  const conversion = source.html
+    ? { ...convertGhostHtml(source.html, ghostSourceUrl), usedFallback: source.usedFallback }
+    : { markdown: '', usedFallback: source.usedFallback, hadGhostUrls: false };
   if (item.featureImage) {
-    const image = item.featureImage.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
+    const rawImage = item.featureImage.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
+    const image = ghostSourceUrl && rawImage.startsWith('/') ? new URL(rawImage, ghostSourceUrl).toString() : rawImage;
     const alt = item.title.replace(/[[\]\n]/g, ' ').trim();
     const hadGhostUrls = conversion.hadGhostUrls || item.featureImage.includes(GHOST_URL_PLACEHOLDER);
     return { ...conversion, hadGhostUrls, markdown: `![${alt}](${image})\n\n${conversion.markdown}`.trim() };

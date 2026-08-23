@@ -1,16 +1,7 @@
 import { APP_URL } from '@/lib/links';
 
 /** localStorage key holding an invitation id captured before the user authenticated. */
-export const PENDING_INVITE_KEY = 'nibleaf.pendingInvitation';
-
-export interface InvitationInfo {
-  id: string;
-  email: string;
-  role: string;
-  status: string;
-  organizationName: string | null;
-  expired: boolean;
-}
+const PENDING_INVITE_KEY = 'nibleaf.pendingInvitation';
 
 /** The shareable accept link for an invitation — works with or without email delivery. */
 export const inviteAcceptUrl = (invitationId: string): string => {
@@ -28,20 +19,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-/** Fetch public invitation metadata via the same-origin /api proxy. Client-only. */
-export async function fetchInvitationInfo(invitationId: string): Promise<InvitationInfo | null> {
-  try {
-    const res = await fetch(`/api/public/invitations/${invitationId}`);
-    if (!res.ok) {
-      return null;
-    }
-    const json = (await res.json()) as { data?: InvitationInfo };
-    return json.data ?? null;
-  } catch {
-    return null;
   }
 }
 

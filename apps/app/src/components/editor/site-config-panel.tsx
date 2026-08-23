@@ -1,6 +1,20 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import {
+  Badge,
+  Braces,
+  LayoutTemplate,
+  type LucideIcon,
+  Megaphone,
+  Paintbrush,
+  PanelBottom,
+  PanelTop,
+  Route,
+  Search,
+  SearchCheck,
+  Type,
+} from 'lucide-react';
 import { BannerSection } from '@/components/project-settings/banner-section';
 import { BrandingSection } from '@/components/project-settings/branding-section';
 import { FooterSection } from '@/components/project-settings/footer-section';
@@ -19,41 +33,50 @@ import type { Project } from '@/hooks/api';
  * full-page editor (brand, theme, navigation, SEO, behaviour). Administration —
  * domain, members, billing, integrations, danger — stays in the Settings hub.
  */
-export const EDITOR_CONFIG_SECTIONS = [
-  { id: 'branding', labelKey: 'settings.branding', icon: '▣' },
-  { id: 'themes', labelKey: 'settings.themes', icon: '◈' },
-  { id: 'styling', labelKey: 'settings.styling', icon: '◐' },
-  { id: 'typography', labelKey: 'settings.typography', icon: 'T' },
-  { id: 'navbar', labelKey: 'settings.navbar', icon: '☰' },
-  { id: 'footer', labelKey: 'settings.footer', icon: '▭' },
-  { id: 'banner', labelKey: 'settings.banner', icon: '⚑' },
-  { id: 'seo', labelKey: 'settings.seo', icon: '◎' },
-  { id: 'search', labelKey: 'settings.search', icon: '⌕' },
-  { id: 'variables', labelKey: 'settings.variables', icon: '{}' },
-  { id: 'redirects', labelKey: 'settings.redirects', icon: '⤳' },
-] as const satisfies ReadonlyArray<{ id: string; labelKey: MessageKey; icon: string }>;
+const EDITOR_CONFIG_SECTIONS = [
+  { id: 'branding', labelKey: 'settings.branding', icon: Badge },
+  { id: 'themes', labelKey: 'settings.themes', icon: LayoutTemplate },
+  { id: 'styling', labelKey: 'settings.styling', icon: Paintbrush },
+  { id: 'typography', labelKey: 'settings.typography', icon: Type },
+  { id: 'navbar', labelKey: 'settings.navbar', icon: PanelTop },
+  { id: 'footer', labelKey: 'settings.footer', icon: PanelBottom },
+  { id: 'banner', labelKey: 'settings.banner', icon: Megaphone },
+  { id: 'seo', labelKey: 'settings.seo', icon: SearchCheck },
+  { id: 'search', labelKey: 'settings.search', icon: Search },
+  { id: 'variables', labelKey: 'settings.variables', icon: Braces },
+  { id: 'redirects', labelKey: 'settings.redirects', icon: Route },
+] as const satisfies ReadonlyArray<{ id: string; labelKey: MessageKey; icon: LucideIcon }>;
 
-export type ConfigSectionId = (typeof EDITOR_CONFIG_SECTIONS)[number]['id'];
-
-export const isConfigSectionId = (value: unknown): value is ConfigSectionId => EDITOR_CONFIG_SECTIONS.some((section) => section.id === value);
+export type ConfigSectionId =
+  | 'branding'
+  | 'themes'
+  | 'styling'
+  | 'typography'
+  | 'navbar'
+  | 'footer'
+  | 'banner'
+  | 'seo'
+  | 'search'
+  | 'variables'
+  | 'redirects';
 
 /** The config section list rendered inside the editor's left rail. */
 export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionId; onSelect: (id: ConfigSectionId) => void }) {
   const t = useT();
   return (
     <div className="space-y-0.5">
-      {EDITOR_CONFIG_SECTIONS.map((section) => (
+      {EDITOR_CONFIG_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
         <button
-          key={section.id}
+          key={id}
           type="button"
-          onClick={() => onSelect(section.id)}
+          onClick={() => onSelect(id)}
           className={cn(
             'flex h-9 w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-            active === section.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            active === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
-          <span className="inline-flex w-[18px] justify-center text-[13px]">{section.icon}</span>
-          {t(section.labelKey)}
+          <Icon aria-hidden className="size-4 shrink-0" />
+          {t(labelKey)}
         </button>
       ))}
     </div>

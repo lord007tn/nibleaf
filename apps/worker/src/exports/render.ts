@@ -178,8 +178,7 @@ const declarations = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): str
     `--danger:${safeThemeHex(tokens.danger, fallback.danger)}`,
   ].join(';');
 
-const themeConfigOf = (snapshot: SiteSnapshot): ThemeOwnedProjectConfig =>
-  (snapshot.project.config && typeof snapshot.project.config === 'object' ? snapshot.project.config : {}) as ThemeOwnedProjectConfig;
+const themeConfigOf = (snapshot: SiteSnapshot): ThemeOwnedProjectConfig => (snapshot.project.config ?? {}) as ThemeOwnedProjectConfig;
 
 const safeCssNumber = (value: unknown, fallback: number, minimum: number, maximum: number): string => {
   const numeric = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN;

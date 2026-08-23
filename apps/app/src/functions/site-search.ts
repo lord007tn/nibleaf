@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { getData } from '@/hooks/api/client-helpers';
-import type { SearchAnswer, SearchHit } from '@/hooks/api/types';
+import type { SearchAnswer } from '@/hooks/api/types';
 import { api } from '@/services/api';
 
 const searchSiteInput = z.object({
@@ -21,7 +21,7 @@ const answerSiteInput = searchSiteInput.omit({ limit: true }).extend({ query: z.
 export const searchSiteFn = createServerFn({ method: 'GET' })
   .validator(searchSiteInput)
   .handler(async ({ data }) => {
-    const result = await getData<{ hits: SearchHit[] }>(
+    const result = await getData(
       await api.public.sites[':id'].search.$get({
         param: { id: data.projectId },
         query: {

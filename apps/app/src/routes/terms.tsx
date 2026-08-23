@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { MarketingShell } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/terms')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf Cloud Terms of Service and Acceptable Use',

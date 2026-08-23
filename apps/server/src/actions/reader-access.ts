@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { auth } from '@nibleaf/auth/server';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { Prisma, prisma } from '@nibleaf/database';
+import { type EmailLanguage, renderReaderInvitationEmail } from '@nibleaf/email';
 import type {
   CreateAudienceBody,
   InviteReaderBody,
@@ -19,8 +20,6 @@ import { assertPublicJwksUrl, claimAt, claimStrings, isJwtVerificationError, jwt
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const newSecret = (): string => randomBytes(32).toString('base64url');
 const cookieName = (projectId: string): string => `nibleaf_reader_${projectId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -241,7 +240,7 @@ export const deleteAudience = async (projectId: string, audienceId: string, acto
   return { id: audienceId };
 };
 
-export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody) => {
+export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody, language?: EmailLanguage) => {
   await assertAudiences(projectId, body.audienceIds);
   const reader = await prisma.reader.upsert({
     where: { projectId_email: { projectId, email: body.email } },
@@ -271,10 +270,13 @@ export const inviteReader = async (projectId: string, actorUserId: string, body:
   // cookies intentionally never span unrelated customer domains.
   const readerOrigin = project?.domains[0]?.domain ? `https://${project.domains[0].domain}` : env.APP_URL;
   const activationUrl = `${readerOrigin}/api/public/reader-access/activate?token=${encodeURIComponent(token)}`;
-  const subject = `Your access to ${project?.name ?? 'private documentation'}`;
-  const text = `Open this one-time link to access ${project?.name ?? 'the documentation'}:\n\n${activationUrl}\n\nThis link expires in 7 days.`;
-  const html = `<div style="font-family:system-ui,sans-serif;max-width:520px"><h2>Private documentation access</h2><p>You were invited to read <strong>${escapeHtml(project?.name ?? 'private documentation')}</strong>.</p><p><a href="${activationUrl}">Activate reader access</a></p><p>This one-time link expires in 7 days.</p></div>`;
-  await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: body.email, subject, text, html } }).catch(() => undefined);
+  const message = await renderReaderInvitationEmail({
+    activationUrl,
+    days: 7,
+    projectName: project?.name ?? 'private documentation',
+    language,
+  });
+  await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: body.email, ...message } }).catch(() => undefined);
   await logAudit({ projectId, readerId: reader.id, actorUserId, action: 'READER_INVITED' });
   return { reader, invitation: { id: invitation.id, expiresAt: invitation.expiresAt }, activationUrl };
 };

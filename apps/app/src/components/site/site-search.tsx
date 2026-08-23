@@ -85,24 +85,13 @@ export function SiteSearch({
   const answerMutation = useAnswerSite();
   const hits = hitsQuery.data ?? [];
   const answer = answerMutation.isPending ? null : (answerMutation.data ?? null);
-  const answerError =
-    !answerMutation.isPending && answerMutation.error
-      ? arabic
-        ? 'تعذر إنشاء الإجابة. حاول مرة أخرى لاحقاً.'
-        : answerMutation.error instanceof Error
-          ? answerMutation.error.message
-          : 'Could not generate an answer.'
-      : null;
+  const answerError = !answerMutation.isPending && answerMutation.error ? t('answerFailed') : null;
   const searchMessage = !query.trim()
     ? t('searchPrompt')
     : hitsQuery.isFetching
-      ? arabic
-        ? 'جارٍ البحث…'
-        : 'Searching…'
+      ? t('searching')
       : hitsQuery.error
-        ? arabic
-          ? 'تعذر البحث. حاول مرة أخرى.'
-          : 'Search failed. Try again.'
+        ? t('searchFailed')
         : t('searchEmpty');
 
   const ask = () => {
@@ -144,7 +133,7 @@ export function SiteSearch({
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>
           {aiAnswers ? (
-            <div className="flex items-center gap-1 border-b px-3 pt-3" role="tablist" aria-label={arabic ? 'وضع البحث' : 'Search mode'}>
+            <div className="flex items-center gap-1 border-b px-3 pt-3" role="tablist" aria-label={t('searchMode')}>
               <button
                 type="button"
                 role="tab"
@@ -152,7 +141,7 @@ export function SiteSearch({
                 className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'search' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setMode('search')}
               >
-                <Search className="size-4" /> {arabic ? 'النتائج' : 'Results'}
+                <Search className="size-4" /> {t('results')}
               </button>
               <button
                 type="button"
@@ -161,7 +150,7 @@ export function SiteSearch({
                 className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'answer' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setMode('answer')}
               >
-                <Sparkles className="size-4" /> {arabic ? 'اسأل الذكاء الاصطناعي' : 'Ask AI'}
+                <Sparkles className="size-4" /> {t('askAi')}
               </button>
             </div>
           ) : null}
@@ -207,12 +196,8 @@ export function SiteSearch({
             <div className="max-h-[55vh] overflow-y-auto p-4" dir={arabic ? 'rtl' : 'ltr'}>
               {!answer && !answerError ? (
                 <div className="rounded-lg border bg-muted/30 p-4 text-sm">
-                  <p className="font-medium">{arabic ? 'إجابة موثقة من وثائق هذا الموقع' : 'A grounded answer from this site’s documentation'}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    {arabic
-                      ? 'لن تُستخدم أي صفحة لا يسمح لك بقراءتها، وستظهر الاستشهادات مع الإجابة.'
-                      : 'Pages you cannot read are excluded, and citations are shown with the answer.'}
-                  </p>
+                  <p className="font-medium">{t('groundedAnswerTitle')}</p>
+                  <p className="mt-1 text-muted-foreground">{t('groundedAnswerBody')}</p>
                 </div>
               ) : null}
               {answerError ? (
@@ -228,7 +213,7 @@ export function SiteSearch({
                   </div>
                   {answer.citations.length > 0 ? (
                     <div className="space-y-2 border-t pt-3">
-                      <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground">{arabic ? 'المصادر' : 'Sources'}</p>
+                      <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground">{t('sources')}</p>
                       {answer.citations.map((citation) => (
                         <a
                           key={citation.id}
@@ -248,12 +233,10 @@ export function SiteSearch({
                 </div>
               ) : null}
               <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
-                <p className="text-muted-foreground text-xs">
-                  {arabic ? 'قد لا تتوفر إجابة عندما لا تدعمها الوثائق.' : 'No answer is returned when the docs do not support one.'}
-                </p>
+                <p className="text-muted-foreground text-xs">{t('noAnswer')}</p>
                 <Button disabled={query.trim().length < 2 || answerMutation.isPending} onClick={ask} size="sm" type="button">
                   {answerMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                  {answerMutation.isPending ? (arabic ? 'جارٍ التحقق…' : 'Checking…') : arabic ? 'إجابة' : 'Answer'}
+                  {answerMutation.isPending ? t('checking') : t('answer')}
                 </Button>
               </div>
             </div>

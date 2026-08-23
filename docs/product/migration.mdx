@@ -3,7 +3,7 @@ title: 'Migrate documentation into Nibleaf'
 description: 'Plan a reversible migration from Mintlify, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
 audience: 'documentation owners planning a platform migration'
 content_type: 'how-to'
-last_reviewed: '2026-08-21'
+last_reviewed: '2026-08-23'
 verified_against: 'apps/server/src/actions/importers and apps/server/src/actions/export.ts'
 lang: 'en'
 dir: 'ltr'
@@ -18,14 +18,17 @@ traffic only after a crawl and rollback rehearsal.
 
 | Source | Nibleaf reads | Review closely |
 | --- | --- | --- |
-| Mintlify repository | Public GitHub repository, `docs.json` or `mint.json`, navigation, Markdown/MDX, reachable assets, and supported site settings. | Custom components, nested navigation containers, redirects, asset URLs, and unsupported settings. |
-| Ghost export | Supported posts, metadata, and assets from an export file. | Post-to-page hierarchy, language assignment, embeds, and missing remote assets. |
+| Mintlify repository | Public GitHub repository, `docs.json` or `mint.json`, recursive navigation, repository-local JSON references, Markdown/MDX, reachable assets, and supported site settings. | Custom components, redirects, asset URLs, and settings that do not have a Nibleaf equivalent. |
+| Ghost export | Published posts and pages, tags, metadata, feature images, HTML, Lexical or legacy Mobiledoc content, and reachable assets from a JSON export. | Language assignment, custom cards and embeds, routes, redirects, members, and missing remote assets. |
 | Public Git repository | Markdown content from the configured public provider and branch. | Source root, ordering, frontmatter, link rewriting, and later synchronization expectations. |
 
 For a Mintlify import, enter `owner/repository` and an optional branch. Nibleaf
-prefers `docs.json`, reads navigation relative to that file, imports linked
+prefers `docs.json`, resolves repository-local `.json` `$ref` files, reads
+languages, versions, products, tabs, menu items, groups, group roots, and pages relative to that file, imports linked
 internal pages omitted from navigation, and preserves existing target settings
-when they are already populated. A single import creates at most 500 navigation
+when they are already populated. Mintlify languages become Nibleaf languages,
+and Mintlify versions become Nibleaf documentation versions backed by branches.
+A single import creates at most 500 navigation
 nodes, including groups and pages; sources above that boundary must be split and
 their totals reconciled before cutover.
 
@@ -34,6 +37,17 @@ not backed by a public GitHub repository, export or publish its source to a
 disposable public repository first, remove secrets and private content, and use
 that repository for the migration rehearsal.
 
+For Ghost, open **Settings → Labs → Import/Export** in Ghost Admin and export
+the site content and settings as JSON. Upload that JSON and provide the
+publication origin, such as `https://docs.example.com`, so Nibleaf can resolve
+both `__GHOST_URL__` and ordinary `/content/images/...` paths before copying
+reachable images into project storage. Nibleaf imports published public posts
+and pages; it skips drafts, scheduled posts, and member, paid, or tier-restricted
+content so protected articles cannot become public documentation. Export `routes.yaml` and redirects
+separately and recreate them in **Settings → Redirects** after checking each
+destination. Member accounts, newsletters, email delivery settings, and theme
+code are outside the content importer.
+
 ## Establish a baseline
 
 Before import, record:
@@ -41,6 +55,7 @@ Before import, record:
 - source revision or export timestamp;
 - page and asset counts;
 - navigation hierarchy and redirects;
+- published and draft counts separately;
 - custom domains, canonical rules, indexing, and language relationships;
 - representative Markdown, MDX components, tables, diagrams, and downloads;
 - search queries that must return a particular page.
@@ -63,13 +78,16 @@ Use this order:
 
 1. Compare page count and hierarchy.
 2. Preview one page for every content pattern.
-3. Crawl internal links, images, downloads, redirects, and missing paths.
-4. Test the baseline search queries in every language.
-5. Open **Settings → Languages** and resolve every missing default-language page.
-6. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
+3. Compare language and version partitions, menu/product navigation, and Ghost post/page separation.
+4. Crawl internal links, images, downloads, redirects, and missing paths.
+5. Test the baseline search queries in every language.
+6. Open **Settings → Languages** and resolve every missing default-language page.
+7. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
    structured data on the initial HTML response.
-7. Verify keyboard and mobile behavior on representative pages.
-8. Publish to a non-primary hostname and repeat the checks while signed out.
+8. Verify keyboard and mobile behavior on representative pages.
+9. Publish to a non-primary hostname and repeat the checks while signed out.
+10. Rehearse the rollback: restore the source hostname and confirm the source
+    remains writable before scheduling the DNS change.
 
 Do not delete the source or change DNS until the replacement has a tested
 rollback copy.

@@ -1,6 +1,8 @@
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
+import { isRtl, translateFn } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
@@ -15,8 +17,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Nibleaf Admin' },
-      { name: 'application-name', content: 'Nibleaf Admin' },
+      { title: translateFn('admin.meta.title') },
+      { name: 'application-name', content: translateFn('admin.meta.title') },
       { name: 'theme-color', content: '#181612' },
       // Internal panel — never index.
       { name: 'robots', content: 'noindex, nofollow' },
@@ -42,8 +44,9 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   const nonce = useRouter().options.ssr?.nonce;
+  const { locale } = useLocale();
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={isRtl(locale) ? 'rtl' : 'ltr'} suppressHydrationWarning>
       <head>
         {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}

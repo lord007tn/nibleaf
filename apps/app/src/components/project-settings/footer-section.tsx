@@ -2,6 +2,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import type { ProjectConfig } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
+import { PanelBottom } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
@@ -37,7 +38,7 @@ export function FooterSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="▭" title={t('settings.footer.title')} />
+      <SectionHeader icon={<PanelBottom className="size-4" />} title={t('settings.footer.title')} />
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}
         guard={guard}

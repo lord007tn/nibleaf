@@ -1,6 +1,7 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useTheme } from '@nibleaf/design-system/theme';
+import { useT } from '@nibleaf/i18n/react';
 import {
   ArrowRight,
   BarChart3,
@@ -881,6 +882,7 @@ function SiteFooter({ stars }: { stars: number }) {
 }
 
 function DocsPreview() {
+  const t = useT();
   return (
     <div className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/[0.08]">
       <div className="flex items-center gap-2 border-border border-b px-4 py-3">
@@ -917,7 +919,7 @@ function DocsPreview() {
               </div>
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs" aria-hidden="true">
                 <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary">EN</span>
-                <span className="rounded-md bg-background px-2 py-1">عربي</span>
+                <span className="rounded-md bg-background px-2 py-1">{t('marketing.demo.arabic')}</span>
               </div>
             </div>
             <div className="space-y-2">
@@ -1022,6 +1024,7 @@ function PublishMock() {
 
 /** Bilingual mock: the same page mirrored EN (LTR) and AR (RTL). */
 function BilingualMock() {
+  const t = useT();
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/[0.06]">
       <div className="flex items-center justify-between border-border border-b px-4 py-3">
@@ -1030,7 +1033,7 @@ function BilingualMock() {
         </div>
         <div className="flex items-center gap-1.5 text-xs" aria-hidden="true">
           <span className="rounded-md bg-primary/10 px-2 py-1 font-medium text-primary">EN</span>
-          <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">عربي</span>
+          <span className="rounded-md bg-muted px-2 py-1 text-muted-foreground">{t('marketing.demo.arabic')}</span>
         </div>
       </div>
       <div className="grid grid-cols-2 divide-x divide-border">
@@ -1048,7 +1051,7 @@ function BilingualMock() {
           </div>
         </div>
         <div className="bg-muted/20 p-5" dir="rtl">
-          <p className="mb-3 font-medium text-muted-foreground text-xs">العربية</p>
+          <p className="mb-3 font-medium text-muted-foreground text-xs">{t('marketing.demo.arabic')}</p>
           <div className="mb-3 h-5 w-4/5 rounded bg-foreground/10" />
           <div className="space-y-2">
             <div className="h-2.5 w-full rounded bg-muted" />

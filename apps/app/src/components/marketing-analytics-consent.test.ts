@@ -76,8 +76,7 @@ describe('MarketingAnalyticsConsent', () => {
     await act(async () => renderConsent());
     const pageViews = window.dataLayer?.filter(
       (entry) =>
-        typeof entry === 'object' &&
-        entry !== null &&
+        entry instanceof Object &&
         !Array.isArray(entry) &&
         Object.prototype.toString.call(entry) !== '[object Arguments]' &&
         (entry as Record<string, unknown>).event === GTM_MARKETING_EVENT &&

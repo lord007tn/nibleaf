@@ -2,17 +2,18 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { type LucideIcon, Palette, UserRound } from 'lucide-react';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
 
 // Global account settings only — everything site-specific (members, billing,
 // integrations, notifications, git) now lives per-site under each site's Settings.
 const SECTIONS = [
-  { value: 'account', labelKey: 'settings.tab.account', icon: '◔' },
-  { value: 'appearance', labelKey: 'settings.tab.appearance', icon: '◐' },
-] as const satisfies ReadonlyArray<{ value: string; labelKey: MessageKey; icon: string }>;
+  { value: 'account', labelKey: 'settings.tab.account', icon: UserRound },
+  { value: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
+] as const satisfies ReadonlyArray<{ value: TabValue; labelKey: MessageKey; icon: LucideIcon }>;
 
-type TabValue = (typeof SECTIONS)[number]['value'];
+type TabValue = 'account' | 'appearance';
 
 const isTabValue = (value: unknown): value is TabValue => SECTIONS.some((s) => s.value === value);
 
@@ -54,20 +55,23 @@ function WorkspaceSettingsPage() {
 
         {/* Left settings sidebar */}
         <nav className="hidden w-48 shrink-0 flex-col gap-0.5 sm:flex">
-          {SECTIONS.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => navigate({ search: { tab: item.value }, replace: true })}
-              className={cn(
-                'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors',
-                tab === item.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-            >
-              <span className="inline-flex w-4 justify-center text-[13px]">{item.icon}</span>
-              {t(item.labelKey)}
-            </button>
-          ))}
+          {SECTIONS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => navigate({ search: { tab: item.value }, replace: true })}
+                className={cn(
+                  'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors',
+                  tab === item.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <Icon aria-hidden className="size-4 shrink-0" />
+                {t(item.labelKey)}
+              </button>
+            );
+          })}
         </nav>
 
         <div className="min-w-0 w-full flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>

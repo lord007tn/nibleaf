@@ -833,5 +833,3 @@ export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
     return [Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload) })];
   },
 });
-
-export default SlashCommand;

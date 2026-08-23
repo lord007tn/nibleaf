@@ -21,7 +21,7 @@ import {
   updateAudience,
   updateReader,
 } from '@/actions/reader-access';
-import { getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextLocale, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import routes from './routes';
 
@@ -50,7 +50,10 @@ const app = new Hono<HonoEnv>()
     ctx.json({ data: await deleteAudience(ctx.req.param('projectId') as string, ctx.req.param('audienceId'), getContextUserOrThrow().id) }, 200),
   )
   .post('/readers/invite', ...routes.inviteReader, validator('json', inviteReaderBody), async (ctx) =>
-    ctx.json({ data: await inviteReader(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json')) }, 201),
+    ctx.json(
+      { data: await inviteReader(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json'), getContextLocale()) },
+      201,
+    ),
   )
   .patch('/readers/:readerId', ...routes.updateReader, validator('json', updateReaderBody), async (ctx) =>
     ctx.json(

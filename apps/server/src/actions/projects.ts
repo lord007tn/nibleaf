@@ -9,6 +9,7 @@ import { conflict, notFound } from '@/errors';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
 const log = createLogger({ action: 'projects' });
+const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */
 export const assertProjectInOrg = async (organizationId: string, projectId: string) => {
@@ -125,9 +126,9 @@ const mergeConfig = (existing: ProjectConfig, incoming: ProjectConfig): ProjectC
   for (const [key, value] of Object.entries(incoming)) {
     if (Array.isArray(value)) {
       merged[key] = value;
-    } else if (value && typeof value === 'object') {
+    } else if (isPlainObject(value)) {
       const prev = merged[key];
-      merged[key] = { ...(prev && typeof prev === 'object' && !Array.isArray(prev) ? prev : {}), ...value };
+      merged[key] = { ...(isPlainObject(prev) ? prev : {}), ...value };
     } else {
       merged[key] = value;
     }

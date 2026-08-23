@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import { prisma } from '@nibleaf/database';
+import { type GitConnection, prisma } from '@nibleaf/database';
 import { gitWebhookParams } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import {
@@ -39,11 +39,7 @@ const parsePayload = (rawBody: string): GitHubWebhookPayload => {
   }
 };
 
-const handleTwoWayGitHubWebhook = async (
-  ctx: Context<HonoEnv>,
-  connection: NonNullable<Awaited<ReturnType<typeof prisma.gitConnection.findUnique>>>,
-  rawBody: string,
-) => {
+const handleTwoWayGitHubWebhook = async (ctx: Context<HonoEnv>, connection: GitConnection, rawBody: string) => {
   const secret = getConnectionWebhookSecret(connection);
   if (!secret || !verifyGitHubSignature(rawBody, ctx.req.header('x-hub-signature-256'), secret)) {
     throw unauthorized('Invalid webhook signature.');

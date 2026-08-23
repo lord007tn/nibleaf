@@ -5,6 +5,7 @@ import { Prisma, prisma } from '@nibleaf/database';
 import { logger } from '@nibleaf/logger';
 import { MemberRole } from '@nibleaf/shared/constants';
 import type { GitConfigStored } from '@nibleaf/validators';
+import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { importFromGitProvider } from './git-import';
 import { logPlatformEvent } from './platform-events';
@@ -53,14 +54,11 @@ export const verifyGitLabToken = (token: string | undefined, secret: string): bo
 /** Branch name from a push payload's `ref` (`refs/heads/main` → `main`), or null
  *  for tag pushes / non-push payloads. GitHub and GitLab share this field. */
 export const extractPushBranch = (payload: unknown): string | null => {
-  if (typeof payload !== 'object' || payload === null) {
+  const parsed = z.object({ ref: z.string() }).safeParse(payload);
+  if (!parsed.success || !parsed.data.ref.startsWith('refs/heads/')) {
     return null;
   }
-  const ref = (payload as { ref?: unknown }).ref;
-  if (typeof ref !== 'string' || !ref.startsWith('refs/heads/')) {
-    return null;
-  }
-  const branch = ref.slice('refs/heads/'.length);
+  const branch = parsed.data.ref.slice('refs/heads/'.length);
   return branch.length > 0 ? branch : null;
 };
 

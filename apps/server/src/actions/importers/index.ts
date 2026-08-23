@@ -2,7 +2,7 @@ import { ghostImporter } from './ghost';
 import { mintlifyImporter } from './mintlify';
 import type { ImporterSource, ImporterSourceId } from './types';
 
-export type { ImporterContext, ImporterSource, ImporterSourceId, ImportSummary } from './types';
+export type { ImporterSource, ImporterSourceId, ImportSummary } from './types';
 
 /**
  * Registry of available import sources, keyed by id. Adding a new system

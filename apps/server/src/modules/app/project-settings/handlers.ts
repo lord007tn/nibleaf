@@ -2,6 +2,7 @@ import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import { updateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { importFromGitProvider } from '@/actions/git-import';
 import { rotateGitWebhookSecret } from '@/actions/git-webhook';
 import { createNotificationsForOrgMembers } from '@/actions/notifications';
@@ -20,8 +21,9 @@ const app = new Hono<HonoEnv>()
     // The push-webhook secret is admin material (it authenticates deploy
     // triggers); the GET is member-level, so strip it below ADMIN. The UI
     // hides the webhook card for those members anyway.
-    if (!roleAtLeast(getContextMembership()?.role ?? '', MemberRole.ADMIN) && settings.git && typeof settings.git === 'object') {
-      const { webhookSecret: _webhookSecret, ...git } = settings.git as Record<string, unknown>;
+    const parsedGit = z.record(z.string(), z.unknown()).safeParse(settings.git);
+    if (!roleAtLeast(getContextMembership()?.role ?? '', MemberRole.ADMIN) && parsedGit.success) {
+      const { webhookSecret: _webhookSecret, ...git } = parsedGit.data;
       settings.git = git;
     }
     return ctx.json({ data: settings }, 200);

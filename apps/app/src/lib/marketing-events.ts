@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { sendMarketingAnalyticsEvent } from './marketing-analytics';
 
 export type MarketingEventName = 'free_tool_started' | 'free_tool_completed' | 'free_tool_cta_clicked';
@@ -27,48 +28,39 @@ type MarketingEventProperties = {
   };
 };
 
-const exactKeys = (value: object, keys: string[]) => {
-  const actual = Object.keys(value).sort();
-  return actual.length === keys.length && actual.every((key, index) => key === [...keys].sort()[index]);
-};
-
-const validVersion = (value: unknown) => typeof value === 'string' && /^\d+\.\d+\.\d+$/u.test(value);
-
 function allowlistedProperties<E extends MarketingEventName>(event: E, value: MarketingEventProperties[E]): boolean {
-  if (!value || typeof value !== 'object') return false;
-  if (value.product !== 'nibleaf' || value.tool_slug !== 'rtl-documentation-readiness') return false;
   if (event === 'free_tool_started') {
-    const properties = value as MarketingEventProperties['free_tool_started'];
-    return (
-      exactKeys(properties, ['input_mode', 'page_path', 'product', 'rubric_version', 'tool_slug']) &&
-      properties.input_mode === 'html' &&
-      properties.page_path === '/tools/rtl-documentation-readiness' &&
-      validVersion(properties.rubric_version)
-    );
+    return z
+      .strictObject({
+        input_mode: z.literal('html'),
+        page_path: z.literal('/tools/rtl-documentation-readiness'),
+        product: z.literal('nibleaf'),
+        rubric_version: z.string().regex(/^\d+\.\d+\.\d+$/u),
+        tool_slug: z.literal('rtl-documentation-readiness'),
+      })
+      .safeParse(value).success;
   }
   if (event === 'free_tool_completed') {
-    const properties = value as MarketingEventProperties['free_tool_completed'];
-    return (
-      exactKeys(properties, ['category_count', 'checks_run', 'checks_unknown', 'product', 'result_type', 'rubric_version', 'tool_slug']) &&
-      Number.isInteger(properties.category_count) &&
-      properties.category_count >= 1 &&
-      properties.category_count <= 20 &&
-      Number.isInteger(properties.checks_run) &&
-      properties.checks_run >= 0 &&
-      properties.checks_run <= 100 &&
-      Number.isInteger(properties.checks_unknown) &&
-      properties.checks_unknown >= 0 &&
-      properties.checks_unknown <= 100 &&
-      ['strong_evidence', 'work_remaining', 'material_gaps', 'insufficient_evidence'].includes(properties.result_type) &&
-      validVersion(properties.rubric_version)
-    );
+    return z
+      .strictObject({
+        category_count: z.number().int().min(1).max(20),
+        checks_run: z.number().int().min(0).max(100),
+        checks_unknown: z.number().int().min(0).max(100),
+        product: z.literal('nibleaf'),
+        result_type: z.enum(['strong_evidence', 'work_remaining', 'material_gaps', 'insufficient_evidence']),
+        rubric_version: z.string().regex(/^\d+\.\d+\.\d+$/u),
+        tool_slug: z.literal('rtl-documentation-readiness'),
+      })
+      .safeParse(value).success;
   }
-  const properties = value as MarketingEventProperties['free_tool_cta_clicked'];
-  return (
-    exactKeys(properties, ['destination', 'placement', 'product', 'tool_slug']) &&
-    ['sample_project_signup', 'fixture_corpus'].includes(properties.destination) &&
-    properties.placement === 'result_bridge'
-  );
+  return z
+    .strictObject({
+      destination: z.enum(['sample_project_signup', 'fixture_corpus']),
+      placement: z.literal('result_bridge'),
+      product: z.literal('nibleaf'),
+      tool_slug: z.literal('rtl-documentation-readiness'),
+    })
+    .safeParse(value).success;
 }
 
 /** Privacy-safe marketing events. The caller must never include submitted HTML,

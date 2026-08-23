@@ -9,11 +9,14 @@ import {
   themeTemplateFromConfig,
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate, type ThemeImportBody } from '@nibleaf/validators';
+import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
-const recordConfig = (value: Prisma.JsonValue | null): Record<string, unknown> =>
-  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+const recordConfig = (value: Prisma.JsonValue | null) => {
+  const parsed = z.record(z.string(), z.unknown()).safeParse(value);
+  return parsed.success ? parsed.data : {};
+};
 
 export const exportProjectTheme = async (organizationId: string, projectId: string) => {
   const project = await assertProjectInOrg(organizationId, projectId);

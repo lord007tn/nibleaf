@@ -6,7 +6,7 @@ import { Hono } from 'hono';
 import {
   authorizeGitHub,
   connectGitHub,
-  gitWorkspaceStatus,
+  getGitWorkspaceStatus,
   queueGitOperation,
   resolveGitConflict,
   rotateConnectionWebhookSecret,
@@ -18,7 +18,7 @@ import routes from './routes';
 const app = new Hono<HonoEnv>()
   .get('/', ...routes.status, async (ctx) => {
     const projectId = ctx.req.param('projectId') ?? '';
-    const status = await gitWorkspaceStatus(projectId);
+    const status = await getGitWorkspaceStatus(projectId);
     if (status && !roleAtLeast(getContextMembership()?.role ?? '', MemberRole.ADMIN)) {
       // Audit records can reveal repository administration details; regular
       // authors still receive file, operation, conflict, PR, and preview state.

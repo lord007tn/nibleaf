@@ -3,7 +3,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import type { LanguageConfig } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
-import { Plus, X } from 'lucide-react';
+import { PanelTop, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
@@ -59,7 +59,7 @@ export function NavbarSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="☰" title={t('settings.navbar.title')} />
+      <SectionHeader icon={<PanelTop className="size-4" />} title={t('settings.navbar.title')} />
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}
         guard={guard}

@@ -38,10 +38,11 @@ as the query.
 
 Start from `.env.production.example`. Keep `SEARCH_RUNTIME=shadow`. Set a
 Qdrant API key when Qdrant is reachable outside a private container network.
-Configure `SEARCH_EMBEDDING_*` for OpenAI or another API-compatible embedding
-provider. Embeddings use the official OpenAI SDK with a configurable base URL.
-The configured dimension must match `QDRANT_VECTOR_SIZE`; changing the embedding
-model, dimension, or embedding-input format requires a new collection version.
+Set `OPENROUTER_API_KEY` and pin `SEARCH_EMBEDDING_MODEL`. Embeddings use
+OpenRouter's official TypeScript SDK and default to
+`openai/text-embedding-3-small`. The configured dimension must match
+`QDRANT_VECTOR_SIZE`; changing the embedding model, dimension, or embedding-input
+format requires a new collection version.
 
 For the portable production stack, add the v0.2 search overlay to every Compose
 operation (including pull, up, config checks, and backup automation):
@@ -53,10 +54,9 @@ docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 The overlay is separate so the checksummed v0.1.2 self-host release artifacts
 remain immutable. Coolify and the development stack include Qdrant directly.
 
-To offer answers, set `SEARCH_ANSWER_ENABLED=true`, configure a separate
-least-privilege OpenRouter `SEARCH_ANSWER_API_KEY`, and pin
-`SEARCH_ANSWER_MODEL`. Answer generation uses TanStack AI's OpenRouter adapter,
-which uses OpenRouter's official SDK and native structured output. Then an
+To offer answers, set `SEARCH_ANSWER_ENABLED=true` and pin
+`SEARCH_ANSWER_MODEL`. Answer generation uses the same OpenRouter credential
+through OpenRouter's official TypeScript SDK and native structured output. Then an
 administrator must enable **Grounded AI answers** for each intended site.
 Quotas are atomic per project and day in Redis. Requests also have a separate
 per-IP minute limit, provider timeout, and request cancellation. If Redis is

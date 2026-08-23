@@ -1,6 +1,7 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { slugify } from '@nibleaf/shared';
 import type { GhostImportBody } from '@nibleaf/validators';
-import { badRequest } from '@/errors';
+import { badRequest, ImportError } from '@/errors';
 import { getDefaultBranch } from '../branches';
 import { listLanguages } from '../languages';
 import { assertProjectInOrg } from '../projects';
@@ -32,15 +33,16 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
   async run({ organizationId, projectId, input }): Promise<ImportSummary> {
     await assertProjectInOrg(organizationId, projectId);
 
-    let content: ReturnType<typeof parseGhostExport>;
-    try {
-      content = parseGhostExport(input);
-    } catch (error) {
-      if (error instanceof GhostExportError) {
-        throw badRequest(error.message);
+    const content = (() => {
+      try {
+        return parseGhostExport(input);
+      } catch (error) {
+        if (error instanceof GhostExportError) {
+          throw new ImportError({ code: error.code, message: error.message, cause: error });
+        }
+        throw error;
       }
-      throw error;
-    }
+    })();
     const placeholderCount = [...content.posts, ...content.pages].filter(isGhostPlaceholder).length;
     const importedContent = {
       posts: content.posts.filter((item) => !isGhostPlaceholder(item)),
@@ -74,6 +76,12 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
       languages.map((language) => [language.code, { projectId, branchId: branch.id, languageId: language.id } satisfies ImportTarget]),
     );
     const summary = emptySummary();
+    if (content.restricted > 0) {
+      summary.skipped += content.restricted;
+      summary.warnings.push(
+        `Skipped ${content.restricted} member, paid, or tier-restricted Ghost item${content.restricted === 1 ? '' : 's'} to avoid publishing protected content.`,
+      );
+    }
     if (placeholderCount > 0) {
       summary.skipped += placeholderCount;
       summary.warnings.push(`Skipped ${placeholderCount} default Ghost “Coming soon” placeholder${placeholderCount === 1 ? '' : 's'}.`);
@@ -127,7 +135,8 @@ const importByLanguage = async (
   for (const [code, localizedItems] of buckets) {
     const target = targets.get(code);
     if (!target) continue;
-    const localizedGroupTitle = code.toLowerCase().startsWith('ar') ? (groupTitle === 'Blog' ? 'المدونة' : 'الصفحات') : groupTitle;
+    const t = siteT(code);
+    const localizedGroupTitle = groupTitle === 'Blog' ? t('importBlog') : t('importPages');
     await importCollection(localizedItems, localizedGroupTitle, target, languageCodes, ghostSourceUrl, assets, summary, state);
   }
 };
@@ -163,7 +172,7 @@ const importCollection = async (
     if (usedHashFallback) {
       summary.warnings.push(`"${item.title || item.slug}" has no Latin characters to build a slug from — imported as "${slug}".`);
     }
-    const conversion = ghostItemToMarkdown(item, ghostSourceUrl);
+    const conversion = await ghostItemToMarkdown(item, ghostSourceUrl);
     if (conversion.usedFallback) {
       summary.warnings.push(`"${item.title}" could not be fully converted from HTML — imported as plain text.`);
     }

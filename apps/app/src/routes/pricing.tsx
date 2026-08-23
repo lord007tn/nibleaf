@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PricingPage } from '@/components/marketing/pricing';
 import { marketingFaqs } from '@/lib/marketing-faqs';
-import { breadcrumbLd, canonicalHref, faqLd, getGithubStars, pageMeta } from '@/lib/marketing-seo';
+import { breadcrumbLd, canonicalHref, faqLd, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/pricing')({
-  loader: async () => ({ stars: await getGithubStars() }),
+  loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
       title: 'Nibleaf pricing: free cloud beta and self-hosting status',

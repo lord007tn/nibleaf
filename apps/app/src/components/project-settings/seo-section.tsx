@@ -3,7 +3,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
-import { Upload } from 'lucide-react';
+import { SearchCheck, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
@@ -46,7 +46,7 @@ export function SeoSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="◎" title={t('settings.seo.title')} />
+      <SectionHeader icon={<SearchCheck className="size-4" />} title={t('settings.seo.title')} />
 
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}

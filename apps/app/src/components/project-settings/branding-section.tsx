@@ -2,7 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
-import { Upload } from 'lucide-react';
+import { Badge, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -98,7 +98,7 @@ export function BrandingSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="▣" title={t('settings.branding.title')} />
+      <SectionHeader icon={<Badge className="size-4" />} title={t('settings.branding.title')} />
 
       <form.Field name="logoLight">
         {(field) => (
