@@ -7,14 +7,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react';
+import { useSyncExternalStore } from 'react';
 import { useProjects } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
+
+const subscribeToHydration = () => () => undefined;
 
 export function SiteSwitcher({ projectId }: { projectId?: string }) {
   const { data: projects } = useProjects();
-  const selected = projects?.find((project) => project.id === projectId);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  const selected = hydrated ? projects?.find((project) => project.id === projectId) : undefined;
   const navigate = useNavigate();
   const t = useT();
   return (

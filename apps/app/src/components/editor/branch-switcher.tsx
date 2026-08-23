@@ -18,12 +18,12 @@ import {
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useT } from '@nibleaf/i18n/react';
 import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Branch } from '@/hooks/api';
 import { useCreateBranch, useMergeBranch } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 
 /** Docs version switcher for the editor. Internally versions are backed by the
  *  existing Branch model, but authors see v1/v2-style docs versions. */

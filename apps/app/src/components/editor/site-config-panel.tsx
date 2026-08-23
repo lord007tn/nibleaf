@@ -1,4 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { BannerSection } from '@/components/project-settings/banner-section';
 import { BrandingSection } from '@/components/project-settings/branding-section';
 import { FooterSection } from '@/components/project-settings/footer-section';
@@ -10,8 +12,6 @@ import { StylingSection } from '@/components/project-settings/styling-section';
 import { TypographySection } from '@/components/project-settings/typography-section';
 import { VariablesSection } from '@/components/project-settings/variables-section';
 import type { Project } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 /**
  * The authoring/appearance slice of a site's configuration, embedded in the

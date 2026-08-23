@@ -7,7 +7,7 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-import type { MessageKey } from './i18n/messages';
+import type { MessageKey } from '@nibleaf/i18n';
 
 type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
 

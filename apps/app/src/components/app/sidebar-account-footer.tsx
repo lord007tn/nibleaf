@@ -9,24 +9,33 @@ import {
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
 import { useTheme } from '@nibleaf/design-system/theme';
+import { INTERFACE_LOCALES } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, Languages, LogOut, Moon, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
-import { authClient } from '@/lib/auth-client';
-import { useLocale } from '@/lib/i18n';
-import { localeDetails } from '@/lib/i18n/locales';
+import { authClient } from '@/services/auth-client';
+
+const subscribeToHydration = () => () => undefined;
 
 /** Shared sidebar footer: the signed-in account button + menu (theme, language,
  *  sign out). Used by both the global app sidebar and the per-site sidebar. */
 export function SidebarAccountFooter() {
   const { data: session } = authClient.useSession();
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  const visibleSession = hydrated ? session : null;
   const { setTheme, resolvedTheme } = useTheme();
   const { locale, t } = useLocale();
+  const activeLocale = INTERFACE_LOCALES.find((option) => option.code === locale) ?? INTERFACE_LOCALES[0];
   const [languageOpen, setLanguageOpen] = useState(false);
   const navigate = useNavigate();
 
-  const initials = (session?.user?.name ?? 'U')
+  const initials = (visibleSession?.user?.name ?? 'U')
     .split(' ')
     .map((part) => part[0])
     .slice(0, 2)
@@ -46,14 +55,14 @@ export function SidebarAccountFooter() {
                     type="button"
                   >
                     <Avatar className="size-9 rounded-lg">
-                      {session?.user?.image ? <AvatarImage alt={session.user.name} src={session.user.image} /> : null}
+                      {visibleSession?.user?.image ? <AvatarImage alt={visibleSession.user.name} src={visibleSession.user.image} /> : null}
                       <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
                         {initials}
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-start leading-tight">
-                      <span className="truncate font-medium text-sm">{session?.user?.name ?? t('nav.account')}</span>
-                      <span className="truncate text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
+                      <span className="truncate font-medium text-sm">{visibleSession?.user?.name ?? t('nav.account')}</span>
+                      <span className="truncate text-muted-foreground text-xs">{visibleSession?.user?.email ?? ''}</span>
                     </div>
                     <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
                   </button>
@@ -62,12 +71,12 @@ export function SidebarAccountFooter() {
               <DropdownMenuContent align="end" className="w-64" side="top">
                 <DropdownMenuLabel className="flex items-center gap-3 py-2">
                   <Avatar className="size-9 rounded-lg">
-                    {session?.user?.image ? <AvatarImage alt={session.user.name} src={session.user.image} /> : null}
+                    {visibleSession?.user?.image ? <AvatarImage alt={visibleSession.user.name} src={visibleSession.user.image} /> : null}
                     <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                   </Avatar>
                   <span className="min-w-0">
-                    <span className="block truncate font-medium">{session?.user?.name ?? t('nav.account')}</span>
-                    <span className="block truncate font-normal text-muted-foreground text-xs">{session?.user?.email ?? ''}</span>
+                    <span className="block truncate font-medium">{visibleSession?.user?.name ?? t('nav.account')}</span>
+                    <span className="block truncate font-normal text-muted-foreground text-xs">{visibleSession?.user?.email ?? ''}</span>
                   </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
@@ -78,8 +87,8 @@ export function SidebarAccountFooter() {
                 <DropdownMenuItem onClick={() => setLanguageOpen(true)}>
                   <Languages className="size-4" />
                   {t('account.language')}
-                  <span className="ms-auto text-muted-foreground text-xs" lang={locale} dir={localeDetails(locale).direction}>
-                    {localeDetails(locale).native}
+                  <span className="ms-auto text-muted-foreground text-xs" lang={activeLocale.code} dir={activeLocale.direction}>
+                    {activeLocale.native}
                   </span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

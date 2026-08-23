@@ -23,7 +23,7 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { answerSiteFn } from '@/functions/site-search';
-import { api } from '@/lib/api';
+import { api } from '@/services/api';
 import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type {

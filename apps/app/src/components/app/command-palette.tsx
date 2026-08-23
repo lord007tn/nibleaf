@@ -1,9 +1,9 @@
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { useProjects } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();

@@ -4,7 +4,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Eye, FileText, GitPullRequest } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Markdown } from '@/components/markdown';
-import { API_URL } from '@/lib/api';
+import { API_URL } from '@/services/api';
 
 type PreviewResponse = { data: { snapshot: SiteSnapshot } };
 

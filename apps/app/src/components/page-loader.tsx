@@ -1,10 +1,10 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { useStandaloneT } from '@/lib/i18n/standalone';
+import { useStandaloneT } from '@nibleaf/i18n/standalone';
 
 /**
  * Full-screen branded loading state shown during route transitions that fetch
- * data (wired as the router's `defaultPendingComponent`). Uses the standalone
- * translator so it renders correctly even before the LocaleProvider mounts.
+ * data (wired as the router's `defaultPendingComponent`). Uses the small
+ * standalone Paraglide surface so it renders before product providers mount.
  */
 export function PageLoader() {
   const t = useStandaloneT();

@@ -3,11 +3,11 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { useT } from '@nibleaf/i18n/react';
 import { AlertTriangle, Braces, FileUp, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteOpenApi, useOpenApiConfiguration, useSyncOpenApi, useUpsertOpenApi } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented } from './shared';
 
 type SourceType = 'upload' | 'url' | 'repository';

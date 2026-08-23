@@ -3,8 +3,8 @@ import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
-import { useSession } from '@/lib/auth-client';
 import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
+import { useSession } from '@/services/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({

@@ -1,4 +1,4 @@
-import { useLocale } from '@/lib/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 
 /**
  * Locale-aware number/date formatters bound to the dashboard's active locale.

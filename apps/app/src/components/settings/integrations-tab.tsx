@@ -1,6 +1,8 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, BarChart3, MessageSquare, Zap } from 'lucide-react';
 import { type ComponentType, useMemo, useState } from 'react';
@@ -8,8 +10,6 @@ import { GithubIcon, SlackIcon } from '@/components/icons/brand';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
 import type { Project } from '@/hooks/api';
 import { useWorkspaceSettings } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { SettingsSection } from './section';
 
 interface ProviderField {

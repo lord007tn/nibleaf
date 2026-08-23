@@ -1,6 +1,6 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@nibleaf/design-system/components/ui/dropdown-menu';
+import { siteT } from '@nibleaf/i18n/site';
 import { Check, ChevronDown, GitBranch } from 'lucide-react';
-import { siteT } from '@/lib/site-i18n';
 
 export interface SiteVersion {
   id: string;

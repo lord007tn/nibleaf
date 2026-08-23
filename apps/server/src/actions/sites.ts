@@ -1,3 +1,4 @@
+import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
 import type { SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
@@ -20,7 +21,6 @@ import {
   type SnapshotVersion,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
-import type { TrackEventBody } from '@nibleaf/validators';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
@@ -33,7 +33,7 @@ import { LruCache, TtlCache } from '@/lib/lru';
 import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
-import { trackEvent } from './analytics';
+import { trackProjectEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
 import { resolveViewerAccess, type ViewerAccess } from './reader-access';
@@ -492,6 +492,7 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  Scoped to the active language so each language has its own index. */
 export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
+  const analyticsStartedAt = performance.now();
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = activeVersion(snapshot, version);
@@ -524,7 +525,25 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
   if (query.trim().length >= 3) {
-    await trackEvent(snapshot.project.id, { type: 'search', query: query.trim() } as TrackEventBody).catch(() => undefined);
+    const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
+    const base = { source: 'public_site' as const, consentState: 'unknown' as const };
+    void Promise.allSettled([
+      trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: activeLanguage }, base),
+      trackProjectEvent(
+        snapshot.project.id,
+        { name: 'search_results_returned', resultCount: result.hits.length, latencyMs, cacheStatus: 'unknown', language: activeLanguage },
+        base,
+      ),
+      ...(result.hits.length === 0
+        ? [
+            trackProjectEvent(
+              snapshot.project.id,
+              { name: 'search_zero_result', resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: activeLanguage },
+              base,
+            ),
+          ]
+        : []),
+    ]);
   }
   const aiAnswersEnabled = (snapshot.project.config as { search?: { aiAnswers?: boolean } } | null)?.search?.aiAnswers === true;
   return { hits: result.hits, runtime: result.runtime, capabilities: { answer: aiAnswersEnabled && answerSearchAvailable() } };
@@ -621,7 +640,7 @@ const FEEDBACK_NOTIFICATION_WINDOW_MS = 60 * 60 * 1000;
 
 /** Fan a reader-feedback event out to the org's bell inboxes, throttled per
  *  project. Best-effort: the public track endpoint must never fail on this. */
-const notifyFeedback = async (projectId: string, body: TrackEventBody): Promise<void> => {
+const notifyFeedback = async (projectId: string, body: PublicAnalyticsEvent): Promise<void> => {
   try {
     const recentUnread = await prisma.notification.findFirst({
       where: {
@@ -635,8 +654,9 @@ const notifyFeedback = async (projectId: string, body: TrackEventBody): Promise<
     if (recentUnread) {
       return;
     }
-    const sentiment = body.query === 'helpful' ? 'helpful' : body.query === 'not_helpful' ? 'not helpful' : null;
-    const page = body.path ? `"${body.path.slice(0, 120)}"` : 'a page';
+    const sentiment = body.payload.name === 'feedback_submitted' ? (body.payload.feedback === 'helpful' ? 'helpful' : 'not helpful') : null;
+    const feedbackPath = body.payload.name === 'feedback_submitted' ? body.payload.path : undefined;
+    const page = feedbackPath ? `"${feedbackPath.slice(0, 120)}"` : 'a page';
     await createNotificationsForOrgMembers(projectId, {
       type: 'feedback',
       title: 'New reader feedback',
@@ -651,7 +671,7 @@ const notifyFeedback = async (projectId: string, body: TrackEventBody): Promise<
 /** Record a public pageview for a published site. Derives the device class from
  *  the User-Agent (and country from a CDN geo header, when present) so the
  *  analytics breakdowns are populated. */
-export const recordSiteEvent = async (identifier: string, body: TrackEventBody) => {
+export const recordSiteEvent = async (identifier: string, body: PublicAnalyticsEvent) => {
   const projectId = await resolveProjectId(identifier);
   // A taken-down project must not keep accumulating analytics rows — this is the
   // one public write path that never goes through getPublished's gate.
@@ -664,8 +684,15 @@ export const recordSiteEvent = async (identifier: string, body: TrackEventBody) 
   }
   const device = deviceFromUserAgent(headers.get('user-agent'));
   const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
-  await trackEvent(projectId, body, { device, country }).catch(() => undefined);
-  if (body.type === 'feedback') {
+  await trackProjectEvent(projectId, body.payload, {
+    source: 'public_site',
+    consentState: body.consentState,
+    eventId: body.eventId,
+    sessionId: body.sessionId,
+    country,
+    device,
+  }).catch(() => undefined);
+  if (body.payload.name === 'feedback_submitted') {
     await notifyFeedback(projectId, body);
   }
   return { ok: true };

@@ -1,9 +1,9 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 export function AddonsSection({ project }: { project: Project }) {

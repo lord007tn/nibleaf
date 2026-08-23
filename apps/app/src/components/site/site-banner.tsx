@@ -1,6 +1,6 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { ExternalLink, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { siteT } from '@/lib/site-i18n';
 
 export interface SiteBannerConfig {
   enabled?: boolean;

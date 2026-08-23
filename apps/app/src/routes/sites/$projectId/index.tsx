@@ -2,11 +2,11 @@ import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { SitePageView } from '@/components/site/site-page-view';
 import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
-import { api } from '@/lib/api';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
+import { api } from '@/services/api';
 
 export const Route = createFileRoute('/sites/$projectId/')({
   component: SiteHome,

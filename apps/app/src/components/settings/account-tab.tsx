@@ -4,13 +4,13 @@ import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { authClient, useSession } from '@/lib/auth-client';
 import { required, email as validateEmail } from '@/lib/form';
-import { useT } from '@/lib/i18n';
+import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
 
 function NameForm({ initialName }: { initialName: string }) {
@@ -137,7 +137,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         <div className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2">
           <span className="font-medium text-sm">{email}</span>
           {verified ? (
-            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">✓ {t('settings.account.email.verified')}</Badge>
+            <Badge className="bg-success/15 text-success">✓ {t('settings.account.email.verified')}</Badge>
           ) : (
             <Badge variant="outline" className="text-muted-foreground">
               {t('settings.account.email.unverified')}

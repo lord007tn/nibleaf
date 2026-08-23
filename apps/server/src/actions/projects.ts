@@ -1,11 +1,14 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { keys as clickHouseKeys, deleteProjectAnalytics } from '@nibleaf/clickhouse';
 import { type Prisma, prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
+const log = createLogger({ action: 'projects' });
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */
 export const assertProjectInOrg = async (organizationId: string, projectId: string) => {
@@ -169,5 +172,10 @@ export const deleteProject = async (organizationId: string, id: string) => {
   // Each site owns its organization (1:1), so deleting the site deletes its org —
   // which cascades the project itself plus its members and pending invitations.
   await prisma.organization.delete({ where: { id: organizationId } });
+  if (clickHouseKeys().ANALYTICS_MODE !== 'disabled') {
+    await deleteProjectAnalytics(organizationId, id).catch((error) => {
+      log.error({ error, organizationId, projectId: id }, 'project deleted but ClickHouse analytics erasure requires retry');
+    });
+  }
   return { id };
 };

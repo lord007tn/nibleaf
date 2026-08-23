@@ -1,32 +1,13 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { siteT } from '@nibleaf/i18n/site';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
-import { api } from '@/lib/api';
-import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
-
-const randomSessionId = (): string => {
-  const words = new Uint32Array(4);
-  window.crypto.getRandomValues(words);
-  return Array.from(words, (value) => value.toString(36)).join('.');
-};
-
-const sessionId = (): string => {
-  if (typeof window === 'undefined') {
-    return 'ssr';
-  }
-  const key = 'nibleaf.sid';
-  let id = window.localStorage.getItem(key);
-  if (!id) {
-    id = randomSessionId();
-    window.localStorage.setItem(key, id);
-  }
-  return id;
-};
+import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
   const trimmed = template?.trim();
@@ -54,6 +35,7 @@ function ReaderActions({
   addons: NonNullable<ProjectConfig['addons']> | undefined;
 }) {
   const t = siteT(language);
+  const { track } = useSiteAnalytics();
   const [sentiment, setSentiment] = useState<'helpful' | 'not_helpful' | null>(null);
   const [pageUrl, setPageUrl] = useState(() => `/sites/${projectId}/${path}`);
   useEffect(() => {
@@ -69,19 +51,7 @@ function ReaderActions({
 
   const sendFeedback = (query: 'helpful' | 'not_helpful') => {
     setSentiment(query);
-    api.public.sites[':id'].events
-      .$post({
-        param: { id: projectId },
-        json: {
-          type: 'feedback',
-          path,
-          query,
-          sessionId: sessionId(),
-          referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
-          language,
-        },
-      })
-      .catch(() => undefined);
+    track({ name: 'feedback_submitted', path, feedback: query, target: 'page' });
   };
 
   return (
@@ -155,25 +125,6 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     setAlternates(data?.languages ?? []);
     return () => setAlternates([]);
   }, [data?.languages, setAlternates]);
-
-  // Record a pageview whenever the resolved page changes. (The document title +
-  // meta description are owned by the route's head() so they render server-side.)
-  useEffect(() => {
-    if (data?.page.path) {
-      api.public.sites[':id'].events
-        .$post({
-          param: { id: projectId },
-          json: {
-            type: 'pageview',
-            path: data.page.path,
-            sessionId: sessionId(),
-            referrer: document.referrer || undefined,
-            language: data.activeLanguage ?? lang,
-          },
-        })
-        .catch(() => undefined);
-    }
-  }, [data?.page.path, data?.activeLanguage, lang, projectId]);
 
   const { page, breadcrumbs, prev, next } = data;
   const language = data.activeLanguage ?? lang;

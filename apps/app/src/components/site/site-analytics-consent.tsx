@@ -1,6 +1,6 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { useEffect, useMemo, useState } from 'react';
 import type { ProjectConfig } from '@/hooks/api/types';
-import { siteT } from '@/lib/site-i18n';
 import { analyticsScripts } from '@/lib/site-seo';
 
 const consentKey = (projectId: string) => `nibleaf.analytics.consent.${projectId}`;

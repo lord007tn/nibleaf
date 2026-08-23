@@ -1,0 +1,33 @@
+{
+  "name": "@nibleaf/clickhouse",
+  "license": "AGPL-3.0-only",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./keys": "./src/keys.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "benchmark": "tsx ./scripts/benchmark.ts",
+    "build": "tsdown",
+    "migrate": "tsx ./scripts/migrate.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clickhouse/client": "1.23.1",
+    "@nibleaf/logger": "workspace:*",
+    "@t3-oss/env-core": "^0.13.11",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@nibleaf/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
+    "tsx": "4.22.4",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -8,8 +8,8 @@ import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AdminApiError, useAdminOverview } from '@/hooks/api/queries';
-import { signOut, useSession } from '@/lib/auth-client';
 import { getRouteSession, resolveRouteSession, shouldShowInitialSessionLoader } from '@/lib/route-session';
+import { signOut, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(dashboard)')({
   beforeLoad: async () => {

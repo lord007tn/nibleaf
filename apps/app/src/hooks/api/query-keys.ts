@@ -34,9 +34,6 @@ export const queryKeys = {
   openapi: {
     detail: (projectId: string) => ['openapi', projectId] as const,
   },
-  analytics: {
-    overview: (projectId: string, range: string) => ['analytics', projectId, range] as const,
-  },
   usage: {
     /** Per-site usage counters for the settings Usage tab. */
     forProject: (projectId: string) => ['usage', projectId] as const,
@@ -45,7 +42,6 @@ export const queryKeys = {
     all: (projectId: string, pageId?: string) => ['comments', projectId, pageId ?? null] as const,
   },
   workspace: {
-    analytics: (range: string) => ['workspace', 'analytics', range] as const,
     settings: () => ['workspace', 'settings'] as const,
     projectSettings: (projectId: string) => ['workspace', 'settings', projectId] as const,
   },

@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./client": "./src/client.ts",
     "./server": "./src/server.ts",
     "./keys.server": "./src/keys.server.ts",
     "./providers": "./src/providers.ts"
@@ -24,8 +25,13 @@
     "better-auth": "^1.6.29",
     "zod": "^4.4.3"
   },
+  "peerDependencies": {
+    "react": "^19.2.4"
+  },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@types/react": "^19.2.0",
+    "react": "^19.2.4",
     "typescript": "^7.0.2"
   }
 }

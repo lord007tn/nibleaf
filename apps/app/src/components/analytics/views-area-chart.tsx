@@ -2,10 +2,10 @@ import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@nible
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from '@nibleaf/design-system/components/ui/chart';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
 
 const RANGES: AnalyticsRange[] = ['7d', '30d', '90d'];
 

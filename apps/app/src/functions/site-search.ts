@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SearchAnswer, SearchHit } from '@/hooks/api/types';
-import { api } from '@/lib/api';
+import { api } from '@/services/api';
 
 const searchSiteInput = z.object({
   projectId: z.string().min(1),

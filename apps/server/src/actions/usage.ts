@@ -1,3 +1,4 @@
+import { keys as clickHouseKeys, queryProjectAnalytics } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
 import { TtlCache } from '@/lib/lru';
 import { assertProjectInOrg } from './projects';
@@ -17,9 +18,9 @@ export interface ProjectUsage {
   };
   traffic: {
     /** Public pageviews collected in the last 30 days. */
-    pageviews30d: number;
+    pageviews30d: number | null;
     /** In-docs search queries in the last 30 days. */
-    searches30d: number;
+    searches30d: number | null;
   };
   storage: {
     /** Total bytes of uploaded assets (images, files). */
@@ -43,7 +44,7 @@ const startOfCurrentMonthUtc = (): Date => {
  *  queries so the endpoint stays cheap. */
 export const getProjectUsage = async (organizationId: string, projectId: string): Promise<ProjectUsage> => {
   // Membership/ownership is re-checked on every call; only the counting is cached.
-  await assertProjectInOrg(organizationId, projectId);
+  const project = await assertProjectInOrg(organizationId, projectId);
 
   const cached = cache.get(projectId);
   if (cached) {
@@ -53,20 +54,27 @@ export const getProjectUsage = async (organizationId: string, projectId: string)
   const monthStart = startOfCurrentMonthUtc();
   const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-  const [pages, languages, members, deploymentsThisMonth, latestDeployment, pageviews30d, searches30d, assetAggregate] = await Promise.all([
-    prisma.page.count({ where: { projectId, kind: 'PAGE', branch: { isDefault: true } } }),
-    prisma.language.count({ where: { projectId } }),
-    prisma.member.count({ where: { organizationId } }),
-    prisma.deployment.count({ where: { projectId, createdAt: { gte: monthStart } } }),
-    prisma.deployment.findFirst({
-      where: { projectId, status: 'READY' },
-      orderBy: { version: 'desc' },
-      select: { version: true, completedAt: true, createdAt: true },
-    }),
-    prisma.analyticsEvent.count({ where: { projectId, type: 'pageview', createdAt: { gte: since30d } } }),
-    prisma.analyticsEvent.count({ where: { projectId, type: 'search', createdAt: { gte: since30d } } }),
-    prisma.asset.aggregate({ where: { projectId }, _sum: { size: true }, _count: { _all: true } }),
-  ]);
+  const authoritativeClickHouse = clickHouseKeys().ANALYTICS_MODE === 'clickhouse';
+  const [pages, languages, members, deploymentsThisMonth, latestDeployment, legacyPageviews30d, legacySearches30d, assetAggregate, analytics] =
+    await Promise.all([
+      prisma.page.count({ where: { projectId, kind: 'PAGE', branch: { isDefault: true } } }),
+      prisma.language.count({ where: { projectId } }),
+      prisma.member.count({ where: { organizationId } }),
+      prisma.deployment.count({ where: { projectId, createdAt: { gte: monthStart } } }),
+      prisma.deployment.findFirst({
+        where: { projectId, status: 'READY' },
+        orderBy: { version: 'desc' },
+        select: { version: true, completedAt: true, createdAt: true },
+      }),
+      authoritativeClickHouse
+        ? Promise.resolve(null)
+        : prisma.analyticsEvent.count({ where: { projectId, type: 'pageview', createdAt: { gte: since30d } } }),
+      authoritativeClickHouse
+        ? Promise.resolve(null)
+        : prisma.analyticsEvent.count({ where: { projectId, type: 'search', createdAt: { gte: since30d } } }),
+      prisma.asset.aggregate({ where: { projectId }, _sum: { size: true }, _count: { _all: true } }),
+      authoritativeClickHouse ? queryProjectAnalytics(project.organizationId, projectId, '30d', 'UTC') : Promise.resolve(null),
+    ]);
 
   const usage: ProjectUsage = {
     pages,
@@ -77,7 +85,10 @@ export const getProjectUsage = async (organizationId: string, projectId: string)
       latestVersion: latestDeployment?.version ?? null,
       lastPublishedAt: (latestDeployment?.completedAt ?? latestDeployment?.createdAt)?.toISOString() ?? null,
     },
-    traffic: { pageviews30d, searches30d },
+    traffic: {
+      pageviews30d: authoritativeClickHouse ? (analytics?.totalViews ?? null) : legacyPageviews30d,
+      searches30d: authoritativeClickHouse ? (analytics?.searches.total ?? null) : legacySearches30d,
+    },
     storage: { bytes: assetAggregate._sum.size ?? 0, assets: assetAggregate._count._all },
   };
   cache.set(projectId, usage);

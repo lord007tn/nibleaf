@@ -1,0 +1,142 @@
+---
+title: 'Operate ClickHouse analytics'
+description: 'Migrate, secure, reconcile, retain, back up, and roll back Nibleaf product analytics without making documentation delivery depend on ClickHouse.'
+audience: 'self-hosted Nibleaf operators and privacy owners'
+content_type: 'how-to'
+last_reviewed: '2026-08-23'
+verified_against: '@nibleaf/clickhouse, docker-compose.yml, docker-compose.coolify.yml, and scripts/analytics-migration.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/clickhouse-analytics'
+---
+
+Nibleaf keeps accounts, memberships, project configuration, billing state, and
+publishing transactions in Postgres. ClickHouse stores high-volume analytical
+facts and rollups. An analytics outage must produce an **unknown** dashboard
+state; it must not stop documentation delivery, search, publishing, or AI
+drafting.
+
+## Privacy boundary
+
+The server derives tenant, project, site, deployment, country, and coarse device
+dimensions. Public clients cannot choose a tenant. Session and anonymous-user
+identifiers are HMAC-like salted hashes; rotate `ANALYTICS_HASH_SALT` only with a
+documented identity discontinuity.
+
+Raw private search queries, document text, prompts, answers, and citation text
+are never stored. Public search-term storage is off by default and requires both
+the project setting and granted reader consent. Opted-in terms live in the
+separate `analytics_sensitive_queries` table for at most 30 days. Campaign
+dimensions have the same consent gate. Keep cardinality-bounded dimensions in
+the stable version-1 event envelope.
+
+These controls support data minimization, access, export, erasure, retention,
+and purpose-limitation work under PDPL/GDPR programs; they are not by themselves
+a legal-compliance certification. Document your lawful basis, processor terms,
+cross-border transfers, notices, and data-subject procedure with counsel.
+
+## Create least-privilege identities
+
+The bundled Compose file starts one bootstrap identity. Before production
+cutover, create separate identities:
+
+```sql
+CREATE ROLE nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_daily TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_search_daily TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_hourly TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_search_hourly TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_events TO nibleaf_analytics_reader;
+
+CREATE ROLE nibleaf_analytics_writer;
+GRANT INSERT ON nibleaf_analytics.analytics_events TO nibleaf_analytics_writer;
+GRANT INSERT ON nibleaf_analytics.analytics_sensitive_queries TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_events TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_sensitive_queries TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_daily TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_search_daily TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_hourly TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_search_hourly TO nibleaf_analytics_writer;
+```
+
+Give migration and deletion tooling a separate time-limited operator identity.
+Do not grant the dashboard reader access to `analytics_sensitive_queries`.
+Store all passwords in the deployment secret manager, not Git or Compose files.
+
+## Stage the cutover
+
+1. Back up Postgres and ClickHouse. Set `ANALYTICS_MODE=disabled`, configure
+   ClickHouse credentials and an independent hash salt, then run
+   `pnpm analytics:migrate`.
+2. Set `ANALYTICS_MODE=dual_write`. Postgres remains authoritative while the
+   worker writes both stores. Queue retries absorb transient ClickHouse outages.
+   Deploy the worker before or with the API. It upgrades already queued and
+   rolling-deploy legacy jobs using a server-side tenant lookup, stable ids, and
+   the current redaction policy; legacy consent is `unknown`, so raw search text
+   is not retained.
+3. Run `pnpm analytics:backfill -- --project=<id>` per project. Historical raw
+   queries are hashed but never copied into sensitive-term storage because no
+   historical consent ledger exists. UUID ids from current dual writes are
+   preserved; older relational ids are upgraded deterministically, preventing
+   a concurrent backfill from duplicating live facts.
+4. Run `pnpm analytics:reconcile -- --project=<id>`. A non-zero exit means the
+   distinct backfill count differs. Investigate queue failures, invalid tenant
+   mappings, retention windows, and duplicate ids; never interpret missing data
+   as zero.
+5. Set `ANALYTICS_MODE=shadow_read`. Customers still receive Postgres results;
+   structured logs record count deltas from an independently executed
+   ClickHouse query. Observe at least one full reporting window.
+6. Set `ANALYTICS_MODE=clickhouse`. ClickHouse becomes authoritative and
+   relational analytical writes stop. Keep the old Postgres table during the
+   rollback window.
+
+For read rollback, return to `shadow_read` or `dual_write`. To remove only a
+project's backfilled facts while preserving live ClickHouse events, run:
+
+```bash
+pnpm analytics:rollback -- --project=<id> --confirm-project=<id>
+```
+
+Do not drop the Postgres table until the agreed rollback window, export checks,
+and data-owner approval have passed. Core delivery never waits for the optional
+`analytics-migrate` service.
+
+## Failure and ordering behavior
+
+Event ids are stable across client and job retries. `ReplacingMergeTree`
+deduplicates raw facts, while rollups use distinct event-id states so duplicate
+materialized-view inserts do not inflate totals. Occurrence time selects the
+hour, so late and out-of-order events land in their original UTC partition.
+Dashboard queries translate hourly rollups into the requested validated IANA
+time zone before grouping calendar days.
+Client timestamps more than seven days from server receipt are clamped to
+receipt time.
+
+BullMQ is the bounded shock absorber. Enqueue timeout falls back to an allowed
+direct write; writer retries use capped exponential backoff. ClickHouse-only
+failures remain retryable queue jobs. Monitor queue age, failed jobs, insert
+latency, rejected buffer events, part count, disk usage, mutation backlog, and
+shadow-read deltas. Do not make ClickHouse health part of the API or worker
+readiness decision.
+
+## Retention, capacity, and backups
+
+Defaults are 180 days for raw facts, 30 days for explicitly consented public
+terms, and 730 days for rollups. TTL deletion is asynchronous. Start capacity
+planning with measured compressed bytes per event, peak events/second, late
+arrival rate, replica count, free-disk headroom, and merge load. A planning
+placeholder such as “1 KB/event” is not a measured fact.
+
+Back up ClickHouse before schema or retention changes. For a single-node
+deployment, stop writes or use ClickHouse backup tooling to copy data and
+metadata consistently to encrypted off-host storage. Record the server version,
+database DDL, users/roles, retention values, object checksums, and restore test.
+Restore into an isolated database, run migrations, compare distinct event ids
+and rollups, then perform an authenticated tenant-isolation query before
+cutover. A backup that has not been restored is not verified.
+
+The content-free authenticated export endpoint is
+`GET /api/app/projects/:projectId/analytics/export`; it excludes query/session
+hashes and all sensitive text. Project deletion synchronously requests erasure
+from raw, sensitive, and rollup tables. Verify mutation completion before
+closing a data-subject request.

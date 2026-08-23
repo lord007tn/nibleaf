@@ -12,13 +12,13 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, FileText, Loader2, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
 import type { PendingChange, Project } from '@/hooks/api/types';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { siteHref } from '@/lib/links';
 
 interface PublishModalProps {

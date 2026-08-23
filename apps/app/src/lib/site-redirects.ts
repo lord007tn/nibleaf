@@ -2,9 +2,9 @@ import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validator
 import { redirect } from '@tanstack/react-router';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';
-import { api } from '@/lib/api';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { buildSiteRedirectHref } from '@/lib/site-redirect-href';
+import { api } from '@/services/api';
 
 /**
  * Honor a configured `config.redirects` entry for `path`. Consulted only when a

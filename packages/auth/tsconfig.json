@@ -6,6 +6,8 @@
     "types": ["node"],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "declaration": false,
+    "declarationMap": false,
     "noEmit": true
   },
   "include": ["src"],

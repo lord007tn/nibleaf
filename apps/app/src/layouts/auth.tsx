@@ -1,8 +1,8 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
+import { useT } from '@nibleaf/i18n/react';
 import { Cloud, Globe2, Languages, ShieldCheck } from 'lucide-react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
-import { useT } from '@/lib/i18n';
 
 /**
  * Auth chrome — a premium split: a dark, brand-led panel (value props +

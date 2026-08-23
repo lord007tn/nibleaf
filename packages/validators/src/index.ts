@@ -170,6 +170,10 @@ export const projectConfigSchema = z
         ga4: z.string().max(40).optional(),
         plausible: z.string().max(120).optional(),
         cookieConsent: z.boolean().optional(),
+        /** Built-in analytics remains content-minimized. Campaign dimensions
+         * and raw public search terms each require an explicit project opt-in. */
+        campaignDimensions: z.boolean().optional(),
+        storePublicSearchTerms: z.boolean().optional(),
       })
       .strict()
       .optional(),
@@ -568,7 +572,10 @@ export const searchAnswerBody = z
 
 export const analyticsRangeEnum = z.enum(['24h', '7d', '30d', '90d']);
 export type AnalyticsRange = z.infer<typeof analyticsRangeEnum>;
-export const analyticsQuery = z.object({ range: analyticsRangeEnum.default('7d') });
+export const analyticsQuery = z.object({
+  range: analyticsRangeEnum.default('7d'),
+  timezone: z.string().trim().min(1).max(64).default('UTC'),
+});
 export type AnalyticsQuery = z.infer<typeof analyticsQuery>;
 
 export const trackEventBody = z.object({

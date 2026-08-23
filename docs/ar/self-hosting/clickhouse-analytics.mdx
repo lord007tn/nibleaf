@@ -1,0 +1,116 @@
+---
+title: 'تشغيل تحليلات ClickHouse'
+description: 'ترحيل تحليلات منتج Nibleaf وتأمينها ومطابقتها والاحتفاظ بها ونسخها احتياطيًا والتراجع عنها من دون ربط إتاحة الوثائق بخدمة ClickHouse.'
+audience: 'مشغّلو Nibleaf ذاتي الاستضافة ومسؤولو الخصوصية'
+content_type: 'how-to'
+last_reviewed: '2026-08-23'
+verified_against: '@nibleaf/clickhouse وdocker-compose.yml وdocker-compose.coolify.yml وscripts/analytics-migration.ts'
+lang: 'ar'
+dir: 'rtl'
+translation_key: 'self-hosting/clickhouse-analytics'
+---
+
+يحتفظ Nibleaf بالحسابات والعضويات وإعدادات المشاريع وحالة الفوترة ومعاملات
+النشر في Postgres، بينما يخزّن ClickHouse الحقائق التحليلية كبيرة الحجم
+والتجميعات. يجب أن يظهر تعطل التحليلات كحالة **غير معروفة**، وألا يوقف تقديم
+الوثائق أو البحث أو النشر أو مساعدة الكتابة بالذكاء الاصطناعي.
+
+## حدود الخصوصية
+
+يستنتج الخادم المستأجر والمشروع والموقع والنشر والبلد ونوع الجهاز التقريبي؛ ولا
+يستطيع العميل العام اختيار المستأجر. تُخزّن معرّفات الجلسة والمستخدم المجهول
+كتجزئات مملحة. لا تغيّر `ANALYTICS_HASH_SALT` إلا مع توثيق انقطاع استمرارية
+الهوية.
+
+لا تُخزّن استعلامات البحث الخاصة أو نصوص الوثائق أو المطالبات أو الإجابات أو
+نصوص الاستشهادات. يكون تخزين عبارات البحث العامة معطلاً افتراضيًا، ويتطلب إعداد
+المشروع وموافقة القارئ معًا. تُحفظ العبارات المصرح بها في جدول منفصل لمدة لا
+تتجاوز 30 يومًا. وينطبق شرط الموافقة نفسه على أبعاد الحملات.
+
+تدعم هذه الضوابط أعمال تقليل البيانات والوصول والتصدير والمحو والاحتفاظ وتحديد
+الغرض ضمن برامج PDPL وGDPR، لكنها ليست شهادة امتثال قانوني. وثّق الأساس النظامي
+وشروط المعالجة والنقل عبر الحدود والإشعارات وإجراءات أصحاب البيانات مع مستشارك.
+
+## هويات بأقل صلاحيات
+
+يبدأ ملف Compose المرفق بهوية تمهيد واحدة. أنشئ قبل الانتقال هويتين منفصلتين:
+
+```sql
+CREATE ROLE nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_daily TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_search_daily TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_hourly TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_search_hourly TO nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.analytics_events TO nibleaf_analytics_reader;
+
+CREATE ROLE nibleaf_analytics_writer;
+GRANT INSERT ON nibleaf_analytics.analytics_events TO nibleaf_analytics_writer;
+GRANT INSERT ON nibleaf_analytics.analytics_sensitive_queries TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_events TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_sensitive_queries TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_daily TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_search_daily TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_hourly TO nibleaf_analytics_writer;
+GRANT ALTER DELETE ON nibleaf_analytics.analytics_search_hourly TO nibleaf_analytics_writer;
+```
+
+استخدم هوية تشغيل مؤقتة منفصلة للترحيل والحذف. لا تمنح قارئ لوحة التحكم حق
+الوصول إلى `analytics_sensitive_queries`، واحفظ كلمات المرور في مدير أسرار النشر.
+
+## مراحل الانتقال
+
+1. انسخ Postgres وClickHouse احتياطيًا. استخدم `ANALYTICS_MODE=disabled`، واضبط
+   بيانات ClickHouse وملحًا مستقلاً، ثم شغّل `pnpm analytics:migrate`.
+2. استخدم `dual_write`. يبقى Postgres المصدر المعتمد، وتكتب المهام في النظامين.
+   انشر العامل قبل API أو معه. يرقّي العامل المهام القديمة الموجودة في الطابور
+   أثناء النشر التدريجي بعد اشتقاق المستأجر من الخادم، ويستخدم معرّفات ثابتة
+   وسياسة التنقيح الحالية. تكون الموافقة القديمة `unknown`، لذلك لا يُحتفظ بنص
+   البحث الخام.
+3. شغّل `pnpm analytics:backfill -- --project=<id>` لكل مشروع. تُجزّأ
+   الاستعلامات التاريخية ولا تُنسخ كنص لأن سجل الموافقة التاريخي غير متاح.
+   تُحفظ معرّفات UUID للكتابة المزدوجة الحالية، وتُرقّى المعرّفات الأقدم بشكل
+   حتمي لمنع تكرار الحقائق الحية أثناء الملء الخلفي.
+4. شغّل `pnpm analytics:reconcile -- --project=<id>`. يعني الخروج غير الصفري
+   وجود فرق؛ ولا تحوّل البيانات المفقودة إلى صفر.
+5. استخدم `shadow_read`. تصل نتائج Postgres إلى العملاء، وتسجل السجلات فروق
+   استعلام ClickHouse مستقل. راقب نافذة تقارير كاملة على الأقل.
+6. استخدم `clickhouse` ليصبح ClickHouse المصدر المعتمد وتتوقف كتابة الحقائق في
+   Postgres. احتفظ بالجدول القديم خلال نافذة التراجع.
+
+للتراجع عن القراءة عد إلى `shadow_read` أو `dual_write`. ولحذف الحقائق المرحلة
+لمشروع واحد فقط مع إبقاء الأحداث الحية:
+
+```bash
+pnpm analytics:rollback -- --project=<id> --confirm-project=<id>
+```
+
+لا تحذف جدول Postgres قبل انتهاء نافذة التراجع وفحوص التصدير وموافقة مالك
+البيانات. لا تنتظر إتاحة المنتج الأساسية خدمة `analytics-migrate` الاختيارية.
+
+## الأعطال والترتيب والاحتفاظ
+
+تظل معرّفات الأحداث ثابتة خلال إعادة المحاولة. يزيل `ReplacingMergeTree`
+التكرار من الحقائق، وتستخدم التجميعات حالات المعرّفات المميزة كي لا تتضخم
+الأعداد. يحدد وقت وقوع الحدث ساعته، فتصل الأحداث المتأخرة إلى القسم الأصلي.
+تحوّل استعلامات اللوحة التجميعات الساعية إلى منطقة IANA الزمنية المطلوبة بعد
+التحقق منها، ثم تجمع الأيام التقويمية.
+يُستبدل وقت العميل بوقت الاستلام إذا تجاوز الانحراف سبعة أيام.
+
+تمثل BullMQ مخزن الصدمات المحدود. راقب عمر الطابور والمهام الفاشلة وزمن الإدراج
+والأحداث المرفوضة وعدد الأجزاء والقرص وطابور الطفرات وفروق القراءة الظلية. لا
+تجعل صحة ClickHouse شرطًا لاستعداد API أو العامل.
+
+القيم الافتراضية هي 180 يومًا للحقائق، و30 يومًا لعبارات البحث العامة المصرح
+بها، و730 يومًا للتجميعات. حذف TTL غير متزامن. ابنِ السعة على قياس فعلي لحجم
+الحدث المضغوط وذروة الأحداث ومعدل التأخر وعدد النسخ ومساحة القرص وحمل الدمج؛
+ولا تعرض افتراض التخطيط كقياس.
+
+أنشئ نسخة احتياطية قبل تغيير المخطط أو الاحتفاظ، وخزّنها مشفرة خارج المضيف.
+سجّل إصدار الخادم وDDL والأدوار وقيم الاحتفاظ والبصمات، ثم استعدها في قاعدة
+معزولة وقارن معرّفات الأحداث والتجميعات واختبر عزل المستأجر. النسخة التي لم
+تُستعد ليست نسخة متحققًا منها.
+
+يوفر المسار الموثق `GET /api/app/projects/:projectId/analytics/export` تصديرًا
+خاليًا من المحتوى ولا يتضمن تجزئات الاستعلام أو الجلسة أو النص الحساس. يطلب حذف
+المشروع محو الحقائق والجداول الحساسة والتجميعات؛ تحقّق من اكتمال الطفرة قبل
+إغلاق طلب صاحب البيانات.

@@ -2,12 +2,12 @@ import { NibleafMark } from '@nibleaf/design-system/brand';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, FileText, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { useProjects } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/app/(dashboard)/sites')({
   component: SitesPage,

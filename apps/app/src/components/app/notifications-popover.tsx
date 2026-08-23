@@ -1,12 +1,12 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
 import { useMarkNotificationsRead, useNotifications, useUnreadNotificationCount } from '@/hooks/api';
 import type { NotificationItem } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
 
 /** One inbox row: unread dot, title/body, relative time. Clicking marks it read
  *  and follows its dashboard link (when it has one). */

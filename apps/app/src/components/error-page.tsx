@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useStandaloneT } from '@nibleaf/i18n/standalone';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link } from '@tanstack/react-router';
-import { useStandaloneT } from '@/lib/i18n/standalone';
 
 export function ErrorPage({ error, reset }: ErrorComponentProps) {
   const t = useStandaloneT();

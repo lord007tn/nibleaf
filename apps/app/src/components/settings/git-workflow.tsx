@@ -4,6 +4,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { useLocale } from '@nibleaf/i18n/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
@@ -20,8 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { API_URL } from '@/lib/api';
-import { useLocale } from '@/lib/i18n';
+import { API_URL } from '@/services/api';
 
 type Conflict = { id: string; path: string; status: string; baseContent: string | null; oursContent: string | null; theirsContent: string | null };
 type Operation = {
