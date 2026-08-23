@@ -11,8 +11,8 @@ const app = new Hono<HonoEnv>()
     // Workspace analytics span every site the user can reach (all their orgs),
     // not just the session's active org — see getWorkspaceAnalytics.
     const user = getContextUserOrThrow();
-    const { range } = ctx.req.valid('query');
-    return ctx.json({ data: await getWorkspaceAnalytics(user.id, range) }, 200);
+    const { range, timezone } = ctx.req.valid('query');
+    return ctx.json({ data: await getWorkspaceAnalytics(user.id, range, timezone) }, 200);
   })
   .get('/', ...workspaceRoutes.settings, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

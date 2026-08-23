@@ -11,6 +11,7 @@ dist
 .cache
 .tanstack
 **/src/generated
+**/src/paraglide
 
 # env
 .env
@@ -47,10 +48,6 @@ test-results
 /output/
 /.playwright-cli/
 
-# cross-skill SEO evidence cache (local only)
+# local SEO working files and evidence are never shipped
 .seo-cache/
-
-# raw SEO audit working files (curated reports/evidence remain tracked)
-seo-audit/live/
-seo-audit/*-audit-*/
-seo-audit/tools/
+seo-audit/

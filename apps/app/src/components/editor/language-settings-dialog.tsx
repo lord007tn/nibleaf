@@ -14,12 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, LanguageConfig } from '@/hooks/api';
 import { useUpdateLanguage } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 type Direction = 'LTR' | 'RTL';
 type LangSettingsSection = 'general' | 'seo';

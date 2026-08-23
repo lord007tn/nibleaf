@@ -1,10 +1,10 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { Check, Info } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { BETA_LIMITS } from '@/lib/beta-limits';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 const FEATURES: MessageKey[] = [
   'settings.plan.selfHosted.feature.sites',

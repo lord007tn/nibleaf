@@ -1,11 +1,11 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { FIELD_MONO, Field, GroupLabel, SaveBar, SectionHeader, Segmented } from './shared';
 
 const PRESETS = ['#5546e8', '#0ea5e9', '#16a34a', '#22c55e', '#eab308', '#ea580c', '#ef4444', '#db2777', '#a855f7', '#0f172a'];

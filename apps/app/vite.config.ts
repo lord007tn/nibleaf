@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import mdx from '@mdx-js/rollup';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
@@ -8,7 +9,6 @@ import remarkGfm from 'remark-gfm';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig } from 'vite';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
-import { messageCatalogPlugin } from './scripts/message-catalog-plugin.ts';
 
 const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
 
@@ -31,7 +31,12 @@ export default defineConfig({
     proxy: { '/api/public/assets': { target: API_TARGET, changeOrigin: true } },
   },
   plugins: [
-    messageCatalogPlugin(),
+    paraglideVitePlugin({
+      project: '../../packages/i18n/project.inlang',
+      outdir: '../../packages/i18n/src/paraglide',
+      strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
+      cookieName: 'NIBLEAF_LOCALE',
+    }),
     bundleAnalysisPlugin(),
     // Blog articles (src/content/**). `enforce: 'pre'` so .mdx compiles before the
     // React plugin sees it. remark-mdx-frontmatter turns the YAML block into an

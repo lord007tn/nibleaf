@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type {
-  AnalyticsOverview,
   ApiKey,
   Asset,
   Branch,
@@ -25,7 +24,6 @@ import type {
   SearchHit,
   SitePage,
   SiteShell,
-  WorkspaceAnalytics,
   WorkspaceSettings,
 } from './types';
 
@@ -200,20 +198,6 @@ export const useOpenApiConfiguration = (projectId: string | undefined) =>
       ),
   });
 
-export const useAnalytics = (projectId: string | undefined, range: string) =>
-  useQuery({
-    queryKey: queryKeys.analytics.overview(projectId ?? '', range),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<AnalyticsOverview>(
-        await api.app.projects[':projectId'].analytics.$get({
-          param: { projectId: requireQueryValue(projectId, 'Project ID') },
-          query: { range: range as '24h' | '7d' | '30d' | '90d' },
-        }),
-        'analytics',
-      ),
-  });
-
 /** Per-site usage counters (content, team, publish activity, traffic, storage)
  *  rendered as plan-limit meters on the settings Usage tab. */
 export const useProjectUsage = (projectId: string | undefined) =>
@@ -238,16 +222,6 @@ export const useComments = (projectId: string | undefined, pageId?: string) =>
           query: pageId ? { pageId } : {},
         }),
         'comments',
-      ),
-  });
-
-export const useWorkspaceAnalytics = (range: string) =>
-  useQuery({
-    queryKey: queryKeys.workspace.analytics(range),
-    queryFn: async () =>
-      getData<WorkspaceAnalytics>(
-        await api.app.workspace.analytics.$get({ query: { range: range as '24h' | '7d' | '30d' | '90d' } }),
-        'workspace analytics',
       ),
   });
 

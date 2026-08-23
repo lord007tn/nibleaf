@@ -1,11 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { ArrowDownToLine, Check, Loader2, Replace, Sparkles, Wand2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAiDraft } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 
 type AiMode = 'continue' | 'rephrase' | 'outline' | 'summarize';
 

@@ -1,4 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { translateFn, useLocale } from '@nibleaf/i18n/react';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
@@ -37,8 +39,6 @@ import {
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { useLocale } from '@/lib/i18n';
-import { type MessageKey, messages } from '@/lib/i18n/messages';
 
 interface SlashItem {
   titleKey: MessageKey;
@@ -553,12 +553,18 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
 ];
 
 /** Resolve a slash label in one canonical catalog for locale-independent search. */
-const labelIn = (label: MessageKey, locale: 'en' | 'ar'): string => messages[locale][label];
+const labelInFn = (label: MessageKey, locale: 'en' | 'ar'): string => translateFn(label, undefined, locale);
 
 /** Search haystack across BOTH locales (+ keywords) so filtering works whatever
  *  language the menu is displayed in. */
 const haystackOf = (item: SlashItem): string =>
-  [labelIn(item.titleKey, 'en'), labelIn(item.titleKey, 'ar'), labelIn(item.descKey, 'en'), labelIn(item.descKey, 'ar'), ...(item.keywords ?? [])]
+  [
+    labelInFn(item.titleKey, 'en'),
+    labelInFn(item.titleKey, 'ar'),
+    labelInFn(item.descKey, 'en'),
+    labelInFn(item.descKey, 'ar'),
+    ...(item.keywords ?? []),
+  ]
     .join(' ')
     .toLowerCase();
 
@@ -669,7 +675,7 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
           return (
             <button
               type="button"
-              key={labelIn(item.titleKey, 'en')}
+              key={labelInFn(item.titleKey, 'en')}
               id={`${listboxId}-opt-${index}`}
               role="option"
               aria-selected={index === selected}

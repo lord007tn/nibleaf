@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
 import { APP_URL } from '@/lib/links';
+import { api } from '@/services/api';
+import { authClient } from '@/services/auth-client';
 
 /** Pull the server's message out of the `{ error: { message } }` envelope so
  *  validation failures surface instead of a generic toast. Empty when the body
@@ -18,24 +19,14 @@ async function serverErrorMessage(res: { json: () => Promise<unknown> }): Promis
 export function useStartSupportAccess() {
   return useMutation({
     mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
-      const grantResponse = await api.admin.users[':id']['impersonation-grant'].$post({
-        param: { id: userId },
-        json: { organizationId },
-      });
-      if (!grantResponse.ok) {
-        throw new Error((await serverErrorMessage(grantResponse)) || 'Could not authorize support access.');
+      const impersonation = await authClient.admin.impersonateUser({ userId });
+      if (impersonation.error) throw new Error(impersonation.error.message || 'Could not authorize support access.');
+      const workspace = await authClient.organization.setActive({ organizationId });
+      if (workspace.error) {
+        await authClient.admin.stopImpersonating();
+        throw new Error(workspace.error.message || 'Could not select the customer workspace.');
       }
-      const grant = (await grantResponse.json()).data;
-      const consumeResponse = await fetch(`${APP_URL}/api/auth/support-impersonation/consume`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: grant.token }),
-      });
-      if (!consumeResponse.ok) {
-        throw new Error((await serverErrorMessage(consumeResponse)) || 'The support session could not be started.');
-      }
-      return grant;
+      return impersonation.data;
     },
     onSuccess: () => {
       window.location.assign(`${APP_URL}/app`);

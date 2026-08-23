@@ -2,12 +2,12 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { type ContentImportSummary, useImportFromGhost, useImportFromMintlify } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { SettingsSection } from './section';
 
 /** Matches the server-side body cap for Ghost exports. */

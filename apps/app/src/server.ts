@@ -213,7 +213,7 @@ const effectiveRequestHost = (request: Request, url: URL): string => {
   return (request.headers.get('host') || url.host).toLowerCase();
 };
 
-// Patch global fetch (the RPC client in src/lib/api.ts uses it) so SSR fetches
+// Patch global fetch (the RPC client in src/services/api.ts uses it) so SSR fetches
 // to our own /api proxy carry the visitor's IP. Requests outside the request
 // context (no store) and to other targets are passed through untouched.
 const baseFetch = globalThis.fetch.bind(globalThis);

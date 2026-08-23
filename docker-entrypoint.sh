@@ -52,6 +52,10 @@ case "$cmd" in
     fi
     echo "[nibleaf] migrate complete"
     ;;
+  clickhouse-migrate)
+    echo "[nibleaf] applying ClickHouse analytics migrations…"
+    pnpm --filter @nibleaf/clickhouse migrate
+    ;;
   server)
     require_prod_secret
     echo "[nibleaf] starting API server on :${API_PORT:-4311}"

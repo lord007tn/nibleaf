@@ -28,6 +28,8 @@ x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.1.2}
 
 x-service-env: &service-env
   NODE_ENV: production
+  PINO_LOG_LEVEL: ${PINO_LOG_LEVEL:-info}
+  PINO_LOG_FILE: ${PINO_LOG_FILE:-}
   POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.production.example)}@postgres:5432/nibleaf
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"

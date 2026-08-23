@@ -1,11 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { useLocale } from '@nibleaf/i18n/react';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { usePages } from '@/hooks/api';
-import { useLocale } from '@/lib/i18n';
 import { Field, SectionHeader, Segmented } from './shared';
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';

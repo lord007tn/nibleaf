@@ -15,11 +15,11 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { ChevronRight, FileText, Folder, GripVertical, Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageNode } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 
 /**
  * A Notion-style page tree with @dnd-kit: drag the handle to reorder, drag

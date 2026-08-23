@@ -34,6 +34,25 @@ services:
     volumes:
       - nibleaf-dragonfly:/data
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: nibleaf_analytics
+      CLICKHOUSE_USER: nibleaf
+      CLICKHOUSE_PASSWORD: nibleaf
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+    ports:
+      - '8123:8123'
+    volumes:
+      - nibleaf-clickhouse:/var/lib/clickhouse
+      - nibleaf-clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:8123/ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   # maxio — S3-compatible object storage. Auto-creates the `nibleaf` bucket and
   # serves it with anonymous read so doc assets load by their public URL.
   # Console: http://localhost:9300/ui/
@@ -61,3 +80,5 @@ volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
   nibleaf-maxio:
+  nibleaf-clickhouse:
+  nibleaf-clickhouse-logs:

@@ -24,8 +24,10 @@ actually consumes. Never commit a populated `.env`.
 | `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
 | `APP_PORT` | No | `4310` | Host port mapped to the app container. |
 | `BETTER_AUTH_URL` | No | `APP_URL` | Explicit authentication base override. |
-| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. |
-| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. |
+| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. Include both `APP_URL` and `ADMIN_URL` when the admin console is exposed so native support impersonation can begin there. |
+| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. Include both `APP_URL` and `ADMIN_URL` when the admin console calls the shared API directly. |
+| `PINO_LOG_LEVEL` | No | `info` in production | Minimum structured log level. |
+| `PINO_LOG_FILE` | No | Empty | Optional JSONL disk destination in addition to terminal output. Mount the parent directory to persist container logs. |
 
 ## Published documentation domains
 

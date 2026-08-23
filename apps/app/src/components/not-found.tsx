@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useStandaloneT } from '@nibleaf/i18n/standalone';
 import { Link } from '@tanstack/react-router';
-import { useStandaloneT } from '@/lib/i18n/standalone';
 
 export function NotFound() {
   const t = useStandaloneT();

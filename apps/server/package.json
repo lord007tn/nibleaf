@@ -25,6 +25,7 @@
     "@hono/standard-validator": "^0.2.2",
     "@nibleaf/auth": "workspace:*",
     "@nibleaf/bullmq": "workspace:*",
+    "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/search": "workspace:*",

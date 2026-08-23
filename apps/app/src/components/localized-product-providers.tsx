@@ -1,27 +1,20 @@
 import { ConfirmProvider as DesignConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
-import type { ReactNode } from 'react';
-import { DirectionProvider } from '@/components/direction-provider';
-import { type LocaleCatalogLoader, LocaleProvider, useT } from '@/lib/i18n';
+import { isRtl, synchronizeDocumentLanguageFn } from '@nibleaf/i18n';
+import { useLocale, useT } from '@nibleaf/i18n/react';
+import { type ReactNode, useEffect } from 'react';
 
-export function LocalizedProductProviders({
-  children,
-  englishMessages,
-  loadMessages,
-}: {
-  children: ReactNode;
-  englishMessages: Record<string, string>;
-  loadMessages: LocaleCatalogLoader;
-}) {
+export function LocalizedProductProviders({ children }: { children: ReactNode }) {
+  const { locale } = useLocale();
+  useEffect(() => synchronizeDocumentLanguageFn(locale), [locale]);
   return (
-    <DirectionProvider>
-      <LocaleProvider englishMessages={englishMessages} loadMessages={loadMessages}>
-        <LocalizedSurfaces>
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="bottom-right" richColors />
-        </LocalizedSurfaces>
-      </LocaleProvider>
+    <DirectionProvider direction={isRtl(locale) ? 'rtl' : 'ltr'}>
+      <LocalizedSurfaces>
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster position="bottom-right" richColors />
+      </LocalizedSurfaces>
     </DirectionProvider>
   );
 }
