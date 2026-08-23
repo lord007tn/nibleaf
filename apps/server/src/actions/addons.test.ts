@@ -5,6 +5,8 @@ import type { HonoEnv } from '@/lib/hono/context';
 
 const database = vi.hoisted(() => ({
   authorizeProject: vi.fn(),
+  findAuditCursor: vi.fn(),
+  listAuditEvents: vi.fn(),
   transaction: vi.fn(),
 }));
 
@@ -13,12 +15,12 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     project: { findFirst: database.authorizeProject, findUnique: vi.fn() },
     projectAddon: { findMany: vi.fn(), findUnique: vi.fn() },
-    projectAddonAuditEvent: { findMany: vi.fn() },
+    projectAddonAuditEvent: { findFirst: database.findAuditCursor, findMany: database.listAuditEvents },
     $transaction: database.transaction,
   },
 }));
 
-import { activateProjectAddon, deactivateProjectAddon, updateProjectAddon } from './addons';
+import { activateProjectAddon, deactivateProjectAddon, listProjectAddonAuditEvents, updateProjectAddon } from './addons';
 
 interface AddonRow {
   id: string;
@@ -85,6 +87,8 @@ describe('project add-on mutations', () => {
       config: projectConfig,
       organization: { metadata: null, members: [{ role: 'owner' }] },
     });
+    database.findAuditCursor.mockReset();
+    database.listAuditEvents.mockReset();
 
     const transactionClient = {
       $queryRaw: vi.fn().mockResolvedValue([{ id: projectId }]),
@@ -218,5 +222,18 @@ describe('project add-on mutations', () => {
     expect(addons).toMatchObject({ editSuggestions: true, issueLinks: true });
     expect(JSON.parse(JSON.stringify(projectConfig))).toEqual(projectConfig);
     expect(auditEvents).toHaveLength(2);
+  });
+
+  it('rejects an audit cursor that belongs to a different filtered add-on', async () => {
+    database.findAuditCursor.mockResolvedValue(null);
+
+    await expect(
+      listProjectAddonAuditEvents(userContext, projectId, { addonId: 'consent-banner', cursor: 'feedback-event', limit: 30 }),
+    ).rejects.toMatchObject({ code: 'database:not_found', status: 404 });
+    expect(database.findAuditCursor).toHaveBeenCalledWith({
+      where: { id: 'feedback-event', projectId, addonKey: 'consent-banner' },
+      select: { id: true },
+    });
+    expect(database.listAuditEvents).not.toHaveBeenCalled();
   });
 });

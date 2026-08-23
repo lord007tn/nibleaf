@@ -124,7 +124,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
         <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('declined')}>
           {t('analyticsConsentDecline')}
         </Button>
-        <Button className="w-full sm:w-auto" type="button" onClick={() => persist('accepted')}>
+        <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('accepted')}>
           {t('analyticsConsentAccept')}
         </Button>
       </div>

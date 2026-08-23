@@ -321,7 +321,10 @@ export const deactivateProjectAddon = (ctx: Context<HonoEnv>, projectId: string,
 export const listProjectAddonAuditEvents = async (ctx: Context<HonoEnv>, projectId: string, query: ListProjectAddonAuditQuery) => {
   await authorizeProjectAddons(ctx, projectId, 'read');
   if (query.cursor) {
-    const cursor = await prisma.projectAddonAuditEvent.findFirst({ where: { id: query.cursor, projectId }, select: { id: true } });
+    const cursor = await prisma.projectAddonAuditEvent.findFirst({
+      where: { id: query.cursor, projectId, ...(query.addonId ? { addonKey: query.addonId } : {}) },
+      select: { id: true },
+    });
     if (!cursor) throw notFound('add-on audit event', { id: query.cursor });
   }
   const events = await prisma.projectAddonAuditEvent.findMany({
