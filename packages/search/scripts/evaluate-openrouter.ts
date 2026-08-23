@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenRouter } from '@openrouter/sdk';
 import { generateGroundedAnswer, type SearchChunk } from '../src/index';
-import { TanStackOpenRouterChatProvider } from '../src/providers';
+import { OpenRouterChatProvider } from '../src/providers';
 
 interface Fixture {
   id: string;
@@ -66,9 +66,8 @@ const chunks = (fixture: Fixture): SearchChunk[] =>
 
 const records: EvaluationRecord[] = [];
 for (const model of models) {
-  const provider = new TanStackOpenRouterChatProvider({
+  const provider = new OpenRouterChatProvider({
     apiKey,
-    baseUrl: 'https://openrouter.ai/api/v1',
     model,
     timeoutMs: 60_000,
     temperature: 0,

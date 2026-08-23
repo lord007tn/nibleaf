@@ -1,5 +1,6 @@
 import type { AiDraftBody } from '@nibleaf/validators';
-import OpenAI from 'openai';
+import { OpenRouter } from '@openrouter/sdk';
+import { z } from 'zod';
 import { env } from '@/env';
 
 const SYSTEM_PROMPT =
@@ -29,20 +30,25 @@ const userPrompt = ({ mode, content, instruction }: AiDraftBody) => {
   return parts.join('\n');
 };
 
-const callOpenAI = async (body: AiDraftBody) => {
-  const completion = await new OpenAI({ apiKey: env.OPENAI_API_KEY }).chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt(body) },
-    ],
-    temperature: 0.4,
+const callOpenRouter = async (body: AiDraftBody) => {
+  const completion = await new OpenRouter({
+    apiKey: env.OPENROUTER_API_KEY,
+    httpReferer: env.APP_URL,
+    appTitle: env.APP_NAME,
+  }).chat.send({
+    chatRequest: {
+      model: env.AI_DRAFT_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userPrompt(body) },
+      ],
+      temperature: 0.4,
+      stream: false,
+    },
   });
-  const text = completion.choices[0]?.message.content?.trim();
-  if (!text) {
-    throw new Error('OpenAI returned an empty completion.');
-  }
-  return { text, promptTokens: completion.usage?.prompt_tokens, completionTokens: completion.usage?.completion_tokens };
+  const text = z.string().trim().min(1).safeParse(completion.choices[0]?.message.content);
+  if (!text.success) throw new Error('OpenRouter returned an empty completion.');
+  return { text: text.data, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
 };
 
 /** Deterministic, offline fallback so the assistant always returns something useful. */
@@ -75,13 +81,13 @@ const fallback = ({ mode, content, instruction }: AiDraftBody) => {
 /** Internal variant used by the API to emit content-free operational metrics. */
 export const draftContentWithTelemetry = async (body: AiDraftBody) => {
   const started = performance.now();
-  if (env.OPENAI_API_KEY) {
+  if (env.OPENROUTER_API_KEY) {
     try {
-      const result = await callOpenAI(body);
+      const result = await callOpenRouter(body);
       return {
         ...result,
-        provider: 'openai' as const,
-        model: 'gpt-4o-mini',
+        provider: 'openrouter' as const,
+        model: env.AI_DRAFT_MODEL,
         outcome: 'completed' as const,
         latencyMs: Math.round(performance.now() - started),
       };

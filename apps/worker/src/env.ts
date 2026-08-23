@@ -36,7 +36,7 @@ export const env = createEnv({
       .positive()
       .default(50 * 1024 * 1024),
     GIT_WORKER_SECRET: z.string().min(32).optional(),
-    OPENAI_API_KEY: z.string().optional(),
+    OPENROUTER_API_KEY: z.string().optional(),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

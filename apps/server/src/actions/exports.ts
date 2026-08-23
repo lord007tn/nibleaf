@@ -7,12 +7,6 @@ import { env } from '@/env';
 import { badRequest, conflict, notFound } from '@/errors';
 import { logPlatformEvent } from './platform-events';
 
-const jobInclude = {
-  snapshot: { select: { deploymentVersion: true, pagesCount: true, createdAt: true } },
-  artifacts: { orderBy: { createdAt: 'asc' as const } },
-  schedule: { select: { id: true, name: true } },
-};
-
 const assertQuota = async (projectId: string) => {
   const dayAgo = new Date(Date.now() - 86_400_000);
   const [active, daily] = await Promise.all([
@@ -53,13 +47,12 @@ const createPublishedSnapshot = async (projectId: string) => {
   });
 };
 
-interface QueueExportOptions {
-  scheduleId?: string;
-  trigger: 'MANUAL' | 'SCHEDULED';
-  retentionDays: number;
-}
-
-const queueExport = async (projectId: string, userId: string, formats: ExportFormat[], options: QueueExportOptions) => {
+const queueExport = async (
+  projectId: string,
+  userId: string,
+  formats: ExportFormat[],
+  options: { scheduleId?: string; trigger: 'MANUAL' | 'SCHEDULED'; retentionDays: number },
+) => {
   await assertQuota(projectId);
   const snapshot = await createPublishedSnapshot(projectId);
   const job = await prisma.exportJob.create({
@@ -72,7 +65,11 @@ const queueExport = async (projectId: string, userId: string, formats: ExportFor
       ...(options.scheduleId ? { scheduleId: options.scheduleId } : {}),
       expiresAt: new Date(Date.now() + options.retentionDays * 86_400_000),
     },
-    include: jobInclude,
+    include: {
+      snapshot: { select: { deploymentVersion: true, pagesCount: true, createdAt: true } },
+      artifacts: { orderBy: { createdAt: 'asc' } },
+      schedule: { select: { id: true, name: true } },
+    },
   });
   try {
     await createJob(QueueNames.EXPORT, { name: 'render-export', data: { exportJobId: job.id } }, { jobId: `export-${job.id}` });
@@ -98,10 +95,26 @@ export const createExport = (projectId: string, userId: string, formats: ExportF
   queueExport(projectId, userId, formats, { trigger: 'MANUAL', retentionDays: env.EXPORT_MANUAL_RETENTION_DAYS });
 
 export const listExports = (projectId: string) =>
-  prisma.exportJob.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 50, include: jobInclude });
+  prisma.exportJob.findMany({
+    where: { projectId },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    include: {
+      snapshot: { select: { deploymentVersion: true, pagesCount: true, createdAt: true } },
+      artifacts: { orderBy: { createdAt: 'asc' } },
+      schedule: { select: { id: true, name: true } },
+    },
+  });
 
 export const getExport = async (projectId: string, id: string) => {
-  const job = await prisma.exportJob.findFirst({ where: { id, projectId }, include: jobInclude });
+  const job = await prisma.exportJob.findFirst({
+    where: { id, projectId },
+    include: {
+      snapshot: { select: { deploymentVersion: true, pagesCount: true, createdAt: true } },
+      artifacts: { orderBy: { createdAt: 'asc' } },
+      schedule: { select: { id: true, name: true } },
+    },
+  });
   if (!job) throw notFound('export job', { id });
   return job;
 };
@@ -116,7 +129,11 @@ export const cancelExport = async (projectId: string, id: string, userId: string
   const updated = await prisma.exportJob.update({
     where: { id },
     data: state === 'active' ? { cancelRequestedAt: new Date() } : { status: 'CANCELLED', cancelRequestedAt: new Date(), completedAt: new Date() },
-    include: jobInclude,
+    include: {
+      snapshot: { select: { deploymentVersion: true, pagesCount: true, createdAt: true } },
+      artifacts: { orderBy: { createdAt: 'asc' } },
+      schedule: { select: { id: true, name: true } },
+    },
   });
   logPlatformEvent('export_cancelled', { userId, projectId, metadata: { jobId: id } });
   return updated;

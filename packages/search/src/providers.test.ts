@@ -1,20 +1,11 @@
-import type { ClientOptions } from 'openai';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Fetcher } from '@openrouter/sdk';
+import { describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  adapter: { name: 'openrouter' },
-  chat: vi.fn(async (_input: unknown) => ({ status: 'no_answer', answer: 'No evidence.', confidence: 0, citations: [] })),
-  createOpenRouterText: vi.fn((_model: string, _apiKey: string, _config: unknown) => ({ name: 'openrouter' })),
-}));
+import { OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
 
-vi.mock('@tanstack/ai', () => ({ chat: mocks.chat }));
-vi.mock('@tanstack/ai-openrouter', () => ({ createOpenRouterText: mocks.createOpenRouterText }));
-
-import { OpenAIEmbeddingProvider, TanStackOpenRouterChatProvider } from './providers';
-
-describe('OpenAI SDK embeddings', () => {
+describe('OpenRouter SDK embeddings', () => {
   it('pins the configured model/dimensions and restores provider order', async () => {
-    const request = vi.fn<NonNullable<ClientOptions['fetch']>>(
+    const request = vi.fn<Fetcher>(
       async (_input, _init) =>
         new Response(
           JSON.stringify({
@@ -29,9 +20,8 @@ describe('OpenAI SDK embeddings', () => {
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
     );
-    const provider = new OpenAIEmbeddingProvider({
+    const provider = new OpenRouterEmbeddingProvider({
       apiKey: 'secret',
-      baseUrl: 'https://provider.test/v1',
       model: 'embed-model',
       dimensions: 2,
       fetch: request,
@@ -45,15 +35,17 @@ describe('OpenAI SDK embeddings', () => {
       usage: { promptTokens: 4, totalTokens: 4 },
     });
     const call = request.mock.calls[0];
-    if (!call) throw new Error('Expected the OpenAI SDK to call fetch.');
-    const [url, init] = call;
-    expect(String(url)).toBe('https://provider.test/v1/embeddings');
-    expect(JSON.parse(String(init?.body))).toMatchObject({ model: 'embed-model', dimensions: 2, encoding_format: 'float' });
-    expect(String(init?.body)).not.toContain('secret');
+    if (!call) throw new Error('Expected the OpenRouter SDK to call fetch.');
+    const [input, init] = call;
+    const sdkRequest = input instanceof Request ? input : new Request(input, init);
+    const requestBody = await sdkRequest.text();
+    expect(sdkRequest.url).toBe('https://openrouter.ai/api/v1/embeddings');
+    expect(JSON.parse(requestBody)).toMatchObject({ model: 'embed-model', dimensions: 2, encoding_format: 'float' });
+    expect(requestBody).not.toContain('secret');
   });
 
   it('rejects empty inputs and malformed vector dimensions', async () => {
-    const request = vi.fn<NonNullable<ClientOptions['fetch']>>(
+    const request = vi.fn<Fetcher>(
       async (_input, _init) =>
         new Response(
           JSON.stringify({
@@ -65,19 +57,37 @@ describe('OpenAI SDK embeddings', () => {
           { status: 200, headers: { 'content-type': 'application/json' } },
         ),
     );
-    const provider = new OpenAIEmbeddingProvider({ apiKey: 'secret', dimensions: 2, fetch: request });
+    const provider = new OpenRouterEmbeddingProvider({ apiKey: 'secret', dimensions: 2, fetch: request });
     await expect(provider.embed([''])).rejects.toThrow('cannot be empty');
     await expect(provider.embed(['valid'])).rejects.toThrow('unexpected vector');
   });
 });
 
-describe('TanStack AI OpenRouter answers', () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it('uses the official OpenRouter adapter with structured output and no client-side wire implementation', async () => {
-    const provider = new TanStackOpenRouterChatProvider({
+describe('OpenRouter SDK answers', () => {
+  it('requests strict structured output and reports provider usage', async () => {
+    const request = vi.fn<Fetcher>(async () =>
+      Response.json({
+        id: 'generation-1',
+        created: 1,
+        model: 'openai/gpt-5.6-luna',
+        object: 'chat.completion',
+        system_fingerprint: null,
+        choices: [
+          {
+            index: 0,
+            finish_reason: 'stop',
+            message: {
+              role: 'assistant',
+              content: JSON.stringify({ status: 'no_answer', answer: 'No evidence.', confidence: 0, citations: [] }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14, cost: 0.001 },
+      }),
+    );
+    const provider = new OpenRouterChatProvider({
       apiKey: 'secret',
-      baseUrl: 'https://openrouter.test/api/v1',
+      fetch: request,
       model: 'openai/gpt-5.6-luna',
       siteUrl: 'https://nibleaf.com',
       title: 'Nibleaf test',
@@ -88,25 +98,35 @@ describe('TanStack AI OpenRouter answers', () => {
     ]);
 
     expect(completion.value).toMatchObject({ status: 'no_answer' });
-    expect(mocks.createOpenRouterText).toHaveBeenCalledWith('openai/gpt-5.6-luna', 'secret', {
-      serverURL: 'https://openrouter.test/api/v1',
-      httpReferer: 'https://nibleaf.com',
-      appTitle: 'Nibleaf test',
+    expect(completion.usage).toEqual({ inputTokens: 10, outputTokens: 4, totalTokens: 14, costUsd: 0.001 });
+    const call = request.mock.calls[0];
+    if (!call) throw new Error('Expected the OpenRouter SDK to call fetch.');
+    const [input, init] = call;
+    const sdkRequest = input instanceof Request ? input : new Request(input, init);
+    expect(sdkRequest.url).toBe('https://openrouter.ai/api/v1/chat/completions');
+    expect(JSON.parse(await sdkRequest.text())).toMatchObject({
+      model: 'openai/gpt-5.6-luna',
+      stream: false,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'grounded_answer', strict: true, schema: expect.any(Object) },
+      },
     });
-    expect(mocks.chat).toHaveBeenCalledWith(
-      expect.objectContaining({
-        adapter: { name: 'openrouter' },
-        systemPrompts: ['Use only sources.'],
-        messages: [{ role: 'user', content: 'Question and sources' }],
-        outputSchema: expect.any(Object),
-      }),
-    );
   });
 
-  it('rejects model identifiers absent from the pinned adapter catalog before provider I/O', async () => {
-    const provider = new TanStackOpenRouterChatProvider({ apiKey: 'secret', model: 'unknown/not-in-catalog' });
+  it('rejects malformed structured output', async () => {
+    const request = vi.fn<Fetcher>(async () =>
+      Response.json({
+        id: 'generation-1',
+        created: 1,
+        model: 'new/provider-model',
+        object: 'chat.completion',
+        system_fingerprint: null,
+        choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: '{"answer":"missing fields"}' } }],
+      }),
+    );
+    const provider = new OpenRouterChatProvider({ apiKey: 'secret', fetch: request, model: 'new/provider-model' });
     await expect(provider.complete([{ role: 'user', content: 'question' }])).rejects.toThrow();
-    expect(mocks.createOpenRouterText).not.toHaveBeenCalled();
-    expect(mocks.chat).not.toHaveBeenCalled();
+    expect(request).toHaveBeenCalledOnce();
   });
 });

@@ -5,7 +5,8 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
-  OpenAIEmbeddingProvider,
+  OpenRouterChatProvider,
+  OpenRouterEmbeddingProvider,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -13,7 +14,6 @@ import {
   type SearchScope,
   searchCacheKey,
   sparseVectorForQuery,
-  TanStackOpenRouterChatProvider,
 } from '@nibleaf/search';
 import { z } from 'zod';
 import { env } from '@/env';
@@ -44,22 +44,20 @@ const indexedChunkPayloadSchema = z.object({
   icon: z.string().optional(),
 });
 
-const embeddingApiKey = (): string | undefined => env.SEARCH_EMBEDDING_API_KEY ?? env.OPENAI_API_KEY;
-
 const embeddings = () => {
-  const apiKey = embeddingApiKey();
-  if (!apiKey) return null;
-  return new OpenAIEmbeddingProvider({
-    apiKey,
-    baseUrl: env.SEARCH_EMBEDDING_BASE_URL,
+  if (!env.OPENROUTER_API_KEY) return null;
+  return new OpenRouterEmbeddingProvider({
+    apiKey: env.OPENROUTER_API_KEY,
     model: env.SEARCH_EMBEDDING_MODEL,
     dimensions: env.SEARCH_EMBEDDING_DIMENSIONS,
     timeoutMs: env.SEARCH_EMBEDDING_TIMEOUT_MS,
+    siteUrl: env.APP_URL,
+    title: env.APP_NAME,
   });
 };
 
-export const hybridSearchAvailable = (): boolean => Boolean(qdrant && embeddingApiKey());
-export const answerSearchAvailable = (): boolean => hybridSearchAvailable() && env.SEARCH_ANSWER_ENABLED && Boolean(env.SEARCH_ANSWER_API_KEY);
+export const hybridSearchAvailable = () => Boolean(qdrant && env.OPENROUTER_API_KEY);
+export const answerSearchAvailable = () => hybridSearchAvailable() && env.SEARCH_ANSWER_ENABLED;
 
 export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null => {
   if (scope.allowedPageIds !== null && scope.allowedPageIds.size === 0) return null;
@@ -203,7 +201,7 @@ export const answerPublishedSearch = async (
   query: string,
   signal?: AbortSignal,
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
-  if (!answerSearchAvailable() || !env.SEARCH_ANSWER_API_KEY) throw new Error('AI answers are not configured.');
+  if (!answerSearchAvailable() || !env.OPENROUTER_API_KEY) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
@@ -212,9 +210,8 @@ export const answerPublishedSearch = async (
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
   const retrieval = await retrieveHybrid(scope, query, 12, signal);
-  const provider = new TanStackOpenRouterChatProvider({
-    apiKey: env.SEARCH_ANSWER_API_KEY,
-    baseUrl: env.SEARCH_ANSWER_BASE_URL,
+  const provider = new OpenRouterChatProvider({
+    apiKey: env.OPENROUTER_API_KEY,
     model: env.SEARCH_ANSWER_MODEL,
     timeoutMs: env.SEARCH_ANSWER_TIMEOUT_MS,
     temperature: 0,

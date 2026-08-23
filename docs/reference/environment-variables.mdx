@@ -92,7 +92,8 @@ Both variables must be present and non-blank after trimming surrounding whitespa
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `OPENAI_API_KEY` | Only for AI assist | Empty | Enables explicit AI writing actions. |
+| `OPENROUTER_API_KEY` | Only for AI features | Empty | Enables editor drafting, embeddings, and optional grounded answers through OpenRouter. |
+| `AI_DRAFT_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model used for explicit editor writing actions. |
 | `AI_DAILY_LIMIT` | No | Application default | Per-workspace daily AI request limit; `0` disables drafting. |
 | `MARKETING_GTM_ID` | No | Empty | Preferred GTM container ID for public instance marketing pages. It is public metadata and loads only after explicit visitor consent. Configure the GA4 Google tag in GTM with automatic pageviews disabled; Nibleaf pushes one manual `page_view` per accepted route plus allowlisted events. This variable takes precedence over `MARKETING_GA4_ID`. |
 | `MARKETING_GA4_ID` | No | Empty | Legacy direct-GA4 fallback for existing self-hosters. It loads only after explicit consent and is ignored when `MARKETING_GTM_ID` is configured. |

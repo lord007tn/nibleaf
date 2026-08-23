@@ -13,7 +13,7 @@ export const envExtras = createEnv({
     /** Expensive grounded-answer budget per caller, enforced in addition to the
      * shared public limiter. */
     SEARCH_ANSWER_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
-    /** Per-workspace daily cap on AI draft calls (only enforced when OPENAI_API_KEY is set). 0 disables AI drafting entirely. */
+    /** Per-workspace daily cap on AI draft calls (only enforced when OPENROUTER_API_KEY is set). 0 disables AI drafting entirely. */
     AI_DAILY_LIMIT: z.coerce.number().int().min(0).default(50),
     /** Instance-level switch to turn off self-serve sign-up (surfaced via /api/public/meta). */
     DISABLE_SIGNUP: z
