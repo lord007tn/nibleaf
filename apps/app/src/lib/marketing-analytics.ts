@@ -114,8 +114,9 @@ const responseNonce = (): string | undefined => document.querySelector<HTMLMetaE
 
 const getGtag = (): Gtag => {
   window.dataLayer ??= [];
-  window.gtag ??= (...args: unknown[]) => {
-    window.dataLayer?.push(args);
+  window.gtag ??= function gtag() {
+    // biome-ignore lint/complexity/noArguments: Google tag commands require the canonical array-like Arguments shape, not a rest-parameter Array.
+    window.dataLayer?.push(arguments);
   };
   return window.gtag;
 };

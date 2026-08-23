@@ -75,7 +75,12 @@ describe('MarketingAnalyticsConsent', () => {
     expect(document.querySelector('#nibleaf-marketing-gtm')).not.toBeNull();
 
     await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
-    const pageViews = window.dataLayer?.filter((entry) => Array.isArray(entry) && entry[0] === 'event' && entry[1] === 'page_view');
+    const pageViews = window.dataLayer?.filter(
+      (entry) =>
+        Object.prototype.toString.call(entry) === '[object Arguments]' &&
+        Array.from(entry as IArguments)[0] === 'event' &&
+        Array.from(entry as IArguments)[1] === 'page_view',
+    );
     expect(pageViews).toHaveLength(1);
   });
 });
