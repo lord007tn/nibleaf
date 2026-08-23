@@ -1,11 +1,17 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
-import { updateWorkspaceSettingsBody } from '@nibleaf/validators';
+import { searchIndexDiagnosticsQuery, updateProjectSearchConfigurationBody, updateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { importFromGitProvider } from '@/actions/git-import';
 import { rotateGitWebhookSecret } from '@/actions/git-webhook';
 import { createNotificationsForOrgMembers } from '@/actions/notifications';
+import {
+  createProjectSearchReindex,
+  getProjectSearchConfiguration,
+  getProjectSearchIndexDiagnostics,
+  updateProjectSearchConfiguration,
+} from '@/actions/search';
 import { getProjectUsage } from '@/actions/usage';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getContextMembership, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
@@ -61,6 +67,18 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     const projectId = ctx.req.param('projectId') ?? '';
     return ctx.json({ data: await getProjectUsage(organizationId, projectId) }, 200);
-  });
+  })
+  .get('/search', ...projectSettingsRoutes.searchConfiguration, async (ctx) =>
+    ctx.json({ data: await getProjectSearchConfiguration(ctx, ctx.req.param('projectId') ?? '') }, 200),
+  )
+  .patch('/search', ...projectSettingsRoutes.updateSearchConfiguration, validator('json', updateProjectSearchConfigurationBody), async (ctx) =>
+    ctx.json({ data: await updateProjectSearchConfiguration(ctx, ctx.req.param('projectId') ?? '', ctx.req.valid('json')) }, 200),
+  )
+  .get('/search/diagnostics', ...projectSettingsRoutes.searchIndexDiagnostics, validator('query', searchIndexDiagnosticsQuery), async (ctx) =>
+    ctx.json({ data: await getProjectSearchIndexDiagnostics(ctx, ctx.req.param('projectId') ?? '', ctx.req.valid('query')) }, 200),
+  )
+  .post('/search/reindex', ...projectSettingsRoutes.createSearchReindex, async (ctx) =>
+    ctx.json({ data: await createProjectSearchReindex(ctx, ctx.req.param('projectId') ?? '') }, 202),
+  );
 
 export default app;

@@ -38,6 +38,11 @@ export const queryKeys = {
     /** Per-site usage counters for the settings Usage tab. */
     forProject: (projectId: string) => ['usage', projectId] as const,
   },
+  projectSearch: {
+    configuration: (projectId: string) => ['projects', projectId, 'search', 'configuration'] as const,
+    index: (projectId: string, cursor?: string, limit?: number) => ['projects', projectId, 'search', 'index', cursor ?? null, limit ?? null] as const,
+    allIndex: (projectId: string) => ['projects', projectId, 'search', 'index'] as const,
+  },
   comments: {
     all: (projectId: string, pageId?: string) => ['comments', projectId, pageId ?? null] as const,
   },

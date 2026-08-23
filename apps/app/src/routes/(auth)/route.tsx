@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
 import { AuthProviders } from '@/components/auth-providers';
 import { getSessionFn } from '@/functions/session';
+import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)')({
@@ -21,9 +22,11 @@ export const Route = createFileRoute('/(auth)')({
 /** Reverse guard: an authenticated user can never see sign-in/up — sent to /app. */
 function AuthRoute() {
   return (
-    <AuthProviders>
-      <AuthGuard />
-    </AuthProviders>
+    <QueryProvider>
+      <AuthProviders>
+        <AuthGuard />
+      </AuthProviders>
+    </QueryProvider>
   );
 }
 

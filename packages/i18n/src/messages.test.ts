@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import packageJson from '../package.json' with { type: 'json' };
 import { INTERFACE_LOCALES } from './locales';
 import { MESSAGE_IDS } from './message-ids';
 
@@ -28,5 +29,11 @@ describe('Paraglide message catalogs', () => {
   it('maps every stable dotted UI key to a generated message id', () => {
     expect(new Set(Object.values(MESSAGE_IDS)).size).toBe(Object.keys(MESSAGE_IDS).length);
     for (const id of Object.values(MESSAGE_IDS)) expect(english).toHaveProperty(id);
+  });
+
+  it('keeps canonical and Vite generation on per-message modules used by direct imports', () => {
+    const viteConfig = readFileSync(resolve(import.meta.dirname, '../../../apps/app/vite.config.ts'), 'utf8');
+    expect(packageJson.scripts.setup).toContain('--output-structure message-modules');
+    expect(viteConfig).toContain("outputStructure: 'message-modules'");
   });
 });

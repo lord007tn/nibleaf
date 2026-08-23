@@ -2,6 +2,7 @@ export * from './analytics';
 export * from './exports';
 export * from './git-workflow';
 export * from './mutations';
+export * from './project-search';
 export * from './public';
 export * from './queries';
 export * from './query-keys';

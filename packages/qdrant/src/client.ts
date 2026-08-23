@@ -51,6 +51,16 @@ export interface QdrantIndexedPoint {
   vector?: { dense: number[]; bm25: SparseVector };
 }
 
+export interface QdrantIndexedMetadataPage {
+  nextOffset?: string | number;
+  points: Array<{ id: string | number; payload: Record<string, unknown> }>;
+}
+
+export interface QdrantFacetCount {
+  count: number;
+  value: QdrantScalar;
+}
+
 export interface QdrantClientOptions {
   alias?: string;
   apiKey?: string;
@@ -63,10 +73,18 @@ export interface QdrantClientOptions {
 
 const requiredRetrievalFields = ['project_id', 'deployment_id', 'version_slug', 'language', 'visibility', 'visible'] as const;
 const pointPayloadSchema = z.record(z.string(), z.unknown());
+const diagnosticPayloadSchema = z.object({
+  page_id: z.string(),
+  ordinal: z.number().int().nonnegative(),
+  language: z.string(),
+  version_slug: z.string(),
+});
 const namedVectorSchema = z.object({
   dense: z.array(z.number()),
   bm25: z.object({ indices: z.array(z.number()), values: z.array(z.number()) }),
 });
+const facetHitSchema = z.object({ value: z.union([z.string(), z.number(), z.boolean()]), count: z.number().int().nonnegative() });
+const diagnosticPayloadFields = ['page_id', 'ordinal', 'language', 'version_slug'] as const;
 
 const matchCondition = (condition: QdrantMatchCondition | QdrantHasIdCondition): condition is QdrantMatchCondition => 'key' in condition;
 
@@ -240,12 +258,49 @@ export class QdrantClient {
     return points;
   }
 
+  /** Bounded, payload-minimized inspection for authenticated diagnostics. The
+   * SDK asks Qdrant only for safe identifiers; content, titles, paths, hashes,
+   * vectors, and provider payloads never cross this infrastructure boundary. */
+  async listIndexedMetadataPage(
+    filter: QdrantFilter,
+    options: { limit: number; offset?: string | number },
+    signal?: AbortSignal,
+  ): Promise<QdrantIndexedMetadataPage> {
+    assertTenantFilter(filter);
+    ensureNotAborted(signal);
+    const page = await this.sdk.scroll(this.alias, {
+      filter,
+      limit: options.limit,
+      ...(options.offset === undefined ? {} : { offset: options.offset }),
+      with_payload: { include: [...diagnosticPayloadFields] },
+      with_vector: false,
+    });
+    const points = page.points.flatMap((point) => {
+      const payload = diagnosticPayloadSchema.safeParse(point.payload);
+      return payload.success ? [{ id: point.id, payload: payload.data }] : [];
+    });
+    const nextOffset = z.union([z.string(), z.number()]).safeParse(page.next_page_offset);
+    ensureNotAborted(signal);
+    return { points, ...(nextOffset.success ? { nextOffset: nextOffset.data } : {}) };
+  }
+
   async count(filter: QdrantFilter, signal?: AbortSignal): Promise<number> {
     assertTenantFilter(filter);
     ensureNotAborted(signal);
     const result = await this.sdk.count(this.alias, { filter, exact: true });
     ensureNotAborted(signal);
     return result.count;
+  }
+
+  async facetCounts(filter: QdrantFilter, key: 'language' | 'version_slug', limit: number, signal?: AbortSignal): Promise<QdrantFacetCount[]> {
+    assertTenantFilter(filter);
+    ensureNotAborted(signal);
+    const result = await this.sdk.facet(this.alias, { key, filter, limit, exact: true });
+    ensureNotAborted(signal);
+    return result.hits.flatMap((hit) => {
+      const parsed = facetHitSchema.safeParse(hit);
+      return parsed.success ? [parsed.data] : [];
+    });
   }
 
   async queryHybrid(input: HybridQueryInput, signal?: AbortSignal): Promise<QdrantScoredPoint[]> {

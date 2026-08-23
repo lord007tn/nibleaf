@@ -69,6 +69,8 @@ import { site_searchdescription } from './paraglide/messages/site_searchdescript
 import { site_searchdocumentation } from './paraglide/messages/site_searchdocumentation.js';
 import { site_searchempty } from './paraglide/messages/site_searchempty.js';
 import { site_searchfailed } from './paraglide/messages/site_searchfailed.js';
+import { site_searchfilterlanguage } from './paraglide/messages/site_searchfilterlanguage.js';
+import { site_searchfilterversion } from './paraglide/messages/site_searchfilterversion.js';
 import { site_searching } from './paraglide/messages/site_searching.js';
 import { site_searchmode } from './paraglide/messages/site_searchmode.js';
 import { site_searchplaceholder } from './paraglide/messages/site_searchplaceholder.js';
@@ -86,6 +88,8 @@ const siteMessages = {
   changelog: site_changelog,
   search: site_search,
   searchDocumentation: site_searchdocumentation,
+  searchFilterLanguage: site_searchfilterlanguage,
+  searchFilterVersion: site_searchfilterversion,
   searchPlaceholder: site_searchplaceholder,
   searchDescription: site_searchdescription,
   searchEmpty: site_searchempty,

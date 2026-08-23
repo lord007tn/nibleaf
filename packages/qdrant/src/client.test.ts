@@ -14,6 +14,7 @@ const sdkClient = () => ({
   overwritePayload: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ status: 'completed' })),
   getCollections: vi.fn(async () => ({ collections: [] as Array<{ name: string }> })),
   count: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ count: 0 })),
+  facet: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ hits: [] as Array<{ value: string; count: number }> })),
   scroll: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({
     points: [] as Array<{ id: string | number; payload?: Record<string, unknown> | null }>,
     next_page_offset: null as string | number | null,
@@ -150,11 +151,48 @@ describe('QdrantClient official SDK boundary', () => {
     );
   });
 
+  it('uses exact scoped count/facets and one bounded privacy-safe metadata page for diagnostics', async () => {
+    const { client, sdk } = harness();
+    const filter: QdrantFilter = {
+      must: [
+        { key: 'project_id', match: { value: 'tenant-a' } },
+        { key: 'deployment_id', match: { value: 'deployment-a' } },
+      ],
+    };
+    sdk.count.mockResolvedValueOnce({ count: 42 });
+    sdk.facet.mockResolvedValueOnce({ hits: [{ value: 'ar', count: 20 }] });
+    sdk.scroll.mockResolvedValueOnce({
+      points: [{ id: 'point-a', payload: { page_id: 'page-a', ordinal: 0, language: 'ar', version_slug: 'main', content: 'private' } }],
+      next_page_offset: 17,
+    });
+
+    await expect(client.count(filter)).resolves.toBe(42);
+    await expect(client.facetCounts(filter, 'language', 101)).resolves.toEqual([{ value: 'ar', count: 20 }]);
+    const metadata = await client.listIndexedMetadataPage(filter, { limit: 10 });
+    expect(metadata).toEqual({
+      points: [{ id: 'point-a', payload: { page_id: 'page-a', ordinal: 0, language: 'ar', version_slug: 'main' } }],
+      nextOffset: 17,
+    });
+
+    expect(sdk.count).toHaveBeenCalledWith('nibleaf_search_active', { filter, exact: true });
+    expect(sdk.facet).toHaveBeenCalledWith('nibleaf_search_active', { key: 'language', filter, limit: 101, exact: true });
+    expect(sdk.scroll).toHaveBeenCalledOnce();
+    expect(sdk.scroll).toHaveBeenCalledWith('nibleaf_search_active', {
+      filter,
+      limit: 10,
+      with_payload: { include: ['page_id', 'ordinal', 'language', 'version_slug'] },
+      with_vector: false,
+    });
+    expect(JSON.stringify(metadata)).not.toContain('private');
+  });
+
   it('fails before SDK I/O when counts, deletes, diffs, or retrieval omit mandatory tenant scope', async () => {
     const { client, sdk } = harness();
     await expect(client.count({ must: [] })).rejects.toThrow('project_id');
     await expect(client.deleteByFilter({ must: [{ key: 'deployment_id', match: { value: 'dep' } }] })).rejects.toThrow('project_id');
     await expect(client.listIndexedPoints({ must: [] })).rejects.toThrow('project_id');
+    await expect(client.listIndexedMetadataPage({ must: [] }, { limit: 1 })).rejects.toThrow('project_id');
+    await expect(client.facetCounts({ must: [] }, 'language', 1)).rejects.toThrow('project_id');
     await expect(
       client.queryHybrid({
         dense: [0.1],

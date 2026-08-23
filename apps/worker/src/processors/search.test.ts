@@ -2,13 +2,57 @@ import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
 import type { QdrantFilter, QdrantIndexedPoint, QdrantPoint } from '@nibleaf/qdrant';
 import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
+
+type RunStatus = 'PENDING' | 'RUNNING' | 'READY' | 'FAILED' | 'DISABLED';
+const runStatusSchema = z.enum(['PENDING', 'RUNNING', 'READY', 'FAILED', 'DISABLED']);
+interface SearchRunState {
+  id: string;
+  projectId: string;
+  deploymentId: string;
+  jobId: string | null;
+  status: RunStatus;
+  claimToken: string | null;
+  claimExpiresAt: Date | null;
+  startedAt: Date | null;
+  completedAt?: Date | null;
+  updatedAt: Date;
+  indexedChunks: number;
+  embeddedChunks: number;
+  reusedChunks: number;
+  unchangedChunks: number;
+  metadataUpdatedChunks: number;
+  deletedChunks: number;
+  attempt: number;
+  expectedChunks?: number;
+  expectedPages?: number;
+  indexedPages?: number;
+  staleChunks?: number;
+  failedChunks?: number;
+  errorCode?: string | null;
+  issueSample?: unknown;
+  logicalIndexId?: string;
+  schemaVersion?: string;
+  revisionId?: string;
+  embeddingModel?: string;
+  vectorSize?: number;
+}
+
+type SearchRunWhere = Partial<Pick<SearchRunState, 'id' | 'projectId' | 'deploymentId' | 'jobId' | 'claimToken' | 'updatedAt'>> & {
+  status?: RunStatus | { in: RunStatus[] };
+};
+type SearchRunCreate = Partial<SearchRunState> & Pick<SearchRunState, 'projectId' | 'deploymentId'>;
+type SearchRunUpdate = Partial<Omit<SearchRunState, 'attempt'>> & { attempt?: { increment: number } };
+const runStatusFilterSchema = z.object({ in: z.array(runStatusSchema) }).strict();
 
 const mocks = vi.hoisted(() => ({
   apiKey: 'embedding-key' as string | undefined,
+  loseDisabledClaim: false,
   accessMode: 'READERS' as 'PUBLIC' | 'WORKSPACE' | 'READERS',
   currentPoints: [] as QdrantIndexedPoint[],
   previousPoints: [] as QdrantIndexedPoint[],
   previousDeployment: null as { id: string } | null,
+  runs: [] as SearchRunState[],
   deployment: {
     id: 'deployment-a',
     version: 2,
@@ -73,16 +117,75 @@ vi.mock('../env', () => ({
     SEARCH_EMBEDDING_MODEL: 'test-embedding',
     SEARCH_EMBEDDING_DIMENSIONS: 2,
     SEARCH_EMBEDDING_TIMEOUT_MS: 1000,
+    QDRANT_TIMEOUT_MS: 1000,
+    QDRANT_COLLECTION_VERSION: 'v1',
   },
 }));
 
 vi.mock('@nibleaf/database', () => ({
-  prisma: {
-    deployment: {
-      findFirst: vi.fn(async (args: { select?: { snapshot?: boolean } }) => (args.select?.snapshot ? mocks.deployment : mocks.previousDeployment)),
-    },
-    project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode })) },
-  },
+  Prisma: { JsonNull: null, PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {} },
+  prisma: (() => {
+    const matches = (run: SearchRunState, where: SearchRunWhere): boolean => {
+      if (where.id !== undefined && run.id !== where.id) return false;
+      if (where.projectId !== undefined && run.projectId !== where.projectId) return false;
+      if (where.deploymentId !== undefined && run.deploymentId !== where.deploymentId) return false;
+      if (where.jobId !== undefined && run.jobId !== where.jobId) return false;
+      if (where.claimToken !== undefined && run.claimToken !== where.claimToken) return false;
+      if (where.updatedAt !== undefined && run.updatedAt.getTime() !== where.updatedAt.getTime()) return false;
+      if (where.status !== undefined) {
+        const filter = runStatusFilterSchema.safeParse(where.status);
+        if (filter.success ? !filter.data.in.includes(run.status) : run.status !== where.status) return false;
+      }
+      return true;
+    };
+    const searchIndexRun = {
+      findFirst: vi.fn(async ({ where }: { where: SearchRunWhere }) => mocks.runs.find((run) => matches(run, where)) ?? null),
+      create: vi.fn(async ({ data }: { data: SearchRunCreate }) => {
+        const now = new Date();
+        const { projectId, deploymentId, ...values } = data;
+        const run: SearchRunState = {
+          id: data.id ?? `run-${mocks.runs.length + 1}`,
+          projectId,
+          deploymentId,
+          jobId: data.jobId ?? null,
+          status: 'PENDING',
+          claimToken: null,
+          claimExpiresAt: null,
+          startedAt: null,
+          updatedAt: now,
+          indexedChunks: 0,
+          embeddedChunks: 0,
+          reusedChunks: 0,
+          unchangedChunks: 0,
+          metadataUpdatedChunks: 0,
+          deletedChunks: 0,
+          attempt: 0,
+          ...values,
+        };
+        mocks.runs.push(run);
+        return run;
+      }),
+      updateMany: vi.fn(async ({ where, data }: { where: SearchRunWhere; data: SearchRunUpdate }) => {
+        if (mocks.loseDisabledClaim && data.status === 'DISABLED') return { count: 0 };
+        const run = mocks.runs.find((item) => matches(item, where));
+        if (!run) return { count: 0 };
+        const { attempt, ...values } = data;
+        Object.assign(run, values);
+        if (attempt) run.attempt += attempt.increment;
+        run.updatedAt = new Date();
+        return { count: 1 };
+      }),
+    };
+    const db = {
+      deployment: {
+        findFirst: vi.fn(async (args: { select?: { snapshot?: boolean } }) => (args.select?.snapshot ? mocks.deployment : mocks.previousDeployment)),
+      },
+      project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode })) },
+      searchIndexRun,
+      $transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
+    };
+    return db;
+  })(),
 }));
 
 vi.mock('@nibleaf/qdrant', () => ({
@@ -110,8 +213,9 @@ vi.mock('@nibleaf/search', async () => {
 
 import { handleSearchJobs } from './search';
 
-const job = (name: string, data: ReindexProjectJobData = { projectId: 'tenant-a', deploymentId: 'deployment-a' }) =>
-  ({ name, data, updateProgress: vi.fn(async () => undefined) }) as unknown as Job<ReindexProjectJobData>;
+let jobSequence = 0;
+const job = (name: string, data: ReindexProjectJobData = { projectId: 'tenant-a', deploymentId: 'deployment-a' }, id = `${name}-${++jobSequence}`) =>
+  ({ id, name, data, updateProgress: vi.fn(async () => undefined) }) as unknown as Job<ReindexProjectJobData>;
 
 const firstUpsertedPoint = () => {
   const call = mocks.upsert.mock.calls[0];
@@ -123,10 +227,13 @@ describe('hybrid search differential indexing jobs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.apiKey = 'embedding-key';
+    mocks.loseDisabledClaim = false;
     mocks.accessMode = 'READERS';
     mocks.currentPoints = [];
     mocks.previousPoints = [];
     mocks.previousDeployment = null;
+    mocks.runs = [];
+    jobSequence = 0;
   });
 
   it('embeds only visible pages and stamps deterministic tenant/deployment/language/private payloads', async () => {
@@ -226,5 +333,75 @@ describe('hybrid search differential indexing jobs', () => {
     expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
     expect(JSON.stringify(mocks.deleteByFilterAllVersions.mock.calls)).not.toContain('tenant-b');
     expect(mocks.embed).not.toHaveBeenCalled();
+  });
+
+  it('rejects a disabled result when the worker lost its durable run claim', async () => {
+    mocks.apiKey = undefined;
+    mocks.loseDisabledClaim = true;
+
+    await expect(handleSearchJobs(job('index-deployment'))).rejects.toMatchObject({ errorCode: 'run_claim_lost' });
+    expect(mocks.runs[0]).toMatchObject({ status: 'RUNNING' });
+  });
+
+  it('replays a terminal READY run as idempotent success after a BullMQ acknowledgement crash', async () => {
+    const firstAttempt = job('index-deployment', undefined, 'search-deployment-a');
+    await expect(handleSearchJobs(firstAttempt)).resolves.toMatchObject({ embedded: 1 });
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'search-deployment-a'))).resolves.toMatchObject({
+      status: 'READY',
+      embedded: 1,
+    });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+
+  it('recovers the same durable run after a crash left it PENDING', async () => {
+    mocks.runs.push({
+      id: 'run-pending',
+      projectId: 'tenant-a',
+      deploymentId: 'deployment-a',
+      jobId: 'search-deployment-a',
+      status: 'PENDING',
+      claimToken: null,
+      claimExpiresAt: null,
+      startedAt: null,
+      updatedAt: new Date(),
+      indexedChunks: 0,
+      embeddedChunks: 0,
+      reusedChunks: 0,
+      unchangedChunks: 0,
+      metadataUpdatedChunks: 0,
+      deletedChunks: 0,
+      attempt: 0,
+    });
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'search-deployment-a'))).resolves.toMatchObject({ embedded: 1 });
+    expect(mocks.runs).toHaveLength(1);
+    expect(mocks.runs[0]).toMatchObject({ id: 'run-pending', status: 'READY', attempt: 1 });
+  });
+
+  it('reclaims an expired RUNNING claim but does not create a second run', async () => {
+    mocks.runs.push({
+      id: 'run-stale',
+      projectId: 'tenant-a',
+      deploymentId: 'deployment-a',
+      jobId: 'search-deployment-a',
+      status: 'RUNNING',
+      claimToken: 'dead-worker',
+      claimExpiresAt: new Date(Date.now() - 1000),
+      startedAt: new Date(Date.now() - 10_000),
+      updatedAt: new Date(Date.now() - 1000),
+      indexedChunks: 0,
+      embeddedChunks: 0,
+      reusedChunks: 0,
+      unchangedChunks: 0,
+      metadataUpdatedChunks: 0,
+      deletedChunks: 0,
+      attempt: 1,
+    });
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'search-deployment-a'))).resolves.toMatchObject({ embedded: 1 });
+    expect(mocks.runs).toHaveLength(1);
+    expect(mocks.runs[0]).toMatchObject({ id: 'run-stale', status: 'READY', attempt: 2 });
   });
 });
