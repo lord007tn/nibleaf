@@ -53,6 +53,9 @@ export interface ThemeMetadata {
 }
 
 export interface ThemeLayout {
+  /** Controls the placement of navigation, article, and page outline. This is
+   * deliberately separate from visual styling so presets are true layouts. */
+  shell: 'reference' | 'editorial' | 'console';
   density: 'compact' | 'comfortable' | 'relaxed';
   radius: 'sharp' | 'rounded' | 'pill';
   contentWidth: 'focused' | 'balanced' | 'wide';
@@ -242,12 +245,13 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     id: 'harbor',
     metadata: {
       name: 'Harbor',
-      description: 'A balanced documentation workspace with calm contrast and familiar wayfinding.',
+      description: 'A balanced reference shell with persistent library navigation, reading column, and page outline.',
       author: 'Nibleaf',
     },
-    rationale: 'For product guides and mixed guide/reference libraries that need dependable navigation without visual noise.',
+    rationale: 'For mixed guide/reference libraries that benefit from dependable three-column wayfinding.',
     colors: { light: HARBOR_LIGHT, dark: HARBOR_DARK },
     layout: {
+      shell: 'reference',
       density: 'comfortable',
       radius: 'rounded',
       contentWidth: 'balanced',
@@ -261,12 +265,13 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     id: 'manuscript',
     metadata: {
       name: 'Manuscript',
-      description: 'An editorial reading theme with a warm canvas, generous rhythm, and focused measure.',
+      description: 'An editorial reading shell with a horizontal chapter deck and focused long-form measure.',
       author: 'Nibleaf',
     },
-    rationale: 'For conceptual documentation, handbooks, and knowledge bases where long-form reading is the primary task.',
+    rationale: 'For handbooks and knowledge bases where chapters frame a focused, long-form reading experience.',
     colors: { light: MANUSCRIPT_LIGHT, dark: MANUSCRIPT_DARK },
     layout: {
+      shell: 'editorial',
       density: 'relaxed',
       radius: 'rounded',
       contentWidth: 'focused',
@@ -280,12 +285,13 @@ export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
     id: 'signal',
     metadata: {
       name: 'Signal',
-      description: 'A compact technical theme with crisp hierarchy, dense navigation, and high-signal code surfaces.',
+      description: 'A technical workspace with a compact library rail, wide canvas, and inline command index.',
       author: 'Nibleaf',
     },
-    rationale: 'For API references and large technical libraries where scan speed, code, and information density matter most.',
+    rationale: 'For API references where a dense rail, wide code surfaces, and fast section scanning matter most.',
     colors: { light: SIGNAL_LIGHT, dark: SIGNAL_DARK },
     layout: {
+      shell: 'console',
       density: 'compact',
       radius: 'sharp',
       contentWidth: 'wide',

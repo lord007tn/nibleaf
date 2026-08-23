@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "Elija la primera apariencia clara, oscura o del sistema. Los lectores aún pueden cambiar localmente.",
   "settings.theme.layout": "Diseño y navegación",
   "settings.theme.layoutHint": "Controle la densidad, el ancho de lectura, el encabezado, la barra lateral, el comportamiento de navegación y los radios con opciones protegidas.",
+  "settings.theme.shell": "Estructura de página",
   "settings.theme.density": "densidad",
   "settings.theme.contentWidth": "Ancho del contenido",
   "settings.theme.header": "encabezado",

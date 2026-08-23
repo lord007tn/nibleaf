@@ -67,12 +67,14 @@ function ProjectPreview() {
         previewMode === 'dark' && 'dark',
       )}
       data-theme-callouts={theme.components.callouts}
+      data-theme-context="project-preview"
       data-theme-cards={theme.components.cards}
       data-theme-code={theme.components.codeBlocks}
       data-theme-density={theme.layout.density}
       data-theme-header={theme.layout.header}
       data-theme-id={theme.id}
       data-theme-navigation={theme.layout.navigation}
+      data-theme-shell={theme.layout.shell}
       data-theme-sidebar={theme.layout.sidebar}
       data-theme-tables={theme.components.tables}
       data-theme-tabs={theme.components.tabs}
@@ -199,7 +201,7 @@ function ProjectPreview() {
         </div>
 
         <ScrollArea className="min-h-0 flex-1">
-          <div className="p-3">
+          <div className="p-3" data-theme-region="sidebar-content">
             {pagesPending ? (
               <div className="space-y-2 p-2">
                 <Skeleton className="h-8 w-full" />
@@ -229,7 +231,7 @@ function ProjectPreview() {
         </ScrollArea>
       </aside>
 
-      <main className="overflow-y-auto bg-background">
+      <main className="overflow-y-auto bg-background" data-theme-region="preview-main">
         {/* Same typography variables the published site sets on its chrome, so
             the preview reads exactly like production. */}
         <article className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10" data-theme-region="article" dir={contentDir}>

@@ -327,6 +327,7 @@ function SiteChrome() {
         siteTheme === 'dark' && 'dark',
       )}
       data-theme-callouts={resolvedTheme.components.callouts}
+      data-theme-context="reader"
       data-theme-cards={resolvedTheme.components.cards}
       data-theme-code={resolvedTheme.components.codeBlocks}
       data-theme-density={resolvedTheme.layout.density}
@@ -334,6 +335,7 @@ function SiteChrome() {
       data-theme-id={resolvedTheme.id}
       data-theme-navigation={resolvedTheme.layout.navigation}
       data-theme-schema={THEME_SCHEMA_VERSION}
+      data-theme-shell={resolvedTheme.layout.shell}
       data-theme-sidebar={resolvedTheme.layout.sidebar}
       data-theme-tables={resolvedTheme.components.tables}
       data-theme-tabs={resolvedTheme.components.tabs}
@@ -476,7 +478,7 @@ function SiteChrome() {
               sticky positioning on the outer aside so the entire navigation
               viewport remains visible while this inner viewport scrolls. */}
           <ScrollArea className="h-full">
-            <div className="pt-7 pb-12 pe-5">
+            <div className="pt-7 pb-12 pe-5" data-theme-region="sidebar-content">
               {navAnchors.length > 0 ? (
                 <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
                   {navAnchors.map((anchor) => (

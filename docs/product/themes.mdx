@@ -10,10 +10,12 @@ dir: 'ltr'
 translation_key: 'product/themes'
 ---
 
-Nibleaf includes three original themes. **Harbor** is a calm, balanced default
-for mixed guide and reference libraries. **Manuscript** gives long-form reading a
-warmer canvas and narrower measure. **Signal** uses a compact, technical rhythm
-for large API and engineering libraries. Their names, tokens, layouts, and assets
+Nibleaf includes three original themes with different page structures.
+**Harbor** is a classic reference shell: persistent library navigation, a reading
+column, and a right-hand page outline. **Manuscript** is an editorial shell that
+moves the library into a horizontal chapter deck above a focused reading column.
+**Signal** is a compact technical workspace with a narrow library rail, wide
+article canvas, and an inline command index above the page. Their names, tokens, layouts, and assets
 are Nibleaf-owned implementations. Public documentation products informed the
 general product patterns—preset galleries, semantic customization, and preview
 before publish—but Nibleaf does not copy their proprietary code, assets, names,
@@ -28,16 +30,19 @@ avoids an unrequested visual change to an existing published site.
 The design process reviewed the public customization and navigation guidance for
 [Fumadocs](https://www.fumadocs.dev/docs/guides/customize-ui),
 [Mintlify](https://www.mintlify.com/docs/organize/settings-appearance), and
-[ReadMe](https://docs.readme.com/main/docs/design-themes). Those sources informed
-general expectations such as presets, semantic settings, layout choices, and a
-preview-first workflow. Harbor, Manuscript, and Signal use original Nibleaf
+[ReadMe](https://docs.readme.com/main/docs/design-themes), plus public navigation
+guidance from [Docusaurus](https://docusaurus.io/docs/sidebar) and
+[GitBook](https://gitbook.com/docs/publishing-documentation/customization). Those
+sources informed general expectations such as presets, semantic settings,
+collapsible navigation, page outlines, layout choices, and a preview-first
+workflow. Harbor, Manuscript, and Signal use original Nibleaf
 names, token values, component treatments, code, and assets. Product names in
 this paragraph belong to their respective owners and do not imply affiliation.
 
 ## Customize a draft safely
 
 Open **Site editor → Themes**. Select a starter theme, then adjust appearance,
-density, content width, radius, header, sidebar, navigation, code, callouts,
+density, structural shell, content width, radius, header, sidebar, navigation, code, callouts,
 cards, tabs, tables, and semantic light/dark colors. The preview can switch
 independently between English/Arabic and light/dark modes.
 

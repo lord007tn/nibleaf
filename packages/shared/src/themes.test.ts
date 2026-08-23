@@ -16,6 +16,7 @@ import {
 describe('documentation themes', () => {
   it('ships three distinct, contrast-guarded presets', () => {
     expect(Object.keys(THEME_PRESETS)).toEqual(['harbor', 'manuscript', 'signal']);
+    expect(new Set(Object.values(THEME_PRESETS).map((theme) => theme.layout.shell))).toEqual(new Set(['reference', 'editorial', 'console']));
     expect(new Set(Object.values(THEME_PRESETS).map((theme) => theme.layout.contentWidth)).size).toBe(3);
     for (const preset of Object.values(THEME_PRESETS)) {
       expect(themeContrastIssues(preset)).toEqual([]);

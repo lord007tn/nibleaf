@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "Выберите первый светлый, темный или системный вид. Читатели по-прежнему могут переключаться локально.",
   "settings.theme.layout": "Макет и навигация",
   "settings.theme.layoutHint": "Управляйте плотностью, шириной чтения, заголовком, боковой панелью, поведением навигации и радиусами с помощью защищенных параметров.",
+  "settings.theme.shell": "Структура страницы",
   "settings.theme.density": "Плотность",
   "settings.theme.contentWidth": "Ширина контента",
   "settings.theme.header": "Заголовок",

@@ -295,9 +295,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   }
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]">
+    <div className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]" data-theme-region="page-shell">
       {article}
-      <aside className="hidden xl:block">
+      <aside className="hidden xl:block" data-theme-region="toc">
         <TableOfContents headings={page.headings} label={tArticle('onThisPage')} />
       </aside>
     </div>

@@ -33,6 +33,7 @@ export const themeConfigSchema = z
     colors: z.object({ light: themeModeColorsSchema.optional(), dark: themeModeColorsSchema.optional() }).strict().optional(),
     layout: z
       .object({
+        shell: z.enum(['reference', 'editorial', 'console']).optional(),
         density: z.enum(['compact', 'comfortable', 'relaxed']).optional(),
         radius: z.enum(['sharp', 'rounded', 'pill']).optional(),
         contentWidth: z.enum(['focused', 'balanced', 'wide']).optional(),

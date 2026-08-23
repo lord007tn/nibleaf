@@ -104,6 +104,7 @@ describe('export renderers', () => {
     expect(text(required(staticFiles['theme/theme.css']))).toContain("--font-body:'نسق عربي'");
     expect(text(required(staticFiles['theme/theme.css']))).toContain('--font-size:17px');
     expect(text(required(staticFiles['main/ar/intro/index.html']))).toContain('data-theme-id="signal"');
+    expect(text(required(staticFiles['main/ar/intro/index.html']))).toContain('data-theme-shell="console"');
     expect(renderPdfHtml(themedSnapshot, assets)).toContain('--accent:#4f46e5');
 
     const markdownFiles = unzipSync(renderMarkdownZip(themedSnapshot, assets).bytes);

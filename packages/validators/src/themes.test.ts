@@ -5,7 +5,7 @@ import { parseThemeTemplate, themeConfigSchema, themeTemplateV1Schema } from './
 describe('theme template schema', () => {
   it('round-trips a current template deterministically', () => {
     const source = themeTemplateFromConfig({
-      theme: { preset: 'manuscript', layout: { contentWidth: 'focused' } },
+      theme: { preset: 'manuscript', layout: { shell: 'editorial', contentWidth: 'focused' } },
       typography: { headingFont: 'Geist', bodyFont: 'Inter', codeFont: 'Geist Mono' },
     });
     const parsed = parseThemeTemplate(JSON.parse(JSON.stringify(source)));

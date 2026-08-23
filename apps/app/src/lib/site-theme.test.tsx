@@ -50,6 +50,7 @@ describe('published theme projection', () => {
     const markup = renderToStaticMarkup(<ThemePreview arabic config={{ theme: { preset: 'manuscript' } }} mode="dark" />);
     expect(markup).toContain('dir="rtl"');
     expect(markup).toContain('data-theme-id="manuscript"');
+    expect(markup).toContain('data-theme-shell="editorial"');
     expect(markup).toContain('data-theme-navigation="tree"');
     expect(markup).toContain('data-theme-sidebar="soft"');
     expect(markup).toContain('dir="ltr"');

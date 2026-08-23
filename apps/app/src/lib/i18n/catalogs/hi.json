@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "पहले प्रकाश, अंधेरा या सिस्टम स्वरूप चुनें। पाठक अभी भी स्थानीय रूप से स्विच कर सकते हैं।",
   "settings.theme.layout": "लेआउट और नेविगेशन",
   "settings.theme.layoutHint": "संरक्षित विकल्पों के साथ घनत्व, पढ़ने की चौड़ाई, हेडर, साइडबार, नेविगेशन व्यवहार और त्रिज्या को नियंत्रित करें।",
+  "settings.theme.shell": "पृष्ठ संरचना",
   "settings.theme.density": "घनत्व",
   "settings.theme.contentWidth": "सामग्री की चौड़ाई",
   "settings.theme.header": "शीर्ष लेख",

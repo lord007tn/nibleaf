@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "প্রথম আলো, অন্ধকার, বা সিস্টেম চেহারা চয়ন করুন. পাঠকরা এখনও স্থানীয়ভাবে পরিবর্তন করতে পারেন।",
   "settings.theme.layout": "লেআউট এবং নেভিগেশন",
   "settings.theme.layoutHint": "রক্ষিত বিকল্পগুলির সাথে ঘনত্ব, পড়ার প্রস্থ, শিরোনাম, সাইডবার, নেভিগেশন আচরণ এবং রেডিআই নিয়ন্ত্রণ করুন।",
+  "settings.theme.shell": "পৃষ্ঠা কাঠামো",
   "settings.theme.density": "ঘনত্ব",
   "settings.theme.contentWidth": "বিষয়বস্তুর প্রস্থ",
   "settings.theme.header": "হেডার",

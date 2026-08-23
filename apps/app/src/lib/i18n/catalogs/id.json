@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "Pilih tampilan terang, gelap, atau sistem pertama. Pembaca masih dapat beralih secara lokal.",
   "settings.theme.layout": "Tata letak dan navigasi",
   "settings.theme.layoutHint": "Kontrol kepadatan, lebar pembacaan, header, sidebar, perilaku navigasi, dan jari-jari dengan opsi yang dilindungi.",
+  "settings.theme.shell": "Struktur halaman",
   "settings.theme.density": "Kepadatan",
   "settings.theme.contentWidth": "Lebar konten",
   "settings.theme.header": "Tajuk",

@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "Wählen Sie das erste helle, dunkle oder System-Erscheinungsbild. Leser können weiterhin lokal wechseln.",
   "settings.theme.layout": "Layout und Navigation",
   "settings.theme.layoutHint": "Steuern Sie Dichte, Lesebreite, Kopfzeile, Seitenleiste, Navigationsverhalten und Radien mit geschützten Optionen.",
+  "settings.theme.shell": "Seitenstruktur",
   "settings.theme.density": "Dichte",
   "settings.theme.contentWidth": "Inhaltsbreite",
   "settings.theme.header": "Kopfzeile",

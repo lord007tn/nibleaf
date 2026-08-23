@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "Choose the first light, dark, or system appearance. Readers can still switch locally.",
   "settings.theme.layout": "Layout and navigation",
   "settings.theme.layoutHint": "Control density, reading width, header, sidebar, navigation behavior, and radii with guarded options.",
+  "settings.theme.shell": "Structural shell",
   "settings.theme.density": "Density",
   "settings.theme.contentWidth": "Content width",
   "settings.theme.header": "Header",

@@ -493,6 +493,7 @@
   "settings.theme.appearanceHint": "选择第一个浅色、深色或系统外观。读者仍然可以在本地切换。",
   "settings.theme.layout": "布局和导航",
   "settings.theme.layoutHint": "使用受保护的选项控制密度、阅读宽度、标题、侧边栏、导航行为和半径。",
+  "settings.theme.shell": "页面结构",
   "settings.theme.density": "密度",
   "settings.theme.contentWidth": "内容宽度",
   "settings.theme.header": "标头",

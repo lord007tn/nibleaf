@@ -94,12 +94,14 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
     <div
       className={cn('nibleaf-site-chrome overflow-hidden rounded-xl border border-border text-sm shadow-sm', mode === 'dark' && 'dark')}
       data-theme-callouts={theme.components.callouts}
+      data-theme-context="studio-preview"
       data-theme-cards={theme.components.cards}
       data-theme-code={theme.components.codeBlocks}
       data-theme-density={theme.layout.density}
       data-theme-header={theme.layout.header}
       data-theme-id={theme.id}
       data-theme-navigation={theme.layout.navigation}
+      data-theme-shell={theme.layout.shell}
       data-theme-sidebar={theme.layout.sidebar}
       data-theme-tables={theme.components.tables}
       data-theme-tabs={theme.components.tabs}
@@ -116,7 +118,7 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
           </span>
         </div>
       </div>
-      <div className="grid min-h-[22rem] grid-cols-[7.5rem_minmax(0,1fr)]">
+      <div className="grid min-h-[22rem] grid-cols-[7.5rem_minmax(0,1fr)]" data-theme-region="preview-shell">
         <div className="border-border border-e bg-card/45 p-2 text-xs" data-theme-region="sidebar">
           <nav aria-label={arabic ? 'التنقل التجريبي' : 'Preview navigation'}>
             <p className="mb-2 px-2 font-semibold">{arabic ? 'البدء' : 'Start here'}</p>
@@ -392,6 +394,12 @@ export function ThemeSection({ project }: { project: Project }) {
 
       <Field hint={t('settings.theme.layoutHint')} label={t('settings.theme.layout')}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NativeSelect
+            label={t('settings.theme.shell')}
+            onChange={(v) => setThemePart('layout', 'shell', v)}
+            options={['reference', 'editorial', 'console']}
+            value={resolved.layout.shell}
+          />
           <NativeSelect
             label={t('settings.theme.density')}
             onChange={(v) => setThemePart('layout', 'density', v)}
