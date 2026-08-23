@@ -1,7 +1,7 @@
 import { createProjectBody, themeImportBodySchema, updateProjectBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
-import { exportProjectMarkdown } from '@/actions/export';
+import { exportProjectMarkdown, exportProjectThemeRepository } from '@/actions/export';
 import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
 import { exportProjectTheme, importProjectTheme } from '@/actions/themes';
 import { badRequest } from '@/errors';
@@ -25,6 +25,12 @@ const app = new Hono<HonoEnv>()
   .get('/:id/export', ...projectsRoutes.export, async (ctx) => {
     // Guard (requireProjectMember) already verified membership in the site's org.
     const { fileName, data } = await exportProjectMarkdown(ctx.req.param('id'));
+    ctx.header('Content-Type', 'application/zip');
+    ctx.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    return ctx.body(data as Uint8Array<ArrayBuffer>, 200);
+  })
+  .get('/:id/theme-repository', ...projectsRoutes.themeRepositoryExport, async (ctx) => {
+    const { fileName, data } = await exportProjectThemeRepository(ctx.req.param('id'));
     ctx.header('Content-Type', 'application/zip');
     ctx.header('Content-Disposition', `attachment; filename="${fileName}"`);
     return ctx.body(data as Uint8Array<ArrayBuffer>, 200);

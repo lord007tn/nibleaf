@@ -1,0 +1,2 @@
+ALTER TABLE "git_file_state"
+ADD COLUMN "ownership" TEXT NOT NULL DEFAULT 'SHARED';

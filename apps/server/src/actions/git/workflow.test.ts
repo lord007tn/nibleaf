@@ -43,6 +43,22 @@ vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
 vi.mock('@nibleaf/shared', () => ({ slugify: (value: string) => value.toLowerCase() }));
 vi.mock('@nibleaf/shared/site', () => ({ buildSnapshot: vi.fn() }));
 vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
+vi.mock('../deployments', () => ({
+  getCurrentSnapshot: vi.fn(async () => ({
+    project: {
+      id: 'project-1',
+      name: 'Docs',
+      slug: 'docs',
+      description: null,
+      icon: null,
+      config: null,
+      languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null }],
+      versions: [{ id: 'branch-1', name: 'Main', slug: 'main', isDefault: true }],
+    },
+    pages: [],
+    generatedAt: '2026-08-23T00:00:00.000Z',
+  })),
+}));
 vi.mock('../importers/content', () => ({
   deriveTitle: vi.fn(),
   humanize: (value: string) => value,
@@ -66,7 +82,18 @@ vi.mock('./github', () => ({
     upsertDraftPullRequest = mocks.provider.upsertDraftPullRequest;
   },
 }));
-vi.mock('./reconcile', () => ({ conflictSnapshotMatches: vi.fn(), reconcileFile: vi.fn() }));
+vi.mock('./reconcile', () => ({
+  conflictSnapshotMatches: vi.fn(),
+  repositoryOurs: vi.fn((_ownership: string, state: { baseContent: string | null; baseExists: boolean } | undefined, generated: string | null) =>
+    _ownership === 'CUSTOMER' && state ? (state.baseExists ? state.baseContent : null) : generated,
+  ),
+  reconcileOwnedFile: vi.fn((_ownership: string, base: string | null, ours: string | null, theirs: string | null) => {
+    if (ours === theirs) return { conflict: false, content: ours, source: 'unchanged' };
+    if (ours === base) return { conflict: false, content: theirs, source: 'theirs' };
+    if (theirs === base) return { conflict: false, content: ours, source: 'ours' };
+    return { conflict: true, content: null, source: 'conflict' };
+  }),
+}));
 
 import { processGitOperation } from './workflow';
 

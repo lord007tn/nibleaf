@@ -1,3 +1,4 @@
+import { themeRepositoryOwnershipForPath } from '@nibleaf/shared/theme-repository';
 import { Octokit, RequestError } from 'octokit';
 import { AppError } from '@/errors';
 import type { GitCommitInput, GitProviderClient, RemotePullRequest } from './types';
@@ -14,6 +15,13 @@ interface GitHubPull {
   draft?: boolean | null;
   base: { ref: string };
   head: { ref: string; sha: string };
+}
+
+interface GitHubTreeFile {
+  path: string;
+  sha: string;
+  type: string;
+  size?: number;
 }
 
 class GitHubProviderError extends AppError {
@@ -125,6 +133,21 @@ export class GitHubProvider implements GitProviderClient {
   }
 
   async listMarkdownFiles(repository: string, ref: string, contentPath: string) {
+    const prefix = contentPath ? `${contentPath.replace(/^\/+|\/+$/g, '')}/` : '';
+    return this.listFiles(repository, ref, (entry) => entry.path.startsWith(prefix) && /\.mdx?$/i.test(entry.path), 2000, 'Markdown');
+  }
+
+  async listThemeRepositoryFiles(repository: string, ref: string, contentPath: string) {
+    return this.listFiles(repository, ref, (entry) => themeRepositoryOwnershipForPath(entry.path, contentPath) !== null, 2500, 'theme repository');
+  }
+
+  private async listFiles(
+    repository: string,
+    ref: string,
+    include: (entry: GitHubTreeFile) => boolean,
+    limit: number,
+    label: string,
+  ) {
     const [owner, repo] = repoParts(repository);
     const response = await this.request(
       () => this.client.rest.git.getTree({ owner, repo, tree_sha: ref, recursive: 'true' }),
@@ -133,20 +156,24 @@ export class GitHubProvider implements GitProviderClient {
     if (response.data.truncated) {
       throw new GitHubProviderError('The repository tree is too large for safe Git sync. Narrow the content path.');
     }
-    const prefix = contentPath ? `${contentPath.replace(/^\/+|\/+$/g, '')}/` : '';
-    const entries = response.data.tree.filter(
-      (entry) =>
-        entry.type === 'blob' &&
-        Boolean(entry.path && entry.sha) &&
-        entry.path?.startsWith(prefix) &&
-        /\.mdx?$/i.test(entry.path) &&
-        (entry.size ?? 0) <= 2_000_000,
-    );
-    if (entries.length > 2000) throw new GitHubProviderError('Git sync is limited to 2,000 Markdown files per connection.');
+    const entries = response.data.tree.flatMap((entry) =>
+      entry.type === 'blob' && entry.path && entry.sha
+        ? [{ path: entry.path, sha: entry.sha, type: entry.type, ...(entry.size === undefined ? {} : { size: entry.size }) }]
+        : [],
+    ).filter(include);
+    const oversized = entries.find((entry) => (entry.size ?? 0) > 2_000_000);
+    if (oversized) throw new GitHubProviderError(`Git sync cannot read ${oversized.path}: files must be 2 MiB or smaller.`);
+    if (entries.length > limit) {
+      throw new GitHubProviderError(`Git sync is limited to ${limit.toLocaleString('en-US')} ${label} files per connection.`);
+    }
+    // Large documentation repositories can contain thousands of Markdown
+    // blobs. Fetch a small parallel window instead of bursting all requests at
+    // GitHub at once, which otherwise triggers secondary rate limits and holds
+    // thousands of response bodies in memory.
     return mapWithConcurrency(entries, BLOB_FETCH_CONCURRENCY, async (entry) => ({
-      path: entry.path as string,
-      sha: entry.sha as string,
-      content: await this.getBlob(repository, entry.sha as string),
+      path: entry.path,
+      sha: entry.sha,
+      content: await this.getBlob(repository, entry.sha),
     }));
   }
 

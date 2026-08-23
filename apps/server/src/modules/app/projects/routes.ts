@@ -31,6 +31,12 @@ const projectsRoutes = {
     description: 'Download every page as Markdown in a zip (organized by branch/language/path, with a project.json manifest).',
     responses: { 200: { description: 'zip archive' }, ...errorResponses },
   }),
+  themeRepositoryExport: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember('id')],
+    tags: ['projects'],
+    description: 'Download a standalone Harbor theme repository with a vendored runtime contract, local snapshot fixture, and editable source code.',
+    responses: { 200: { description: 'runnable theme repository zip archive' }, ...errorResponses },
+  }),
   themeExport: createRouteConfig({
     guard: [isAuthenticated, requireProjectMember('id')],
     tags: ['projects'],

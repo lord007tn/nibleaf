@@ -2,17 +2,24 @@ import { createHash, randomBytes } from 'node:crypto';
 import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
-import { buildSnapshot } from '@nibleaf/shared/site';
+import {
+  buildThemeRepository,
+  THEME_REPOSITORY_MANIFEST_PATH,
+  type ThemeRepositoryOwnership,
+  themeRepositoryOwnershipForPath,
+  validateThemeRepositoryManifest,
+} from '@nibleaf/shared/theme-repository';
 import { z } from 'zod';
 import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
+import { getCurrentSnapshot } from '../deployments';
 import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
 import { ensureGroupPage, upsertLeafPage } from '../importers/persistence';
 import { getDefaultLanguage } from '../languages';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { GitHubProvider } from './github';
-import { conflictSnapshotMatches, reconcileFile } from './reconcile';
+import { conflictSnapshotMatches, reconcileOwnedFile, repositoryOurs } from './reconcile';
 import type { GitProviderClient, RemoteFile, RemotePullRequest } from './types';
 
 const MAX_ERROR = 500;
@@ -147,19 +154,28 @@ const authoringContext = async (connection: { projectId: string; importBranchId:
   return { branch, language };
 };
 
+type LocalRepositoryFile = { page: AuthoringPage | null; content: string; ownership: ThemeRepositoryOwnership };
+
 const localFiles = async (connection: {
   projectId: string;
   contentPath: string;
   importBranchId: string | null;
   importLanguageId: string | null;
-}): Promise<Map<string, { page: AuthoringPage; content: string }>> => {
+}): Promise<Map<string, LocalRepositoryFile>> => {
   const { branch, language } = await authoringContext(connection);
   const pages = await prisma.page.findMany({
     where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id, kind: 'PAGE' },
     orderBy: { path: 'asc' },
     select: { id: true, title: true, path: true, content: true, description: true, icon: true },
   });
-  return new Map(pages.map((page) => [repositoryPath(connection.contentPath, page.path), { page, content: serializeGitPage(page) }]));
+  const snapshot = await getCurrentSnapshot(connection.projectId);
+  const files = new Map<string, LocalRepositoryFile>(
+    pages.map((page) => [repositoryPath(connection.contentPath, page.path), { page, content: serializeGitPage(page), ownership: 'SHARED' as const }]),
+  );
+  for (const file of buildThemeRepository(snapshot, { contentPath: connection.contentPath })) {
+    files.set(file.path, { page: null, content: file.content, ownership: file.ownership });
+  }
+  return files;
 };
 
 const initializeFileStates = async (
@@ -181,7 +197,8 @@ const initializeFileStates = async (
         create: {
           connectionId: connection.id,
           path: file.path,
-          pageId: ours.get(file.path)?.page.id,
+          ownership: themeRepositoryOwnershipForPath(file.path, connection.contentPath) ?? 'SHARED',
+          pageId: ours.get(file.path)?.page?.id,
           branchId: branch.id,
           languageId: language.id,
           baseContent: file.content,
@@ -255,7 +272,9 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   );
   if (topologyChanged) await prisma.gitFileState.deleteMany({ where: { connectionId: connection.id } });
   const baselineRef = headSha ?? baseSha;
-  const files = await provider.listMarkdownFiles(repository, baselineRef, contentPath);
+  const files = provider.listThemeRepositoryFiles
+    ? await provider.listThemeRepositoryFiles(repository, baselineRef, contentPath)
+    : await provider.listMarkdownFiles(repository, baselineRef, contentPath);
   await initializeFileStates(connection, files);
   await audit(connection, actorUserId, existing ? 'connection.updated' : 'connection.created', {
     provider: 'github',
@@ -340,31 +359,43 @@ type MergeEntry = {
   ours: string | null;
   theirs: string | null;
   pageId: string | null;
+  ownership: ThemeRepositoryOwnership;
 };
 
 const valueEqual = (a: string | null, b: string | null): boolean => a === b;
 const mergeEntries = (
-  states: Array<{ path: string; baseContent: string | null; baseExists: boolean; pageId: string | null }>,
-  ours: Map<string, { page: AuthoringPage; content: string }>,
+  states: Array<{ path: string; baseContent: string | null; baseExists: boolean; pageId: string | null; ownership: string }>,
+  ours: Map<string, LocalRepositoryFile>,
   theirs: Map<string, RemoteFile>,
+  contentPath: string,
 ): MergeEntry[] => {
   const paths = new Set([...states.map((state) => state.path), ...ours.keys(), ...theirs.keys()]);
   const stateByPath = new Map(states.map((state) => [state.path, state]));
   return [...paths].sort().map((path) => {
     const state = stateByPath.get(path);
+    const ownership =
+      (state?.ownership as ThemeRepositoryOwnership | undefined) ??
+      ours.get(path)?.ownership ??
+      themeRepositoryOwnershipForPath(path, contentPath) ??
+      'SHARED';
+    const localContent = ours.get(path)?.content ?? null;
     return {
       path,
       base: state?.baseExists ? state.baseContent : null,
-      ours: ours.get(path)?.content ?? null,
+      // Once customer code has a ledger row, Nibleaf's newer scaffold is not
+      // an authoring input. Preserve the recorded Git base, including a
+      // tombstoned deletion, so a later push cannot resurrect the file.
+      ours: repositoryOurs(ownership, state, localContent),
       theirs: theirs.get(path)?.content ?? null,
-      pageId: ours.get(path)?.page.id ?? state?.pageId ?? null,
+      pageId: ours.get(path)?.page?.id ?? state?.pageId ?? null,
+      ownership,
     };
   });
 };
 
-const hasConflict = (entry: MergeEntry): boolean => reconcileFile(entry.base, entry.ours, entry.theirs).conflict;
+const hasConflict = (entry: MergeEntry): boolean => reconcileOwnedFile(entry.ownership, entry.base, entry.ours, entry.theirs).conflict;
 
-const chosenContent = (entry: MergeEntry): string | null => reconcileFile(entry.base, entry.ours, entry.theirs).content;
+const chosenContent = (entry: MergeEntry): string | null => reconcileOwnedFile(entry.ownership, entry.base, entry.ours, entry.theirs).content;
 
 const applyContentToNibleaf = async (
   connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
@@ -433,29 +464,7 @@ const changedFileSummary = (entries: MergeEntry[], target: Map<string, string | 
       status: entry[compare] === null ? 'added' : target.get(entry.path) === null ? 'deleted' : 'modified',
     }));
 
-const previewSnapshot = async (connection: { projectId: string; importBranchId: string | null }) => {
-  const project = await prisma.project.findUnique({
-    where: { id: connection.projectId },
-    include: { languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } }, branches: true },
-  });
-  if (!project) throw notFound('project', { id: connection.projectId });
-  const branch = connection.importBranchId
-    ? project.branches.find((item) => item.id === connection.importBranchId)
-    : (project.branches.find((item) => item.isDefault) ?? project.branches[0]);
-  if (!branch) throw badRequest('No Nibleaf branch is available for the preview.');
-  const pages = await prisma.page.findMany({
-    where: { projectId: connection.projectId, branchId: branch.id },
-    include: { language: { select: { code: true } } },
-    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-  });
-  const rows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
-    ...page,
-    languageCode: language.code,
-    createdAt: createdAt.toISOString(),
-    updatedAt: updatedAt.toISOString(),
-  }));
-  return buildSnapshot(project, rows, new Date().toISOString());
-};
+const previewSnapshot = (connection: { projectId: string }) => getCurrentSnapshot(connection.projectId);
 
 const upsertPreview = async (
   connection: { id: string; projectId: string; importBranchId: string | null },
@@ -635,12 +644,21 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     if (!baseSha) throw new Error(`Base branch ${operation.baseBranch} no longer exists.`);
     const remoteSha = operation.kind === 'PULL' && request.sourceSha ? request.sourceSha : (headSha ?? baseSha);
     const [remoteFiles, ours, states] = await Promise.all([
-      provider.listMarkdownFiles(connection.repository, remoteSha, connection.contentPath),
+      provider.listThemeRepositoryFiles
+        ? provider.listThemeRepositoryFiles(connection.repository, remoteSha, connection.contentPath)
+        : provider.listMarkdownFiles(connection.repository, remoteSha, connection.contentPath),
       localFiles(connection),
       prisma.gitFileState.findMany({ where: { connectionId: connection.id } }),
     ]);
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
-    const entries = mergeEntries(states, ours, theirs);
+    const remoteManifest = theirs.get(THEME_REPOSITORY_MANIFEST_PATH)?.content;
+    if (remoteManifest) {
+      const manifestIssues = validateThemeRepositoryManifest(remoteManifest, connection.projectId);
+      if (manifestIssues.length > 0) {
+        throw new Error(`Theme repository validation failed: ${manifestIssues.map((issue) => issue.message).join(' ')}`);
+      }
+    }
+    const entries = mergeEntries(states, ours, theirs, connection.contentPath);
     const existingConflicts = new Map(operation.conflicts.map((conflict) => [conflict.path, conflict]));
     const staleResolutions = entries.flatMap((entry) => {
       const conflict = existingConflicts.get(entry.path);
@@ -720,7 +738,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const pageIds = new Map<string, string | null>();
     for (const entry of entries) {
       const desired = target.get(entry.path) ?? null;
-      if (!valueEqual(desired, entry.ours)) {
+      if (entry.ownership === 'SHARED' && !valueEqual(desired, entry.ours)) {
         pageIds.set(entry.path, await applyContentToNibleaf(connection, entry.path, desired, entry.pageId));
       } else {
         pageIds.set(entry.path, entry.pageId);
@@ -731,7 +749,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     await prisma.$transaction(async (tx) => {
       for (const entry of entries) {
         const content = baseline.get(entry.path) ?? null;
-        if (content === null && (target.get(entry.path) ?? null) === null) {
+        if (entry.ownership === 'SHARED' && content === null && (target.get(entry.path) ?? null) === null) {
           await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: entry.path } });
           continue;
         }
@@ -740,13 +758,14 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
           create: {
             connectionId: connection.id,
             path: entry.path,
+            ownership: entry.ownership,
             pageId: pageIds.get(entry.path) ?? null,
             branchId: connection.importBranchId,
             languageId: connection.importLanguageId,
             baseContent: content,
             baseExists: content !== null,
           },
-          update: { pageId: pageIds.get(entry.path) ?? null, baseContent: content, baseExists: content !== null },
+          update: { ownership: entry.ownership, pageId: pageIds.get(entry.path) ?? null, baseContent: content, baseExists: content !== null },
         });
       }
     });

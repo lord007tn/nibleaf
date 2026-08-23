@@ -83,6 +83,33 @@ describe('GitHub provider adapter', () => {
     expect(maxActiveBlobs).toBeLessThanOrEqual(8);
   });
 
+  it('lists the bounded text theme surface without decoding customer binary assets', async () => {
+    const entries = [
+      { path: 'nibleaf.theme.json', type: 'blob', sha: 'manifest', size: 100 },
+      { path: '.nibleaf/snapshot.json', type: 'blob', sha: 'snapshot', size: 100 },
+      { path: 'src/theme/HarborTheme.tsx', type: 'blob', sha: 'theme', size: 100 },
+      { path: 'content/welcome.mdx', type: 'blob', sha: 'content', size: 100 },
+      { path: 'public/logo.png', type: 'blob', sha: 'binary-logo', size: 100 },
+      { path: 'unmanaged.txt', type: 'blob', sha: 'unmanaged', size: 100 },
+    ];
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) return json({ truncated: false, tree: entries });
+      const sha = url.split('/').pop() ?? '';
+      return json({ encoding: 'base64', content: Buffer.from(sha).toString('base64') });
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    const files = await provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content');
+
+    expect(files.map((file) => file.path)).toEqual([
+      'nibleaf.theme.json',
+      '.nibleaf/snapshot.json',
+      'src/theme/HarborTheme.tsx',
+      'content/welcome.mdx',
+    ]);
+  });
+
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request);

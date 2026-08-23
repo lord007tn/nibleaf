@@ -200,6 +200,10 @@ export function ExportsSection({ projectId }: { projectId: string }) {
           <a className="underline" download href={`/api/app/projects/${projectId}/export`}>
             {t('settings.exports.workflow.legacyDownload')}
           </a>
+          {' · '}
+          <a className="underline" download href={`/api/app/projects/${projectId}/theme-repository`}>
+            {t('settings.theme.export')} Harbor
+          </a>
           .
         </p>
       ) : null}
