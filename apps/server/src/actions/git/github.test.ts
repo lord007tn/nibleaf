@@ -129,6 +129,42 @@ describe('GitHub provider adapter', () => {
     expect(request).toHaveBeenCalledOnce();
   });
 
+  it('rejects an unsafe cumulative managed payload before fetching blobs', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({
+          truncated: false,
+          tree: Array.from({ length: 34 }, (_, index) => ({
+            path: `content/page-${index}.mdx`,
+            type: 'blob',
+            sha: `blob-${index}`,
+            size: 2_000_000,
+          })),
+        });
+      }
+      throw new Error('Cumulative bounds must be checked before fetching blobs.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(/64 MiB/);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('rejects managed blobs with unknown sizes before fetching content', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({ truncated: false, tree: [{ path: 'content/welcome.mdx', type: 'blob', sha: 'unknown-size' }] });
+      }
+      throw new Error('Unknown-size blobs must not be fetched.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(/cannot safely size/);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request);

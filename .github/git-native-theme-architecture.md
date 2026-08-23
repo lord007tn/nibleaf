@@ -1,13 +1,13 @@
 # Git-native theme repositories
 
-Status: accepted for the Harbor v1 vertical slice. Manuscript and Signal remain deliberately out of scope until the contract and ownership behavior have production-quality evidence.
+Status: accepted for repository contract v1 with independently runnable Harbor, Manuscript, and Signal implementations.
 
 ## Decision
 
-Nibleaf exports a normal Vite application, not a JSON theme blob and not a checkout that depends on the Nibleaf monorepo. The first repository contract is a self-contained Harbor implementation with:
+Nibleaf exports a normal Vite application, not a JSON theme blob and not a checkout that depends on the Nibleaf monorepo. Repository contract v1 selects the project's Harbor, Manuscript, or Signal preset and exports a self-contained implementation with:
 
 - editable React components, layout CSS, assets, a content adapter, and tests;
-- Vite 8, React Compiler, TypeScript 7, ParaglideJS, and typed `t3-env` validation;
+- Vite 8, React Compiler, TypeScript 7, ParaglideJS, Lucide, and typed `t3-env` validation;
 - a vendored, versioned runtime contract so `pnpm install` never resolves `workspace:*` dependencies;
 - generated project data under `.nibleaf/`, separate from customer code under `src/theme/`, `src/adapters/`, and `public/`;
 - `nibleaf.theme.json` as the machine-readable ownership and compatibility boundary;
@@ -42,7 +42,7 @@ The coupling not retained is visible in each JoodCMS theme app's `package.json`:
 | Export pipeline | `apps/server/src/actions/export.ts` already creates deterministic zip entries; `apps/worker/src/exports` builds immutable published artifacts. | The vertical slice adds a direct repository zip; scheduled/background repository artifacts can follow after the contract stabilizes. |
 | Deployment constraint | `.github/workflows/docker.yml` is `workflow_dispatch` only. | Theme work must not add a `pull_request` Docker build. |
 
-No design-system shadcn source component is part of this change. Exported Harbor source is standalone and lives outside `packages/design-system/src/components`.
+No design-system shadcn source component is part of this change. All exported template source is standalone and lives outside `packages/design-system/src/components`.
 
 ## Repository contract v1
 
@@ -51,6 +51,7 @@ No design-system shadcn source component is part of this change. Exported Harbor
 ├── nibleaf.theme.json          # PLATFORM: version, hashes, ownership
 ├── .nibleaf/
 │   ├── snapshot.json           # PLATFORM: generated public project data
+│   ├── content-map.json        # PLATFORM: page IDs to editable MDX paths
 │   └── README.md               # PLATFORM
 ├── content/**/*.mdx            # SHARED: three-way Nibleaf/Git authoring
 ├── src/
@@ -68,7 +69,7 @@ The manifest carries two versions:
 - `schemaVersion` versions manifest parsing and ownership semantics.
 - `runtime.contractVersion` versions the snapshot-to-component API.
 
-Template identity is independently versioned as `template.id = harbor` and `template.version = 1`. A template redesign does not silently change the runtime contract.
+Template identity is independently versioned as `template.id = harbor | manuscript | signal` and `template.version = 1`. A template redesign does not silently change the runtime contract.
 
 ### Ownership
 
@@ -109,38 +110,39 @@ Contract migrations are explicit and non-destructive:
 
 ## Local development and security
 
-The exported repository has one setup command:
+Every exported repository has one setup command:
 
 ```bash
 corepack pnpm install && corepack pnpm dev
 ```
 
-The default adapter reads `.nibleaf/snapshot.json`; `.env` is optional. `src/env.ts` validates any future remote URL with t3-env and Zod. The snapshot uses the existing public `SiteSnapshot` projection, so provider tokens, Git credentials, webhook secrets, organization internals, and unpublished private payloads are not exported.
+The default adapter validates `.nibleaf/snapshot.json`, then overlays page bodies from exported MDX through `.nibleaf/content-map.json`; customer MDX edits therefore drive the local application without making generated state customer-owned. `.env` is optional. `src/env.ts` validates any future remote URL with t3-env and Zod. The snapshot uses the existing public `SiteSnapshot` projection, so provider tokens, Git credentials, webhook secrets, organization internals, and unpublished private payloads are not exported.
 
-Import validation is fail-closed for unknown contract/template versions and modified platform files. Provider enumeration keeps the existing tree truncation, per-file size, file-count, and bounded-concurrency limits. Unknown repository files are not fetched.
+Import validation is fail-closed before connection state is persisted and on every later pull for unknown contract/template versions, a manifest that does not match the project's selected template, and modified platform files. Provider enumeration keeps the existing tree truncation, per-file size, file-count, cumulative 64 MiB, known-size, and bounded-concurrency limits. Unknown repository files are not fetched. Content paths reversibly encode unsafe characters and export rejects duplicate case-insensitive output paths before creating an archive.
+
+Visible runtime chrome is loaded from `messages/en.json` and `messages/ar.json` through generated Paraglide message functions. Selecting an Arabic page switches those messages, the template root direction, and the document `lang`/`dir`. Search, external-link, book, and terminal imagery uses Lucide components rather than Unicode icon glyphs.
 
 ## Template isolation
 
-Harbor v1 owns its component tree and CSS. Manuscript and Signal will get their own entry components and styles only after Harbor proves:
+Each template owns a separate entry component, test, and stylesheet:
 
-- clean clone/install/dev/build on supported Node/pnpm;
-- fixture rendering in LTR and RTL;
-- an actual customer component edit survives sync;
-- platform-data tampering creates a conflict;
-- content MDX still round-trips through the existing three-way path.
+- Harbor is a persistent reference shell with library navigation, reading column, and page outline.
+- Manuscript is an editorial shell with a horizontal chapter deck, paper canvas, and focused long-form measure.
+- Signal is a console shell with a technical rail, command index, and wide code-oriented canvas.
 
-Only low-level, behavior-free primitives may later be shared: manifest parsing, snapshot types/validation, path safety, and adapter interfaces. Navigation layout, typography, spacing, and template-specific components remain independent.
+The only shared customer-side theme utility filters renderable pages, maps supported chrome locales, and synchronizes document language/direction. Manifest parsing, snapshot validation, path safety, and adapter interfaces are also shared. Navigation layout, typography, spacing, component structure, and CSS remain independent.
 
 ## Phased delivery
 
-### Phase 1 — contract and Harbor vertical slice (this change)
+### Phase 1 — contract and three-template runnable export (this change)
 
 - Add manifest/runtime contract v1 and ownership classifier.
-- Export a runnable Harbor zip from `GET /api/app/projects/:id/theme-repository`.
+- Export the selected Harbor, Manuscript, or Signal repository from `GET /api/app/projects/:id/theme-repository`.
 - Include snapshot fixtures, real source, extension documentation, and build/test scripts.
+- Consume Paraglide messages in visible chrome, synchronize Arabic `lang`/`dir`, and use Lucide for UI icons.
 - Extend `GitFileState` ownership and GitHub's bounded file enumeration.
 - Add ownership-aware reconciliation without replacing existing conflict records.
-- Prove an edit/rebuild and safe platform-file rejection.
+- Prove independent install/test/build, edit/rebuild, RTL rendering, and safe platform-file rejection for all three templates.
 
 ### Phase 2 — Git UX and migration tooling
 
@@ -149,11 +151,11 @@ Only low-level, behavior-free primitives may later be shared: manifest parsing, 
 - Add signed migration plans/codemods and PR-based upgrades.
 - Add durable export artifacts to the background export pipeline.
 
-### Phase 3 — independent Manuscript and Signal repositories
+### Phase 3 — template evolution
 
-- Implement each template from its own component/layout/style tree.
-- Share only the runtime/manifest primitives.
-- Add independent LTR/RTL, mobile/desktop, accessibility, and snapshot suites.
+- Version future structural redesigns per template without changing customer files in place.
+- Deliver optional upgrades as reviewed migration branches/PRs.
+- Expand accessibility and visual-regression coverage as template surfaces grow.
 
 ### Phase 4 — official SDK and deployment adapters
 
@@ -166,15 +168,16 @@ Only low-level, behavior-free primitives may later be shared: manifest parsing, 
 - **Snapshot adapter vs. production API by default:** snapshot data is deterministic and secret-free. It is not real-time; a future remote adapter is opt-in and must use a supported SDK.
 - **Seed-once customer code vs. automatic template upgrades:** seed-once guarantees ownership. Automatic upgrades look convenient but can overwrite manual work; reviewed migration PRs are safer.
 - **One ownership-aware ledger vs. a theme sync table:** extending `GitFileState` keeps idempotency, stale-resolution protection, audits, and compare-and-swap behavior in one system.
-- **Harbor first vs. three generated skins:** one complete implementation tests the contract. Generating three thin wrappers before ownership is proven would create coupling and migration debt.
+- **Three real templates vs. preset-colored wrappers:** each preset exports its own component and CSS structure. This costs more implementation and visual coverage, but preserves the product's structural theme promise and keeps customer edits local to the selected template.
 
 ## Acceptance evidence required before expansion
 
 - Archive contains no `workspace:*` dependency and no secret material.
-- Extracted repo installs with supported pnpm, tests, and builds.
-- Vite serves the fixture repository without Nibleaf services.
-- Desktop and mobile screenshots show the exported Harbor runtime.
-- A change to `src/theme/HarborTheme.tsx` survives a rebuild and ownership reconciliation.
+- Harbor, Manuscript, and Signal repos each install with supported pnpm, run localized tests, typecheck, and build.
+- Vite serves every fixture repository without Nibleaf services or production secrets.
+- Screenshots show all three structurally distinct runtimes plus Arabic/RTL mobile chrome.
+- A change to each template-owned component survives a rebuild and ownership reconciliation.
+- A customer MDX edit appears in rebuilt browser output while generated manifest, snapshot, and content-map hashes remain unchanged.
 - A change to `.nibleaf/snapshot.json` is rejected/conflicted.
 - Shared MDX reconciliation tests remain green.
 - `.github/workflows/docker.yml` remains manual-only for Docker image builds.

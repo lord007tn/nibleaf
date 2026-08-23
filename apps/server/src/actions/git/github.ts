@@ -4,6 +4,8 @@ import { AppError } from '@/errors';
 import type { GitCommitInput, GitProviderClient, RemotePullRequest } from './types';
 
 const BLOB_FETCH_CONCURRENCY = 8;
+const MAX_BLOB_SIZE = 2_000_000;
+const MAX_TOTAL_BLOB_SIZE = 64 * 1024 * 1024;
 
 type GitHubFetch = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -141,13 +143,7 @@ export class GitHubProvider implements GitProviderClient {
     return this.listFiles(repository, ref, (entry) => themeRepositoryOwnershipForPath(entry.path, contentPath) !== null, 2500, 'theme repository');
   }
 
-  private async listFiles(
-    repository: string,
-    ref: string,
-    include: (entry: GitHubTreeFile) => boolean,
-    limit: number,
-    label: string,
-  ) {
+  private async listFiles(repository: string, ref: string, include: (entry: GitHubTreeFile) => boolean, limit: number, label: string) {
     const [owner, repo] = repoParts(repository);
     const response = await this.request(
       () => this.client.rest.git.getTree({ owner, repo, tree_sha: ref, recursive: 'true' }),
@@ -156,13 +152,21 @@ export class GitHubProvider implements GitProviderClient {
     if (response.data.truncated) {
       throw new GitHubProviderError('The repository tree is too large for safe Git sync. Narrow the content path.');
     }
-    const entries = response.data.tree.flatMap((entry) =>
-      entry.type === 'blob' && entry.path && entry.sha
-        ? [{ path: entry.path, sha: entry.sha, type: entry.type, ...(entry.size === undefined ? {} : { size: entry.size }) }]
-        : [],
-    ).filter(include);
-    const oversized = entries.find((entry) => (entry.size ?? 0) > 2_000_000);
+    const entries = response.data.tree
+      .flatMap((entry) =>
+        entry.type === 'blob' && entry.path && entry.sha
+          ? [{ path: entry.path, sha: entry.sha, type: entry.type, ...(entry.size === undefined ? {} : { size: entry.size }) }]
+          : [],
+      )
+      .filter(include);
+    const unknownSize = entries.find((entry) => entry.size === undefined);
+    if (unknownSize) throw new GitHubProviderError(`Git sync cannot safely size ${unknownSize.path}. Refresh the repository tree and try again.`);
+    const oversized = entries.find((entry) => (entry.size ?? 0) > MAX_BLOB_SIZE);
     if (oversized) throw new GitHubProviderError(`Git sync cannot read ${oversized.path}: files must be 2 MiB or smaller.`);
+    const totalSize = entries.reduce((total, entry) => total + (entry.size ?? 0), 0);
+    if (totalSize > MAX_TOTAL_BLOB_SIZE) {
+      throw new GitHubProviderError('Git sync is limited to 64 MiB of managed text per connection. Narrow the content path.');
+    }
     if (entries.length > limit) {
       throw new GitHubProviderError(`Git sync is limited to ${limit.toLocaleString('en-US')} ${label} files per connection.`);
     }

@@ -202,7 +202,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
           </a>
           {' · '}
           <a className="underline" download href={`/api/app/projects/${projectId}/theme-repository`}>
-            {t('settings.theme.export')} Harbor
+            {t('settings.theme.export')}
           </a>
           .
         </p>

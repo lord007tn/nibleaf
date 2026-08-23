@@ -2,10 +2,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import type { SiteSnapshot } from '../packages/shared/src/site';
 import { buildThemeRepository, themeContentPath } from '../packages/shared/src/theme-repository';
+import { THEME_PRESET_IDS, type ThemePresetId } from '../packages/shared/src/themes';
 
 const targetArg = process.argv[2];
-if (!targetArg) throw new Error('Usage: pnpm theme-repository:fixture <new-output-directory>');
+const templateArg = process.argv[3] ?? 'harbor';
+if (!targetArg || !THEME_PRESET_IDS.includes(templateArg as ThemePresetId)) {
+  throw new Error('Usage: pnpm theme-repository:fixture <new-output-directory> [harbor|manuscript|signal]');
+}
 const target = resolve(targetArg);
+const template = templateArg as ThemePresetId;
 
 const snapshot: SiteSnapshot = {
   project: {
@@ -14,7 +19,7 @@ const snapshot: SiteSnapshot = {
     slug: 'northstar-docs',
     description: 'Ship reliable integrations with a documentation repository your team owns.',
     icon: null,
-    config: { theme: { preset: 'harbor' } },
+    config: { theme: { preset: template } },
     languages: [
       { code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null },
       { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, enabled: true, config: null },

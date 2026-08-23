@@ -4,10 +4,10 @@ import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import {
   buildThemeRepository,
-  THEME_REPOSITORY_MANIFEST_PATH,
   type ThemeRepositoryOwnership,
   themeRepositoryOwnershipForPath,
-  validateThemeRepositoryManifest,
+  themeRepositoryTemplateId,
+  validateThemeRepositoryImport,
 } from '@nibleaf/shared/theme-repository';
 import { z } from 'zod';
 import { env } from '@/env';
@@ -156,12 +156,7 @@ const authoringContext = async (connection: { projectId: string; importBranchId:
 
 type LocalRepositoryFile = { page: AuthoringPage | null; content: string; ownership: ThemeRepositoryOwnership };
 
-const localFiles = async (connection: {
-  projectId: string;
-  contentPath: string;
-  importBranchId: string | null;
-  importLanguageId: string | null;
-}): Promise<Map<string, LocalRepositoryFile>> => {
+const localFiles = async (connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const { branch, language } = await authoringContext(connection);
   const pages = await prisma.page.findMany({
     where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id, kind: 'PAGE' },
@@ -175,7 +170,7 @@ const localFiles = async (connection: {
   for (const file of buildThemeRepository(snapshot, { contentPath: connection.contentPath })) {
     files.set(file.path, { page: null, content: file.content, ownership: file.ownership });
   }
-  return files;
+  return { files, snapshot };
 };
 
 const initializeFileStates = async (
@@ -188,7 +183,7 @@ const initializeFileStates = async (
   },
   files: RemoteFile[],
 ): Promise<void> => {
-  const ours = await localFiles(connection);
+  const { files: ours } = await localFiles(connection);
   const { branch, language } = await authoringContext(connection);
   await prisma.$transaction(
     files.map((file) =>
@@ -212,6 +207,16 @@ const initializeFileStates = async (
   );
 };
 
+const remoteThemeRepositoryIssues = (files: RemoteFile[], snapshot: Awaited<ReturnType<typeof getCurrentSnapshot>>, contentPath: string) => {
+  if (!files.some((file) => themeRepositoryOwnershipForPath(file.path, contentPath) === 'PLATFORM')) return [];
+  return validateThemeRepositoryImport(
+    new Map(files.map((file) => [file.path, file.content])),
+    snapshot,
+    contentPath,
+    themeRepositoryTemplateId(snapshot),
+  );
+};
+
 export const connectGitHub = async (projectId: string, actorUserId: string, input: ConnectGitInput) => {
   const repository = normalizeRepository(input.repository);
   const baseBranch = normalizeGitBranch(input.baseBranch, 'Base branch');
@@ -230,6 +235,15 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   await provider.verifyWriteAccess(repository);
   const [baseSha, headSha] = await Promise.all([provider.getBranchSha(repository, baseBranch), provider.getBranchSha(repository, headBranch)]);
   if (!baseSha) throw badRequest(`Base branch ${baseBranch} was not found.`);
+  const baselineRef = headSha ?? baseSha;
+  const files = provider.listThemeRepositoryFiles
+    ? await provider.listThemeRepositoryFiles(repository, baselineRef, contentPath)
+    : await provider.listMarkdownFiles(repository, baselineRef, contentPath);
+  const snapshot = await getCurrentSnapshot(projectId);
+  const repositoryIssues = remoteThemeRepositoryIssues(files, snapshot, contentPath);
+  if (repositoryIssues.length > 0) {
+    throw badRequest(`Theme repository validation failed: ${repositoryIssues.map((issue) => issue.message).join(' ')}`);
+  }
   const generatedSecret = existing?.webhookSecretEncrypted ? null : randomBytes(32).toString('hex');
   const connection = await prisma.gitConnection.upsert({
     where: { projectId },
@@ -271,10 +285,6 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         existing.importLanguageId !== (input.importLanguageId || null)),
   );
   if (topologyChanged) await prisma.gitFileState.deleteMany({ where: { connectionId: connection.id } });
-  const baselineRef = headSha ?? baseSha;
-  const files = provider.listThemeRepositoryFiles
-    ? await provider.listThemeRepositoryFiles(repository, baselineRef, contentPath)
-    : await provider.listMarkdownFiles(repository, baselineRef, contentPath);
   await initializeFileStates(connection, files);
   await audit(connection, actorUserId, existing ? 'connection.updated' : 'connection.created', {
     provider: 'github',
@@ -643,21 +653,19 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const headSha = await provider.getBranchSha(connection.repository, sourceBranch);
     if (!baseSha) throw new Error(`Base branch ${operation.baseBranch} no longer exists.`);
     const remoteSha = operation.kind === 'PULL' && request.sourceSha ? request.sourceSha : (headSha ?? baseSha);
-    const [remoteFiles, ours, states] = await Promise.all([
+    const [remoteFiles, local, states] = await Promise.all([
       provider.listThemeRepositoryFiles
         ? provider.listThemeRepositoryFiles(connection.repository, remoteSha, connection.contentPath)
         : provider.listMarkdownFiles(connection.repository, remoteSha, connection.contentPath),
       localFiles(connection),
       prisma.gitFileState.findMany({ where: { connectionId: connection.id } }),
     ]);
+    const ours = local.files;
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
     const existingStatePaths = new Set(states.map((state) => state.path));
-    const remoteManifest = theirs.get(THEME_REPOSITORY_MANIFEST_PATH)?.content;
-    if (remoteManifest) {
-      const manifestIssues = validateThemeRepositoryManifest(remoteManifest, connection.projectId);
-      if (manifestIssues.length > 0) {
-        throw new Error(`Theme repository validation failed: ${manifestIssues.map((issue) => issue.message).join(' ')}`);
-      }
+    const repositoryIssues = remoteThemeRepositoryIssues(remoteFiles, local.snapshot, connection.contentPath);
+    if (repositoryIssues.length > 0) {
+      throw new Error(`Theme repository validation failed: ${repositoryIssues.map((issue) => issue.message).join(' ')}`);
     }
     const entries = mergeEntries(states, ours, theirs, connection.contentPath);
     const existingConflicts = new Map(operation.conflicts.map((conflict) => [conflict.path, conflict]));
