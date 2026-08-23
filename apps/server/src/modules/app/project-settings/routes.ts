@@ -39,6 +39,30 @@ const projectSettingsRoutes = {
     description: "Get a site's usage counters (pages, languages, members, deployments, traffic, storage) for the Usage tab.",
     responses: ok,
   }),
+  searchConfiguration: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember()],
+    tags: ['projects'],
+    description: "Get a site's resolved search configuration.",
+    responses: ok,
+  }),
+  updateSearchConfiguration: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['projects'],
+    description: "Update a site's search configuration.",
+    responses: ok,
+  }),
+  searchIndexDiagnostics: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember()],
+    tags: ['projects'],
+    description: "Inspect a site's privacy-minimized search index state.",
+    responses: ok,
+  }),
+  createSearchReindex: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['projects'],
+    description: "Queue a differential rebuild of a site's latest published search index.",
+    responses: { 202: { description: 'accepted' }, ...errorResponses },
+  }),
 };
 
 export default projectSettingsRoutes;

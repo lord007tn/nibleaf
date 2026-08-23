@@ -1,11 +1,13 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
-import { useLanguages, useUpdateLanguage, useUpdateProjectConfig } from '@/hooks/api';
+import { useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
   FIELD_INPUT,
@@ -14,8 +16,8 @@ import {
   SaveBar,
   SectionHeader,
   Segmented,
-  saveConfigSection,
   sortLanguagesDefaultFirst,
+  ToggleRow,
   useScopeDirtyGuard,
 } from './shared';
 
@@ -57,27 +59,95 @@ export function SearchSection({ project }: { project: Project }) {
 
 /** Default scope: the project-level search config (unchanged). */
 function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDirtyChange?: (dirty: boolean) => void }) {
+  const configuration = useProjectSearchConfiguration(project.id);
+  if (configuration.isPending) {
+    return (
+      <div className="space-y-5">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+    );
+  }
+  if (configuration.isError || !configuration.data) {
+    return <SearchConfigurationError onRetry={() => void configuration.refetch()} />;
+  }
+  return (
+    <>
+      <ProjectSearchConfigurationForm
+        key={JSON.stringify(configuration.data.configuration)}
+        configuration={configuration.data.configuration}
+        maxResultsConstraint={configuration.data.constraints.maxResults}
+        onDirtyChange={onDirtyChange}
+        projectId={project.id}
+      />
+      <SearchIndexDiagnostics projectId={project.id} />
+    </>
+  );
+}
+
+function SearchConfigurationError({ onRetry }: { onRetry: () => void }) {
   const t = useT();
-  const update = useUpdateProjectConfig(project.id);
-  const search = project.config?.search ?? {};
-  const [hotkey, setHotkey] = useState<Hotkey>((search.hotkey as Hotkey) ?? 'cmdk');
-  const [aiAnswers, setAiAnswers] = useState(search.aiAnswers === true ? 'enabled' : 'disabled');
+  return (
+    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
+      <p className="font-medium text-destructive">{t('settings.search.configuration.error')}</p>
+      <button className="mt-2 font-medium text-primary text-xs hover:underline" onClick={onRetry} type="button">
+        {t('common.retry')}
+      </button>
+    </div>
+  );
+}
+
+function ProjectSearchConfigurationForm({
+  projectId,
+  configuration,
+  maxResultsConstraint,
+  onDirtyChange,
+}: {
+  projectId: string;
+  configuration: {
+    maxResults: number;
+    filtersEnabled: boolean;
+    versionFilterEnabled: boolean;
+    aiAnswers: boolean;
+    hotkey: Hotkey;
+    placeholder: string | null;
+  };
+  maxResultsConstraint: { default: number; min: number; max: number };
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
+  const t = useT();
+  const update = useUpdateProjectSearchConfiguration(projectId);
+  const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
+  const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
+  const [filtersEnabled, setFiltersEnabled] = useState(configuration.filtersEnabled);
+  const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
-  const hotkeyDirty = hotkey !== ((search.hotkey as Hotkey) ?? 'cmdk');
-  const aiAnswersDirty = (aiAnswers === 'enabled') !== (search.aiAnswers === true);
+  const controlsDirty =
+    hotkey !== configuration.hotkey ||
+    (aiAnswers === 'enabled') !== configuration.aiAnswers ||
+    filtersEnabled !== configuration.filtersEnabled ||
+    versionFilterEnabled !== configuration.versionFilterEnabled;
 
   const form = useForm({
-    defaultValues: { placeholder: search.placeholder ?? '', maxResults: String(search.maxResults ?? 6) },
+    defaultValues: { placeholder: configuration.placeholder ?? '', maxResults: String(configuration.maxResults) },
     onSubmit: async ({ value }) => {
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
-      await saveConfigSection(update, {
-        search: {
+      try {
+        await update.mutateAsync({
           hotkey,
-          placeholder: value.placeholder.trim() || undefined,
-          maxResults: Number.isFinite(parsedMaxResults) ? Math.min(100, Math.max(1, parsedMaxResults)) : 6,
+          placeholder: value.placeholder.trim() || null,
+          maxResults: Number.isFinite(parsedMaxResults)
+            ? Math.min(maxResultsConstraint.max, Math.max(maxResultsConstraint.min, parsedMaxResults))
+            : maxResultsConstraint.default,
+          filtersEnabled,
+          versionFilterEnabled,
           aiAnswers: aiAnswers === 'enabled',
-        },
-      });
+        });
+        toast.success(t('common.saved'));
+      } catch {
+        toast.error(t('settings.search.configuration.error'));
+      }
     },
   });
 
@@ -106,8 +176,8 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
           <Field hint={t('settings.search.maxResults.hint')} label={t('settings.search.maxResults.label')}>
             <Input
               className={FIELD_INPUT}
-              max={100}
-              min={1}
+              max={maxResultsConstraint.max}
+              min={maxResultsConstraint.min}
               onChange={(e) => field.handleChange(e.target.value)}
               type="number"
               value={field.state.value}
@@ -128,6 +198,21 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
         />
       </Field>
 
+      <div className="mb-6 rounded-lg border px-4">
+        <ToggleRow
+          checked={filtersEnabled}
+          hint={t('settings.search.filters.hint')}
+          onCheckedChange={setFiltersEnabled}
+          title={t('settings.search.filters.label')}
+        />
+        <ToggleRow
+          checked={versionFilterEnabled}
+          hint={t('settings.search.versionFilters.hint')}
+          onCheckedChange={setVersionFilterEnabled}
+          title={t('settings.search.versionFilters.label')}
+        />
+      </div>
+
       <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
         <Segmented
           className="max-w-[240px]"
@@ -141,7 +226,7 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
       </Field>
 
       <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || hotkeyDirty || aiAnswersDirty} onDirtyChange={onDirtyChange} />}
+        {(isDirty) => <DirtyStateReporter dirty={isDirty || controlsDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
@@ -202,7 +287,7 @@ function LanguageSearchForm({
       {/* Global-only fields: visible but disabled so the language scope still
           reads as the complete search form. */}
       <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.search.maxResults.label')}>
-        <Input className={FIELD_INPUT} disabled type="number" value={String(projectSearch.maxResults ?? 6)} />
+        <Input className={FIELD_INPUT} disabled type="number" value={String(projectSearch.maxResults ?? 12)} />
       </Field>
       <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.search.hotkey.label')}>
         <Segmented

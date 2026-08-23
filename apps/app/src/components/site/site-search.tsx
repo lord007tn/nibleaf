@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { AlertCircle, FileText, Loader2, Search, Sparkles } from 'lucide-react';
@@ -56,6 +57,10 @@ export function SiteSearch({
   placeholder,
   hotkey,
   maxResults,
+  languages = [],
+  versions = [],
+  filtersEnabled = true,
+  versionFilterEnabled = true,
   aiAnswers,
 }: {
   projectId: string;
@@ -69,6 +74,10 @@ export function SiteSearch({
   /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
+  languages?: Array<{ code: string; label: string }>;
+  versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
+  filtersEnabled?: boolean;
+  versionFilterEnabled?: boolean;
   /** Site-level product switch. Instance/provider availability is still
    * enforced server-side and never inferred from this client flag. */
   aiAnswers?: boolean;
@@ -77,11 +86,13 @@ export function SiteSearch({
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'search' | 'answer'>('search');
-  const arabic = lang?.toLowerCase().startsWith('ar') ?? false;
+  const [selectedLanguage, setSelectedLanguage] = useState(lang);
+  const [selectedVersion, setSelectedVersion] = useState(version);
+  const arabic = selectedLanguage?.toLowerCase().startsWith('ar') ?? false;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), lang, version, maxResults, open && mode === 'search');
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), selectedLanguage, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
   const hits = hitsQuery.data ?? [];
   const answer = answerMutation.isPending ? null : (answerMutation.data ?? null);
@@ -97,8 +108,20 @@ export function SiteSearch({
   const ask = () => {
     const q = query.trim();
     if (q.length < 2 || answerMutation.isPending) return;
-    answerMutation.mutate({ projectId, query: q, ...(lang ? { language: lang } : {}), ...(version ? { version } : {}) });
+    answerMutation.mutate({
+      projectId,
+      query: q,
+      ...(selectedLanguage ? { language: selectedLanguage } : {}),
+      ...(selectedVersion ? { version: selectedVersion } : {}),
+    });
   };
+
+  useEffect(() => {
+    if (open) {
+      setSelectedLanguage(lang);
+      setSelectedVersion(version);
+    }
+  }, [lang, open, version]);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -155,6 +178,41 @@ export function SiteSearch({
             </div>
           ) : null}
           <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
+          {mode === 'search' && ((filtersEnabled && languages.length > 1) || (versionFilterEnabled && versions.length > 1)) ? (
+            <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row">
+              {filtersEnabled && languages.length > 1 ? (
+                <Select onValueChange={(value) => setSelectedLanguage(value ?? undefined)} value={selectedLanguage}>
+                  <SelectTrigger aria-label={t('searchFilterLanguage')} className="h-9 min-w-0 flex-1 sm:max-w-56">
+                    <SelectValue placeholder={t('searchFilterLanguage')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languages.map((language) => (
+                      <SelectItem key={language.code} value={language.code}>
+                        {language.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+              {versionFilterEnabled && versions.length > 1 ? (
+                <Select
+                  onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
+                  value={selectedVersion ?? '__default'}
+                >
+                  <SelectTrigger aria-label={t('searchFilterVersion')} className="h-9 min-w-0 flex-1 sm:max-w-56">
+                    <SelectValue placeholder={t('searchFilterVersion')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions.map((item) => (
+                      <SelectItem key={item.id} value={item.isDefault ? '__default' : item.slug}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
+            </div>
+          ) : null}
           {mode === 'search' ? (
             <CommandList>
               <CommandEmpty>{searchMessage}</CommandEmpty>
@@ -169,10 +227,10 @@ export function SiteSearch({
                         path: hit.path,
                         resultId: hit.id,
                         resultPosition: index + 1,
-                        language: lang,
+                        language: selectedLanguage,
                       });
                       onOpenChange(false);
-                      window.location.href = siteHref(projectId, hit.path, { lang, version });
+                      window.location.href = siteHref(projectId, hit.path, { lang: selectedLanguage, version: selectedVersion });
                     }}
                   >
                     {hasIcon(hit.icon) ? (
@@ -218,7 +276,7 @@ export function SiteSearch({
                         <a
                           key={citation.id}
                           className="block rounded-md border p-3 text-start transition-colors hover:bg-muted/60"
-                          href={siteHref(projectId, citation.path, { lang, version })}
+                          href={siteHref(projectId, citation.path, { lang: selectedLanguage, version: selectedVersion })}
                           dir={citation.direction}
                         >
                           <span className="font-medium text-sm">

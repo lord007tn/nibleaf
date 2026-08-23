@@ -1,7 +1,7 @@
 import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { MarketingAnalyticsConsent, marketingAnalyticsEnabled } from '@/components/marketing-analytics-consent';
+import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
 import type { SiteShell } from '@/hooks/api/types';
 import { siteThemeNoFlashScript } from '@/lib/site-theme';
 import appCss from '@/styles.css?url';
@@ -81,7 +81,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         <ThemeProvider>{children}</ThemeProvider>
-        <MarketingAnalyticsConsent enabled={marketingAnalyticsEnabled(pathname, siteProjectId)} language={lang === 'ar' ? 'ar' : 'en'} />
+        <RootMarketingAnalytics pathname={pathname} siteProjectId={siteProjectId} language={lang === 'ar' ? 'ar' : 'en'} />
         <Scripts />
       </body>
     </html>

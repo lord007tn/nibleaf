@@ -158,6 +158,14 @@ enum DeploymentStatus {
   FAILED
 }
 
+enum SearchIndexRunStatus {
+  PENDING
+  RUNNING
+  READY
+  FAILED
+  DISABLED
+}
+
 enum DomainDnsStatus {
   PENDING
   VERIFIED
@@ -263,6 +271,7 @@ model Project {
   openApiDocument OpenApiDocument?
   gitConnection   GitConnection?
   gitPreviews     GitPreview[]
+  searchIndexRuns SearchIndexRun[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -795,10 +804,55 @@ model Deployment {
   completedAt   DateTime?
 
   exportSnapshots ExportSnapshot[]
+  searchIndexRuns SearchIndexRun[]
 
   @@unique([projectId, version])
   @@index([projectId, status])
   @@map("deployment")
+}
+
+/// Durable, privacy-minimized state for one immutable deployment indexing run.
+/// Provider payloads, content, vectors, credentials, paths, and titles never
+/// enter this table. `issueSample` is bounded worker-authored metadata containing
+/// only page/chunk identifiers, language/version, status, and a stable code.
+model SearchIndexRun {
+  id                   String               @id @default(cuid())
+  projectId            String
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deploymentId         String?
+  deployment           Deployment?          @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+  status               SearchIndexRunStatus @default(PENDING)
+  jobId                String?              @unique
+  claimToken           String?
+  claimExpiresAt       DateTime?
+  attempt              Int                  @default(0)
+  logicalIndexId       String
+  schemaVersion        String
+  revisionId           String
+  embeddingModel       String
+  vectorSize           Int
+  expectedChunks       Int                  @default(0)
+  expectedPages        Int                  @default(0)
+  indexedChunks        Int                  @default(0)
+  indexedPages         Int                  @default(0)
+  embeddedChunks       Int                  @default(0)
+  reusedChunks         Int                  @default(0)
+  unchangedChunks      Int                  @default(0)
+  metadataUpdatedChunks Int                 @default(0)
+  deletedChunks        Int                  @default(0)
+  staleChunks          Int                  @default(0)
+  failedChunks         Int                  @default(0)
+  errorCode            String?
+  issueSample          Json?
+  requestedById        String?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([projectId, createdAt])
+  @@index([deploymentId, createdAt])
+  @@map("search_index_run")
 }
 
 /// Immutable copy of one READY deployment plus the storage asset manifest used

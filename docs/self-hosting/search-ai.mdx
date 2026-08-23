@@ -128,6 +128,41 @@ collection migration, point the alias at the retained collection and restore
 the matching embedding model and dimension. Disabling `SEARCH_ANSWER_ENABLED`
 removes answer capability without affecting results mode.
 
+## Project settings and privacy-safe diagnostics
+
+Project administrators can set **1–50 results** per query (default **12**) and
+independently show or hide reader language/version filters (both default on).
+Grounded answers default off and the shortcut defaults to `⌘K`. An empty
+authored placeholder falls back to the active language's Paraglide site copy;
+language overrides first fall back to the project value, then that localized
+copy.
+
+Settings update only `Project.config.search` through an organization-scoped
+compare-and-swap transaction, preserving concurrent sibling config writes. A
+successful write invalidates local live config immediately; other API replicas
+converge within the documented 15-second TTL. Missing keys restore defaults.
+
+Authorized members can inspect only the current READY revision. Diagnostics use
+exact tenant/deployment-scoped Qdrant counts/facets plus one bounded metadata
+page, never a full corpus scan. Results include logical schema/model/revision
+identifiers, aggregate counts, distributions, stable run/error codes, and
+bounded page ID/ordinal/language/version/status metadata. They omit content,
+titles, paths, hashes, vectors, credentials, physical collection/alias names,
+and provider payloads. Provider absence means unavailable with unknown counts,
+never zero. Pagination cursors are versioned, HMAC-signed, and tenant/revision
+bound.
+
+`SearchIndexRun` is additive, privacy-minimized state. A partial unique index
+allows one PENDING/RUNNING row per project. Workers use renewable claims longer
+than any configured provider timeout, recover the same durable run after a
+crash, replay READY/DISABLED terminal state idempotently, and reclaim only an
+expired abandoned claim. Unchanged chunks remain unembedded.
+
+Application rollback may safely leave the table. For an operator schema
+rollback, stop API/worker processes and execute
+`packages/database/prisma/migrations/20260823180000_search_configuration_diagnostics/rollback.sql`.
+It deletes diagnostics history only; Qdrant data is unchanged.
+
 ## Remove data
 
 Project deletion enqueues a project-filtered Qdrant delete across every retained

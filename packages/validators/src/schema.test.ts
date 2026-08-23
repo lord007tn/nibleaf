@@ -19,6 +19,8 @@ import {
   presignAssetBody,
   projectConfigSchema,
   resolveRedirectTarget,
+  searchConfigurationSchema,
+  searchIndexDiagnosticsQuery,
   transferOwnershipBody,
   updateLanguageBody,
   updateMemberRoleBody,
@@ -83,6 +85,24 @@ describe('upsertOpenApiBody', () => {
 describe('projectConfigSchema', () => {
   it('accepts a valid single-section patch', () => {
     expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#5546e8', theme: 'dark' } }).success).toBe(true);
+  });
+  it('applies tenant-safe search defaults and enforces result/cursor limits', () => {
+    expect(searchConfigurationSchema.parse({})).toEqual({
+      maxResults: 12,
+      filtersEnabled: true,
+      versionFilterEnabled: true,
+      aiAnswers: false,
+      hotkey: 'cmdk',
+    });
+    expect(searchConfigurationSchema.safeParse({ maxResults: 0 }).success).toBe(false);
+    expect(searchConfigurationSchema.safeParse({ maxResults: 51 }).success).toBe(false);
+    expect(searchConfigurationSchema.parse({ filtersEnabled: false, versionFilterEnabled: false })).toMatchObject({
+      filtersEnabled: false,
+      versionFilterEnabled: false,
+    });
+    expect(searchIndexDiagnosticsQuery.parse({})).toEqual({ limit: 10 });
+    expect(searchIndexDiagnosticsQuery.safeParse({ limit: 26 }).success).toBe(false);
+    expect(searchIndexDiagnosticsQuery.safeParse({ cursor: 'x'.repeat(501) }).success).toBe(false);
   });
   it('rejects unknown top-level keys (strict guards against prototype pollution)', () => {
     expect(projectConfigSchema.safeParse({ bogus: true }).success).toBe(false);

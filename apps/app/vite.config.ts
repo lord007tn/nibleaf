@@ -64,6 +64,10 @@ export default defineConfig(({ mode }) => {
         project: '../../packages/i18n/project.inlang',
         outdir: '../../packages/i18n/src/paraglide',
         emitTsDeclarations: true,
+        // site.ts and standalone.ts intentionally import per-message modules
+        // for public-site tree shaking. Pin this in development too: Paraglide
+        // otherwise defaults to locale modules and deletes those imports.
+        outputStructure: 'message-modules',
         strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
         cookieName: 'NIBLEAF_LOCALE',
       }),

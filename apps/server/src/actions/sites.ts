@@ -33,6 +33,7 @@ import { LruCache, TtlCache } from '@/lib/lru';
 import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
+import { resolvePublishedSearchContext } from '@/lib/search-configuration';
 import { trackProjectEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
@@ -99,6 +100,12 @@ const llmsFullTxtCache = new LruCache<string, string>(50);
  *  the live site within seconds, so this cache is TTL-bounded at 15s. Executable
  *  redirects are the exception and remain sourced from the READY snapshot. */
 const liveChromeCache = new TtlCache<string, LiveChromeRow | null>(200, 15_000);
+
+/** Apply local settings mutations immediately. Other API replicas remain
+ * bounded by the documented 15-second live-chrome TTL. */
+export const invalidatePublishedSiteConfig = (projectId: string): void => {
+  liveChromeCache.delete(projectId);
+};
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
   const cached = liveChromeCache.get(projectId);
@@ -494,10 +501,11 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
 export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
   const analyticsStartedAt = performance.now();
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
-  const activeLanguage = activeLanguageCode(snapshot, lang);
-  const docsVersion = activeVersion(snapshot, version);
+  const request = resolvePublishedSearchContext(snapshot, { language: lang, version, limit });
+  const activeLanguage = request.language;
+  const docsVersion = request.version;
   const versionPages = pagesForVersion(snapshot, docsVersion);
-  const resultLimit = limit ?? 12;
+  const resultLimit = request.limit;
   const scope: SearchScope = {
     projectId: snapshot.project.id,
     deploymentId,
@@ -545,20 +553,19 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
         : []),
     ]);
   }
-  const aiAnswersEnabled = (snapshot.project.config as { search?: { aiAnswers?: boolean } } | null)?.search?.aiAnswers === true;
-  return { hits: result.hits, runtime: result.runtime, capabilities: { answer: aiAnswersEnabled && answerSearchAvailable() } };
+  return { hits: result.hits, runtime: result.runtime, capabilities: { answer: request.configuration.aiAnswers && answerSearchAvailable() } };
 };
 
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
-  const aiAnswersEnabled = (snapshot.project.config as { search?: { aiAnswers?: boolean } } | null)?.search?.aiAnswers === true;
-  if (!aiAnswersEnabled || !answerSearchAvailable()) {
+  const request = resolvePublishedSearchContext(snapshot, { language: lang, version });
+  if (!request.configuration.aiAnswers || !answerSearchAvailable()) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not configured for this Nibleaf instance.' });
   }
-  const activeLanguage = activeLanguageCode(snapshot, lang);
-  const docsVersion = activeVersion(snapshot, version);
+  const activeLanguage = request.language;
+  const docsVersion = request.version;
   const quota = await consumeAnswerQuota(snapshot.project.id).catch((cause) => {
     throw new AppError({ code: 'search:unavailable', message: 'AI answer quota service is unavailable.', cause });
   });
