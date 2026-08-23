@@ -1,13 +1,13 @@
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from '@nibleaf/design-system/components/ui/breadcrumb';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
 import { CommandPalette } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 /** Derive the header title key from the current dashboard route. */
 function titleKeyFromPathname(pathname: string): MessageKey {

@@ -12,7 +12,7 @@ Closes #
 - [ ] `pnpm lint` passes (`pnpm format` applied)
 - [ ] `pnpm test` passes; tests added/updated for behavior changes
 - [ ] New user-facing strings are added to **both** `en` and `ar` in
-      `apps/app/src/lib/i18n/messages.ts` and verified in RTL
+      `packages/i18n/messages/{locale}.json` and verified in RTL
 - [ ] I have the right to submit this work under the project's **AGPL-3.0-only** license
 
 ## Screenshots / notes

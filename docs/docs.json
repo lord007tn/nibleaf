@@ -46,7 +46,14 @@
           {
             "group": "Self-hosting",
             "x-nibleaf": { "slug": "self-hosting" },
-            "pages": ["self-hosting/configuration", "self-hosting/production", "self-hosting/backups-upgrades", "self-hosting/troubleshooting"]
+            "pages": [
+              "self-hosting/configuration",
+              "self-hosting/search-ai",
+              "self-hosting/production",
+              "self-hosting/clickhouse-analytics",
+              "self-hosting/backups-upgrades",
+              "self-hosting/troubleshooting"
+            ]
           },
           {
             "group": "Reference",
@@ -108,7 +115,9 @@
             "x-nibleaf": { "slug": "self-hosting" },
             "pages": [
               "ar/self-hosting/configuration",
+              "ar/self-hosting/search-ai",
               "ar/self-hosting/production",
+              "ar/self-hosting/clickhouse-analytics",
               "ar/self-hosting/backups-upgrades",
               "ar/self-hosting/troubleshooting"
             ]

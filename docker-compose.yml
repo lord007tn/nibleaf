@@ -27,9 +27,19 @@ x-build: &build
 # .env.production.example.
 x-service-env: &service-env
   NODE_ENV: production
+  PINO_LOG_LEVEL: ${PINO_LOG_LEVEL:-info}
+  PINO_LOG_FILE: ${PINO_LOG_FILE:-}
   POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:-nibleaf}@postgres:5432/nibleaf
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
+  ANALYTICS_MODE: ${ANALYTICS_MODE:-dual_write}
+  ANALYTICS_HASH_SALT: ${ANALYTICS_HASH_SALT:-local-analytics-salt-change-in-production}
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+  CLICKHOUSE_READER_USERNAME: ${CLICKHOUSE_USERNAME:-nibleaf}
+  CLICKHOUSE_READER_PASSWORD: ${CLICKHOUSE_PASSWORD:-nibleaf}
+  CLICKHOUSE_WRITER_USERNAME: ${CLICKHOUSE_USERNAME:-nibleaf}
+  CLICKHOUSE_WRITER_PASSWORD: ${CLICKHOUSE_PASSWORD:-nibleaf}
   QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   # Fixed to the bundled maxio service — a host .env's STORAGE_ENDPOINT (the
@@ -77,6 +87,19 @@ x-service-env: &service-env
   GIT_CREDENTIAL_ENCRYPTION_KEY: ${GIT_CREDENTIAL_ENCRYPTION_KEY:-}
   GIT_WORKER_SECRET: ${GIT_WORKER_SECRET:-}
   GIT_CONCURRENCY: ${GIT_CONCURRENCY:-2}
+  QDRANT_URL: http://qdrant:6333
+  QDRANT_COLLECTION_ALIAS: ${QDRANT_COLLECTION_ALIAS:-nibleaf_search_active}
+  QDRANT_COLLECTION_VERSION: ${QDRANT_COLLECTION_VERSION:-v1}
+  QDRANT_VECTOR_SIZE: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_RUNTIME: ${SEARCH_RUNTIME:-shadow}
+  SEARCH_EMBEDDING_API_KEY: ${SEARCH_EMBEDDING_API_KEY:-}
+  SEARCH_EMBEDDING_BASE_URL: ${SEARCH_EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  SEARCH_EMBEDDING_MODEL: ${SEARCH_EMBEDDING_MODEL:-text-embedding-3-small}
+  SEARCH_EMBEDDING_DIMENSIONS: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_ANSWER_ENABLED: ${SEARCH_ANSWER_ENABLED:-false}
+  SEARCH_ANSWER_API_KEY: ${SEARCH_ANSWER_API_KEY:-}
+  SEARCH_ANSWER_BASE_URL: ${SEARCH_ANSWER_BASE_URL:-https://openrouter.ai/api/v1}
+  SEARCH_ANSWER_MODEL: ${SEARCH_ANSWER_MODEL:-openai/gpt-5.6-luna}
 
 services:
   postgres:
@@ -112,6 +135,31 @@ services:
       timeout: 3s
       retries: 12
 
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: unless-stopped
+    volumes:
+      - nibleaf-qdrant:/qdrant/storage
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME:-nibleaf}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-nibleaf}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - nibleaf-clickhouse:/var/lib/clickhouse
+      - nibleaf-clickhouse-logs:/var/log/clickhouse-server
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   # maxio — S3-compatible object storage. Auto-creates the bucket
   # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
   # so published doc assets load by their public URL. Console at /ui/.
@@ -144,6 +192,15 @@ services:
         condition: service_healthy
     restart: "no"
 
+  analytics-migrate:
+    image: nibleaf:latest
+    command: ["clickhouse-migrate"]
+    environment: *service-env
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: "no"
+
   server:
     build: *build
     image: nibleaf:latest
@@ -157,6 +214,8 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -177,6 +236,8 @@ services:
     depends_on:
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -210,4 +271,7 @@ services:
 volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
+  nibleaf-qdrant:
   nibleaf-maxio:
+  nibleaf-clickhouse:
+  nibleaf-clickhouse-logs:

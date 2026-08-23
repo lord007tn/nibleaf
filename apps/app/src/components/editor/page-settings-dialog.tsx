@@ -14,13 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';

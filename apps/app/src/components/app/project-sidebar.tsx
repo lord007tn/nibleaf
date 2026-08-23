@@ -1,3 +1,4 @@
+import { useDirection } from '@nibleaf/design-system/components/ui/direction';
 import {
   Sidebar,
   SidebarContent,
@@ -7,19 +8,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@nibleaf/design-system/components/ui/sidebar';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BarChart3, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { SiteSwitcher } from '@/components/app/site-switcher';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 type NavItem = { labelKey: MessageKey; to: string; icon: LucideIcon; isActive: boolean };
 
 /** Per-site sidebar: site switcher, the site's sections, and the account footer. */
 export function ProjectSidebar({ projectId }: { projectId: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const t = useT();
+  const { t } = useLocale();
+  const direction = useDirection();
 
   const base = `/app/projects/${projectId}`;
   const nav: NavItem[] = [
@@ -30,7 +32,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   ];
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar side={direction === 'rtl' ? 'right' : 'left'} variant="inset">
       <SidebarHeader>
         <SiteSwitcher projectId={projectId} />
       </SidebarHeader>

@@ -1,4 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection } from '@tiptap/pm/state';
 import { CellSelection } from '@tiptap/pm/tables';
@@ -6,8 +8,6 @@ import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link as LinkIcon, Strikethrough, Unlink } from 'lucide-react';
 import { type ComponentType, useEffect, useState } from 'react';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { normalizeLinkUrl } from './link-utils';
 
 interface EditorBubbleMenuProps {

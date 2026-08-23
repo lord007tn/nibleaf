@@ -1,3 +1,4 @@
+import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf/shared/themes';
 import type {
   AddDomainBody,
   AiDraftBody,
@@ -22,8 +23,9 @@ import type {
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { mutateData } from './client-helpers';
+import { answerSiteFn } from '@/functions/site-search';
+import { api } from '@/services/api';
+import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type {
   AiDraftResult,
@@ -40,6 +42,49 @@ import type {
   Project,
   WorkspaceSettings,
 } from './types';
+
+export const useAnswerSite = () =>
+  useMutation({
+    mutationFn: (input: { projectId: string; query: string; language?: string; version?: string }) => answerSiteFn({ data: input }),
+  });
+
+export interface ProjectThemeImportResult {
+  applied: boolean;
+  mode: 'merge' | 'replace';
+  migratedFrom?: 0;
+  changes: ThemeConfigChange[];
+  theme: ResolvedTheme;
+  template: ThemeTemplateV1;
+  publishedChangesPending: boolean;
+}
+
+export const useExportProjectTheme = (projectId: string) =>
+  useMutation({
+    mutationFn: async () =>
+      getData<{ template: ThemeTemplateV1; json: string }>(
+        await api.app.projects[':id']['theme-template'].$get({ param: { id: projectId } }),
+        'theme template',
+      ),
+  });
+
+export const useImportProjectTheme = (projectId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ template, mode, apply }: { template: unknown; mode: 'merge' | 'replace'; apply: boolean }) =>
+      mutateData<ProjectThemeImportResult>(
+        await api.app.projects[':id']['theme-template'].import.$post({
+          param: { id: projectId },
+          json: { template, mode, apply },
+        }),
+        apply ? 'Could not apply the theme template.' : 'Could not validate the theme template.',
+      ),
+    onSuccess: (_, variables) => {
+      if (!variables.apply) return;
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    },
+  });
+};
 
 export const useCreateProject = () => {
   const qc = useQueryClient();

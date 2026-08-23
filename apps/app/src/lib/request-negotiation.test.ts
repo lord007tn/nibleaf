@@ -72,7 +72,7 @@ describe('isDocumentPath', () => {
     expect(isDocumentPath(pathname)).toBe(true);
   });
 
-  it.each(['/api/public/sites/project', '/assets/app.js', '/brand/logo.svg', '/favicon.ico'])('excludes %s', (pathname) => {
+  it.each(['/api/public/sites/project', '/assets/app.js', '/_serverFn/handler', '/brand/logo.svg', '/favicon.ico'])('excludes %s', (pathname) => {
     expect(isDocumentPath(pathname)).toBe(false);
   });
 });

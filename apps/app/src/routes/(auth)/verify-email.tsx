@@ -1,14 +1,14 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AuthLayout } from '@/layouts/auth';
-import { authClient, useSession } from '@/lib/auth-client';
-import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
+import { authClient, useSession } from '@/services/auth-client';
 
 interface VerifyEmailSearch {
   email?: string;

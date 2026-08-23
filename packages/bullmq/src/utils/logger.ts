@@ -1,3 +1,5 @@
-import { createLogger } from '@nibleaf/logger';
+import { createLogger, type Logger } from '@nibleaf/logger';
 
-export const queueLogger = createLogger({ component: 'bullmq' });
+// The public annotation keeps TypeScript 7 from leaking pnpm's installation
+// path for pino into this package's inferred declaration name.
+export const queueLogger: Logger = createLogger({ component: 'bullmq' });

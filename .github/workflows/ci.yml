@@ -33,6 +33,19 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8-alpine
+        env:
+          CLICKHOUSE_DB: nibleaf_analytics
+          CLICKHOUSE_PASSWORD: nibleaf
+          CLICKHOUSE_USER: nibleaf
+        ports:
+          - 8123:8123
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://127.0.0.1:8123/ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     steps:
       - uses: actions/checkout@v7
 
@@ -58,6 +71,21 @@ jobs:
           pnpm --filter @nibleaf/database exec prisma migrate deploy
           pnpm --filter @nibleaf/database exec prisma migrate status
           pnpm --filter @nibleaf/database smoke
+
+      - name: Exercise ClickHouse analytics migrations
+        env:
+          ANALYTICS_HASH_SALT: ci-analytics-hash-salt
+          ANALYTICS_MODE: dual_write
+          CLICKHOUSE_DATABASE: nibleaf_analytics
+          CLICKHOUSE_READER_PASSWORD: nibleaf
+          CLICKHOUSE_READER_USERNAME: nibleaf
+          CLICKHOUSE_URL: http://127.0.0.1:8123
+          CLICKHOUSE_WRITER_PASSWORD: nibleaf
+          CLICKHOUSE_WRITER_USERNAME: nibleaf
+          CLICKHOUSE_INTEGRATION: "1"
+        run: |
+          pnpm --filter @nibleaf/clickhouse migrate
+          pnpm --filter @nibleaf/clickhouse test
 
       - name: Check documentation
         run: pnpm docs:check

@@ -3,6 +3,7 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useDebouncedCallback } from '@tanstack/react-pacer';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
@@ -57,7 +58,6 @@ import {
 } from '@/hooks/api';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
-import { useT } from '@/lib/i18n';
 import { typographyVars } from '@/lib/typography';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({

@@ -1,11 +1,11 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { Field, SaveBar, SectionHeader, Segmented, saveConfigSection } from './shared';
 
 const HEADING_FONTS: [string, ...string[]] = ['Geist', 'Inter', 'Söhne', 'IBM Plex Sans', 'System UI'];

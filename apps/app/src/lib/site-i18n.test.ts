@@ -1,5 +1,5 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { describe, expect, it } from 'vitest';
-import { siteT } from '@/lib/site-i18n';
 
 describe('published-site reader localization', () => {
   it('localizes reader controls and MDX defaults for Arabic language variants', () => {

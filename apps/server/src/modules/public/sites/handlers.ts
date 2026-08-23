@@ -1,7 +1,9 @@
-import { searchQuery, trackEventBody } from '@nibleaf/validators';
+import { publicAnalyticsEventSchema } from '@nibleaf/clickhouse';
+import { searchAnswerBody, searchQuery } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import {
+  answerSite,
   getSite,
   getSiteChangelog,
   getSiteChangelogRss,
@@ -74,7 +76,13 @@ const app = new Hono<HonoEnv>()
     ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version) }, 200);
   })
-  .post('/:id/events', ...sitesRoutes.track, validator('json', trackEventBody), async (ctx) => {
+  .post('/:id/answer', ...sitesRoutes.answer, validator('json', searchAnswerBody), async (ctx) => {
+    const { q, lang, version } = ctx.req.valid('json');
+    ctx.header('Cache-Control', 'private, no-store');
+    ctx.header('Vary', 'Cookie, Authorization');
+    return ctx.json({ data: await answerSite(ctx.req.param('id'), q, lang, version) }, 200);
+  })
+  .post('/:id/events', ...sitesRoutes.track, validator('json', publicAnalyticsEventSchema), async (ctx) => {
     ctx.header('Cache-Control', 'private, no-store');
     return ctx.json({ data: await recordSiteEvent(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
   })

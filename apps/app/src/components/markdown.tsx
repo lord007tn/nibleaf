@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { siteT } from '@nibleaf/i18n/site';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -33,7 +34,6 @@ import {
 } from '@/components/site/mdx-components';
 import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
-import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored

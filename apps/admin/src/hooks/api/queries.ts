@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api, type InferResponseType } from '@/lib/api';
+import { api, type InferResponseType } from '@/services/api';
 
 export type AdminOverview = InferResponseType<typeof api.admin.overview.$get>['data'];
 export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data'][number];

@@ -224,15 +224,6 @@ function RtlDocumentationReadinessPage() {
             >
               Create a sample project <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-            <a
-              className="inline-flex h-10 items-center justify-center rounded-md border border-background/25 px-4 font-medium text-sm hover:bg-background/10"
-              href="https://github.com/lord007tn/nibleaf/tree/main/fixtures/rtl-readiness"
-              onClick={() => trackCta('fixture_corpus', 'result_bridge')}
-              rel="noreferrer"
-              target="_blank"
-            >
-              Inspect the open corpus
-            </a>
           </div>
         </div>
       </section>

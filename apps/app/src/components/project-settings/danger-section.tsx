@@ -1,13 +1,13 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/confirm';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useDeleteProject, useProjectMembers, useTransferProjectOwnership } from '@/hooks/api';
-import { useSession } from '@/lib/auth-client';
-import { useT } from '@/lib/i18n';
+import { useSession } from '@/services/auth-client';
 import { SectionHeader } from './shared';
 
 export function DangerSection({ project }: { project: Project }) {

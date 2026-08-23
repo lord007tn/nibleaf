@@ -183,6 +183,21 @@ export const listReaderAccess = async (projectId: string) => {
 
 export const setProjectAccessMode = async (projectId: string, actorUserId: string, body: ProjectAccessModeBody) => {
   const project = await prisma.project.update({ where: { id: projectId }, data: { accessMode: body.mode }, select: { accessMode: true } });
+  const deployment = await prisma.deployment.findFirst({
+    where: { projectId, status: 'READY' },
+    orderBy: { version: 'desc' },
+    select: { id: true },
+  });
+  if (deployment) {
+    // Search payload visibility is server-derived. Re-upsert the immutable
+    // deployment after an access-mode change so the hybrid index converges to
+    // the new gate; until it does, a visibility mismatch fails closed.
+    await createJob(
+      QueueNames.SEARCH,
+      { name: 'index-deployment', data: { projectId, deploymentId: deployment.id } },
+      { jobId: `search-access-${projectId}-${deployment.id}-${body.mode.toLowerCase()}` },
+    ).catch(() => undefined);
+  }
   await logAudit({ projectId, actorUserId, action: 'ACCESS_MODE_CHANGED', metadata: { mode: body.mode } });
   return project;
 };

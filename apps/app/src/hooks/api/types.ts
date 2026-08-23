@@ -237,17 +237,6 @@ export interface Asset {
   createdAt: string;
 }
 
-export interface AnalyticsOverview {
-  range: string;
-  totalViews: number;
-  uniqueVisitors: number;
-  timeseries: Array<{ date: string; views: number }>;
-  topPages: Array<{ path: string; views: number }>;
-  topSearches: Array<{ query: string; count: number }>;
-  referrers: Array<{ referrer: string; views: number }>;
-  languages: Array<{ language: string; views: number }>;
-}
-
 /** Real per-site usage counters for the Usage settings tab. */
 export interface ProjectUsage {
   /** Renderable pages (kind PAGE) on the default branch, across all languages. */
@@ -263,25 +252,13 @@ export interface ProjectUsage {
     lastPublishedAt: string | null;
   };
   traffic: {
-    pageviews30d: number;
-    searches30d: number;
+    pageviews30d: number | null;
+    searches30d: number | null;
   };
   storage: {
     bytes: number;
     assets: number;
   };
-}
-
-export interface WorkspaceAnalytics {
-  range: string;
-  totalViews: number;
-  uniqueVisitors: number;
-  timeseries: Array<{ date: string; views: number }>;
-  byProject: Array<{ projectId: string; name: string; color: string; views: number }>;
-  topPages: Array<{ path: string; project: string; views: number }>;
-  referrers: Array<{ referrer: string; views: number }>;
-  devices: Array<{ device: string; count: number }>;
-  searches: { total: number; topTerms: Array<{ query: string; count: number }> };
 }
 
 export interface WorkspaceSettings {
@@ -425,4 +402,24 @@ export interface SearchHit {
   icon?: string;
   snippet: string;
   score: number;
+}
+
+export interface SearchCitation {
+  id: string;
+  pageId: string;
+  title: string;
+  path: string;
+  heading?: string;
+  snippet: string;
+  direction: 'ltr' | 'rtl';
+}
+
+export interface SearchAnswer {
+  status: 'answered' | 'no_answer';
+  answer: string;
+  confidence: number;
+  citations: SearchCitation[];
+  model?: string;
+  cacheHit: boolean;
+  quotaRemaining: number;
 }

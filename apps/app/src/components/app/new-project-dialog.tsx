@@ -3,11 +3,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { toast } from 'sonner';
 import { useCreateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
-import { useT } from '@/lib/i18n';
 
 export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const create = useCreateProject();

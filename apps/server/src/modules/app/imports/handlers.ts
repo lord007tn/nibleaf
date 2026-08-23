@@ -1,6 +1,7 @@
 import { ghostImportBody, mintlifyImportBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { trackProjectEvent } from '@/actions/analytics';
 import { type ImportSummary, importers } from '@/actions/importers';
 import { createNotificationsForOrgMembers } from '@/actions/notifications';
 import { badRequest } from '@/errors';
@@ -24,6 +25,34 @@ const notifyImportCompleted = (projectId: string, actorUserId: string, source: s
     actorUserId,
   ).catch(() => undefined);
 
+const trackedImport = async <T extends ImportSummary>(projectId: string, sourceType: 'ghost' | 'mintlify', run: () => Promise<T>): Promise<T> => {
+  const started = performance.now();
+  const operationId = `${sourceType}-${crypto.randomUUID()}`;
+  await trackProjectEvent(projectId, { name: 'import_started', sourceType, operationId }, { source: 'dashboard' }).catch(() => undefined);
+  try {
+    const result = await run();
+    await trackProjectEvent(
+      projectId,
+      {
+        name: 'import_completed',
+        sourceType,
+        operationId,
+        itemCount: result.imported + result.updated,
+        durationMs: Math.round(performance.now() - started),
+      },
+      { source: 'dashboard' },
+    ).catch(() => undefined);
+    return result;
+  } catch (error) {
+    await trackProjectEvent(
+      projectId,
+      { name: 'import_failed', sourceType, operationId, outcomeReason: 'import_failed', durationMs: Math.round(performance.now() - started) },
+      { source: 'dashboard' },
+    ).catch(() => undefined);
+    throw error;
+  }
+};
+
 // organizationId is the PROJECT's own org (resolved from :projectId by the guards),
 // mirroring the project-settings module. Mounted under /projects/:projectId/settings/import.
 const app = new Hono<HonoEnv>()
@@ -32,7 +61,9 @@ const app = new Hono<HonoEnv>()
     const user = getContextUserOrThrow();
     // Always present — the module is mounted under /projects/:projectId/settings/import.
     const projectId = ctx.req.param('projectId') ?? '';
-    const summary = await importers.mintlify.run({ organizationId, projectId, input: ctx.req.valid('json') });
+    const summary = await trackedImport(projectId, 'mintlify', () =>
+      importers.mintlify.run({ organizationId, projectId, input: ctx.req.valid('json') }),
+    );
     await notifyImportCompleted(projectId, user.id, 'Mintlify', summary);
     return ctx.json({ data: summary }, 200);
   })
@@ -50,7 +81,7 @@ const app = new Hono<HonoEnv>()
       const organizationId = getContextOrganizationIdOrThrow();
       const user = getContextUserOrThrow();
       const projectId = ctx.req.param('projectId') ?? '';
-      const summary = await importers.ghost.run({ organizationId, projectId, input: ctx.req.valid('json') });
+      const summary = await trackedImport(projectId, 'ghost', () => importers.ghost.run({ organizationId, projectId, input: ctx.req.valid('json') }));
       await notifyImportCompleted(projectId, user.id, 'Ghost', summary);
       return ctx.json({ data: summary }, 200);
     },

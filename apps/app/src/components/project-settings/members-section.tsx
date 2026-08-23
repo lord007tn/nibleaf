@@ -4,6 +4,8 @@ import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Crown, Link2, Mail, Trash2 } from 'lucide-react';
 import { useState } from 'react';
@@ -17,11 +19,9 @@ import {
   useTransferProjectOwnership,
   useUpdateProjectMemberRole,
 } from '@/hooks/api';
-import { useSession } from '@/lib/auth-client';
 import { email as validateEmail } from '@/lib/form';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
+import { useSession } from '@/services/auth-client';
 import { SectionHeader } from './shared';
 
 /** A small button that copies an invite link to the clipboard with feedback. */

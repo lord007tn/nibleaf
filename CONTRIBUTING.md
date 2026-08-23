@@ -69,8 +69,8 @@ the canonical site.
   feeds search, the table of contents, excerpts, and the live site. The editor
   round-trips Markdown — never persist ProseMirror/TipTap JSON.
 - **i18n is first-class.** New user-facing strings must be added to *both* the
-  English and Arabic dictionaries (`apps/app/src/lib/i18n/messages.ts`), and the
-  UI must work in RTL. Use logical CSS properties (`ms-*`/`me-*`, `start`/`end`).
+  English and Arabic Paraglide catalogs (`packages/i18n/messages/*.json`), and
+  the UI must work in RTL. Use logical CSS properties (`ms-*`/`me-*`, `start`/`end`).
 - **Commits**: short, imperative, scoped (e.g. `editor: fix slash menu in RTL`).
 - **Tests**: add or update tests for behavior changes. Pure logic lives in
   `packages/*` and is the easiest to cover.

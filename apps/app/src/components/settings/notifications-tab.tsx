@@ -1,10 +1,10 @@
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
-import { useSession } from '@/lib/auth-client';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
+import { useSession } from '@/services/auth-client';
 import { SettingsSection } from './section';
 
 interface NotifItem {

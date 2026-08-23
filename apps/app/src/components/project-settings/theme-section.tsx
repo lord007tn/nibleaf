@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import {
   MAX_THEME_TEMPLATE_BYTES,
   type NibleafThemeConfig,
@@ -8,23 +9,16 @@ import {
   THEME_PRESETS,
   THEME_SCHEMA_VERSION,
   type ThemeColorKey,
-  type ThemeConfigChange,
   type ThemeOwnedProjectConfig,
   type ThemePresetId,
-  type ThemeTemplateV1,
   themeContrastIssues,
 } from '@nibleaf/shared/themes';
 import type { ProjectConfig } from '@nibleaf/validators';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, FileJson, RotateCcw, Undo2, Upload } from 'lucide-react';
 import { type ChangeEvent, type CSSProperties, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
-import type { Project } from '@/hooks/api';
-import { queryKeys, useUpdateProjectConfig } from '@/hooks/api';
-import { getData, mutateData } from '@/hooks/api/client-helpers';
-import { api } from '@/lib/api';
-import { useT } from '@/lib/i18n';
+import { type Project, type ProjectThemeImportResult, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
 import { projectThemeStyle, projectThemeVariables } from '@/lib/site-theme';
 import { Field, SaveBar, SectionHeader, Segmented } from './shared';
 
@@ -35,21 +29,6 @@ type ImportMode = 'merge' | 'replace';
 interface ThemeDraft {
   theme: NibleafThemeConfig;
   appearance: Appearance;
-}
-
-interface ThemeExportResult {
-  template: ThemeTemplateV1;
-  json: string;
-}
-
-interface ThemeImportResult {
-  applied: boolean;
-  mode: ImportMode;
-  migratedFrom?: 0;
-  changes: ThemeConfigChange[];
-  theme: ReturnType<typeof resolveTheme>;
-  template: ThemeTemplateV1;
-  publishedChangesPending: boolean;
 }
 
 const fullPresetTheme = (preset: ThemePresetId): NibleafThemeConfig => {
@@ -197,8 +176,9 @@ function NativeSelect<T extends string>({
 
 export function ThemeSection({ project }: { project: Project }) {
   const t = useT();
-  const queryClient = useQueryClient();
   const updateConfig = useUpdateProjectConfig(project.id);
+  const importProjectTheme = useImportProjectTheme(project.id);
+  const exportProjectTheme = useExportProjectTheme(project.id);
   const saved = useMemo(() => initialDraft(project), [project]);
   const [draft, setDraft] = useState<ThemeDraft>(saved);
   const [history, setHistory] = useState<ThemeDraft[]>([]);
@@ -208,7 +188,7 @@ export function ThemeSection({ project }: { project: Project }) {
   const [importMode, setImportMode] = useState<ImportMode>('merge');
   const [importText, setImportText] = useState('');
   const [importTemplate, setImportTemplate] = useState<unknown>();
-  const [importPreview, setImportPreview] = useState<ThemeImportResult>();
+  const [importPreview, setImportPreview] = useState<ProjectThemeImportResult>();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const change = (next: ThemeDraft | ((current: ThemeDraft) => ThemeDraft)) => {
@@ -226,40 +206,37 @@ export function ThemeSection({ project }: { project: Project }) {
   const contrastIssues = themeContrastIssues(resolved);
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved);
 
-  const previewImport = useMutation({
-    mutationFn: async ({ template, apply }: { template: unknown; apply: boolean }) =>
-      mutateData<ThemeImportResult>(
-        await api.app.projects[':id']['theme-template'].import.$post({
-          param: { id: project.id },
-          json: { template, mode: importMode, apply },
-        }),
-        apply ? t('settings.theme.import.applyError') : t('settings.theme.import.previewError'),
-      ),
-    onSuccess: (result, variables) => {
-      setImportPreview(result);
-      if (variables.apply) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.all() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(project.id) });
-        setDraft({
-          theme: result.template.config.theme ?? fullPresetTheme(result.theme.id),
-          appearance: result.template.config.styling?.theme ?? 'light',
-        });
-        setHistory([]);
-        toast.success(t('settings.theme.import.applied'));
-      }
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.theme.import.previewError')),
-  });
+  const importTheme = (template: unknown, apply: boolean) => {
+    importProjectTheme.mutate(
+      { template, mode: importMode, apply },
+      {
+        onSuccess: (result) => {
+          setImportPreview(result);
+          if (apply) {
+            setDraft({
+              theme: result.template.config.theme ?? fullPresetTheme(result.theme.id),
+              appearance: result.template.config.styling?.theme ?? 'light',
+            });
+            setHistory([]);
+            toast.success(t('settings.theme.import.applied'));
+          }
+        },
+        onError: (error) =>
+          toast.error(
+            error instanceof Error ? error.message : apply ? t('settings.theme.import.applyError') : t('settings.theme.import.previewError'),
+          ),
+      },
+    );
+  };
 
-  const exportTheme = useMutation({
-    mutationFn: async () =>
-      getData<ThemeExportResult>(await api.app.projects[':id']['theme-template'].$get({ param: { id: project.id } }), 'theme template'),
-    onSuccess: ({ json }) => {
-      downloadText(`${project.slug || 'nibleaf'}-theme.json`, json);
-      toast.success(t('settings.theme.exported'));
-    },
-    onError: () => toast.error(t('settings.theme.exportError')),
-  });
+  const exportTheme = () =>
+    exportProjectTheme.mutate(undefined, {
+      onSuccess: ({ json }) => {
+        downloadText(`${project.slug || 'nibleaf'}-theme.json`, json);
+        toast.success(t('settings.theme.exported'));
+      },
+      onError: () => toast.error(t('settings.theme.exportError')),
+    });
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -289,7 +266,7 @@ export function ThemeSection({ project }: { project: Project }) {
       const template = JSON.parse(importText) as unknown;
       setImportTemplate(template);
       setImportPreview(undefined);
-      previewImport.mutate({ template, apply: false });
+      importTheme(template, false);
     } catch {
       toast.error(t('settings.theme.import.invalidJson'));
     }
@@ -576,8 +553,8 @@ export function ThemeSection({ project }: { project: Project }) {
             <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.exportHint')}</p>
             <button
               className="mt-4 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm disabled:opacity-50"
-              disabled={exportTheme.isPending}
-              onClick={() => exportTheme.mutate()}
+              disabled={exportProjectTheme.isPending}
+              onClick={exportTheme}
               type="button"
             >
               <Download className="size-4" /> {t('settings.theme.export')}
@@ -623,7 +600,7 @@ export function ThemeSection({ project }: { project: Project }) {
           />
           <button
             className="h-9 cursor-pointer rounded-md border border-border px-3 text-sm disabled:opacity-50"
-            disabled={!importText.trim() || previewImport.isPending}
+            disabled={!importText.trim() || importProjectTheme.isPending}
             onClick={parseImportText}
             type="button"
           >
@@ -654,8 +631,8 @@ export function ThemeSection({ project }: { project: Project }) {
             </div>
             <button
               className="mt-3 h-9 cursor-pointer rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm disabled:opacity-50"
-              disabled={!importTemplate || importPreview.changes.length === 0 || previewImport.isPending}
-              onClick={() => importTemplate && previewImport.mutate({ template: importTemplate, apply: true })}
+              disabled={!importTemplate || importPreview.changes.length === 0 || importProjectTheme.isPending}
+              onClick={() => importTemplate && importTheme(importTemplate, true)}
               type="button"
             >
               {t('settings.theme.applyImport')}

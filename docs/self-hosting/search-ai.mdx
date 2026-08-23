@@ -1,0 +1,137 @@
+---
+title: 'Operate hybrid search and grounded answers'
+description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
+audience: 'self-hosted Nibleaf operators'
+content_type: 'how-to'
+last_reviewed: '2026-08-23'
+verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, and apps/worker/src/processors/search.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/search-ai'
+---
+
+Nibleaf v0.2 can retrieve published English, Arabic, and mixed-language content
+with a tenant-filtered BM25 and dense-vector hybrid index. Results mode remains
+available without an answer model. Grounded answers are a separate, explicit
+instance and site opt-in.
+
+## Understand the boundary
+
+`@nibleaf/search` owns language-aware chunking, normalization, sparse vectors,
+fusion result shaping, citation validation, prompt hardening, and the versioned
+analytics event contract. `@nibleaf/qdrant` owns only the versioned collection,
+payload indexes, alias, and tenant-checked operations through Qdrant's official
+JavaScript SDK. The server derives every project, deployment, version, language,
+visibility, and reader page-grant filter; the worker indexes immutable published
+snapshots. Clients cannot submit scope. The published reader calls TanStack Start
+server functions through TanStack Query hooks; only the server function reaches
+the Hono RPC endpoint, preserving its request context and authorization checks.
+
+The collection name is
+`<QDRANT_COLLECTION_ALIAS>_<QDRANT_COLLECTION_VERSION>_<dimensions>`. The alias
+is stable. Chunk IDs are deterministic from tenant, deployment, version, page,
+ordinal, and content hash, so retries are idempotent. Qdrant's sparse `bm25`
+vector uses an IDF corpus restricted by the same tenant and authorization filter
+as the query.
+
+## Configure providers
+
+Start from `.env.production.example`. Keep `SEARCH_RUNTIME=shadow`. Set a
+Qdrant API key when Qdrant is reachable outside a private container network.
+Configure `SEARCH_EMBEDDING_*` for OpenAI or another API-compatible embedding
+provider. Embeddings use the official OpenAI SDK with a configurable base URL.
+The configured dimension must match `QDRANT_VECTOR_SIZE`; changing the embedding
+model, dimension, or embedding-input format requires a new collection version.
+
+For the portable production stack, add the v0.2 search overlay to every Compose
+operation (including pull, up, config checks, and backup automation):
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
+```
+
+The overlay is separate so the checksummed v0.1.2 self-host release artifacts
+remain immutable. Coolify and the development stack include Qdrant directly.
+
+To offer answers, set `SEARCH_ANSWER_ENABLED=true`, configure a separate
+least-privilege OpenRouter `SEARCH_ANSWER_API_KEY`, and pin
+`SEARCH_ANSWER_MODEL`. Answer generation uses TanStack AI's OpenRouter adapter,
+which uses OpenRouter's official SDK and native structured output. Then an
+administrator must enable **Grounded AI answers** for each intended site.
+Quotas are atomic per project and day in Redis. Requests also have a separate
+per-IP minute limit, provider timeout, and request cancellation. If Redis is
+unavailable, answer quota checks fail closed.
+
+Answer generation is intentionally non-streaming in this release. Nibleaf first
+validates the complete structured response, rejects unknown citations and
+unsupported claims, and only then returns it. This avoids streaming unvalidated
+model text. Search results remain immediate and non-generative.
+
+## Index and evaluate
+
+Publishing enqueues an idempotent deployment index job. A retry diffs chunk IDs
+and payloads, skips unchanged chunks, updates metadata without embedding, and
+deletes only stale points inside the project and deployment filter. A new
+deployment reuses dense vectors from the nearest READY predecessor when the
+complete embedding-input hash matches, so unchanged documentation is not fully
+re-embedded. Only new or changed chunks call the embedding provider. Access-mode
+changes reindex the latest deployment; a visibility mismatch returns no hybrid
+result until convergence. To rebuild existing data, enqueue `reindex-project`
+through the search queue. Writes always target the configured versioned physical
+collection rather than the active read alias, so a new collection can be fully
+populated before cutover without clearing the serving collection.
+
+Run the repeatable offline fixtures and provider benchmark:
+
+```bash
+pnpm --filter @nibleaf/search test
+pnpm --filter @nibleaf/search eval:rag
+```
+
+The benchmark reads `packages/search/eval/rag-answer-fixtures.json`, resolves
+the configured model IDs against OpenRouter's live catalog, and records Arabic,
+English, mixed-language, citation, groundedness/no-answer, latency, token, and
+provider-reported cost evidence under `output/search-eval/`. It does not invent
+missing cost or usage. Keep output files private if they contain sensitive docs.
+
+Compare shadow retrieval by tenant, language, authorized reader scope, zero-result
+rate, ranking, and latency. The current server returns legacy results in shadow
+mode; hybrid failures cannot affect readers. Search telemetry is emitted through
+`SearchAnalyticsEventV1`; send that contract to the separate analytics pipeline
+rather than creating a second search analytics store.
+
+## Cut over and roll back
+
+1. Keep the current alias active and bump `QDRANT_COLLECTION_VERSION` for a
+   schema, chunker, model, or vector-dimension migration.
+2. Populate the new physical collection and verify exact counts per project,
+   deployment, version, language, visibility, and authorized page set.
+3. Exercise public, workspace, and restricted-reader negative cases in both
+   languages. Confirm private chunks, facets, counts, citations, caches, and
+   analytics context never cross scope.
+4. Switch the alias explicitly, confirming both collection names. For example,
+   after configuring `QDRANT_COLLECTION_VERSION=v2` and a 1536-dimension index:
+
+   ```bash
+   QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
+   QDRANT_SWITCH_TO=nibleaf_search_active_v2_1536 \
+   pnpm --filter @nibleaf/qdrant alias:switch
+   ```
+
+   Then set `SEARCH_RUNTIME=hybrid` and watch error, no-result, latency, and
+   answer quality signals.
+5. Retain the previous physical collection until the observation window closes.
+
+For an immediate retrieval rollback, set `SEARCH_RUNTIME=legacy`; restart the
+server only if your environment does not reload configuration. To roll back a
+collection migration, point the alias at the retained collection and restore
+the matching embedding model and dimension. Disabling `SEARCH_ANSWER_ENABLED`
+removes answer capability without affecting results mode.
+
+## Remove data
+
+Project deletion enqueues a project-filtered Qdrant delete across every retained
+versioned collection under the configured alias prefix. Deployment cleanup uses
+the same sweep through `delete-deployment`. Confirm an exact project-scoped
+count of zero after the job, then apply your normal Qdrant backup-retention
+policy. Never delete a physical collection while its alias is serving traffic.

@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
+import { useT } from '@nibleaf/i18n/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
@@ -26,11 +27,11 @@ import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
-import { queryKeys, useAnalytics, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import { queryKeys, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import { useProjectAnalytics } from '@/hooks/api/analytics';
 import { mutateData } from '@/hooks/api/client-helpers';
-import { api } from '@/lib/api';
 import { useFormatters, viewsTrend } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { api } from '@/services/api';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
   component: SiteOverviewPage,
@@ -54,7 +55,7 @@ function SiteOverviewPage() {
   const { data: members } = useProjectMembers(projectId);
   const { data: deployments } = useDeployments(projectId);
   const { data: domains } = useDomains(projectId);
-  const { data: analytics, isPending: analyticsPending } = useAnalytics(projectId, range);
+  const { data: analytics, isPending: analyticsPending } = useProjectAnalytics(projectId, range);
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const memberCount = members?.members.length ?? 0;

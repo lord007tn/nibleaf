@@ -3,15 +3,15 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
 import { AuthLayout } from '@/layouts/auth';
-import { authClient, signIn } from '@/lib/auth-client';
-import { useT } from '@/lib/i18n';
 import { readPendingInvitation } from '@/lib/invitations';
 import { sendMarketingAnalyticsEvent } from '@/lib/marketing-analytics';
+import { authClient, signIn } from '@/services/auth-client';
 
 interface AuthSearch {
   invite?: string;

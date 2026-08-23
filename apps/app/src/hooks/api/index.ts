@@ -1,3 +1,4 @@
+export * from './analytics';
 export * from './mutations';
 export * from './queries';
 export * from './query-keys';

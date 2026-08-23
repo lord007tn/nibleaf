@@ -1,13 +1,13 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
 import { useLanguages, useUpdateLanguage, useUpdateProjectConfig, useUploadAsset } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import {
   DirtyStateReporter,
   FIELD_INPUT,

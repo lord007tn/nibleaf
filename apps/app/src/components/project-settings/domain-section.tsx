@@ -3,12 +3,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/de
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { Check, ChevronDown, Copy, ExternalLink, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { copyToClipboard } from '@/lib/invitations';
 import { FIELD_MONO, SectionHeader } from './shared';
 

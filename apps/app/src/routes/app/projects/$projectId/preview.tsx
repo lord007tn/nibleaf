@@ -1,6 +1,7 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Eye, FileText } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -9,7 +10,6 @@ import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@
 import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
 import type { PageNode } from '@/hooks/api/types';
-import { useT } from '@/lib/i18n';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({

@@ -1,4 +1,13 @@
+import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
+import {
+  type AnalyticsPayload,
+  buildAnalyticsEvent,
+  keys as clickHouseKeys,
+  clickHouseWritesEnabled,
+  deterministicAnalyticsEventId,
+  insertAnalyticsEvents,
+} from '@nibleaf/clickhouse';
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
@@ -7,6 +16,34 @@ import type { Job } from 'bullmq';
 import { notifyDeployment } from '../lib/notify';
 
 const log = createLogger({ processor: 'publish' });
+
+const trackPublishLifecycle = async (
+  project: { id: string; organizationId: string; accessMode: string; config: unknown },
+  deploymentId: string,
+  payload: AnalyticsPayload,
+): Promise<void> => {
+  const config = clickHouseKeys();
+  if (!clickHouseWritesEnabled(config.ANALYTICS_MODE) || !config.ANALYTICS_HASH_SALT) return;
+  const projectConfig = project.config as { visibility?: string } | null;
+  const visibility = project.accessMode === 'PUBLIC' && projectConfig?.visibility !== 'private' ? 'public' : 'private';
+  const event = buildAnalyticsEvent(
+    {
+      eventId: deterministicAnalyticsEventId(`${deploymentId}:${payload.name}`),
+      consentState: 'not_required',
+      payload,
+    },
+    {
+      tenantId: project.organizationId,
+      projectId: project.id,
+      siteId: project.id,
+      deploymentId,
+      source: 'worker',
+      privacy: { visibility, allowCampaignDimensions: false, allowRawPublicSearchQueries: false },
+      hashSalt: config.ANALYTICS_HASH_SALT,
+    },
+  );
+  await insertAnalyticsEvents([event]).catch(() => undefined);
+};
 
 const siteUrlFor = (projectId: string): string | undefined =>
   process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined;
@@ -272,6 +309,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (!project) {
       throw new Error(`project ${projectId} not found`);
     }
+    await trackPublishLifecycle(project, deploymentId, { name: 'publish_started', operationId: deploymentId, sourceType: auto ? 'api' : 'ui' });
     // Moderation backstop: a taken-down site must never build a new deployment,
     // even if a publish request slipped past the API-side check.
     if (project.takedownAt) {
@@ -306,7 +344,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       where: { id: deploymentId },
       data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, errorDetails: Prisma.DbNull, completedAt: new Date() },
     });
+    await trackPublishLifecycle(project, deploymentId, {
+      name: 'publish_completed',
+      operationId: deploymentId,
+      sourceType: auto ? 'api' : 'ui',
+      itemCount: pageCount,
+    });
     log.info({ deploymentId, pageCount }, 'deployment ready');
+    await createJob(QueueNames.SEARCH, { name: 'index-deployment', data: { projectId, deploymentId } }, { jobId: `search-${deploymentId}` }).catch(
+      (error) => log.warn({ projectId, deploymentId, error }, 'could not enqueue hybrid search indexing'),
+    );
     await logPlatformEvent('publish_ready', {
       userId: ready.createdById,
       projectId,
@@ -328,6 +375,17 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       },
     });
     const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
+    const analyticsProject = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, organizationId: true, accessMode: true, config: true },
+    });
+    if (analyticsProject) {
+      await trackPublishLifecycle(analyticsProject, deploymentId, {
+        name: 'publish_failed',
+        operationId: deploymentId,
+        outcomeReason: error instanceof PublishChecksError ? 'validation' : 'runtime',
+      });
+    }
     await logPlatformEvent('publish_failed', {
       userId: failed.createdById,
       projectId,

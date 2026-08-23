@@ -7,10 +7,9 @@ import { joinPath, slugify } from '@nibleaf/shared';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
-import { emailOTP, organization } from 'better-auth/plugins';
+import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { keys } from './keys.server';
 import { googleOAuthEnabled } from './providers';
-import { supportImpersonation } from './support-impersonation';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -732,7 +731,11 @@ export const auth = betterAuth({
     },
   },
   plugins: [
-    supportImpersonation(),
+    admin({
+      adminRoles: ['admin'],
+      defaultRole: 'user',
+      impersonationSessionDuration: 60 * 60,
+    }),
     emailOTP({
       // Customer sign-in doubles as passwordless sign-up. The API gateway adds
       // an admin-origin guard so this can never create an admin account.
@@ -859,6 +862,10 @@ export const auth = betterAuth({
             // sign-in. It has its own audit event and must not trigger a false
             // "new device" security email to the customer.
             if (session.impersonatedBy) {
+              await logPlatformEvent('admin_impersonation_started', {
+                userId: session.userId,
+                metadata: { actorUserId: String(session.impersonatedBy) },
+              });
               return;
             }
             const known = await prisma.session.count({
@@ -887,6 +894,16 @@ export const auth = betterAuth({
             );
           } catch {
             // never block sign-in
+          }
+        },
+      },
+      delete: {
+        after: async (session) => {
+          if (session.impersonatedBy) {
+            await logPlatformEvent('admin_impersonation_ended', {
+              userId: session.userId,
+              metadata: { actorUserId: String(session.impersonatedBy) },
+            });
           }
         },
       },

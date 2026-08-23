@@ -1,0 +1,9 @@
+{
+  "extends": "@nibleaf/tsconfig/react.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true
+  },
+  "include": ["src", "messages"]
+}

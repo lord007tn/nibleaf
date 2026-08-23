@@ -3,6 +3,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
@@ -10,7 +11,6 @@ import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
 import { useLanguages, useUpdateLanguage, useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
-import { useT } from '@/lib/i18n';
 import {
   FIELD_INPUT,
   FIELD_TEXTAREA,

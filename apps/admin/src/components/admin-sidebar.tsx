@@ -13,7 +13,7 @@ import {
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Activity, LayoutDashboard, LogOut, Server, Users } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
-import { signOut, useSession } from '@/lib/auth-client';
+import { signOut, useSession } from '@/services/auth-client';
 
 const NAV: { to: string; label: string; icon: ComponentType<SVGProps<SVGSVGElement>>; exact: boolean }[] = [
   { to: '/', label: 'Overview', icon: LayoutDashboard, exact: true },
