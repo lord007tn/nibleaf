@@ -30,13 +30,6 @@
     box-shadow: 0 12px 35px color-mix(in oklab, var(--theme-foreground) 9%, transparent);
   }
 
-  .nibleaf-site-chrome [data-theme-region="header"],
-  .nibleaf-site-chrome [data-theme-region="tabs"],
-  .nibleaf-site-chrome [data-theme-region="content-shell"],
-  .nibleaf-site-chrome [data-theme-region="footer"] {
-    max-width: var(--theme-content-max);
-  }
-
   .nibleaf-site-chrome[data-theme-sidebar="soft"] [data-theme-region="sidebar"] {
     background: var(--theme-muted);
     border-inline-end-color: transparent;
@@ -57,12 +50,9 @@
     border-inline-start: 1px solid var(--theme-border);
   }
 
-  .nibleaf-site-chrome[data-theme-width="focused"] [data-theme-region="article"] {
-    max-width: 42rem;
-  }
-
-  .nibleaf-site-chrome[data-theme-width="wide"] [data-theme-region="article"] {
-    max-width: 54rem;
+  .nibleaf-site-chrome [data-theme-component="callout"] {
+    border-color: var(--callout-border);
+    background: var(--callout-bg);
   }
 
   .nibleaf-site-chrome[data-theme-cards="lifted"] [data-theme-component="card"] {
@@ -128,9 +118,34 @@
     background: var(--theme-surface-raised, var(--popover));
     border-color: var(--theme-border, var(--border));
   }
+}
+
+/* These rules must live in Tailwind's utilities layer so theme mode wins over
+ * generated max-width, transition, and animation utilities on the same nodes. */
+@layer utilities {
+  .nibleaf-site-chrome [data-theme-region="header"],
+  .nibleaf-site-chrome [data-theme-region="tabs"],
+  .nibleaf-site-chrome [data-theme-region="content-shell"],
+  .nibleaf-site-chrome [data-theme-region="footer"] {
+    max-width: var(--theme-content-max);
+  }
+
+  .nibleaf-site-chrome[data-theme-width="focused"] [data-theme-region="article"] {
+    max-width: 42rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-width="balanced"] [data-theme-region="article"] {
+    max-width: 46rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-width="wide"] [data-theme-region="article"] {
+    max-width: 54rem;
+  }
 
   @media (prefers-reduced-motion: reduce) {
+    .nibleaf-site-chrome,
     .nibleaf-site-chrome *,
+    [data-theme-surface="search"],
     [data-theme-surface="search"] * {
       scroll-behavior: auto;
       transition-duration: 0.01ms;

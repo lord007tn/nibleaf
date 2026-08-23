@@ -1,6 +1,8 @@
 import {
   type ResolvedTheme,
   resolveTheme,
+  safeThemeFontFamily,
+  safeThemeHex,
   THEME_TOKEN_CSS_VARIABLES,
   type ThemeColorTokens,
   type ThemeOwnedProjectConfig,
@@ -8,38 +10,37 @@ import {
 import type { ProjectConfig } from '@nibleaf/validators';
 import type { CSSProperties } from 'react';
 
-const SAFE_HEX = /^#[0-9a-fA-F]{6}$/;
-
 const safeTokens = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): ThemeColorTokens =>
   Object.fromEntries(
-    Object.entries(tokens).map(([key, value]) => [key, SAFE_HEX.test(value) ? value.toLowerCase() : fallback[key as keyof ThemeColorTokens]]),
+    Object.entries(tokens).map(([key, value]) => [key, safeThemeHex(value, fallback[key as keyof ThemeColorTokens])]),
   ) as ThemeColorTokens;
+
+const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> => ({
+  '--background': tokens.canvas,
+  '--foreground': tokens.foreground,
+  '--card': tokens.surface,
+  '--card-foreground': tokens.foreground,
+  '--popover': tokens.surfaceRaised,
+  '--popover-foreground': tokens.foreground,
+  '--primary': tokens.accent,
+  '--primary-foreground': tokens.accentForeground,
+  '--secondary': tokens.muted,
+  '--secondary-foreground': tokens.foreground,
+  '--muted': tokens.muted,
+  '--muted-foreground': tokens.mutedForeground,
+  '--accent': tokens.muted,
+  '--accent-foreground': tokens.foreground,
+  '--destructive': tokens.danger,
+  '--border': tokens.border,
+  '--input': tokens.border,
+  '--ring': tokens.focus,
+});
 
 const tokenDeclarations = (tokens: ThemeColorTokens): string => {
   const semantic = Object.entries(tokens)
     .map(([key, value]) => `${THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens]}:${value}`)
     .join(';');
-  return [
-    semantic,
-    `--background:${tokens.canvas}`,
-    `--foreground:${tokens.foreground}`,
-    `--card:${tokens.surface}`,
-    `--card-foreground:${tokens.foreground}`,
-    `--popover:${tokens.surfaceRaised}`,
-    `--popover-foreground:${tokens.foreground}`,
-    `--primary:${tokens.accent}`,
-    `--primary-foreground:${tokens.accentForeground}`,
-    `--secondary:${tokens.muted}`,
-    `--secondary-foreground:${tokens.foreground}`,
-    `--muted:${tokens.muted}`,
-    `--muted-foreground:${tokens.mutedForeground}`,
-    `--accent:${tokens.muted}`,
-    `--accent-foreground:${tokens.foreground}`,
-    `--destructive:${tokens.danger}`,
-    `--border:${tokens.border}`,
-    `--input:${tokens.border}`,
-    `--ring:${tokens.focus}`,
-  ].join(';');
+  return [semantic, ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`)].join(';');
 };
 
 // Projects created before theme schema v1 keep the design-system palette they
@@ -69,11 +70,6 @@ const legacyTokenDeclarations = (accent: string): string =>
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
   radius === 'sharp' ? '0.125rem' : radius === 'pill' ? '1rem' : '0.625rem';
 
-const safeFont = (font?: string): string | undefined => {
-  const trimmed = font?.trim();
-  return trimmed && /^[\p{L}\p{N} ._-]+$/u.test(trimmed) ? trimmed : undefined;
-};
-
 export const resolveProjectTheme = (config?: ProjectConfig | null): ResolvedTheme => resolveTheme(config as ThemeOwnedProjectConfig | null);
 
 /** Run after the dashboard bootstrap in `<head>` so a published site's stored
@@ -87,10 +83,9 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const preset = resolveTheme({ theme: { preset: theme.id } });
   const light = safeTokens(theme.colors.light, preset.colors.light);
   const dark = safeTokens(theme.colors.dark, preset.colors.dark);
-  const headingFont = safeFont(config?.typography?.headingFont);
-  const codeFont = safeFont(config?.typography?.codeFont);
-  const legacyAccent =
-    config?.styling?.primaryColor && SAFE_HEX.test(config.styling.primaryColor) ? config.styling.primaryColor.toLowerCase() : '#5546e8';
+  const headingFont = safeThemeFontFamily(config?.typography?.headingFont);
+  const codeFont = safeThemeFontFamily(config?.typography?.codeFont);
+  const legacyAccent = safeThemeHex(config?.styling?.primaryColor, '#5546e8');
   const legacyDarkAccent = `color-mix(in oklab,${legacyAccent} 72%,white)`;
   const colorRules = config?.theme
     ? [
@@ -118,24 +113,7 @@ export const projectThemeVariables = (config?: ProjectConfig | null, mode: 'ligh
   const tokens = safeTokens(theme.colors[mode], preset.colors[mode]);
   return {
     ...Object.fromEntries(Object.entries(tokens).map(([key, value]) => [THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens], value])),
-    '--background': tokens.canvas,
-    '--foreground': tokens.foreground,
-    '--card': tokens.surface,
-    '--card-foreground': tokens.foreground,
-    '--popover': tokens.surfaceRaised,
-    '--popover-foreground': tokens.foreground,
-    '--primary': tokens.accent,
-    '--primary-foreground': tokens.accentForeground,
-    '--secondary': tokens.muted,
-    '--secondary-foreground': tokens.foreground,
-    '--muted': tokens.muted,
-    '--muted-foreground': tokens.mutedForeground,
-    '--accent': tokens.muted,
-    '--accent-foreground': tokens.foreground,
-    '--destructive': tokens.danger,
-    '--border': tokens.border,
-    '--input': tokens.border,
-    '--ring': tokens.focus,
+    ...designSystemAliases(tokens),
     '--radius': radiusValue(theme.layout.radius),
     color: tokens.foreground,
     backgroundColor: tokens.canvas,
@@ -154,7 +132,7 @@ export const projectThemeStyle = (config?: ProjectConfig | null): CSSProperties 
     '--typeset-flow': `${typography?.flow ?? (theme.layout.density === 'compact' ? '1' : theme.layout.density === 'relaxed' ? '1.5' : '1.25')}em`,
   } as Record<string, string>;
   if (typography?.baseSize) style.fontSize = `${typography.baseSize}px`;
-  const bodyFont = safeFont(typography?.bodyFont);
+  const bodyFont = safeThemeFontFamily(typography?.bodyFont);
   if (bodyFont) style.fontFamily = `'${bodyFont}','Noto Sans Arabic','Segoe UI',var(--font-sans,system-ui,sans-serif)`;
   return style as CSSProperties;
 };

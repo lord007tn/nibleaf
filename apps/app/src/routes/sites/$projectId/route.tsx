@@ -1,6 +1,7 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
+import { THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
@@ -170,12 +171,14 @@ function SiteChrome() {
       return;
     }
     const root = document.documentElement;
+    const dashboardColorScheme = root.style.colorScheme;
     const dashboardTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     const dashboardWasDark =
       dashboardTheme === 'dark' ||
       ((dashboardTheme === null || dashboardTheme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     return () => {
       root.classList.toggle('dark', dashboardWasDark);
+      root.style.colorScheme = dashboardColorScheme;
     };
   }, []);
   useEffect(() => {
@@ -330,7 +333,7 @@ function SiteChrome() {
       data-theme-header={resolvedTheme.layout.header}
       data-theme-id={resolvedTheme.id}
       data-theme-navigation={resolvedTheme.layout.navigation}
-      data-theme-schema="1"
+      data-theme-schema={THEME_SCHEMA_VERSION}
       data-theme-sidebar={resolvedTheme.layout.sidebar}
       data-theme-tables={resolvedTheme.components.tables}
       data-theme-tabs={resolvedTheme.components.tabs}

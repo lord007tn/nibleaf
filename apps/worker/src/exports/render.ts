@@ -1,6 +1,14 @@
 import path from 'node:path';
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
-import { resolveTheme, type ThemeColorTokens, type ThemeOwnedProjectConfig, themeTemplateFromConfig } from '@nibleaf/shared/themes';
+import {
+  resolveTheme,
+  safeThemeFontFamily,
+  safeThemeHex,
+  THEME_SCHEMA_VERSION,
+  type ThemeColorTokens,
+  type ThemeOwnedProjectConfig,
+  themeTemplateFromConfig,
+} from '@nibleaf/shared/themes';
 import { strToU8, zipSync } from 'fflate';
 import { Marked } from 'marked';
 
@@ -151,28 +159,23 @@ const LEGACY_DARK = {
   codeForeground: '#ecedf1',
 } satisfies ThemeColorTokens;
 
-const safeHex = (value: string, fallback: string): string => (/^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : fallback);
-const safeFont = (value?: string): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && /^[\p{L}\p{N} ._-]+$/u.test(trimmed) ? trimmed : undefined;
-};
 const declarations = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): string =>
   [
-    `--bg:${safeHex(tokens.canvas, fallback.canvas)}`,
-    `--fg:${safeHex(tokens.foreground, fallback.foreground)}`,
-    `--surface:${safeHex(tokens.surface, fallback.surface)}`,
-    `--muted-surface:${safeHex(tokens.muted, fallback.muted)}`,
-    `--muted:${safeHex(tokens.mutedForeground, fallback.mutedForeground)}`,
-    `--line:${safeHex(tokens.border, fallback.border)}`,
-    `--accent:${safeHex(tokens.accent, fallback.accent)}`,
-    `--accent-fg:${safeHex(tokens.accentForeground, fallback.accentForeground)}`,
-    `--focus:${safeHex(tokens.focus, fallback.focus)}`,
-    `--code:${safeHex(tokens.code, fallback.code)}`,
-    `--code-fg:${safeHex(tokens.codeForeground, fallback.codeForeground)}`,
-    `--info:${safeHex(tokens.info, fallback.info)}`,
-    `--success:${safeHex(tokens.success, fallback.success)}`,
-    `--warning:${safeHex(tokens.warning, fallback.warning)}`,
-    `--danger:${safeHex(tokens.danger, fallback.danger)}`,
+    `--bg:${safeThemeHex(tokens.canvas, fallback.canvas)}`,
+    `--fg:${safeThemeHex(tokens.foreground, fallback.foreground)}`,
+    `--surface:${safeThemeHex(tokens.surface, fallback.surface)}`,
+    `--muted-surface:${safeThemeHex(tokens.muted, fallback.muted)}`,
+    `--muted:${safeThemeHex(tokens.mutedForeground, fallback.mutedForeground)}`,
+    `--line:${safeThemeHex(tokens.border, fallback.border)}`,
+    `--accent:${safeThemeHex(tokens.accent, fallback.accent)}`,
+    `--accent-fg:${safeThemeHex(tokens.accentForeground, fallback.accentForeground)}`,
+    `--focus:${safeThemeHex(tokens.focus, fallback.focus)}`,
+    `--code:${safeThemeHex(tokens.code, fallback.code)}`,
+    `--code-fg:${safeThemeHex(tokens.codeForeground, fallback.codeForeground)}`,
+    `--info:${safeThemeHex(tokens.info, fallback.info)}`,
+    `--success:${safeThemeHex(tokens.success, fallback.success)}`,
+    `--warning:${safeThemeHex(tokens.warning, fallback.warning)}`,
+    `--danger:${safeThemeHex(tokens.danger, fallback.danger)}`,
   ].join(';');
 
 const themeConfigOf = (snapshot: SiteSnapshot): ThemeOwnedProjectConfig =>
@@ -203,9 +206,9 @@ const exportThemeCss = (snapshot: SiteSnapshot, print = false): string => {
         : '16px';
   const leading = typography?.leading ?? '1.7';
   const flow = `${typography?.flow ?? '1.25'}em`;
-  const bodyFont = safeFont(typography?.bodyFont);
-  const headingFont = safeFont(typography?.headingFont);
-  const codeFont = safeFont(typography?.codeFont);
+  const bodyFont = safeThemeFontFamily(typography?.bodyFont);
+  const headingFont = safeThemeFontFamily(typography?.headingFont);
+  const codeFont = safeThemeFontFamily(typography?.codeFont);
   const bodyStack = bodyFont
     ? `'${bodyFont}',"Noto Sans Arabic","Segoe UI",system-ui,sans-serif`
     : 'system-ui,-apple-system,"Segoe UI","Noto Sans Arabic",Arial,sans-serif';
@@ -238,7 +241,7 @@ const pageDocument = (snapshot: SiteSnapshot, page: SnapshotPage, assets: Export
   const themeCss = path.posix.relative(path.posix.dirname(current), 'theme/theme.css');
   const themeJs = path.posix.relative(path.posix.dirname(current), 'theme/theme.js');
   const theme = resolveTheme(themeConfigOf(snapshot));
-  return `<!doctype html><html lang="${escapeHtml(page.languageCode)}" dir="${direction.toLowerCase()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Nibleaf static export"><meta name="description" content="${escapeHtml(page.description ?? snapshot.project.description ?? '')}"><title>${escapeHtml(page.title)} – ${escapeHtml(snapshot.project.name)}</title><link rel="stylesheet" href="${themeCss}"></head><body data-theme-id="${theme.id}" data-theme-sidebar="${theme.layout.sidebar}" data-theme-navigation="${theme.layout.navigation}" data-theme-code="${theme.components.codeBlocks}" data-theme-callouts="${theme.components.callouts}"><div class="layout"><aside class="sidebar"><div class="brand">${escapeHtml(snapshot.project.name)}</div><div class="meta">Published archive · ${escapeHtml(snapshot.generatedAt)}</div><input class="search" type="search" placeholder="Search" data-static-search><div class="nav" data-static-nav>${navHtml(snapshot, page)}</div></aside><main><h1>${escapeHtml(page.title)}</h1>${renderPageMarkdown(snapshot, page, assets)}</main></div><script src="${themeJs}"></script></body></html>`;
+  return `<!doctype html><html lang="${escapeHtml(page.languageCode)}" dir="${direction.toLowerCase()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Nibleaf static export"><meta name="description" content="${escapeHtml(page.description ?? snapshot.project.description ?? '')}"><title>${escapeHtml(page.title)} – ${escapeHtml(snapshot.project.name)}</title><link rel="stylesheet" href="${themeCss}"></head><body data-theme-id="${theme.id}" data-theme-sidebar="${escapeHtml(theme.layout.sidebar)}" data-theme-navigation="${escapeHtml(theme.layout.navigation)}" data-theme-code="${escapeHtml(theme.components.codeBlocks)}" data-theme-callouts="${escapeHtml(theme.components.callouts)}"><div class="layout"><aside class="sidebar"><div class="brand">${escapeHtml(snapshot.project.name)}</div><div class="meta">Published archive · ${escapeHtml(snapshot.generatedAt)}</div><input class="search" type="search" placeholder="Search" data-static-search><div class="nav" data-static-nav>${navHtml(snapshot, page)}</div></aside><main><h1>${escapeHtml(page.title)}</h1>${renderPageMarkdown(snapshot, page, assets)}</main></div><script src="${themeJs}"></script></body></html>`;
 };
 
 const themeJs = (searchEntries: Array<{ title: string; path: string; text: string }>): string =>
@@ -274,7 +277,7 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   files['theme/theme.js'] = strToU8(themeJs(searchEntries));
   const theme = resolveTheme(themeConfigOf(snapshot));
   files['export.json'] = strToU8(
-    `${JSON.stringify({ generator: 'nibleaf', generatedAt: snapshot.generatedAt, project: { id: snapshot.project.id, name: snapshot.project.name, slug: snapshot.project.slug }, theme: { id: theme.id, schemaVersion: 1 }, pages: pages.length }, null, 2)}\n`,
+    `${JSON.stringify({ generator: 'nibleaf', generatedAt: snapshot.generatedAt, project: { id: snapshot.project.id, name: snapshot.project.name, slug: snapshot.project.slug }, theme: { id: theme.id, schemaVersion: THEME_SCHEMA_VERSION }, pages: pages.length }, null, 2)}\n`,
   );
   return { bytes: zipSync(files, { level: 6 }), contentType: 'application/zip', extension: 'zip' };
 };

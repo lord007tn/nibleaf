@@ -13,6 +13,9 @@ export function overlayLiveConfigPreservingPublishedRedirects(
   live: Record<string, unknown>,
 ): Record<string, unknown> | null {
   const merged = { ...live };
+  // A live v1 theme intentionally activates the atomic boundary before its
+  // first publish. Serving live here would leak the draft theme; overlaying the
+  // last READY snapshot instead keeps the existing public appearance stable.
   const hasVersionedTheme = Boolean(published && 'theme' in published) || 'theme' in live;
   if (hasVersionedTheme) {
     for (const key of PUBLISHED_THEME_KEYS) {

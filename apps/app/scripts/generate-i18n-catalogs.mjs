@@ -5,6 +5,7 @@ import { parse } from '@babel/parser';
 const appRoot = resolve(import.meta.dirname, '..');
 const force = process.argv.includes('--force');
 const allowSourceFallback = process.argv.includes('--allow-source-fallback');
+const refreshPrefix = process.argv.find((argument) => argument.startsWith('--refresh-prefix='))?.slice('--refresh-prefix='.length);
 let translationUnavailable = false;
 const targetLocales = {
   'zh-CN': 'zh-CN',
@@ -202,7 +203,10 @@ for (const source of sources) {
       }
     }
     const pending = Object.fromEntries(
-      Object.entries(catalog).filter(([key, value]) => !(key in existing) || (hasSourceSnapshot && previousSource[key] !== value)),
+      Object.entries(catalog).filter(
+        ([key, value]) =>
+          Boolean(refreshPrefix && key.startsWith(refreshPrefix)) || !(key in existing) || (hasSourceSnapshot && previousSource[key] !== value),
+      ),
     );
     process.stdout.write(`${source.variable}: ${locale} (${Object.keys(pending).length}/${Object.keys(catalog).length} messages) `);
     let additions = {};

@@ -5,6 +5,8 @@ import {
   inspectThemeTemplateInput,
   previewThemeConfigChanges,
   resolveTheme,
+  safeThemeFontFamily,
+  safeThemeHex,
   THEME_PRESETS,
   themeContrastIssues,
   themeOwnedConfig,
@@ -60,5 +62,12 @@ describe('documentation themes', () => {
       message: 'Theme template contains the unsafe key "__proto__".',
     });
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
+  });
+
+  it('shares strict CSS interpolation sanitizers across renderers', () => {
+    expect(safeThemeHex('#AABBCC', '#000000')).toBe('#aabbcc');
+    expect(safeThemeHex('red;}body{display:none', '#000000')).toBe('#000000');
+    expect(safeThemeFontFamily(' نسق عربي ')).toBe('نسق عربي');
+    expect(safeThemeFontFamily("Inter';}body{display:none}/*")).toBeUndefined();
   });
 });

@@ -273,9 +273,10 @@ export function ThemeSection({ project }: { project: Project }) {
     }
     const text = await file.text();
     setImportText(text);
+    setImportTemplate(undefined);
+    setImportPreview(undefined);
     try {
       setImportTemplate(JSON.parse(text) as unknown);
-      setImportPreview(undefined);
     } catch {
       toast.error(t('settings.theme.import.invalidJson'));
     }

@@ -118,6 +118,29 @@ describe('export renderers', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
+  it('escapes malformed legacy theme values in static HTML attributes', () => {
+    const malformed = {
+      ...themedSnapshot,
+      project: {
+        ...themedSnapshot.project,
+        config: {
+          ...themedSnapshot.project.config,
+          theme: {
+            preset: 'signal',
+            layout: { sidebar: 'soft" onmouseover="alert(1)' },
+            components: { callouts: 'solid" autofocus="true' },
+          },
+        },
+      },
+    } as SiteSnapshot;
+    const files = unzipSync(renderStaticHtml(malformed, assets).bytes);
+    const html = text(required(files['main/ar/intro/index.html']));
+    expect(html).not.toContain(' onmouseover="');
+    expect(html).not.toContain(' autofocus="');
+    expect(html).toContain('soft&quot; onmouseover=&quot;alert(1)');
+    expect(html).toContain('solid&quot; autofocus=&quot;true');
+  });
+
   it('omits hidden pages from static files and the offline search index', () => {
     const hidden = {
       ...required(snapshot.pages[1]),

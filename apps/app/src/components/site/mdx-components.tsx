@@ -27,8 +27,8 @@ export function Callout({ type, children }: { type?: string; children?: ReactNod
       style={
         {
           '--callout-color': meta.token,
-          borderColor: `color-mix(in oklab,${meta.token} 38%,transparent)`,
-          background: `color-mix(in oklab,${meta.token} 10%,transparent)`,
+          '--callout-border': `color-mix(in oklab,${meta.token} 38%,transparent)`,
+          '--callout-bg': `color-mix(in oklab,${meta.token} 10%,transparent)`,
         } as CSSProperties
       }
     >

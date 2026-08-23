@@ -4,6 +4,18 @@ export const MAX_THEME_TEMPLATE_BYTES = 128 * 1024;
 export const MAX_THEME_TEMPLATE_DEPTH = 12;
 export const MAX_THEME_TEMPLATE_NODES = 600;
 
+const SAFE_THEME_HEX = /^#[0-9a-fA-F]{6}$/;
+
+/** Sanitizers shared by every CSS renderer so live and exported themes enforce
+ * the same interpolation boundary. */
+export const safeThemeHex = (value: string | undefined, fallback: string): string =>
+  value && SAFE_THEME_HEX.test(value) ? value.toLowerCase() : fallback;
+
+export const safeThemeFontFamily = (value?: string): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && /^[\p{L}\p{N} ._-]+$/u.test(trimmed) ? trimmed : undefined;
+};
+
 export const THEME_PRESET_IDS = ['harbor', 'manuscript', 'signal'] as const;
 export type ThemePresetId = (typeof THEME_PRESET_IDS)[number];
 
