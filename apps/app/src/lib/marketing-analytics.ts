@@ -21,6 +21,7 @@ declare global {
 
 const GA4_ID = /^G-[A-Z0-9]{6,}$/u;
 const GTM_ID = /^GTM-[A-Z0-9]{6,}$/u;
+export const GTM_MARKETING_EVENT = 'nibleaf_marketing_event';
 let activeTarget: MarketingAnalyticsTarget | null = null;
 const CTA_DESTINATIONS = new Set<MarketingCtaDestination>([
   'comparison',
@@ -34,6 +35,14 @@ const CTA_DESTINATIONS = new Set<MarketingCtaDestination>([
 ]);
 const CTA_PLACEMENTS = new Set<MarketingCtaPlacement>(['final', 'header', 'hero', 'resource_bridge']);
 const TOOL_RESULTS = new Set(['insufficient_evidence', 'material_gaps', 'strong_evidence', 'work_remaining']);
+const GTM_MARKETING_EVENT_NAMES = new Set([
+  'cta_clicked',
+  'free_tool_completed',
+  'free_tool_cta_clicked',
+  'free_tool_started',
+  'page_view',
+  'sign_up',
+]);
 
 const exactKeys = (value: Record<string, unknown>, keys: string[]): boolean => {
   const actual = Object.keys(value).sort();
@@ -119,6 +128,24 @@ const getGtag = (): Gtag => {
     window.dataLayer?.push(arguments);
   };
   return window.gtag;
+};
+
+/** GTM Custom Event channel for approved marketing events. Consent Mode and
+ * the direct-GA fallback continue to use canonical gtag Arguments commands. */
+const pushGtmMarketingEvent = (
+  eventName: string,
+  properties: Record<string, boolean | number | string>,
+  pathname = window.location.pathname,
+): void => {
+  if (!GTM_MARKETING_EVENT_NAMES.has(eventName) || !window.dataLayer) return;
+  const cleanPath = pathname.split('?')[0]?.split('#')[0]?.slice(0, 256) || '/';
+  window.dataLayer.push({
+    ...properties,
+    event: GTM_MARKETING_EVENT,
+    event_name: eventName,
+    page_location: new URL(cleanPath, window.location.origin).href,
+    page_path: cleanPath,
+  });
 };
 
 const consentState = (granted: boolean) => ({
@@ -230,7 +257,7 @@ export function sendMarketingPageView(pathname: string, language: MarketingAnaly
     page_title: document.title.slice(0, 200),
   };
   if (activeTarget.provider === 'gtm') {
-    window.gtag?.('event', 'page_view', properties);
+    pushGtmMarketingEvent('page_view', properties, cleanPath);
     return;
   }
   window.gtag?.('event', 'page_view', { ...properties, send_to: activeTarget.id });
@@ -239,7 +266,7 @@ export function sendMarketingPageView(pathname: string, language: MarketingAnaly
 export function sendMarketingAnalyticsEvent(event: string, properties: Record<string, boolean | number | string>): void {
   if (typeof window === 'undefined' || !activeTarget || !isApprovedMarketingAnalyticsEvent(event, properties)) return;
   if (activeTarget.provider === 'gtm') {
-    window.gtag?.('event', event, properties);
+    pushGtmMarketingEvent(event, properties);
     return;
   }
   window.gtag?.('event', event, { ...properties, send_to: activeTarget.id });
