@@ -140,7 +140,7 @@ also verifies the release's production Compose file before it writes a mode-600
 `.env` or starts the stack:
 
 ```bash
-set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "c8a70540c371d39dad366ea8ec8ce37893a3a0b664cacc0cfd96118740c48587" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "8f14e53a99c838a935b48ae4192dd1f81fb4df329f63f6931a1b8b2934a6f5e3" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 For manual setup, the recommended path below **pulls the prebuilt image** from
