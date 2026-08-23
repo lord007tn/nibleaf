@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
+import addons from './addons/handlers';
 import ai from './ai/handlers';
 import analytics from './analytics/handlers';
 import apiKeys from './api-keys/handlers';
@@ -26,6 +27,7 @@ const app = new Hono<HonoEnv>()
   .get('/health', (ctx) => ctx.json({ ok: true }))
   .route('/projects', projects)
   .route('/projects/:projectId/pages', pages)
+  .route('/projects/:projectId/addons', addons)
   .route('/projects/:projectId/languages', languages)
   .route('/projects/:projectId/branches', branches)
   .route('/projects/:projectId/deployments', deployments)

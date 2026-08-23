@@ -23,6 +23,7 @@ const sessionIdFn = (): string | undefined => {
 };
 
 const consentStateFn = (projectId: string, config?: ProjectConfig | null): SiteAnalyticsConsent => {
+  if (config?.addons?.consentBanner?.enabled === false) return 'denied';
   if (!config?.analytics?.cookieConsent) return 'not_required';
   if (typeof window === 'undefined') return 'unknown';
   const value = window.localStorage.getItem(`nibleaf.analytics.consent.${projectId}`);

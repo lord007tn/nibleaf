@@ -90,6 +90,7 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
       languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
       openApiDocument: true,
+      addons: { select: { key: true, enabled: true, config: true } },
     },
   });
   if (!project) {

@@ -16,7 +16,6 @@ export function AnalyticsSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
   const analytics = project.config?.analytics ?? {};
-  const [cookieConsent, setCookieConsent] = useState<boolean>(analytics.cookieConsent ?? false);
   const [campaignDimensions, setCampaignDimensions] = useState<boolean>(analytics.campaignDimensions ?? false);
   const [storePublicSearchTerms, setStorePublicSearchTerms] = useState<boolean>(analytics.storePublicSearchTerms ?? false);
 
@@ -30,7 +29,6 @@ export function AnalyticsSection({ project }: { project: Project }) {
         analytics: {
           ga4: value.ga4.trim() || undefined,
           plausible: value.plausible.trim() || undefined,
-          cookieConsent,
           campaignDimensions,
           storePublicSearchTerms,
         },
@@ -78,12 +76,9 @@ export function AnalyticsSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <ToggleRow
-        checked={cookieConsent}
-        hint={t('settings.analytics.cookieConsent.hint')}
-        onCheckedChange={setCookieConsent}
-        title={t('settings.analytics.cookieConsent.title')}
-      />
+      <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3 text-muted-foreground text-sm">
+        {t('settings.analytics.cookieConsent.managed')}
+      </div>
 
       <ToggleRow
         checked={campaignDimensions}

@@ -1,5 +1,6 @@
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
+import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
@@ -179,6 +180,23 @@ export interface WorkspaceSettings {
   projectCount: number;
   memberCount: number;
   [key: string]: unknown;
+}
+
+export interface ProjectAddon {
+  id: AddonId;
+  group: AddonGroup;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  revision: number;
+  updatedAt: string | null;
+  status: 'active' | 'inactive' | 'needs_configuration' | 'unavailable';
+  availability: {
+    state: AddonAvailabilityState;
+    plans: readonly string[];
+    entitlement: `addons.${AddonId}`;
+    available: boolean;
+    plan: string;
+  };
 }
 
 interface CommentAnchor {

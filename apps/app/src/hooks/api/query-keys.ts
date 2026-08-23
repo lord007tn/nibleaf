@@ -3,6 +3,11 @@ export const queryKeys = {
     all: () => ['projects'] as const,
     detail: (projectId: string) => ['projects', projectId] as const,
   },
+  addons: {
+    all: (projectId: string) => ['addons', projectId] as const,
+    detail: (projectId: string, addonId: string) => ['addons', projectId, addonId] as const,
+    audit: (projectId: string) => ['addons', projectId, 'audit'] as const,
+  },
   pages: {
     all: (projectId: string, languageId?: string, branchId?: string) => ['pages', projectId, languageId ?? null, branchId ?? null] as const,
     /** Broad prefix matching every language/branch scope — use for invalidation. */

@@ -4,12 +4,12 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
-import type { ProjectConfig } from '@nibleaf/validators';
+import type { ProjectConfigUpdate } from '@nibleaf/validators';
 import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
 
 type ConfigMutation = {
-  mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
+  mutate: (vars: { config: ProjectConfigUpdate }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
 };
 
 const localizedFn = (key: MessageKey): string => translateFn(key);
@@ -19,7 +19,7 @@ const localizedFn = (key: MessageKey): string => translateFn(key);
  * Form `onSubmit` can `await` it. The server deep-merges section-level config,
  * so callers pass just the one section they own (e.g. `{ footer: {...} }`).
  */
-export function saveConfigSection(update: ConfigMutation, config: ProjectConfig) {
+export function saveConfigSection(update: ConfigMutation, config: ProjectConfigUpdate) {
   return new Promise<void>((resolve) => {
     update.mutate(
       { config },

@@ -1042,6 +1042,9 @@ importers:
       nanoid:
         specifier: ^5.1.16
         version: 5.1.16
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@nibleaf/tsconfig':
         specifier: workspace:*

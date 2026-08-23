@@ -414,10 +414,54 @@ model Project {
   gitPreviews     GitPreview[]
   searchIndexRuns SearchIndexRun[]
   usageIngestCheckpoints UsageIngestCheckpoint[]
+  addons          ProjectAddon[]
+  addonAuditEvents ProjectAddonAuditEvent[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
   @@map("project")
+}
+
+/// Authoritative per-project state for a first-party Nibleaf capability. The
+/// registry owns valid keys/config shapes; integrations and provider secrets do
+/// not belong here.
+model ProjectAddon {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key       String
+  enabled   Boolean
+  config    Json     @default("{}")
+  revision  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, key])
+  @@index([projectId, updatedAt])
+  @@map("project_addon")
+}
+
+/// Append-only, privacy-minimized history for add-on state/config changes.
+/// Actor ids are derived from trusted request context and intentionally have no
+/// foreign key so account/key deletion does not erase the security trail.
+model ProjectAddonAuditEvent {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  addonKey         String
+  actorUserId      String?
+  actorApiKeyId    String?
+  action           String
+  previousEnabled  Boolean?
+  nextEnabled      Boolean
+  previousConfig   Json?
+  nextConfig       Json
+  revision         Int
+  createdAt        DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([projectId, addonKey, createdAt])
+  @@map("project_addon_audit_event")
 }
 
 /// The editable OpenAPI source and last validated document for a site. The

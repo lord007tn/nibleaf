@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./addons": "./src/addons.ts",
     "./schema": "./src/index.ts",
     "./redirects": "./src/redirects.ts"
   },

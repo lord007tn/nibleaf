@@ -1,5 +1,6 @@
-import { assignDefaultUsagePlan, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
+import { addonDefinitions, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { inviteMember } from './members';
@@ -44,7 +45,19 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
         name: input.siteName.trim(),
         slug,
         ...(input.description?.trim() ? { description: input.description.trim() } : {}),
+        config: projectConfigWithAddons(
+          {},
+          addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
+        ) as Prisma.InputJsonValue,
       },
+    });
+    await tx.projectAddon.createMany({
+      data: addonDefinitions.map((definition) => ({
+        projectId: project.id,
+        key: definition.id,
+        enabled: definition.defaultEnabled,
+        config: definition.defaultConfig as Prisma.InputJsonValue,
+      })),
     });
     await tx.language.create({
       data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },

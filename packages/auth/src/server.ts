@@ -12,6 +12,7 @@ import {
 import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
+import { addonDefinitions, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
@@ -495,7 +496,28 @@ async function createStarterProject(organizationId: string): Promise<{ id: strin
       try {
         return await prisma.$transaction(async (tx) => {
           const project = await tx.project.create({
-            data: { organizationId, name: 'Documentation', slug, description: 'Your first documentation site.' },
+            data: {
+              organizationId,
+              name: 'Documentation',
+              slug,
+              description: 'Your first documentation site.',
+              config: projectConfigWithAddons(
+                {},
+                addonDefinitions.map((definition) => ({
+                  key: definition.id,
+                  enabled: definition.defaultEnabled,
+                  config: definition.defaultConfig,
+                })),
+              ) as Prisma.InputJsonValue,
+            },
+          });
+          await tx.projectAddon.createMany({
+            data: addonDefinitions.map((definition) => ({
+              projectId: project.id,
+              key: definition.id,
+              enabled: definition.defaultEnabled,
+              config: definition.defaultConfig as Prisma.InputJsonValue,
+            })),
           });
           const language = await tx.language.create({
             data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },

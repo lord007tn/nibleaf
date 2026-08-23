@@ -2,6 +2,7 @@ import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
 import type { SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
+import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import {
   buildNavTree,
   defaultLanguage,
@@ -74,6 +75,7 @@ interface LiveChromeRow {
     config: unknown;
     projectTranslations: { name: string | null; description: string | null }[];
   }[];
+  addons: { key: string; enabled: boolean; config: unknown }[];
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -121,6 +123,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       config: true,
       accessMode: true,
       takedownAt: true,
+      addons: { select: { key: true, enabled: true, config: true } },
       // ONLY an explicitly-designated primary domain may become the canonical /
       // 301 target. `verified` proves TXT ownership, not that the domain's CNAME
       // resolves here — consolidating onto a merely-verified domain would 301 a
@@ -163,12 +166,18 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
+  const liveConfig = projectConfigWithAddons(
+    live.config,
+    live.addons.flatMap((addon) =>
+      isAddonId(addon.key) ? [{ key: addon.key, enabled: addon.enabled, config: parseAddonConfigRecord(addon.config) }] : [],
+    ),
+  );
   return {
     ...project,
     name: live.name,
     description: live.description,
     icon: live.icon,
-    config: overlayLiveConfigPreservingPublishedRedirects(project.config, (live.config as Record<string, unknown> | null) ?? {}),
+    config: overlayLiveConfigPreservingPublishedRedirects(project.config, liveConfig),
     languages: project.languages.map((language) => {
       const row = liveByCode.get(language.code);
       if (!row) return language;
