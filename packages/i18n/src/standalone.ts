@@ -1,19 +1,15 @@
 import { useCallback, useSyncExternalStore } from 'react';
 import type { Locale } from './locales';
-import {
-  common_loading,
-  error_backhome,
-  error_badge,
-  error_title,
-  error_tryagain,
-  error_unexpected,
-  notfound_backhome,
-  notfound_badge,
-  notfound_body,
-  notfound_title,
-  // biome-ignore lint/suspicious/noTsIgnore: Paraglide generates runtime JavaScript without declaration files.
-  // @ts-ignore -- named imports let the bundler retain only this small standalone surface.
-} from './paraglide/messages/_index.js';
+import { common_loading } from './paraglide/messages/common_loading.js';
+import { error_backhome } from './paraglide/messages/error_backhome.js';
+import { error_badge } from './paraglide/messages/error_badge.js';
+import { error_title } from './paraglide/messages/error_title.js';
+import { error_tryagain } from './paraglide/messages/error_tryagain.js';
+import { error_unexpected } from './paraglide/messages/error_unexpected.js';
+import { notfound_backhome } from './paraglide/messages/notfound_backhome.js';
+import { notfound_badge } from './paraglide/messages/notfound_badge.js';
+import { notfound_body } from './paraglide/messages/notfound_body.js';
+import { notfound_title } from './paraglide/messages/notfound_title.js';
 import { getLocale, type MessageFn, subscribeLanguage, synchronizeDocumentLanguageFn } from './runtime';
 
 const standaloneMessages = {

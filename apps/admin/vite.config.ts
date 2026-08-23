@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
       paraglideVitePlugin({
         project: '../../packages/i18n/project.inlang',
         outdir: '../../packages/i18n/src/paraglide',
+        emitTsDeclarations: true,
         strategy: ['cookie', 'preferredLanguage', 'baseLocale'],
         cookieName: 'NIBLEAF_LOCALE',
       }),

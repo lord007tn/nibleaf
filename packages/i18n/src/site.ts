@@ -1,89 +1,85 @@
 import { resolveLocale } from './locales';
 import type { MessageKey } from './message-ids';
 import type { MessageFn } from './message-types';
-import {
-  marketing_arabiclanding_description,
-  marketing_arabiclanding_imagealt,
-  marketing_arabiclanding_title,
-  marketing_arabicplatforms_breadcrumb,
-  marketing_arabicplatforms_description,
-  marketing_arabicplatforms_imagealt,
-  marketing_arabicplatforms_title,
-  site_analyticsconsentaccept,
-  site_analyticsconsentbody,
-  site_analyticsconsentdecline,
-  site_analyticsconsentmanage,
-  site_analyticsconsentprivacy,
-  site_analyticsconsenttitle,
-  site_answer,
-  site_answerfailed,
-  site_articledetails,
-  site_askai,
-  site_blog,
-  site_changelanguage,
-  site_changelog,
-  site_changelogempty,
-  site_changelogpage,
-  site_changelogpages,
-  site_changelogrelease,
-  site_changelogsubtitle,
-  site_changeversion,
-  site_checking,
-  site_copied,
-  site_copycode,
-  site_defaultvalue,
-  site_defaultversion,
-  site_deprecated,
-  site_details,
-  site_dismissbanner,
-  site_docs,
-  site_editpage,
-  site_feedbackno,
-  site_feedbackquestion,
-  site_feedbackthanks,
-  site_feedbackyes,
-  site_groundedanswerbody,
-  site_groundedanswertitle,
-  site_home,
-  site_importadditionalpages,
-  site_importblog,
-  site_importpages,
-  site_loading,
-  site_madewith,
-  site_minread,
-  site_next,
-  site_noanswer,
-  site_noanswergrounded,
-  site_notpublishedbody,
-  site_notpublishedtitle,
-  site_onthispage,
-  site_pageunavailable,
-  site_previous,
-  site_raiseissue,
-  site_reportabuse,
-  site_required,
-  site_results,
-  site_screenshot,
-  site_screenshots,
-  site_search,
-  site_searchdescription,
-  site_searchdocumentation,
-  site_searchempty,
-  site_searchfailed,
-  site_searching,
-  site_searchmode,
-  site_searchplaceholder,
-  site_searchprompt,
-  site_showproperties,
-  site_sources,
-  site_tab,
-  site_tags,
-  site_toggletheme,
-  site_updated,
-  site_viewdetails,
-  // biome-ignore lint/suspicious/noTsIgnore: Paraglide generates runtime JavaScript without declaration files.
-  // @ts-ignore -- named imports keep dashboard catalogs out of public-docs chunks.
-} from './paraglide/messages/_index.js';
+import { marketing_arabiclanding_description } from './paraglide/messages/marketing_arabiclanding_description.js';
+import { marketing_arabiclanding_imagealt } from './paraglide/messages/marketing_arabiclanding_imagealt.js';
+import { marketing_arabiclanding_title } from './paraglide/messages/marketing_arabiclanding_title.js';
+import { marketing_arabicplatforms_breadcrumb } from './paraglide/messages/marketing_arabicplatforms_breadcrumb.js';
+import { marketing_arabicplatforms_description } from './paraglide/messages/marketing_arabicplatforms_description.js';
+import { marketing_arabicplatforms_imagealt } from './paraglide/messages/marketing_arabicplatforms_imagealt.js';
+import { marketing_arabicplatforms_title } from './paraglide/messages/marketing_arabicplatforms_title.js';
+import { site_analyticsconsentaccept } from './paraglide/messages/site_analyticsconsentaccept.js';
+import { site_analyticsconsentbody } from './paraglide/messages/site_analyticsconsentbody.js';
+import { site_analyticsconsentdecline } from './paraglide/messages/site_analyticsconsentdecline.js';
+import { site_analyticsconsentmanage } from './paraglide/messages/site_analyticsconsentmanage.js';
+import { site_analyticsconsentprivacy } from './paraglide/messages/site_analyticsconsentprivacy.js';
+import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
+import { site_answer } from './paraglide/messages/site_answer.js';
+import { site_answerfailed } from './paraglide/messages/site_answerfailed.js';
+import { site_articledetails } from './paraglide/messages/site_articledetails.js';
+import { site_askai } from './paraglide/messages/site_askai.js';
+import { site_blog } from './paraglide/messages/site_blog.js';
+import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
+import { site_changelog } from './paraglide/messages/site_changelog.js';
+import { site_changelogempty } from './paraglide/messages/site_changelogempty.js';
+import { site_changelogpage } from './paraglide/messages/site_changelogpage.js';
+import { site_changelogpages } from './paraglide/messages/site_changelogpages.js';
+import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
+import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
+import { site_changeversion } from './paraglide/messages/site_changeversion.js';
+import { site_checking } from './paraglide/messages/site_checking.js';
+import { site_copied } from './paraglide/messages/site_copied.js';
+import { site_copycode } from './paraglide/messages/site_copycode.js';
+import { site_defaultvalue } from './paraglide/messages/site_defaultvalue.js';
+import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
+import { site_deprecated } from './paraglide/messages/site_deprecated.js';
+import { site_details } from './paraglide/messages/site_details.js';
+import { site_dismissbanner } from './paraglide/messages/site_dismissbanner.js';
+import { site_docs } from './paraglide/messages/site_docs.js';
+import { site_editpage } from './paraglide/messages/site_editpage.js';
+import { site_feedbackno } from './paraglide/messages/site_feedbackno.js';
+import { site_feedbackquestion } from './paraglide/messages/site_feedbackquestion.js';
+import { site_feedbackthanks } from './paraglide/messages/site_feedbackthanks.js';
+import { site_feedbackyes } from './paraglide/messages/site_feedbackyes.js';
+import { site_groundedanswerbody } from './paraglide/messages/site_groundedanswerbody.js';
+import { site_groundedanswertitle } from './paraglide/messages/site_groundedanswertitle.js';
+import { site_home } from './paraglide/messages/site_home.js';
+import { site_importadditionalpages } from './paraglide/messages/site_importadditionalpages.js';
+import { site_importblog } from './paraglide/messages/site_importblog.js';
+import { site_importpages } from './paraglide/messages/site_importpages.js';
+import { site_loading } from './paraglide/messages/site_loading.js';
+import { site_madewith } from './paraglide/messages/site_madewith.js';
+import { site_minread } from './paraglide/messages/site_minread.js';
+import { site_next } from './paraglide/messages/site_next.js';
+import { site_noanswer } from './paraglide/messages/site_noanswer.js';
+import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
+import { site_notpublishedbody } from './paraglide/messages/site_notpublishedbody.js';
+import { site_notpublishedtitle } from './paraglide/messages/site_notpublishedtitle.js';
+import { site_onthispage } from './paraglide/messages/site_onthispage.js';
+import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.js';
+import { site_previous } from './paraglide/messages/site_previous.js';
+import { site_raiseissue } from './paraglide/messages/site_raiseissue.js';
+import { site_reportabuse } from './paraglide/messages/site_reportabuse.js';
+import { site_required } from './paraglide/messages/site_required.js';
+import { site_results } from './paraglide/messages/site_results.js';
+import { site_screenshot } from './paraglide/messages/site_screenshot.js';
+import { site_screenshots } from './paraglide/messages/site_screenshots.js';
+import { site_search } from './paraglide/messages/site_search.js';
+import { site_searchdescription } from './paraglide/messages/site_searchdescription.js';
+import { site_searchdocumentation } from './paraglide/messages/site_searchdocumentation.js';
+import { site_searchempty } from './paraglide/messages/site_searchempty.js';
+import { site_searchfailed } from './paraglide/messages/site_searchfailed.js';
+import { site_searching } from './paraglide/messages/site_searching.js';
+import { site_searchmode } from './paraglide/messages/site_searchmode.js';
+import { site_searchplaceholder } from './paraglide/messages/site_searchplaceholder.js';
+import { site_searchprompt } from './paraglide/messages/site_searchprompt.js';
+import { site_showproperties } from './paraglide/messages/site_showproperties.js';
+import { site_sources } from './paraglide/messages/site_sources.js';
+import { site_tab } from './paraglide/messages/site_tab.js';
+import { site_tags } from './paraglide/messages/site_tags.js';
+import { site_toggletheme } from './paraglide/messages/site_toggletheme.js';
+import { site_updated } from './paraglide/messages/site_updated.js';
+import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 
 const siteMessages = {
   docs: site_docs,
