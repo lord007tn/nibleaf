@@ -3,7 +3,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MARKETING_ANALYTICS_CONSENT_KEY, suspendMarketingAnalytics } from '@/lib/marketing-analytics';
+import { GTM_MARKETING_EVENT, MARKETING_ANALYTICS_CONSENT_KEY, suspendMarketingAnalytics } from '@/lib/marketing-analytics';
 
 const GTM_TARGET = { id: 'GTM-ABC123', provider: 'gtm' } as const;
 
@@ -77,9 +77,12 @@ describe('MarketingAnalyticsConsent', () => {
     await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
     const pageViews = window.dataLayer?.filter(
       (entry) =>
-        Object.prototype.toString.call(entry) === '[object Arguments]' &&
-        Array.from(entry as IArguments)[0] === 'event' &&
-        Array.from(entry as IArguments)[1] === 'page_view',
+        typeof entry === 'object' &&
+        entry !== null &&
+        !Array.isArray(entry) &&
+        Object.prototype.toString.call(entry) !== '[object Arguments]' &&
+        (entry as Record<string, unknown>).event === GTM_MARKETING_EVENT &&
+        (entry as Record<string, unknown>).event_name === 'page_view',
     );
     expect(pageViews).toHaveLength(1);
   });

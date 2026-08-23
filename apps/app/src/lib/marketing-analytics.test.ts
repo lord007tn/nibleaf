@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   declineMarketingAnalytics,
+  GTM_MARKETING_EVENT,
   initializeMarketingAnalytics,
   isGa4MeasurementId,
   isGtmContainerId,
@@ -21,6 +22,22 @@ const GTM_TARGET = { id: 'GTM-ABC123', provider: 'gtm' } as const;
 const isGtagCommand = (entry: unknown): entry is IArguments => Object.prototype.toString.call(entry) === '[object Arguments]';
 const gtagCommands = (): IArguments[] => (window.dataLayer ?? []).filter(isGtagCommand);
 const gtagCommandValues = (): unknown[][] => gtagCommands().map((command) => Array.from(command));
+type GtmMarketingEvent = Record<string, unknown> & { event: typeof GTM_MARKETING_EVENT; event_name: string };
+const isGtmMarketingEvent = (entry: unknown): entry is GtmMarketingEvent =>
+  typeof entry === 'object' &&
+  entry !== null &&
+  !Array.isArray(entry) &&
+  !isGtagCommand(entry) &&
+  (entry as Record<string, unknown>).event === GTM_MARKETING_EVENT;
+const gtmMarketingEvents = (): GtmMarketingEvent[] => (window.dataLayer ?? []).filter(isGtmMarketingEvent);
+const GTM_MARKETING_EVENT_NAMES_FOR_TEST = new Set([
+  'cta_clicked',
+  'free_tool_completed',
+  'free_tool_cta_clicked',
+  'free_tool_started',
+  'page_view',
+  'sign_up',
+]);
 
 describe('marketing analytics', () => {
   afterEach(() => {
@@ -99,6 +116,9 @@ describe('marketing analytics', () => {
     expect(scripts[0]?.src).toBe('https://www.googletagmanager.com/gtm.js?id=GTM-ABC123');
     expect(document.querySelector('#nibleaf-marketing-ga4')).toBeNull();
     expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'gtm.js' }));
+    expect(gtagCommands().every((command) => !Array.isArray(command))).toBe(true);
+    expect(gtagCommandValues()).toContainEqual(['consent', 'default', expect.objectContaining({ analytics_storage: 'denied' })]);
+    expect(gtagCommandValues()).toContainEqual(['consent', 'update', expect.objectContaining({ analytics_storage: 'granted' })]);
     expect(gtagCommandValues()).not.toContainEqual(expect.arrayContaining(['config']));
   });
 
@@ -121,7 +141,7 @@ describe('marketing analytics', () => {
     expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
   });
 
-  it('queues standard gtag events for the GTM-managed Google tag', () => {
+  it('pushes one stable GTM envelope for every allowlisted marketing event', () => {
     window.history.replaceState({}, '', '/ar');
     initializeMarketingAnalytics(GTM_TARGET);
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
@@ -149,27 +169,45 @@ describe('marketing analytics', () => {
       product: 'nibleaf',
       tool_slug: 'rtl-documentation-readiness',
     });
+    sendMarketingAnalyticsEvent('newsletter_subscribed', { email: 'private@example.com' });
+    sendMarketingAnalyticsEvent('sign_up', { email: 'private@example.com', method: 'email_otp' });
 
-    const pageViewCommand = gtagCommands().find((command) => command[0] === 'event' && command[1] === 'page_view');
-    expect(gtagCommands()).not.toHaveLength(0);
-    expect(gtagCommands().every((command) => !Array.isArray(command))).toBe(true);
-    expect(pageViewCommand).toBeDefined();
-    expect(Array.isArray(pageViewCommand)).toBe(false);
-    expect(Array.from(pageViewCommand ?? [])).toEqual([
-      'event',
+    const events = gtmMarketingEvents();
+    expect(events).toHaveLength(6);
+    expect(events.map(({ event_name }) => event_name)).toEqual([
       'page_view',
-      expect.objectContaining({ language: 'ar', page_location: 'http://localhost:3000/ar', page_path: '/ar' }),
-    ]);
-    expect(gtagCommandValues()).toContainEqual([
-      'event',
       'cta_clicked',
-      expect.objectContaining({ destination: 'signup', language: 'ar', placement: 'hero' }),
+      'sign_up',
+      'free_tool_started',
+      'free_tool_completed',
+      'free_tool_cta_clicked',
     ]);
-    for (const event of ['sign_up', 'free_tool_started', 'free_tool_completed', 'free_tool_cta_clicked']) {
-      expect(gtagCommandValues()).toContainEqual(['event', event, expect.any(Object)]);
-    }
-    expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
-    expect(JSON.stringify(window.dataLayer)).not.toContain('send_to');
+    expect(events.every((entry) => !Array.isArray(entry) && Object.prototype.toString.call(entry) !== '[object Arguments]')).toBe(true);
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        event: GTM_MARKETING_EVENT,
+        event_name: 'page_view',
+        language: 'ar',
+        page_location: 'http://localhost:3000/ar',
+        page_path: '/ar',
+      }),
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        destination: 'signup',
+        event: GTM_MARKETING_EVENT,
+        event_name: 'cta_clicked',
+        language: 'ar',
+        placement: 'hero',
+      }),
+    );
+    expect(events.every(({ event_name }) => GTM_MARKETING_EVENT_NAMES_FOR_TEST.has(event_name))).toBe(true);
+    expect(events.every(({ page_location, page_path }) => page_location === 'http://localhost:3000/ar' && page_path === '/ar')).toBe(true);
+    expect(gtagCommandValues().filter((command) => command[0] === 'event')).toHaveLength(0);
+    const serializedEvents = JSON.stringify(events);
+    expect(serializedEvents).not.toContain('private@example.com');
+    expect(serializedEvents).not.toContain('send_to');
+    expect(serializedEvents).not.toContain('?');
   });
 
   it('persists refusal, denies analytics storage, and activates the GA disable flag', () => {
