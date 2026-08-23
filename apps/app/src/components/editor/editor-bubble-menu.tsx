@@ -74,7 +74,6 @@ export function LinkEditorPanel({
   return (
     <div className="flex items-center gap-1 p-0.5">
       <input
-        // biome-ignore lint/a11y/noAutofocus: only set when the panel opens from an explicit user action — focusing the URL field is the point.
         autoFocus={autoFocus}
         value={draft}
         onChange={(event) => {

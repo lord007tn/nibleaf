@@ -15,7 +15,7 @@ export const keys = () =>
         .regex(/^v[1-9][0-9]*$/)
         .default('v1'),
       QDRANT_VECTOR_SIZE: z.coerce.number().int().min(64).max(8192).default(1536),
-      QDRANT_TIMEOUT_MS: z.coerce.number().int().min(250).max(120_000).default(8_000),
+      QDRANT_TIMEOUT_MS: z.coerce.number().int().min(250).max(120_000).default(8000),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,

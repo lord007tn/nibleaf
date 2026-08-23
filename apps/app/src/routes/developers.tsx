@@ -102,7 +102,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
           <div>
             <h2 className="font-semibold text-2xl tracking-tight">CLI quick start</h2>
             <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-background p-5 font-mono text-sm leading-7" dir="ltr">
-              <code>{`npx @nibleaf/cli inspect https://nibleaf.com\nnpx @nibleaf/cli fetch https://nibleaf.com/developers`}</code>
+              <code>{'npx @nibleaf/cli inspect https://nibleaf.com\nnpx @nibleaf/cli fetch https://nibleaf.com/developers'}</code>
             </pre>
             <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
               The CLI uses standard HTTP endpoints and does not collect credentials. Its inspect command checks status, content type, OpenAPI, llms,

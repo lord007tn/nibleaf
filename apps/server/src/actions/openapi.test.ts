@@ -84,7 +84,7 @@ describe('parseAndValidateOpenApi', () => {
     );
 
     expect(network.fetch).toHaveBeenCalledOnce();
-    expect((network.fetch.mock.calls[0]?.[0] as URL).toString()).toBe('https://public.example/schemas/pet.yaml');
+    expect(String(network.fetch.mock.calls[0]?.[0])).toBe('https://public.example/schemas/pet.yaml');
     expect(document).toHaveProperty('x-ext');
     expect(JSON.stringify(document)).not.toContain('./schemas/pet.yaml');
   });
@@ -214,16 +214,14 @@ paths:
     network.lookup.mockImplementation(async (hostname: string) => [
       { address: hostname === 'first.example' ? '203.0.113.11' : '198.51.100.22', family: 4 },
     ]);
-    network.fetch
-      .mockResolvedValueOnce(new Response(null, { status: 302, headers: { location: 'https://second.example/openapi.json' } }))
-      .mockResolvedValueOnce(new Response(valid));
+    network.fetch.mockResolvedValueOnce(Response.redirect('https://second.example/openapi.json', 302)).mockResolvedValueOnce(new Response(valid));
 
     await expect(fetchPublicOpenApi('https://first.example/openapi.json')).resolves.toContain('openapi: 3.1.0');
 
     expect(network.lookup.mock.calls.map(([hostname]) => hostname)).toEqual(['first.example', 'second.example']);
     expect(network.fetch).toHaveBeenCalledTimes(2);
-    expect((network.fetch.mock.calls[0]?.[0] as URL).hostname).toBe('first.example');
-    expect((network.fetch.mock.calls[1]?.[0] as URL).hostname).toBe('second.example');
+    expect((network.fetch.mock.calls[0]?.[0] as URL | undefined)?.hostname).toBe('first.example');
+    expect((network.fetch.mock.calls[1]?.[0] as URL | undefined)?.hostname).toBe('second.example');
     expect(network.fetch.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual', dispatcher: expect.anything(), signal: expect.any(AbortSignal) });
     expect(timeout).toHaveBeenNthCalledWith(1, 10_000);
     expect(timeout).toHaveBeenNthCalledWith(2, 10_000);

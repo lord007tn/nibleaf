@@ -423,3 +423,9 @@ export interface SearchAnswer {
   cacheHit: boolean;
   quotaRemaining: number;
 }
+
+export interface PublicMeta {
+  marketingAnalytics: { consentRequired: true; ga4MeasurementId: string | null; gtmContainerId: string | null };
+  providers: { google: boolean };
+  signupDisabled: boolean;
+}

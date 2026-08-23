@@ -1,10 +1,8 @@
 import { normalizeRedirectPath, resolveRedirectTarget } from '@nibleaf/validators/redirects';
 import { redirect } from '@tanstack/react-router';
-import { getData } from '@/hooks/api/client-helpers';
-import type { SiteShell } from '@/hooks/api/types';
+import { getSiteFn } from '@/functions/site';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { buildSiteRedirectHref } from '@/lib/site-redirect-href';
-import { api } from '@/services/api';
 
 /**
  * Honor a configured `config.redirects` entry for `path`. Consulted only when a
@@ -22,13 +20,11 @@ export async function redirectIfConfigured(projectId: string, path: string, lang
   } catch {
     return;
   }
-  let shell: SiteShell | null = null;
-  try {
-    shell = await getData<SiteShell>(await api.public.sites[':id'].$get({ param: { id: projectId }, query: lang ? { lang } : {} }), 'site');
-  } catch {
+  const shell = await getSiteFn({ data: { projectId, language: lang } }).catch(() => null);
+  if (!shell) {
     return; // site itself is unavailable — let the caller render its not-found state
   }
-  const storedRedirects = (shell?.project.config as { redirects?: unknown } | null)?.redirects;
+  const storedRedirects = (shell.project.config as { redirects?: unknown } | null)?.redirects;
   const redirects = Array.isArray(storedRedirects) ? storedRedirects : [];
   const validRedirects = redirects.filter(
     (rule): rule is { from: string; to: string } => typeof rule?.from === 'string' && typeof rule?.to === 'string',

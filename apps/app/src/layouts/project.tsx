@@ -1,7 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useT } from '@nibleaf/i18n/react';
-import { useQuery } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
@@ -9,11 +8,8 @@ import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
-import { useProject } from '@/hooks/api';
-import { getData } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
-import type { Deployment, Project } from '@/hooks/api/types';
-import { api } from '@/services/api';
+import { useDeployments, useProject } from '@/hooks/api';
+import type { Project } from '@/hooks/api/types';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
  *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
@@ -22,15 +18,7 @@ export function PublishControl({ project, initialPublishOpen = false }: { projec
   const [deployOpen, setDeployOpen] = useState(false);
   const t = useT();
 
-  const deployments = useQuery({
-    queryKey: queryKeys.deployments.all(project.id),
-    queryFn: async () =>
-      getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
-    refetchInterval: (query) => {
-      const latest = query.state.data?.[0];
-      return latest && (latest.status === 'PENDING' || latest.status === 'BUILDING') ? 1500 : false;
-    },
-  });
+  const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
   const latest = deployments.data?.[0];
   const building = latest?.status === 'PENDING' || latest?.status === 'BUILDING';
 

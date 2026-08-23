@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { searchSiteFn } from '@/functions/site-search';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -102,16 +101,16 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
 // own instead of appearing stuck until a manual refresh.
 const isInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
 
-export const useDeployments = (projectId: string | undefined) =>
+export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) =>
   useQuery({
     queryKey: queryKeys.deployments.all(projectId ?? ''),
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
     queryFn: async () =>
       getData<Deployment[]>(
         await api.app.projects[':projectId'].deployments.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
         'deployments',
       ),
-    refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? 2500 : false),
+    refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
   });
 
 export const useLatestDeployment = (projectId: string | undefined) =>
@@ -282,22 +281,6 @@ export const useSitePage = (id: string | undefined, path: string, lang?: string,
         await api.public.sites[':id'].page.$get({ param: { id: requireQueryValue(id, 'Site ID') }, query: { path, ...siteQuery(lang, version) } }),
         'page',
       ),
-  });
-
-export const useSiteSearch = (id: string | undefined, q: string, lang?: string, version?: string, limit?: number, enabled = true) =>
-  useQuery({
-    queryKey: queryKeys.site.search(id ?? '', q, lang, version, limit),
-    enabled: Boolean(enabled && id && q.trim()),
-    queryFn: () =>
-      searchSiteFn({
-        data: {
-          projectId: requireQueryValue(id, 'Site ID'),
-          query: q,
-          ...(lang ? { language: lang } : {}),
-          ...(version ? { version } : {}),
-          ...(limit ? { limit } : {}),
-        },
-      }),
   });
 
 export const useSiteChangelog = (id: string | undefined) =>

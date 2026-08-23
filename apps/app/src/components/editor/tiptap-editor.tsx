@@ -550,19 +550,21 @@ export function TiptapEditor({
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
   const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
   const onUploadRef = useRef(onUpload);
-  onUploadRef.current = onUpload;
   const editorRef = useRef<Editor | null>(null);
   // Comment state read by the CommentDecorations plugin + the click handler.
   const commentsRef = useRef<CommentMarker[]>(comments ?? []);
-  commentsRef.current = comments ?? [];
   const activeCommentRef = useRef<string | null>(activeCommentId ?? null);
-  activeCommentRef.current = activeCommentId ?? null;
   const commentModeRef = useRef(commentMode);
-  commentModeRef.current = commentMode;
   const onAddCommentRef = useRef(onAddComment);
-  onAddCommentRef.current = onAddComment;
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onUploadRef.current = onUpload;
+    commentsRef.current = comments ?? [];
+    activeCommentRef.current = activeCommentId ?? null;
+    commentModeRef.current = commentMode;
+    onAddCommentRef.current = onAddComment;
+  }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload]);
 
   // Upload an image file and insert it at the current selection.
   const insertUploadedImage = (file: File) => {

@@ -3,49 +3,25 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Ban, Download, FileArchive, Play, Plus, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { getData, mutateData } from '@/hooks/api/client-helpers';
-import { api } from '@/services/api';
+import {
+  type ExportArtifact,
+  type ExportFormat,
+  type ExportRun,
+  type ExportSchedule,
+  type ExportStatus,
+  useCancelExport,
+  useCreateExport,
+  useCreateExportSchedule,
+  useGetExportDownload,
+  useListExportRuns,
+  useListExportSchedules,
+  useRunExportSchedule,
+  useUpdateExportSchedule,
+} from '@/hooks/api/exports';
 import { SectionHeader } from './shared';
-
-type ExportFormat = 'MARKDOWN' | 'PDF' | 'STATIC_HTML';
-type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
-interface ExportArtifact {
-  id: string;
-  format: ExportFormat;
-  fileName: string;
-  size: number;
-}
-interface ExportRun {
-  id: string;
-  formats: ExportFormat[];
-  status: ExportStatus;
-  trigger: 'MANUAL' | 'SCHEDULED';
-  attempts: number;
-  error: string | null;
-  createdAt: string;
-  snapshot: { deploymentVersion: number; pagesCount: number; createdAt: string };
-  artifacts: ExportArtifact[];
-  schedule: { id: string; name: string } | null;
-}
-interface ExportSchedule {
-  id: string;
-  name: string;
-  formats: ExportFormat[];
-  cadence: 'DAILY' | 'WEEKLY' | 'MONTHLY';
-  timezone: string;
-  hour: number;
-  minute: number;
-  enabled: boolean;
-  nextRunAt: string | null;
-  lastError: string | null;
-  retentionCount: number;
-  retentionDays: number;
-  _count: { jobs: number };
-}
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
   MARKDOWN: 'settings.exports.workflow.format.markdown',
@@ -54,53 +30,20 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
 };
 const sizeLabel = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(locale) : '—');
-const queryKey = (projectId: string, type: 'runs' | 'schedules') => ['projects', projectId, 'exports', type] as const;
 
 export function ExportsSection({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
-  const qc = useQueryClient();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
-  const runs = useQuery({
-    queryKey: queryKey(projectId, 'runs'),
-    queryFn: async () => getData<ExportRun[]>(await api.app.projects[':projectId'].exports.$get({ param: { projectId } }), 'export runs'),
-    refetchInterval: (query) => (query.state.data?.some((run) => run.status === 'PENDING' || run.status === 'RUNNING') ? 2500 : false),
-  });
-  const schedules = useQuery({
-    queryKey: queryKey(projectId, 'schedules'),
-    queryFn: async () =>
-      getData<ExportSchedule[]>(await api.app.projects[':projectId'].exports.schedules.$get({ param: { projectId } }), 'export schedules'),
-  });
-  const create = useMutation({
-    mutationFn: async () =>
-      mutateData<ExportRun>(
-        await api.app.projects[':projectId'].exports.$post({ param: { projectId }, json: { formats } }),
-        t('settings.exports.workflow.queueError'),
-      ),
-    onSuccess: () => {
-      toast.success(t('settings.exports.workflow.queued'));
-      qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') });
-    },
-    onError: (error) => toast.error(error.message),
-  });
-  const cancel = useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<ExportRun>(
-        await api.app.projects[':projectId'].exports[':id'].cancel.$post({ param: { projectId, id } }),
-        t('settings.exports.workflow.cancelError'),
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') }),
-    onError: (error) => toast.error(error.message),
-  });
-  const download = async (run: ExportRun, artifact: ExportArtifact) => {
+  const runs = useListExportRuns(projectId);
+  const schedules = useListExportSchedules(projectId);
+  const create = useCreateExport(projectId);
+  const cancel = useCancelExport(projectId);
+  const downloadMutation = useGetExportDownload(projectId);
+  const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
-      const result = await getData<{ url: string }>(
-        await api.app.projects[':projectId'].exports[':id'].artifacts[':artifactId'].download.$get({
-          param: { projectId, id: run.id, artifactId: artifact.id },
-        }),
-        'download URL',
-      );
+      const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
       window.location.assign(result.url);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('settings.exports.workflow.downloadError'));
@@ -152,7 +95,15 @@ export function ExportsSection({ projectId }: { projectId: string }) {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.formatHint')}</p>
-              <Button disabled={create.isPending} onClick={() => create.mutate()}>
+              <Button
+                disabled={create.isPending}
+                onClick={() =>
+                  create.mutate(formats, {
+                    onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
+                    onError: (error) => toast.error(error.message),
+                  })
+                }
+              >
                 {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />}{' '}
                 {t('settings.exports.workflow.create')}
               </Button>
@@ -169,26 +120,10 @@ export function ExportsSection({ projectId }: { projectId: string }) {
               <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
             </Button>
           </div>
-          {showSchedule ? (
-            <ScheduleForm
-              projectId={projectId}
-              onCreated={() => {
-                setShowSchedule(false);
-                qc.invalidateQueries({ queryKey: queryKey(projectId, 'schedules') });
-              }}
-            />
-          ) : null}
+          {showSchedule ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
           <div className="space-y-2">
             {schedules.data?.map((schedule) => (
-              <ScheduleRow
-                key={schedule.id}
-                projectId={projectId}
-                schedule={schedule}
-                onChanged={() => {
-                  qc.invalidateQueries({ queryKey: queryKey(projectId, 'schedules') });
-                  qc.invalidateQueries({ queryKey: queryKey(projectId, 'runs') });
-                }}
-              />
+              <ScheduleRow key={schedule.id} projectId={projectId} schedule={schedule} />
             ))}
             {!schedules.isLoading && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
@@ -236,7 +171,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
                 {run.artifacts.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {run.artifacts.map((artifact) => (
-                      <Button key={artifact.id} onClick={() => download(run, artifact)} size="sm" variant="outline">
+                      <Button key={artifact.id} onClick={() => downloadArtifact(run, artifact)} size="sm" variant="outline">
                         <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {sizeLabel(artifact.size)}
                       </Button>
                     ))}
@@ -292,34 +227,31 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
     setScheduleFormats((current) =>
       current.includes(format) ? (current.length === 1 ? current : current.filter((item) => item !== format)) : [...current, format],
     );
-  const create = useMutation({
-    mutationFn: async () => {
-      const [hour, minute] = time.split(':').map(Number);
-      return mutateData(
-        await api.app.projects[':projectId'].exports.schedules.$post({
-          param: { projectId },
-          json: {
-            name,
-            formats: scheduleFormats,
-            cadence,
-            timezone,
-            hour: hour ?? 2,
-            minute: minute ?? 0,
-            ...(cadence === 'WEEKLY' ? { weekday } : {}),
-            ...(cadence === 'MONTHLY' ? { monthday } : {}),
-            retentionCount,
-            retentionDays,
-          },
-        }),
-        t('settings.exports.workflow.scheduleCreateError'),
-      );
-    },
-    onSuccess: () => {
-      toast.success(t('settings.exports.workflow.scheduleCreated'));
-      onCreated();
-    },
-    onError: (error) => toast.error(error.message),
-  });
+  const create = useCreateExportSchedule(projectId);
+  const createSchedule = () => {
+    const [hour, minute] = time.split(':').map(Number);
+    create.mutate(
+      {
+        name,
+        formats: scheduleFormats,
+        cadence,
+        timezone,
+        hour: hour ?? 2,
+        minute: minute ?? 0,
+        ...(cadence === 'WEEKLY' ? { weekday } : {}),
+        ...(cadence === 'MONTHLY' ? { monthday } : {}),
+        retentionCount,
+        retentionDays,
+      },
+      {
+        onSuccess: () => {
+          toast.success(t('settings.exports.workflow.scheduleCreated'));
+          onCreated();
+        },
+        onError: (error) => toast.error(error.message),
+      },
+    );
+  };
   return (
     <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
       <Input aria-label={t('settings.exports.workflow.scheduleName')} onChange={(event) => setName(event.target.value)} value={name} />
@@ -385,7 +317,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         ))}
       </div>
       <div className="flex items-center justify-end sm:col-span-2">
-        <Button disabled={!name.trim() || !timezone.trim() || create.isPending} onClick={() => create.mutate()} size="sm">
+        <Button disabled={!name.trim() || !timezone.trim() || create.isPending} onClick={createSchedule} size="sm">
           {t('settings.exports.workflow.createSchedule')}
         </Button>
       </div>
@@ -393,32 +325,10 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   );
 }
 
-function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; schedule: ExportSchedule; onChanged: () => void }) {
+function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: ExportSchedule }) {
   const { locale, t } = useLocale();
-  const update = useMutation({
-    mutationFn: async () =>
-      mutateData(
-        await api.app.projects[':projectId'].exports.schedules[':scheduleId'].$patch({
-          param: { projectId, scheduleId: schedule.id },
-          json: { enabled: !schedule.enabled },
-        }),
-        t('settings.exports.workflow.scheduleUpdateError'),
-      ),
-    onSuccess: onChanged,
-    onError: (error) => toast.error(error.message),
-  });
-  const run = useMutation({
-    mutationFn: async () =>
-      mutateData(
-        await api.app.projects[':projectId'].exports.schedules[':scheduleId'].run.$post({ param: { projectId, scheduleId: schedule.id } }),
-        t('settings.exports.workflow.scheduleRunError'),
-      ),
-    onSuccess: () => {
-      toast.success(t('settings.exports.workflow.runQueued'));
-      onChanged();
-    },
-    onError: (error) => toast.error(error.message),
-  });
+  const update = useUpdateExportSchedule(projectId, schedule.id);
+  const run = useRunExportSchedule(projectId, schedule.id);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
       <div>
@@ -435,10 +345,25 @@ function ScheduleRow({ projectId, schedule, onChanged }: { projectId: string; sc
         {schedule.lastError ? <div className="mt-1 text-destructive text-xs">{schedule.lastError}</div> : null}
       </div>
       <div className="flex gap-2">
-        <Button disabled={run.isPending} onClick={() => run.mutate()} size="sm" variant="outline">
+        <Button
+          disabled={run.isPending}
+          onClick={() =>
+            run.mutate(undefined, {
+              onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
+              onError: (error) => toast.error(error.message),
+            })
+          }
+          size="sm"
+          variant="outline"
+        >
           <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
         </Button>
-        <Button disabled={update.isPending} onClick={() => update.mutate()} size="sm" variant="outline">
+        <Button
+          disabled={update.isPending}
+          onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
+          size="sm"
+          variant="outline"
+        >
           {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
         </Button>
       </div>

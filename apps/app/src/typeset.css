@@ -31,11 +31,25 @@
       font-size: var(--typeset-size);
     }
 
-    --typeset-muted: var(--muted-foreground, color-mix(in oklab, currentColor 60%, transparent));
-    --typeset-rule: var(--border, color-mix(in oklab, currentColor 20%, transparent));
+    --typeset-muted: var(
+      --muted-foreground,
+      color-mix(in oklab, currentColor 60%, transparent)
+    );
+    --typeset-rule: var(
+      --border,
+      color-mix(in oklab, currentColor 20%, transparent)
+    );
   }
 
-  .typeset *:not(:where(.not-typeset, [data-not-typeset], .not-typeset *, [data-not-typeset] *)) {
+  .typeset
+    *:not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ) {
     /* Paragraphs. */
     &:where(p) {
       margin-block-start: var(--typeset-flow);
@@ -125,7 +139,11 @@
       font-weight: 600;
     }
     &:where(mark) {
-      background-color: color-mix(in oklab, oklch(0.86 0.17 95) 40%, transparent);
+      background-color: color-mix(
+        in oklab,
+        oklch(0.86 0.17 95) 40%,
+        transparent
+      );
       color: inherit;
       padding: 0.05em 0.15em;
       border-radius: 0.2em;
@@ -257,7 +275,10 @@
 
     /* Inline code. */
     &:where(:not(pre) > code) {
-      background-color: var(--muted, color-mix(in oklab, currentColor 8%, transparent));
+      background-color: var(
+        --muted,
+        color-mix(in oklab, currentColor 8%, transparent)
+      );
       font-family: var(--typeset-font-mono);
       font-size: 0.85em;
       direction: ltr;
@@ -268,7 +289,10 @@
 
     /* Code blocks. */
     &:where(pre) {
-      background-color: var(--muted, color-mix(in oklab, currentColor 8%, transparent));
+      background-color: var(
+        --muted,
+        color-mix(in oklab, currentColor 8%, transparent)
+      );
       font-family: var(--typeset-font-mono);
       font-size: 0.875em;
       line-height: 1.5;
@@ -431,8 +455,25 @@
   }
 
   /* First child adds no space above. Last so it wins ties. */
-  .typeset > :where(:first-child):not(:where(.not-typeset, [data-not-typeset], .not-typeset *, [data-not-typeset] *)),
-  .typeset > :where(:first-child) > :where(:first-child):not(:where(.not-typeset, [data-not-typeset], .not-typeset *, [data-not-typeset] *)),
+  .typeset
+  > :where(:first-child):not(
+    :where(
+      .not-typeset,
+      [data-not-typeset],
+      .not-typeset *,
+      [data-not-typeset] *
+    )
+  ),
+  .typeset
+    > :where(:first-child)
+    > :where(:first-child):not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ),
   .typeset
     :where(
       li > :first-child,
@@ -442,7 +483,14 @@
       dd > :first-child,
       figure > :first-child,
       figure > picture > img
-    ):not(:where(.not-typeset, [data-not-typeset], .not-typeset *, [data-not-typeset] *)) {
+    ):not(
+      :where(
+        .not-typeset,
+        [data-not-typeset],
+        .not-typeset *,
+        [data-not-typeset] *
+      )
+    ) {
     margin-block-start: 0;
   }
 }

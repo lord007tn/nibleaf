@@ -337,7 +337,7 @@ describe('pageHead JSON-LD', () => {
     );
     const list = ld(withCrumbs).find((block) => block['@type'] === 'BreadcrumbList');
     expect(list).toBeDefined();
-    expect((list?.itemListElement as unknown[]).length).toBe(2);
+    expect(list?.itemListElement).toHaveLength(2);
 
     expect(ld(pageHead(base(), 'p1')).some((block) => block['@type'] === 'BreadcrumbList')).toBe(false);
   });

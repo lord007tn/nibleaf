@@ -1,9 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+import { env } from '@/env';
 import { badRequest } from '@/errors';
 
 const VERSION = 'v1';
 
-const encryptionKey = (encoded = process.env.GIT_CREDENTIAL_ENCRYPTION_KEY): Buffer => {
+const encryptionKey = (encoded = env.GIT_CREDENTIAL_ENCRYPTION_KEY): Buffer => {
   if (!encoded) {
     throw badRequest('Git credential encryption is not configured. Set GIT_CREDENTIAL_ENCRYPTION_KEY.');
   }

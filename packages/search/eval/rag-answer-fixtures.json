@@ -49,7 +49,12 @@
     "language": "en",
     "question": "What is the enterprise SLA?",
     "sources": [
-      { "title": "Plans", "path": "plans", "heading": "Overview", "content": "The documentation lists self-hosted and cloud deployment options." }
+      {
+        "title": "Plans",
+        "path": "plans",
+        "heading": "Overview",
+        "content": "The documentation lists self-hosted and cloud deployment options."
+      }
     ],
     "requiredClaims": [],
     "expectedNoAnswer": true
@@ -58,7 +63,14 @@
     "id": "ar-no-answer",
     "language": "ar",
     "question": "ما مدة اتفاقية مستوى الخدمة للمؤسسات؟",
-    "sources": [{ "title": "الخطط", "path": "ar/plans", "heading": "نظرة عامة", "content": "تصف الوثائق خيارات الاستضافة الذاتية والسحابية." }],
+    "sources": [
+      {
+        "title": "الخطط",
+        "path": "ar/plans",
+        "heading": "نظرة عامة",
+        "content": "تصف الوثائق خيارات الاستضافة الذاتية والسحابية."
+      }
+    ],
     "requiredClaims": [],
     "expectedNoAnswer": true
   },

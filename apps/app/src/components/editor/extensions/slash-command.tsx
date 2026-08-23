@@ -37,8 +37,8 @@ import {
   Type,
   Workflow,
 } from 'lucide-react';
-import type { ComponentType } from 'react';
-import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import type { ComponentType, Ref } from 'react';
+import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 
 interface SlashItem {
   titleKey: MessageKey;
@@ -575,6 +575,7 @@ interface SlashListHandle {
 interface SlashListProps {
   items: SlashItem[];
   command: (item: SlashItem) => void;
+  ref?: Ref<SlashListHandle>;
 }
 
 export const nextSlashSelection = (selected: number, count: number, key: string): number | null => {
@@ -619,7 +620,7 @@ export const resolveSlashAnchor = (
   }
 };
 
-const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command }, ref) => {
+const SlashList = ({ items, command, ref }: SlashListProps) => {
   const { t } = useLocale();
   const label = (value: MessageKey): string => t(value);
   const [selected, setSelected] = useState(0);
@@ -701,8 +702,7 @@ const SlashList = forwardRef<SlashListHandle, SlashListProps>(({ items, command 
       )}
     </div>
   );
-});
-SlashList.displayName = 'SlashList';
+};
 
 const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
   const items = createItems(onUpload);

@@ -120,10 +120,10 @@ export const hybridTokens = (value: string, language = 'en'): string[] => {
 /** Stable 32-bit term ids let every worker and query process build compatible
  * sparse vectors without a shared vocabulary table. */
 export const sparseTermIndex = (token: string): number => {
-  let hash = 0x811c9dc5;
+  let hash = 0x81_1c_9d_c5;
   for (let index = 0; index < token.length; index += 1) {
     hash ^= token.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
+    hash = Math.imul(hash, 0x01_00_01_93);
   }
   return hash >>> 0;
 };

@@ -74,7 +74,6 @@ const projectIdFromFilter = (filter: QdrantFilter) => {
   for (const condition of filter.must) {
     if (matchCondition(condition) && condition.key === 'project_id') return condition.match.value;
   }
-  return undefined;
 };
 
 const assertTenantFilter = (filter: QdrantFilter): void => {
@@ -108,7 +107,7 @@ export class QdrantClient {
       new QdrantSdkClient({
         url: options.url,
         apiKey: options.apiKey,
-        timeout: options.timeoutMs ?? 8_000,
+        timeout: options.timeoutMs ?? 8000,
       });
   }
 

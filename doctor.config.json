@@ -1,0 +1,17 @@
+{
+  "projects": ["@nibleaf/app", "@nibleaf/admin"],
+  "ignore": {
+    "files": [
+      "**/.output/**",
+      "**/dist/**",
+      "**/routeTree.gen.ts",
+      "**/src/generated/**"
+    ]
+  },
+  "deadCode": false,
+  "supplyChain": {
+    "enabled": false
+  },
+  "noScore": true,
+  "blocking": "error"
+}

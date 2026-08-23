@@ -1,6 +1,6 @@
 import './lib/serialize-bigint';
 
-import { serve } from '@hono/node-server';
+import { type ServerType, serve } from '@hono/node-server';
 import { scheduleAnalyticsRollup } from '@nibleaf/bullmq';
 import { clickHouseHealth, closeClickHouseClients, initializeClickHouseFn } from '@nibleaf/clickhouse';
 import { logger } from '@nibleaf/logger';
@@ -20,7 +20,7 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-let server: ReturnType<typeof serve> | null = null;
+let server: ServerType | null = null;
 let shuttingDown = false;
 
 app.get(

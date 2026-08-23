@@ -105,7 +105,6 @@ function SiteDetailPage() {
           </Button>
           <Button
             nativeButton={false}
-            // biome-ignore lint/a11y/useAnchorContent: accessible content is merged from the Button children
             render={<a aria-label={`Open ${site.name} live site`} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />}
             variant="outline"
           >

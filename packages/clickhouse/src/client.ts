@@ -169,7 +169,7 @@ export class AnalyticsBatchWriter {
   readonly #maxBatchSize: number;
   readonly #maxBufferedEvents: number;
   readonly #flushIntervalMs: number;
-  #queue: AnalyticsEventEnvelope[] = [];
+  readonly #queue: AnalyticsEventEnvelope[] = [];
   #timer: NodeJS.Timeout | null = null;
   #flushPromise: Promise<void> | null = null;
   #inFlight = 0;

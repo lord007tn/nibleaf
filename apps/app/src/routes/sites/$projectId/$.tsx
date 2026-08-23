@@ -1,13 +1,13 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { SitePageView } from '@/components/site/site-page-view';
-import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
-import type { SitePage, SiteShell } from '@/hooks/api/types';
+import { getSiteFn, getSitePageFn } from '@/functions/site';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
+import type { SitePage } from '@/hooks/api/types';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
-import { api } from '@/services/api';
 
 const OpenApiReferenceView = lazy(() =>
   import('@/components/site/openapi-reference-view').then((module) => ({ default: module.OpenApiReferenceView })),
@@ -22,13 +22,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
     try {
-      page = await getData<SitePage>(
-        await api.public.sites[':id'].page.$get({
-          param: { id: params.projectId },
-          query: { path, ...(deps.lang ? { lang: deps.lang } : {}), ...(version ? { version } : {}) },
-        }),
-        'page',
-      );
+      page = await getSitePageFn({ data: { projectId: params.projectId, path, language: deps.lang, version } });
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
@@ -38,13 +32,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // from the access-gated site shell before treating the page miss as 404.
       const requested = (params._splat ?? '').replace(/^\/+|\/+$/g, '');
       try {
-        const site = await getData<SiteShell>(
-          await api.public.sites[':id'].$get({
-            param: { id: params.projectId },
-            query: { ...(deps.lang ? { lang: deps.lang } : {}) },
-          }),
-          'site',
-        );
+        const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
         if (site.openapi && requested === site.openapi.path) {
           return { kind: 'openapi' as const, openapi: site.openapi, site, lang: deps.lang, siteOrigin: customDomainOrigin() };
         }

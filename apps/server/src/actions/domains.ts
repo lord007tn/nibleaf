@@ -1,7 +1,7 @@
 import { resolve4, resolve6, resolveCname, resolveTxt } from 'node:dns/promises';
 import { request as httpsRequest } from 'node:https';
 import { connect } from 'node:tls';
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
@@ -13,6 +13,7 @@ import {
   createCustomHostnameRoute,
   customHostnameRecords,
   customHostnameState,
+  type DomainRecord,
   deleteCustomHostname,
   deleteCustomHostnameRoute,
   getCustomHostname,
@@ -41,12 +42,15 @@ interface Domain {
   providerData?: unknown;
 }
 
-export const listDomains = async (projectId: string) => {
+type StoredDomain = Prisma.DomainGetPayload<object>;
+type DomainWithRecords = StoredDomain & { records: DomainRecord[] };
+
+export const listDomains = async (projectId: string): Promise<DomainWithRecords[]> => {
   const domains = await prisma.domain.findMany({ where: { projectId }, orderBy: { createdAt: 'asc' } });
   return domains.map((domain) => ({ ...domain, records: dnsRecords(domain) }));
 };
 
-export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody) => {
+export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody): Promise<DomainWithRecords> => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = body.domain.toLowerCase();
   const existing = await prisma.domain.findUnique({ where: { domain }, select: { id: true } });
@@ -200,7 +204,7 @@ const probeRoute = async (domain: string, addresses: string[], projectId: string
  * domain verified before the TLS probe is intentional: Caddy's on-demand `ask`
  * endpoint must see the verified row before the first certificate handshake.
  */
-export const verifyDomain = async (organizationId: string, projectId: string, id: string) => {
+export const verifyDomain = async (organizationId: string, projectId: string, id: string): Promise<StoredDomain> => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {
@@ -289,7 +293,7 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
   });
 };
 
-export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string) => {
+export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string): Promise<StoredDomain | null> => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {

@@ -56,7 +56,6 @@ const deploymentIdFrom = (filter: QdrantFilter) => {
   for (const condition of filter.must) {
     if ('key' in condition && condition.key === 'deployment_id') return condition.match.value;
   }
-  return undefined;
 };
 
 const listIndexedPoints = vi.fn(async (filter: QdrantFilter, includeVectors = false) => {
@@ -74,7 +73,7 @@ vi.mock('../env', () => ({
     SEARCH_EMBEDDING_BASE_URL: 'https://embeddings.test/v1',
     SEARCH_EMBEDDING_MODEL: 'test-embedding',
     SEARCH_EMBEDDING_DIMENSIONS: 2,
-    SEARCH_EMBEDDING_TIMEOUT_MS: 1_000,
+    SEARCH_EMBEDDING_TIMEOUT_MS: 1000,
   },
 }));
 

@@ -1,12 +1,13 @@
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import type { CreateCommentBody } from '@nibleaf/validators';
 import { notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
 const userSelect = { id: true, name: true, image: true } as const;
+type CommentWithUser = Prisma.CommentGetPayload<{ include: { user: { select: { id: true; name: true; image: true } } } }>;
 
 /** List comments for a project, newest first, optionally filtered by page. */
-export const listComments = async (organizationId: string, projectId: string, pageId?: string) => {
+export const listComments = async (organizationId: string, projectId: string, pageId?: string): Promise<CommentWithUser[]> => {
   await assertProjectInOrg(organizationId, projectId);
   return prisma.comment.findMany({
     where: { projectId, ...(pageId ? { pageId } : {}) },
@@ -15,7 +16,7 @@ export const listComments = async (organizationId: string, projectId: string, pa
   });
 };
 
-export const createComment = async (organizationId: string, projectId: string, userId: string, body: CreateCommentBody) => {
+export const createComment = async (organizationId: string, projectId: string, userId: string, body: CreateCommentBody): Promise<CommentWithUser> => {
   await assertProjectInOrg(organizationId, projectId);
   if (body.pageId) {
     const page = await prisma.page.findFirst({ where: { id: body.pageId, projectId }, select: { id: true } });
@@ -42,7 +43,7 @@ const assertCommentInProject = async (projectId: string, id: string) => {
   }
 };
 
-export const resolveComment = async (organizationId: string, projectId: string, id: string, resolved: boolean) => {
+export const resolveComment = async (organizationId: string, projectId: string, id: string, resolved: boolean): Promise<CommentWithUser> => {
   await assertProjectInOrg(organizationId, projectId);
   await assertCommentInProject(projectId, id);
   return prisma.comment.update({

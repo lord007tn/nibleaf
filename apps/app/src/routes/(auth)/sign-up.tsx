@@ -6,8 +6,9 @@ import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-rese
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
+import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
 import { sendMarketingAnalyticsEvent } from '@/lib/marketing-analytics';
@@ -27,28 +28,6 @@ export const Route = createFileRoute('/(auth)/sign-up')({
   component: SignUpPage,
 });
 
-interface PublicMeta {
-  providers: { google: boolean };
-  signupDisabled: boolean;
-}
-
-function usePublicMeta() {
-  const [meta, setMeta] = useState({ googleEnabled: false, signupDisabled: true });
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/public/meta')
-      .then(async (response) => (response.ok ? ((await response.json()) as { data: PublicMeta }) : null))
-      .then((result) => {
-        if (!cancelled && result) setMeta({ googleEnabled: result.data.providers.google, signupDisabled: result.data.signupDisabled });
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return meta;
-}
-
 function SignUpPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -63,7 +42,9 @@ function SignUpPage() {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
-  const { googleEnabled, signupDisabled } = usePublicMeta();
+  const { data: publicMeta } = useGetPublicMeta();
+  const googleEnabled = publicMeta?.providers.google ?? false;
+  const signupDisabled = publicMeta?.signupDisabled ?? true;
 
   const normalizedEmail = email.trim().toLowerCase();
   const invitationId = search.invite ?? readPendingInvitation() ?? undefined;

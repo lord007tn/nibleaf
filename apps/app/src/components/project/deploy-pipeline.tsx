@@ -3,16 +3,12 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useQuery } from '@tanstack/react-query';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { useRollback } from '@/hooks/api';
-import { getData } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
-import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
+import { useDeployments, useRollback } from '@/hooks/api';
+import type { DeploymentStatus, Project } from '@/hooks/api/types';
 import { siteHref } from '@/lib/links';
-import { api } from '@/services/api';
 
 interface DeployPipelineProps {
   project: Project;
@@ -53,16 +49,7 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
   const confirm = useConfirm();
   const t = useT();
 
-  const deployments = useQuery({
-    queryKey: queryKeys.deployments.all(project.id),
-    enabled: open,
-    queryFn: async () =>
-      getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId: project.id } }), 'deployments'),
-    refetchInterval: (query) => {
-      const latest = query.state.data?.[0];
-      return latest && (latest.status === 'PENDING' || latest.status === 'BUILDING') ? 1500 : false;
-    },
-  });
+  const deployments = useDeployments(project.id, { enabled: open, pollIntervalMs: 1500 });
 
   const latest = deployments.data?.[0];
   const status = latest?.status;

@@ -1,4 +1,5 @@
 import {
+  type AnalyticsEventEnvelope,
   type AnalyticsPayload,
   analyticsBackfillEventId,
   buildAnalyticsEvent,
@@ -13,7 +14,7 @@ import type { ProjectConfig } from '@nibleaf/validators';
 const command = process.argv[2];
 const arg = (name: string): string | undefined => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3);
 const projectFilter = arg('project');
-const batchSize = Math.min(5_000, Math.max(1, Number(arg('batch-size') ?? 500)));
+const batchSize = Math.min(5000, Math.max(1, Number(arg('batch-size') ?? 500)));
 const config = keys();
 
 if (!config.ANALYTICS_HASH_SALT) throw new Error('ANALYTICS_HASH_SALT is required for analytics migration tooling.');
@@ -75,7 +76,7 @@ const backfill = async (): Promise<void> => {
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
     if (rows.length === 0) break;
-    const envelopes = [];
+    const envelopes: AnalyticsEventEnvelope[] = [];
     for (const row of rows) {
       const context = await contextFor(row.projectId);
       envelopes.push(

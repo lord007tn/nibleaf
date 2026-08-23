@@ -1,7 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -22,16 +21,15 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
+import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
-import { queryKeys, useDeployments, useDomains, usePages, useProject, useProjectMembers } from '@/hooks/api';
+import { useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
-import { mutateData } from '@/hooks/api/client-helpers';
 import { useFormatters, viewsTrend } from '@/lib/format';
-import { api } from '@/services/api';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
   component: SiteOverviewPage,
@@ -39,7 +37,7 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
 
 // Only present a `slug.<base>` free-subdomain host when a base domain is actually
 // configured for this deployment; otherwise it 404s, so we fall back to /sites/:id.
-const siteBaseDomain = () => (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
+const siteBaseDomain = () => env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 const siteUrl = (domain: string | null, projectId: string) => (domain ? `https://${domain}` : `/sites/${projectId}`);
 
 /** Per-site dashboard: the hub each site opens to (stats, traffic, recent pages,
@@ -89,10 +87,7 @@ function SiteOverviewPage() {
         <div className="flex items-center gap-2">
           <Button
             nativeButton={false}
-            render={
-              // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
-              <a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />
-            }
+            render={<a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />}
             size="sm"
             variant="outline"
           >
@@ -275,24 +270,18 @@ function PublishFailureCard({
   pages: Array<{ id: string; path: string }>;
 }) {
   const t = useT();
-  const qc = useQueryClient();
   const issues = publishIssuesOf(deployment);
   const grammarOnly = issues.length > 0 && issues.every((issue) => issue.type === 'grammar');
 
-  const publishAnyway = useMutation({
-    mutationFn: async () =>
-      mutateData<Deployment>(
-        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
-        t('overview.publishFailed.error'),
-      ),
-    onSuccess: () => {
-      toast.success(t('overview.publishFailed.queued'));
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : t('overview.publishFailed.error')),
-  });
+  const publishAnyway = usePublishAnyway(projectId);
+  const publishAnywayWithFeedback = () => {
+    publishAnyway.mutate(undefined, {
+      onSuccess: () => {
+        toast.success(t('overview.publishFailed.queued'));
+      },
+      onError: (error) => toast.error(error instanceof Error ? error.message : t('overview.publishFailed.error')),
+    });
+  };
 
   // Map a check issue's page path back to the draft page, for an editor deep link.
   const pageIdFor = (issuePath: string): string | undefined => {
@@ -313,7 +302,7 @@ function PublishFailureCard({
           </p>
         </div>
         {grammarOnly ? (
-          <Button size="sm" disabled={publishAnyway.isPending} onClick={() => publishAnyway.mutate()}>
+          <Button size="sm" disabled={publishAnyway.isPending} onClick={publishAnywayWithFeedback}>
             {publishAnyway.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
             {publishAnyway.isPending ? t('overview.publishFailed.publishing') : t('overview.publishFailed.publishAnyway')}
           </Button>
@@ -362,16 +351,14 @@ const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId
 /** First-publish checklist: shown until the site has a READY deployment. */
 function PublishNudge({ projectId }: { projectId: string }) {
   const t = useT();
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return true;
-    }
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
     try {
-      return window.localStorage.getItem(nudgeDismissKey(projectId)) === '1';
+      setDismissed(window.localStorage.getItem(nudgeDismissKey(projectId)) === '1');
     } catch {
-      return false;
+      setDismissed(false);
     }
-  });
+  }, [projectId]);
   if (dismissed) {
     return null;
   }

@@ -19,9 +19,26 @@ export const safeThemeFontFamily = (value?: string): string | undefined => {
   return trimmed && /^[\p{L}\p{N} ._-]+$/u.test(trimmed) ? trimmed : undefined;
 };
 
-export const THEME_PRESET_IDS = ['harbor', 'manuscript', 'signal'] as const;
-export type ThemePresetId = (typeof THEME_PRESET_IDS)[number];
+export type ThemePresetId = 'harbor' | 'manuscript' | 'signal';
+export const THEME_PRESET_IDS = ['harbor', 'manuscript', 'signal'] as const satisfies readonly ThemePresetId[];
 
+export type ThemeColorKey =
+  | 'canvas'
+  | 'foreground'
+  | 'surface'
+  | 'surfaceRaised'
+  | 'muted'
+  | 'mutedForeground'
+  | 'border'
+  | 'accent'
+  | 'accentForeground'
+  | 'focus'
+  | 'code'
+  | 'codeForeground'
+  | 'info'
+  | 'success'
+  | 'warning'
+  | 'danger';
 export const THEME_COLOR_KEYS = [
   'canvas',
   'foreground',
@@ -39,8 +56,7 @@ export const THEME_COLOR_KEYS = [
   'success',
   'warning',
   'danger',
-] as const;
-export type ThemeColorKey = (typeof THEME_COLOR_KEYS)[number];
+] as const satisfies readonly ThemeColorKey[];
 export type ThemeColorTokens = Record<ThemeColorKey, string>;
 
 /** Stable CSS interface for reader chrome, search, and future AI surfaces. */
@@ -315,7 +331,7 @@ const normalizeHex = (value: string): string => {
 
 const channel = (value: number): number => {
   const normalized = value / 255;
-  return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  return normalized <= 0.040_45 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
 };
 
 export const relativeLuminance = (value: string): number => {

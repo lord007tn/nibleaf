@@ -107,9 +107,14 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
         response.headers.get('content-type')?.startsWith('text/markdown') === true &&
         hasVaryAccept(response.headers.get('vary')),
     ),
-    checkResponse('notFound', targets.notFound, fetchImpl, { headers: { Accept: 'text/markdown' } }, (response, body) => {
-      return response.status === 404 && response.headers.get('content-type')?.startsWith('text/markdown') === true && body.includes('llms.txt');
-    }),
+    checkResponse(
+      'notFound',
+      targets.notFound,
+      fetchImpl,
+      { headers: { Accept: 'text/markdown' } },
+      (response, body) =>
+        response.status === 404 && response.headers.get('content-type')?.startsWith('text/markdown') === true && body.includes('llms.txt'),
+    ),
   ]);
 
   return { baseUrl: targets.home.toString(), ok: checks.every((check) => check.ok), checks };

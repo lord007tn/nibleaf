@@ -315,7 +315,7 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
 /** How long the hot path waits for the queue before falling back to a direct
  *  insert. BullMQ buffers commands while redis reconnects (they'd otherwise
  *  hang the request), so a stalled enqueue must be treated as a failure. */
-const TRACK_ENQUEUE_TIMEOUT_MS = 1_500;
+const TRACK_ENQUEUE_TIMEOUT_MS = 1500;
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
   new Promise<T>((resolve, reject) => {
@@ -404,7 +404,7 @@ export const trackEvent = async (context: TrackEventContext, body: AnalyticsEven
       createJob(
         QueueNames.ANALYTICS,
         { name: 'track-event', data: { kind: 'track-event', envelope } },
-        { jobId: `analytics-${envelope.eventId}`, attempts: 8, backoff: { type: 'exponential', delay: 1_000 }, removeOnComplete: 10_000 },
+        { jobId: `analytics-${envelope.eventId}`, attempts: 8, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: 10_000 },
       ),
       TRACK_ENQUEUE_TIMEOUT_MS,
     );

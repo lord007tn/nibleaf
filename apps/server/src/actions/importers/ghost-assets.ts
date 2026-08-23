@@ -5,7 +5,7 @@ import { isPrivateIp } from '@/lib/client-ip';
 import { findImportedAsset, storeAsset } from '../assets';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
-const MAX_REMOTE_ASSETS = 2_000;
+const MAX_REMOTE_ASSETS = 2000;
 const MAX_REDIRECTS = 3;
 const MARKDOWN_IMAGE = /!\[[^\]]*\]\((https?:\/\/[^\s)]+)(?:\s+["'][^)]*["'])?\)/gi;
 const HTML_IMAGE = /<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>/gi;

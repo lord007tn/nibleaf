@@ -134,7 +134,7 @@ export class GitHubProvider implements GitProviderClient {
     const entries = tree.tree.filter(
       (entry) => entry.type === 'blob' && entry.path.startsWith(prefix) && /\.mdx?$/i.test(entry.path) && (entry.size ?? 0) <= 2_000_000,
     );
-    if (entries.length > 2_000) {
+    if (entries.length > 2000) {
       throw new Error('Git sync is limited to 2,000 Markdown files per connection.');
     }
     // Large documentation repositories can contain thousands of Markdown

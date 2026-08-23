@@ -1,5 +1,6 @@
 import { useRouterState } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import { useGetPublicMeta } from '@/hooks/api/public';
 import {
   declineMarketingAnalytics,
   initializeMarketingAnalytics,
@@ -12,10 +13,6 @@ import {
   sendMarketingPageView,
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
-
-interface PublicMeta {
-  marketingAnalytics?: { consentRequired: true; ga4MeasurementId: string | null; gtmContainerId: string | null };
-}
 
 const copy = {
   en: {
@@ -49,22 +46,13 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   const [choice, setChoice] = useState<MarketingAnalyticsChoice>('pending');
   const lastPageView = useRef<string | null>(null);
   const t = copy[language];
+  const { data: publicMeta } = useGetPublicMeta({ enabled });
 
   useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    void fetch('/api/public/meta', { cache: 'no-store' })
-      .then(async (response) => (response.ok ? ((await response.json()) as { data: PublicMeta }) : null))
-      .then((response) => {
-        if (cancelled) return;
-        setTarget(selectMarketingAnalyticsTarget(response?.data.marketingAnalytics));
-        setChoice(readMarketingAnalyticsConsent());
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled]);
+    if (!(enabled && publicMeta)) return;
+    setTarget(selectMarketingAnalyticsTarget(publicMeta.marketingAnalytics));
+    setChoice(readMarketingAnalyticsConsent());
+  }, [enabled, publicMeta]);
 
   useEffect(() => {
     if (!target) return;

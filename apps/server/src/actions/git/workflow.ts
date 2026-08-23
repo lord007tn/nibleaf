@@ -3,6 +3,7 @@ import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { buildSnapshot } from '@nibleaf/shared/site';
+import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
 import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
@@ -778,7 +779,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const preview = pull ? await upsertPreview(connection, finalSha, pull) : null;
     if (operation.kind === 'PUSH' && pull && preview?.url) {
       const requestBody = (operation.request ?? {}) as unknown as QueueGitInput;
-      const previewUrl = `${process.env.APP_URL?.replace(/\/$/, '') ?? ''}${preview.url}`;
+      const previewUrl = `${env.APP_URL.replace(/\/$/, '')}${preview.url}`;
       await provider.upsertDraftPullRequest({
         repository: connection.repository,
         baseBranch: operation.baseBranch,
