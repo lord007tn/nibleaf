@@ -27,6 +27,7 @@
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
+    "@nibleaf/qdrant": "workspace:*",
     "@nibleaf/search": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/storage": "workspace:*",

@@ -426,3 +426,23 @@ export interface SearchHit {
   snippet: string;
   score: number;
 }
+
+export interface SearchCitation {
+  id: string;
+  pageId: string;
+  title: string;
+  path: string;
+  heading?: string;
+  snippet: string;
+  direction: 'ltr' | 'rtl';
+}
+
+export interface SearchAnswer {
+  status: 'answered' | 'no_answer';
+  answer: string;
+  confidence: number;
+  citations: SearchCitation[];
+  model?: string;
+  cacheHit: boolean;
+  quotaRemaining: number;
+}

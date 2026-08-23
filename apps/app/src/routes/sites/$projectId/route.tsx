@@ -584,6 +584,7 @@ function SiteChrome() {
           placeholder={config?.search?.placeholder}
           hotkey={searchHotkey}
           maxResults={config?.search?.maxResults}
+          aiAnswers={config?.search?.aiAnswers === true}
         />
       ) : null}
       <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />

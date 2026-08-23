@@ -1,14 +1,16 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
-const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn(), answerSite: vi.fn() }));
 
 vi.mock('@/actions/sites', () => ({
   getSite: vi.fn(),
   getSitePage: vi.fn(),
   getSiteOpenApi: mocks.getSiteOpenApi,
   searchSite: vi.fn(),
+  answerSite: mocks.answerSite,
   recordSiteEvent: vi.fn(),
   getSiteChangelog: vi.fn(),
   getSiteChangelogRss: mocks.getSiteChangelogRss,
@@ -20,7 +22,11 @@ vi.mock('@/actions/sites', () => ({
 
 import handlers from './handlers';
 
-const app = new Hono<HonoEnv>().route('/sites', handlers);
+const app = new Hono<HonoEnv>();
+app.onError((error, ctx) =>
+  error instanceof AppError ? ctx.json(error.toJSON(), error.status) : ctx.json({ error: { message: error.message } }, 500),
+);
+app.route('/sites', handlers);
 const document = { openapi: '3.1.0', info: { title: 'Pets', version: '1' }, paths: {} };
 
 describe('published OpenAPI endpoint', () => {
@@ -65,5 +71,31 @@ describe('published changelog RSS endpoint', () => {
     expect(response.headers.get('content-type')).toContain('application/rss+xml');
     expect(response.headers.get('cache-control')).toContain('public');
     expect(await response.text()).toContain('<rss');
+  });
+});
+
+describe('grounded answer endpoint', () => {
+  beforeEach(() => {
+    mocks.answerSite.mockReset();
+  });
+
+  it('uses a POST body and prevents shared caching', async () => {
+    mocks.answerSite.mockResolvedValueOnce({ status: 'no_answer', answer: 'No evidence.', confidence: 0, citations: [], cacheHit: false });
+    const response = await app.request('/sites/project/answer', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ q: 'What is the SLA?', lang: 'en', version: 'main' }),
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('vary')).toContain('Cookie');
+    expect(mocks.answerSite).toHaveBeenCalledWith('project', 'What is the SLA?', 'en', 'main');
+  });
+
+  it('rejects empty and oversized answer requests before orchestration', async () => {
+    expect(
+      (await app.request('/sites/project/answer', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"q":""}' })).status,
+    ).toBe(422);
+    expect(mocks.answerSite).not.toHaveBeenCalled();
   });
 });

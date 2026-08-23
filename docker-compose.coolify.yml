@@ -104,6 +104,22 @@ x-service-env: &service-env
   WORKBENCH_USER: ${WORKBENCH_USER:-}
   WORKBENCH_PASS: ${WORKBENCH_PASS:-}
   NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
+  QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+  QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+  QDRANT_COLLECTION_ALIAS: ${QDRANT_COLLECTION_ALIAS:-nibleaf_search_active}
+  QDRANT_COLLECTION_VERSION: ${QDRANT_COLLECTION_VERSION:-v1}
+  QDRANT_VECTOR_SIZE: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_RUNTIME: ${SEARCH_RUNTIME:-shadow}
+  SEARCH_EMBEDDING_API_KEY: ${SEARCH_EMBEDDING_API_KEY:-}
+  SEARCH_EMBEDDING_BASE_URL: ${SEARCH_EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  SEARCH_EMBEDDING_MODEL: ${SEARCH_EMBEDDING_MODEL:-text-embedding-3-small}
+  SEARCH_EMBEDDING_DIMENSIONS: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_ANSWER_ENABLED: ${SEARCH_ANSWER_ENABLED:-false}
+  SEARCH_ANSWER_API_KEY: ${SEARCH_ANSWER_API_KEY:-}
+  SEARCH_ANSWER_BASE_URL: ${SEARCH_ANSWER_BASE_URL:-https://openrouter.ai/api/v1}
+  SEARCH_ANSWER_MODEL: ${SEARCH_ANSWER_MODEL:-openai/gpt-5.6-luna}
+  SEARCH_ANSWER_DAILY_PER_PROJECT: ${SEARCH_ANSWER_DAILY_PER_PROJECT:-200}
+  SEARCH_ANSWER_RATE_LIMIT_PER_MIN: ${SEARCH_ANSWER_RATE_LIMIT_PER_MIN:-10}
 
 services:
   postgres:
@@ -132,6 +148,12 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: unless-stopped
+    volumes:
+      - nibleaf-coolify-qdrant:/qdrant/storage
 
   maxio:
     image: docker.io/coollabsio/maxio:0.4.2
@@ -178,6 +200,8 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -200,6 +224,8 @@ services:
     depends_on:
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     healthcheck:
@@ -265,5 +291,7 @@ volumes:
     name: nibleaf-coolify-pg
   nibleaf-coolify-dragonfly:
     name: nibleaf-coolify-dragonfly
+  nibleaf-coolify-qdrant:
+    name: nibleaf-coolify-qdrant
   nibleaf-coolify-maxio:
     name: nibleaf-coolify-maxio

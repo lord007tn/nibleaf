@@ -1,3 +1,4 @@
+import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
@@ -161,6 +162,10 @@ export const updateProject = async (organizationId: string, id: string, body: Up
 
 export const deleteProject = async (organizationId: string, id: string) => {
   await assertProjectInOrg(organizationId, id);
+  // Queue tenant erasure before deleting the source record. If Redis is
+  // unavailable, fail while the project still exists so cleanup stays
+  // retryable instead of silently orphaning retained search collections.
+  await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: id } }, { jobId: `search-delete-${id}` });
   // Each site owns its organization (1:1), so deleting the site deletes its org —
   // which cascades the project itself plus its members and pending invitations.
   await prisma.organization.delete({ where: { id: organizationId } });

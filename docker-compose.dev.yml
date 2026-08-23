@@ -34,6 +34,15 @@ services:
     volumes:
       - nibleaf-dragonfly:/data
 
+  # Qdrant v1.19 adds per-tenant IDF corpus filters used by Nibleaf's BM25 lane.
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: unless-stopped
+    ports:
+      - '6333:6333'
+    volumes:
+      - nibleaf-qdrant:/qdrant/storage
+
   # maxio — S3-compatible object storage. Auto-creates the `nibleaf` bucket and
   # serves it with anonymous read so doc assets load by their public URL.
   # Console: http://localhost:9300/ui/
@@ -60,4 +69,5 @@ services:
 volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
+  nibleaf-qdrant:
   nibleaf-maxio:

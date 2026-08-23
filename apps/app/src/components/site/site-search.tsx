@@ -1,11 +1,12 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { useDebouncedValue } from '@tanstack/react-pacer';
-import { FileText } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, Search, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { getData } from '@/hooks/api/client-helpers';
-import type { SearchHit } from '@/hooks/api/types';
+import type { SearchAnswer, SearchHit } from '@/hooks/api/types';
 import { api } from '@/lib/api';
 import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
@@ -49,6 +50,7 @@ export function SiteSearch({
   placeholder,
   hotkey,
   maxResults,
+  aiAnswers,
 }: {
   projectId: string;
   open: boolean;
@@ -61,10 +63,18 @@ export function SiteSearch({
   /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
+  /** Site-level product switch. Instance/provider availability is still
+   * enforced server-side and never inferred from this client flag. */
+  aiAnswers?: boolean;
 }) {
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
+  const [mode, setMode] = useState<'search' | 'answer'>('search');
+  const [answer, setAnswer] = useState<SearchAnswer | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
+  const [answerLoading, setAnswerLoading] = useState(false);
+  const arabic = lang?.toLowerCase().startsWith('ar') ?? false;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
@@ -75,12 +85,17 @@ export function SiteSearch({
       return;
     }
     let active = true;
+    if (mode !== 'search') return;
+    const controller = new AbortController();
     const loadHits = async () =>
       getData<{ hits: SearchHit[] }>(
-        await api.public.sites[':id'].search.$get({
-          param: { id: projectId },
-          query: { q, ...(maxResults ? { limit: String(maxResults) } : {}), ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
-        }),
+        await api.public.sites[':id'].search.$get(
+          {
+            param: { id: projectId },
+            query: { q, ...(maxResults ? { limit: String(maxResults) } : {}), ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
+          },
+          { init: { signal: controller.signal } },
+        ),
         'search',
       );
     loadHits()
@@ -92,8 +107,31 @@ export function SiteSearch({
       });
     return () => {
       active = false;
+      controller.abort();
     };
-  }, [debouncedQuery, lang, maxResults, projectId, version]);
+  }, [debouncedQuery, lang, maxResults, mode, projectId, version]);
+
+  const ask = async () => {
+    const q = query.trim();
+    if (q.length < 2 || answerLoading) return;
+    setAnswerLoading(true);
+    setAnswerError(null);
+    setAnswer(null);
+    try {
+      const result = await getData<SearchAnswer>(
+        await api.public.sites[':id'].answer.$post({
+          param: { id: projectId },
+          json: { q, ...(lang ? { lang } : {}), ...(version ? { version } : {}) },
+        }),
+        'answer',
+      );
+      setAnswer(result);
+    } catch (error) {
+      setAnswerError(error instanceof Error ? error.message : arabic ? 'تعذر إنشاء الإجابة.' : 'Could not generate an answer.');
+    } finally {
+      setAnswerLoading(false);
+    }
+  };
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -123,40 +161,118 @@ export function SiteSearch({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
+      <DialogContent className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl" showCloseButton={false}>
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>
+          {aiAnswers ? (
+            <div className="flex items-center gap-1 border-b px-3 pt-3" role="tablist" aria-label={arabic ? 'وضع البحث' : 'Search mode'}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'search'}
+                className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'search' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
+                onClick={() => setMode('search')}
+              >
+                <Search className="size-4" /> {arabic ? 'النتائج' : 'Results'}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === 'answer'}
+                className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'answer' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
+                onClick={() => setMode('answer')}
+              >
+                <Sparkles className="size-4" /> {arabic ? 'اسأل الذكاء الاصطناعي' : 'Ask AI'}
+              </button>
+            </div>
+          ) : null}
           <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
-          <CommandList>
-            <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
-            <CommandGroup heading={t('results')}>
-              {hits.map((hit) => (
-                <CommandItem
-                  key={hit.id}
-                  value={hit.id}
-                  onSelect={() => {
-                    onOpenChange(false);
-                    window.location.href = siteHref(projectId, hit.path, { lang, version });
-                  }}
-                >
-                  {hasIcon(hit.icon) ? (
-                    <PageIcon name={hit.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  )}
-                  <div className="min-w-0">
-                    <div className="font-medium">
-                      <Highlight text={hit.title} query={debouncedQuery} />
+          {mode === 'search' ? (
+            <CommandList>
+              <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
+              <CommandGroup heading={t('results')}>
+                {hits.map((hit) => (
+                  <CommandItem
+                    key={hit.id}
+                    value={hit.id}
+                    onSelect={() => {
+                      onOpenChange(false);
+                      window.location.href = siteHref(projectId, hit.path, { lang, version });
+                    }}
+                  >
+                    {hasIcon(hit.icon) ? (
+                      <PageIcon name={hit.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-medium">
+                        <Highlight text={hit.title} query={debouncedQuery} />
+                      </div>
+                      <div className="truncate text-muted-foreground text-xs">
+                        <Highlight text={hit.snippet} query={debouncedQuery} />
+                      </div>
                     </div>
-                    <div className="truncate text-muted-foreground text-xs">
-                      <Highlight text={hit.snippet} query={debouncedQuery} />
-                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          ) : (
+            <div className="max-h-[55vh] overflow-y-auto p-4" dir={arabic ? 'rtl' : 'ltr'}>
+              {!answer && !answerError ? (
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+                  <p className="font-medium">{arabic ? 'إجابة موثقة من وثائق هذا الموقع' : 'A grounded answer from this site’s documentation'}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {arabic
+                      ? 'لن تُستخدم أي صفحة لا يسمح لك بقراءتها، وستظهر الاستشهادات مع الإجابة.'
+                      : 'Pages you cannot read are excluded, and citations are shown with the answer.'}
+                  </p>
+                </div>
+              ) : null}
+              {answerError ? (
+                <div className="flex gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
+                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                  <span>{answerError}</span>
+                </div>
+              ) : null}
+              {answer ? (
+                <div className="space-y-4">
+                  <div className="whitespace-pre-wrap text-sm leading-7" dir={arabic ? 'rtl' : 'ltr'}>
+                    {answer.answer}
                   </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
+                  {answer.citations.length > 0 ? (
+                    <div className="space-y-2 border-t pt-3">
+                      <p className="font-medium text-xs uppercase tracking-wide text-muted-foreground">{arabic ? 'المصادر' : 'Sources'}</p>
+                      {answer.citations.map((citation) => (
+                        <a
+                          key={citation.id}
+                          className="block rounded-md border p-3 text-start transition-colors hover:bg-muted/60"
+                          href={siteHref(projectId, citation.path, { lang, version })}
+                          dir={citation.direction}
+                        >
+                          <span className="font-medium text-sm">
+                            [{citation.id}] {citation.title}
+                          </span>
+                          {citation.heading ? <span className="ms-2 text-muted-foreground text-xs">· {citation.heading}</span> : null}
+                          <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">{citation.snippet}</span>
+                        </a>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
+                <p className="text-muted-foreground text-xs">
+                  {arabic ? 'قد لا تتوفر إجابة عندما لا تدعمها الوثائق.' : 'No answer is returned when the docs do not support one.'}
+                </p>
+                <Button disabled={query.trim().length < 2 || answerLoading} onClick={ask} size="sm" type="button">
+                  {answerLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {answerLoading ? (arabic ? 'جارٍ التحقق…' : 'Checking…') : arabic ? 'إجابة' : 'Answer'}
+                </Button>
+              </div>
+            </div>
+          )}
         </Command>
       </DialogContent>
     </Dialog>

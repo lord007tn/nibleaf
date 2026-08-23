@@ -77,6 +77,19 @@ x-service-env: &service-env
   GIT_CREDENTIAL_ENCRYPTION_KEY: ${GIT_CREDENTIAL_ENCRYPTION_KEY:-}
   GIT_WORKER_SECRET: ${GIT_WORKER_SECRET:-}
   GIT_CONCURRENCY: ${GIT_CONCURRENCY:-2}
+  QDRANT_URL: http://qdrant:6333
+  QDRANT_COLLECTION_ALIAS: ${QDRANT_COLLECTION_ALIAS:-nibleaf_search_active}
+  QDRANT_COLLECTION_VERSION: ${QDRANT_COLLECTION_VERSION:-v1}
+  QDRANT_VECTOR_SIZE: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_RUNTIME: ${SEARCH_RUNTIME:-shadow}
+  SEARCH_EMBEDDING_API_KEY: ${SEARCH_EMBEDDING_API_KEY:-}
+  SEARCH_EMBEDDING_BASE_URL: ${SEARCH_EMBEDDING_BASE_URL:-https://api.openai.com/v1}
+  SEARCH_EMBEDDING_MODEL: ${SEARCH_EMBEDDING_MODEL:-text-embedding-3-small}
+  SEARCH_EMBEDDING_DIMENSIONS: ${SEARCH_EMBEDDING_DIMENSIONS:-1536}
+  SEARCH_ANSWER_ENABLED: ${SEARCH_ANSWER_ENABLED:-false}
+  SEARCH_ANSWER_API_KEY: ${SEARCH_ANSWER_API_KEY:-}
+  SEARCH_ANSWER_BASE_URL: ${SEARCH_ANSWER_BASE_URL:-https://openrouter.ai/api/v1}
+  SEARCH_ANSWER_MODEL: ${SEARCH_ANSWER_MODEL:-openai/gpt-5.6-luna}
 
 services:
   postgres:
@@ -111,6 +124,12 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: unless-stopped
+    volumes:
+      - nibleaf-qdrant:/qdrant/storage
 
   # maxio — S3-compatible object storage. Auto-creates the bucket
   # (MAXIO_DEFAULT_BUCKETS) and serves it with anonymous read (MAXIO_PUBLIC_BUCKETS)
@@ -157,6 +176,8 @@ services:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -177,6 +198,8 @@ services:
     depends_on:
       dragonfly:
         condition: service_healthy
+      qdrant:
+        condition: service_started
       migrate:
         condition: service_completed_successfully
     restart: unless-stopped
@@ -210,4 +233,5 @@ services:
 volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
+  nibleaf-qdrant:
   nibleaf-maxio:

@@ -147,6 +147,7 @@ export const projectConfigSchema = z
         placeholder: z.string().max(80).optional(),
         hotkey: z.enum(['cmdk', 'slash']).optional(),
         maxResults: z.number().int().min(1).max(100).optional(),
+        aiAnswers: z.boolean().optional(),
       })
       .strict()
       .optional(),
@@ -556,6 +557,15 @@ export const searchQuery = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 export type SearchQuery = z.infer<typeof searchQuery>;
+
+export const searchAnswerBody = z
+  .object({
+    q: z.string().trim().min(2).max(500),
+    lang: z.string().trim().min(2).max(35).optional(),
+    version: z.string().trim().min(1).max(120).optional(),
+  })
+  .strict();
+export type SearchAnswerBody = z.infer<typeof searchAnswerBody>;
 
 export const analyticsRangeEnum = z.enum(['24h', '7d', '30d', '90d']);
 export type AnalyticsRange = z.infer<typeof analyticsRangeEnum>;

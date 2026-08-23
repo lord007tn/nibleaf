@@ -2,7 +2,11 @@ import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { keys } from './keys';
 
+export * from './analytics';
+export * from './answer';
 export { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
+export * from './hybrid';
+export * from './providers';
 
 // Orama ships a built-in tokenizer (word splitter + optional stemmer) per
 // language. We map a project language CODE (BCP-47 primary subtag) to the Orama
