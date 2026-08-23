@@ -118,6 +118,7 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
     // flow margin tracks the configured rhythm.
     <div
       className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-black/20 bg-[#0d1117] shadow-xs dark:border-white/10"
+      data-theme-component="code"
       data-not-typeset
     >
       {title ? (

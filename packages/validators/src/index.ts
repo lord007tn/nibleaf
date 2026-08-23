@@ -2,6 +2,7 @@ import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redir
 import { z } from 'zod';
 
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
+import { themeConfigSchema } from './themes';
 
 export {
   MAX_REDIRECT_CHAIN_LENGTH,
@@ -19,6 +20,14 @@ export {
   SAFE_INLINE_ASSET_CONTENT_TYPES,
   safeInlineAssetContentType,
 } from './assets';
+export {
+  parseThemeTemplate,
+  type ThemeImportBody,
+  type ThemeTemplateParseResult,
+  themeConfigSchema,
+  themeImportBodySchema,
+  themeTemplateV1Schema,
+} from './themes';
 
 // ─── Common ─────────────────────────────────────────────────────────────────
 
@@ -80,6 +89,7 @@ export const projectConfigSchema = z
       })
       .strict()
       .optional(),
+    theme: themeConfigSchema.optional(),
     typography: z
       .object({
         headingFont: z.string().max(60).optional(),

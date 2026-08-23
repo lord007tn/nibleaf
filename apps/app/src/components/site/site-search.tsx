@@ -133,7 +133,7 @@ export function SiteSearch({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl" showCloseButton={false}>
+      <DialogContent className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl" data-theme-surface="search" showCloseButton={false}>
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>

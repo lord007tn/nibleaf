@@ -200,6 +200,14 @@ describe('buildSnapshot', () => {
     expect(snap.pages[0]?.versionId).toBe('branch_main');
     expect(snap.pages[0]?.updatedAt).toBe('2026-01-01T00:00:00.000Z');
   });
+  it('freezes theme schema v1 settings into the immutable deployment snapshot', () => {
+    const config = {
+      theme: { preset: 'signal', layout: { density: 'compact' } },
+      styling: { theme: 'system' },
+    };
+    const snap = buildSnapshot({ ...projectRow, config }, [rawPage], '2026-01-01');
+    expect(snap.project.config).toEqual(config);
+  });
   it('preserves GROUP kinds', () => {
     const snap = buildSnapshot(projectRow, [{ ...rawPage, kind: 'GROUP' }], '2026-01-01');
     expect(snap.pages[0]?.kind).toBe('GROUP');

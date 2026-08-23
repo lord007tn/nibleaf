@@ -3,6 +3,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
+import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
@@ -158,7 +159,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const updatedLabel = new Intl.DateTimeFormat(language || 'en', { dateStyle: 'medium' }).format(new Date(page.updatedAt));
 
   const article = (
-    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')}>
+    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
@@ -245,12 +246,5 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     return <div className="min-w-0 py-9 lg:py-12">{article}</div>;
   }
 
-  return (
-    <div className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]">
-      {article}
-      <aside className="hidden xl:block">
-        <TableOfContents headings={page.headings} label={tArticle('onThisPage')} />
-      </aside>
-    </div>
-  );
+  return <DocumentationPageLayout article={article} tableOfContents={<TableOfContents headings={page.headings} label={tArticle('onThisPage')} />} />;
 }

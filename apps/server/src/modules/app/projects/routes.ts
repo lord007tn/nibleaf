@@ -31,6 +31,18 @@ const projectsRoutes = {
     description: 'Download every page as Markdown in a zip (organized by branch/language/path, with a project.json manifest).',
     responses: { 200: { description: 'zip archive' }, ...errorResponses },
   }),
+  themeExport: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember('id')],
+    tags: ['projects'],
+    description: 'Export the draft theme as a deterministic, versioned Nibleaf theme template.',
+    responses: { 200: { description: 'theme template' }, ...errorResponses },
+  }),
+  themeImport: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],
+    tags: ['projects'],
+    description: 'Preview or apply a validated Nibleaf theme template in merge or replace mode.',
+    responses: { 200: { description: 'theme import preview or result' }, ...errorResponses },
+  }),
   update: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],
     tags: ['projects'],
