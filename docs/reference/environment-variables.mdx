@@ -99,7 +99,7 @@ Both variables must be present and non-blank after trimming surrounding whitespa
 
 ### GTM container contract
 
-When `MARKETING_GTM_ID` is enabled, configure one Google tag in GTM with automatic pageviews disabled. Add Custom Event triggers for `page_view`, `sign_up`, `cta_clicked`, `free_tool_started`, `free_tool_completed`, and `free_tool_cta_clicked`; forward only the scalar properties Nibleaf puts on those events. Do not read form fields, account data, document content, or arbitrary DOM values into analytics. Keep consent checks enabled on every analytics tag. Nibleaf loads the container only after acceptance, queues one manual `page_view` for the accepted route and each later SPA navigation, and stops event delivery when consent is withdrawn.
+When `MARKETING_GTM_ID` is enabled, configure one Google tag in GTM with automatic pageviews disabled and its normal page initialization trigger. Nibleaf queues standard `gtag('event', ...)` commands for `page_view`, `sign_up`, `cta_clicked`, `free_tool_started`, `free_tool_completed`, and `free_tool_cta_clicked`, so separate GTM Event tags are not required. Do not add variables that read form fields, account data, document content, or arbitrary DOM values into analytics. Keep consent checks enabled on the Google tag. Nibleaf loads the container only after acceptance, queues one manual `page_view` for the accepted route and each later SPA navigation, and stops event delivery when consent is withdrawn.
 
 ## Operator and lifecycle settings
 

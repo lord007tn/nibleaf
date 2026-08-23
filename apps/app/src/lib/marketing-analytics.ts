@@ -198,7 +198,7 @@ export function sendMarketingPageView(pathname: string, language: MarketingAnaly
     page_title: document.title.slice(0, 200),
   };
   if (activeTarget.provider === 'gtm') {
-    window.dataLayer?.push({ event: 'page_view', ...properties });
+    window.gtag?.('event', 'page_view', properties);
     return;
   }
   window.gtag?.('event', 'page_view', { ...properties, send_to: activeTarget.id });
@@ -207,7 +207,7 @@ export function sendMarketingPageView(pathname: string, language: MarketingAnaly
 export function sendMarketingAnalyticsEvent(event: string, properties: Record<string, boolean | number | string>): void {
   if (typeof window === 'undefined' || !activeTarget || !isApprovedMarketingAnalyticsEvent(event, properties)) return;
   if (activeTarget.provider === 'gtm') {
-    window.dataLayer?.push({ event, ...properties });
+    window.gtag?.('event', event, properties);
     return;
   }
   window.gtag?.('event', event, { ...properties, send_to: activeTarget.id });

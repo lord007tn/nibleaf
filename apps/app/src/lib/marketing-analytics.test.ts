@@ -117,18 +117,48 @@ describe('marketing analytics', () => {
     expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
   });
 
-  it('pushes one clean manual pageview and allowlisted events through the GTM data layer', () => {
+  it('queues standard gtag events for the GTM-managed Google tag', () => {
     window.history.replaceState({}, '', '/ar');
     initializeMarketingAnalytics(GTM_TARGET);
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
     sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' });
+    sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
+    sendMarketingAnalyticsEvent('free_tool_started', {
+      input_mode: 'html',
+      page_path: '/tools/rtl-documentation-readiness',
+      product: 'nibleaf',
+      rubric_version: '1.0.0',
+      tool_slug: 'rtl-documentation-readiness',
+    });
+    sendMarketingAnalyticsEvent('free_tool_completed', {
+      category_count: 6,
+      checks_run: 18,
+      checks_unknown: 0,
+      product: 'nibleaf',
+      result_type: 'strong_evidence',
+      rubric_version: '1.0.0',
+      tool_slug: 'rtl-documentation-readiness',
+    });
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+    });
 
-    expect(window.dataLayer).toContainEqual(
-      expect.objectContaining({ event: 'page_view', language: 'ar', page_location: 'http://localhost:3000/ar', page_path: '/ar' }),
-    );
-    expect(window.dataLayer).toContainEqual(
-      expect.objectContaining({ destination: 'signup', event: 'cta_clicked', language: 'ar', placement: 'hero' }),
-    );
+    expect(window.dataLayer).toContainEqual([
+      'event',
+      'page_view',
+      expect.objectContaining({ language: 'ar', page_location: 'http://localhost:3000/ar', page_path: '/ar' }),
+    ]);
+    expect(window.dataLayer).toContainEqual([
+      'event',
+      'cta_clicked',
+      expect.objectContaining({ destination: 'signup', language: 'ar', placement: 'hero' }),
+    ]);
+    for (const event of ['sign_up', 'free_tool_started', 'free_tool_completed', 'free_tool_cta_clicked']) {
+      expect(window.dataLayer).toContainEqual(['event', event, expect.any(Object)]);
+    }
     expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
     expect(JSON.stringify(window.dataLayer)).not.toContain('send_to');
   });
