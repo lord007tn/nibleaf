@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -29,26 +30,20 @@ describe('marketingAnalyticsEnabled', () => {
 describe('MarketingAnalyticsConsent', () => {
   let container: HTMLDivElement;
   let root: Root;
+  let queryClient: QueryClient;
 
   beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['public', 'meta'], {
+      marketingAnalytics: { consentRequired: true, ga4MeasurementId: null, gtmContainerId: 'GTM-ABC123' },
+      providers: { google: false },
+      signupDisabled: false,
+    });
     window.localStorage.clear();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            JSON.stringify({ data: { marketingAnalytics: { consentRequired: true, ga4MeasurementId: null, gtmContainerId: 'GTM-ABC123' } } }),
-            {
-              headers: { 'content-type': 'application/json' },
-              status: 200,
-            },
-          ),
-      ),
-    );
   });
 
   afterEach(() => {
@@ -63,7 +58,11 @@ describe('MarketingAnalyticsConsent', () => {
   });
 
   it('keeps Google unloaded until the Arabic visitor accepts', async () => {
-    await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
+    const renderConsent = () =>
+      root.render(
+        createElement(QueryClientProvider, { client: queryClient }, createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })),
+      );
+    await act(async () => renderConsent());
 
     expect(container.textContent).toContain('تحليلات اختيارية');
     expect(document.querySelector('#nibleaf-marketing-gtm')).toBeNull();
@@ -74,7 +73,7 @@ describe('MarketingAnalyticsConsent', () => {
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('accepted');
     expect(document.querySelector('#nibleaf-marketing-gtm')).not.toBeNull();
 
-    await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
+    await act(async () => renderConsent());
     const pageViews = window.dataLayer?.filter(
       (entry) =>
         typeof entry === 'object' &&

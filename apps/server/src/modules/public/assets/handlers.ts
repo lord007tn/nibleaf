@@ -1,7 +1,7 @@
 import { Readable } from 'node:stream';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
-import { isProjectTakenDown, projectDeliveryAccess } from '@/actions/sites';
+import { getProjectDeliveryAccess, isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
 import { publicAssetResponseHeaders } from '@/lib/asset-response';
 import { deliveryCacheHeaders } from '@/lib/delivery-cache';
@@ -30,7 +30,7 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (projectId && (await isProjectTakenDown(projectId))) {
     throw notFound('asset', { key });
   }
-  const viewer = projectId ? await projectDeliveryAccess(projectId, ctx.req.raw.headers) : null;
+  const viewer = projectId ? await getProjectDeliveryAccess(projectId, ctx.req.raw.headers) : null;
   if (projectId && !viewer) {
     throw notFound('asset', { key });
   }

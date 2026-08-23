@@ -192,10 +192,8 @@ export function ThemeSection({ project }: { project: Project }) {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const change = (next: ThemeDraft | ((current: ThemeDraft) => ThemeDraft)) => {
-    setDraft((current) => {
-      setHistory((items) => [...items.slice(-19), current]);
-      return typeof next === 'function' ? next(current) : next;
-    });
+    setHistory((items) => [...items.slice(-19), draft]);
+    setDraft(typeof next === 'function' ? next(draft) : next);
   };
   const config = {
     ...(project.config ?? {}),

@@ -5,10 +5,17 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./keys": "./src/keys.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./src/index.ts"
+    },
+    "./keys": {
+      "types": "./dist/keys.d.mts",
+      "default": "./src/keys.ts"
+    }
   },
   "scripts": {
+    "build": "pnpm generate && tsdown",
     "with-env": "dotenv -e ../../.env --",
     "generate": "prisma generate",
     "migrate:dev": "pnpm with-env prisma migrate dev",
@@ -31,6 +38,7 @@
     "dotenv-cli": "^11.0.0",
     "prisma": "7.9.1",
     "tsx": "4.22.4",
+    "tsdown": "^0.22.14",
     "typescript": "^7.0.2"
   }
 }

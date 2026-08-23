@@ -535,7 +535,6 @@ function SitesPage() {
                     <Button
                       nativeButton={false}
                       render={
-                        // biome-ignore lint/a11y/useAnchorContent: accessible content is merged from the Button children
                         <a aria-label={`Open ${site.name} customer view`} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />
                       }
                       size="sm"

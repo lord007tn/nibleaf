@@ -57,7 +57,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     apply(r);
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch (_) {
+    } catch {
       // ignore (private mode etc.)
     }
   }, []);

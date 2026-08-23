@@ -65,7 +65,7 @@ export function canonicalSiteBase(projectId: string, options: SiteUrlOptions = {
 }
 
 type Tag = Record<string, string>;
-interface Script {
+export interface AnalyticsScript {
   type?: string;
   children?: string;
   src?: string;
@@ -76,14 +76,14 @@ interface Script {
 interface Head {
   meta?: Tag[];
   links?: Tag[];
-  scripts?: Script[];
+  scripts?: AnalyticsScript[];
 }
 
 /** Third-party analytics <script> tags for the configured providers. IDs are
  *  charset-guarded (defense-in-depth: config is admin-only, but we still never
  *  interpolate arbitrary text into an inline script). */
-export function analyticsScripts(config: ProjectConfig | null): Script[] {
-  const scripts: Script[] = [];
+export function analyticsScripts(config: ProjectConfig | null): AnalyticsScript[] {
+  const scripts: AnalyticsScript[] = [];
   const ga = config?.analytics?.ga4?.trim();
   if (ga && /^[\w-]+$/.test(ga)) {
     scripts.push({ src: `https://www.googletagmanager.com/gtag/js?id=${ga}`, async: true });
@@ -312,7 +312,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   // Structured data: a TechArticle for the page + a BreadcrumbList for its trail,
   // so search engines/AI can read the doc title, description and hierarchy.
   const canonicalBase = canonicalSiteBase(projectId, urlOptions);
-  const scripts: Script[] = [
+  const scripts: AnalyticsScript[] = [
     {
       type: 'application/ld+json',
       children: JSON.stringify({

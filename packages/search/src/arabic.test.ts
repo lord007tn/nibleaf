@@ -46,22 +46,12 @@ describe('lightStemArabicToken', () => {
     expect(lightStemArabicToken(surface)).toBe(expected);
   });
 
-  it.each([
-    'في',
-    'من',
-    'وال',
-    'محمد',
-    'الرياض',
-    'قوانين',
-    'عناوين',
-    'وثائق',
-    'فواتير',
-    'APIالمستخدمين',
-    'v2-المستخدمين',
-    'المستخدم_الجديد',
-  ])('protects ambiguous, short, proper, or technical token %s', (surface) => {
-    expect(lightStemArabicToken(surface)).toBe(normalizeArabicSearchText(surface));
-  });
+  it.each(['في', 'من', 'وال', 'محمد', 'الرياض', 'قوانين', 'عناوين', 'وثائق', 'فواتير', 'APIالمستخدمين', 'v2-المستخدمين', 'المستخدم_الجديد'])(
+    'protects ambiguous, short, proper, or technical token %s',
+    (surface) => {
+      expect(lightStemArabicToken(surface)).toBe(normalizeArabicSearchText(surface));
+    },
+  );
 
   it('omits code and mixed-script identifiers only from the morphology channel', () => {
     expect(normalizeArabicMorphologyText('APIالمستخدمين v2-المستخدمين `المستخدمين`')).not.toContain('مستخدم');
@@ -194,21 +184,21 @@ describe('Arabic morphological search corpus', () => {
 
 describe('Arabic morphology performance guards', () => {
   it('analyzes a large documentation sample within a bounded linear-time budget', () => {
-    const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(4_000);
+    const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(4000);
     const started = performance.now();
     const analyzed = normalizeArabicMorphologyText(sample);
     const elapsed = performance.now() - started;
 
     expect(analyzed.length).toBeLessThanOrEqual(sample.length);
-    expect(elapsed).toBeLessThan(1_500);
+    expect(elapsed).toBeLessThan(1500);
   });
 
   it('handles many malformed unmatched code delimiters within the same budget', () => {
-    const sample = Array.from({ length: 4_000 }, () => '` مستخدم دون اغلاق').join('\n');
+    const sample = Array.from({ length: 4000 }, () => '` مستخدم دون اغلاق').join('\n');
     const started = performance.now();
     const analyzed = normalizeArabicMorphologyText(sample);
     expect(analyzed).toContain('مستخدم');
-    expect(performance.now() - started).toBeLessThan(1_500);
+    expect(performance.now() - started).toBeLessThan(1500);
   });
 
   it('keeps indexing and repeated morphology queries below the regression ceiling', async () => {
@@ -220,6 +210,6 @@ describe('Arabic morphology performance guards', () => {
     for (let iteration = 0; iteration < 20; iteration += 1) {
       await searchDocs(index, 'مستخدم', { tolerance: 1 });
     }
-    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(performance.now() - started).toBeLessThan(5000);
   });
 });

@@ -9,19 +9,14 @@ import {
 } from './request-negotiation';
 
 describe('acceptsHtml', () => {
-  it.each([
-    null,
-    '',
-    '*/*',
-    'text/html',
-    'text/html; charset=utf-8',
-    'application/xhtml+xml',
-    'text/*',
-    'application/json, text/html;q=0.8',
-  ])('accepts %s', (value) => expect(acceptsHtml(value)).toBe(true));
+  it.each([null, '', '*/*', 'text/html', 'text/html; charset=utf-8', 'application/xhtml+xml', 'text/*', 'application/json, text/html;q=0.8'])(
+    'accepts %s',
+    (value) => expect(acceptsHtml(value)).toBe(true),
+  );
 
   it.each(['text/markdown', 'text/plain', 'application/json', 'text/html;q=0', 'application/json, text/html;q=0'])('rejects %s', (value) =>
-    expect(acceptsHtml(value)).toBe(false));
+    expect(acceptsHtml(value)).toBe(false),
+  );
 });
 
 describe('preferredRepresentation', () => {

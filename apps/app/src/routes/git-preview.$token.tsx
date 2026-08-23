@@ -4,23 +4,16 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Eye, FileText, GitPullRequest } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Markdown } from '@/components/markdown';
-import { API_URL } from '@/services/api';
-
-type PreviewResponse = { data: { snapshot: SiteSnapshot } };
+import { getGitPreviewFn } from '@/functions/site';
 
 export const Route = createFileRoute('/git-preview/$token')({
-  loader: async ({ params }) => {
-    const response = await fetch(`${API_URL}/api/public/git/previews/${encodeURIComponent(params.token)}`);
-    if (!response.ok) throw new Error('This pull-request preview is unavailable or has expired.');
-    return (await response.json()) as PreviewResponse;
-  },
+  loader: async ({ params }) => JSON.parse(await getGitPreviewFn({ data: { token: params.token } })) as { snapshot: SiteSnapshot },
   head: () => ({ meta: [{ title: 'Pull request preview · Nibleaf' }, { name: 'robots', content: 'noindex,nofollow' }] }),
   component: GitPreviewPage,
 });
 
 function GitPreviewPage() {
-  const { data } = Route.useLoaderData();
-  const snapshot = data.snapshot;
+  const { snapshot } = Route.useLoaderData();
   const pages = useMemo(() => snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden), [snapshot.pages]);
   const [pageId, setPageId] = useState(pages[0]?.id);
   const page = pages.find((item) => item.id === pageId) ?? pages[0];

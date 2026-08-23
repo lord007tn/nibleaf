@@ -1,6 +1,6 @@
 import { type Job, Worker, type WorkerOptions } from 'bullmq';
 import { QueueNames } from '../constants';
-import { isQueueEnabled } from '../keys';
+import { isQueueEnabled, keys } from '../keys';
 import { closeQueueEvents as _closeQueueEvents, closeQueues as _closeQueues, queues } from '../queues/index';
 import { redisConnectionConfig } from '../redis';
 import type { ProcessorRegistry } from '../types';
@@ -44,7 +44,7 @@ function createWorker(queueName: QueueNames, processor: (job: Job) => Promise<un
 }
 
 async function cleanQueuesOnDevRestart(): Promise<void> {
-  if (process.env.NODE_ENV !== 'development') {
+  if (keys().NODE_ENV !== 'development') {
     return;
   }
   for (const [name, queue] of Object.entries(queues)) {

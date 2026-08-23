@@ -15,8 +15,8 @@ import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
-import { getData } from '@/hooks/api/client-helpers';
-import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
+import { getSiteFn } from '@/functions/site';
+import type { ProjectConfig } from '@/hooks/api/types';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { customDomainOrigin } from '@/lib/site-origin';
@@ -24,7 +24,6 @@ import { siteHref } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
-import { api } from '@/services/api';
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
@@ -42,13 +41,7 @@ export const Route = createFileRoute('/sites/$projectId')({
     try {
       const rest = location.pathname.replace(new RegExp(`^/sites/${params.projectId}/?`), '').replace(/\/+$/, '');
       const candidate = rest && rest !== 'changelog' ? decodeURIComponent(rest).split('/')[0] : undefined;
-      const site = await getData<SiteShell>(
-        await api.public.sites[':id'].$get({
-          param: { id: params.projectId },
-          query: { ...(deps.lang ? { lang: deps.lang } : {}), ...(candidate ? { version: candidate } : {}) },
-        }),
-        'site',
-      );
+      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
       return { site, siteOrigin: customDomainOrigin() };
     } catch {
       return { site: null, siteOrigin: customDomainOrigin() };
@@ -158,15 +151,13 @@ function SiteChrome() {
     setSiteThemeHydratedFor(projectId);
   }, [projectId, configTheme]);
   const toggleSiteTheme = () => {
-    setSiteTheme((current) => {
-      const next = current === 'dark' ? 'light' : 'dark';
-      try {
-        window.localStorage.setItem(`nibleaf.site.theme.${projectId}`, next);
-      } catch (_) {
-        // ignore (private mode etc.)
-      }
-      return next;
-    });
+    const next = siteTheme === 'dark' ? 'light' : 'dark';
+    try {
+      window.localStorage.setItem(`nibleaf.site.theme.${projectId}`, next);
+    } catch {
+      // ignore (private mode etc.)
+    }
+    setSiteTheme(next);
   };
 
   // The site is a full-page route, so it OWNS the document theme while mounted.

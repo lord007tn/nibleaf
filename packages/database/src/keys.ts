@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const keys = () =>
   createEnv({
     server: {
+      NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
       POSTGRES_URL: z.url().default('postgresql://nibleaf:nibleaf@localhost:5442/nibleaf'),
     },
     runtimeEnv: process.env,

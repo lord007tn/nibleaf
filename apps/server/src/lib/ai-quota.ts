@@ -25,7 +25,7 @@ const getRedis = (): Redis => {
       // Quota checks must fail fast, not queue up while redis is down.
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
-      retryStrategy: (times) => Math.min(times * 100, 2_000),
+      retryStrategy: (times) => Math.min(times * 100, 2000),
     });
     // Swallow connection errors — the quota check degrades to fail-open below.
     client.on('error', () => undefined);

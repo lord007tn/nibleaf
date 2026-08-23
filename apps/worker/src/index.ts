@@ -1,4 +1,4 @@
-import { serve } from '@hono/node-server';
+import { type ServerType, serve } from '@hono/node-server';
 import { isQueueEnabled, QueueNames, scheduleExportMaintenance } from '@nibleaf/bullmq';
 import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@nibleaf/bullmq/workers';
 import { closeClickHouseClients, initializeClickHouseFn } from '@nibleaf/clickhouse';
@@ -17,7 +17,7 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-let server: ReturnType<typeof serve> | null = null;
+let server: ServerType | null = null;
 let reaperTimer: NodeJS.Timeout | null = null;
 
 async function main() {

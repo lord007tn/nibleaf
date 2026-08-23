@@ -1,5 +1,6 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "extends": ["ultracite/biome/core", "ultracite/biome/react"],
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,7 +8,6 @@
   },
   "files": {
     "includes": [
-      "**",
       "!**/dist",
       "!**/.output",
       "!**/.nitro",
@@ -15,30 +15,83 @@
       "!**/.cache",
       "!**/.tanstack",
       "!**/node_modules",
+      "!**/*.svg",
       "!**/routeTree.gen.ts",
       "!**/src/generated",
       "!_ui_zip",
       "!**/components/ui"
     ]
   },
+  "assist": {
+    "actions": {
+      "source": {
+        "useSortedAttributes": "off",
+        "useSortedInterfaceMembers": "off",
+        "useSortedKeys": "off",
+        "useSortedPackageJson": "off",
+        "useSortedProperties": "off",
+        "useSortedTypeFields": "off"
+      }
+    }
+  },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "suspicious": {
+        "noAlert": "off",
+        "noBitwiseOperators": "off",
         "noConsole": "off",
-        "noExplicitAny": "warn"
+        "noEqualsToNull": "off",
+        "noExplicitAny": "warn",
+        "noLeakedRender": "off",
+        "noShadow": "off",
+        "noUnknownAttribute": "off",
+        "noUnnecessaryConditions": "off",
+        "useAwait": "off"
       },
       "style": {
+        "noExportedImports": "off",
+        "noIncrementDecrement": "off",
+        "noNegationElse": "off",
+        "noNestedTernary": "off",
         "noNonNullAssertion": "warn",
+        "noParameterProperties": "off",
+        "useAtIndex": "off",
+        "useBlockStatements": "off",
+        "useConsistentArrayType": "off",
+        "useConsistentMethodSignatures": "off",
+        "useConsistentTypeDefinitions": "off",
+        "useDestructuring": "off",
+        "useErrorCause": "off",
+        "useFilenamingConvention": "off",
+        "useForOf": "off",
         "useNamingConvention": "off"
       },
       "complexity": {
-        "noExcessiveCognitiveComplexity": "off"
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "off",
+        "noRedundantDefaultExport": "off",
+        "noVoid": "off",
+        "useSimplifiedLogicExpression": "off"
+      },
+      "performance": {
+        "noAwaitInLoops": "off",
+        "noBarrelFile": "off",
+        "noDelete": "off",
+        "noJsxPropsBind": "off",
+        "noNamespaceImport": "off",
+        "useTopLevelRegex": "off"
       },
       "a11y": {
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off"
+      },
+      "correctness": {
+        "useImageSize": "off"
+      },
+      "nursery": {
+        "useSortedClasses": "off"
       }
     }
   },

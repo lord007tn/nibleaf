@@ -8,6 +8,7 @@ import { slugify } from '@nibleaf/shared/utils';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { env } from '@/env';
 import type { Language, Project } from '@/hooks/api';
 import { useLanguages, useUpdateLanguage, useUpdateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
@@ -29,12 +30,11 @@ const ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', 
 // Only present a `slug.<base>` preview when a base domain is actually configured
 // for this deployment; otherwise the free-subdomain host would 404, so fall back
 // to the working /sites/:id path.
-const siteBaseDomain = (import.meta.env.VITE_SITE_BASE_DOMAIN as string | undefined)?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
+const siteBaseDomain = env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 const deploymentNameError = (value: string, message: string) => {
   if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value)) {
     return message;
   }
-  return undefined;
 };
 
 /** The localized site name/description draft for one extra language. */

@@ -40,7 +40,7 @@ export const getDeployment = async (projectId: string, id: string) => {
   return deployment;
 };
 
-export const getLatestReadyDeployment = (projectId: string) =>
+export const getLatestReadyDeployment = (projectId: string): Promise<Prisma.DeploymentGetPayload<object> | null> =>
   prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' } });
 
 /** One page's status relative to the last published snapshot. */
@@ -79,8 +79,8 @@ export interface DeploymentPageDiff {
 }
 
 export interface DeploymentDiff {
-  deployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'>;
-  previousDeployment: Omit<Awaited<ReturnType<typeof getDeployment>>, 'snapshot'> | null;
+  deployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'>;
+  previousDeployment: Omit<Prisma.DeploymentGetPayload<object>, 'snapshot'> | null;
   changes: DeploymentPageDiff[];
 }
 

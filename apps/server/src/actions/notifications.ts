@@ -137,7 +137,7 @@ export async function listNotifications(userId: string, cursor?: string) {
   return { items, nextCursor };
 }
 
-export const unreadNotificationCount = (userId: string): Promise<number> => prisma.notification.count({ where: { userId, readAt: null } });
+export const getUnreadNotificationCount = (userId: string) => prisma.notification.count({ where: { userId, readAt: null } });
 
 /** Mark the given notifications (or the whole inbox with `all: true`) read.
  *  Scoped to the session user — ids belonging to someone else are ignored. */

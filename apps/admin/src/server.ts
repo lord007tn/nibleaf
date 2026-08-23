@@ -2,10 +2,11 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { serverEnv } from '@/env.server';
 import { adminContentSecurityPolicy } from '@/lib/content-security-policy';
 
 const ssrNonce = new AsyncLocalStorage<string>();
-const appOrigin = process.env.VITE_APP_URL ?? (process.env.NODE_ENV === 'production' ? 'https://nibleaf.com' : 'http://localhost:4310');
+const appOrigin = serverEnv.VITE_APP_URL ?? (serverEnv.NODE_ENV === 'production' ? 'https://nibleaf.com' : 'http://localhost:4310');
 
 const startHandler = createStartHandler((context) => {
   const nonce = ssrNonce.getStore();

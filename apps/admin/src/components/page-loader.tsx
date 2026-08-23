@@ -11,7 +11,7 @@ export function PageLoader() {
         </div>
         <span className="sr-only">Loading…</span>
       </div>
-      <style>{`@keyframes pl-loading{0%{transform:translateX(-120%)}100%{transform:translateX(360%)}}`}</style>
+      <style>{'@keyframes pl-loading{0%{transform:translateX(-120%)}100%{transform:translateX(360%)}}'}</style>
     </div>
   );
 }

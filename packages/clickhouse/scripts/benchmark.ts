@@ -19,7 +19,7 @@ const events = Array.from({ length: count }, (_, index) =>
     sessionHash:
       index % 5 === 0
         ? null
-        : deterministicAnalyticsEventId(`session:${index % 2_000}`)
+        : deterministicAnalyticsEventId(`session:${index % 2000}`)
             .replaceAll('-', '')
             .padEnd(64, '0'),
     payload: { name: 'page_view', path: `docs/page-${index % 250}`, language: index % 10 === 0 ? 'ar' : 'en' },

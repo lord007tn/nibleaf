@@ -5,10 +5,17 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./keys": "./src/keys.ts"
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./keys": {
+      "types": "./dist/keys.d.mts",
+      "default": "./dist/keys.mjs"
+    }
   },
   "scripts": {
+    "build": "tsdown",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "bench": "vitest bench --run src/arabic.bench.ts",
     "eval:rag": "tsx scripts/evaluate-openrouter.ts",
@@ -16,7 +23,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nibleaf/logger": "workspace:*",
     "@openrouter/sdk": "0.13.20",
     "@orama/orama": "^3.1.18",
     "@t3-oss/env-core": "^0.13.11",
@@ -28,6 +34,7 @@
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
+    "tsdown": "^0.22.14",
     "tsx": "^4.22.3",
     "typescript": "^7.0.2"
   }

@@ -17,38 +17,50 @@
     border-color: var(--theme-border);
   }
 
-  .nibleaf-site-chrome[data-theme-header="inline"] [data-theme-region="header-shell"] {
+  .nibleaf-site-chrome[data-theme-header="inline"]
+    [data-theme-region="header-shell"] {
     background: var(--theme-canvas);
     backdrop-filter: none;
   }
 
-  .nibleaf-site-chrome[data-theme-header="floating"] [data-theme-region="header-shell"] {
+  .nibleaf-site-chrome[data-theme-header="floating"]
+    [data-theme-region="header-shell"] {
     top: 0.75rem;
     margin-inline: 0.75rem;
     border: 1px solid var(--theme-border);
     border-radius: calc(var(--radius) + 0.35rem);
-    box-shadow: 0 12px 35px color-mix(in oklab, var(--theme-foreground) 9%, transparent);
+    box-shadow: 0 12px 35px
+      color-mix(in oklab, var(--theme-foreground) 9%, transparent);
   }
 
-  .nibleaf-site-chrome[data-theme-sidebar="soft"] [data-theme-region="sidebar"] {
+  .nibleaf-site-chrome[data-theme-sidebar="soft"]
+    [data-theme-region="sidebar"] {
     background: var(--theme-muted);
     border-inline-end-color: transparent;
     padding-inline: 0.5rem;
   }
 
-  .nibleaf-site-chrome[data-theme-sidebar="rail"] [data-theme-region="sidebar"] {
+  .nibleaf-site-chrome[data-theme-sidebar="rail"]
+    [data-theme-region="sidebar"] {
     border-inline-end-width: 2px;
   }
 }
 
 @layer components {
-  .nibleaf-site-chrome[data-theme-navigation="compact"] [data-theme-region="sidebar"] nav :is(a, button) {
+  .nibleaf-site-chrome[data-theme-navigation="compact"]
+    [data-theme-region="sidebar"]
+    nav
+    :is(a, button) {
     min-height: 1.75rem;
     padding-block: 0.2rem;
     font-size: 0.8125rem;
   }
 
-  .nibleaf-site-chrome[data-theme-navigation="tree"] [data-theme-region="sidebar"] nav ul ul {
+  .nibleaf-site-chrome[data-theme-navigation="tree"]
+    [data-theme-region="sidebar"]
+    nav
+    ul
+    ul {
     border-inline-start: 1px solid var(--theme-border);
   }
 
@@ -59,7 +71,9 @@
   }
 
   @media (min-width: 64rem) {
-    .documentation-manuscript-reader-navigation:not(:has([data-theme-region="sidebar-content"] > nav > ul > li:nth-child(2))) {
+    .documentation-manuscript-reader-navigation:not(
+        :has([data-theme-region="sidebar-content"] > nav > ul > li:nth-child(2))
+      ) {
       height: 6rem;
     }
 
@@ -73,7 +87,8 @@
       overflow-x: auto;
     }
 
-    .documentation-manuscript-preview-navigation [data-theme-region="sidebar-content"] {
+    .documentation-manuscript-preview-navigation
+      [data-theme-region="sidebar-content"] {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 0.25rem 1rem;
@@ -102,9 +117,11 @@
     background: var(--callout-bg);
   }
 
-  .nibleaf-site-chrome[data-theme-cards="lifted"] [data-theme-component="card"] {
+  .nibleaf-site-chrome[data-theme-cards="lifted"]
+    [data-theme-component="card"] {
     border-color: transparent;
-    box-shadow: 0 10px 30px color-mix(in oklab, var(--theme-foreground) 10%, transparent);
+    box-shadow: 0 10px 30px
+      color-mix(in oklab, var(--theme-foreground) 10%, transparent);
   }
 
   .nibleaf-site-chrome[data-theme-cards="flat"] [data-theme-component="card"] {
@@ -112,17 +129,20 @@
     background: var(--theme-muted);
   }
 
-  .nibleaf-site-chrome[data-theme-callouts="outline"] [data-theme-component="callout"] {
+  .nibleaf-site-chrome[data-theme-callouts="outline"]
+    [data-theme-component="callout"] {
     background: transparent;
   }
 
-  .nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"] {
+  .nibleaf-site-chrome[data-theme-callouts="solid"]
+    [data-theme-component="callout"] {
     color: var(--theme-canvas);
     background: var(--callout-color);
     border-color: var(--callout-color);
   }
 
-  .nibleaf-site-chrome[data-theme-tabs="pills"] [data-theme-component="tabs-list"] {
+  .nibleaf-site-chrome[data-theme-tabs="pills"]
+    [data-theme-component="tabs-list"] {
     display: inline-flex;
     padding: 0.25rem;
     border: 0;
@@ -130,7 +150,8 @@
     background: var(--theme-muted);
   }
 
-  .nibleaf-site-chrome[data-theme-tabs="boxed"] [data-theme-component="tabs-list"] {
+  .nibleaf-site-chrome[data-theme-tabs="boxed"]
+    [data-theme-component="tabs-list"] {
     border: 1px solid var(--theme-border);
     border-radius: var(--radius) var(--radius) 0 0;
     background: var(--theme-surface);
@@ -177,11 +198,13 @@
     max-width: var(--theme-content-max);
   }
 
-  .nibleaf-site-chrome[data-theme-width="focused"] [data-theme-region="article"] {
+  .nibleaf-site-chrome[data-theme-width="focused"]
+    [data-theme-region="article"] {
     max-width: 42rem;
   }
 
-  .nibleaf-site-chrome[data-theme-width="balanced"] [data-theme-region="article"] {
+  .nibleaf-site-chrome[data-theme-width="balanced"]
+    [data-theme-region="article"] {
     max-width: 46rem;
   }
 

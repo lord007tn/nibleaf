@@ -24,7 +24,7 @@ const post = (over: Record<string, unknown>) => ({
 const fullExport = {
   db: [
     {
-      meta: { exported_on: 1721000000000, version: '5.82.0' },
+      meta: { exported_on: 1_721_000_000_000, version: '5.82.0' },
       data: {
         posts: [
           post({ id: 'post-1', slug: 'first', published_at: '2024-01-01T00:00:00.000Z' }),

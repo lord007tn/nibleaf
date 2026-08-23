@@ -5,7 +5,17 @@
       "entry": ["scripts/split-ghost-by-language.mjs"]
     },
     "apps/server": {
-      "entry": ["src/scripts/grant-admin.ts"]
+      "entry": ["src/scripts/grant-admin.ts"],
+      "ignoreDependencies": ["quansync"]
+    },
+    "packages/database": {
+      "ignoreDependencies": ["@prisma/client"]
+    },
+    "packages/logger": {
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "packages/tsconfig": {
+      "ignoreDependencies": ["vite"]
     }
   }
 }

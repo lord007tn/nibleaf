@@ -157,13 +157,11 @@ function EditorPage() {
   // How the page body is edited: a visual canvas, rich text, or raw Markdown/MDX.
   // Preview is deliberately an action, not an editing mode: it opens the current
   // unpublished draft in its own tab through the authenticated preview route.
-  const [editorMode, setEditorMode] = useState<'visual' | 'wysiwyg' | 'markdown'>(() => {
-    if (typeof window === 'undefined') {
-      return 'visual';
-    }
+  const [editorMode, setEditorMode] = useState<'visual' | 'wysiwyg' | 'markdown'>('visual');
+  useEffect(() => {
     const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
-    return stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual';
-  });
+    setEditorMode(stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual');
+  }, []);
   // Unknown JSX components are represented by local opaque nodes. Inventory
   // them for the explanatory banner without locking the rest of the page.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
@@ -182,13 +180,11 @@ function EditorPage() {
   const hydrating = useRef<{ id: string; content: string; title: string } | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
-  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-    if (typeof window === 'undefined') {
-      return 260;
-    }
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  useEffect(() => {
     const stored = Number(window.localStorage.getItem('nibleaf.editor.sidebarWidth'));
-    return stored >= 200 && stored <= 520 ? stored : 260;
-  });
+    setSidebarWidth(stored >= 200 && stored <= 520 ? stored : 260);
+  }, []);
   useEffect(() => {
     window.localStorage.setItem('nibleaf.editor.sidebarWidth', String(sidebarWidth));
   }, [sidebarWidth]);
@@ -201,12 +197,10 @@ function EditorPage() {
   }, [editorMode]);
   // Collapse the page-tree sidebar to give the canvas full width (Mintlify-style;
   // the toggle lives in the editor toolbar, not a breadcrumb). Persisted.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return window.localStorage.getItem('nibleaf.editor.sidebarCollapsed') === '1';
-  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem('nibleaf.editor.sidebarCollapsed') === '1');
+  }, []);
   useEffect(() => {
     try {
       window.localStorage.setItem('nibleaf.editor.sidebarCollapsed', sidebarCollapsed ? '1' : '0');
@@ -237,28 +231,26 @@ function EditorPage() {
       // ignore storage failures
     }
   };
-  const toggleLang = (id: string) =>
-    setCollapsedLangs((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      persistLangs(next);
-      return next;
-    });
-  // Adding a page/group to a collapsed language auto-expands it so the new node shows.
-  const expandLang = (id: string) =>
-    setCollapsedLangs((prev) => {
-      if (!prev.has(id)) {
-        return prev;
-      }
-      const next = new Set(prev);
+  const toggleLang = (id: string) => {
+    const next = new Set(collapsedLangs);
+    if (next.has(id)) {
       next.delete(id);
-      persistLangs(next);
-      return next;
-    });
+    } else {
+      next.add(id);
+    }
+    setCollapsedLangs(next);
+    persistLangs(next);
+  };
+  // Adding a page/group to a collapsed language auto-expands it so the new node shows.
+  const expandLang = (id: string) => {
+    if (!collapsedLangs.has(id)) {
+      return;
+    }
+    const next = new Set(collapsedLangs);
+    next.delete(id);
+    setCollapsedLangs(next);
+    persistLangs(next);
+  };
 
   // The active page's language drives the editor/preview text direction.
   const activeLanguage = useMemo(() => languages?.find((l) => l.id === page?.languageId), [languages, page?.languageId]);
@@ -400,17 +392,15 @@ function EditorPage() {
     [pageComments],
   );
   const toggleCommentMode = () => {
-    setCommentMode((on) => {
-      const next = !on;
-      if (next) {
-        setEditorMode('visual');
-        setRailOpen(true);
-        setRailTab('comments');
-      } else {
-        setPendingAnchor(null);
-      }
-      return next;
-    });
+    const next = !commentMode;
+    if (next) {
+      setEditorMode('visual');
+      setRailOpen(true);
+      setRailTab('comments');
+    } else {
+      setPendingAnchor(null);
+    }
+    setCommentMode(next);
   };
 
   return (
@@ -743,7 +733,6 @@ function EditorPage() {
               <Button
                 nativeButton={false}
                 render={
-                  // biome-ignore lint/a11y/useAnchorContent: content merged via Base UI render prop
                   <a
                     aria-label={t('editor.viewOnSite')}
                     href={`/sites/${projectId}/${page.path}${activeLanguage && !activeLanguage.isDefault ? `?lang=${activeLanguage.code}` : ''}`}

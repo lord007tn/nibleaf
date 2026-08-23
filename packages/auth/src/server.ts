@@ -605,7 +605,7 @@ const logPlatformEvent = (type: string, data: { userId?: string; projectId?: str
 /** Sign-up must never wait on the queue. Producer connections reject fast when
  *  redis is down (packages/bullmq producerConnectionConfig), but a *stalled*
  *  connected socket could still hang, so cap the wait explicitly. */
-const ENQUEUE_TIMEOUT_MS = 3_000;
+const ENQUEUE_TIMEOUT_MS = 3000;
 
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
   new Promise<T>((resolve, reject) => {

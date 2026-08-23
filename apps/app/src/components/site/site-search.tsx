@@ -6,12 +6,21 @@ import { useDebouncedValue } from '@tanstack/react-pacer';
 import { AlertCircle, FileText, Loader2, Search, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { useAnswerSite } from '@/hooks/api/mutations';
-import { useSiteSearch } from '@/hooks/api/queries';
+import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
+const splitWithOffsets = (text: string, pattern: RegExp) => {
+  const parts: Array<{ key: string; value: string }> = [];
+  let offset = 0;
+  for (const value of text.split(pattern)) {
+    parts.push({ key: `${offset}-${value}`, value });
+    offset += value.length;
+  }
+  return parts;
+};
+
 function Highlight({ text, query }: { text: string; query: string }) {
   const tokens = query
     .trim()
@@ -23,20 +32,17 @@ function Highlight({ text, query }: { text: string; query: string }) {
   }
   const splitRe = new RegExp(`(${tokens.join('|')})`, 'gi');
   const testRe = new RegExp(`^(${tokens.join('|')})$`, 'i');
-  let offset = 0;
   return (
     <>
-      {text.split(splitRe).map((part) => {
-        const key = `${offset}-${part}`;
-        offset += part.length;
-        return testRe.test(part) ? (
+      {splitWithOffsets(text, splitRe).map(({ key, value }) =>
+        testRe.test(value) ? (
           <mark key={key} className="rounded bg-primary/20 text-foreground">
-            {part}
+            {value}
           </mark>
         ) : (
-          <span key={key}>{part}</span>
-        );
-      })}
+          <span key={key}>{value}</span>
+        ),
+      )}
     </>
   );
 }

@@ -39,7 +39,7 @@ const getRouteRequest = createIsomorphicFn()
 export async function getRouteSession(): Promise<RouteSession> {
   const request = import.meta.env.SSR ? getRouteRequest() : null;
   const controller = new AbortController();
-  const abortTimer = setTimeout(() => controller.abort(), 5_000);
+  const abortTimer = setTimeout(() => controller.abort(), 5000);
 
   try {
     const response = await fetch(request ? new URL('/api/auth/get-session', request.url) : '/api/auth/get-session', {

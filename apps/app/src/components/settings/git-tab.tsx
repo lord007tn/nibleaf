@@ -196,15 +196,7 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
           }
           action={
             latestReady ? (
-              <Button
-                nativeButton={false}
-                size="sm"
-                variant="outline"
-                render={
-                  // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                  <a href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
-                }
-              >
+              <Button nativeButton={false} size="sm" variant="outline" render={<a href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />}>
                 {t('settings.git.pipeline.viewSite')} <ArrowUpRight className="size-3.5" />
               </Button>
             ) : undefined
@@ -251,7 +243,9 @@ function DeployOnPush({
   const t = useT();
   const rotateSecret = useRotateGitWebhookSecret(projectId);
   const [revealed, setRevealed] = useState(false);
-  const webhookUrl = `${window.location.origin}/api/public/git/webhook/${projectId}`;
+  const [webhookOrigin, setWebhookOrigin] = useState('');
+  useEffect(() => setWebhookOrigin(window.location.origin), []);
+  const webhookUrl = `${webhookOrigin}/api/public/git/webhook/${projectId}`;
   const secret = git.webhookSecret ?? '';
 
   const copy = async (text: string) => {
@@ -640,15 +634,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
             <span className="size-1.5 rounded-full bg-emerald-500" /> {t('settings.integrations.connected')}
           </span>
           {webUrl ? (
-            <Button
-              nativeButton={false}
-              size="sm"
-              variant="ghost"
-              render={
-                // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                <a href={webUrl} rel="noreferrer" target="_blank" />
-              }
-            >
+            <Button nativeButton={false} size="sm" variant="ghost" render={<a href={webUrl} rel="noreferrer" target="_blank" />}>
               {t('settings.git.openRepo')} <ArrowUpRight className="size-3.5" />
             </Button>
           ) : null}

@@ -54,6 +54,11 @@ export const queryKeys = {
     list: () => ['notifications'] as const,
     unreadCount: () => ['notifications', 'unread-count'] as const,
   },
+  exports: {
+    all: (projectId: string) => ['projects', projectId, 'exports'] as const,
+    runs: (projectId: string) => ['projects', projectId, 'exports', 'runs'] as const,
+    schedules: (projectId: string) => ['projects', projectId, 'exports', 'schedules'] as const,
+  },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
     page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,

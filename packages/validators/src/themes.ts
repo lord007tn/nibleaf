@@ -5,6 +5,7 @@ import {
   THEME_PRESET_IDS,
   THEME_SCHEMA_VERSION,
   THEME_TEMPLATE_KIND,
+  type ThemeColorKey,
   type ThemeTemplateV1,
   themeContrastIssues,
 } from '@nibleaf/shared/themes';
@@ -19,10 +20,7 @@ const metadataSchema = z
   })
   .strict();
 
-const colorShape = Object.fromEntries(THEME_COLOR_KEYS.map((key) => [key, hexColor.optional()])) as Record<
-  (typeof THEME_COLOR_KEYS)[number],
-  z.ZodOptional<typeof hexColor>
->;
+const colorShape = Object.fromEntries(THEME_COLOR_KEYS.map((key) => [key, hexColor.optional()])) as Record<ThemeColorKey, z.ZodOptional<z.ZodString>>;
 const themeModeColorsSchema = z.object(colorShape).strict();
 
 export const themeConfigSchema = z

@@ -350,7 +350,7 @@ export const openApiSourceSchema = z.discriminatedUnion('type', [
       type: z.literal('url'),
       url: z
         .url()
-        .max(1_000)
+        .max(1000)
         .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'OpenAPI URL must use http(s).')
         .refine((value) => {
           const parsed = new URL(value);

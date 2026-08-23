@@ -2,6 +2,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { serverEnv } from '@/env.server';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
@@ -48,10 +49,10 @@ const startHandler = createStartHandler((context) => {
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in
 // dev, matching how the SSR data loaders fetch.
-const SELF = `http://localhost:${process.env.PORT || '4310'}`;
+const SELF = `http://localhost:${serverEnv.PORT}`;
 
 const ownHosts = new Set(
-  [process.env.APP_URL, 'localhost:4310', '127.0.0.1:4310'].filter(Boolean).map(
+  [serverEnv.APP_URL, 'localhost:4310', '127.0.0.1:4310'].map(
     (url) =>
       String(url)
         .replace(/^https?:\/\//, '')
@@ -69,8 +70,7 @@ const SKIP = /^\/(api|_|assets|favicon|sites)\b/;
 // APP_URL points at their OWN dashboard, so IS_CLOUD_MARKETING is false for them
 // and they get a minimal, self-referential robots.txt with no marketing docs.
 const MARKETING_HOST = 'nibleaf.com';
-const CONFIGURED_HOST = (process.env.APP_URL || '')
-  .replace(/^https?:\/\//, '')
+const CONFIGURED_HOST = serverEnv.APP_URL.replace(/^https?:\/\//, '')
   .split('/')[0]
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
@@ -152,7 +152,7 @@ const isPrivateIp = (ip: string): boolean => {
 
 /** Public edge hops appended by infrastructure the operator runs (e.g. 1 behind
  *  Cloudflare). Must match the API's TRUSTED_PROXY_HOPS. */
-const TRUSTED_PROXY_HOPS = Number(process.env.TRUSTED_PROXY_HOPS || '0') || 0;
+const TRUSTED_PROXY_HOPS = serverEnv.TRUSTED_PROXY_HOPS;
 
 /** Rightmost-untrusted hop of an x-forwarded-for chain — mirrors the API's
  *  apps/server/src/lib/client-ip.ts (kept in sync manually; this entry cannot
@@ -191,12 +191,12 @@ const publishedRequestAuth = new AsyncLocalStorage<PublishedRequestAuth>();
 // THIS server entry (and not spoofed by a browser through the nitro /api
 // proxy, which forwards request headers). Must match the API's
 // INTERNAL_API_SECRET; when unset the API simply ignores the hint.
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || '';
+const INTERNAL_API_SECRET = serverEnv.INTERNAL_API_SECRET ?? '';
 
 // Cloudflare for SaaS terminates customer TLS at the edge and proxies every
 // vanity hostname to one DNS-only origin. Trust the original hostname only
 // when the Worker proves it with a server-only shared secret.
-const CUSTOM_DOMAIN_EDGE_SECRET = process.env.CUSTOM_DOMAIN_EDGE_SECRET || '';
+const CUSTOM_DOMAIN_EDGE_SECRET = serverEnv.CUSTOM_DOMAIN_EDGE_SECRET ?? '';
 const safeSecretMatch = (left: string, right: string): boolean => {
   if (!(left && right)) return false;
   const a = Buffer.from(left);

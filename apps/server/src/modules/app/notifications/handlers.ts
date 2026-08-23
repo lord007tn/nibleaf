@@ -1,6 +1,6 @@
 import { markNotificationsReadBody, notificationsListQuery } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { listNotifications, markNotificationsRead, unreadNotificationCount } from '@/actions/notifications';
+import { getUnreadNotificationCount, listNotifications, markNotificationsRead } from '@/actions/notifications';
 import { getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import notificationsRoutes from './routes';
@@ -15,7 +15,7 @@ const app = new Hono<HonoEnv>()
   })
   .get('/unread-count', ...notificationsRoutes.unreadCount, async (ctx) => {
     const user = getContextUserOrThrow();
-    return ctx.json({ data: { count: await unreadNotificationCount(user.id) } }, 200);
+    return ctx.json({ data: { count: await getUnreadNotificationCount(user.id) } }, 200);
   })
   .post('/read', ...notificationsRoutes.markRead, validator('json', markNotificationsReadBody), async (ctx) => {
     const user = getContextUserOrThrow();

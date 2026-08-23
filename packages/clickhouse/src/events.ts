@@ -92,7 +92,7 @@ const searchPayload = z
     path: path.optional(),
     language: z.string().trim().max(35).optional(),
     resultCount: z.number().int().min(0).max(10_000).optional(),
-    resultPosition: z.number().int().min(1).max(1_000).optional(),
+    resultPosition: z.number().int().min(1).max(1000).optional(),
     resultId: boundedDimension.optional(),
     latencyMs: z.number().int().min(0).max(3_600_000).optional(),
     cacheStatus: z.enum(['bypass', 'hit', 'miss', 'stale', 'unknown']).optional(),
@@ -112,7 +112,7 @@ const aiPayload = z
     cacheStatus: z.enum(['bypass', 'hit', 'miss', 'stale', 'unknown']).optional(),
     noAnswerReason: z.enum(['cancelled', 'empty_corpus', 'low_confidence', 'policy', 'provider_error', 'quota', 'unknown']).optional(),
     citationId: boundedDimension.optional(),
-    citationPosition: z.number().int().min(1).max(1_000).optional(),
+    citationPosition: z.number().int().min(1).max(1000).optional(),
   })
   .strict();
 
@@ -241,7 +241,7 @@ export const buildAnalyticsEvent = (input: AnalyticsEventInput, context: ServerE
   const parsed = analyticsEventInputSchema.parse(input);
   const receivedAt = context.receivedAt ?? new Date();
   const occurred = parsed.occurredAt ? new Date(parsed.occurredAt) : receivedAt;
-  const maxSkewMs = 7 * 24 * 60 * 60 * 1_000;
+  const maxSkewMs = 7 * 24 * 60 * 60 * 1000;
   const occurredAt = Math.abs(occurred.getTime() - receivedAt.getTime()) <= maxSkewMs ? occurred : receivedAt;
   const payload = cleanPayload(structuredClone(parsed.payload), parsed.consentState, context.privacy);
   const rawQuery = 'query' in payload ? payload.query?.trim() : undefined;

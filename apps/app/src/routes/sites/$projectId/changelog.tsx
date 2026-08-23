@@ -1,11 +1,10 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
-import { getData } from '@/hooks/api/client-helpers';
-import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
+import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
+import type { ChangelogEntry } from '@/hooks/api/types';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
-import { api } from '@/services/api';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -14,16 +13,10 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
   // and canonical (the changelog route renders no SitePageView to own the head).
   loader: async ({ params, deps }) => {
     try {
-      const site = await getData<SiteShell>(
-        await api.public.sites[':id'].$get({
-          param: { id: params.projectId },
-          query: deps.lang ? { lang: deps.lang } : {},
-        }),
-        'site',
-      );
+      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
       let entries: ChangelogEntry[] = [];
       try {
-        entries = await getData<ChangelogEntry[]>(await api.public.sites[':id'].changelog.$get({ param: { id: params.projectId } }), 'changelog');
+        entries = await listSiteChangelogFn({ data: { projectId: params.projectId } });
       } catch {
         // The shell still owns SEO/chrome when the optional feed is unavailable.
       }

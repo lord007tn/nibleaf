@@ -6,8 +6,9 @@ import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-rese
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { GoogleIcon } from '@/components/icons/brand';
+import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
@@ -26,27 +27,6 @@ export const Route = createFileRoute('/(auth)/sign-in')({
   component: SignInPage,
 });
 
-interface PublicMeta {
-  providers: { google: boolean };
-}
-
-function useGoogleEnabled() {
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    void fetch('/api/public/meta')
-      .then(async (response) => (response.ok ? ((await response.json()) as { data: PublicMeta }) : null))
-      .then((result) => {
-        if (!cancelled && result) setGoogleEnabled(result.data.providers.google);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  return googleEnabled;
-}
-
 function SignInPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -58,7 +38,8 @@ function SignInPage() {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
-  const googleEnabled = useGoogleEnabled();
+  const { data: publicMeta } = useGetPublicMeta();
+  const googleEnabled = publicMeta?.providers.google ?? false;
 
   const normalizedEmail = email.trim().toLowerCase();
   const invitationId = search.invite ?? readPendingInvitation() ?? undefined;

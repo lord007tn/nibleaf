@@ -1,7 +1,7 @@
 import { bench, describe } from 'vitest';
 import { createDocIndex, normalizeArabicMorphologyText, type SearchDoc, searchDocs } from './index';
 
-const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(1_000);
+const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(1000);
 const docs: SearchDoc[] = Array.from({ length: 500 }, (_, index) => ({
   id: String(index),
   title: `إعدادات المستخدمين ${index}`,

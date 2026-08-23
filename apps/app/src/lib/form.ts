@@ -15,7 +15,7 @@ export const required =
   (label = 'This field', t?: Translator) =>
   (value: string) => {
     if (value.trim().length > 0) {
-      return undefined;
+      return;
     }
     return t ? t('validation.required', { label }) : `${label} is required`;
   };
@@ -25,7 +25,7 @@ export const email = (value: string, t?: Translator) => {
     return t ? t('validation.emailRequired') : 'Email is required';
   }
   if (EMAIL_RE.test(value.trim())) {
-    return undefined;
+    return;
   }
   return t ? t('validation.emailInvalid') : 'Enter a valid email address';
 };
@@ -34,7 +34,7 @@ export const minLength =
   (min: number, label = 'Password', t?: Translator) =>
   (value: string) => {
     if (value.length >= min) {
-      return undefined;
+      return;
     }
     return t ? t('validation.minLength', { label, min }) : `${label} must be at least ${min} characters`;
   };

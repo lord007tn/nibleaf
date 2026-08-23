@@ -1,7 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { useEffect, useMemo, useState } from 'react';
 import type { ProjectConfig } from '@/hooks/api/types';
-import { analyticsScripts } from '@/lib/site-seo';
+import { type AnalyticsScript, analyticsScripts } from '@/lib/site-seo';
 
 const consentKey = (projectId: string) => `nibleaf.analytics.consent.${projectId}`;
 
@@ -12,7 +12,7 @@ const readConsent = (projectId: string): 'pending' | 'accepted' | 'declined' => 
   return stored === 'accepted' || stored === 'declined' ? stored : 'pending';
 };
 
-export function appendAnalyticsScript(projectId: string, index: number, script: ReturnType<typeof analyticsScripts>[number]) {
+export function appendAnalyticsScript(projectId: string, index: number, script: AnalyticsScript) {
   const id = `nibleaf-analytics-${projectId}-${index}`;
   if (document.getElementById(id)) {
     return;
@@ -50,12 +50,7 @@ export function appendAnalyticsScript(projectId: string, index: number, script: 
 export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: string; config: ProjectConfig | null; lang?: string }) {
   const scripts = useMemo(() => analyticsScripts(config), [config]);
   const requiresConsent = Boolean(config?.analytics?.cookieConsent && scripts.length > 0);
-  const [choice, setChoice] = useState<'pending' | 'accepted' | 'declined'>(() => {
-    if (typeof window === 'undefined' || !requiresConsent) {
-      return 'pending';
-    }
-    return readConsent(projectId);
-  });
+  const [choice, setChoice] = useState<'pending' | 'accepted' | 'declined'>('pending');
   const t = siteT(lang);
 
   useEffect(() => {

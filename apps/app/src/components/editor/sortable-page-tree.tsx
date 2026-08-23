@@ -166,23 +166,22 @@ export function SortablePageTree({
 
   // Which GROUP rows are collapsed (their children hidden). Persisted per tree.
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsed(treeKey));
-  const toggleCollapse = (id: string) =>
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+  const toggleCollapse = (id: string) => {
+    const next = new Set(collapsed);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setCollapsed(next);
+    if (treeKey) {
+      try {
+        window.localStorage.setItem(collapsedStoreKey(treeKey), JSON.stringify([...next]));
+      } catch {
+        // ignore storage failures (private mode etc.)
       }
-      if (typeof window !== 'undefined' && treeKey) {
-        try {
-          window.localStorage.setItem(collapsedStoreKey(treeKey), JSON.stringify([...next]));
-        } catch {
-          // ignore storage failures (private mode etc.)
-        }
-      }
-      return next;
-    });
+    }
+  };
 
   const flatFull = useMemo(() => flatten(pages), [pages]);
   // Ids of nodes that have at least one child (so only those get a collapse chevron).

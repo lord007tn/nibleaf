@@ -21,7 +21,11 @@
           {
             "group": "Getting started",
             "x-nibleaf": { "slug": "getting-started" },
-            "pages": ["getting-started/introduction", "getting-started/cloud", "getting-started/self-hosted"]
+            "pages": [
+              "getting-started/introduction",
+              "getting-started/cloud",
+              "getting-started/self-hosted"
+            ]
           },
           {
             "group": "Use Nibleaf",
@@ -58,7 +62,11 @@
           {
             "group": "Reference",
             "x-nibleaf": { "slug": "reference" },
-            "pages": ["reference/environment-variables", "reference/api", "reference/known-limitations"]
+            "pages": [
+              "reference/environment-variables",
+              "reference/api",
+              "reference/known-limitations"
+            ]
           },
           {
             "group": "Contribute",
@@ -88,7 +96,11 @@
           {
             "group": "البدء",
             "x-nibleaf": { "slug": "getting-started" },
-            "pages": ["ar/getting-started/introduction", "ar/getting-started/cloud", "ar/getting-started/self-hosted"]
+            "pages": [
+              "ar/getting-started/introduction",
+              "ar/getting-started/cloud",
+              "ar/getting-started/self-hosted"
+            ]
           },
           {
             "group": "استخدام Nibleaf",
@@ -125,7 +137,11 @@
           {
             "group": "المرجع",
             "x-nibleaf": { "slug": "reference" },
-            "pages": ["ar/reference/environment-variables", "ar/reference/api", "ar/reference/known-limitations"]
+            "pages": [
+              "ar/reference/environment-variables",
+              "ar/reference/api",
+              "ar/reference/known-limitations"
+            ]
           },
           {
             "group": "المساهمة",

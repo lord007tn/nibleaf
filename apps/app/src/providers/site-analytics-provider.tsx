@@ -1,20 +1,8 @@
 import type { ProjectConfig } from '@nibleaf/validators';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
-import { api } from '@/services/api';
+import { type PublicAnalyticsPayload, type SiteAnalyticsConsent, useCreateSiteAnalyticsEvent } from '@/hooks/api/site-events';
 
-export type SiteAnalyticsConsent = 'denied' | 'granted' | 'not_required' | 'unknown';
-export type PublicAnalyticsPayload =
-  | { name: 'page_view' | 'page_engaged'; path: string; language?: string; referrer?: string; engagementMs?: number; scrollDepth?: number }
-  | {
-      name: 'navigation_clicked' | 'cta_clicked' | 'outbound_link_clicked';
-      path?: string;
-      targetPath?: string;
-      placement?: string;
-      language?: string;
-    }
-  | { name: 'code_copied'; path?: string; placement?: string; language?: string }
-  | { name: 'search_result_clicked'; path?: string; resultId?: string; resultPosition?: number; language?: string }
-  | { name: 'feedback_submitted'; path?: string; feedback: 'helpful' | 'not_helpful'; target: 'page' };
+export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
 
 const randomIdFn = (): string => {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -57,22 +45,18 @@ export function SiteAnalyticsProvider({
   language?: string;
   config?: ProjectConfig | null;
 }) {
+  const { mutate: createEvent } = useCreateSiteAnalyticsEvent(projectId);
   const track = useCallback(
     (payload: PublicAnalyticsPayload) => {
-      api.public.sites[':id'].events
-        .$post({
-          param: { id: projectId },
-          json: {
-            eventId: randomIdFn(),
-            occurredAt: new Date().toISOString(),
-            consentState: consentStateFn(projectId, config),
-            sessionId: sessionIdFn(),
-            payload,
-          },
-        })
-        .catch(() => undefined);
+      createEvent({
+        eventId: randomIdFn(),
+        occurredAt: new Date().toISOString(),
+        consentState: consentStateFn(projectId, config),
+        sessionId: sessionIdFn(),
+        payload,
+      });
     },
-    [config, projectId],
+    [config, createEvent, projectId],
   );
 
   useEffect(() => {
@@ -86,7 +70,7 @@ export function SiteAnalyticsProvider({
     const sendEngagement = () => {
       if (sent) return;
       const engagementMs = Math.round(performance.now() - started);
-      if (engagementMs < 1_000) return;
+      if (engagementMs < 1000) return;
       sent = true;
       const root = document.documentElement;
       const scrollable = Math.max(1, root.scrollHeight - window.innerHeight);

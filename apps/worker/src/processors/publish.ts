@@ -13,6 +13,7 @@ import { createLogger } from '@nibleaf/logger';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
+import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
 
 const log = createLogger({ processor: 'publish' });
@@ -45,8 +46,7 @@ const trackPublishLifecycle = async (
   await insertAnalyticsEvents([event]).catch(() => undefined);
 };
 
-const siteUrlFor = (projectId: string): string | undefined =>
-  process.env.APP_URL ? `${process.env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined;
+const siteUrlFor = (projectId: string): string | undefined => (env.APP_URL ? `${env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined);
 
 /** Fire-and-forget platform funnel event (mirrors apps/server platform-events —
  *  the worker can't import server actions). Never throws into the publish flow. */

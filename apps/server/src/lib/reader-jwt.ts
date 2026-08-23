@@ -75,7 +75,7 @@ const publicKeySet = (configuration: ReaderJwtConfiguration) => {
     let set = remoteSets.get(configuration.jwksUrl);
     if (!set) {
       set = createRemoteJWKSet(new URL(configuration.jwksUrl), {
-        timeoutDuration: 5_000,
+        timeoutDuration: 5000,
         cooldownDuration: 30_000,
         cacheMaxAge: 10 * 60_000,
         [customFetch]: guardedFetch,

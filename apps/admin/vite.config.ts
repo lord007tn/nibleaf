@@ -1,10 +1,10 @@
+import { createEnv } from '@t3-oss/env-core';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import viteReact from '@vitejs/plugin-react';
 import { nitro } from 'nitro/vite';
-import { defineConfig } from 'vite';
-
-const API_TARGET = process.env.VITE_API_URL ?? 'http://localhost:4311';
+import { defineConfig, loadEnv } from 'vite';
+import { z } from 'zod';
 
 const SECURITY_HEADERS = {
   'Cache-Control': 'no-store',
@@ -14,20 +14,28 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
 };
 
-export default defineConfig({
-  resolve: { tsconfigPaths: true },
-  server: { port: 4315 },
-  plugins: [
-    tailwindcss(),
-    // Same-origin /api proxy: the browser only talks to the admin origin, so the
-    // better-auth session cookie stays first-party. All /api/** → the Nibleaf API.
-    nitro({
-      routeRules: {
-        '/**': { headers: SECURITY_HEADERS },
-        '/api/**': { proxy: `${API_TARGET}/api/**` },
-      },
-    }),
-    tanstackStart(),
-    viteReact(),
-  ],
+export default defineConfig(({ mode }) => {
+  const configEnv = createEnv({
+    server: { VITE_API_URL: z.url().default('http://localhost:4311') },
+    runtimeEnv: loadEnv(mode, process.cwd(), ''),
+    emptyStringAsUndefined: true,
+  });
+  const apiTarget = configEnv.VITE_API_URL;
+  return {
+    resolve: { tsconfigPaths: true },
+    server: { port: 4315 },
+    plugins: [
+      tailwindcss(),
+      // Same-origin /api proxy: the browser only talks to the admin origin, so the
+      // better-auth session cookie stays first-party. All /api/** → the Nibleaf API.
+      nitro({
+        routeRules: {
+          '/**': { headers: SECURITY_HEADERS },
+          '/api/**': { proxy: `${apiTarget}/api/**` },
+        },
+      }),
+      tanstackStart(),
+      viteReact({ compiler: true }),
+    ],
+  };
 });

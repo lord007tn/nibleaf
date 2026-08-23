@@ -183,6 +183,8 @@ export const transferOwnership = async (organizationId: string, actorUserId: str
         throw conflict('That member is already an owner.');
       case 'target_not_admin':
         throw conflict('Ownership can only be transferred to an admin. Make them an admin first.');
+      default:
+        throw conflict('Ownership transfer could not be completed.');
     }
   }
 

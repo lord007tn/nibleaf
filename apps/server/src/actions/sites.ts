@@ -185,7 +185,7 @@ export const isProjectTakenDown = async (projectId: string): Promise<boolean> =>
   return Boolean(live?.takedownAt);
 };
 
-export const projectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
+export const getProjectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
   const live = await getLiveChrome(projectId).catch(() => null);
   if (!live || live.takedownAt) return null;
   return resolveViewerAccess(projectId, live.accessMode, headers);
@@ -679,7 +679,7 @@ export const recordSiteEvent = async (identifier: string, body: PublicAnalyticsE
     throw notFound('site', { identifier, reason: 'takedown' });
   }
   const headers = getContext<HonoEnv>().req.raw.headers;
-  if (!(await projectDeliveryAccess(projectId, headers))) {
+  if (!(await getProjectDeliveryAccess(projectId, headers))) {
     throw notFound('site', { identifier, reason: 'private' });
   }
   const device = deviceFromUserAgent(headers.get('user-agent'));

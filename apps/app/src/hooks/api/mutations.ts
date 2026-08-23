@@ -23,7 +23,6 @@ import type {
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { answerSiteFn } from '@/functions/site-search';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -42,11 +41,6 @@ import type {
   Project,
   WorkspaceSettings,
 } from './types';
-
-export const useAnswerSite = () =>
-  useMutation({
-    mutationFn: (input: { projectId: string; query: string; language?: string; version?: string }) => answerSiteFn({ data: input }),
-  });
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -222,6 +216,22 @@ export const usePublish = (projectId: string) => {
     mutationFn: async (message?: string) =>
       mutateData<Deployment>(
         await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: message ? { message } : {} }),
+        'Could not publish.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+    },
+  });
+};
+
+export const usePublishAnyway = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      mutateData<Deployment>(
+        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         'Could not publish.',
       ),
     onSuccess: () => {

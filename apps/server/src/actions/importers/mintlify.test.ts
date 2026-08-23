@@ -54,7 +54,7 @@ vi.mock('../languages', () => ({
   }),
   updateLanguage: vi.fn(async (_projectId: string, id: string, body: { position?: number; isDefault?: boolean; enabled?: boolean }) => {
     const language = [...mem.languages.values()].find((candidate) => candidate.id === id);
-    if (!language) return undefined;
+    if (!language) return;
     mem.languageOperations.push({ kind: 'update', code: language.code, ...body });
     return language;
   }),

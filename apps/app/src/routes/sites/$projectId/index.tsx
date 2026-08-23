@@ -1,12 +1,11 @@
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { SitePageView } from '@/components/site/site-page-view';
-import { ApiResponseError, getData } from '@/hooks/api/client-helpers';
-import type { SitePage, SiteShell } from '@/hooks/api/types';
+import { getSiteFn, getSitePageFn } from '@/functions/site';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
 import { pageHead } from '@/lib/site-seo';
-import { api } from '@/services/api';
 
 export const Route = createFileRoute('/sites/$projectId/')({
   component: SiteHome,
@@ -14,13 +13,7 @@ export const Route = createFileRoute('/sites/$projectId/')({
   // Empty path resolves to the site's first page server-side (content + SEO).
   loader: async ({ params, deps }) => {
     try {
-      const page = await getData<SitePage>(
-        await api.public.sites[':id'].page.$get({
-          param: { id: params.projectId },
-          query: { path: '', ...(deps.lang ? { lang: deps.lang } : {}) },
-        }),
-        'page',
-      );
+      const page = await getSitePageFn({ data: { projectId: params.projectId, path: '', language: deps.lang } });
       return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
@@ -28,10 +21,7 @@ export const Route = createFileRoute('/sites/$projectId/')({
       }
       // A site may intentionally publish only an API reference. Give that
       // reference a useful home URL instead of returning a root 404.
-      const site = await getData<SiteShell>(
-        await api.public.sites[':id'].$get({ param: { id: params.projectId }, query: { ...(deps.lang ? { lang: deps.lang } : {}) } }),
-        'site',
-      ).catch(() => null);
+      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } }).catch(() => null);
       if (site?.openapi) {
         const prefix = isCustomDomainSite(params.projectId) ? '' : `/sites/${params.projectId}`;
         const query = deps.lang ? `?lang=${encodeURIComponent(deps.lang)}` : '';
