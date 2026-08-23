@@ -12,7 +12,7 @@ import {
   getProjectSearchIndexDiagnostics,
   updateProjectSearchConfiguration,
 } from '@/actions/search';
-import { getProjectUsage } from '@/actions/usage';
+import { getProjectUsageSummary } from '@/actions/usage';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getContextMembership, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -64,9 +64,8 @@ const app = new Hono<HonoEnv>()
     return ctx.json({ data: { webhookSecret: await rotateGitWebhookSecret(organizationId) } }, 200);
   })
   .get('/usage', ...projectSettingsRoutes.usage, async (ctx) => {
-    const organizationId = getContextOrganizationIdOrThrow();
     const projectId = ctx.req.param('projectId') ?? '';
-    return ctx.json({ data: await getProjectUsage(organizationId, projectId) }, 200);
+    return ctx.json({ data: await getProjectUsageSummary(ctx, projectId) }, 200);
   })
   .get('/search', ...projectSettingsRoutes.searchConfiguration, async (ctx) =>
     ctx.json({ data: await getProjectSearchConfiguration(ctx, ctx.req.param('projectId') ?? '') }, 200),

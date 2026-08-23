@@ -13,6 +13,7 @@ export type ErrorCode =
   | 'auth:invalid_session'
   | 'auth:invalid_api_key'
   | 'auth:insufficient_role'
+  | 'auth:insufficient_scope'
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
@@ -22,7 +23,12 @@ export type ErrorCode =
   | 'import:invalid_document'
   | 'import:not_found'
   | 'import:unsupported'
-  | 'provider:unavailable';
+  | 'provider:unavailable'
+  | 'usage:invalid_period'
+  | 'usage:unavailable'
+  | 'usage:export_not_ready'
+  | 'entitlement:unknown'
+  | 'entitlement:disabled';
 
 const ERROR_STATUS = {
   'http:bad_request': 400,
@@ -37,6 +43,7 @@ const ERROR_STATUS = {
   'auth:invalid_session': 401,
   'auth:invalid_api_key': 401,
   'auth:insufficient_role': 403,
+  'auth:insufficient_scope': 403,
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,
@@ -47,6 +54,11 @@ const ERROR_STATUS = {
   'import:not_found': 404,
   'import:unsupported': 422,
   'provider:unavailable': 502,
+  'usage:invalid_period': 400,
+  'usage:unavailable': 503,
+  'usage:export_not_ready': 409,
+  'entitlement:unknown': 503,
+  'entitlement:disabled': 403,
 } as const satisfies Record<ErrorCode, ContentfulStatusCode>;
 
 export interface AppErrorOptions {

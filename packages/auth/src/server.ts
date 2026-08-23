@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import {
   createEmailTranslator,
   type RenderedEmail,
@@ -670,11 +670,15 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
       return;
     }
     const firstName = user.name?.split(' ')[0]?.trim();
-    const org = await prisma.organization.create({
-      data: {
-        name: firstName ? `${firstName}'s workspace` : 'My workspace',
-        slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
-      },
+    const org = await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: firstName ? `${firstName}'s workspace` : 'My workspace',
+          slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
+        },
+      });
+      await assignDefaultUsagePlan(tx, organization.id);
+      return organization;
     });
     await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
     await logPlatformEvent('signup_completed', { userId: user.id });

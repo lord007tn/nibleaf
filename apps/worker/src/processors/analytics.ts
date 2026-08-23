@@ -9,10 +9,15 @@ import {
   keys as clickHouseKeys,
   clickHouseWritesEnabled,
   insertAnalyticsEvents,
+  insertUsageEvents,
+  listPendingUsagePeriods,
+  reconcileUsageHourly,
   relationalWritesEnabled,
+  usageEventsFromAnalytics,
 } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { markUsageStorageWritten, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
+import { isLateUsageEvent, utcBillingPeriod } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
 import { z } from 'zod';
 import { legacyAnalyticsJobToEnvelope } from '../analytics/legacy-job';
@@ -51,7 +56,16 @@ async function insertTrackedEvent(event: AnalyticsEventEnvelope): Promise<{ inse
       await prisma.analyticsEvent.upsert({ where: { id: event.eventId }, create: relationalEvent, update: {} });
     }
   }
-  if (clickHouseWritesEnabled(config.ANALYTICS_MODE)) await insertAnalyticsEvents([event]);
+  if (clickHouseWritesEnabled(config.ANALYTICS_MODE)) {
+    await insertAnalyticsEvents([event]);
+    const usageEvents = usageEventsFromAnalytics(event);
+    if (usageEvents.length > 0) await markUsageStorageWritten(event.tenantId);
+    await insertUsageEvents(usageEvents);
+    for (const usageEvent of usageEvents.filter((item) => isLateUsageEvent(item))) {
+      const period = utcBillingPeriod(usageEvent.occurredAt);
+      await reconcileUsageHourly(usageEvent.tenantId, usageEvent.projectId, period.start, period.endExclusive);
+    }
+  }
   return { inserted: 1 };
 }
 
@@ -62,6 +76,15 @@ async function pruneOldEvents(): Promise<{ pruned: number }> {
   const result = await prisma.analyticsEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });
   log.info({ pruned: result.count, cutoff }, 'analytics rollup complete');
   return { pruned: result.count };
+}
+
+async function reconcilePendingUsage(): Promise<{ reconciled: number }> {
+  if (!clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) return { reconciled: 0 };
+  const periods = await listPendingUsagePeriods();
+  for (const period of periods) {
+    await reconcileUsageHourly(period.tenantId, period.projectId, period.periodStart, period.periodEndExclusive);
+  }
+  return { reconciled: periods.length };
 }
 
 /** Rollup jobs carry an empty payload, so `kind` is the discriminator (TS can't
@@ -108,7 +131,9 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
 
 /** ANALYTICS queue processor: high-volume event inserts (off the API hot path)
  *  plus the daily retention prune. */
-export async function handleAnalyticsJobs(job: Job<AnalyticsJobData, unknown, AnalyticsJobName>): Promise<{ inserted: number } | { pruned: number }> {
+export async function handleAnalyticsJobs(
+  job: Job<AnalyticsJobData, unknown, AnalyticsJobName>,
+): Promise<{ inserted: number } | { pruned: number } | { reconciled: number }> {
   if (isTrackEvent(job.data)) {
     if (hasEnvelope(job.data)) return insertTrackedEvent(job.data.envelope);
     if (isLegacyTrackEvent(job.data)) {
@@ -119,5 +144,6 @@ export async function handleAnalyticsJobs(job: Job<AnalyticsJobData, unknown, An
     }
     return { inserted: 0 };
   }
+  if (job.name === 'reconcile-usage') return reconcilePendingUsage();
   return pruneOldEvents();
 }

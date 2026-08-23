@@ -10,12 +10,14 @@ import {
   clickHouseWritesEnabled,
   exportProjectAnalytics,
   insertAnalyticsEvents,
+  insertUsageEvents,
   type PublicAnalyticsEvent,
   queryProjectAnalytics,
   queryWorkspaceAnalytics,
   relationalWritesEnabled,
+  usageEventsFromAnalytics,
 } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { markUsageStorageWritten, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { AnalyticsRange, ProjectConfig } from '@nibleaf/validators';
 import { assertProjectInOrg } from './projects';
@@ -415,6 +417,10 @@ const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput)
     }
     if (clickHouseWritesEnabled(config.ANALYTICS_MODE)) {
       await insertAnalyticsEvents([envelope], { attempts: 1 }).catch(() => undefined);
+      const usageEvents = usageEventsFromAnalytics(envelope);
+      await (usageEvents.length > 0 ? markUsageStorageWritten(envelope.tenantId) : Promise.resolve())
+        .then(() => insertUsageEvents(usageEvents))
+        .catch(() => undefined);
     }
     log.warn({ error, eventId: envelope.eventId, projectId: envelope.projectId }, 'analytics enqueue unavailable; fallback attempted');
   }

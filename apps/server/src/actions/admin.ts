@@ -1,4 +1,4 @@
-import { prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
@@ -37,6 +37,7 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   const slug = await uniqueAdminProjectSlug(input.siteSlug || input.siteName);
   const created = await prisma.$transaction(async (tx) => {
     const organization = await tx.organization.create({ data: { name: input.organizationName.trim() } });
+    await assignDefaultUsagePlan(tx, organization.id);
     const project = await tx.project.create({
       data: {
         organizationId: organization.id,

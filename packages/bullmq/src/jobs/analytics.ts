@@ -1,4 +1,4 @@
-export type AnalyticsJobName = 'rollup-analytics' | 'track-event';
+export type AnalyticsJobName = 'reconcile-usage' | 'rollup-analytics' | 'track-event';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type RollupAnalyticsJobData = Record<string, never>;

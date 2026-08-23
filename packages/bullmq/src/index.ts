@@ -43,6 +43,11 @@ export async function scheduleAnalyticsRollup(): Promise<void> {
     { name: 'rollup-analytics', data: {} },
     { jobId: 'rollup-analytics-daily', repeat: { pattern: '10 0 * * *', tz: 'UTC' } },
   );
+  await createJob(
+    QueueNames.ANALYTICS,
+    { name: 'reconcile-usage', data: {} },
+    { jobId: 'reconcile-usage-periods', repeat: { pattern: '*/5 * * * *', tz: 'UTC' } },
+  );
   queueLogger.info('Scheduled daily analytics rollup job');
 }
 

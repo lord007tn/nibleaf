@@ -7,8 +7,10 @@ import {
   clickHouseWritesEnabled,
   deterministicAnalyticsEventId,
   insertAnalyticsEvents,
+  insertUsageEvents,
+  usageEventsFromAnalytics,
 } from '@nibleaf/clickhouse';
-import { Prisma, prisma } from '@nibleaf/database';
+import { markUsageStorageWritten, Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot } from '@nibleaf/shared/site';
@@ -43,7 +45,14 @@ const trackPublishLifecycle = async (
       hashSalt: config.ANALYTICS_HASH_SALT,
     },
   );
-  await insertAnalyticsEvents([event]).catch(() => undefined);
+  const usageEvents = usageEventsFromAnalytics(event);
+  await Promise.allSettled([
+    insertAnalyticsEvents([event]),
+    (async () => {
+      if (usageEvents.length > 0) await markUsageStorageWritten(project.organizationId);
+      await insertUsageEvents(usageEvents);
+    })(),
+  ]);
 };
 
 const siteUrlFor = (projectId: string): string | undefined => (env.APP_URL ? `${env.APP_URL.replace(/\/$/, '')}/sites/${projectId}` : undefined);

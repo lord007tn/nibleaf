@@ -111,8 +111,121 @@ model Organization {
   members     Member[]
   invitations Invitation[]
   projects    Project[]
+  usagePlan          OrganizationUsagePlan?
+  usageStorageMarker UsageStorageMarker?
 
   @@map("organization")
+}
+
+/// Provider-neutral commercial configuration. These rows express product
+/// policy only; payment-provider customer/subscription state does not live here.
+model UsagePlan {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  version     Int      @default(1)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  meters      UsagePlanMeter[]
+  entitlements UsageEntitlement[]
+  organizations OrganizationUsagePlan[]
+
+  @@map("usage_plan")
+}
+
+model UsageMeter {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  unit        String
+  aggregation String   @default("sum")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  plans        UsagePlanMeter[]
+  entitlements UsageEntitlement[]
+
+  @@map("usage_meter")
+}
+
+model UsagePlanMeter {
+  planId      String
+  plan        UsagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  meterId     String
+  meter       UsageMeter @relation(fields: [meterId], references: [id], onDelete: Cascade)
+  limit       BigInt?
+  behavior    String    @default("observe")
+  warningRatio Int      @default(80)
+
+  @@id([planId, meterId])
+  @@map("usage_plan_meter")
+}
+
+model UsageEntitlement {
+  id            String   @id @default(cuid())
+  planId        String
+  plan          UsagePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  capabilityKey String
+  enabled       Boolean
+  limit         BigInt?
+  meterId       String?
+  meter         UsageMeter? @relation(fields: [meterId], references: [id], onDelete: SetNull)
+  behavior      String   @default("observe")
+
+  @@unique([planId, capabilityKey])
+  @@map("usage_entitlement")
+}
+
+model OrganizationUsagePlan {
+  organizationId String       @id
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  planId         String
+  plan           UsagePlan    @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status         String       @default("active")
+  effectiveAt    DateTime     @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([planId])
+  @@map("organization_usage_plan")
+}
+
+/// Durable retry/audit state for exporting finalized aggregates. It stores no
+/// provider payload, credentials, customer ids, subscription ids, or prices.
+model UsageProviderCheckpoint {
+  id               String       @id @default(cuid())
+  organizationId   String
+  provider         String
+  reconciliationId String       @unique
+  meterKey         String
+  periodStart      DateTime
+  periodEnd        DateTime
+  quantity         Decimal  @db.Decimal(38, 0)
+  status           String       @default("pending")
+  attemptCount     Int          @default(0)
+  lastAttemptAt    DateTime?
+  acceptedAt       DateTime?
+  hasError         Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([organizationId, periodStart, periodEnd])
+  @@index([provider, status])
+  @@map("usage_provider_checkpoint")
+}
+
+/// Relational evidence that this tenant has written ClickHouse usage facts at
+/// least once. Privacy erasure consults it even when analytics is later disabled.
+model UsageStorageMarker {
+  organizationId String       @id
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  firstWrittenAt DateTime     @default(now())
+  lastWrittenAt  DateTime     @updatedAt
+
+  @@map("usage_storage_marker")
 }
 
 model Member {

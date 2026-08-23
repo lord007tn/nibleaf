@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
-import { Prisma, prisma } from '@nibleaf/database';
+import { insertUsageEvents } from '@nibleaf/clickhouse';
+import { markUsageStorageWritten, Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, OpenRouterEmbeddingProvider, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
+import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
 import { z } from 'zod';
 import { env } from '../env';
@@ -336,7 +338,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     await renewRunClaim(run);
     await client.ensureHybridCollection();
     const [project, previousDeployment] = await Promise.all([
-      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true } }),
+      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true, organizationId: true } }),
       prisma.deployment.findFirst({
         where: { projectId: job.data.projectId, status: 'READY', id: { not: deployment.id }, version: { lt: deployment.version } },
         orderBy: { version: 'desc' },
@@ -416,7 +418,6 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
       if (dense?.length === client.vectorSize) reused.push(pointFromChunk(item.chunk, dense, item.payload));
       else toEmbed.push(item);
     }
-
     let embedded = 0;
     for (let offset = 0; offset < toEmbed.length; offset += BATCH_SIZE) {
       await renewRunClaim(run);
@@ -434,6 +435,39 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
       const points = batch.map((item, index) => pointFromChunk(item.chunk, embeddedBatch.vectors[index] ?? [], item.payload));
       await client.upsert(points);
       await renewRunClaim(run);
+      const occurredAt = new Date().toISOString();
+      const batchScope = batch
+        .map(({ chunk }) => `${chunk.id}:${chunk.contentHash}`)
+        .sort()
+        .join('|');
+      const embeddedBytes = batch.reduce((total, { chunk }) => total + Buffer.byteLength(embeddingText(chunk), 'utf8'), 0);
+      const usageEvents = [
+        buildUsageEvent(
+          {
+            eventId: deterministicUsageEventId(`search-index:${deployment.id}:${batchScope}:chunks`),
+            occurredAt,
+            meterKey: 'embedded_chunk',
+            quantity: String(points.length),
+            kind: 'usage',
+            correctionOfEventId: null,
+          },
+          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+        ),
+        buildUsageEvent(
+          {
+            eventId: deterministicUsageEventId(`search-index:${deployment.id}:${batchScope}:bytes`),
+            occurredAt,
+            meterKey: 'indexed_content_byte',
+            quantity: String(embeddedBytes),
+            kind: 'usage',
+            correctionOfEventId: null,
+          },
+          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+        ),
+      ];
+      await markUsageStorageWritten(project.organizationId)
+        .then(() => insertUsageEvents(usageEvents))
+        .catch(() => undefined);
       embedded += points.length;
       await job.updateProgress(desired.length === 0 ? 90 : Math.min(90, Math.round(((embedded + reused.length) / desired.length) * 90)));
     }

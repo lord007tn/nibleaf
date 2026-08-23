@@ -94,6 +94,8 @@ const mocks = vi.hoisted(() => ({
   deletePoints: vi.fn(async (_ids: Array<string | number>, _filter: QdrantFilter) => undefined),
   deleteByFilterAllVersions: vi.fn(async (_filter: QdrantFilter) => 1),
   embed: vi.fn(async (inputs: string[]) => ({ vectors: inputs.map(() => [0.1, 0.2]), model: 'test' })),
+  insertUsageEvents: vi.fn(async (_events: unknown[]) => undefined),
+  markUsageStorageWritten: vi.fn(async (_organizationId: string) => undefined),
 }));
 
 const deploymentIdFrom = (filter: QdrantFilter) => {
@@ -122,7 +124,10 @@ vi.mock('../env', () => ({
   },
 }));
 
+vi.mock('@nibleaf/clickhouse', () => ({ insertUsageEvents: mocks.insertUsageEvents }));
+
 vi.mock('@nibleaf/database', () => ({
+  markUsageStorageWritten: mocks.markUsageStorageWritten,
   Prisma: { JsonNull: null, PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {} },
   prisma: (() => {
     const matches = (run: SearchRunState, where: SearchRunWhere): boolean => {
@@ -180,7 +185,7 @@ vi.mock('@nibleaf/database', () => ({
       deployment: {
         findFirst: vi.fn(async (args: { select?: { snapshot?: boolean } }) => (args.select?.snapshot ? mocks.deployment : mocks.previousDeployment)),
       },
-      project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode })) },
+      project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode, organizationId: 'organization-a' })) },
       searchIndexRun,
       $transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
     };
@@ -252,6 +257,11 @@ describe('hybrid search differential indexing jobs', () => {
       },
     });
     expect(mocks.embed).toHaveBeenCalledOnce();
+    expect(mocks.markUsageStorageWritten).toHaveBeenCalledWith('organization-a');
+    expect(mocks.insertUsageEvents).toHaveBeenCalledWith([
+      expect.objectContaining({ tenantId: 'organization-a', projectId: 'tenant-a', meterKey: 'embedded_chunk', quantity: '1' }),
+      expect.objectContaining({ tenantId: 'organization-a', projectId: 'tenant-a', meterKey: 'indexed_content_byte' }),
+    ]);
   });
 
   it('skips unchanged current-deployment chunks without embedding or writing them again', async () => {

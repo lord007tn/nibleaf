@@ -55,6 +55,7 @@
               "self-hosting/search-ai",
               "self-hosting/production",
               "self-hosting/clickhouse-analytics",
+              "self-hosting/usage-metering",
               "self-hosting/backups-upgrades",
               "self-hosting/troubleshooting"
             ]
@@ -130,6 +131,7 @@
               "ar/self-hosting/search-ai",
               "ar/self-hosting/production",
               "ar/self-hosting/clickhouse-analytics",
+              "ar/self-hosting/usage-metering",
               "ar/self-hosting/backups-upgrades",
               "ar/self-hosting/troubleshooting"
             ]

@@ -249,6 +249,73 @@ export const migrations: ClickHouseMigration[] = [
       WHERE event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%'`,
     ],
   },
+  {
+    version: 3,
+    name: 'provider_neutral_usage_metering',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS usage_events (
+        event_id UUID,
+        schema_version UInt16,
+        occurred_at DateTime64(3, 'UTC'),
+        received_at DateTime64(3, 'UTC'),
+        tenant_id LowCardinality(String),
+        project_id String,
+        meter_key LowCardinality(String),
+        quantity Int64,
+        kind LowCardinality(String),
+        correction_of_event_id Nullable(UUID),
+        source LowCardinality(String),
+        late UInt8
+      ) ENGINE = ReplacingMergeTree(received_at)
+      PARTITION BY toYYYYMM(occurred_at)
+      ORDER BY (tenant_id, project_id, meter_key, event_id)
+      TTL occurred_at + toIntervalDay({raw_retention_days:UInt16}) DELETE
+      SETTINGS index_granularity = 8192`,
+      `CREATE TABLE IF NOT EXISTS usage_hourly (
+        hour DateTime('UTC'),
+        tenant_id LowCardinality(String),
+        project_id String,
+        meter_key LowCardinality(String),
+        quantity Decimal(38, 0),
+        event_count UInt64,
+        reconciled_at DateTime64(3, 'UTC')
+      ) ENGINE = ReplacingMergeTree(reconciled_at)
+      PARTITION BY toYYYYMM(hour)
+      ORDER BY (tenant_id, project_id, meter_key, hour)
+      TTL hour + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+      `CREATE TABLE IF NOT EXISTS usage_deletion_tombstones (
+        tenant_id LowCardinality(String),
+        project_id String,
+        deleted_at DateTime64(3, 'UTC'),
+        reason LowCardinality(String)
+      ) ENGINE = ReplacingMergeTree(deleted_at)
+      ORDER BY (tenant_id, project_id)`,
+      `CREATE TABLE IF NOT EXISTS usage_reconciliation_state (
+        tenant_id LowCardinality(String),
+        project_id String,
+        period_start DateTime('UTC'),
+        period_end DateTime('UTC'),
+        status LowCardinality(String),
+        source_received_through DateTime64(3, 'UTC'),
+        updated_at DateTime64(3, 'UTC')
+      ) ENGINE = ReplacingMergeTree(updated_at)
+      PARTITION BY toYYYYMM(period_start)
+      ORDER BY (tenant_id, project_id, period_start, period_end)
+      TTL period_end + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+      `CREATE TABLE IF NOT EXISTS usage_reconciliation_coverage (
+        tenant_id LowCardinality(String),
+        project_id String,
+        period_start DateTime('UTC'),
+        period_end DateTime('UTC'),
+        event_count UInt64,
+        fact_received_through DateTime64(3, 'UTC'),
+        reconciled_at DateTime64(3, 'UTC')
+      ) ENGINE = ReplacingMergeTree(reconciled_at)
+      PARTITION BY toYYYYMM(period_start)
+      ORDER BY (tenant_id, project_id, period_start, period_end)
+      TTL period_end + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+    ],
+  },
 ];
 
 export interface MigrationOptions {
