@@ -9,7 +9,6 @@
     "build": "vite build",
     "bundle:check": "node ./scripts/check-bundle-budget.mjs --check",
     "bundle:report": "node ./scripts/check-bundle-budget.mjs",
-    "i18n:generate": "node ./scripts/generate-i18n-catalogs.mjs",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
@@ -25,6 +24,8 @@
     "@fontsource-variable/geist-mono": "^5.2.5",
     "@mdx-js/rollup": "^3.1.1",
     "@nibleaf/design-system": "workspace:*",
+    "@nibleaf/auth": "workspace:*",
+    "@nibleaf/i18n": "workspace:*",
     "@nibleaf/server": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/validators": "workspace:*",
@@ -101,6 +102,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@inlang/paraglide-js": "2.24.1",
     "@babel/parser": "7.29.8",
     "@babel/types": "7.29.8",
     "@nibleaf/tsconfig": "workspace:*",

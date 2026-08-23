@@ -1,7 +1,7 @@
+import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { useT } from '@/lib/i18n';
 
 /** Curated fence languages (lowlight `common` grammars + mermaid). The value is
  *  what lands after the ``` fence in Markdown, so it must stay highlightable on

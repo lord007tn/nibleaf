@@ -1,0 +1,25 @@
+import type { AnalyticsEventEnvelope } from './events';
+
+export const fixedAnalyticsEvent = (overrides: Partial<AnalyticsEventEnvelope> = {}): AnalyticsEventEnvelope => ({
+  eventId: '00000000-0000-4000-8000-000000000001',
+  schemaVersion: 1,
+  occurredAt: '2026-01-01T00:00:00.000Z',
+  receivedAt: '2026-01-01T00:00:00.100Z',
+  tenantId: 'tenant-1',
+  projectId: 'project-1',
+  siteId: 'project-1',
+  deploymentId: null,
+  sessionHash: null,
+  anonymousUserHash: null,
+  source: 'public_site',
+  consentState: 'not_required',
+  visibility: 'public',
+  country: null,
+  device: 'desktop',
+  payload: { name: 'page_view', path: 'docs/start', language: 'en' },
+  queryHash: null,
+  queryLength: null,
+  queryTokenCount: null,
+  sensitiveQueryText: null,
+  ...overrides,
+});

@@ -1,12 +1,12 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, PanelTop, Rows3, Trash2, X } from 'lucide-react';
 import type { ComponentType, ReactNode } from 'react';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 /** A Rows3/Columns3 glyph with a small × badge — reads as "delete row/column". */
 function DeleteGlyph({ icon: Icon }: { icon: ComponentType<{ className?: string }> }) {

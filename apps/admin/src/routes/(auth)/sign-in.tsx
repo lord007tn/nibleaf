@@ -6,7 +6,7 @@ import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-rese
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, KeyRound, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
-import { authClient } from '@/lib/auth-client';
+import { authClient } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-in')({
   component: SignInPage,

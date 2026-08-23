@@ -24,6 +24,11 @@ model User {
   /// Platform role for the internal admin panel (apps/admin): "user" | "admin".
   /// Separate from per-workspace Member roles; managed via the grant-admin script.
   role          String    @default("user")
+  /// Better Auth admin-plugin moderation fields. `suspendedAt` remains the
+  /// operator-facing timestamp while `banned` is the authentication backstop.
+  banned        Boolean   @default(false)
+  banReason     String?
+  banExpires    DateTime?
   /// Moderation: set when a platform admin suspends the account. Suspended users
   /// cannot sign in and every dashboard API request is rejected by the auth guard.
   suspendedAt   DateTime?

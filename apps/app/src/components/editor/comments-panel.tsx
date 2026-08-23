@@ -2,14 +2,14 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { Check, Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
 import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
-import { useSession } from '@/lib/auth-client';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { useSession } from '@/services/auth-client';
 
 interface CommentsPanelProps {
   projectId: string;

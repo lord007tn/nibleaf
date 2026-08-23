@@ -38,9 +38,19 @@ x-nibleaf-image: &nibleaf-image ghcr.io/lord007tn/nibleaf:${NIBLEAF_IMAGE_TAG:-l
 
 x-service-env: &service-env
   NODE_ENV: production
+  PINO_LOG_LEVEL: ${PINO_LOG_LEVEL:-info}
+  PINO_LOG_FILE: ${PINO_LOG_FILE:-}
   POSTGRES_URL: postgresql://${SERVICE_USER_POSTGRES:?set SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES:?set SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB:-nibleaf}
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
+  ANALYTICS_MODE: ${ANALYTICS_MODE:-disabled}
+  ANALYTICS_HASH_SALT: ${ANALYTICS_HASH_SALT:-}
+  CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+  CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+  CLICKHOUSE_READER_USERNAME: ${CLICKHOUSE_READER_USERNAME:-nibleaf}
+  CLICKHOUSE_READER_PASSWORD: ${CLICKHOUSE_READER_PASSWORD:-${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}}
+  CLICKHOUSE_WRITER_USERNAME: ${CLICKHOUSE_WRITER_USERNAME:-nibleaf}
+  CLICKHOUSE_WRITER_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}}
   QUEUE_CLUSTER: "true"
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
@@ -133,6 +143,23 @@ services:
       timeout: 3s
       retries: 10
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_WRITER_USERNAME:-nibleaf}
+      CLICKHOUSE_PASSWORD: ${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    volumes:
+      - nibleaf-coolify-clickhouse:/var/lib/clickhouse
+      - nibleaf-coolify-clickhouse-logs:/var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   maxio:
     image: docker.io/coollabsio/maxio:0.4.2
     restart: unless-stopped
@@ -161,6 +188,16 @@ services:
     environment: *service-env
     depends_on:
       postgres:
+        condition: service_healthy
+    restart: "no"
+
+  analytics-migrate:
+    image: *nibleaf-image
+    pull_policy: always
+    command: ["clickhouse-migrate"]
+    environment: *service-env
+    depends_on:
+      clickhouse:
         condition: service_healthy
     restart: "no"
 
@@ -267,3 +304,7 @@ volumes:
     name: nibleaf-coolify-dragonfly
   nibleaf-coolify-maxio:
     name: nibleaf-coolify-maxio
+  nibleaf-coolify-clickhouse:
+    name: nibleaf-coolify-clickhouse
+  nibleaf-coolify-clickhouse-logs:
+    name: nibleaf-coolify-clickhouse-logs

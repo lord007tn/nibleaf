@@ -1,5 +1,6 @@
 import { workbench } from '@getworkbench/hono';
 import { queues } from '@nibleaf/bullmq/queues';
+import { clickHouseHealth } from '@nibleaf/clickhouse';
 import { Hono } from 'hono';
 import { env } from '../../env';
 import { resolveEmailDelivery } from '../../processors/email-delivery';
@@ -14,7 +15,7 @@ export const setWorkerReady = (ready: boolean): void => {
 const workbenchAuth = env.WORKBENCH_USER && env.WORKBENCH_PASS ? { username: env.WORKBENCH_USER, password: env.WORKBENCH_PASS } : undefined;
 
 const app = new Hono()
-  .get('/health', (ctx) => {
+  .get('/health', async (ctx) => {
     const email = resolveEmailDelivery({
       postmarkApiKey: env.POSTMARK_API_KEY,
       smtpUrl: env.SMTP_URL,
@@ -23,6 +24,7 @@ const app = new Hono()
     const ready = workerReady && email.ready;
     const status = !workerReady ? 'starting' : email.ready ? 'ok' : 'degraded';
 
+    const analytics = await clickHouseHealth();
     return ctx.json(
       {
         status,
@@ -32,6 +34,7 @@ const app = new Hono()
           provider: email.provider ?? 'none',
           required: email.required,
         },
+        analytics,
       },
       ready ? 200 : 503,
     );

@@ -16,11 +16,15 @@
     "clean": {
       "cache": false
     },
+    "setup": {
+      "dependsOn": ["^setup"],
+      "cache": false
+    },
     "generate": {
       "cache": false
     },
     "typecheck": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["setup", "^setup", "^build"],
       "cache": false
     },
     "test": {

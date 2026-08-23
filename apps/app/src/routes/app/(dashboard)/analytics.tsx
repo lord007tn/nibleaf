@@ -1,27 +1,40 @@
+import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { Activity, BarChart3, Search, Users } from 'lucide-react';
-import { useState } from 'react';
+import { Activity, AlertTriangle, BarChart3, Search, Sparkles, Users } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { BarRow } from '@/components/analytics/bar-row';
 import { ListCard } from '@/components/analytics/list-card';
 import { StatCard } from '@/components/analytics/stat-card';
-import { useWorkspaceAnalytics } from '@/hooks/api';
+import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-provider';
 
 export const Route = createFileRoute('/app/(dashboard)/analytics')({
-  component: WorkspaceAnalyticsPage,
+  component: WorkspaceAnalyticsRoute,
 });
+
+function WorkspaceAnalyticsRoute() {
+  return (
+    <AnalyticsProvider>
+      <WorkspaceAnalyticsPage />
+    </AnalyticsProvider>
+  );
+}
 
 function WorkspaceAnalyticsPage() {
   const t = useT();
   const { number } = useFormatters();
   const EMPTY = t('analytics.empty.traffic');
   const navigate = useNavigate();
-  const [range, setRange] = useState('30d');
-  const { data, isPending } = useWorkspaceAnalytics(range);
+  const { range, setRange, timezone } = useAnalyticsFilters();
+  const { data, isPending, isError } = useWorkspaceAnalytics(range, { timezone });
+  const unavailable = isError || data?.availability === 'unavailable';
+  const partial = data?.availability === 'partial';
+  const emptyTraffic = unavailable ? t('analytics.state.unknown') : EMPTY;
+  const emptySearches = unavailable ? t('analytics.state.unknown') : t('analytics.empty.searches');
 
   const byProject = data?.byProject ?? [];
   const maxProjectViews = Math.max(1, ...byProject.map((p) => p.views));
@@ -30,8 +43,10 @@ function WorkspaceAnalyticsPage() {
     1,
     devices.reduce((sum, d) => sum + d.count, 0),
   );
-  const projectsWithTraffic = byProject.filter((p) => p.views > 0).length;
+  const projectsWithTraffic = unavailable ? null : byProject.filter((p) => p.views > 0).length;
   const hasTimeseries = (data?.timeseries ?? []).some((d) => d.views > 0);
+  const zeroResults = data?.searches && 'zeroResults' in data.searches ? data.searches.zeroResults : null;
+  const clickedResults = data?.searches && 'clickedResults' in data.searches ? data.searches.clickedResults : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -40,7 +55,7 @@ function WorkspaceAnalyticsPage() {
           <h1 className="font-semibold text-3xl tracking-tight">{t('analytics.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('analytics.subtitle')}</p>
         </div>
-        <Tabs onValueChange={setRange} value={range}>
+        <Tabs onValueChange={(value) => setRange(value as typeof range)} value={range}>
           <TabsList>
             <TabsTrigger value="24h">24h</TabsTrigger>
             <TabsTrigger value="7d">7d</TabsTrigger>
@@ -50,16 +65,31 @@ function WorkspaceAnalyticsPage() {
         </Tabs>
       </div>
 
+      {unavailable ? (
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertTitle>{t('analytics.state.unavailable.title')}</AlertTitle>
+          <AlertDescription>{t('analytics.state.unavailable.body')}</AlertDescription>
+        </Alert>
+      ) : null}
+      {partial ? (
+        <Alert variant="info">
+          <AlertTriangle />
+          <AlertTitle>{t('analytics.state.partial.title')}</AlertTitle>
+          <AlertDescription>{t('analytics.state.partial.body')}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t('analytics.kpi.pageViews')} value={data?.totalViews ?? 0} icon={<BarChart3 className="size-4" />} loading={isPending} />
+        <StatCard label={t('analytics.kpi.pageViews')} value={data?.totalViews ?? null} icon={<BarChart3 className="size-4" />} loading={isPending} />
         <StatCard
           label={t('analytics.kpi.uniqueVisitors')}
-          value={data?.uniqueVisitors ?? 0}
+          value={data?.uniqueVisitors ?? null}
           icon={<Users className="size-4" />}
           loading={isPending}
         />
-        <StatCard label={t('analytics.kpi.searches')} value={data?.searches.total ?? 0} icon={<Search className="size-4" />} loading={isPending} />
+        <StatCard label={t('analytics.kpi.searches')} value={data?.searches.total ?? null} icon={<Search className="size-4" />} loading={isPending} />
         <StatCard
           label={t('analytics.kpi.projectsWithTraffic')}
           value={projectsWithTraffic}
@@ -73,6 +103,8 @@ function WorkspaceAnalyticsPage() {
         <div className="mb-4 font-medium text-sm">{t('analytics.chart.pageviewsAllProjects')}</div>
         {isPending ? (
           <Skeleton className="h-64 w-full" />
+        ) : unavailable ? (
+          <p className="py-20 text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</p>
         ) : hasTimeseries ? (
           <ResponsiveContainer height={260} width="100%">
             <BarChart data={data?.timeseries ?? []} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
@@ -97,6 +129,25 @@ function WorkspaceAnalyticsPage() {
         )}
       </div>
 
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label={t('analytics.kpi.zeroResults')} value={zeroResults ?? null} icon={<Search className="size-4" />} loading={isPending} />
+        <StatCard label={t('analytics.kpi.resultClicks')} value={clickedResults ?? null} icon={<Search className="size-4" />} loading={isPending} />
+        <StatCard
+          label={t('analytics.kpi.answersCompleted')}
+          value={data?.ai.answersCompleted ?? null}
+          icon={<Sparkles className="size-4" />}
+          loading={isPending}
+        />
+        <StatCard
+          label={t('analytics.kpi.aiCostMicros')}
+          value={data?.ai.costMicros ?? null}
+          icon={<Sparkles className="size-4" />}
+          loading={isPending}
+        />
+      </div>
+
+      <p className="text-muted-foreground text-xs">{t('analytics.privacy.queryTerms')}</p>
+
       {/* By project + referrers */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
@@ -108,7 +159,7 @@ function WorkspaceAnalyticsPage() {
               ))}
             </div>
           ) : byProject.length === 0 ? (
-            <p className="py-6 text-center text-muted-foreground text-sm">{EMPTY}</p>
+            <p className="py-6 text-center text-muted-foreground text-sm">{emptyTraffic}</p>
           ) : (
             <div className="-mx-2">
               {byProject.map((p) => (
@@ -129,7 +180,7 @@ function WorkspaceAnalyticsPage() {
         <ListCard
           title={t('analytics.section.referrers')}
           loading={isPending}
-          empty={EMPTY}
+          empty={emptyTraffic}
           items={(data?.referrers ?? []).map((r) => ({ key: r.referrer, label: r.referrer, value: r.views }))}
         />
       </div>
@@ -138,7 +189,7 @@ function WorkspaceAnalyticsPage() {
       <ListCard
         title={t('analytics.section.topPagesAllDocs')}
         loading={isPending}
-        empty={EMPTY}
+        empty={emptyTraffic}
         rows={6}
         items={(data?.topPages ?? []).map((p) => ({
           key: `${p.project}-${p.path}`,
@@ -159,7 +210,7 @@ function WorkspaceAnalyticsPage() {
               ))}
             </div>
           ) : devices.length === 0 ? (
-            <p className="py-6 text-center text-muted-foreground text-sm">{EMPTY}</p>
+            <p className="py-6 text-center text-muted-foreground text-sm">{emptyTraffic}</p>
           ) : (
             <div className="-mx-2">
               {devices.map((d) => (
@@ -177,7 +228,7 @@ function WorkspaceAnalyticsPage() {
         <ListCard
           title={t('analytics.section.topSearches')}
           loading={isPending}
-          empty={t('analytics.empty.searches')}
+          empty={emptySearches}
           items={(data?.searches.topTerms ?? []).map((s) => ({
             key: s.query,
             label: <span className="font-mono text-xs">{s.query}</span>,

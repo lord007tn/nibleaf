@@ -1,14 +1,14 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, Ban, Download, FileArchive, Play, Plus, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getData, mutateData } from '@/hooks/api/client-helpers';
-import { api } from '@/lib/api';
-import { useLocale } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
+import { api } from '@/services/api';
 import { SectionHeader } from './shared';
 
 type ExportFormat = 'MARKDOWN' | 'PDF' | 'STATIC_HTML';

@@ -1,4 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronRight, FileText, HardDrive, Languages, Rocket, Search, TrendingUp, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -6,8 +8,6 @@ import type { Project } from '@/hooks/api';
 import { useProjectUsage } from '@/hooks/api';
 import { BETA_LIMITS } from '@/lib/beta-limits';
 import { useFormatters } from '@/lib/format';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { SettingsSection } from './section';
 
 const NEAR_LIMIT_RATIO = 0.9;
@@ -20,7 +20,7 @@ const round1 = (value: number) => Math.round(value * 10) / 10;
 interface Metric {
   icon: typeof FileText;
   labelKey: MessageKey;
-  used: number;
+  used: number | null;
   /** null = surfaced but unmetered during the beta. */
   limit: number | null;
   /** Localized display overrides (e.g. "12.4 MB"); default is the formatted count. */
@@ -38,7 +38,7 @@ function MetricCard({ metric }: { metric: Metric }) {
   const t = useT();
   const { number: formatNumber } = useFormatters();
   const Icon = metric.icon;
-  const ratio = metric.limit ? metric.used / metric.limit : null;
+  const ratio = metric.limit && metric.used !== null ? metric.used / metric.limit : null;
   const nearLimit = ratio !== null && ratio >= NEAR_LIMIT_RATIO;
   const widthPct = ratio === null ? 0 : Math.min(100, Math.max(ratio > 0 ? 1 : 0, ratio * 100));
 
@@ -53,7 +53,7 @@ function MetricCard({ metric }: { metric: Metric }) {
       </div>
 
       <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-semibold text-xl tabular-nums">{metric.usedDisplay ?? formatNumber(metric.used)}</span>
+        <span className="font-semibold text-xl tabular-nums">{metric.used === null ? '—' : (metric.usedDisplay ?? formatNumber(metric.used))}</span>
         {metric.limit !== null ? (
           <span className="text-muted-foreground text-sm tabular-nums">/ {metric.limitDisplay ?? formatNumber(metric.limit)}</span>
         ) : (
@@ -61,7 +61,7 @@ function MetricCard({ metric }: { metric: Metric }) {
         )}
       </div>
 
-      {metric.limit !== null ? (
+      {metric.limit !== null && metric.used !== null ? (
         <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
           <div
             className={cn('h-full rounded-full transition-[width]', nearLimit ? 'bg-amber-500' : 'bg-primary')}

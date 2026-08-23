@@ -2,30 +2,17 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfig } from '@nibleaf/validators';
 import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
-import { useT } from '@/lib/i18n';
-import { type MessageKey, messages } from '@/lib/i18n/messages';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfig }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
 };
 
-// saveConfigSection is a plain helper (not a hook), so it resolves the toast
-// message from the persisted locale directly — keeping every caller's save toast
-// localized without threading a translator through each section.
-const localized = (key: MessageKey): string => {
-  let locale: 'en' | 'ar' = 'en';
-  try {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem('nibleaf.locale') === 'ar') {
-      locale = 'ar';
-    }
-  } catch {
-    // ignore storage failures
-  }
-  return messages[locale][key] ?? messages.en[key];
-};
+const localizedFn = (key: MessageKey): string => translateFn(key);
 
 /**
  * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
@@ -38,11 +25,11 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfig)
       { config },
       {
         onSuccess: () => {
-          toast.success(localized('common.saved'));
+          toast.success(localizedFn('common.saved'));
           resolve();
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : localized('settings.saveError'));
+          toast.error(error instanceof Error ? error.message : localizedFn('settings.saveError'));
           resolve();
         },
       },

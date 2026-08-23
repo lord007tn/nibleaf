@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { ADMIN_URL } from '@/lib/links';
+import { authClient } from '@/services/auth-client';
 
 export function SupportAccessBanner({ customerId, customerName }: { customerId: string; customerName: string }) {
   const [pending, setPending] = useState(false);
@@ -11,13 +12,8 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
     setPending(true);
     setError(null);
     try {
-      const response = await fetch('/api/auth/support-impersonation/stop', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      if (!response.ok) throw new Error('Could not stop support access. Sign out if the problem continues.');
+      const response = await authClient.admin.stopImpersonating();
+      if (response.error) throw new Error(response.error.message || 'Could not stop support access. Sign out if the problem continues.');
       window.location.assign(`${ADMIN_URL}/users/${customerId}`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not stop support access.');
@@ -28,7 +24,7 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
   return (
     <aside
       aria-label="Support access session"
-      className="fixed inset-x-0 bottom-0 z-50 flex min-h-12 flex-wrap items-center justify-center gap-x-4 gap-y-2 border-amber-500/30 border-t bg-amber-50 px-4 py-2 text-amber-950 shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)] dark:bg-amber-950 dark:text-amber-50"
+      className="fixed inset-x-0 bottom-0 z-50 flex min-h-12 flex-wrap items-center justify-center gap-x-4 gap-y-2 border-warning/30 border-t bg-warning/10 px-4 py-2 text-warning shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)]"
     >
       <div className="flex min-w-0 items-center gap-2 text-sm">
         <ShieldAlert className="size-4 shrink-0" />
@@ -41,12 +37,7 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
           {error}
         </p>
       ) : null}
-      <Button
-        className="h-8 bg-amber-950 text-amber-50 hover:bg-amber-900 dark:bg-amber-50 dark:text-amber-950"
-        disabled={pending}
-        onClick={stop}
-        size="sm"
-      >
+      <Button className="h-8 bg-warning text-warning-foreground hover:bg-warning/90" disabled={pending} onClick={stop} size="sm">
         {pending ? 'Stopping…' : 'Stop support access'}
       </Button>
     </aside>

@@ -1,9 +1,9 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { siteT } from '@nibleaf/i18n/site';
 import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
 import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { siteT } from '@/lib/site-i18n';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────
 

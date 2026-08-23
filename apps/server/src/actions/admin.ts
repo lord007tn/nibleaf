@@ -1,14 +1,12 @@
-import { createHash, randomBytes } from 'node:crypto';
 import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { env } from '@/env';
-import { AppError, badRequest, forbidden, notFound } from '@/errors';
+import { AppError, notFound } from '@/errors';
 import { inviteMember } from './members';
 import { getProjectUsage } from './usage';
 import { parseWorkspaceMetadata } from './workspace';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
-const SUPPORT_GRANT_SECONDS = 2 * 60;
 
 type InviteOrganizationInput = {
   organizationName: string;
@@ -18,51 +16,6 @@ type InviteOrganizationInput = {
   description?: string;
   delivery: 'email' | 'link';
 };
-
-/** Create a one-time, hashed support-access grant. The raw token is returned
- * exactly once and must be consumed by the customer-app origin within 2 minutes. */
-export async function createAdminImpersonationGrant(adminUserId: string, targetUserId: string, organizationId?: string) {
-  const [actor, target] = await Promise.all([
-    prisma.user.findUnique({ where: { id: adminUserId }, select: { role: true } }),
-    prisma.user.findUnique({ where: { id: targetUserId }, select: { role: true, suspendedAt: true } }),
-  ]);
-  if (actor?.role !== 'admin') throw forbidden('Admin access required.');
-  if (!target) throw notFound('user', { id: targetUserId });
-  if (target.role === 'admin') throw forbidden('Platform administrators cannot be impersonated.');
-  if (target.suspendedAt) throw forbidden('Suspended customers cannot be impersonated.');
-
-  const membership = await prisma.member.findFirst({
-    where: { userId: targetUserId, ...(organizationId ? { organizationId } : {}) },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      organizationId: true,
-      organization: { select: { name: true, projects: { orderBy: { createdAt: 'asc' }, take: 1, select: { id: true, name: true } } } },
-    },
-  });
-  if (!membership) throw badRequest('Choose a workspace this customer can access.');
-
-  const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + SUPPORT_GRANT_SECONDS * 1000);
-  const identifier = `support-impersonation:${createHash('sha256').update(token).digest('hex')}`;
-  await prisma.$transaction([
-    prisma.verification.deleteMany({ where: { identifier: { startsWith: 'support-impersonation:' }, expiresAt: { lte: new Date() } } }),
-    prisma.verification.create({
-      data: {
-        identifier,
-        value: JSON.stringify({ actorUserId: adminUserId, targetUserId, organizationId: membership.organizationId }),
-        expiresAt,
-      },
-    }),
-  ]);
-  return {
-    token,
-    expiresAt: expiresAt.toISOString(),
-    organizationId: membership.organizationId,
-    organizationName: membership.organization.name,
-    projectId: membership.organization.projects[0]?.id ?? null,
-    projectName: membership.organization.projects[0]?.name ?? null,
-  };
-}
 
 async function uniqueAdminProjectSlug(desired: string): Promise<string> {
   const base = (slugify(desired) || 'docs').slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'docs';
@@ -754,7 +707,10 @@ export async function suspendUser(userId: string) {
   if (target.suspendedAt) {
     return { ok: true as const };
   }
-  await prisma.user.update({ where: { id: userId }, data: { suspendedAt: new Date() } });
+  await prisma.user.update({
+    where: { id: userId },
+    data: { suspendedAt: new Date(), banned: true, banReason: 'Suspended by a Nibleaf operator', banExpires: null },
+  });
   // Sessions are DB-backed (better-auth Prisma adapter), so deleting the rows
   // signs the user out everywhere on their next request.
   await prisma.session.deleteMany({ where: { userId } });
@@ -767,7 +723,7 @@ export async function unsuspendUser(userId: string) {
   if (!target) {
     throw notFound('User', { id: userId });
   }
-  await prisma.user.update({ where: { id: userId }, data: { suspendedAt: null } });
+  await prisma.user.update({ where: { id: userId }, data: { suspendedAt: null, banned: false, banReason: null, banExpires: null } });
   return { ok: true as const };
 }
 

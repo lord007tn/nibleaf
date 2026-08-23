@@ -1,11 +1,11 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { getData } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
-import { api } from '@/lib/api';
-import { siteT } from '@/lib/site-i18n';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
+import { api } from '@/services/api';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,

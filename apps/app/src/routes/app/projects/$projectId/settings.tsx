@@ -1,5 +1,7 @@
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AddonsSection } from '@/components/project-settings/addons-section';
@@ -20,8 +22,6 @@ import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
 import { useProject } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
 // (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)

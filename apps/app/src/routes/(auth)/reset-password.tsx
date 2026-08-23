@@ -1,7 +1,7 @@
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { KeyRound } from 'lucide-react';
 import { AuthLayout } from '@/layouts/auth';
-import { useT } from '@/lib/i18n';
 
 export const Route = createFileRoute('/(auth)/reset-password')({ component: ResetPasswordPage });
 

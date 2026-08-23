@@ -1,3 +1,4 @@
+import { useDirection } from '@nibleaf/design-system/components/ui/direction';
 import {
   Sidebar,
   SidebarContent,
@@ -8,12 +9,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@nibleaf/design-system/components/ui/sidebar';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BarChart3, BookOpen, LayoutDashboard, Settings } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { SiteSwitcher } from '@/components/app/site-switcher';
-import { useLocale } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 
 // Account-level nav. Members live per-site now (each site's Settings → Members),
 // so they're not here; Analytics stays as the cross-site global view.
@@ -27,9 +28,10 @@ const NAV = [
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useLocale();
+  const direction = useDirection();
 
   return (
-    <Sidebar variant="inset">
+    <Sidebar side={direction === 'rtl' ? 'right' : 'left'} variant="inset">
       <SidebarHeader>
         <SiteSwitcher />
       </SidebarHeader>

@@ -1,10 +1,87 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import { afterEach, describe, expect, it } from 'vitest';
-import mixedFixture from './__fixtures__/mixed-components.mdx?raw';
-import supportedFixture from './__fixtures__/supported-components.mdx?raw';
 import { findQuoteRange } from './extensions/comment-decorations';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
+
+const mixedSample = `# Mixed content
+
+import Chart from './Chart'
+
+export const chartTheme = { axis: 'red' }
+
+Editable text before the custom block.
+
+<Chart data={points} options={{ axis: { color: "red" } }}>
+  <Chart.Legend position="bottom" />
+  {points.map((point) => <Chart.Point key={point.id} {...point} />)}
+</Chart>
+
+Editable text after the custom block with an inline <Status value={build.status} /> component and {user.name} expression.
+
+{condition ? <Feature flag={flag} /> : fallback}
+
+<Tabs>
+
+<Tab title="Supported">
+
+<CustomWidget config={{ dense: true }} />
+
+This supported child remains structured.
+
+</Tab>
+
+</Tabs>`;
+
+const supportedSample = `<Callout type="warning" data-track="hero">
+
+Keep the **original props**.
+
+</Callout>
+
+<CardGroup cols="3" className={gridClass}>
+
+<Card title="API" icon={icons.api} href="/api" data-analytics={{ area: 'docs' }}>
+
+Read the API guide.
+
+</Card>
+
+</CardGroup>
+
+<Tabs>
+
+<Tab title="TypeScript">
+
+\`\`\`ts title="client.ts"
+const answer = 42;
+\`\`\`
+
+</Tab></Tabs>
+
+<AccordionGroup>
+
+<Accordion title="Details" defaultOpen={flags.expanded}>
+
+Nested **Markdown** stays editable.
+
+</Accordion>
+
+</AccordionGroup>
+
+<Steps>
+
+<Step title="Install">Run the installer.</Step>
+
+</Steps>
+
+<Frame caption="Architecture" data-lightbox>
+
+![Architecture diagram](/images/architecture.png)
+
+</Frame>
+
+Inline <Tooltip tip="More info" data-id="tip-1">help</Tooltip>, <Badge color="green">stable</Badge>, and <Icon icon={currentIcon} size="16" />.`;
 
 const editors: Editor[] = [];
 
@@ -19,9 +96,9 @@ afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
 });
 
-describe('fixture-driven MDX round trips', () => {
+describe('MDX round trips', () => {
   it('keeps rendered built-ins structured while preserving extra props and expressions', () => {
-    const editor = createEditor(supportedFixture);
+    const editor = createEditor(supportedSample);
     const json = editor.getJSON();
     const serialized = JSON.stringify(json);
 
@@ -47,7 +124,7 @@ describe('fixture-driven MDX round trips', () => {
   });
 
   it('updates an editable prop without dropping untouched custom props', () => {
-    const editor = createEditor(supportedFixture);
+    const editor = createEditor(supportedSample);
     let cardPosition = -1;
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === 'mdxCard') cardPosition = pos;
@@ -63,7 +140,7 @@ describe('fixture-driven MDX round trips', () => {
   });
 
   it('preserves unknown block, inline JSX, and expressions while supported siblings stay editable', () => {
-    const editor = createEditor(mixedFixture);
+    const editor = createEditor(mixedSample);
     const opaqueSources: string[] = [];
     const nodeTypes: string[] = [];
     editor.state.doc.descendants((node) => {
@@ -93,7 +170,7 @@ describe('fixture-driven MDX round trips', () => {
   });
 
   it('reaches a stable serialization fixed point without losing opaque source', () => {
-    const once = getMarkdown(createEditor(mixedFixture));
+    const once = getMarkdown(createEditor(mixedSample));
     const twice = getMarkdown(createEditor(once));
     expect(twice).toBe(once);
     expect(twice).toContain('<Chart data={points} options={{ axis: { color: "red" } }}>');
@@ -116,7 +193,7 @@ describe('comment anchors around opaque MDX', () => {
   });
 
   it('keeps the same quote resolvable after an opaque block round trip', () => {
-    const first = createEditor(mixedFixture);
+    const first = createEditor(mixedSample);
     const before = findQuoteRange(first.state.doc, 'Editable text after the custom block');
     const second = createEditor(getMarkdown(first));
     const after = findQuoteRange(second.state.doc, 'Editable text after the custom block');

@@ -1,10 +1,10 @@
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
 
 // Match the shapes the live-site injector accepts, so an invalid id is caught in
@@ -17,6 +17,8 @@ export function AnalyticsSection({ project }: { project: Project }) {
   const update = useUpdateProjectConfig(project.id);
   const analytics = project.config?.analytics ?? {};
   const [cookieConsent, setCookieConsent] = useState<boolean>(analytics.cookieConsent ?? false);
+  const [campaignDimensions, setCampaignDimensions] = useState<boolean>(analytics.campaignDimensions ?? false);
+  const [storePublicSearchTerms, setStorePublicSearchTerms] = useState<boolean>(analytics.storePublicSearchTerms ?? false);
 
   const form = useForm({
     defaultValues: {
@@ -29,6 +31,8 @@ export function AnalyticsSection({ project }: { project: Project }) {
           ga4: value.ga4.trim() || undefined,
           plausible: value.plausible.trim() || undefined,
           cookieConsent,
+          campaignDimensions,
+          storePublicSearchTerms,
         },
       });
     },
@@ -79,6 +83,20 @@ export function AnalyticsSection({ project }: { project: Project }) {
         hint={t('settings.analytics.cookieConsent.hint')}
         onCheckedChange={setCookieConsent}
         title={t('settings.analytics.cookieConsent.title')}
+      />
+
+      <ToggleRow
+        checked={campaignDimensions}
+        hint={t('settings.analytics.campaignDimensions.hint')}
+        onCheckedChange={setCampaignDimensions}
+        title={t('settings.analytics.campaignDimensions.title')}
+      />
+
+      <ToggleRow
+        checked={storePublicSearchTerms}
+        hint={t('settings.analytics.searchTerms.hint')}
+        onCheckedChange={setStorePublicSearchTerms}
+        title={t('settings.analytics.searchTerms.title')}
       />
 
       <div className="mt-4">

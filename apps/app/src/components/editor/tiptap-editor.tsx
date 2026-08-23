@@ -1,4 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
+import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -47,8 +49,6 @@ import {
 } from 'lucide-react';
 import { type ComponentType, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
-import { useT } from '@/lib/i18n';
-import type { MessageKey } from '@/lib/i18n/messages';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { Callout } from './extensions/callout';

@@ -1,14 +1,15 @@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
+import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { FileText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SearchHit } from '@/hooks/api/types';
-import { api } from '@/lib/api';
-import { siteT } from '@/lib/site-i18n';
 import { siteHref } from '@/lib/site-paths';
+import { useSiteAnalytics } from '@/providers/site-analytics-provider';
+import { api } from '@/services/api';
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -62,6 +63,7 @@ export function SiteSearch({
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
 }) {
+  const { track } = useSiteAnalytics();
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -131,11 +133,18 @@ export function SiteSearch({
           <CommandList>
             <CommandEmpty>{query.trim() ? t('searchEmpty') : t('searchPrompt')}</CommandEmpty>
             <CommandGroup heading={t('results')}>
-              {hits.map((hit) => (
+              {hits.map((hit, index) => (
                 <CommandItem
                   key={hit.id}
                   value={hit.id}
                   onSelect={() => {
+                    track({
+                      name: 'search_result_clicked',
+                      path: hit.path,
+                      resultId: hit.id,
+                      resultPosition: index + 1,
+                      language: lang,
+                    });
                     onOpenChange(false);
                     window.location.href = siteHref(projectId, hit.path, { lang, version });
                   }}

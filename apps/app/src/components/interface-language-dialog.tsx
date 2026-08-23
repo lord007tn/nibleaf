@@ -1,10 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
+import { INTERFACE_LOCALES, type Locale } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { Check, Languages } from 'lucide-react';
 import { useState } from 'react';
-import { useLocale } from '@/lib/i18n';
-import { INTERFACE_LOCALES, type Locale, localeDetails } from '@/lib/i18n/locales';
 
 export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { locale, setLocale, t } = useLocale();
@@ -54,7 +54,7 @@ export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean;
 export function InterfaceLanguageButton({ className }: { className?: string }) {
   const { locale, t } = useLocale();
   const [open, setOpen] = useState(false);
-  const current = localeDetails(locale);
+  const current = INTERFACE_LOCALES.find((option) => option.code === locale) ?? INTERFACE_LOCALES[0];
 
   return (
     <>

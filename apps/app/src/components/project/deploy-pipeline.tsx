@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -10,9 +11,8 @@ import { useRollback } from '@/hooks/api';
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
-import { api } from '@/lib/api';
-import { useT } from '@/lib/i18n';
 import { siteHref } from '@/lib/links';
+import { api } from '@/services/api';
 
 interface DeployPipelineProps {
   project: Project;

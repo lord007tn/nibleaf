@@ -4,12 +4,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language } from '@/hooks/api';
 import { useCreateLanguage, useLanguages } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import { type CatalogLanguage, LANGUAGE_CATALOG } from '@/lib/languages';
 
 interface AddLanguageDialogProps {

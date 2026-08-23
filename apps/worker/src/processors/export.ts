@@ -1,6 +1,14 @@
 import { createHash } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { ExportJobData, ExportJobName } from '@nibleaf/bullmq/jobs/export';
+import {
+  type AnalyticsPayload,
+  buildAnalyticsEvent,
+  keys as clickHouseKeys,
+  clickHouseWritesEnabled,
+  deterministicAnalyticsEventId,
+  insertAnalyticsEvents,
+} from '@nibleaf/clickhouse';
 import { type ExportFormat, type ExportSchedule, Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { exportScheduleSlotKey, nextExportRunAt } from '@nibleaf/shared/export-schedule';
@@ -22,6 +30,30 @@ import {
 } from '../exports/render';
 
 const log = createLogger({ processor: 'export' });
+
+const trackExportLifecycle = async (projectId: string, exportJobId: string, payload: AnalyticsPayload): Promise<void> => {
+  const config = clickHouseKeys();
+  if (!clickHouseWritesEnabled(config.ANALYTICS_MODE) || !config.ANALYTICS_HASH_SALT) return;
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, organizationId: true, accessMode: true, config: true },
+  });
+  if (!project) return;
+  const visibility =
+    project.accessMode === 'PUBLIC' && (project.config as { visibility?: string } | null)?.visibility !== 'private' ? 'public' : 'private';
+  const event = buildAnalyticsEvent(
+    { eventId: deterministicAnalyticsEventId(`${exportJobId}:${payload.name}`), consentState: 'not_required', payload },
+    {
+      tenantId: project.organizationId,
+      projectId,
+      siteId: projectId,
+      source: 'worker',
+      privacy: { visibility, allowCampaignDimensions: false, allowRawPublicSearchQueries: false },
+      hashSalt: config.ANALYTICS_HASH_SALT,
+    },
+  );
+  await insertAnalyticsEvents([event]).catch(() => undefined);
+};
 
 class ExportCancelledError extends Error {}
 
@@ -132,6 +164,7 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
     where: { id: exportJobId },
     data: { status: 'RUNNING', startedAt: row.startedAt ?? new Date(), attempts: { increment: 1 }, error: null },
   });
+  await trackExportLifecycle(row.projectId, row.id, { name: 'export_started', operationId: row.id, itemCount: row.formats.length });
   const snapshot = row.snapshot.snapshot as unknown as SiteSnapshot;
   try {
     const assets = await loadReferencedAssets(snapshot, row.snapshot.assets as unknown as ExportAssetManifestItem[], exportJobId);
@@ -164,6 +197,7 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
       });
     }
     await prisma.exportJob.update({ where: { id: row.id }, data: { status: 'SUCCEEDED', completedAt: new Date(), error: null } });
+    await trackExportLifecycle(row.projectId, row.id, { name: 'export_completed', operationId: row.id, itemCount: row.formats.length });
     await prisma.platformEvent.create({
       data: { type: 'export_succeeded', userId: row.createdById, projectId: row.projectId, metadata: { jobId: row.id, formats: row.formats } },
     });
@@ -184,12 +218,14 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
     if (error instanceof ExportCancelledError) {
       await deletePrefix(`projects/${row.projectId}/exports/${row.id}/`).catch(() => undefined);
       await prisma.exportJob.update({ where: { id: row.id }, data: { status: 'CANCELLED', completedAt: new Date(), error: null } });
+      await trackExportLifecycle(row.projectId, row.id, { name: 'export_cancelled', operationId: row.id });
       return { artifacts: 0 };
     }
     const isFinalAttempt = isFinalExportAttempt(bullJob.attemptsMade, bullJob.opts.attempts);
     if (isFinalAttempt) {
       const message = error instanceof Error ? error.message.slice(0, 2000) : String(error).slice(0, 2000);
       await prisma.exportJob.update({ where: { id: row.id }, data: { status: 'FAILED', completedAt: new Date(), error: message } });
+      await trackExportLifecycle(row.projectId, row.id, { name: 'export_failed', operationId: row.id, outcomeReason: 'render_failed' });
       await prisma.platformEvent.create({
         data: { type: 'export_failed', userId: row.createdById, projectId: row.projectId, metadata: { jobId: row.id, attempts: row.attempts + 1 } },
       });

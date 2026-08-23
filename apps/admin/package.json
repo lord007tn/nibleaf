@@ -17,6 +17,7 @@
     "@fontsource-variable/geist": "^5.2.5",
     "@fontsource-variable/geist-mono": "^5.2.5",
     "@nibleaf/design-system": "workspace:*",
+    "@nibleaf/auth": "workspace:*",
     "@nibleaf/server": "workspace:*",
     "@nibleaf/validators": "workspace:*",
     "@tailwindcss/vite": "^4.2.1",

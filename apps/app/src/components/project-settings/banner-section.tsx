@@ -1,11 +1,11 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { useT } from '@nibleaf/i18n/react';
 import type { LanguageConfig } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
 import { useLanguages, useUpdateLanguage, useUpdateProjectConfig } from '@/hooks/api';
-import { useT } from '@/lib/i18n';
 import {
   DirtyStateReporter,
   FIELD_INPUT,
