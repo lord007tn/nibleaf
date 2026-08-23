@@ -1,3 +1,4 @@
+import { parseAddonConfigRecord } from '@nibleaf/shared/addons';
 import type { Context } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -205,5 +206,17 @@ describe('project add-on mutations', () => {
       }),
     ).rejects.toMatchObject({ code: 'addon:revision_conflict', status: 409 });
     expect(auditEvents).toHaveLength(0);
+  });
+
+  it('keeps empty URL-template add-on projections valid durable JSON', async () => {
+    await updateProjectAddon(userContext, projectId, 'edit-suggestions', { expectedRevision: 0, config: {} });
+    await updateProjectAddon(userContext, projectId, 'issue-links', { expectedRevision: 0, config: {} });
+
+    const addons = parseAddonConfigRecord(projectConfig.addons);
+    expect(addons).not.toHaveProperty('editUrl');
+    expect(addons).not.toHaveProperty('issueUrl');
+    expect(addons).toMatchObject({ editSuggestions: true, issueLinks: true });
+    expect(JSON.parse(JSON.stringify(projectConfig))).toEqual(projectConfig);
+    expect(auditEvents).toHaveLength(2);
   });
 });

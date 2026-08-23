@@ -234,6 +234,9 @@ const rowById = (rows: readonly ProjectAddonProjectionRow[]) => new Map(rows.map
 export const projectConfigWithAddons = (rawConfig: unknown, rows: readonly ProjectAddonProjectionRow[]): Record<string, unknown> => {
   const current = parseAddonConfigRecord(rawConfig);
   const currentAddons = parseAddonConfigRecord(current.addons);
+  const preservedAddons = { ...currentAddons };
+  delete preservedAddons.editUrl;
+  delete preservedAddons.issueUrl;
   const currentAnalytics = parseAddonConfigRecord(current.analytics);
   const byId = rowById(rows);
   const state = <Id extends AddonId>(id: Id) => {
@@ -255,14 +258,14 @@ export const projectConfigWithAddons = (rawConfig: unknown, rows: readonly Proje
   return {
     ...current,
     addons: {
-      ...currentAddons,
+      ...preservedAddons,
       feedback: feedback.enabled,
       feedbackPlacement: feedback.config.placement,
       feedbackPresentation: feedback.config.presentation,
       editSuggestions: editSuggestions.enabled,
-      editUrl: editSuggestions.config.urlTemplate,
+      ...(editSuggestions.config.urlTemplate ? { editUrl: editSuggestions.config.urlTemplate } : {}),
       issueLinks: issueLinks.enabled,
-      issueUrl: issueLinks.config.urlTemplate,
+      ...(issueLinks.config.urlTemplate ? { issueUrl: issueLinks.config.urlTemplate } : {}),
       consentBanner: { enabled: consent.enabled, ...consent.config },
       ciChecks: ciChecks.enabled,
       brokenLinks: brokenLinks.enabled,

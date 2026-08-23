@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ADDON_REGISTRY, addonAvailable, addonConfigSchemas, legacyConsentBannerEnabled, projectConfigWithAddons } from './addons';
+import {
+  ADDON_REGISTRY,
+  addonAvailable,
+  addonConfigSchemas,
+  legacyConsentBannerEnabled,
+  parseAddonConfigRecord,
+  projectConfigWithAddons,
+} from './addons';
 
 describe('add-on availability', () => {
   it('lets an explicit entitlement override plan eligibility in either direction', () => {
@@ -83,5 +90,21 @@ describe('Project.config compatibility projection', () => {
         },
       },
     });
+  });
+
+  it('omits absent URL-template fields from the durable JSON projection', () => {
+    const projected = projectConfigWithAddons(
+      { addons: { editUrl: 'https://stale.example/edit', issueUrl: 'https://stale.example/issue', futureField: 'keep' } },
+      [
+        { key: 'edit-suggestions', enabled: true, config: {} },
+        { key: 'issue-links', enabled: true, config: {} },
+      ],
+    );
+    const addons = parseAddonConfigRecord(projected.addons);
+
+    expect(addons).not.toHaveProperty('editUrl');
+    expect(addons).not.toHaveProperty('issueUrl');
+    expect(addons).toMatchObject({ editSuggestions: true, issueLinks: true, futureField: 'keep' });
+    expect(JSON.parse(JSON.stringify(projected))).toEqual(projected);
   });
 });
