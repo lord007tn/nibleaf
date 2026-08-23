@@ -425,7 +425,15 @@ const customerFiles = (templateId: ThemePresetId, contentPath = 'content'): Arra
   ];
 };
 
-const normalizedContentPath = (value = 'content'): string => value.replace(/^\/+|\/+$/g, '');
+const normalizedContentPath = (value = 'content') => {
+  let start = 0;
+  let end = value.length;
+
+  while (value[start] === '/') start += 1;
+  while (end > start && value[end - 1] === '/') end -= 1;
+
+  return value.slice(start, end);
+};
 
 export const themeRepositoryManifest = (
   snapshot: SiteSnapshot,
