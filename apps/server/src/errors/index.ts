@@ -17,6 +17,7 @@ export const ErrorCode = {
   'database:not_found': 404,
   'database:conflict': 409,
   'storage:error': 502,
+  'search:unavailable': 503,
 } as const;
 
 export type ErrorCode = keyof typeof ErrorCode;

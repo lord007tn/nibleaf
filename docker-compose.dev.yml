@@ -34,6 +34,15 @@ services:
     volumes:
       - nibleaf-dragonfly:/data
 
+  # Qdrant v1.19 adds per-tenant IDF corpus filters used by Nibleaf's BM25 lane.
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    restart: unless-stopped
+    ports:
+      - '6333:6333'
+    volumes:
+      - nibleaf-qdrant:/qdrant/storage
+
   clickhouse:
     image: clickhouse/clickhouse-server:25.8-alpine
     restart: unless-stopped
@@ -79,6 +88,7 @@ services:
 volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
+  nibleaf-qdrant:
   nibleaf-maxio:
   nibleaf-clickhouse:
   nibleaf-clickhouse-logs:

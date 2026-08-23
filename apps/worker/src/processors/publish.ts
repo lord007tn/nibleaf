@@ -1,3 +1,4 @@
+import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import {
   type AnalyticsPayload,
@@ -350,6 +351,9 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       itemCount: pageCount,
     });
     log.info({ deploymentId, pageCount }, 'deployment ready');
+    await createJob(QueueNames.SEARCH, { name: 'index-deployment', data: { projectId, deploymentId } }, { jobId: `search-${deploymentId}` }).catch(
+      (error) => log.warn({ projectId, deploymentId, error }, 'could not enqueue hybrid search indexing'),
+    );
     await logPlatformEvent('publish_ready', {
       userId: ready.createdById,
       projectId,

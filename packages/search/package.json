@@ -11,18 +11,24 @@
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "bench": "vitest bench --run src/arabic.bench.ts",
+    "eval:rag": "tsx scripts/evaluate-openrouter.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@orama/orama": "^3.1.18",
     "@nibleaf/logger": "workspace:*",
+    "@openrouter/sdk": "0.13.20",
+    "@orama/orama": "^3.1.18",
     "@t3-oss/env-core": "^0.13.11",
+    "@tanstack/ai": "0.48.0",
+    "@tanstack/ai-openrouter": "0.18.3",
+    "openai": "7.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
+    "tsx": "^4.22.3",
     "typescript": "^7.0.2"
   }
 }

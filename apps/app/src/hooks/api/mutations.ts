@@ -22,6 +22,7 @@ import type {
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { answerSiteFn } from '@/functions/site-search';
 import { api } from '@/services/api';
 import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -40,6 +41,11 @@ import type {
   Project,
   WorkspaceSettings,
 } from './types';
+
+export const useAnswerSite = () =>
+  useMutation({
+    mutationFn: (input: { projectId: string; query: string; language?: string; version?: string }) => answerSiteFn({ data: input }),
+  });
 
 export const useCreateProject = () => {
   const qc = useQueryClient();

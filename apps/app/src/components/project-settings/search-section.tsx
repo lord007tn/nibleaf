@@ -60,8 +60,10 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
   const update = useUpdateProjectConfig(project.id);
   const search = project.config?.search ?? {};
   const [hotkey, setHotkey] = useState<Hotkey>((search.hotkey as Hotkey) ?? 'cmdk');
+  const [aiAnswers, setAiAnswers] = useState(search.aiAnswers === true ? 'enabled' : 'disabled');
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const hotkeyDirty = hotkey !== ((search.hotkey as Hotkey) ?? 'cmdk');
+  const aiAnswersDirty = (aiAnswers === 'enabled') !== (search.aiAnswers === true);
 
   const form = useForm({
     defaultValues: { placeholder: search.placeholder ?? '', maxResults: String(search.maxResults ?? 6) },
@@ -72,6 +74,7 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
           hotkey,
           placeholder: value.placeholder.trim() || undefined,
           maxResults: Number.isFinite(parsedMaxResults) ? Math.min(100, Math.max(1, parsedMaxResults)) : 6,
+          aiAnswers: aiAnswers === 'enabled',
         },
       });
     },
@@ -124,8 +127,20 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
         />
       </Field>
 
+      <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
+        <Segmented
+          className="max-w-[240px]"
+          onChange={setAiAnswers}
+          options={[
+            { value: 'enabled', label: t('settings.search.aiAnswers.enabled') },
+            { value: 'disabled', label: t('settings.search.aiAnswers.disabled') },
+          ]}
+          value={aiAnswers}
+        />
+      </Field>
+
       <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || hotkeyDirty} onDirtyChange={onDirtyChange} />}
+        {(isDirty) => <DirtyStateReporter dirty={isDirty || hotkeyDirty || aiAnswersDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
       <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>

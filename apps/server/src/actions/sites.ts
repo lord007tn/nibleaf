@@ -1,5 +1,6 @@
 import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
+import type { SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import {
   buildNavTree,
@@ -22,7 +23,9 @@ import {
 } from '@nibleaf/shared/site';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
-import { notFound } from '@/errors';
+import { AppError, notFound } from '@/errors';
+import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from '@/lib/ai-search/runtime';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
@@ -494,8 +497,31 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const docsVersion = activeVersion(snapshot, version);
   const versionPages = pagesForVersion(snapshot, docsVersion);
-  const index = await getCachedIndex(snapshot.project.id, `${deploymentId}:${docsVersion.slug}`, activeLanguage, versionPages, viewer.allowedPageIds);
-  const hits = await searchDocs(index, query, { limit });
+  const resultLimit = limit ?? 12;
+  const scope: SearchScope = {
+    projectId: snapshot.project.id,
+    deploymentId,
+    versionSlug: docsVersion.slug,
+    language: activeLanguage,
+    visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
+    allowedPageIds: viewer.allowedPageIds,
+  };
+  const result = await runPublishedSearch(
+    scope,
+    query,
+    resultLimit,
+    async () => {
+      const index = await getCachedIndex(
+        snapshot.project.id,
+        `${deploymentId}:${docsVersion.slug}`,
+        activeLanguage,
+        versionPages,
+        viewer.allowedPageIds,
+      );
+      return searchDocs(index, query, { limit: resultLimit });
+    },
+    getContext<HonoEnv>().req.raw.signal,
+  );
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
   if (query.trim().length >= 3) {
@@ -505,10 +531,10 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
       trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: activeLanguage }, base),
       trackProjectEvent(
         snapshot.project.id,
-        { name: 'search_results_returned', resultCount: hits.length, latencyMs, cacheStatus: 'unknown', language: activeLanguage },
+        { name: 'search_results_returned', resultCount: result.hits.length, latencyMs, cacheStatus: 'unknown', language: activeLanguage },
         base,
       ),
-      ...(hits.length === 0
+      ...(result.hits.length === 0
         ? [
             trackProjectEvent(
               snapshot.project.id,
@@ -519,7 +545,39 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
         : []),
     ]);
   }
-  return { hits };
+  const aiAnswersEnabled = (snapshot.project.config as { search?: { aiAnswers?: boolean } } | null)?.search?.aiAnswers === true;
+  return { hits: result.hits, runtime: result.runtime, capabilities: { answer: aiAnswersEnabled && answerSearchAvailable() } };
+};
+
+/** Grounded answer mode uses the exact same server-derived publication and
+ * reader scope as results mode. The client cannot submit any tenant/page filter. */
+export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
+  const { snapshot, deploymentId, viewer } = await getPublished(identifier);
+  const aiAnswersEnabled = (snapshot.project.config as { search?: { aiAnswers?: boolean } } | null)?.search?.aiAnswers === true;
+  if (!aiAnswersEnabled || !answerSearchAvailable()) {
+    throw new AppError({ code: 'search:unavailable', message: 'AI answers are not configured for this Nibleaf instance.' });
+  }
+  const activeLanguage = activeLanguageCode(snapshot, lang);
+  const docsVersion = activeVersion(snapshot, version);
+  const quota = await consumeAnswerQuota(snapshot.project.id).catch((cause) => {
+    throw new AppError({ code: 'search:unavailable', message: 'AI answer quota service is unavailable.', cause });
+  });
+  if (!quota.allowed) {
+    throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
+  }
+  const scope: SearchScope = {
+    projectId: snapshot.project.id,
+    deploymentId,
+    versionSlug: docsVersion.slug,
+    language: activeLanguage,
+    visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
+    allowedPageIds: viewer.allowedPageIds,
+  };
+  const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
+    if (cause instanceof AppError) throw cause;
+    throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
+  });
+  return { ...answer, quotaRemaining: quota.remaining };
 };
 
 const changelogEntries = async (projectId: string) => {
