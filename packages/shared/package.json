@@ -12,6 +12,7 @@
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",
+    "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
     "./theme-repository": "./src/theme-repository.ts",
     "./export-schedule": "./src/export-schedule.ts",

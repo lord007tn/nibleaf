@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { SiteSnapshot, SnapshotPage } from './site';
-import { THEME_REPOSITORY_TEMPLATE_SOURCES, type ThemeRepositoryTemplateSource, themeUtilitiesSource } from './theme-repository-templates';
+import {
+  THEME_REPOSITORY_TEMPLATE_SOURCES,
+  type ThemeRepositoryTemplateSource,
+  themeMdxComponentsSource,
+  themeUtilitiesSource,
+} from './theme-repository-templates';
 import { THEME_PRESET_IDS, type ThemePresetId } from './themes';
 
 export const THEME_REPOSITORY_SCHEMA_VERSION = 1 as const;
@@ -117,6 +122,8 @@ const packageJson = (templateId: ThemePresetId) =>
       react: '^19.2.4',
       'react-dom': '^19.2.4',
       'react-markdown': '^10.1.0',
+      'rehype-raw': '^7.0.0',
+      'rehype-sanitize': '^6.0.0',
       'remark-gfm': '^4.0.1',
       zod: '^4.4.3',
     },
@@ -126,6 +133,7 @@ const packageJson = (templateId: ThemePresetId) =>
       '@types/react': '^19.2.0',
       '@types/react-dom': '^19.2.0',
       '@vitejs/plugin-react': '^6.1.0',
+      jsdom: '^30.0.1',
       'oxc-transform-react': '0.145.0',
       typescript: '^7.0.2',
       vite: '^8.2.2',
@@ -292,11 +300,13 @@ import { App } from './App';
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 `;
 
-const testSource = (template: ThemeRepositoryTemplateSource) => `import { renderToStaticMarkup } from 'react-dom/server';
+const testSource = (template: ThemeRepositoryTemplateSource) => `// @vitest-environment jsdom
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import * as m from '../paraglide/messages.js';
 import { loadSnapshot } from '../nibleaf/runtime';
 import { ${template.componentName} } from './${template.componentName}';
+import { Tooltip, nextTabIndex } from './mdx-components';
 
 describe('${template.displayName} theme', () => {
   it('renders localized fixture content through the vendored runtime contract', () => {
@@ -306,12 +316,41 @@ describe('${template.displayName} theme', () => {
     expect(english).toContain(m.themeLabel({}, { locale: 'en' }));
     expect(english).toContain('id="overview"');
     expect(english).toContain('id="next-steps"');
+    expect(english).toContain('class="mdx-callout"');
+    expect(english).toContain('<strong>Portable callout');
+    expect(english).toContain('<ul class="mdx-file-tree">');
+    expect(english).toContain('<li class="mdx-folder">');
+    expect(english).not.toContain('<ul><p><li');
+    expect(english).toContain('role="tooltip"');
+    expect(english).toContain('aria-describedby=');
+    expect(english).toContain('aria-label="star"');
     const arabicPage = snapshot.pages.find((page) => page.languageCode === 'ar');
     expect(arabicPage).toBeDefined();
     if (!arabicPage) return;
     const arabic = renderToStaticMarkup(<${template.componentName} snapshot={{ ...snapshot, pages: [arabicPage] }} />);
     expect(arabic).toContain('dir="rtl"');
     expect(arabic).toContain(m.themeLabel({}, { locale: 'ar' }));
+  });
+
+  it('moves tab focus predictably in LTR and RTL directions', () => {
+    expect(nextTabIndex(0, 3, 'ArrowRight', 'ltr')).toBe(1);
+    expect(nextTabIndex(0, 3, 'ArrowRight', 'rtl')).toBe(2);
+    expect(nextTabIndex(2, 3, 'Home', 'rtl')).toBe(0);
+    expect(nextTabIndex(0, 3, 'End', 'ltr')).toBe(2);
+  });
+
+  it('exposes tooltip text to keyboard and pointer users without trapping focus', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(<Tooltip tip="Auth token">credential</Tooltip>);
+    const trigger = container.querySelector<HTMLElement>('.mdx-tooltip-trigger');
+    const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(trigger).not.toBeNull();
+    expect(tooltip).not.toBeNull();
+    if (!trigger || !tooltip) return;
+    expect(trigger.tabIndex).toBe(0);
+    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip.id);
+    expect(tooltip.textContent).toBe('Auth token');
+    expect(tooltip.tabIndex).toBe(-1);
   });
 });
 `;
@@ -426,6 +465,7 @@ const customerFiles = (templateId: ThemePresetId, contentPath = 'content'): Arra
     { path: 'src/adapters/content.ts', content: adapterSource(contentPath) },
     { path: 'src/adapters/content.test.ts', content: adapterTestSource },
     { path: 'src/theme/theme-utils.ts', content: themeUtilitiesSource },
+    { path: 'src/theme/mdx-components.tsx', content: themeMdxComponentsSource },
     { path: `src/theme/${template.componentName}.tsx`, content: template.source },
     { path: `src/theme/${template.componentName}.test.tsx`, content: testSource(template) },
     { path: `src/theme/${templateId}.css`, content: template.style },

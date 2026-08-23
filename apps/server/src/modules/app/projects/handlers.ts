@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { exportProjectMarkdown, exportProjectThemeRepository } from '@/actions/export';
 import { createProject, deleteProject, getProject, listProjects, updateProject } from '@/actions/projects';
-import { exportProjectTheme, importProjectTheme } from '@/actions/themes';
+import { exportProjectTheme, getProjectThemeCatalog, importProjectTheme } from '@/actions/themes';
 import { badRequest } from '@/errors';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -38,6 +38,10 @@ const app = new Hono<HonoEnv>()
   .get('/:id/theme-template', ...projectsRoutes.themeExport, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     return ctx.json({ data: await exportProjectTheme(organizationId, ctx.req.param('id')) }, 200);
+  })
+  .get('/:id/theme-catalog', ...projectsRoutes.themeCatalog, async (ctx) => {
+    const organizationId = getContextOrganizationIdOrThrow();
+    return ctx.json({ data: await getProjectThemeCatalog(organizationId, ctx.req.param('id')) }, 200);
   })
   .post(
     '/:id/theme-template/import',

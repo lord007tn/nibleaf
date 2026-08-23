@@ -1,4 +1,5 @@
 import type { SiteSnapshot } from '@nibleaf/shared/site';
+import { THEME_PRESET_IDS } from '@nibleaf/shared/themes';
 import { unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { renderMarkdownZip, renderPageMarkdown, renderPdfHtml, renderStaticHtml, selectPublishedAssets } from './render';
@@ -113,10 +114,132 @@ describe('export renderers', () => {
     });
   });
 
+  it('renders Harbor, Manuscript, and Signal as structurally distinct responsive documents', () => {
+    const expected = {
+      harbor: ['harbor-topbar', 'harbor-library', 'harbor-toc'],
+      manuscript: ['manuscript-masthead', 'manuscript-chapters', 'manuscript-paper'],
+      signal: ['signal-commandbar', 'signal-rail', 'signal-index'],
+    } as const;
+
+    for (const preset of THEME_PRESET_IDS) {
+      const classes = expected[preset];
+      const themed = {
+        ...snapshot,
+        project: { ...snapshot.project, config: { theme: { preset }, search: { placeholder: 'ابحث في الدليل' } } },
+      } satisfies SiteSnapshot;
+      const files = unzipSync(renderStaticHtml(themed, assets).bytes);
+      const html = text(required(files['main/ar/intro/index.html']));
+      for (const className of classes) expect(html).toContain(className);
+      const ownClasses = new Set<string>(classes);
+      for (const other of Object.values(expected)
+        .flat()
+        .filter((className) => !ownClasses.has(className))) {
+        expect(html).not.toContain(`class="${other}`);
+      }
+      expect(html).toContain('dir="rtl"');
+      expect(html).toContain('aria-label="ابحث في الدليل"');
+    }
+
+    const css = text(required(unzipSync(renderStaticHtml(snapshot, assets).bytes)['theme/theme.css']));
+    expect(css).toContain('@media(max-width:760px)');
+    expect(css).toContain('border-inline-end');
+    expect(css).toContain('[dir="rtl"]');
+  });
+
+  it('emits canonical, robots, hreflang, Open Graph, and JSON-LD metadata', () => {
+    const bilingual = {
+      ...snapshot,
+      project: {
+        ...snapshot.project,
+        languages: [
+          ...snapshot.project.languages,
+          { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: false, enabled: true, config: null },
+        ],
+      },
+      pages: [
+        { ...required(snapshot.pages[0]), translationKey: 'getting-started', content: '# أهلاً\n\n## التثبيت\n\nابدأ هنا.' },
+        { ...required(snapshot.pages[1]), translationKey: 'setup' },
+        {
+          ...required(snapshot.pages[0]),
+          id: 'intro-en',
+          languageCode: 'en',
+          title: 'Introduction',
+          translationKey: 'getting-started',
+          content: '# Welcome\n\n## Install\n\nStart here.',
+        },
+      ],
+    } satisfies SiteSnapshot;
+    const files = unzipSync(renderStaticHtml(bilingual, assets).bytes);
+    const html = text(required(files['main/ar/intro/index.html']));
+
+    expect(html).toContain('<link rel="canonical" href="/main/ar/intro/index.html">');
+    expect(html).toContain('hreflang="en" href="/main/en/intro/index.html"');
+    expect(html).toContain('<meta name="robots" content="index,follow">');
+    expect(html).toContain('<meta property="og:type" content="article">');
+    expect(html).toContain('<link rel="sitemap" type="application/xml" href="/sitemap.xml">');
+    expect(html).toContain('href="/main/ar/llms-full.txt"');
+    expect(html).toContain('<script type="application/ld+json">');
+    expect(html).toContain('"@type":"TechArticle"');
+    expect(html).toContain('id="التثبيت"');
+    expect(html).toContain('href="#التثبيت"');
+  });
+
+  it('emits root and language/version-scoped machine-readable discovery files', () => {
+    const files = unzipSync(renderStaticHtml(snapshot, assets).bytes);
+    const rootIndex = text(required(files['llms.txt']));
+    const rootFull = text(required(files['llms-full.txt']));
+    const scopedIndex = text(required(files['main/ar/llms.txt']));
+    const scopedFull = text(required(files['main/ar/llms-full.txt']));
+
+    expect(text(required(files['robots.txt']))).toBe('User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n');
+    expect(text(required(files['sitemap.xml']))).toContain('<loc>/main/ar/intro/index.html</loc>');
+    expect(rootIndex).toContain('[مقدمة](main/ar/intro/index.html)');
+    expect(scopedIndex).toContain('[مقدمة](intro/index.html)');
+    expect(rootFull).toContain('Source: main/ar/intro/index.html');
+    expect(scopedFull).toContain('Source: intro/index.html');
+    expect(rootFull).not.toContain('globalThis.stolen');
+    expect(rootFull).not.toContain('<script>');
+  });
+
+  it('keeps private, noindex, and externally canonicalized pages out of discovery files', () => {
+    const restrictedPages = [
+      { ...required(snapshot.pages[0]), config: { seo: { noindex: true } } },
+      { ...required(snapshot.pages[1]), config: { seo: { canonicalUrl: 'https://example.com/setup' } } },
+    ];
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: restrictedPages }, assets).bytes);
+    expect(text(required(files['sitemap.xml']))).not.toContain('<url>');
+    expect(text(required(files['llms.txt']))).not.toContain('[مقدمة]');
+    expect(text(required(files['main/ar/intro/index.html']))).toContain('<meta name="robots" content="noindex,nofollow">');
+    expect(text(required(files['main/ar/setup/index.html']))).toContain('<link rel="canonical" href="https://example.com/setup">');
+
+    const privateFiles = unzipSync(
+      renderStaticHtml({ ...snapshot, project: { ...snapshot.project, config: { visibility: 'private' } } }, assets).bytes,
+    );
+    expect(text(required(privateFiles['robots.txt']))).toBe('User-agent: *\nDisallow: /\n');
+    expect(text(required(privateFiles['llms-full.txt']))).toBe('');
+  });
+
   it('does not execute raw published HTML in static archives', () => {
     const html = renderPageMarkdown(snapshot, required(snapshot.pages[0]), assets);
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('renders supported authored Callout Markdown while keeping unknown HTML inert', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content:
+        '<Callout type="tip">\n\n**Portable callout** with [guidance](/setup).\n\n</Callout>\n\nReadable <Tooltip tip="Auth token">credential</Tooltip> <Icon icon="star" />.\n\n<Unknown onclick="alert(1)">unsafe</Unknown>',
+    };
+    const html = renderPageMarkdown(snapshot, page, assets);
+
+    expect(html).toContain('<blockquote>');
+    expect(html).toContain('<strong>Portable callout</strong>');
+    expect(html).toContain('href="../setup/index.html"');
+    expect(html).toContain('Readable credential');
+    expect(html).not.toContain('<Icon');
+    expect(html).toContain('&lt;Unknown onclick=&quot;alert(1)&quot;&gt;unsafe&lt;/Unknown&gt;');
+    expect(html).not.toContain('<Unknown onclick=');
   });
 
   it('escapes malformed legacy theme values in static HTML attributes', () => {

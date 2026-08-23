@@ -1,11 +1,15 @@
 import { type Prisma, prisma } from '@nibleaf/database';
+import { DOCUMENTATION_COMPONENT_CATALOG, DOCUMENTATION_COMPONENT_SCHEMA_VERSION } from '@nibleaf/shared/documentation-components';
+import { THEME_REPOSITORY_SCHEMA_VERSION, THEME_RUNTIME_CONTRACT_VERSION } from '@nibleaf/shared/theme-repository';
 import {
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
   previewThemeConfigChanges,
   resolveTheme,
+  THEME_PRESETS,
   THEME_SCHEMA_VERSION,
   type ThemeOwnedProjectConfig,
+  themeOwnedConfig,
   themeTemplateFromConfig,
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate, type ThemeImportBody } from '@nibleaf/validators';
@@ -22,6 +26,32 @@ export const exportProjectTheme = async (organizationId: string, projectId: stri
   const project = await assertProjectInOrg(organizationId, projectId);
   const template = themeTemplateFromConfig(recordConfig(project.config));
   return { template, json: canonicalThemeTemplateJson(template) };
+};
+
+/** JSON-safe capability discovery for product UI and least-privilege adapters.
+ * The authenticated boundary derives organizationId; this action re-checks the
+ * tenant and never returns repository files, snapshots, or customer content. */
+export const getProjectThemeCatalog = async (organizationId: string, projectId: string) => {
+  const project = await assertProjectInOrg(organizationId, projectId);
+  const current = resolveTheme(themeOwnedConfig(recordConfig(project.config)));
+  return {
+    schemaVersion: THEME_SCHEMA_VERSION,
+    repositorySchemaVersion: THEME_REPOSITORY_SCHEMA_VERSION,
+    runtimeContractVersion: THEME_RUNTIME_CONTRACT_VERSION,
+    componentSchemaVersion: DOCUMENTATION_COMPONENT_SCHEMA_VERSION,
+    current: { id: current.id, repositoryMetadata: current.metadata, layout: current.layout, components: current.components },
+    presets: Object.values(THEME_PRESETS).map((preset) => ({
+      id: preset.id,
+      messageKeys: {
+        name: `settings.theme.preset.${preset.id}.name`,
+        description: `settings.theme.preset.${preset.id}.description`,
+        rationale: `settings.theme.preset.${preset.id}.rationale`,
+      },
+      layout: preset.layout,
+      components: preset.components,
+    })),
+    authoring: DOCUMENTATION_COMPONENT_CATALOG,
+  };
 };
 
 const validationIssues = (issues?: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>) =>

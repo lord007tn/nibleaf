@@ -40,6 +40,26 @@ const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = 
     attrs: ['label', 'description'],
     defaults: { label: '', description: '' },
   },
+  filetree: { canonical: 'FileTree', attrs: [] },
+  folder: {
+    canonical: 'Folder',
+    attrs: ['name', 'defaultOpen'],
+    defaults: { name: '', defaultOpen: false },
+  },
+  file: { canonical: 'File', attrs: ['name', 'icon'], defaults: { name: '', icon: '' } },
+  apiexample: { canonical: 'ApiExample', attrs: ['title'], defaults: { title: '' } },
+  requestexample: { canonical: 'RequestExample', attrs: ['title'], defaults: { title: '' } },
+  responseexample: {
+    canonical: 'ResponseExample',
+    attrs: ['title', 'status'],
+    defaults: { title: '', status: '' },
+  },
+  relatedcontent: { canonical: 'RelatedContent', attrs: ['title'], defaults: { title: '' } },
+  relatedcard: {
+    canonical: 'RelatedCard',
+    attrs: ['title', 'description', 'href', 'icon'],
+    defaults: { title: '', description: '', href: '', icon: '' },
+  },
   paramfield: {
     canonical: 'ParamField',
     attrs: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],

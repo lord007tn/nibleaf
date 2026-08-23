@@ -3,8 +3,8 @@ title: 'Markdown and MDX component reference'
 description: 'Use the Markdown, GitHub-style extensions, math, diagrams, and documentation components that Nibleaf renders and round-trips safely.'
 audience: 'documentation authors working in source mode'
 content_type: 'reference'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/components/site/mdx-config.ts and apps/app/src/components/markdown.tsx'
+last_reviewed: '2026-08-23'
+verified_against: 'packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/site/mdx-components.tsx, apps/app/src/components/markdown.tsx, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/markdown-mdx'
@@ -57,6 +57,9 @@ The reader recognizes these component families:
 | `ParamField`, `ResponseField` | API field descriptions | `name`, `type`, `required`, `default`, `deprecated` |
 | `CodeGroup` | Alternative code samples | fenced-code languages become labels |
 | `Expandable`, `Update`, `Columns`, `Column`, `Banner` | Supplementary structured content | component-specific title or label fields |
+| `FileTree`, `Folder`, `File` | Authored project-shape illustrations | folder/file `name`, folder `defaultOpen`, file `icon` |
+| `ApiExample`, `RequestExample`, `ResponseExample` | Paired request and response reading | `title`, response `status` |
+| `RelatedContent`, `RelatedCard` | End-of-page next reading | group/card `title`, card `description`, `href`, `icon` |
 
 Put block tags on their own lines and leave a blank line around Markdown children:
 
@@ -69,6 +72,18 @@ Put block tags on their own lines and leave a blank line around Markdown childre
   </Step>
 </Steps>
 ```
+
+File trees are illustrations, not repository browsers. Nibleaf displays only
+the names written in the page body. It does not traverse the exported
+repository, read manifests or snapshots, fetch a path, or make a network
+request. API examples and related cards have the same authored-data-only
+boundary. Links still pass through the published-site link sanitizer and
+rewriter.
+
+Tabs and code groups use a roving tab stop. Use Left/Right arrows (reversed for
+RTL), Home, and End to move between labels. Accordions, expandables, and folders
+connect each trigger to its panel with persistent accessibility IDs. File trees
+use nested lists rather than an incomplete ARIA tree model.
 
 ## Inline components
 
@@ -91,3 +106,13 @@ Custom JSX components and expressions may be preserved as source or read-only
 blocks, but Nibleaf cannot promise a custom runtime for them. Keep the page in
 Markdown mode, verify the published result, and prefer the supported component
 set for portable documentation.
+
+## Portability and migration
+
+The catalog in `@nibleaf/shared/documentation-components` is the versioned,
+code-only authoring contract used by the editor, app renderer, static archives,
+and Git-native theme repositories. Schema version 1 is additive: existing pages
+need no migration. `Banner` supports `type`; `dismissible` is intentionally not
+part of the portable contract. Standalone theme repositories sanitize raw MDX
+with an explicit allowlist and keep customer-owned theme/component source
+separate from Nibleaf-owned manifests and snapshots.

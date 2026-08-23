@@ -11,7 +11,7 @@ vi.mock('@nibleaf/database', () => ({
 }));
 
 import type { AppError } from '@/errors';
-import { exportProjectTheme, importProjectTheme } from './themes';
+import { exportProjectTheme, getProjectThemeCatalog, importProjectTheme } from './themes';
 
 const project = {
   id: 'project-1',
@@ -33,6 +33,27 @@ describe('theme template actions', () => {
     expect(first).toEqual(second);
     expect(first.template).toMatchObject({ kind: THEME_TEMPLATE_KIND, version: 1, config: { theme: { preset: 'harbor' } } });
     expect(first.json.endsWith('\n')).toBe(true);
+  });
+
+  it('returns a sanitized, versioned capability catalog without project content or repository internals', async () => {
+    const catalog = await getProjectThemeCatalog('org-1', 'project-1');
+
+    expect(catalog).toMatchObject({
+      schemaVersion: 1,
+      repositorySchemaVersion: 1,
+      runtimeContractVersion: 1,
+      componentSchemaVersion: 1,
+      current: { id: 'harbor' },
+    });
+    expect(catalog.presets.map((preset) => preset.id)).toEqual(['harbor', 'manuscript', 'signal']);
+    expect(catalog.presets[0]?.messageKeys).toEqual({
+      name: 'settings.theme.preset.harbor.name',
+      description: 'settings.theme.preset.harbor.description',
+      rationale: 'settings.theme.preset.harbor.rationale',
+    });
+    expect(catalog.presets[0]).not.toHaveProperty('metadata');
+    expect(catalog.authoring.map((component) => component.id)).toEqual(expect.arrayContaining(['file-tree', 'api-example', 'related-content']));
+    expect(JSON.stringify(catalog)).not.toMatch(/"(?:snapshot|manifest|filesystem|repositoryPath|content)"\s*:/i);
   });
 
   it('previews without persistence and applies only after confirmation', async () => {

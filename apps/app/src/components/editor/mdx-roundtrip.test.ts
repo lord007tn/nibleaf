@@ -81,6 +81,42 @@ Nested **Markdown** stays editable.
 
 </Frame>
 
+<FileTree>
+
+<Folder name="src" defaultOpen>
+
+<File name="index.ts" icon="file-code" />
+
+</Folder>
+
+</FileTree>
+
+<ApiExample title="Create a page">
+
+<RequestExample title="Request">
+
+\`POST /pages\`
+
+</RequestExample>
+
+<ResponseExample title="Response" status="201">
+
+\`{ "id": "page_1" }\`
+
+</ResponseExample>
+
+</ApiExample>
+
+<RelatedContent title="Next">
+
+<RelatedCard title="Authentication" description="Secure your requests" href="/auth" icon="key">
+
+Read the authentication guide.
+
+</RelatedCard>
+
+</RelatedContent>
+
 Inline <Tooltip tip="More info" data-id="tip-1">help</Tooltip>, <Badge color="green">stable</Badge>, and <Icon icon={currentIcon} size="16" />.`;
 
 const editors: Editor[] = [];
@@ -108,6 +144,14 @@ describe('MDX round trips', () => {
     expect(serialized).toContain('mdxAccordion');
     expect(serialized).toContain('mdxSteps');
     expect(serialized).toContain('mdxFrame');
+    expect(serialized).toContain('mdxFileTree');
+    expect(serialized).toContain('mdxFolder');
+    expect(serialized).toContain('mdxFile');
+    expect(serialized).toContain('mdxApiExample');
+    expect(serialized).toContain('mdxRequestExample');
+    expect(serialized).toContain('mdxResponseExample');
+    expect(serialized).toContain('mdxRelatedContent');
+    expect(serialized).toContain('mdxRelatedCard');
     expect(serialized).toContain('image');
     expect(serialized).toContain('mdxTooltip');
     expect(serialized).toContain('mdxIcon');
@@ -121,6 +165,10 @@ describe('MDX round trips', () => {
     expect(output).toContain('<Frame caption="Architecture" data-lightbox>');
     expect(output).toContain('![Architecture diagram](/images/architecture.png)');
     expect(output).toContain('Nested **Markdown** stays editable.');
+    expect(output).toContain('<Folder name="src" defaultOpen>');
+    expect(output).toContain('<File name="index.ts" icon="file-code" />');
+    expect(output).toContain('<ResponseExample title="Response" status="201">');
+    expect(output).toContain('<RelatedCard title="Authentication" description="Secure your requests" href="/auth" icon="key">');
   });
 
   it('updates an editable prop without dropping untouched custom props', () => {

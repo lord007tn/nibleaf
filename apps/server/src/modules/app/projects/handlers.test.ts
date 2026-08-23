@@ -7,6 +7,7 @@ import type { HonoEnv } from '@/lib/hono/context';
 const mocks = vi.hoisted(() => ({
   member: { role: 'member' } as { role: string } | null,
   exportProjectThemeRepository: vi.fn(async () => ({ fileName: 'theme.zip', data: new Uint8Array([80, 75]) })),
+  getProjectThemeCatalog: vi.fn(async () => ({ schemaVersion: 1, authoring: [] })),
 }));
 
 vi.mock('@nibleaf/database', () => ({
@@ -39,6 +40,7 @@ vi.mock('@/actions/projects', () => ({
 
 vi.mock('@/actions/themes', () => ({
   exportProjectTheme: vi.fn(),
+  getProjectThemeCatalog: mocks.getProjectThemeCatalog,
   importProjectTheme: vi.fn(),
 }));
 
@@ -84,5 +86,20 @@ describe('theme repository export permissions', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('application/zip');
     expect(mocks.exportProjectThemeRepository).toHaveBeenCalledWith('project');
+  });
+
+  it('derives tenant authority before returning the sanitized theme catalog', async () => {
+    const response = await appFor(true).request('/projects/project/theme-catalog');
+
+    expect(response.status).toBe(200);
+    expect(mocks.getProjectThemeCatalog).toHaveBeenCalledWith('org', 'project');
+  });
+
+  it('does not disclose the theme catalog to authenticated non-members', async () => {
+    mocks.member = null;
+    const response = await appFor(true).request('/projects/project/theme-catalog');
+
+    expect(response.status).toBe(404);
+    expect(mocks.getProjectThemeCatalog).not.toHaveBeenCalled();
   });
 });

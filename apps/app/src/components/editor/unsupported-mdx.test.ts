@@ -18,6 +18,9 @@ describe('detectUnsupportedMdxTags', () => {
       '<ParamField path="id" type="string">p</ParamField>',
       '<ResponseField name="ok" type="boolean">r</ResponseField>',
       '<CodeGroup>\n\n</CodeGroup>',
+      '<FileTree>\n<Folder name="src"><File name="index.ts" /></Folder>\n</FileTree>',
+      '<ApiExample title="Example"><RequestExample title="Request">request</RequestExample><ResponseExample status="200">response</ResponseExample></ApiExample>',
+      '<RelatedContent title="Next"><RelatedCard title="Guide" href="/guide">read</RelatedCard></RelatedContent>',
       'Inline <Tooltip tip="hi">text</Tooltip> and <Icon icon="rocket" />.',
       '<Note>\nnote\n</Note>\n<Warning>\nw\n</Warning>\n<Callout type="tip">\nc\n</Callout>',
     ].join('\n\n');
@@ -26,7 +29,7 @@ describe('detectUnsupportedMdxTags', () => {
 
   it('flags unknown component tags (opening, closing, and self-closing)', () => {
     expect(detectUnsupportedMdxTags('<Snippet file="x.mdx" />')).toEqual(['Snippet']);
-    expect(detectUnsupportedMdxTags('<RequestExample>\nbody\n</RequestExample>')).toEqual(['RequestExample']);
+    expect(detectUnsupportedMdxTags('<RepositorySnapshot>\nbody\n</RepositorySnapshot>')).toEqual(['RepositorySnapshot']);
     expect(detectUnsupportedMdxTags('</OrphanClose>')).toEqual(['OrphanClose']);
   });
 

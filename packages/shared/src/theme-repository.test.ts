@@ -43,7 +43,8 @@ const snapshot: SiteSnapshot = {
       path: '/welcome',
       icon: null,
       description: 'Start building with Acme.',
-      content: '## Overview\n\nFixture content.',
+      content:
+        '## Overview\n\nFixture content with a <Tooltip tip="Auth token">credential</Tooltip> and <Icon icon="star" />.\n\n<Callout>\n\n**Portable callout**\n\n</Callout>',
       config: null,
       translationKey: null,
       position: 0,
@@ -60,23 +61,36 @@ describe('Git-native theme repository contract', () => {
     const byPath = new Map(files.map((file) => [file.path, file]));
     expect(byPath.get('package.json')?.content).not.toContain('workspace:');
     expect(byPath.get('package.json')?.content).toContain('lucide-react');
+    expect(byPath.get('package.json')?.content).toContain('rehype-sanitize');
     expect(byPath.get('vite.config.ts')?.content).toContain('compiler: true');
     expect(byPath.get('vite.config.ts')?.content).toContain('paraglideVitePlugin');
     expect(byPath.get('src/env.ts')?.content).toContain('createEnv');
     expect(byPath.get('src/adapters/content.ts')?.content).toContain('import.meta.glob');
     expect(byPath.get('src/adapters/content.ts')?.content).toContain('applyMdxFiles');
     expect(byPath.get('src/adapters/content.test.ts')?.content).toContain('## Customer edit');
-    expect(byPath.get('src/theme/theme-utils.ts')?.content).toContain("'next-steps'");
+    const mdxComponents = byPath.get('src/theme/mdx-components.tsx')?.content;
+    expect(mdxComponents).toContain("'next-steps'");
+    expect(mdxComponents).toContain('aria-describedby={id}');
+    expect(mdxComponents).toContain('role="tooltip"');
+    expect(mdxComponents).not.toMatch(/\btypeof\b|\bas unknown as\b|\bas Array<ReactElement/);
+    expect(byPath.get('src/theme/theme-utils.ts')?.content).toContain('documentationSanitizeSchema');
+    expect(byPath.get('src/theme/mdx-components.tsx')?.content).toContain('relatedcard: RelatedCard');
+    expect(byPath.get('src/theme/theme-utils.ts')?.content).not.toMatch(/\b(?:fetch|readFile|readdir|glob)\s*\(/);
+    expect(byPath.get('src/theme/mdx-components.tsx')?.content).not.toMatch(/\b(?:fetch|readFile|readdir|glob)\s*\(/);
     expect(byPath.get(THEME_REPOSITORY_CONTENT_MAP_PATH)?.ownership).toBe('PLATFORM');
     const component = byPath.get(`src/theme/${componentName}.tsx`);
     expect(component?.content).toContain('../paraglide/messages.js');
     expect(component?.content).toContain("from 'lucide-react'");
+    expect(component?.content).toContain('normalizeDocumentationMarkdown(page.content)');
     expect(component?.content).not.toMatch(/[⌕↗]/u);
     expect(component?.content).not.toMatch(
       /['"](?:Search documentation|GitHub|Documentation|Choose documentation page|On this page|Overview|Next steps|Chapters|Command index|Customer-owned component|Nibleaf sync preserves it)['"]/u,
     );
     expect(component?.ownership).toBe('CUSTOMER');
-    expect(byPath.get(`src/theme/${templateId}.css`)?.ownership).toBe('CUSTOMER');
+    const themeStyles = byPath.get(`src/theme/${templateId}.css`);
+    expect(themeStyles?.ownership).toBe('CUSTOMER');
+    expect(themeStyles?.content).toContain('.mdx-tooltip:hover .mdx-tooltip-content');
+    expect(themeStyles?.content).toContain('.mdx-tooltip:focus-within .mdx-tooltip-content');
     expect(byPath.get('messages/ar.json')?.content).toContain('اختر صفحة التوثيق');
     expect(JSON.parse(byPath.get(THEME_REPOSITORY_MANIFEST_PATH)?.content ?? '{}').template).toEqual({ id: templateId, version: 1 });
     expect(JSON.parse(byPath.get(THEME_REPOSITORY_SNAPSHOT_PATH)?.content ?? '{}').project.config.theme).toEqual({

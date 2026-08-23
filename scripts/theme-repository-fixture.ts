@@ -40,8 +40,64 @@ const snapshot: SiteSnapshot = {
       path: '/welcome',
       icon: null,
       description: 'Everything you need to authenticate, make your first request, and ship with confidence.',
-      content:
-        '## Overview\n\nNorthstar gives your team a predictable API and a Git-native documentation workflow.\n\n```ts\nconst client = createClient({ token: process.env.NORTHSTAR_TOKEN });\n```\n\n## Next steps\n\n- Create a test workspace\n- Send your first request\n- Review production guidance',
+      content: `## Overview
+
+Northstar gives your team a predictable API and a Git-native documentation workflow. Keep the <Tooltip tip="Auth token">credential</Tooltip> private <Icon icon="star" />.
+
+<Callout type="tip">
+
+**Portable callout:** Preview the exact change before publishing a new immutable deployment.
+
+</Callout>
+
+<Tabs>
+  <Tab title="TypeScript">
+
+\`\`\`ts
+const client = createClient({ token: process.env.NORTHSTAR_TOKEN });
+\`\`\`
+
+  </Tab>
+  <Tab title="cURL">
+
+\`\`\`bash
+curl https://api.northstar.example/v1/projects
+\`\`\`
+
+  </Tab>
+</Tabs>
+
+<FileTree>
+  <Folder name="src" defaultOpen>
+    <File name="client.ts" />
+    <File name="types.ts" />
+  </Folder>
+  <File name="package.json" />
+</FileTree>
+
+<ApiExample title="Create a project">
+  <RequestExample title="Request">
+
+\`\`\`json
+{ "name": "Northstar" }
+\`\`\`
+
+  </RequestExample>
+  <ResponseExample title="Response" status="201">
+
+\`\`\`json
+{ "id": "project_123" }
+\`\`\`
+
+  </ResponseExample>
+</ApiExample>
+
+## Next steps
+
+<RelatedContent title="Continue building">
+  <RelatedCard title="Authentication" description="Keep credentials server-side." href="/authentication" />
+  <RelatedCard title="Production checklist" description="Review rollout and rollback guidance." href="/production" />
+</RelatedContent>`,
       config: null,
       translationKey: 'welcome',
       position: 0,
@@ -79,7 +135,27 @@ const snapshot: SiteSnapshot = {
       path: '/ar/welcome',
       icon: null,
       description: 'كل ما تحتاجه للمصادقة وإرسال طلبك الأول بثقة.',
-      content: '## نظرة عامة\n\nتمنحك نورث ستار واجهة برمجية واضحة وسير عمل توثيق يعتمد على Git.',
+      content: `## نظرة عامة
+
+تمنحك نورث ستار واجهة برمجية واضحة وسير عمل توثيق يعتمد على Git.
+
+<Callout type="tip">
+
+**تنبيه قابل للنقل:** عاين التغيير بدقة قبل نشر إصدار ثابت جديد.
+
+</Callout>
+
+<FileTree>
+  <Folder name="src" defaultOpen>
+    <File name="client.ts" />
+    <File name="types.ts" />
+  </Folder>
+  <File name="package.json" />
+</FileTree>
+
+<RelatedContent title="تابع البناء">
+  <RelatedCard title="المصادقة" description="احتفظ ببيانات الاعتماد في الخادم." href="/ar/authentication" />
+</RelatedContent>`,
       config: null,
       translationKey: 'welcome',
       position: 2,

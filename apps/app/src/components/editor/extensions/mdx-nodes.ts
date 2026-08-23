@@ -93,6 +93,29 @@ const titledNode = (config: { name: string; tag: string; className: string; attr
     addStorage: () => markdownStorage(config.tag, config.attrKeys),
   });
 
+/** A self-closing, attribute-only MDX block such as `<File name="…" />`. */
+const atomNode = (config: { name: string; tag: string; className: string; attrs: Attributes; attrKeys: string[] }) =>
+  Node.create({
+    name: config.name,
+    group: 'block',
+    atom: true,
+    selectable: true,
+    defining: true,
+    addAttributes: () => ({ ...config.attrs, ...sourceMetadataAttributes() }),
+    parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
+    renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className })],
+    addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
+    addStorage: () => ({
+      markdown: {
+        serialize(state: SerializeState, node: PMNode) {
+          state.write(preservedOpeningTag(node, config.tag, config.attrKeys, true));
+          state.closeBlock(node);
+        },
+        parse: {},
+      } satisfies MarkdownNodeSpec,
+    }),
+  });
+
 const inlineWrapperNode = (config: { name: string; tag: string; className: string; attrs?: Attributes; attrKeys: string[] }) =>
   Node.create({
     name: config.name,
@@ -180,6 +203,67 @@ const Update = containerNode({
   className: 'pl-update',
   attrs: { ...stringAttr('label'), ...stringAttr('description') },
   attrKeys: ['label', 'description'],
+});
+
+// ─── Authored file tree (names are display data, never filesystem paths) ─────
+const FileTree = containerNode({
+  name: 'mdxFileTree',
+  tag: 'FileTree',
+  content: '(mdxFolder | mdxFile)+',
+  className: 'pl-filetree',
+});
+const Folder = titledNode({
+  name: 'mdxFolder',
+  tag: 'Folder',
+  className: 'pl-folder',
+  attrs: { ...stringAttr('name'), ...boolAttr('defaultOpen') },
+  attrKeys: ['name', 'defaultOpen'],
+});
+const File = atomNode({
+  name: 'mdxFile',
+  tag: 'File',
+  className: 'pl-file',
+  attrs: stringAttrs('name', 'icon'),
+  attrKeys: ['name', 'icon'],
+});
+
+// ─── API examples ───────────────────────────────────────────────────────────
+const ApiExample = titledNode({
+  name: 'mdxApiExample',
+  tag: 'ApiExample',
+  className: 'pl-apiexample',
+  attrs: stringAttr('title'),
+  attrKeys: ['title'],
+});
+const RequestExample = titledNode({
+  name: 'mdxRequestExample',
+  tag: 'RequestExample',
+  className: 'pl-requestexample',
+  attrs: stringAttr('title'),
+  attrKeys: ['title'],
+});
+const ResponseExample = titledNode({
+  name: 'mdxResponseExample',
+  tag: 'ResponseExample',
+  className: 'pl-responseexample',
+  attrs: { ...stringAttr('title'), ...stringAttr('status') },
+  attrKeys: ['title', 'status'],
+});
+
+// ─── Related content ────────────────────────────────────────────────────────
+const RelatedContent = titledNode({
+  name: 'mdxRelatedContent',
+  tag: 'RelatedContent',
+  className: 'pl-relatedcontent',
+  attrs: stringAttr('title'),
+  attrKeys: ['title'],
+});
+const RelatedCard = titledNode({
+  name: 'mdxRelatedCard',
+  tag: 'RelatedCard',
+  className: 'pl-relatedcard',
+  attrs: stringAttrs('title', 'description', 'href', 'icon'),
+  attrKeys: ['title', 'description', 'href', 'icon'],
 });
 
 // ─── API reference: ParamField / ResponseField ────────────────────────────────
@@ -288,6 +372,14 @@ export const mdxNodes = [
   Frame,
   Expandable,
   Update,
+  FileTree,
+  Folder,
+  File,
+  ApiExample,
+  RequestExample,
+  ResponseExample,
+  RelatedContent,
+  RelatedCard,
   ParamField,
   ResponseField,
   CodeGroup,
