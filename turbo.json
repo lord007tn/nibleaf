@@ -6,7 +6,7 @@
   "envMode": "loose",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^setup", "^build"],
       "outputs": ["dist/**", ".output/**", ".nitro/**", "src/generated/**"]
     },
     "dev": {
