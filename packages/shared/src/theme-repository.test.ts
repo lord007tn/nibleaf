@@ -54,6 +54,7 @@ describe('Git-native theme repository contract', () => {
     expect(byPath.get('vite.config.ts')?.content).toContain('compiler: true');
     expect(byPath.get('vite.config.ts')?.content).toContain('paraglideVitePlugin');
     expect(byPath.get('src/env.ts')?.content).toContain('createEnv');
+    expect(byPath.get('src/theme/HarborTheme.tsx')?.content).toContain('Choose documentation page');
     expect(byPath.get('src/theme/HarborTheme.tsx')?.ownership).toBe('CUSTOMER');
     expect(byPath.get(THEME_REPOSITORY_SNAPSHOT_PATH)?.ownership).toBe('PLATFORM');
     const firstPage = snapshot.pages[0];
@@ -80,6 +81,16 @@ describe('Git-native theme repository contract', () => {
     manifest.runtime.contractVersion = 99;
     files.set(THEME_REPOSITORY_MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`);
     expect(validateThemeRepositoryImport(files, snapshot).map((issue) => issue.code)).toContain('UNSUPPORTED_CONTRACT');
+  });
+
+  it('validates the configured content root and rejects extra platform files', () => {
+    const files = new Map(buildThemeRepository(snapshot, { contentPath: 'docs' }).map((file) => [file.path, file.content]));
+    expect(validateThemeRepositoryImport(files, snapshot, 'docs')).toEqual([]);
+
+    files.set('.nibleaf/extra.json', '{}\n');
+    expect(validateThemeRepositoryImport(files, snapshot, 'docs')).toContainEqual(
+      expect.objectContaining({ path: '.nibleaf/extra.json', code: 'PLATFORM_FILE_MODIFIED' }),
+    );
   });
 
   it('rejects a manifest connected to the wrong project before importing files', () => {

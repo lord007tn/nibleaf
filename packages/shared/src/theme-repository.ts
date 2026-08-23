@@ -243,6 +243,12 @@ export function HarborTheme({ snapshot }: { snapshot: SiteSnapshot }) {
         <div className="extension"><strong>Customer-owned component</strong><p>Edit <code>src/theme/HarborTheme.tsx</code>; Nibleaf sync will preserve it.</p></div>
       </aside>
       <main className="article">
+        <label className="mobile-page-picker">
+          <span>Page</span>
+          <select aria-label="Choose documentation page" onChange={(event) => setActiveId(event.target.value)} value={page.id}>
+            {visiblePages.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+          </select>
+        </label>
         <p className="eyebrow">{language.label} · {snapshot.project.versions.find((item) => item.id === page.versionId)?.name}</p>
         <h1>{page.title}</h1>
         {page.description ? <p className="lede">{page.description}</p> : null}
@@ -258,7 +264,7 @@ function PageLink({ active, onSelect, page }: { active: boolean; onSelect(): voi
 }
 `;
 
-const cssSource = `:root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#182132;background:#fbfcfe;font-synthesis:none}*{box-sizing:border-box}body{margin:0}.harbor{display:grid;grid-template-columns:17rem minmax(0,1fr) 13rem;grid-template-rows:4.25rem minmax(calc(100vh - 4.25rem),auto);grid-template-areas:"top top top" "side article toc"}.topbar{grid-area:top;position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:2rem;padding:0 2rem;border-bottom:1px solid #dce3ec;background:rgba(251,252,254,.92);backdrop-filter:blur(14px)}.brand{font-weight:760;color:#142038;text-decoration:none;font-size:1.05rem}.brand span{margin-inline-start:.65rem;border-radius:999px;background:#e7f7f3;color:#087866;padding:.22rem .55rem;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}.search{margin-inline:auto;width:min(28rem,40vw);padding:.68rem 1rem;border:1px solid #d8e0e9;border-radius:.7rem;background:#fff;color:#718096;font-size:.86rem;box-shadow:0 1px 2px rgba(30,45,68,.04)}.github{color:#31506f;text-decoration:none;font-size:.86rem}.sidebar{grid-area:side;padding:2rem 1.4rem;border-inline-end:1px solid #e2e8f0;background:#f7f9fc}.eyebrow{margin:0 0 .9rem;color:#75859a;font-size:.72rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase}.nav-link{display:block;width:100%;margin:.18rem 0;padding:.68rem .8rem;border:0;border-radius:.55rem;background:transparent;color:#52647b;text-align:start;cursor:pointer}.nav-link:hover,.nav-link.active{background:#e5f5f1;color:#087866;font-weight:650}.extension{margin-top:2rem;padding:1rem;border:1px solid #cfe3df;border-radius:.75rem;background:#effaf7;font-size:.75rem;line-height:1.5;color:#385d58}.extension p{margin:.4rem 0 0}.article{grid-area:article;width:min(100%,52rem);padding:4rem 4.5rem 6rem}.article h1{margin:.25rem 0 .8rem;color:#111b2d;font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.04;letter-spacing:-.045em}.lede{max-width:44rem;color:#617188;font-size:1.18rem;line-height:1.7}.prose{margin-top:2.8rem;color:#33445b;font-size:1rem;line-height:1.8}.prose h2{margin-top:2.6rem;color:#17243a;font-size:1.5rem}.prose code{padding:.15rem .35rem;border-radius:.3rem;background:#edf2f7;color:#087866}.prose pre{overflow:auto;padding:1.1rem;border-radius:.8rem;background:#101827;color:#dbeafe}.toc{grid-area:toc;padding:4rem 1.2rem}.toc a{display:block;margin:.65rem 0;color:#6a7b91;text-decoration:none;font-size:.82rem}.loading,.empty{padding:3rem}@media(max-width:900px){.harbor{grid-template-columns:1fr;grid-template-areas:"top" "article";grid-template-rows:4rem auto}.topbar{padding:0 1rem}.search,.github,.sidebar,.toc{display:none}.article{padding:2.5rem 1.25rem}.article h1{font-size:2.35rem}}
+const cssSource = `:root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#182132;background:#fbfcfe;font-synthesis:none}*{box-sizing:border-box}body{margin:0}.harbor{display:grid;grid-template-columns:17rem minmax(0,1fr) 13rem;grid-template-rows:4.25rem minmax(calc(100vh - 4.25rem),auto);grid-template-areas:"top top top" "side article toc"}.topbar{grid-area:top;position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:2rem;padding:0 2rem;border-bottom:1px solid #dce3ec;background:rgba(251,252,254,.92);backdrop-filter:blur(14px)}.brand{font-weight:760;color:#142038;text-decoration:none;font-size:1.05rem}.brand span{margin-inline-start:.65rem;border-radius:999px;background:#e7f7f3;color:#087866;padding:.22rem .55rem;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase}.search{margin-inline:auto;width:min(28rem,40vw);padding:.68rem 1rem;border:1px solid #d8e0e9;border-radius:.7rem;background:#fff;color:#718096;font-size:.86rem;box-shadow:0 1px 2px rgba(30,45,68,.04)}.github{color:#31506f;text-decoration:none;font-size:.86rem}.sidebar{grid-area:side;padding:2rem 1.4rem;border-inline-end:1px solid #e2e8f0;background:#f7f9fc}.eyebrow{margin:0 0 .9rem;color:#75859a;font-size:.72rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase}.nav-link{display:block;width:100%;margin:.18rem 0;padding:.68rem .8rem;border:0;border-radius:.55rem;background:transparent;color:#52647b;text-align:start;cursor:pointer}.nav-link:hover,.nav-link.active{background:#e5f5f1;color:#087866;font-weight:650}.extension{margin-top:2rem;padding:1rem;border:1px solid #cfe3df;border-radius:.75rem;background:#effaf7;font-size:.75rem;line-height:1.5;color:#385d58}.extension p{margin:.4rem 0 0}.article{grid-area:article;width:min(100%,52rem);padding:4rem 4.5rem 6rem}.mobile-page-picker{display:none}.article h1{margin:.25rem 0 .8rem;color:#111b2d;font-size:clamp(2.2rem,5vw,3.8rem);line-height:1.04;letter-spacing:-.045em}.lede{max-width:44rem;color:#617188;font-size:1.18rem;line-height:1.7}.prose{margin-top:2.8rem;color:#33445b;font-size:1rem;line-height:1.8}.prose h2{margin-top:2.6rem;color:#17243a;font-size:1.5rem}.prose code{padding:.15rem .35rem;border-radius:.3rem;background:#edf2f7;color:#087866}.prose pre{overflow:auto;padding:1.1rem;border-radius:.8rem;background:#101827;color:#dbeafe}.toc{grid-area:toc;padding:4rem 1.2rem}.toc a{display:block;margin:.65rem 0;color:#6a7b91;text-decoration:none;font-size:.82rem}.loading,.empty{padding:3rem}@media(max-width:900px){.harbor{grid-template-columns:1fr;grid-template-areas:"top" "article";grid-template-rows:4rem auto}.topbar{padding:0 1rem}.search,.github,.sidebar,.toc{display:none}.article{padding:2.5rem 1.25rem}.mobile-page-picker{display:grid;gap:.4rem;margin-bottom:1.4rem;color:#52647b;font-size:.75rem;font-weight:650}.mobile-page-picker select{width:100%;padding:.72rem .8rem;border:1px solid #d8e0e9;border-radius:.6rem;background:#fff;color:#182132}.article h1{font-size:2.35rem}}
 `;
 
 const testSource = `import { renderToStaticMarkup } from 'react-dom/server';
@@ -417,18 +423,27 @@ export const themeRepositoryOwnershipForPath = (path: string, contentPath = 'con
   return null;
 };
 
-export const validateThemeRepositoryImport = (files: ReadonlyMap<string, string>, expected: SiteSnapshot): ThemeRepositoryImportIssue[] => {
+export const validateThemeRepositoryImport = (
+  files: ReadonlyMap<string, string>,
+  expected: SiteSnapshot,
+  contentPath = 'content',
+): ThemeRepositoryImportIssue[] => {
   const manifestText = files.get(THEME_REPOSITORY_MANIFEST_PATH);
   const issues = validateThemeRepositoryManifest(manifestText, expected.project.id);
   if (issues.some((issue) => issue.code === 'MANIFEST_INVALID')) return issues;
   const expectedFiles = new Map(
-    buildThemeRepository(expected)
+    buildThemeRepository(expected, { contentPath })
       .filter((file) => file.ownership === 'PLATFORM')
       .map((file) => [file.path, file.content]),
   );
   for (const [path, content] of expectedFiles) {
     if (files.get(path) !== content) {
       issues.push({ path, code: 'PLATFORM_FILE_MODIFIED', message: `${path} is generated by Nibleaf and cannot be imported as customer code.` });
+    }
+  }
+  for (const path of files.keys()) {
+    if (themeRepositoryOwnershipForPath(path, contentPath) === 'PLATFORM' && !expectedFiles.has(path)) {
+      issues.push({ path, code: 'PLATFORM_FILE_MODIFIED', message: `${path} is outside the generated Nibleaf platform surface.` });
     }
   }
   return issues;

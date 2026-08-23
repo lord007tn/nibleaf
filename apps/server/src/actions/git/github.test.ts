@@ -110,6 +110,25 @@ describe('GitHub provider adapter', () => {
     ]);
   });
 
+  it('rejects an oversized managed theme file instead of treating it as deleted', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({
+          truncated: false,
+          tree: [{ path: '.nibleaf/snapshot.json', type: 'blob', sha: 'oversized-snapshot', size: 2_000_001 }],
+        });
+      }
+      throw new Error('The oversized blob must not be fetched.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(
+      /\.nibleaf\/snapshot\.json.*2 MiB or smaller/,
+    );
+    expect(request).toHaveBeenCalledOnce();
+  });
+
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request);

@@ -175,6 +175,30 @@ describe('processGitOperation', () => {
     );
   });
 
+  it('does not tombstone customer scaffolding when a pull precedes the first push', async () => {
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    const customerCreates = mocks.prisma.gitFileState.upsert.mock.calls.filter(([input]) => input.create.ownership === 'CUSTOMER');
+    expect(customerCreates).toEqual([]);
+  });
+
+  it('seeds customer scaffolding on push while no customer ledger row exists', async () => {
+    mocks.prisma.gitSyncOperation.findUnique.mockResolvedValue({
+      ...operation(),
+      kind: 'PUSH',
+      commitMessage: 'Seed the Harbor theme',
+    });
+    mocks.provider.createCommit.mockResolvedValue('commit-sha');
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(mocks.provider.createCommit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: expect.arrayContaining([expect.objectContaining({ path: 'src/theme/HarborTheme.tsx', content: expect.any(String) })]),
+      }),
+    );
+  });
+
   it('rejects a concurrent operation on the same connection without reconciling or marking it failed', async () => {
     mocks.prisma.gitSyncOperation.findFirst.mockResolvedValue({ id: 'operation-in-flight', startedAt: new Date() });
 

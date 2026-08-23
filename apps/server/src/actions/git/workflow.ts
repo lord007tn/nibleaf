@@ -651,6 +651,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
       prisma.gitFileState.findMany({ where: { connectionId: connection.id } }),
     ]);
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
+    const existingStatePaths = new Set(states.map((state) => state.path));
     const remoteManifest = theirs.get(THEME_REPOSITORY_MANIFEST_PATH)?.content;
     if (remoteManifest) {
       const manifestIssues = validateThemeRepositoryManifest(remoteManifest, connection.projectId);
@@ -749,6 +750,12 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     await prisma.$transaction(async (tx) => {
       for (const entry of entries) {
         const content = baseline.get(entry.path) ?? null;
+        if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !existingStatePaths.has(entry.path) && entry.theirs === null) {
+          // A pull before the initial scaffold push must not turn a missing
+          // customer file into a durable deletion. Leaving the ledger absent
+          // lets the next push seed the generated starter exactly once.
+          continue;
+        }
         if (entry.ownership === 'SHARED' && content === null && (target.get(entry.path) ?? null) === null) {
           await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: entry.path } });
           continue;
