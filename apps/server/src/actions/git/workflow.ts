@@ -5,6 +5,8 @@ import { slugify } from '@nibleaf/shared';
 import {
   buildThemeRepository,
   type ThemeRepositoryOwnership,
+  themeContentDirectory,
+  themeContentMap,
   themeRepositoryOwnershipForPath,
   themeRepositoryTemplateId,
   validateThemeRepositoryImport,
@@ -136,11 +138,6 @@ const serializeGitPage = (page: AuthoringPage): string => {
   return `---\n${fields.join('\n')}\n---\n\n${page.content.replace(/^\s+/, '')}`;
 };
 
-const repositoryPath = (contentPath: string, pagePath: string): string => {
-  const relative = pagePath.replace(/^\/+|\/+$/g, '') || 'index';
-  return `${contentPath ? `${contentPath}/` : ''}${relative}.mdx`;
-};
-
 const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const [branch, language] = await Promise.all([
     connection.importBranchId
@@ -164,13 +161,18 @@ const localFiles = async (connection: { projectId: string; contentPath: string; 
     select: { id: true, title: true, path: true, content: true, description: true, icon: true },
   });
   const snapshot = await getCurrentSnapshot(connection.projectId);
-  const files = new Map<string, LocalRepositoryFile>(
-    pages.map((page) => [repositoryPath(connection.contentPath, page.path), { page, content: serializeGitPage(page), ownership: 'SHARED' as const }]),
-  );
+  const pageById = new Map(pages.map((page) => [page.id, page]));
+  const contentMap = themeContentMap(snapshot, connection.contentPath);
+  const pageIdByPath = new Map(Object.entries(contentMap).map(([pageId, path]) => [path, pageId]));
+  const files = new Map<string, LocalRepositoryFile>();
+  for (const [path, pageId] of pageIdByPath) {
+    const page = pageById.get(pageId);
+    if (page) files.set(path, { page, content: serializeGitPage(page), ownership: 'SHARED' });
+  }
   for (const file of buildThemeRepository(snapshot, { contentPath: connection.contentPath })) {
     files.set(file.path, { page: null, content: file.content, ownership: file.ownership });
   }
-  return { files, snapshot };
+  return { files, snapshot, pageIdByPath };
 };
 
 const initializeFileStates = async (
@@ -378,6 +380,7 @@ const mergeEntries = (
   ours: Map<string, LocalRepositoryFile>,
   theirs: Map<string, RemoteFile>,
   contentPath: string,
+  pageIdByPath: ReadonlyMap<string, string>,
 ): MergeEntry[] => {
   const paths = new Set([...states.map((state) => state.path), ...ours.keys(), ...theirs.keys()]);
   const stateByPath = new Map(states.map((state) => [state.path, state]));
@@ -397,7 +400,7 @@ const mergeEntries = (
       // tombstoned deletion, so a later push cannot resurrect the file.
       ours: repositoryOurs(ownership, state, localContent),
       theirs: theirs.get(path)?.content ?? null,
-      pageId: ours.get(path)?.page?.id ?? state?.pageId ?? null,
+      pageId: pageIdByPath.get(path) ?? ours.get(path)?.page?.id ?? state?.pageId ?? null,
       ownership,
     };
   });
@@ -412,6 +415,7 @@ const applyContentToNibleaf = async (
   path: string,
   content: string | null,
   pageId: string | null,
+  snapshot: Awaited<ReturnType<typeof getCurrentSnapshot>>,
 ): Promise<string | null> => {
   if (content === null) {
     if (pageId) await prisma.page.deleteMany({ where: { id: pageId, projectId: connection.projectId, kind: 'PAGE' } });
@@ -434,8 +438,11 @@ const applyContentToNibleaf = async (
     }
   }
   const { branch, language } = await authoringContext(connection);
-  const prefix = connection.contentPath ? `${connection.contentPath}/` : '';
-  const relative = path.startsWith(prefix) ? path.slice(prefix.length) : path;
+  const prefix = `${themeContentDirectory(snapshot, branch.id, language.code, connection.contentPath)}/`;
+  if (!path.startsWith(prefix)) {
+    throw new Error(`Git content path ${path} is outside the configured ${branch.name}/${language.code} content directory.`);
+  }
+  const relative = path.slice(prefix.length);
   const withoutExt = relative.replace(/\.mdx?$/i, '');
   const segments = withoutExt.split('/').filter(Boolean);
   const fileName = segments.pop() ?? 'index';
@@ -664,10 +671,11 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
     const existingStatePaths = new Set(states.map((state) => state.path));
     const repositoryIssues = remoteThemeRepositoryIssues(remoteFiles, local.snapshot, connection.contentPath);
-    if (repositoryIssues.length > 0) {
-      throw new Error(`Theme repository validation failed: ${repositoryIssues.map((issue) => issue.message).join(' ')}`);
+    const fatalRepositoryIssues = repositoryIssues.filter((issue) => issue.code !== 'PLATFORM_FILE_MODIFIED');
+    if (fatalRepositoryIssues.length > 0) {
+      throw new Error(`Theme repository validation failed: ${fatalRepositoryIssues.map((issue) => issue.message).join(' ')}`);
     }
-    const entries = mergeEntries(states, ours, theirs, connection.contentPath);
+    const entries = mergeEntries(states, ours, theirs, connection.contentPath, local.pageIdByPath);
     const existingConflicts = new Map(operation.conflicts.map((conflict) => [conflict.path, conflict]));
     const staleResolutions = entries.flatMap((entry) => {
       const conflict = existingConflicts.get(entry.path);
@@ -748,7 +756,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     for (const entry of entries) {
       const desired = target.get(entry.path) ?? null;
       if (entry.ownership === 'SHARED' && !valueEqual(desired, entry.ours)) {
-        pageIds.set(entry.path, await applyContentToNibleaf(connection, entry.path, desired, entry.pageId));
+        pageIds.set(entry.path, await applyContentToNibleaf(connection, entry.path, desired, entry.pageId, local.snapshot));
       } else {
         pageIds.set(entry.path, entry.pageId);
       }

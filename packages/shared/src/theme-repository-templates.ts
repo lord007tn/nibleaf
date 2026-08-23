@@ -8,11 +8,19 @@ export interface ThemeRepositoryTemplateSource {
   style: string;
 }
 
-export const themeUtilitiesSource = `import { useEffect } from 'react';
+export const themeUtilitiesSource = `import { Children, type ComponentPropsWithoutRef, createElement, useEffect } from 'react';
 import type { SitePage } from '../nibleaf/runtime';
 
 export const visibleDocumentationPages = (pages: SitePage[]): SitePage[] => pages.filter((page) => page.kind === 'PAGE' && !page.hidden);
 export const chromeLocale = (languageCode: string | undefined): 'en' | 'ar' => languageCode === 'ar' ? 'ar' : 'en';
+
+export const documentationMarkdownComponents = (overview: string, nextSteps: string) => ({
+  h2({ children, ...props }: ComponentPropsWithoutRef<'h2'>) {
+    const label = Children.toArray(children).join('').trim();
+    const id = label === overview ? 'overview' : label === nextSteps ? 'next-steps' : undefined;
+    return createElement('h2', { ...props, id }, children);
+  },
+});
 
 export const useDocumentLanguage = (languageCode: string | undefined, direction: 'LTR' | 'RTL' | undefined): void => {
   useEffect(() => {
@@ -29,7 +37,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import * as m from '../paraglide/messages.js';
 import type { SitePage, SiteSnapshot } from '../nibleaf/runtime';
-import { chromeLocale, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
+import { chromeLocale, documentationMarkdownComponents, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
 
 export function HarborTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const visiblePages = useMemo(() => visibleDocumentationPages(snapshot.pages), [snapshot.pages]);
@@ -37,6 +45,7 @@ export function HarborTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const page = visiblePages.find((item) => item.id === activeId) ?? visiblePages[0];
   const language = snapshot.project.languages.find((item) => item.code === page?.languageCode) ?? snapshot.project.languages[0];
   const locale = chromeLocale(language?.code);
+  const markdownComponents = documentationMarkdownComponents(m.overview({}, { locale }), m.nextSteps({}, { locale }));
   useDocumentLanguage(language?.code, language?.direction);
   if (!page || !language) return <main className="empty">{m.noVisiblePages({}, { locale })}</main>;
   const version = snapshot.project.versions.find((item) => item.id === page.versionId)?.name;
@@ -62,7 +71,7 @@ export function HarborTheme({ snapshot }: { snapshot: SiteSnapshot }) {
         <p className="eyebrow">{language.label} · {version}</p>
         <h1>{page.title}</h1>
         {page.description ? <p className="lede">{page.description}</p> : null}
-        <article className="prose"><ReactMarkdown remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
+        <article className="prose"><ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
       </main>
       <aside className="toc"><p className="eyebrow">{m.onThisPage({}, { locale })}</p><a href="#overview">{m.overview({}, { locale })}</a><a href="#next-steps">{m.nextSteps({}, { locale })}</a></aside>
     </div>
@@ -83,7 +92,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import * as m from '../paraglide/messages.js';
 import type { SiteSnapshot } from '../nibleaf/runtime';
-import { chromeLocale, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
+import { chromeLocale, documentationMarkdownComponents, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
 
 export function ManuscriptTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const visiblePages = useMemo(() => visibleDocumentationPages(snapshot.pages), [snapshot.pages]);
@@ -91,6 +100,7 @@ export function ManuscriptTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const page = visiblePages.find((item) => item.id === activeId) ?? visiblePages[0];
   const language = snapshot.project.languages.find((item) => item.code === page?.languageCode) ?? snapshot.project.languages[0];
   const locale = chromeLocale(language?.code);
+  const markdownComponents = documentationMarkdownComponents(m.overview({}, { locale }), m.nextSteps({}, { locale }));
   useDocumentLanguage(language?.code, language?.direction);
   if (!page || !language) return <main className="empty">{m.noVisiblePages({}, { locale })}</main>;
   const version = snapshot.project.versions.find((item) => item.id === page.versionId)?.name;
@@ -112,7 +122,7 @@ export function ManuscriptTheme({ snapshot }: { snapshot: SiteSnapshot }) {
           <h1>{page.title}</h1>
           {page.description ? <p className="dek">{page.description}</p> : null}
           <div className="rule" />
-          <article className="prose"><ReactMarkdown remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
+          <article className="prose"><ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
           <footer className="extension"><strong>{m.customerOwned({}, { locale })}</strong><span>{m.edit({}, { locale })} <code>src/theme/ManuscriptTheme.tsx</code>. {m.syncPreserves({}, { locale })}</span></footer>
         </main>
       </div>
@@ -130,7 +140,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import * as m from '../paraglide/messages.js';
 import type { SitePage, SiteSnapshot } from '../nibleaf/runtime';
-import { chromeLocale, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
+import { chromeLocale, documentationMarkdownComponents, useDocumentLanguage, visibleDocumentationPages } from './theme-utils';
 
 export function SignalTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const visiblePages = useMemo(() => visibleDocumentationPages(snapshot.pages), [snapshot.pages]);
@@ -138,6 +148,7 @@ export function SignalTheme({ snapshot }: { snapshot: SiteSnapshot }) {
   const page = visiblePages.find((item) => item.id === activeId) ?? visiblePages[0];
   const language = snapshot.project.languages.find((item) => item.code === page?.languageCode) ?? snapshot.project.languages[0];
   const locale = chromeLocale(language?.code);
+  const markdownComponents = documentationMarkdownComponents(m.overview({}, { locale }), m.nextSteps({}, { locale }));
   useDocumentLanguage(language?.code, language?.direction);
   if (!page || !language) return <main className="empty">{m.noVisiblePages({}, { locale })}</main>;
   const version = snapshot.project.versions.find((item) => item.id === page.versionId)?.name;
@@ -161,7 +172,7 @@ export function SignalTheme({ snapshot }: { snapshot: SiteSnapshot }) {
             <p className="status"><span />{language.label} / {version}</p>
             <h1>{page.title}</h1>
             {page.description ? <p className="lede">{page.description}</p> : null}
-            <article className="prose"><ReactMarkdown remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
+            <article className="prose"><ReactMarkdown components={markdownComponents} remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown></article>
           </section>
         </main>
       </div>

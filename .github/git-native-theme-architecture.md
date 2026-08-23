@@ -118,7 +118,7 @@ corepack pnpm install && corepack pnpm dev
 
 The default adapter validates `.nibleaf/snapshot.json`, then overlays page bodies from exported MDX through `.nibleaf/content-map.json`; customer MDX edits therefore drive the local application without making generated state customer-owned. `.env` is optional. `src/env.ts` validates any future remote URL with t3-env and Zod. The snapshot uses the existing public `SiteSnapshot` projection, so provider tokens, Git credentials, webhook secrets, organization internals, and unpublished private payloads are not exported.
 
-Import validation is fail-closed before connection state is persisted and on every later pull for unknown contract/template versions, a manifest that does not match the project's selected template, and modified platform files. Provider enumeration keeps the existing tree truncation, per-file size, file-count, cumulative 64 MiB, known-size, and bounded-concurrency limits. Unknown repository files are not fetched. Content paths reversibly encode unsafe characters and export rejects duplicate case-insensitive output paths before creating an archive.
+Import validation is fail-closed before connection state is persisted and on every later pull for unknown contract/template versions and a manifest that does not match the project's selected template. A later Git edit or deletion of a platform-owned file persists a conflict snapshot, leaves `GitFileState` unchanged, and skips import until the conflict is resolved. Provider enumeration rejects blobs with an unknown size, limits each file to 2,000,000 bytes, and retains the existing tree truncation, file-count, cumulative 64 MiB, and bounded-concurrency limits. Unknown repository files are not fetched. Content paths reversibly encode unsafe characters and export rejects duplicate case-insensitive output paths before creating an archive.
 
 Visible runtime chrome is loaded from `messages/en.json` and `messages/ar.json` through generated Paraglide message functions. Selecting an Arabic page switches those messages, the template root direction, and the document `lang`/`dir`. Search, external-link, book, and terminal imagery uses Lucide components rather than Unicode icon glyphs.
 
@@ -137,12 +137,12 @@ The only shared customer-side theme utility filters renderable pages, maps suppo
 ### Phase 1 — contract and three-template runnable export (this change)
 
 - Add manifest/runtime contract v1 and ownership classifier.
-- Export the selected Harbor, Manuscript, or Signal repository from `GET /api/app/projects/:id/theme-repository`.
+- Export the selected Harbor, Manuscript, or Signal repository from `GET /api/app/projects/:id/theme-repository`; callers must be authenticated members of the project's organization.
 - Include snapshot fixtures, real source, extension documentation, and build/test scripts.
 - Consume Paraglide messages in visible chrome, synchronize Arabic `lang`/`dir`, and use Lucide for UI icons.
 - Extend `GitFileState` ownership and GitHub's bounded file enumeration.
 - Add ownership-aware reconciliation without replacing existing conflict records.
-- Prove independent install/test/build, edit/rebuild, RTL rendering, and safe platform-file rejection for all three templates.
+- Prove independent install/test/build, edit/rebuild, RTL rendering, authenticated project-member ZIP access, and safe platform-file rejection/conflict handling for all three templates.
 
 ### Phase 2 — Git UX and migration tooling
 

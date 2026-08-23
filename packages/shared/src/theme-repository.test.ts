@@ -66,6 +66,7 @@ describe('Git-native theme repository contract', () => {
     expect(byPath.get('src/adapters/content.ts')?.content).toContain('import.meta.glob');
     expect(byPath.get('src/adapters/content.ts')?.content).toContain('applyMdxFiles');
     expect(byPath.get('src/adapters/content.test.ts')?.content).toContain('## Customer edit');
+    expect(byPath.get('src/theme/theme-utils.ts')?.content).toContain("'next-steps'");
     expect(byPath.get(THEME_REPOSITORY_CONTENT_MAP_PATH)?.ownership).toBe('PLATFORM');
     const component = byPath.get(`src/theme/${componentName}.tsx`);
     expect(component?.content).toContain('../paraglide/messages.js');
@@ -87,6 +88,12 @@ describe('Git-native theme repository contract', () => {
     expect(firstPage).toBeDefined();
     if (firstPage) expect(themeContentPath(firstPage, snapshot)).toBe('content/main/en/welcome.mdx');
     if (firstPage) expect(themeContentPath({ ...firstPage, path: '../../unsafe:name' }, snapshot)).toBe('content/main/en/unsafe~3a~name.mdx');
+  });
+
+  it('documents the configured content root in the generated repository', () => {
+    const files = new Map(buildThemeRepository(snapshot, { contentPath: '/docs/' }).map((file) => [file.path, file.content]));
+    expect(files.get('README.md')).toContain('documentation MDX under `docs/`');
+    expect(files.get('src/adapters/content.ts')).toContain('../../docs/**/*.mdx');
   });
 
   it('preserves distinct unsafe path segments and rejects case-insensitive output collisions', () => {
