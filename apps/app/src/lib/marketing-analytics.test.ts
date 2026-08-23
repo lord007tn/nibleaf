@@ -18,6 +18,9 @@ import {
 
 const GA4_TARGET = { id: 'G-ABC123', provider: 'ga4' } as const;
 const GTM_TARGET = { id: 'GTM-ABC123', provider: 'gtm' } as const;
+const isGtagCommand = (entry: unknown): entry is IArguments => Object.prototype.toString.call(entry) === '[object Arguments]';
+const gtagCommands = (): IArguments[] => (window.dataLayer ?? []).filter(isGtagCommand);
+const gtagCommandValues = (): unknown[][] => gtagCommands().map((command) => Array.from(command));
 
 describe('marketing analytics', () => {
   afterEach(() => {
@@ -77,8 +80,8 @@ describe('marketing analytics', () => {
     expect(scripts).toHaveLength(1);
     expect(scripts[0]?.nonce).toBe('response-nonce');
     expect(scripts[0]?.src).toBe('https://www.googletagmanager.com/gtag/js?id=G-ABC123');
-    expect(window.dataLayer).toContainEqual(['config', 'G-ABC123', { anonymize_ip: true, cookie_domain: 'none', send_page_view: false }]);
-    expect(window.dataLayer?.filter((entry) => Array.isArray(entry) && entry[0] === 'config')).toHaveLength(1);
+    expect(gtagCommandValues()).toContainEqual(['config', 'G-ABC123', { anonymize_ip: true, cookie_domain: 'none', send_page_view: false }]);
+    expect(gtagCommandValues().filter((entry) => entry[0] === 'config')).toHaveLength(1);
   });
 
   it('loads one nonced GTM container and never loads direct GA for the GTM target', () => {
@@ -96,7 +99,7 @@ describe('marketing analytics', () => {
     expect(scripts[0]?.src).toBe('https://www.googletagmanager.com/gtm.js?id=GTM-ABC123');
     expect(document.querySelector('#nibleaf-marketing-ga4')).toBeNull();
     expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'gtm.js' }));
-    expect(window.dataLayer).not.toContainEqual(expect.arrayContaining(['config']));
+    expect(gtagCommandValues()).not.toContainEqual(expect.arrayContaining(['config']));
   });
 
   it('sends a query-free pageview and allowlisted Arabic CTA dimensions', () => {
@@ -105,12 +108,12 @@ describe('marketing analytics', () => {
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
     sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' });
 
-    expect(window.dataLayer).toContainEqual([
+    expect(gtagCommandValues()).toContainEqual([
       'event',
       'page_view',
       expect.objectContaining({ language: 'ar', page_location: 'http://localhost:3000/ar', page_path: '/ar', send_to: 'G-ABC123' }),
     ]);
-    expect(window.dataLayer).toContainEqual([
+    expect(gtagCommandValues()).toContainEqual([
       'event',
       'cta_clicked',
       expect.objectContaining({ destination: 'signup', language: 'ar', placement: 'hero', send_to: 'G-ABC123' }),
@@ -147,18 +150,23 @@ describe('marketing analytics', () => {
       tool_slug: 'rtl-documentation-readiness',
     });
 
-    expect(window.dataLayer).toContainEqual([
+    const pageViewCommand = gtagCommands().find((command) => command[0] === 'event' && command[1] === 'page_view');
+    expect(gtagCommands()).not.toHaveLength(0);
+    expect(gtagCommands().every((command) => !Array.isArray(command))).toBe(true);
+    expect(pageViewCommand).toBeDefined();
+    expect(Array.isArray(pageViewCommand)).toBe(false);
+    expect(Array.from(pageViewCommand ?? [])).toEqual([
       'event',
       'page_view',
       expect.objectContaining({ language: 'ar', page_location: 'http://localhost:3000/ar', page_path: '/ar' }),
     ]);
-    expect(window.dataLayer).toContainEqual([
+    expect(gtagCommandValues()).toContainEqual([
       'event',
       'cta_clicked',
       expect.objectContaining({ destination: 'signup', language: 'ar', placement: 'hero' }),
     ]);
     for (const event of ['sign_up', 'free_tool_started', 'free_tool_completed', 'free_tool_cta_clicked']) {
-      expect(window.dataLayer).toContainEqual(['event', event, expect.any(Object)]);
+      expect(gtagCommandValues()).toContainEqual(['event', event, expect.any(Object)]);
     }
     expect(JSON.stringify(window.dataLayer)).not.toContain('private@example.com');
     expect(JSON.stringify(window.dataLayer)).not.toContain('send_to');
@@ -171,7 +179,7 @@ describe('marketing analytics', () => {
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window['ga-disable-G-ABC123']).toBe(true);
-    expect(window.dataLayer).toContainEqual(['consent', 'update', expect.objectContaining({ ad_storage: 'denied', analytics_storage: 'denied' })]);
+    expect(gtagCommandValues()).toContainEqual(['consent', 'update', expect.objectContaining({ ad_storage: 'denied', analytics_storage: 'denied' })]);
   });
 
   it('expires host-only and parent-domain GA cookies without crossing the registrable boundary', () => {
@@ -205,6 +213,6 @@ describe('marketing analytics', () => {
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window.dataLayer).toHaveLength(before ?? 0);
-    expect(window.dataLayer).toContainEqual(['consent', 'update', expect.objectContaining({ analytics_storage: 'denied' })]);
+    expect(gtagCommandValues()).toContainEqual(['consent', 'update', expect.objectContaining({ analytics_storage: 'denied' })]);
   });
 });
