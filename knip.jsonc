@@ -7,10 +7,7 @@
     },
     "apps/server": {
       "entry": ["src/scripts/grant-admin.ts"],
-      "ignoreDependencies": ["quansync"],
-      // Public cross-feature CAS boundary consumed by independently merged
-      // theme/add-on branches; this owning PR intentionally lands it first.
-      "ignoreIssues": { "src/actions/project-config.ts": ["exports"] }
+      "ignoreDependencies": ["quansync"]
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]
