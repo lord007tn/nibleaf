@@ -4,12 +4,15 @@ export const MAX_THEME_TEMPLATE_BYTES = 128 * 1024;
 export const MAX_THEME_TEMPLATE_DEPTH = 12;
 export const MAX_THEME_TEMPLATE_NODES = 600;
 
-const SAFE_THEME_HEX = /^#[0-9a-fA-F]{6}$/;
+const SAFE_THEME_HEX = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 /** Sanitizers shared by every CSS renderer so live and exported themes enforce
  * the same interpolation boundary. */
-export const safeThemeHex = (value: string | undefined, fallback: string): string =>
-  value && SAFE_THEME_HEX.test(value) ? value.toLowerCase() : fallback;
+export const safeThemeHex = (value: string | undefined, fallback: string): string => {
+  if (!(value && SAFE_THEME_HEX.test(value))) return fallback;
+  const normalized = value.toLowerCase();
+  return normalized.length === 4 ? `#${normalized[1]}${normalized[1]}${normalized[2]}${normalized[2]}${normalized[3]}${normalized[3]}` : normalized;
+};
 
 export const safeThemeFontFamily = (value?: string): string | undefined => {
   const trimmed = value?.trim();
@@ -358,23 +361,29 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
   const id = config?.theme?.preset && THEME_PRESET_IDS.includes(config.theme.preset) ? config.theme.preset : 'harbor';
   const preset = THEME_PRESETS[id];
   const accent = config?.styling?.primaryColor ? normalizeHex(config.styling.primaryColor) : undefined;
-  const light = { ...preset.colors.light, ...config?.theme?.colors?.light };
-  const dark = { ...preset.colors.dark, ...config?.theme?.colors?.dark };
-  if (config?.theme?.colors?.light?.accent && !config.theme.colors.light.accentForeground) {
+  const resolveColors = (defaults: ThemeColorTokens, overrides?: Partial<ThemeColorTokens>): ThemeColorTokens =>
+    Object.fromEntries(THEME_COLOR_KEYS.map((key) => [key, safeThemeHex(overrides?.[key], defaults[key])])) as ThemeColorTokens;
+  const lightOverrides = config?.theme?.colors?.light;
+  const darkOverrides = config?.theme?.colors?.dark;
+  const light = resolveColors(preset.colors.light, lightOverrides);
+  const dark = resolveColors(preset.colors.dark, darkOverrides);
+  const hasLightAccent = Boolean(safeThemeHex(lightOverrides?.accent, ''));
+  const hasDarkAccent = Boolean(safeThemeHex(darkOverrides?.accent, ''));
+  if (hasLightAccent && !lightOverrides?.accentForeground) {
     light.accentForeground = contrastingText(light.accent);
   }
-  if (config?.theme?.colors?.light?.accent && !config.theme.colors.light.focus) light.focus = light.accent;
-  if (config?.theme?.colors?.dark?.accent && !config.theme.colors.dark.accentForeground) {
+  if (hasLightAccent && !lightOverrides?.focus) light.focus = light.accent;
+  if (hasDarkAccent && !darkOverrides?.accentForeground) {
     dark.accentForeground = contrastingText(dark.accent);
   }
-  if (config?.theme?.colors?.dark?.accent && !config.theme.colors.dark.focus) dark.focus = dark.accent;
+  if (hasDarkAccent && !darkOverrides?.focus) dark.focus = dark.accent;
   if (accent && /^#[0-9a-f]{6}$/i.test(accent)) {
-    if (!config?.theme?.colors?.light?.accent) {
+    if (!hasLightAccent) {
       light.accent = readableAccent(accent, light.canvas);
       light.accentForeground = contrastingText(light.accent);
       light.focus = light.accent;
     }
-    if (!config?.theme?.colors?.dark?.accent) {
+    if (!hasDarkAccent) {
       dark.accent = readableAccent(accent, dark.canvas);
       dark.accentForeground = contrastingText(dark.accent);
       dark.focus = dark.accent;

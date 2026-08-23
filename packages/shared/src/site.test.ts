@@ -206,7 +206,7 @@ describe('buildSnapshot', () => {
       styling: { theme: 'system' },
     };
     const snap = buildSnapshot({ ...projectRow, config }, [rawPage], '2026-01-01');
-    expect(snap.project.config).toMatchObject(config);
+    expect(snap.project.config).toEqual(config);
   });
   it('preserves GROUP kinds', () => {
     const snap = buildSnapshot(projectRow, [{ ...rawPage, kind: 'GROUP' }], '2026-01-01');

@@ -67,7 +67,12 @@ describe('documentation themes', () => {
 
   it('shares strict CSS interpolation sanitizers across renderers', () => {
     expect(safeThemeHex('#AABBCC', '#000000')).toBe('#aabbcc');
+    expect(safeThemeHex('#AbC', '#000000')).toBe('#aabbcc');
     expect(safeThemeHex('red;}body{display:none', '#000000')).toBe('#000000');
+    expect(resolveTheme({ theme: { colors: { light: { accent: '#AbC' } } } }).colors.light).toMatchObject({
+      accent: '#aabbcc',
+      focus: '#aabbcc',
+    });
     expect(safeThemeFontFamily(' نسق عربي ')).toBe('نسق عربي');
     expect(safeThemeFontFamily("Inter';}body{display:none}/*")).toBeUndefined();
   });

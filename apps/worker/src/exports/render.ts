@@ -181,6 +181,11 @@ const declarations = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): str
 const themeConfigOf = (snapshot: SiteSnapshot): ThemeOwnedProjectConfig =>
   (snapshot.project.config && typeof snapshot.project.config === 'object' ? snapshot.project.config : {}) as ThemeOwnedProjectConfig;
 
+const safeCssNumber = (value: unknown, fallback: number, minimum: number, maximum: number): string => {
+  const numeric = typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN;
+  return Number.isFinite(numeric) && numeric >= minimum && numeric <= maximum ? String(numeric) : String(fallback);
+};
+
 const exportThemeCss = (snapshot: SiteSnapshot, print = false): string => {
   const config = themeConfigOf(snapshot);
   const theme = resolveTheme(config);
@@ -197,15 +202,12 @@ const exportThemeCss = (snapshot: SiteSnapshot, print = false): string => {
   const contentMax = theme.layout.contentWidth === 'focused' ? '1120px' : theme.layout.contentWidth === 'wide' ? '1520px' : '1240px';
   const sidebarWidth = theme.layout.density === 'compact' ? '250px' : theme.layout.density === 'relaxed' ? '300px' : '280px';
   const typography = config.typography;
-  const fontSize = typography?.baseSize
-    ? `${typography.baseSize}px`
-    : theme.layout.density === 'compact'
-      ? '15px'
-      : theme.layout.density === 'relaxed'
-        ? '17px'
-        : '16px';
-  const leading = typography?.leading ?? '1.7';
-  const flow = `${typography?.flow ?? '1.25'}em`;
+  const defaultFontSize = theme.layout.density === 'compact' ? 15 : theme.layout.density === 'relaxed' ? 17 : 16;
+  const defaultLeading = theme.layout.density === 'compact' ? 1.6 : theme.layout.density === 'relaxed' ? 1.9 : 1.75;
+  const defaultFlow = theme.layout.density === 'compact' ? 1 : theme.layout.density === 'relaxed' ? 1.5 : 1.25;
+  const fontSize = `${safeCssNumber(typography?.baseSize, defaultFontSize, 12, 24)}px`;
+  const leading = safeCssNumber(typography?.leading, defaultLeading, 1, 3);
+  const flow = `${safeCssNumber(typography?.flow, defaultFlow, 0.5, 4)}em`;
   const bodyFont = safeThemeFontFamily(typography?.bodyFont);
   const headingFont = safeThemeFontFamily(typography?.headingFont);
   const codeFont = safeThemeFontFamily(typography?.codeFont);

@@ -142,6 +142,31 @@ describe('export renderers', () => {
     expect(html).toContain('solid&quot; autofocus=&quot;true');
   });
 
+  it('sanitizes malformed legacy typography in static and PDF CSS', () => {
+    const malformed = {
+      ...themedSnapshot,
+      project: {
+        ...themedSnapshot.project,
+        config: {
+          ...themedSnapshot.project.config,
+          typography: {
+            baseSize: '17;}body{display:none',
+            leading: '1.9;}html{display:none',
+            flow: '1.25;}main{display:none',
+          },
+        },
+      },
+    } as SiteSnapshot;
+    const files = unzipSync(renderStaticHtml(malformed, assets).bytes);
+    const outputs = [text(required(files['theme/theme.css'])), renderPdfHtml(malformed, assets)];
+    for (const output of outputs) {
+      expect(output).not.toContain('display:none');
+      expect(output).toContain('--font-size:15px');
+      expect(output).toContain('--leading:1.6');
+      expect(output).toContain('--flow:1em');
+    }
+  });
+
   it('omits hidden pages from static files and the offline search index', () => {
     const hidden = {
       ...required(snapshot.pages[1]),

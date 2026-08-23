@@ -269,14 +269,15 @@ export function ThemeSection({ project }: { project: Project }) {
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    setImportText('');
+    setImportTemplate(undefined);
+    setImportPreview(undefined);
     if (file.size > MAX_THEME_TEMPLATE_BYTES) {
       toast.error(t('settings.theme.import.tooLarge'));
       return;
     }
     const text = await file.text();
     setImportText(text);
-    setImportTemplate(undefined);
-    setImportPreview(undefined);
     try {
       setImportTemplate(JSON.parse(text) as unknown);
     } catch {
@@ -565,7 +566,7 @@ export function ThemeSection({ project }: { project: Project }) {
         </button>
         <button
           className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
-          onClick={() => change({ theme: fullPresetTheme(resolved.id), appearance: 'light' })}
+          onClick={() => change({ theme: fullPresetTheme(resolved.id), appearance: draft.appearance })}
           type="button"
         >
           <RotateCcw className="size-4" /> {t('settings.theme.reset')}
