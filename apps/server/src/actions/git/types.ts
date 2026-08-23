@@ -37,6 +37,9 @@ export interface GitProviderClient {
   verifyWriteAccess(repository: string): Promise<void>;
   getBranchSha(repository: string, branch: string): Promise<string | null>;
   listMarkdownFiles(repository: string, ref: string, contentPath: string): Promise<RemoteFile[]>;
+  /** Optional v1 theme-repository surface. Older provider adapters may keep
+   * syncing Markdown only until they implement this bounded file listing. */
+  listThemeRepositoryFiles?(repository: string, ref: string, contentPath: string): Promise<RemoteFile[]>;
   createCommit(input: GitCommitInput): Promise<string>;
   createBranch(repository: string, branch: string, sha: string): Promise<void>;
   updateBranch(repository: string, branch: string, sha: string, expectedOldSha: string): Promise<void>;

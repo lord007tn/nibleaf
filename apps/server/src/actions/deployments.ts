@@ -83,7 +83,7 @@ export interface DeploymentPageDiff {
 /** Read the complete effective publish input once and compose the same snapshot
  * shape the worker will validate. Keeping preflight and worker inputs aligned
  * prevents the dashboard from approving a different route graph. */
-const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
+export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapshot> => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {

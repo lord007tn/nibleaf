@@ -83,6 +83,88 @@ describe('GitHub provider adapter', () => {
     expect(maxActiveBlobs).toBeLessThanOrEqual(8);
   });
 
+  it('lists the bounded text theme surface without decoding customer binary assets', async () => {
+    const entries = [
+      { path: 'nibleaf.theme.json', type: 'blob', sha: 'manifest', size: 100 },
+      { path: '.nibleaf/snapshot.json', type: 'blob', sha: 'snapshot', size: 100 },
+      { path: 'src/theme/HarborTheme.tsx', type: 'blob', sha: 'theme', size: 100 },
+      { path: 'content/welcome.mdx', type: 'blob', sha: 'content', size: 100 },
+      { path: 'public/logo.png', type: 'blob', sha: 'binary-logo', size: 100 },
+      { path: 'unmanaged.txt', type: 'blob', sha: 'unmanaged', size: 100 },
+    ];
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) return json({ truncated: false, tree: entries });
+      const sha = url.split('/').pop() ?? '';
+      return json({ encoding: 'base64', content: Buffer.from(sha).toString('base64') });
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    const files = await provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content');
+
+    expect(files.map((file) => file.path)).toEqual([
+      'nibleaf.theme.json',
+      '.nibleaf/snapshot.json',
+      'src/theme/HarborTheme.tsx',
+      'content/welcome.mdx',
+    ]);
+  });
+
+  it('rejects an oversized managed theme file instead of treating it as deleted', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({
+          truncated: false,
+          tree: [{ path: '.nibleaf/snapshot.json', type: 'blob', sha: 'oversized-snapshot', size: 2_000_001 }],
+        });
+      }
+      throw new Error('The oversized blob must not be fetched.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(
+      /\.nibleaf\/snapshot\.json.*2 MiB or smaller/,
+    );
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('rejects an unsafe cumulative managed payload before fetching blobs', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({
+          truncated: false,
+          tree: Array.from({ length: 34 }, (_, index) => ({
+            path: `content/page-${index}.mdx`,
+            type: 'blob',
+            sha: `blob-${index}`,
+            size: 2_000_000,
+          })),
+        });
+      }
+      throw new Error('Cumulative bounds must be checked before fetching blobs.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(/64 MiB/);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('rejects managed blobs with unknown sizes before fetching content', async () => {
+    const request = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('/git/trees/')) {
+        return json({ truncated: false, tree: [{ path: 'content/welcome.mdx', type: 'blob', sha: 'unknown-size' }] });
+      }
+      throw new Error('Unknown-size blobs must not be fetched.');
+    });
+    const provider = new GitHubProvider('token', request as typeof fetch);
+
+    await expect(provider.listThemeRepositoryFiles('acme/docs', 'head-sha', 'content')).rejects.toThrow(/cannot safely size/);
+    expect(request).toHaveBeenCalledOnce();
+  });
+
   it('does not leak credentials through provider errors', async () => {
     const request = vi.fn(async () => json({ message: 'Forbidden' }, 403));
     const provider = new GitHubProvider('super-secret-token', request);

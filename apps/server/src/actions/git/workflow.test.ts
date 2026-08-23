@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
     branch: { findFirst: vi.fn() },
     gitAuditEvent: { create: vi.fn() },
     gitConflict: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn() },
-    gitConnection: { update: vi.fn() },
+    gitConnection: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     gitFileState: { deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
     gitPreview: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     gitPullRequest: { upsert: vi.fn() },
@@ -22,13 +22,17 @@ const mocks = vi.hoisted(() => {
     getBranchSha: vi.fn(),
     getPullRequest: vi.fn(),
     listMarkdownFiles: vi.fn(),
+    listThemeRepositoryFiles: vi.fn(),
     updateBranch: vi.fn(),
     upsertDraftPullRequest: vi.fn(),
+    verifyWriteAccess: vi.fn(),
   };
   return {
     createJob: vi.fn(),
     getDefaultBranch: vi.fn(),
     getDefaultLanguage: vi.fn(),
+    getCurrentSnapshot: vi.fn(),
+    parseFrontmatter: vi.fn(),
     prisma,
     provider,
   };
@@ -43,10 +47,13 @@ vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
 vi.mock('@nibleaf/shared', () => ({ slugify: (value: string) => value.toLowerCase() }));
 vi.mock('@nibleaf/shared/site', () => ({ buildSnapshot: vi.fn() }));
 vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
+vi.mock('../deployments', () => ({
+  getCurrentSnapshot: mocks.getCurrentSnapshot,
+}));
 vi.mock('../importers/content', () => ({
   deriveTitle: vi.fn(),
   humanize: (value: string) => value,
-  parseFrontmatter: vi.fn(),
+  parseFrontmatter: mocks.parseFrontmatter,
 }));
 vi.mock('../importers/persistence', () => ({ ensureGroupPage: vi.fn(), upsertLeafPage: vi.fn() }));
 vi.mock('../languages', () => ({ getDefaultLanguage: mocks.getDefaultLanguage }));
@@ -62,13 +69,43 @@ vi.mock('./github', () => ({
     getBranchSha = mocks.provider.getBranchSha;
     getPullRequest = mocks.provider.getPullRequest;
     listMarkdownFiles = mocks.provider.listMarkdownFiles;
+    listThemeRepositoryFiles = mocks.provider.listThemeRepositoryFiles;
     updateBranch = mocks.provider.updateBranch;
     upsertDraftPullRequest = mocks.provider.upsertDraftPullRequest;
+    verifyWriteAccess = mocks.provider.verifyWriteAccess;
   },
 }));
-vi.mock('./reconcile', () => ({ conflictSnapshotMatches: vi.fn(), reconcileFile: vi.fn() }));
+vi.mock('./reconcile', () => ({
+  conflictSnapshotMatches: vi.fn(),
+  repositoryOurs: vi.fn((_ownership: string, state: { baseContent: string | null; baseExists: boolean } | undefined, generated: string | null) =>
+    _ownership === 'CUSTOMER' && state ? (state.baseExists ? state.baseContent : null) : generated,
+  ),
+  reconcileOwnedFile: vi.fn((_ownership: string, base: string | null, ours: string | null, theirs: string | null) => {
+    if (_ownership === 'PLATFORM' && theirs !== base && theirs !== ours) return { conflict: true, content: null, source: 'conflict' };
+    if (ours === theirs) return { conflict: false, content: ours, source: 'unchanged' };
+    if (ours === base) return { conflict: false, content: theirs, source: 'theirs' };
+    if (theirs === base) return { conflict: false, content: ours, source: 'ours' };
+    return { conflict: true, content: null, source: 'conflict' };
+  }),
+}));
 
-import { processGitOperation } from './workflow';
+import { buildThemeRepository, THEME_REPOSITORY_SNAPSHOT_PATH } from '@nibleaf/shared/theme-repository';
+import { connectGitHub, processGitOperation } from './workflow';
+
+const currentSnapshot = {
+  project: {
+    id: 'project-1',
+    name: 'Docs',
+    slug: 'docs',
+    description: null,
+    icon: null,
+    config: null,
+    languages: [{ code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, config: null }],
+    versions: [{ id: 'branch-1', name: 'Main', slug: 'main', isDefault: true }],
+  },
+  pages: [],
+  generatedAt: '2026-08-23T00:00:00.000Z',
+};
 
 const connection = {
   id: 'connection-1',
@@ -121,14 +158,44 @@ beforeEach(() => {
   mocks.prisma.gitSyncOperation.updateMany.mockResolvedValue({ count: 1 });
   mocks.prisma.gitSyncOperation.update.mockResolvedValue({});
   mocks.prisma.gitConnection.update.mockResolvedValue({});
+  mocks.prisma.gitConnection.findUnique.mockResolvedValue(null);
+  mocks.getCurrentSnapshot.mockResolvedValue(currentSnapshot);
   mocks.prisma.gitFileState.findMany.mockResolvedValue([]);
   mocks.prisma.gitConflict.findMany.mockResolvedValue([]);
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
   mocks.prisma.page.findMany.mockResolvedValue([]);
-  mocks.getDefaultBranch.mockResolvedValue({ id: 'branch-1' });
-  mocks.getDefaultLanguage.mockResolvedValue({ id: 'language-1' });
+  mocks.getDefaultBranch.mockResolvedValue({ id: 'branch-1', name: 'Main' });
+  mocks.getDefaultLanguage.mockResolvedValue({ id: 'language-1', code: 'en' });
   mocks.provider.getBranchSha.mockImplementation(async (_repository: string, branch: string) => (branch === 'main' ? 'base-sha' : 'head-sha'));
   mocks.provider.listMarkdownFiles.mockResolvedValue([]);
+  mocks.provider.listThemeRepositoryFiles.mockResolvedValue([]);
+});
+
+describe('connectGitHub', () => {
+  it('validates generated platform files before persisting the connection or baseline', async () => {
+    const remoteFiles = buildThemeRepository(currentSnapshot).map((file, index) => ({
+      path: file.path,
+      sha: `blob-${index}`,
+      content: file.content,
+    }));
+    const snapshotFile = remoteFiles.find((file) => file.path === THEME_REPOSITORY_SNAPSHOT_PATH);
+    expect(snapshotFile).toBeDefined();
+    if (!snapshotFile) return;
+    snapshotFile.content = '{}\n';
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValueOnce(remoteFiles);
+
+    await expect(
+      connectGitHub('project-1', 'user-1', {
+        repository: 'acme/docs',
+        baseBranch: 'main',
+        headBranch: 'nibleaf/docs',
+        token: 'token',
+      }),
+    ).rejects.toThrow(/snapshot\.json.*generated by Nibleaf/);
+
+    expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+  });
 });
 
 describe('processGitOperation', () => {
@@ -142,10 +209,129 @@ describe('processGitOperation', () => {
         data: expect.objectContaining({ status: 'RUNNING', error: null }),
       }),
     );
-    expect(mocks.provider.listMarkdownFiles).toHaveBeenCalledOnce();
+    expect(mocks.provider.listThemeRepositoryFiles).toHaveBeenCalledOnce();
     expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'operation-1' }, data: expect.objectContaining({ status: 'SUCCEEDED', remoteSha: 'head-sha' }) }),
     );
+  });
+
+  it('does not tombstone customer scaffolding when a pull precedes the first push', async () => {
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    const customerCreates = mocks.prisma.gitFileState.upsert.mock.calls.filter(([input]) => input.create.ownership === 'CUSTOMER');
+    expect(customerCreates).toEqual([]);
+  });
+
+  it('seeds customer scaffolding on push while no customer ledger row exists', async () => {
+    mocks.prisma.gitSyncOperation.findUnique.mockResolvedValue({
+      ...operation(),
+      kind: 'PUSH',
+      commitMessage: 'Seed the Harbor theme',
+    });
+    mocks.provider.createCommit.mockResolvedValue('commit-sha');
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(mocks.provider.createCommit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: expect.arrayContaining([expect.objectContaining({ path: 'src/theme/HarborTheme.tsx', content: expect.any(String) })]),
+      }),
+    );
+  });
+
+  it('rejects a repository manifest for a different configured theme', async () => {
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      {
+        path: 'nibleaf.theme.json',
+        sha: 'manifest-sha',
+        content: JSON.stringify({
+          kind: 'nibleaf-theme-repository',
+          schemaVersion: 1,
+          project: { id: 'project-1', slug: 'docs' },
+          template: { id: 'signal', version: 1 },
+          runtime: { strategy: 'vendored', contractVersion: 1, entry: 'src/nibleaf/runtime.ts' },
+        }),
+      },
+    ]);
+
+    await expect(processGitOperation('operation-1')).rejects.toThrow(/configured for harbor/);
+
+    expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'operation-1' }, data: expect.objectContaining({ status: 'FAILED' }) }),
+    );
+  });
+
+  it('persists modified generated platform data as a conflict without advancing file state', async () => {
+    const remoteFiles = buildThemeRepository(currentSnapshot).map((file, index) => ({
+      path: file.path,
+      sha: `blob-${index}`,
+      content: file.content,
+    }));
+    const snapshotFile = remoteFiles.find((file) => file.path === THEME_REPOSITORY_SNAPSHOT_PATH);
+    expect(snapshotFile).toBeDefined();
+    if (!snapshotFile) return;
+    snapshotFile.content = '{}\n';
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValueOnce(remoteFiles);
+    mocks.prisma.gitConflict.findMany.mockResolvedValueOnce([
+      {
+        id: 'conflict-1',
+        path: THEME_REPOSITORY_SNAPSHOT_PATH,
+        status: 'OPEN',
+        baseContent: null,
+        oursContent: buildThemeRepository(currentSnapshot).find((file) => file.path === THEME_REPOSITORY_SNAPSHOT_PATH)?.content ?? null,
+        theirsContent: '{}\n',
+      },
+    ]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(mocks.prisma.gitConflict.createMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ path: THEME_REPOSITORY_SNAPSHOT_PATH })]) }),
+    );
+    expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'operation-1' }, data: expect.objectContaining({ status: 'CONFLICT' }) }),
+    );
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+  });
+
+  it('reconciles exported version and language paths back to the source page', async () => {
+    const page = {
+      id: 'page-1',
+      parentId: null,
+      versionId: 'branch-1',
+      languageCode: 'en',
+      kind: 'PAGE' as const,
+      title: 'Welcome',
+      slug: 'welcome',
+      path: '/welcome',
+      icon: null,
+      description: null,
+      content: 'Original',
+      config: null,
+      translationKey: null,
+      position: 0,
+      hidden: false,
+      updatedAt: '2026-08-23T00:00:00.000Z',
+    };
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [page] });
+    mocks.prisma.page.findMany.mockResolvedValue([
+      { id: page.id, title: page.title, path: page.path, content: page.content, description: page.description, icon: page.icon },
+    ]);
+    mocks.prisma.page.findFirst.mockResolvedValue({ id: page.id });
+    mocks.parseFrontmatter.mockReturnValue({ body: 'Updated from Git', meta: {} });
+    const baseContent = '---\ntitle: "Welcome"\n---\n\nOriginal';
+    const remoteContent = '---\ntitle: "Welcome"\n---\n\nUpdated from Git';
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([
+      { path: 'main/en/welcome.mdx', baseContent, baseExists: true, pageId: null, ownership: 'SHARED' },
+    ]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([{ path: 'main/en/welcome.mdx', sha: 'edited', content: remoteContent }]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(mocks.prisma.page.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: page.id }, data: expect.objectContaining({ content: 'Updated from Git' }) }),
+    );
+    expect(mocks.prisma.gitFileState.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: expect.objectContaining({ pageId: page.id }) }));
   });
 
   it('rejects a concurrent operation on the same connection without reconciling or marking it failed', async () => {

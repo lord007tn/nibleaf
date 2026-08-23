@@ -386,6 +386,9 @@ model GitFileState {
   connectionId  String
   connection    GitConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   path          String
+  /// PLATFORM is generated and protected, SHARED is three-way authored MDX,
+  /// CUSTOMER is repository-owned code preserved after the initial scaffold.
+  ownership     String        @default("SHARED")
   pageId        String?
   branchId      String?
   languageId    String?

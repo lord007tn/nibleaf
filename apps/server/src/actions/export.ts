@@ -1,6 +1,8 @@
 import { prisma } from '@nibleaf/database';
+import { buildThemeRepository, themeContentPath, themeRepositoryTemplateId } from '@nibleaf/shared/theme-repository';
 import { strToU8, zipSync } from 'fflate';
 import { notFound } from '@/errors';
+import { getCurrentSnapshot } from './deployments';
 
 /**
  * Markdown zip export. Page content is plain Markdown end-to-end, so the export
@@ -98,4 +100,23 @@ export const exportProjectMarkdown = async (projectId: string): Promise<ProjectE
   // zip (fflate) keeps this dependency-light and avoids temp files.
   const data = zipSync(files, { level: 6 });
   return { fileName: `${safeSegment(project.slug || 'project')}-docs-export.zip`, data };
+};
+
+/** Build the project's standalone theme repository: customer code is real
+ * source code, while generated snapshot data is isolated under `.nibleaf/`. */
+export const exportProjectThemeRepository = async (projectId: string): Promise<ProjectExportResult> => {
+  const snapshot = await getCurrentSnapshot(projectId);
+  const templateId = themeRepositoryTemplateId(snapshot);
+  const files: Record<string, Uint8Array> = {};
+  for (const file of buildThemeRepository(snapshot)) {
+    files[file.path] = strToU8(file.content);
+  }
+  for (const page of snapshot.pages) {
+    if (page.kind !== 'PAGE') continue;
+    files[themeContentPath(page, snapshot)] = strToU8(`${frontMatter(page)}\n${page.content}`);
+  }
+  return {
+    fileName: `${safeSegment(snapshot.project.slug || 'project')}-${templateId}-theme.zip`,
+    data: zipSync(files, { level: 6 }),
+  };
 };
