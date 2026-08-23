@@ -5,6 +5,8 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MARKETING_ANALYTICS_CONSENT_KEY, suspendMarketingAnalytics } from '@/lib/marketing-analytics';
 
+const GTM_TARGET = { id: 'GTM-ABC123', provider: 'gtm' } as const;
+
 vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) => select({ location: { pathname: '/ar' } }),
 }));
@@ -38,23 +40,25 @@ describe('MarketingAnalyticsConsent', () => {
       'fetch',
       vi.fn(
         async () =>
-          new Response(JSON.stringify({ data: { marketingAnalytics: { consentRequired: true, ga4MeasurementId: 'G-ABC123' } } }), {
-            headers: { 'content-type': 'application/json' },
-            status: 200,
-          }),
+          new Response(
+            JSON.stringify({ data: { marketingAnalytics: { consentRequired: true, ga4MeasurementId: null, gtmContainerId: 'GTM-ABC123' } } }),
+            {
+              headers: { 'content-type': 'application/json' },
+              status: 200,
+            },
+          ),
       ),
     );
   });
 
   afterEach(() => {
-    suspendMarketingAnalytics('G-ABC123');
+    suspendMarketingAnalytics(GTM_TARGET);
     act(() => root.unmount());
     container.remove();
-    document.head.querySelector('#nibleaf-marketing-ga4')?.remove();
+    document.head.querySelector('#nibleaf-marketing-gtm')?.remove();
     window.localStorage.clear();
     Reflect.deleteProperty(window, 'dataLayer');
     Reflect.deleteProperty(window, 'gtag');
-    Reflect.deleteProperty(window, 'ga-disable-G-ABC123');
     vi.unstubAllGlobals();
   });
 
@@ -62,12 +66,16 @@ describe('MarketingAnalyticsConsent', () => {
     await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
 
     expect(container.textContent).toContain('تحليلات اختيارية');
-    expect(document.querySelector('#nibleaf-marketing-ga4')).toBeNull();
+    expect(document.querySelector('#nibleaf-marketing-gtm')).toBeNull();
 
     const accept = [...container.querySelectorAll('button')].find((button) => button.textContent === 'قبول التحليلات');
     await act(async () => accept?.click());
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('accepted');
-    expect(document.querySelector('#nibleaf-marketing-ga4')).not.toBeNull();
+    expect(document.querySelector('#nibleaf-marketing-gtm')).not.toBeNull();
+
+    await act(async () => root.render(createElement(MarketingAnalyticsConsent, { enabled: true, language: 'ar' })));
+    const pageViews = window.dataLayer?.filter((entry) => Array.isArray(entry) && entry[0] === 'event' && entry[1] === 'page_view');
+    expect(pageViews).toHaveLength(1);
   });
 });

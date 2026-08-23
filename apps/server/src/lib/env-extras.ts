@@ -17,8 +17,16 @@ export const envExtras = createEnv({
       .string()
       .optional()
       .transform((value) => value === 'true' || value === '1'),
-    /** Optional GA4 measurement ID for the instance's public marketing pages.
-     *  It is deliberately public and is loaded only after explicit consent. */
+    /** Optional GTM container ID for the instance's public marketing pages.
+     *  It is deliberately public and takes precedence over MARKETING_GA4_ID. */
+    MARKETING_GTM_ID: z
+      .string()
+      .regex(/^GTM-[A-Z0-9]{6,}$/i)
+      .refine((value) => !/^GTM-X+$/i.test(value), 'Use the real GTM container ID, not the GTM-XXXXXXX placeholder.')
+      .optional()
+      .transform((value) => value?.toUpperCase()),
+    /** Legacy direct GA4 fallback for self-hosters. GTM is preferred when both
+     *  variables are configured. Both providers load only after consent. */
     MARKETING_GA4_ID: z
       .string()
       .regex(/^G-[A-Z0-9]{6,}$/i)
