@@ -166,8 +166,17 @@ export const sparseVectorForChunk = (chunk: SearchChunk): SparseVector => {
   return sparseFromTokens([...weighted, ...typoTerms(weighted)], true);
 };
 
-const HEADING = /^(#{1,6})\s+(.+)$/;
 const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
+
+const markdownHeading = (line: string): { level: number; text: string } | null => {
+  let level = 0;
+  while (level < 6 && line.charCodeAt(level) === 35) level += 1;
+  if (level === 0 || (line.charCodeAt(level) !== 32 && line.charCodeAt(level) !== 9)) return null;
+  let textStart = level;
+  while (textStart < line.length && (line.charCodeAt(textStart) === 32 || line.charCodeAt(textStart) === 9)) textStart += 1;
+  const text = line.slice(textStart);
+  return text ? { level, text } : null;
+};
 
 interface Section {
   heading: string;
@@ -188,14 +197,14 @@ const markdownSections = (content: string): Section[] => {
   };
   for (const line of content.split(/\r?\n/)) {
     if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const match = fenced ? null : line.match(HEADING);
+    const match = fenced ? null : markdownHeading(line);
     if (!match) {
       body.push(line);
       continue;
     }
     flush();
-    const level = match[1]?.length ?? 1;
-    heading = plainText(match[2] ?? '');
+    const level = match.level;
+    heading = plainText(match.text);
     headingPath.length = Math.max(0, level - 1);
     headingPath[level - 1] = heading;
   }

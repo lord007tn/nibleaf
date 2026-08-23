@@ -25,7 +25,19 @@ export interface OpenAICompatibleEmbeddingOptions {
   timeoutMs?: number;
 }
 
-const endpoint = (baseUrl: string, path: string): string => `${baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+const trimTrailingSlashes = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+};
+
+const trimLeadingSlashes = (value: string): string => {
+  let start = 0;
+  while (start < value.length && value.charCodeAt(start) === 47) start += 1;
+  return value.slice(start);
+};
+
+const endpoint = (baseUrl: string, path: string): string => `${trimTrailingSlashes(baseUrl)}/${trimLeadingSlashes(path)}`;
 
 export class OpenAICompatibleEmbeddingProvider implements EmbeddingProvider {
   readonly dimensions: number;

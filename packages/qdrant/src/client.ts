@@ -59,7 +59,11 @@ export interface QdrantClientOptions {
   vectorSize?: number;
 }
 
-const withoutTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
+const withoutTrailingSlash = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end -= 1;
+  return value.slice(0, end);
+};
 const encode = (value: string): string => encodeURIComponent(value);
 const requiredRetrievalFields = ['project_id', 'deployment_id', 'version_slug', 'language', 'visibility', 'visible'] as const;
 
