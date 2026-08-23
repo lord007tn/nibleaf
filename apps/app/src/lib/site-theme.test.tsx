@@ -24,10 +24,13 @@ describe('published theme projection', () => {
   });
 
   it('JSON-encodes the per-site before-paint appearance bootstrap', () => {
-    const projectId = 'project";alert(1)//';
+    const projectId = 'project";</script><script>alert(1)</script>\u2028';
     const script = siteThemeNoFlashScript(projectId, 'system');
     expect(script).toContain('localStorage.getItem(k)');
-    expect(script).toContain(JSON.stringify(projectId));
+    expect(script).toContain('\\u003c/script\\u003e\\u003cscript\\u003ealert(1)');
+    expect(script).not.toContain('</script>');
+    expect(script).not.toContain('\u2028');
+    expect(script).toContain('\\u2028');
     expect(script).not.toContain(`+"${projectId}"`);
   });
 

@@ -72,11 +72,19 @@ const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
 
 export const resolveProjectTheme = (config?: ProjectConfig | null): ResolvedTheme => resolveTheme(config as ThemeOwnedProjectConfig | null);
 
+const inlineScriptJson = (value: string): string =>
+  JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')
+    .replaceAll('&', '\\u0026')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+
 /** Run after the dashboard bootstrap in `<head>` so a published site's stored
  * appearance wins before CSS paints. Inputs are JSON-encoded and the default is
  * already constrained by ProjectConfig's appearance enum. */
 export const siteThemeNoFlashScript = (projectId: string, configured: 'light' | 'dark' | 'system' = 'light'): string =>
-  `(function(){try{var k='nibleaf.site.theme.'+${JSON.stringify(projectId)};var s=localStorage.getItem(k);var c=${JSON.stringify(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';}catch(_){}})();`;
+  `(function(){try{var k='nibleaf.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';}catch(_){}})();`;
 
 export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const theme = resolveProjectTheme(config);
