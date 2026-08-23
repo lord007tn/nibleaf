@@ -4,7 +4,6 @@ import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
-import { assertProjectInOrg } from './projects';
 
 /** Flat list of a project's pages on one branch (the default branch when none is
  *  given), ordered for tree assembly on the client. Scoped to a single language
@@ -279,5 +278,3 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
   const firstMoved = body.items[0] ? byPage.get(body.items[0].id) : undefined;
   return listPages(projectId, undefined, firstMoved?.branchId ?? undefined);
 };
-
-export { assertProjectInOrg };

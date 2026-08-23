@@ -3,26 +3,16 @@ import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type {
-  ApiKey,
-  Asset,
   Branch,
-  ChangelogEntry,
   Comment,
   Deployment,
-  DeploymentDiff,
   Domain,
-  Invitation,
   Language,
-  Member,
   NotificationList,
   OpenApiConfiguration,
   Page,
   PageNode,
-  PendingChanges,
   Project,
-  ProjectUsage,
-  SitePage,
-  SiteShell,
   WorkspaceSettings,
 } from './types';
 
@@ -113,18 +103,6 @@ export const useDeployments = (projectId: string | undefined, options?: { enable
     refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
   });
 
-export const useLatestDeployment = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.deployments.latest(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Deployment | null>(
-        await api.app.projects[':projectId'].deployments.latest.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'deployment',
-      ),
-    refetchInterval: (query) => (isInFlight(query.state.data?.status) ? 2500 : false),
-  });
-
 // What the next publish will change vs. the last deploy (Mintlify-style "show
 // changes"). Cheap to recompute, and the editor autosaves constantly, so keep it
 // fresh: refetch on mount/focus rather than trusting the default staleTime.
@@ -134,22 +112,9 @@ export const usePendingChanges = (projectId: string | undefined, options?: { ena
     enabled: Boolean(projectId) && (options?.enabled ?? true),
     staleTime: 0,
     queryFn: async () =>
-      getData<PendingChanges>(
+      getData(
         await api.app.projects[':projectId'].deployments.changes.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
         'changes',
-      ),
-  });
-
-export const useDeploymentDiff = (projectId: string | undefined, deploymentId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.deployments.diff(projectId ?? '', deploymentId ?? ''),
-    enabled: Boolean(projectId && deploymentId),
-    queryFn: async () =>
-      getData<DeploymentDiff>(
-        await api.app.projects[':projectId'].deployments[':id'].diff.$get({
-          param: { projectId: requireQueryValue(projectId, 'Project ID'), id: requireQueryValue(deploymentId, 'Deployment ID') },
-        }),
-        'deployment diff',
       ),
   });
 
@@ -161,28 +126,6 @@ export const useDomains = (projectId: string | undefined) =>
       getData<Domain[]>(
         await api.app.projects[':projectId'].domains.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
         'domains',
-      ),
-  });
-
-export const useApiKeys = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.apiKeys.all(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<ApiKey[]>(
-        await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'API keys',
-      ),
-  });
-
-export const useAssets = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.assets.all(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Asset[]>(
-        await api.app.projects[':projectId'].assets.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'assets',
       ),
   });
 
@@ -204,7 +147,7 @@ export const useProjectUsage = (projectId: string | undefined) =>
     queryKey: queryKeys.usage.forProject(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
-      getData<ProjectUsage>(
+      getData(
         await api.app.projects[':projectId'].settings.usage.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
         'usage',
       ),
@@ -238,7 +181,7 @@ export const useWorkspaceSettings = (projectId?: string) =>
 export const useMembers = () =>
   useQuery({
     queryKey: queryKeys.members.all(),
-    queryFn: async () => getData<{ members: Member[]; invitations: Invitation[] }>(await api.app.members.$get(), 'members'),
+    queryFn: async () => getData(await api.app.members.$get(), 'members'),
   });
 
 /** Members + pending invitations for a single site (its own organization). */
@@ -247,49 +190,7 @@ export const useProjectMembers = (projectId: string | undefined) =>
     queryKey: queryKeys.members.forProject(projectId ?? ''),
     enabled: Boolean(projectId),
     queryFn: async () =>
-      getData<{ members: Member[]; invitations: Invitation[] }>(
-        await api.app.projects[':projectId'].members.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'members',
-      ),
-  });
-
-// ─── Public site (live preview) ─────────────────────────────────────────────
-
-const siteQuery = (lang?: string, version?: string) => ({ ...(lang ? { lang } : {}), ...(version ? { version } : {}) });
-
-export const useSite = (id: string | undefined, lang?: string, initialData?: SiteShell, version?: string) =>
-  useQuery({
-    queryKey: queryKeys.site.shell(id ?? '', lang, version),
-    enabled: Boolean(id),
-    retry: false,
-    initialData,
-    queryFn: async () =>
-      getData<SiteShell>(
-        await api.public.sites[':id'].$get({ param: { id: requireQueryValue(id, 'Site ID') }, query: siteQuery(lang, version) }),
-        'site',
-      ),
-  });
-
-export const useSitePage = (id: string | undefined, path: string, lang?: string, initialData?: SitePage, version?: string) =>
-  useQuery({
-    queryKey: queryKeys.site.page(id ?? '', path, lang, version),
-    enabled: Boolean(id),
-    retry: false,
-    initialData,
-    queryFn: async () =>
-      getData<SitePage>(
-        await api.public.sites[':id'].page.$get({ param: { id: requireQueryValue(id, 'Site ID') }, query: { path, ...siteQuery(lang, version) } }),
-        'page',
-      ),
-  });
-
-export const useSiteChangelog = (id: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.site.changelog(id ?? ''),
-    enabled: Boolean(id),
-    retry: false,
-    queryFn: async () =>
-      getData<ChangelogEntry[]>(await api.public.sites[':id'].changelog.$get({ param: { id: requireQueryValue(id, 'Site ID') } }), 'changelog'),
+      getData(await api.app.projects[':projectId'].members.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }), 'members'),
   });
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
@@ -307,5 +208,5 @@ export const useUnreadNotificationCount = () =>
   useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
     refetchInterval: 60_000,
-    queryFn: async () => getData<{ count: number }>(await api.app.notifications['unread-count'].$get(), 'notifications'),
+    queryFn: async () => getData(await api.app.notifications['unread-count'].$get(), 'notifications'),
   });

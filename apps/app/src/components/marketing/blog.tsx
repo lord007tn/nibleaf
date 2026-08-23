@@ -68,7 +68,7 @@ function TagChips({ entry }: { entry: BlogEntry }) {
 }
 
 /** The one editorial card shared by the index and the "read next" rail. */
-export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; featured?: boolean }) {
+function ArticleCard({ entry, featured = false }: { entry: BlogEntry; featured?: boolean }) {
   const language = blogLanguage(entry);
   const direction = language === 'ar' ? 'rtl' : 'ltr';
   if (featured) {
@@ -185,7 +185,7 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
 }
 
 /** Callout box for a caveat or an aside that should not read as body copy. */
-export function Callout({ children, title }: { children: ReactNode; title?: string }) {
+function Callout({ children, title }: { children: ReactNode; title?: string }) {
   return (
     <aside className="my-6 rounded-xl border border-border border-s-2 border-s-primary bg-card px-5 py-4">
       {title ? <p className="mb-1 font-semibold text-foreground text-sm">{title}</p> : null}
@@ -195,7 +195,7 @@ export function Callout({ children, title }: { children: ReactNode; title?: stri
 }
 
 /** A muted source/estimate note under a table or figure. */
-export function Note({ children }: { children: ReactNode }) {
+function Note({ children }: { children: ReactNode }) {
   return <p className="my-4 text-muted-foreground text-[13px]">{children}</p>;
 }
 

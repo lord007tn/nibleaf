@@ -9,4 +9,6 @@ export interface PublishDeploymentJobData {
   /** True for system-triggered publishes (e.g. the starter site published at
    *  sign-up) so activation metrics can exclude them. */
   auto?: boolean;
+  /** Paraglide interface locale resolved when the publish was requested. */
+  locale?: string;
 }

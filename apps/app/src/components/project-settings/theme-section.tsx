@@ -17,7 +17,7 @@ import {
   themeContrastIssues,
 } from '@nibleaf/shared/themes';
 import type { ProjectConfig } from '@nibleaf/validators';
-import { Download, FileJson, RotateCcw, Undo2, Upload } from 'lucide-react';
+import { Download, FileJson, LayoutTemplate, RotateCcw, Undo2, Upload } from 'lucide-react';
 import { type ChangeEvent, type CSSProperties, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
@@ -402,7 +402,7 @@ export function ThemeSection({ project }: { project: Project }) {
 
   return (
     <form onSubmit={save}>
-      <SectionHeader icon="◈" title={t('settings.theme.title')} />
+      <SectionHeader icon={<LayoutTemplate className="size-4" />} title={t('settings.theme.title')} />
       <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
         <strong>{t('settings.theme.draftTitle')}</strong>
         <p className="mt-1 text-muted-foreground">{t('settings.theme.draftHint')}</p>

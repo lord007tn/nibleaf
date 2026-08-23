@@ -1,5 +1,5 @@
 import { Button, Heading, Link, Section, Text } from 'react-email';
-import { createEmailTranslator, type EmailLanguage } from '../translate';
+import { createEmailTranslator, type EmailLanguage, emailDirection } from '../translate';
 import { BaseEmail } from './base';
 
 export function TransactionalEmail({
@@ -20,10 +20,11 @@ export function TransactionalEmail({
   title: string;
 }) {
   const t = createEmailTranslator(language);
+  const direction = emailDirection(language);
 
   return (
     <BaseEmail language={language} preview={preview}>
-      <Section style={{ padding: '32px 28px', textAlign: language === 'ar' ? 'right' : 'left' }}>
+      <Section style={{ padding: '32px 28px', textAlign: direction === 'rtl' ? 'right' : 'left' }}>
         <Heading style={{ fontSize: '24px', letterSpacing: '-0.025em', lineHeight: 1.25, margin: '0 0 14px' }}>{title}</Heading>
         <Text style={{ color: '#475569', fontSize: '15px', lineHeight: 1.65, margin: 0 }}>{message}</Text>
         {code ? (

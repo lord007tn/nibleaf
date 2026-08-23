@@ -5,7 +5,7 @@ import { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE, type EmailLanguage } fro
 
 export { TransactionalEmail } from './templates/transactional';
 export type { EmailLanguage } from './translate';
-export { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE } from './translate';
+export { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE, resolveEmailLanguage } from './translate';
 
 export interface RenderedEmail {
   html: string;

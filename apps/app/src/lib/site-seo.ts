@@ -5,7 +5,7 @@ import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
  * during SSR we fall back to the configured app URL. (Per-site custom domains
  * are handled separately — for now every site is served from the app origin.)
  */
-export function publicOrigin(): string {
+function publicOrigin(): string {
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
@@ -17,7 +17,7 @@ export function publicOrigin(): string {
  *  cleaned of a wildcard prefix / trailing dot. Prefers the runtime process env
  *  (SSR container, tests via vi.stubEnv) and falls back to the value Vite baked
  *  into the bundle at build time (browser). */
-export function siteBaseDomain(): string | undefined {
+function siteBaseDomain(): string | undefined {
   const nodeEnv = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
   const metaEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
   const raw = nodeEnv?.VITE_SITE_BASE_DOMAIN ?? metaEnv?.VITE_SITE_BASE_DOMAIN;

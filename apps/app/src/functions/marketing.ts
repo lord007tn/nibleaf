@@ -1,11 +1,11 @@
 import { createServerFn } from '@tanstack/react-start';
-import got from 'got';
-import { z } from 'zod';
+import { Octokit } from 'octokit';
 
 const STARS_TTL_MS = 60 * 60 * 1000;
 const STARS_ERROR_TTL_MS = 60 * 1000;
 let starsCache: { fetchedAt: number; value: number } | null = null;
 let inFlight: Promise<number> | null = null;
+const github = new Octokit({ request: { timeout: 2000 }, userAgent: 'nibleaf-marketing' });
 
 export const getGithubStars = async () => {
   const now = Date.now();
@@ -14,16 +14,10 @@ export const getGithubStars = async () => {
     if (now - starsCache.fetchedAt < ttl) return starsCache.value;
   }
   if (!inFlight) {
-    inFlight = got('https://api.github.com/repos/Nibleaf/open-mintlify', {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'nibleaf' },
-      responseType: 'json',
-      retry: { limit: 1 },
-      throwHttpErrors: false,
-      timeout: { request: 2000 },
-    })
+    inFlight = github.rest.repos
+      .get({ owner: 'Nibleaf', repo: 'open-mintlify' })
       .then((response) => {
-        const parsed = z.object({ stargazers_count: z.number().int().nonnegative() }).safeParse(response.body);
-        const value = response.ok && parsed.success ? parsed.data.stargazers_count : (starsCache?.value ?? 0);
+        const value = response.data.stargazers_count;
         starsCache = { value, fetchedAt: Date.now() };
         return value;
       })

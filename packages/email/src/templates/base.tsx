@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Body, Container, Head, Hr, Html, Preview, Section, Text } from 'react-email';
-import { createEmailTranslator, type EmailLanguage } from '../translate';
+import { createEmailTranslator, type EmailLanguage, emailDirection } from '../translate';
 
 const colors = {
   background: '#f1f5f9',
@@ -21,9 +21,10 @@ const bodyStyle: CSSProperties = {
 
 export function BaseEmail({ children, language, preview }: { children: ReactNode; language: EmailLanguage; preview: string }) {
   const t = createEmailTranslator(language);
+  const direction = emailDirection(language);
 
   return (
-    <Html dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language}>
+    <Html dir={direction} lang={language}>
       <Head />
       <Preview>{preview}</Preview>
       <Body style={bodyStyle}>
@@ -37,7 +38,7 @@ export function BaseEmail({ children, language, preview }: { children: ReactNode
             overflow: 'hidden',
           }}
         >
-          <Section style={{ padding: '24px 28px', textAlign: language === 'ar' ? 'right' : 'left' }}>
+          <Section style={{ padding: '24px 28px', textAlign: direction === 'rtl' ? 'right' : 'left' }}>
             <Text style={{ fontSize: '18px', fontWeight: 750, letterSpacing: '-0.02em', margin: 0 }}>{t('email.brand.name')}</Text>
           </Section>
           <Hr style={{ borderColor: colors.border, margin: 0 }} />

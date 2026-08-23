@@ -1,24 +1,18 @@
+import type { LookupFunction } from 'node:net';
+import { PassThrough } from 'node:stream';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const network = vi.hoisted(() => ({
   lookup: vi.fn(),
   fetch: vi.fn(),
-  close: vi.fn(async () => undefined),
-  agentOptions: [] as Array<{ connect?: { lookup?: (...args: unknown[]) => void } }>,
+  stream: vi.fn(),
+  gotOptions: [] as Array<{ dnsLookup?: LookupFunction; followRedirect?: boolean; retry?: { limit?: number }; timeout?: { request?: number } }>,
 }));
 
 vi.mock('@nibleaf/database', () => ({ prisma: {} }));
 vi.mock('node:dns/promises', () => ({ lookup: network.lookup }));
-vi.mock('undici', () => ({
-  Agent: class MockAgent {
-    constructor(options: { connect?: { lookup?: (...args: unknown[]) => void } }) {
-      network.agentOptions.push(options);
-    }
-
-    close = network.close;
-  },
-  fetch: network.fetch,
-}));
+vi.mock('got', () => ({ default: { stream: network.stream } }));
+vi.mock('./projects', () => ({ assertProjectInOrg: vi.fn() }));
 
 import { AppError } from '@/errors';
 import { fetchPublicOpenApi, MAX_OPENAPI_BYTES, parseAndValidateOpenApi, publicOpenApiMetadata, readBoundedOpenApiResponse } from './openapi';
@@ -45,9 +39,26 @@ components:
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-  network.agentOptions.length = 0;
+  network.gotOptions.length = 0;
   network.lookup.mockImplementation(async (hostname: string) => [{ address: hostname === '127.0.0.1' ? '127.0.0.1' : '203.0.113.10', family: 4 }]);
   network.fetch.mockResolvedValue(new Response(valid));
+  network.stream.mockImplementation((input: URL, options: (typeof network.gotOptions)[number]) => {
+    network.gotOptions.push(options);
+    const request = new PassThrough();
+    queueMicrotask(async () => {
+      try {
+        const response = (await network.fetch(input, options)) as Response;
+        request.emit('response', {
+          statusCode: response.status,
+          headers: Object.fromEntries(response.headers.entries()),
+        });
+        request.end(response.body ? Buffer.from(await response.arrayBuffer()) : undefined);
+      } catch (error) {
+        request.destroy(error as Error);
+      }
+    });
+    return request;
+  });
 });
 
 afterEach(() => {
@@ -210,7 +221,6 @@ paths:
   });
 
   it('pins each redirect connection to the address validated for that hostname', async () => {
-    const timeout = vi.spyOn(AbortSignal, 'timeout');
     network.lookup.mockImplementation(async (hostname: string) => [
       { address: hostname === 'first.example' ? '203.0.113.11' : '198.51.100.22', family: 4 },
     ]);
@@ -222,18 +232,18 @@ paths:
     expect(network.fetch).toHaveBeenCalledTimes(2);
     expect((network.fetch.mock.calls[0]?.[0] as URL | undefined)?.hostname).toBe('first.example');
     expect((network.fetch.mock.calls[1]?.[0] as URL | undefined)?.hostname).toBe('second.example');
-    expect(network.fetch.mock.calls[0]?.[1]).toMatchObject({ redirect: 'manual', dispatcher: expect.anything(), signal: expect.any(AbortSignal) });
-    expect(timeout).toHaveBeenNthCalledWith(1, 10_000);
-    expect(timeout).toHaveBeenNthCalledWith(2, 10_000);
-    expect(network.fetch.mock.calls[0]?.[1]?.headers).not.toHaveProperty('Host');
+    expect(network.gotOptions).toHaveLength(2);
+    expect(network.gotOptions[0]).toMatchObject({ followRedirect: false, retry: { limit: 0 }, timeout: { request: 10_000 } });
+    expect(network.gotOptions[1]).toMatchObject({ followRedirect: false, retry: { limit: 0 }, timeout: { request: 10_000 } });
 
     const pinned = await Promise.all(
-      network.agentOptions.map(
+      network.gotOptions.map(
         (options) =>
           new Promise<{ address: string; family: number }>((resolve, reject) => {
-            options.connect?.lookup?.('rebinding.example', {}, (error: Error | null, address: string, family: number) => {
+            options.dnsLookup?.('rebinding.example', {}, (error, address, family) => {
               if (error) reject(error);
-              else resolve({ address, family });
+              else if (Array.isArray(address)) reject(new Error('Expected one pinned address.'));
+              else resolve({ address, family: family ?? 0 });
             });
           }),
       ),
@@ -244,35 +254,42 @@ paths:
     ]);
 
     const pinnedLists = await Promise.all(
-      network.agentOptions.map(
+      network.gotOptions.map(
         (options) =>
           new Promise<Array<{ address: string; family: number }>>((resolve, reject) => {
-            options.connect?.lookup?.(
-              'rebinding.example',
-              { all: true },
-              (error: Error | null, addresses: Array<{ address: string; family: number }>) => {
-                if (error) reject(error);
-                else resolve(addresses);
-              },
-            );
+            options.dnsLookup?.('rebinding.example', { all: true }, (error, addresses) => {
+              if (error) reject(error);
+              else if (Array.isArray(addresses)) resolve(addresses);
+              else reject(new Error('Expected a pinned address list.'));
+            });
           }),
       ),
     );
     expect(pinnedLists).toEqual([[{ address: '203.0.113.11', family: 4 }], [{ address: '198.51.100.22', family: 4 }]]);
-    expect(network.close).toHaveBeenCalledTimes(2);
   });
 
-  it('retains redirect and declared-size bounds while closing pinned dispatchers', async () => {
+  it('retains redirect and declared-size bounds with Got redirects disabled', async () => {
     network.fetch.mockResolvedValue(new Response(null, { status: 302, headers: { location: '/next' } }));
     await expect(fetchPublicOpenApi('https://public.example/openapi.json')).rejects.toThrow('redirected too many times');
     expect(network.fetch).toHaveBeenCalledTimes(4);
-    expect(network.close).toHaveBeenCalledTimes(4);
+    expect(network.gotOptions).toHaveLength(4);
+    expect(network.gotOptions.every((options) => options.followRedirect === false && options.retry?.limit === 0)).toBe(true);
 
     vi.clearAllMocks();
-    network.agentOptions.length = 0;
+    network.gotOptions.length = 0;
     network.lookup.mockResolvedValue([{ address: '203.0.113.10', family: 4 }]);
+    network.stream.mockImplementation((input: URL, options: (typeof network.gotOptions)[number]) => {
+      network.gotOptions.push(options);
+      const request = new PassThrough();
+      queueMicrotask(async () => {
+        const response = (await network.fetch(input, options)) as Response;
+        request.emit('response', { statusCode: response.status, headers: Object.fromEntries(response.headers.entries()) });
+        request.end();
+      });
+      return request;
+    });
     network.fetch.mockResolvedValue(new Response(null, { headers: { 'content-length': String(MAX_OPENAPI_BYTES + 1) } }));
     await expect(fetchPublicOpenApi('https://public.example/openapi.json')).rejects.toThrow('larger than 5 MB');
-    expect(network.close).toHaveBeenCalledOnce();
+    expect(network.gotOptions).toHaveLength(1);
   });
 });

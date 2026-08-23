@@ -7,6 +7,7 @@ import {
   type NavNode,
   parseMintlifyLanguages,
   parseMintlifyNavigation,
+  partitionMintlifyVersions,
 } from './mintlify-mapping';
 
 /** docs.json (2024+ schema) fixture: tabs → groups → pages with nesting + global anchors. */
@@ -150,6 +151,25 @@ describe('parseMintlifyNavigation', () => {
     expect(group(nodes[1] as NavNode).children.map((child) => group(child).title)).toEqual(['B']);
   });
 
+  it('partitions Mintlify versions into documentation versions instead of page groups', () => {
+    const { nodes } = parseMintlifyNavigation({
+      navigation: {
+        versions: [
+          { version: 'v1', groups: [{ group: 'Start', pages: ['v1/intro'] }] },
+          { version: 'v2', default: true, groups: [{ group: 'Start', pages: ['v2/intro'] }] },
+        ],
+        groups: [{ group: 'Shared', pages: ['shared'] }],
+      },
+    });
+    const result = partitionMintlifyVersions(nodes);
+    expect(result.unversioned.map((node) => group(node).title)).toEqual(['Shared']);
+    expect(result.versions.map(({ name, isDefault }) => ({ name, isDefault }))).toEqual([
+      { name: 'v1', isDefault: false },
+      { name: 'v2', isDefault: true },
+    ]);
+    expect(group(result.versions[1]?.nodes[0] as NavNode).children).toEqual([{ kind: 'page', path: 'v2/intro' }]);
+  });
+
   it('strips extensions and leading slashes from page paths', () => {
     const { nodes } = parseMintlifyNavigation({ navigation: [{ group: 'G', pages: ['/intro.mdx', './setup/install.md'] }] });
     expect(group(nodes[0] as NavNode).children).toEqual([
@@ -164,6 +184,40 @@ describe('parseMintlifyNavigation', () => {
     });
     expect(warnings).toEqual([]);
     expect(group(nodes[0] as NavNode).children).toEqual([{ kind: 'page', path: 'intro', title: 'Start here', icon: 'rocket', tag: 'New' }]);
+  });
+
+  it('preserves products, tab menus, and group root pages from the current docs.json schema', () => {
+    const { nodes, warnings } = parseMintlifyNavigation({
+      navigation: {
+        products: [
+          {
+            product: 'Platform',
+            tabs: [
+              {
+                tab: 'Guides',
+                menu: [
+                  {
+                    item: 'Developers',
+                    groups: [{ group: 'Start', root: 'overview', pages: ['quickstart'] }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(warnings).toEqual([]);
+    const product = group(nodes[0] as NavNode);
+    expect(product).toMatchObject({ title: 'Platform', origin: 'product' });
+    const tab = group(product.children[0] as NavNode);
+    const menu = group(tab.children[0] as NavNode);
+    expect(menu).toMatchObject({ title: 'Developers', origin: 'menu' });
+    expect(group(menu.children[0] as NavNode).children).toEqual([
+      { kind: 'page', path: 'overview' },
+      { kind: 'page', path: 'quickstart' },
+    ]);
   });
 });
 

@@ -2,6 +2,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import { Paintbrush } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -119,7 +120,7 @@ export function StylingSection({ project }: { project: Project }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <SectionHeader icon="◐" title={t('settings.styling.title')} />
+      <SectionHeader icon={<Paintbrush className="size-4" />} title={t('settings.styling.title')} />
 
       <GroupLabel>{t('settings.styling.primaryColor.label')}</GroupLabel>
       <p className="mt-1 mb-3 text-[12.5px] text-muted-foreground leading-snug">{t('settings.styling.primaryColor.hint')}</p>

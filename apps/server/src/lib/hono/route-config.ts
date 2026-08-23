@@ -3,8 +3,8 @@ import { type DescribeRouteOptions, describeRoute } from 'hono-openapi';
 import type { HonoEnv } from './context';
 
 export type RouteMiddleware<E extends Env = HonoEnv> = MiddlewareHandler<E>;
-export type RouteMiddlewareArray<E extends Env = HonoEnv> = readonly RouteMiddleware<E>[];
-export type MiddlewareInput<E extends Env = HonoEnv> = RouteMiddleware<E> | RouteMiddlewareArray<E>;
+type RouteMiddlewareArray<E extends Env = HonoEnv> = readonly RouteMiddleware<E>[];
+type MiddlewareInput<E extends Env = HonoEnv> = RouteMiddleware<E> | RouteMiddlewareArray<E>;
 
 export interface RouteConfigOptions<E extends Env = HonoEnv> extends DescribeRouteOptions {
   /** Guard middleware executed first (single, array, or combined). */

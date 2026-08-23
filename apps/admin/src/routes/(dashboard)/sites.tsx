@@ -16,6 +16,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { ChevronRight, Copy, ExternalLink, Mail, Plus, Search } from 'lucide-react';
@@ -25,7 +26,7 @@ import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
 import { useInviteOrganization, useTakedownSite } from '@/hooks/api/mutations';
 import { type AdminSite, useAdminSites } from '@/hooks/api/queries';
-import { fmtRelative } from '@/lib/format';
+import { useFormatters } from '@/lib/format';
 import { APP_URL } from '@/lib/links';
 
 export const Route = createFileRoute('/(dashboard)/sites')({
@@ -41,6 +42,7 @@ function SitesRoute() {
 }
 
 function InviteOrganizationDialog() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const deliveryRef = useRef<'email' | 'link'>('email');
@@ -60,9 +62,9 @@ function InviteOrganizationDialog() {
         setGeneratedLink(result.invitationUrl);
         try {
           await navigator.clipboard.writeText(result.invitationUrl);
-          toast.success('Invitation link copied');
+          toast.success(t('admin.sites.invitationCopied'));
         } catch {
-          toast.info('Invitation created — use Copy link below');
+          toast.info(t('admin.sites.invitationCreated'));
         }
       } else {
         setOpen(false);
@@ -83,9 +85,9 @@ function InviteOrganizationDialog() {
     }
     try {
       await navigator.clipboard.writeText(generatedLink);
-      toast.success('Invitation link copied');
+      toast.success(t('admin.sites.invitationCopied'));
     } catch {
-      toast.error('Could not access the clipboard. Select and copy the link manually.');
+      toast.error(t('admin.sites.clipboardError'));
     }
   };
 
@@ -101,29 +103,25 @@ function InviteOrganizationDialog() {
       open={open}
     >
       <DialogTrigger render={<Button size="sm" />}>
-        <Plus className="size-4" /> Invite organization
+        <Plus className="size-4" /> {t('admin.sites.inviteOrganization')}
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Invite a new organization</DialogTitle>
-          <DialogDescription>
-            {generatedLink
-              ? 'The organization is ready. Copy its seven-day owner invitation link.'
-              : 'Create its first documentation site, then send the owner an email or copy their seven-day invitation link.'}
-          </DialogDescription>
+          <DialogTitle>{t('admin.sites.inviteTitle')}</DialogTitle>
+          <DialogDescription>{generatedLink ? t('admin.sites.inviteReady') : t('admin.sites.inviteBody')}</DialogDescription>
         </DialogHeader>
         {generatedLink ? (
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label htmlFor="generated-invitation-link">Owner invitation link</Label>
+              <Label htmlFor="generated-invitation-link">{t('admin.sites.ownerInvitation')}</Label>
               <Input id="generated-invitation-link" onFocus={(event) => event.currentTarget.select()} readOnly value={generatedLink} />
             </div>
             <DialogFooter>
               <Button onClick={closeDialog} type="button" variant="outline">
-                Done
+                {t('admin.common.done')}
               </Button>
               <Button onClick={copyGeneratedLink} type="button">
-                <Copy className="size-4" /> Copy link
+                <Copy className="size-4" /> {t('admin.sites.copyLink')}
               </Button>
             </DialogFooter>
           </div>
@@ -139,12 +137,12 @@ function InviteOrganizationDialog() {
               <form.Field name="organizationName">
                 {(field) => (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="organization-name">Organization name</Label>
+                    <Label htmlFor="organization-name">{t('admin.sites.organizationName')}</Label>
                     <Input
                       id="organization-name"
                       maxLength={100}
                       onChange={(event) => field.handleChange(event.target.value)}
-                      placeholder="Acme"
+                      placeholder={t('admin.sites.organizationPlaceholder')}
                       required
                       value={field.state.value}
                     />
@@ -154,11 +152,11 @@ function InviteOrganizationDialog() {
               <form.Field name="ownerEmail">
                 {(field) => (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="owner-email">Owner email</Label>
+                    <Label htmlFor="owner-email">{t('admin.sites.ownerEmail')}</Label>
                     <Input
                       id="owner-email"
                       onChange={(event) => field.handleChange(event.target.value)}
-                      placeholder="owner@acme.com"
+                      placeholder={t('admin.sites.ownerEmailPlaceholder')}
                       required
                       type="email"
                       value={field.state.value}
@@ -171,12 +169,12 @@ function InviteOrganizationDialog() {
               <form.Field name="siteName">
                 {(field) => (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="site-name">Site name</Label>
+                    <Label htmlFor="site-name">{t('admin.sites.siteName')}</Label>
                     <Input
                       id="site-name"
                       maxLength={100}
                       onChange={(event) => field.handleChange(event.target.value)}
-                      placeholder="Acme Documentation"
+                      placeholder={t('admin.sites.siteNamePlaceholder')}
                       required
                       value={field.state.value}
                     />
@@ -186,12 +184,12 @@ function InviteOrganizationDialog() {
               <form.Field name="siteSlug">
                 {(field) => (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="site-slug">Deployment slug</Label>
+                    <Label htmlFor="site-slug">{t('admin.sites.deploymentSlug')}</Label>
                     <Input
                       id="site-slug"
                       maxLength={63}
                       onChange={(event) => field.handleChange(event.target.value.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase())}
-                      placeholder="acme-docs"
+                      placeholder={t('admin.sites.slugPlaceholder')}
                       value={field.state.value}
                     />
                   </div>
@@ -202,13 +200,13 @@ function InviteOrganizationDialog() {
               {(field) => (
                 <div className="grid gap-1.5">
                   <Label htmlFor="site-description">
-                    Description <span className="font-normal text-muted-foreground">(optional)</span>
+                    {t('admin.sites.description')} <span className="font-normal text-muted-foreground">{t('admin.common.optional')}</span>
                   </Label>
                   <Textarea
                     id="site-description"
                     maxLength={500}
                     onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="What this documentation site is for"
+                    placeholder={t('admin.sites.descriptionPlaceholder')}
                     rows={3}
                     value={field.state.value}
                   />
@@ -216,7 +214,7 @@ function InviteOrganizationDialog() {
               )}
             </form.Field>
             <DialogFooter className="sm:justify-between">
-              <DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose>
+              <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 <Button
                   disabled={invite.isPending}
@@ -226,7 +224,7 @@ function InviteOrganizationDialog() {
                   type="submit"
                   variant="secondary"
                 >
-                  <Copy className="size-4" /> {invite.isPending ? 'Creating…' : 'Create & copy link'}
+                  <Copy className="size-4" /> {invite.isPending ? t('admin.sites.creating') : t('admin.sites.createCopy')}
                 </Button>
                 <Button
                   disabled={invite.isPending}
@@ -235,7 +233,7 @@ function InviteOrganizationDialog() {
                   }}
                   type="submit"
                 >
-                  <Mail className="size-4" /> {invite.isPending ? 'Creating…' : 'Create & send email'}
+                  <Mail className="size-4" /> {invite.isPending ? t('admin.sites.creating') : t('admin.sites.createEmail')}
                 </Button>
               </div>
             </DialogFooter>
@@ -247,6 +245,8 @@ function InviteOrganizationDialog() {
 }
 
 function SitesPage() {
+  const t = useT();
+  const format = useFormatters();
   const query = useAdminSites();
   const takedown = useTakedownSite();
   const confirm = useConfirm();
@@ -279,9 +279,9 @@ function SitesPage() {
     }
     try {
       await navigator.clipboard.writeText(`${APP_URL}/accept-invite/${site.ownerInvitationId}`);
-      toast.success('Invitation link copied');
+      toast.success(t('admin.sites.invitationCopied'));
     } catch {
-      toast.error('Could not copy the invitation link');
+      toast.error(t('admin.sites.copyError'));
     }
   };
 
@@ -293,19 +293,18 @@ function SitesPage() {
     let done = false;
     while (!done) {
       const reason = await prompt({
-        title: `Take down "${site.name}"?`,
-        description:
-          'The published site stops being served and the owner cannot publish until it is restored. The reason is stored for the audit trail.',
-        label: 'Reason',
-        placeholder: 'e.g. DMCA notice, spam, phishing content',
-        confirmLabel: 'Take down',
+        title: t('admin.sites.takedownTitle', { site: site.name }),
+        description: t('admin.sites.takedownBody'),
+        label: t('admin.sites.reason'),
+        placeholder: t('admin.sites.reasonPlaceholder'),
+        confirmLabel: t('admin.sites.takedown'),
         initialValue,
       });
       if (!reason) {
         return;
       }
       if (reason.length > TAKEDOWN_REASON_MAX) {
-        toast.error(`Reason must be ${TAKEDOWN_REASON_MAX} characters or fewer (currently ${reason.length}).`);
+        toast.error(t('admin.sites.reasonLength', { max: format.number(TAKEDOWN_REASON_MAX), current: format.number(reason.length) }));
         initialValue = reason;
         continue;
       }
@@ -316,9 +315,9 @@ function SitesPage() {
 
   const onRestore = async (site: AdminSite) => {
     const ok = await confirm({
-      title: `Restore "${site.name}"?`,
-      description: 'The site is served and publishable again.',
-      confirmLabel: 'Restore site',
+      title: t('admin.sites.restoreTitle', { site: site.name }),
+      description: t('admin.sites.restoreBody'),
+      confirmLabel: t('admin.sites.restoreSite'),
     });
     if (ok) {
       takedown.mutate({ id: site.id, takedown: false });
@@ -331,48 +330,48 @@ function SitesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-2xl tracking-tight">Sites & workspaces</h1>
-          <p className="mt-1 text-muted-foreground text-sm">Publishing, domains, access, ownership, plan metadata, and usage across the instance.</p>
+          <h1 className="font-semibold text-2xl tracking-tight">{t('admin.sites.title')}</h1>
+          <p className="mt-1 text-muted-foreground text-sm">{t('admin.sites.subtitle')}</p>
         </div>
         <InviteOrganizationDialog />
       </div>
 
       <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
         <label className="relative" htmlFor="site-search">
-          <span className="sr-only">Search sites</span>
+          <span className="sr-only">{t('admin.sites.search')}</span>
           <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="ps-9"
             id="site-search"
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search site, workspace, owner, or slug"
+            placeholder={t('admin.sites.searchPlaceholder')}
             value={search}
           />
         </label>
         <label htmlFor="site-filter">
-          <span className="sr-only">Filter sites</span>
+          <span className="sr-only">{t('admin.sites.filter')}</span>
           <select
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             id="site-filter"
             onChange={(event) => setFilter(event.target.value as typeof filter)}
             value={filter}
           >
-            <option value="all">All sites</option>
-            <option value="healthy">Healthy</option>
-            <option value="attention">Needs attention</option>
-            <option value="unpublished">Not published</option>
-            <option value="taken-down">Taken down</option>
+            <option value="all">{t('admin.sites.all')}</option>
+            <option value="healthy">{t('admin.status.healthy')}</option>
+            <option value="attention">{t('admin.status.attention')}</option>
+            <option value="unpublished">{t('admin.status.unpublished')}</option>
+            <option value="taken-down">{t('admin.status.takenDown')}</option>
           </select>
         </label>
       </div>
 
       {query.isPending ? (
         <div className="rounded-xl border bg-card py-12 text-center text-muted-foreground text-sm" role="status">
-          Loading sites…
+          {t('admin.sites.loading')}
         </div>
       ) : sites.length === 0 ? (
         <div className="rounded-xl border bg-card">
-          <DataEmpty title="No sites match" description="Clear the search or choose another operational filter." />
+          <DataEmpty title={t('admin.sites.empty')} description={t('admin.sites.emptyBody')} />
         </div>
       ) : (
         <>
@@ -380,13 +379,13 @@ function SitesPage() {
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Workspace</TableHead>
-                  <TableHead>Publish</TableHead>
-                  <TableHead>Domains</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead>{t('admin.common.name')}</TableHead>
+                  <TableHead>{t('admin.common.owner')}</TableHead>
+                  <TableHead>{t('admin.common.workspace')}</TableHead>
+                  <TableHead>{t('admin.common.publish')}</TableHead>
+                  <TableHead>{t('admin.common.domains')}</TableHead>
+                  <TableHead>{t('admin.common.usage')}</TableHead>
+                  <TableHead>{t('admin.common.updated')}</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -402,54 +401,50 @@ function SitesPage() {
                     <TableCell className="text-muted-foreground">
                       <div className="flex items-center gap-2">
                         <span>{site.owner}</span>
-                        {site.ownerStatus === 'invited' ? <Badge variant="outline">Invited</Badge> : null}
-                        {site.ownerStatus === 'missing' ? <Badge variant="destructive">Missing owner</Badge> : null}
+                        {site.ownerStatus === 'invited' ? <Badge variant="outline">{t('admin.status.invited')}</Badge> : null}
+                        {site.ownerStatus === 'missing' ? <Badge variant="destructive">{t('admin.status.missingOwner')}</Badge> : null}
                       </div>
                     </TableCell>
                     <TableCell>
                       <p className="text-muted-foreground">{site.org}</p>
                       <p className="text-muted-foreground text-xs">
-                        {site.plan} plan · {site.members} member{site.members === 1 ? '' : 's'}
+                        {t('admin.sites.workspaceSummary', { plan: site.plan, members: format.number(site.members) })}
                       </p>
                     </TableCell>
                     <TableCell>
                       {site.takedownAt ? (
-                        <StatusBadge label="taken down" value="taken-down" />
+                        <StatusBadge label={t('admin.status.takenDown')} value="taken-down" />
                       ) : site.latestDeployment ? (
                         <div className="space-y-1">
                           <StatusBadge value={site.latestDeployment.status} />
                           <p className="text-muted-foreground text-xs">
-                            v{site.latestDeployment.version} · {fmtRelative(site.latestDeployment.at)}
+                            v{format.number(site.latestDeployment.version)} · {format.relative(site.latestDeployment.at)}
                           </p>
                         </div>
                       ) : (
-                        <Badge variant="outline">not published</Badge>
+                        <Badge variant="outline">{t('admin.status.unpublished')}</Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <p>{site.domains}</p>
+                      <p>{format.number(site.domains)}</p>
                       {site.domainIssues ? (
-                        <p className="text-destructive text-xs">
-                          {site.domainIssues} issue{site.domainIssues === 1 ? '' : 's'}
-                        </p>
+                        <p className="text-destructive text-xs">{t('admin.sites.issueCount', { count: format.number(site.domainIssues) })}</p>
                       ) : (
-                        <p className="text-muted-foreground text-xs">No errors</p>
+                        <p className="text-muted-foreground text-xs">{t('admin.sites.noErrors')}</p>
                       )}
                     </TableCell>
                     <TableCell>
-                      <p>
-                        {site.pages} page{site.pages === 1 ? '' : 's'} · {site.languages} lang.
-                      </p>
+                      <p>{t('admin.sites.contentSummary', { pages: format.number(site.pages), languages: format.number(site.languages) })}</p>
                       <p className="text-muted-foreground text-xs">
-                        {site.deployments} deployment{site.deployments === 1 ? '' : 's'} · {site.accessMode.toLowerCase()}
+                        {t('admin.sites.deliverySummary', { deployments: format.number(site.deployments), access: site.accessMode.toLowerCase() })}
                       </p>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{fmtRelative(site.updatedAt)}</TableCell>
+                    <TableCell className="text-muted-foreground">{format.relative(site.updatedAt)}</TableCell>
                     <TableCell className="text-end">
                       <div className="flex items-center justify-end gap-2">
                         {site.ownerInvitationId ? (
                           <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
-                            <Copy className="size-4" /> Copy invite
+                            <Copy className="size-4" /> {t('admin.sites.copyInvite')}
                           </Button>
                         ) : null}
                         <Button
@@ -458,11 +453,13 @@ function SitesPage() {
                           size="sm"
                           variant={site.takedownAt ? 'outline' : 'destructive'}
                         >
-                          {site.takedownAt ? 'Restore' : 'Take down'}
+                          {site.takedownAt ? t('admin.sites.restore') : t('admin.sites.takedown')}
                         </Button>
                         <Button
                           nativeButton={false}
-                          render={<Link aria-label={`View ${site.name} details`} params={{ siteId: site.id }} to="/sites/$siteId" />}
+                          render={
+                            <Link aria-label={t('admin.sites.viewDetails', { site: site.name })} params={{ siteId: site.id }} to="/sites/$siteId" />
+                          }
                           size="icon-sm"
                           variant="ghost"
                         >
@@ -483,12 +480,12 @@ function SitesPage() {
                     <span className="min-w-0">
                       <span className="block truncate">{site.name}</span>
                       <span className="block truncate font-normal text-muted-foreground text-xs">
-                        {site.org} · {site.plan} plan
+                        {t('admin.sites.orgPlan', { organization: site.org, plan: site.plan })}
                       </span>
                     </span>
                     <Button
                       nativeButton={false}
-                      render={<Link aria-label={`View ${site.name}`} params={{ siteId: site.id }} to="/sites/$siteId" />}
+                      render={<Link aria-label={t('admin.sites.view', { site: site.name })} params={{ siteId: site.id }} to="/sites/$siteId" />}
                       size="icon-sm"
                       variant="ghost"
                     >
@@ -499,48 +496,51 @@ function SitesPage() {
                 <CardContent className="space-y-3">
                   <div className="flex flex-wrap gap-1.5">
                     {site.takedownAt ? (
-                      <StatusBadge label="taken down" value="taken-down" />
+                      <StatusBadge label={t('admin.status.takenDown')} value="taken-down" />
                     ) : site.latestDeployment ? (
                       <StatusBadge value={site.latestDeployment.status} />
                     ) : (
-                      <Badge variant="outline">not published</Badge>
+                      <Badge variant="outline">{t('admin.status.unpublished')}</Badge>
                     )}
                     {site.domainIssues ? (
-                      <Badge variant="destructive">
-                        {site.domainIssues} domain issue{site.domainIssues === 1 ? '' : 's'}
-                      </Badge>
+                      <Badge variant="destructive">{t('admin.sites.domainIssueCount', { count: format.number(site.domainIssues) })}</Badge>
                     ) : null}
                     <Badge variant="outline">{site.accessMode.toLowerCase()}</Badge>
                   </div>
                   <dl className="grid grid-cols-3 gap-3 text-xs">
                     <div>
-                      <dt className="text-muted-foreground">Pages</dt>
-                      <dd className="font-medium">{site.pages}</dd>
+                      <dt className="text-muted-foreground">{t('admin.common.pages')}</dt>
+                      <dd className="font-medium">{format.number(site.pages)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Members</dt>
-                      <dd className="font-medium">{site.members}</dd>
+                      <dt className="text-muted-foreground">{t('admin.common.members')}</dt>
+                      <dd className="font-medium">{format.number(site.members)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Updated</dt>
-                      <dd className="font-medium">{fmtRelative(site.updatedAt)}</dd>
+                      <dt className="text-muted-foreground">{t('admin.common.updated')}</dt>
+                      <dd className="font-medium">{format.relative(site.updatedAt)}</dd>
                     </div>
                   </dl>
                   <div className="flex gap-2">
                     {site.ownerInvitationId ? (
                       <Button onClick={() => copyOwnerInvitation(site)} size="sm" variant="outline">
-                        <Copy className="size-4" /> Copy invite
+                        <Copy className="size-4" /> {t('admin.sites.copyInvite')}
                       </Button>
                     ) : null}
                     <Button
                       nativeButton={false}
                       render={
-                        <a aria-label={`Open ${site.name} customer view`} href={`${APP_URL}/sites/${site.id}`} rel="noreferrer" target="_blank" />
+                        <a
+                          aria-label={t('admin.sites.openCustomerView', { site: site.name })}
+                          href={`${APP_URL}/sites/${site.id}`}
+                          rel="noreferrer"
+                          target="_blank"
+                        />
                       }
                       size="sm"
                       variant="outline"
                     >
-                      <ExternalLink className="size-4" /> Customer view
+                      <ExternalLink className="size-4" /> {t('admin.sites.customerView')}
                     </Button>
                   </div>
                 </CardContent>
@@ -551,7 +551,7 @@ function SitesPage() {
       )}
       {!query.isPending ? (
         <p className="text-muted-foreground text-xs" aria-live="polite">
-          Showing {sites.length} of {query.data?.length ?? 0} sites
+          {t('admin.sites.showing', { shown: format.number(sites.length), total: format.number(query.data?.length ?? 0) })}
         </p>
       ) : null}
     </div>

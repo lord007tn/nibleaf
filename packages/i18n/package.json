@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./locales": "./src/locales.ts",
     "./react": "./src/react.ts",
     "./standalone": "./src/standalone.ts",
     "./email": "./src/email.ts",

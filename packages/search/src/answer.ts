@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import type { SearchChunk } from './hybrid';
-import { answerOutputSchema, type ChatProvider, type ChatUsage } from './providers';
+import type { ChatProvider, ChatUsage } from './providers';
+import { answerOutputSchema } from './validators/provider';
 
 export interface GroundedCitation {
   id: string;

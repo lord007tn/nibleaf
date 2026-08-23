@@ -147,7 +147,7 @@ export const isPageTranslation = (
 /** Chrome sections a language may override on top of the project config. */
 const LANGUAGE_CHROME_SECTIONS = ['navbar', 'footer', 'banner', 'search'] as const;
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> => value instanceof Object && !Array.isArray(value);
+const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
 
 /**
  * Overlay the active language's chrome overrides (navbar/footer/banner/search)

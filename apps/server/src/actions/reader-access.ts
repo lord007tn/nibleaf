@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { auth } from '@nibleaf/auth/server';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { Prisma, prisma } from '@nibleaf/database';
-import { renderReaderInvitationEmail } from '@nibleaf/email';
+import { type EmailLanguage, renderReaderInvitationEmail } from '@nibleaf/email';
 import type {
   CreateAudienceBody,
   InviteReaderBody,
@@ -240,7 +240,7 @@ export const deleteAudience = async (projectId: string, audienceId: string, acto
   return { id: audienceId };
 };
 
-export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody) => {
+export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody, language?: EmailLanguage) => {
   await assertAudiences(projectId, body.audienceIds);
   const reader = await prisma.reader.upsert({
     where: { projectId_email: { projectId, email: body.email } },
@@ -270,7 +270,12 @@ export const inviteReader = async (projectId: string, actorUserId: string, body:
   // cookies intentionally never span unrelated customer domains.
   const readerOrigin = project?.domains[0]?.domain ? `https://${project.domains[0].domain}` : env.APP_URL;
   const activationUrl = `${readerOrigin}/api/public/reader-access/activate?token=${encodeURIComponent(token)}`;
-  const message = await renderReaderInvitationEmail({ activationUrl, days: 7, projectName: project?.name ?? 'private documentation' });
+  const message = await renderReaderInvitationEmail({
+    activationUrl,
+    days: 7,
+    projectName: project?.name ?? 'private documentation',
+    language,
+  });
   await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: body.email, ...message } }).catch(() => undefined);
   await logAudit({ projectId, readerId: reader.id, actorUserId, action: 'READER_INVITED' });
   return { reader, invitation: { id: invitation.id, expiresAt: invitation.expiresAt }, activationUrl };

@@ -56,7 +56,7 @@ const embeddings = () => {
   });
 };
 
-export const hybridSearchAvailable = () => Boolean(qdrant && env.OPENROUTER_API_KEY);
+const hybridSearchAvailable = () => Boolean(qdrant && env.OPENROUTER_API_KEY);
 export const answerSearchAvailable = () => hybridSearchAvailable() && env.SEARCH_ANSWER_ENABLED;
 
 export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null => {
@@ -111,13 +111,13 @@ export const chunkFromPoint = (point: QdrantScoredPoint, scope: SearchScope): Hy
   return { chunk, score: Number.isFinite(point.score) ? point.score : 0 };
 };
 
-export interface RetrievalResult {
+interface RetrievalResult {
   cacheHit: boolean;
   chunks: HybridChunkHit[];
   confidence: number;
 }
 
-export const retrieveHybrid = async (scope: SearchScope, query: string, limit: number, signal?: AbortSignal): Promise<RetrievalResult> => {
+const retrieveHybrid = async (scope: SearchScope, query: string, limit: number, signal?: AbortSignal): Promise<RetrievalResult> => {
   const filter = filterForSearchScope(scope);
   if (!filter || !query.trim()) return { cacheHit: false, chunks: [], confidence: 0 };
   const client = qdrant;

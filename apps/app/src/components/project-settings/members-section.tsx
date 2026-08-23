@@ -7,7 +7,7 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
-import { Check, Copy, Crown, Link2, Mail, Trash2 } from 'lucide-react';
+import { Check, Copy, Crown, Link2, Mail, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { GradientAvatar } from '@/components/settings/section';
@@ -103,7 +103,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
 
   return (
     <div>
-      <SectionHeader icon="⧉" title={t('settings.members.title')} description={t('settings.members.description')} />
+      <SectionHeader icon={<Users className="size-4" />} title={t('settings.members.title')} description={t('settings.members.description')} />
 
       <form
         className="mb-5 flex flex-col items-stretch gap-2.5 rounded-xl bg-muted/30 p-3.5 sm:flex-row sm:items-end"

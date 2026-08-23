@@ -875,7 +875,7 @@ function EditorPage() {
         {/* Right rail: Figma-style tabbed panel — Comments / AI */}
         {showRail && activeId ? (
           <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
-            <Tabs value={railTab} onValueChange={(v) => setRailTab(v as 'comments' | 'ai')} className="flex min-h-0 flex-1 flex-col">
+            <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
               <TabsList className="m-2 self-start">
                 <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
                 <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>

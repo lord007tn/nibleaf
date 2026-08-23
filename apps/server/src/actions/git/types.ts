@@ -4,7 +4,7 @@ export interface RemoteFile {
   content: string;
 }
 
-export interface CommitFile {
+interface CommitFile {
   path: string;
   content: string | null;
 }

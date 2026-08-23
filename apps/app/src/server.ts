@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { translateFn } from '@nibleaf/i18n';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import got from 'got';
@@ -663,11 +664,11 @@ Nibleaf currently has no paid cloud plan. The managed cloud is free while in bet
 ${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 - Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
 
-## العربية
+## ${translateFn('marketing.machine.arabic.heading', undefined, 'ar')}
 
-- سحابة Nibleaf مجانية خلال المرحلة التجريبية، ولا توجد خطة مدفوعة حاليًا.
-- يمكن تشغيل المنظومة كاملة من المصدر العام بترخيص AGPL-3.0، مع تحمّل المشغّل مسؤولية البنية وDNS وTLS والنسخ الاحتياطي والمراقبة والترقيات.
-- الصفحة العربية: ${origin}/ar
+- ${translateFn('marketing.machine.arabic.betaPricing', undefined, 'ar')}
+- ${translateFn('marketing.machine.arabic.selfHosting', undefined, 'ar')}
+- ${translateFn('marketing.machine.arabic.pageLabel', undefined, 'ar')}: ${origin}/ar
 
 For the human-readable plan comparison and current policy details, see ${origin}/pricing.
 `;

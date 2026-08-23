@@ -27,6 +27,12 @@ export const Route = createFileRoute('/app/projects/$projectId/preview')({
 
 const firstPage = (pages: PageNode[] | undefined): PageNode | undefined => pages?.find((page) => page.kind === 'PAGE' && !page.hidden);
 
+interface PreviewSearch {
+  branchId?: string;
+  languageId?: string;
+  pageId?: string;
+}
+
 function ProjectPreview() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
@@ -50,7 +56,7 @@ function ProjectPreview() {
   const theme = resolveProjectTheme(project?.config);
   const previewMode = project?.config?.styling?.theme === 'dark' ? 'dark' : 'light';
 
-  const updateSearch = (patch: Partial<typeof search>) => {
+  const updateSearch = (patch: Partial<PreviewSearch>) => {
     navigate({ search: (prev) => ({ ...prev, ...patch }) });
   };
 

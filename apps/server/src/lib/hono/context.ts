@@ -1,9 +1,10 @@
+import type { Locale } from '@nibleaf/i18n/locales';
 import { getContext } from 'hono/context-storage';
 import type { RequestIdVariables } from 'hono/request-id';
 import { AppError } from '@/errors';
 import type { ApiKeyContext, AuthSession, MembershipContext, ProjectContext, SessionUser } from '@/types/auth';
 
-export type HonoVariables = RequestIdVariables & {
+type HonoVariables = RequestIdVariables & {
   user: SessionUser | null;
   session: AuthSession | null;
   /** Current organization (workspace) id, resolved from session or api key. */
@@ -14,13 +15,13 @@ export type HonoVariables = RequestIdVariables & {
   membership: MembershipContext | null;
   /** Present when the request is authenticated via an SDK API key. */
   apiKey: ApiKeyContext | null;
+  /** Interface locale selected by Paraglide or resolved from Accept-Language. */
+  locale: Locale;
 };
 
 export interface HonoEnv {
   Variables: HonoVariables;
 }
-
-export const getContextUser = () => getContext<HonoEnv>().var.user;
 
 export const getContextUserOrThrow = (): SessionUser => {
   const user = getContext<HonoEnv>().var.user;
@@ -29,10 +30,6 @@ export const getContextUserOrThrow = (): SessionUser => {
   }
   return user;
 };
-
-export const getContextSession = () => getContext<HonoEnv>().var.session;
-
-export const getContextOrganizationId = () => getContext<HonoEnv>().var.organizationId;
 
 export const getContextOrganizationIdOrThrow = (): string => {
   const orgId = getContext<HonoEnv>().var.organizationId;
@@ -52,14 +49,4 @@ export const getContextMembershipOrThrow = (): MembershipContext => {
   return membership;
 };
 
-export const getContextProject = () => getContext<HonoEnv>().var.project;
-
-export const getContextProjectOrThrow = (): ProjectContext => {
-  const project = getContext<HonoEnv>().var.project;
-  if (!project) {
-    throw new AppError({ code: 'database:not_found', entityType: 'project', message: 'Project context not found.' });
-  }
-  return project;
-};
-
-export const getContextApiKey = () => getContext<HonoEnv>().var.apiKey;
+export const getContextLocale = () => getContext<HonoEnv>().var.locale;

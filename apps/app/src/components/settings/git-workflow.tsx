@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { env } from '@/env';
 import {
   type GitConflict as Conflict,
   useAuthorizeGitWorkflow,
@@ -137,7 +138,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
     [connection],
   );
-  const webhookUrl = typeof window === 'undefined' ? '' : `${window.location.origin}/api/public/git/webhook/${projectId}`;
+  const webhookUrl = new URL(`/api/public/git/webhook/${projectId}`, env.VITE_APP_URL).toString();
 
   useEffect(() => {
     if (!connection) return;

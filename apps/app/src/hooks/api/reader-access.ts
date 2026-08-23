@@ -76,7 +76,7 @@ export const useDeleteReaderAudience = (projectId: string) =>
 
 export const useInviteReader = (projectId: string) =>
   useReaderAccessMutation(projectId, async (json: InviteReaderBody) =>
-    mutateData<{ activationUrl: string }>(
+    mutateData(
       await api.app.projects[':projectId']['reader-access'].readers.invite.$post({ param: { projectId }, json }),
       'Could not invite the reader.',
     ),

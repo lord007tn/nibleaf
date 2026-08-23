@@ -54,6 +54,11 @@ export const env = createEnv({
     GIT_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
     /** Shared API/worker authentication secret for opaque Git job execution. */
     GIT_WORKER_SECRET: z.string().min(32).optional(),
+    /** Explicit override required before the demo seed may touch production. */
+    ALLOW_SEED: z
+      .enum(['true', 'false', '1', '0'])
+      .optional()
+      .transform((value) => value === 'true' || value === '1'),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

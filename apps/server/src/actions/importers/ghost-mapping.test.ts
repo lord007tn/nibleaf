@@ -29,6 +29,7 @@ const fullExport = {
         posts: [
           post({ id: 'post-1', slug: 'first', published_at: '2024-01-01T00:00:00.000Z' }),
           post({ slug: 'draft', status: 'draft' }),
+          post({ slug: 'members-only', visibility: 'members' }),
           post({ slug: 'about', type: 'page', published_at: '2024-02-01T00:00:00.000Z' }),
           post({ slug: 'legacy-page', page: 1 }),
         ],
@@ -52,6 +53,7 @@ describe('parseGhostExport', () => {
     expect(posts.map((p) => p.slug)).toEqual(['first']);
     expect(posts[0]?.tags).toEqual(['news', 'en']);
     expect(pages.map((p) => p.slug)).toEqual(['about', 'legacy-page']);
+    expect(parseGhostExport(fullExport).restricted).toBe(1);
   });
 
   it('accepts the bare inner document and a separate pages collection', () => {
@@ -129,7 +131,20 @@ describe('byPublishedAt', () => {
       { publishedAt: '2024-03-01T00:00:00.000Z' as string | null, slug: 'c' },
       { publishedAt: null, slug: 'undated' },
       { publishedAt: '2024-01-01T00:00:00.000Z', slug: 'a' },
-    ].map((over) => ({ id: '', tags: [], title: '', html: null, plaintext: null, status: null, featureImage: null, description: null, ...over }));
+    ].map((over) => ({
+      id: '',
+      tags: [],
+      title: '',
+      html: null,
+      lexical: null,
+      mobiledoc: null,
+      plaintext: null,
+      status: null,
+      visibility: null,
+      featureImage: null,
+      description: null,
+      ...over,
+    }));
     expect([...items].sort(byPublishedAt).map((i) => i.slug)).toEqual(['a', 'c', 'undated']);
   });
 });
@@ -165,6 +180,11 @@ describe('convertGhostHtml', () => {
     expect(markdown).toContain('![A pic](/content/images/pic.png)');
     expect(markdown).toContain('| A | B |');
     expect(markdown).toContain('| 1 | 2 |');
+  });
+
+  it('resolves ordinary Ghost content image paths against the publication origin', () => {
+    const { markdown } = convertGhostHtml('<img src="/content/images/pic.png" alt="A pic">', 'https://ghost.example.com');
+    expect(markdown).toContain('![A pic](https://ghost.example.com/content/images/pic.png)');
   });
 
   it('rewrites __GHOST_URL__ placeholders to relative URLs and flags them', () => {
@@ -205,6 +225,8 @@ describe('ghostItemToMarkdown', () => {
     tags: [],
     title: 'Post',
     slug: 'post',
+    lexical: null,
+    mobiledoc: null,
     plaintext: null,
     status: 'published',
     featureImage: null,
@@ -212,22 +234,54 @@ describe('ghostItemToMarkdown', () => {
     publishedAt: null,
   };
 
-  it('prepends the feature image as a leading Markdown image', () => {
-    const { markdown } = ghostItemToMarkdown({ ...base, html: '<p>Body</p>', featureImage: '__GHOST_URL__/content/images/hero.png' });
+  it('prepends the feature image as a leading Markdown image', async () => {
+    const { markdown } = await ghostItemToMarkdown({ ...base, html: '<p>Body</p>', featureImage: '__GHOST_URL__/content/images/hero.png' });
     expect(markdown).toBe('![Post](/content/images/hero.png)\n\nBody');
   });
 
-  it('resolves feature-image placeholders using the source publication URL', () => {
-    const { markdown } = ghostItemToMarkdown(
+  it('resolves feature-image placeholders using the source publication URL', async () => {
+    const { markdown } = await ghostItemToMarkdown(
       { ...base, html: '<p>Body</p>', featureImage: '__GHOST_URL__/content/images/hero.png' },
       'https://ghost.example.com',
     );
     expect(markdown).toBe('![Post](https://ghost.example.com/content/images/hero.png)\n\nBody');
   });
 
-  it('falls back to plaintext when there is no html', () => {
-    const { markdown, usedFallback } = ghostItemToMarkdown({ ...base, html: null, plaintext: 'Just text' });
+  it('falls back to plaintext when there is no rich editor document', async () => {
+    const { markdown, usedFallback } = await ghostItemToMarkdown({ ...base, html: null, plaintext: 'Just text' });
     expect(markdown).toBe('Just text');
     expect(usedFallback).toBe(false);
+  });
+
+  it('uses Ghost official renderers for Lexical and legacy Mobiledoc exports', async () => {
+    const lexical = JSON.stringify({
+      root: {
+        children: [
+          {
+            children: [{ detail: 0, format: 0, mode: 'normal', style: '', text: 'Lexical body', type: 'text', version: 1 }],
+            direction: null,
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1,
+          },
+        ],
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1,
+      },
+    });
+    const mobiledoc = JSON.stringify({
+      version: '0.3.1',
+      atoms: [],
+      cards: [],
+      markups: [],
+      sections: [[1, 'p', [[0, [], 0, 'Mobiledoc body']]]],
+    });
+
+    await expect(ghostItemToMarkdown({ ...base, html: null, lexical })).resolves.toMatchObject({ markdown: 'Lexical body' });
+    await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc })).resolves.toMatchObject({ markdown: 'Mobiledoc body' });
   });
 });

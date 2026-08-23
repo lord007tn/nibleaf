@@ -31,9 +31,3 @@ export const consumeAnswerQuota = async (projectId: string, now = new Date()): P
   );
   return { allowed: current <= limit, remaining: Math.max(0, limit - current) };
 };
-
-export const closeAnswerQuota = async (): Promise<void> => {
-  const current = redis;
-  redis = null;
-  if (current) await current.quit();
-};

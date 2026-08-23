@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
-import { renderDeploymentEmail } from '@nibleaf/email';
+import { renderDeploymentEmail, resolveEmailLanguage } from '@nibleaf/email';
 
 /**
  * Workspace notification preferences live as a JSON blob on `Organization.metadata`
@@ -63,6 +63,7 @@ export async function notifyDeployment(opts: {
   siteUrl?: string;
   outcome: 'ready' | 'failed';
   error?: string;
+  locale?: string;
 }): Promise<void> {
   try {
     const project = await prisma.project.findUnique({ where: { id: opts.projectId }, select: { organizationId: true } });
@@ -89,6 +90,7 @@ export async function notifyDeployment(opts: {
       projectName: opts.projectName,
       siteUrl: opts.siteUrl,
       version: opts.version,
+      language: resolveEmailLanguage(opts.locale),
     });
     await Promise.all(
       recipients.map((to) =>

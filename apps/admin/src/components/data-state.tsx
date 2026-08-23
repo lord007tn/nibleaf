@@ -1,16 +1,18 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useT } from '@nibleaf/i18n/react';
 import { AlertCircle, Inbox } from 'lucide-react';
 
-export function DataError({ message = 'This operational data could not be loaded.', retry }: { message?: string; retry: () => void }) {
+export function DataError({ message, retry }: { message?: string; retry: () => void }) {
+  const t = useT();
   return (
     <Alert variant="destructive">
       <AlertCircle />
-      <AlertTitle>Unable to load data</AlertTitle>
+      <AlertTitle>{t('admin.data.unavailable')}</AlertTitle>
       <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-        <span>{message}</span>
+        <span>{message ?? t('admin.data.loadError')}</span>
         <Button onClick={retry} size="sm" variant="outline">
-          Try again
+          {t('common.retry')}
         </Button>
       </AlertDescription>
     </Alert>

@@ -1,5 +1,6 @@
 import { type Fetcher, HTTPClient, OpenRouter } from '@openrouter/sdk';
 import { z } from 'zod';
+import { answerOutputSchema, embeddingResponseSchema, nonEmptyProviderTextSchema } from './validators/provider';
 
 export interface OpenRouterEmbeddingOptions {
   apiKey: string;
@@ -11,12 +12,6 @@ export interface OpenRouterEmbeddingOptions {
   timeoutMs?: number;
   title?: string;
 }
-
-const embeddingResponseSchema = z.object({
-  data: z.array(z.object({ embedding: z.array(z.number()), index: z.number().optional() })),
-  model: z.string(),
-  usage: z.object({ promptTokens: z.number(), totalTokens: z.number() }).optional(),
-});
 
 /** Dense embeddings through OpenRouter's official TypeScript SDK. */
 export class OpenRouterEmbeddingProvider {
@@ -66,15 +61,6 @@ export class OpenRouterEmbeddingProvider {
     };
   }
 }
-
-export const answerOutputSchema = z
-  .object({
-    status: z.enum(['answered', 'no_answer']),
-    answer: z.string(),
-    confidence: z.number().min(0).max(1),
-    citations: z.array(z.string()),
-  })
-  .strict();
 
 interface ChatUsage {
   inputTokens?: number;
@@ -133,7 +119,7 @@ export class OpenRouterChatProvider {
       },
       { signal },
     );
-    const value = answerOutputSchema.parse(JSON.parse(z.string().parse(completion.choices[0]?.message.content)));
+    const value = answerOutputSchema.parse(JSON.parse(nonEmptyProviderTextSchema.parse(completion.choices[0]?.message.content)));
     return {
       value,
       model: completion.model || this.model,

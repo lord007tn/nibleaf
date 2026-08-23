@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
@@ -41,6 +42,7 @@ function DashboardRoute() {
 /** Admin-role gate: the overview endpoint 403s for non-admins, so if it fails we
  *  render "not authorized" instead of the panel (server-enforced regardless). */
 function AdminGate() {
+  const t = useT();
   const overview = useAdminOverview();
   if (overview.isPending) {
     return <PageLoader />;
@@ -51,19 +53,19 @@ function AdminGate() {
       <FullScreen>
         <div className="flex flex-col items-center gap-3 text-center">
           {unauthorized ? <ShieldCheck className="size-8 text-muted-foreground" /> : <AlertCircle className="size-8 text-destructive" />}
-          <h1 className="font-semibold text-foreground text-xl tracking-tight">{unauthorized ? 'Not authorized' : 'Admin data unavailable'}</h1>
+          <h1 className="font-semibold text-foreground text-xl tracking-tight">
+            {unauthorized ? t('admin.auth.unauthorized') : t('admin.auth.dataUnavailable')}
+          </h1>
           <p className="max-w-sm text-muted-foreground text-sm">
-            {unauthorized
-              ? "Your account doesn't have admin access to this panel."
-              : 'Your session is valid, but the admin API could not be reached. No authorization conclusion was inferred from this failure.'}
+            {unauthorized ? t('admin.auth.unauthorizedBody') : t('admin.auth.dataUnavailableBody')}
           </p>
           {unauthorized ? (
             <Button className="mt-1" onClick={() => void signOut().then(() => window.location.assign('/sign-in'))} variant="outline">
-              Sign out
+              {t('account.signOut')}
             </Button>
           ) : (
             <Button className="mt-1" onClick={() => void overview.refetch()} variant="outline">
-              Try again
+              {t('common.retry')}
             </Button>
           )}
         </div>
@@ -73,23 +75,16 @@ function AdminGate() {
   return <AdminShell />;
 }
 
-/** Derive the header title from the current admin route. */
-function titleFromPathname(pathname: string): string {
-  if (pathname.startsWith('/users')) {
-    return 'Customers';
-  }
-  if (pathname.startsWith('/sites')) {
-    return 'Sites';
-  }
-  if (pathname.startsWith('/operations')) {
-    return 'Operations';
-  }
-  return 'Overview';
-}
-
 function AdminShell() {
+  const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = titleFromPathname(pathname);
+  const title = pathname.startsWith('/users')
+    ? t('admin.nav.customers')
+    : pathname.startsWith('/sites')
+      ? t('nav.sites')
+      : pathname.startsWith('/operations')
+        ? t('admin.nav.operations')
+        : t('nav.overview');
 
   return (
     <SidebarProvider>

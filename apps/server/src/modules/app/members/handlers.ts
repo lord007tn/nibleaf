@@ -1,7 +1,13 @@
 import { inviteMemberBody, updateMemberRoleBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { cancelInvitation, inviteMember, listMembers, removeMember, updateMemberRole } from '@/actions/members';
-import { getContextMembershipOrThrow, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import {
+  getContextLocale,
+  getContextMembershipOrThrow,
+  getContextOrganizationIdOrThrow,
+  getContextUserOrThrow,
+  type HonoEnv,
+} from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import membersRoutes from './routes';
 
@@ -14,7 +20,7 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();
     const { role } = getContextMembershipOrThrow();
-    return ctx.json({ data: await inviteMember(organizationId, user.id, role, ctx.req.valid('json')) }, 201);
+    return ctx.json({ data: await inviteMember(organizationId, user.id, role, ctx.req.valid('json'), { language: getContextLocale() }) }, 201);
   })
   .patch('/:id/role', ...membersRoutes.updateRole, validator('json', updateMemberRoleBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

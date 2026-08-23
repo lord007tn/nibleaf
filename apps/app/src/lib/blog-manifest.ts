@@ -1,3 +1,4 @@
+import { translateFn } from '@nibleaf/i18n';
 import type { BlogEntry } from './blog';
 
 /** Lightweight article metadata. Keep this in sync with MDX frontmatter.
@@ -63,36 +64,36 @@ export const BLOG_MANIFEST = [
   },
   {
     slug: 'arabic-technical-documentation-rtl-checklist',
-    title: 'كيف تنشر وثائق منتج بالعربية من دون أن تكسر RTL والبحث',
-    metaTitle: 'وثائق المنتج بالعربية: قائمة فحص RTL والبحث | Nibleaf',
-    description: 'قائمة فحص عملية لنشر وثائق منتج بالعربية: اتجاه الصفحة، الشيفرة داخل النص، البحث، الخطوط، شجرة الصفحات، ووسوم hreflang قبل النشر.',
+    title: translateFn('blog.arabicChecklist.title', undefined, 'ar'),
+    metaTitle: translateFn('blog.arabicChecklist.metaTitle', undefined, 'ar'),
+    description: translateFn('blog.arabicChecklist.description', undefined, 'ar'),
     language: 'ar',
     datePublished: '2026-08-15',
     dateModified: '2026-08-19',
-    tags: ['العربية', 'RTL', 'وثائق المنتج'],
+    tags: [
+      translateFn('blog.arabicChecklist.tagArabic', undefined, 'ar'),
+      'RTL',
+      translateFn('blog.arabicChecklist.tagProductDocs', undefined, 'ar'),
+    ],
     related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose'],
     translationOf: 'arabic-documentation-rtl',
     readingMinutes: 8,
     faqs: [
       {
-        question: 'هل يكفي إضافة dir="rtl" إلى صفحة الوثائق؟',
-        answer:
-          'لا. هذا يضبط اتجاه الصفحة، لكنه لا يعزل الأوامر والمسارات داخل الفقرات العربية، ولا يقلب الأيقونات الاتجاهية، ولا يجعل البحث واعيًا باختلاف كتابة الكلمات العربية.',
+        question: translateFn('blog.arabicChecklist.faqDirectionQuestion', undefined, 'ar'),
+        answer: translateFn('blog.arabicChecklist.faqDirectionAnswer', undefined, 'ar'),
       },
       {
-        question: 'كيف أختبر البحث في وثائق عربية؟',
-        answer:
-          'ابدأ بكلمات من صفحاتك نفسها، ثم جرّبها من دون تشكيل أو تطويل وبأشكال الألف المختلفة. اختبر الكلمات ذات البوادئ واللواحق أيضًا؛ يستخدم Nibleaf تطبيعًا إملائيًا ومسارًا صرفيًا خفيفًا ومحافظًا، مع إبقاء المطابقات الدقيقة في المرتبة الأعلى.',
+        question: translateFn('blog.arabicChecklist.faqSearchQuestion', undefined, 'ar'),
+        answer: translateFn('blog.arabicChecklist.faqSearchAnswer', undefined, 'ar'),
       },
       {
-        question: 'هل يجب أن تطابق شجرة الصفحات العربية الشجرة الإنجليزية؟',
-        answer:
-          'لا يلزم. انشر الصفحات التي يحتاجها القارئ العربي أولًا، وحافظ على رابط واضح بين الصفحات المتقابلة فقط كي تعمل hreflang ومبدلات اللغة بصورة صحيحة.',
+        question: translateFn('blog.arabicChecklist.faqTreeQuestion', undefined, 'ar'),
+        answer: translateFn('blog.arabicChecklist.faqTreeAnswer', undefined, 'ar'),
       },
       {
-        question: 'ما الذي يدعمه Nibleaf للعربية اليوم؟',
-        answer:
-          'يدعم اتجاه RTL في القارئ والمحرر، وشجرة مستقلة لكل لغة، وعزل الشيفرة داخل النص، وبحثًا يستخدم tokenizer عربيًا مع تطبيع إملائي ومسار صرفي خفيف ومحافظ، إضافة إلى canonical وhreflang للصفحات المتقابلة.',
+        question: translateFn('blog.arabicChecklist.faqSupportQuestion', undefined, 'ar'),
+        answer: translateFn('blog.arabicChecklist.faqSupportAnswer', undefined, 'ar'),
       },
     ],
   },

@@ -1,29 +1,48 @@
-/** Short human date for admin tables, e.g. "Jul 2, 2026". */
-export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+import { getLocale } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 
-export const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-
+export const fmtDateTime = (iso: string) => new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
 export const fmtRelative = (iso: string) => {
   const delta = new Date(iso).getTime() - Date.now();
   const absolute = Math.abs(delta);
-  const units: [Intl.RelativeTimeFormatUnit, number][] = [
-    ['day', 24 * 60 * 60 * 1000],
-    ['hour', 60 * 60 * 1000],
-    ['minute', 60 * 1000],
-  ];
-  const [unit, milliseconds] = units.find(([, size]) => absolute >= size) ?? ['minute', 60 * 1000];
-  return new Intl.RelativeTimeFormat('en-US', { numeric: 'auto' }).format(Math.round(delta / milliseconds), unit);
+  const [unit, milliseconds] =
+    (
+      [
+        ['day', 86_400_000],
+        ['hour', 3_600_000],
+        ['minute', 60_000],
+      ] as const
+    ).find(([, size]) => absolute >= size) ?? (['minute', 60_000] as const);
+  return new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' }).format(Math.round(delta / milliseconds), unit);
 };
+export const fmtBytes = (bytes: number) =>
+  new Intl.NumberFormat(getLocale(), { style: 'unit', unit: 'byte', unitDisplay: 'narrow', notation: 'compact', maximumFractionDigits: 1 }).format(
+    bytes,
+  );
 
-export const fmtBytes = (bytes: number) => {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = bytes / 1024;
-  let unit = units[0];
-  for (let index = 1; index < units.length && value >= 1024; index++) {
-    value /= 1024;
-    unit = units[index];
-  }
-  return `${value >= 10 ? Math.round(value) : value.toFixed(1)} ${unit}`;
-};
+/** Locale-aware formatters bound to the active Paraglide locale. */
+export function useFormatters() {
+  const { locale } = useLocale();
+  return {
+    date: (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso)),
+    dateTime: (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)),
+    relative: (iso: string) => {
+      const delta = new Date(iso).getTime() - Date.now();
+      const absolute = Math.abs(delta);
+      const units: [Intl.RelativeTimeFormatUnit, number][] = [
+        ['day', 24 * 60 * 60 * 1000],
+        ['hour', 60 * 60 * 1000],
+        ['minute', 60 * 1000],
+      ];
+      const [unit, milliseconds] = units.find(([, size]) => absolute >= size) ?? ['minute', 60 * 1000];
+      return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(Math.round(delta / milliseconds), unit);
+    },
+    bytes: (bytes: number) =>
+      new Intl.NumberFormat(locale, { style: 'unit', unit: 'byte', unitDisplay: 'narrow', notation: 'compact', maximumFractionDigits: 1 }).format(
+        bytes,
+      ),
+    number: (value: number) => new Intl.NumberFormat(locale).format(value),
+    percent: (value: number) => new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(value / 100),
+    shortDate: (iso: string) => new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric' }).format(new Date(iso)),
+  };
+}

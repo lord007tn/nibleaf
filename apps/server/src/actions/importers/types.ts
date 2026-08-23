@@ -25,7 +25,7 @@ export interface ImportSummary {
 }
 
 /** Everything an importer needs to run: the tenant scope plus its validated input. */
-export interface ImporterContext<TInput = unknown> {
+interface ImporterContext<TInput = unknown> {
   organizationId: string;
   projectId: string;
   input: TInput;

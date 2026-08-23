@@ -710,5 +710,3 @@ export function TiptapEditor({
     </div>
   );
 }
-
-export default TiptapEditor;

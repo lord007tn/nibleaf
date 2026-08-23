@@ -2,7 +2,7 @@ import got from 'got';
 import { env } from '@/env';
 import { type CloudflareCustomHostname, cloudflareCustomHostnameSsl } from './cloudflare-saas-state';
 
-export { type CloudflareCustomHostname, customHostnameRecords, customHostnameState, type DomainRecord } from './cloudflare-saas-state';
+export { type CloudflareCustomHostname, customHostnameRecords, customHostnameState } from './cloudflare-saas-state';
 
 interface CloudflareWorkerRoute {
   id: string;

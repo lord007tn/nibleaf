@@ -2,12 +2,13 @@ import { auth } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { logger } from '@nibleaf/logger';
 import { buildSnapshot } from '@nibleaf/shared/site';
+import { env } from '@/env';
 
 const DEMO = { email: 'demo@nibleaf.test', password: 'nibleafdemo123', name: 'Ada Lovelace' };
 
 async function seed() {
   // Guard against clobbering a real environment with demo data.
-  if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_SEED) {
+  if (env.NODE_ENV === 'production' && !env.ALLOW_SEED) {
     throw new Error('Refusing to seed in production. Set ALLOW_SEED=1 to override.');
   }
 

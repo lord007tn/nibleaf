@@ -53,7 +53,7 @@ const exactKeys = (value: Record<string, unknown>, keys: string[]): boolean => {
 const validVersion = (value: unknown): boolean => typeof value === 'string' && /^\d+\.\d+\.\d+$/u.test(value);
 
 /** Final privacy boundary for every event delivered to the Nibleaf GA property. */
-export function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<string, unknown>): boolean {
+function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<string, unknown>): boolean {
   if (event === 'sign_up') return exactKeys(properties, ['method']) && properties.method === 'email_otp';
   if (event === 'cta_clicked') {
     return (

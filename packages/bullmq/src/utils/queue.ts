@@ -1,7 +1,6 @@
 import type { JobsOptions, Queue } from 'bullmq';
 import { QueueNames } from '../constants';
 import { keys } from '../keys';
-import { queueLogger } from './logger';
 
 const env = keys();
 
@@ -10,7 +9,7 @@ const ONE_DAY = ONE_HOUR * 24;
 const ONE_WEEK = ONE_DAY * 7;
 const MINUTE_MS = 60 * 1000;
 
-export const DEFAULT_JOB_OPTIONS: JobsOptions = {
+const DEFAULT_JOB_OPTIONS: JobsOptions = {
   removeOnComplete: { count: 100, age: ONE_DAY },
   removeOnFail: { count: 500, age: ONE_WEEK },
   attempts: 3,
@@ -135,5 +134,3 @@ export async function getQueueMetrics(queue: Queue): Promise<QueueMetrics> {
 export function getAllQueueMetrics(queueMap: Record<string, Queue>): Promise<QueueMetrics[]> {
   return Promise.all(Object.values(queueMap).map(getQueueMetrics));
 }
-
-export { queueLogger };

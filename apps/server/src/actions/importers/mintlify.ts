@@ -1,13 +1,13 @@
 import { prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
-import { z } from 'zod';
-import { badRequest } from '@/errors';
+import { badRequest, ImportError } from '@/errors';
+import { importDocumentSchema } from '@/validators/importers';
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
 import { RemoteAssetMigrator } from './ghost-assets';
-import { fetchRawText, getGitHubDefaultBranch, githubRawUrl, listGitHubFiles } from './github';
+import { getGitHubDefaultBranch, getGitHubTextFile, githubRawUrl, listGitHubFiles } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import {
@@ -18,8 +18,10 @@ import {
   type NavNode,
   parseMintlifyLanguages,
   parseMintlifyNavigation,
+  partitionMintlifyVersions,
 } from './mintlify-mapping';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
+import { resolveMintlifyReferences } from './mintlify-references';
 import { defaultImportTarget, ensureGroupPage, type ImportTarget, removeImportPlaceholders, upsertLeafPage } from './persistence';
 import { emptySummary, type ImporterSource, type ImportSummary } from './types';
 
@@ -48,21 +50,24 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     if (!configPath) {
       throw badRequest('No docs.json or mint.json found — is this a Mintlify docs repository?');
     }
-    const rawConfig = await fetchRawText(githubRawUrl(owner, name, branch, configPath));
+    const rawConfig = await getGitHubTextFile(owner, name, branch, configPath);
     if (rawConfig === null) {
       throw badRequest(`Could not download ${configPath} from the repository.`);
     }
-    let config: Record<string, unknown>;
+    let parsedConfig: unknown;
     try {
-      const parsed = JSON.parse(rawConfig) as unknown;
-      const object = z.record(z.string(), z.unknown()).safeParse(parsed);
-      if (!object.success) {
-        throw new Error('not an object');
-      }
-      config = object.data;
-    } catch {
-      throw badRequest(`Could not parse ${configPath} — it is not valid JSON.`);
+      parsedConfig = JSON.parse(rawConfig);
+    } catch (error) {
+      throw new ImportError({ code: 'import:invalid_document', message: `Could not parse ${configPath} — it is not valid JSON.`, cause: error });
     }
+    const resolvedConfig = await resolveMintlifyReferences(parsedConfig, configPath, blobs, (filePath) =>
+      getGitHubTextFile(owner, name, branch, filePath),
+    );
+    const checkedConfig = importDocumentSchema.safeParse(resolvedConfig);
+    if (!checkedConfig.success) {
+      throw new ImportError({ code: 'import:invalid_document', message: `Could not parse ${configPath} — it is not valid JSON.` });
+    }
+    const config = checkedConfig.data;
 
     const summary = emptySummary();
     // Nav page paths are relative to the config file's directory.
@@ -70,7 +75,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     const repository = { owner, name, branch };
     const defaultTarget = await defaultImportTarget(projectId);
     const assets = new RemoteAssetMigrator(projectId, 'mintlify');
-    const state = { pages: 0, capWarned: false };
+    const state = { pages: 0, capWarned: false, versions: new Set<string>() };
     const languageResult = parseMintlifyLanguages(config);
     summary.warnings.push(...languageResult.warnings);
     let chromeNodes: NavNode[];
@@ -82,15 +87,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
       for (const { language, position } of orderedLanguages) {
         const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
-        const nodes = [...language.nodes];
-        await addLinkedPages(nodes, language.code, repository, baseDir, blobs, summary);
-        const removedPlaceholders = await removeImportPlaceholders(target);
-        if (removedPlaceholders > 0) {
-          summary.warnings.push(
-            `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'} from ${language.code}.`,
-          );
-        }
-        await importNodes(nodes, null, repository, baseDir, blobs, target, assets, buildMintlifyRouteMap(nodes), summary, state, language.code);
+        await importNavigation(language.nodes, target, language.code, repository, baseDir, blobs, assets, summary, state);
       }
     } else {
       const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
@@ -99,12 +96,10 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
       }
       chromeNodes = nodes;
-      await addLinkedPages(nodes, undefined, repository, baseDir, blobs, summary);
-      const removedPlaceholders = await removeImportPlaceholders(defaultTarget);
-      if (removedPlaceholders > 0) {
-        summary.warnings.push(`Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}.`);
-      }
-      await importNodes(nodes, null, repository, baseDir, blobs, defaultTarget, assets, buildMintlifyRouteMap(nodes), summary, state);
+      await importNavigation(nodes, defaultTarget, undefined, repository, baseDir, blobs, assets, summary, state);
+    }
+    if (state.versions.size > 0) {
+      summary.warnings.push(`Imported Mintlify versions as Nibleaf documentation versions: ${[...state.versions].join(', ')}.`);
     }
     summary.assetsImported = assets.migrated;
     summary.assetsSkipped = assets.skipped;
@@ -135,6 +130,81 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
 
     return summary;
   },
+};
+
+const ensureVersionTarget = async (
+  projectId: string,
+  defaultTarget: ImportTarget,
+  version: { name: string; isDefault: boolean },
+  summary: ImportSummary,
+): Promise<ImportTarget> => {
+  if (version.isDefault) {
+    const branch = await prisma.branch.findUnique({ where: { id: defaultTarget.branchId } });
+    if (!branch) throw badRequest('The project needs a default documentation version before content can be imported.');
+    if (branch.name !== version.name) {
+      const collision = await prisma.branch.findFirst({ where: { projectId, name: version.name } });
+      if (!collision) {
+        await prisma.branch.update({ where: { id: branch.id }, data: { name: version.name } });
+      } else if (collision.id !== branch.id) {
+        summary.warnings.push(`Kept the existing default version "${branch.name}" because a separate "${version.name}" version already exists.`);
+        return { ...defaultTarget, branchId: collision.id };
+      }
+    }
+    return defaultTarget;
+  }
+  const existing = await prisma.branch.findFirst({ where: { projectId, name: version.name } });
+  const branch = existing ?? (await prisma.branch.create({ data: { projectId, name: version.name, isDefault: false } }));
+  return { ...defaultTarget, branchId: branch.id };
+};
+
+const importNavigation = async (
+  sourceNodes: readonly NavNode[],
+  defaultTarget: ImportTarget,
+  languageCode: string | undefined,
+  repository: RepoRef,
+  baseDir: string,
+  blobs: ReadonlySet<string>,
+  assets: RemoteAssetMigrator,
+  summary: ImportSummary,
+  state: { pages: number; capWarned: boolean; versions: Set<string> },
+) => {
+  const { unversioned, versions } = partitionMintlifyVersions(sourceNodes);
+  const partitions =
+    versions.length === 0
+      ? [{ nodes: [...unversioned], target: defaultTarget }]
+      : await Promise.all(
+          [...versions]
+            .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
+            .map(async (version) => {
+              state.versions.add(version.name);
+              return {
+                nodes: version.isDefault ? [...unversioned, ...version.nodes] : [...version.nodes],
+                target: await ensureVersionTarget(defaultTarget.projectId, defaultTarget, version, summary),
+              };
+            }),
+        );
+  for (const partition of partitions) {
+    await addLinkedPages(partition.nodes, languageCode, repository, baseDir, blobs, summary);
+    const removedPlaceholders = await removeImportPlaceholders(partition.target);
+    if (removedPlaceholders > 0) {
+      summary.warnings.push(
+        `Removed ${removedPlaceholders} untouched starter placeholder page${removedPlaceholders === 1 ? '' : 's'}${languageCode ? ` from ${languageCode}` : ''}.`,
+      );
+    }
+    await importNodes(
+      partition.nodes,
+      null,
+      repository,
+      baseDir,
+      blobs,
+      partition.target,
+      assets,
+      buildMintlifyRouteMap(partition.nodes),
+      summary,
+      state,
+      languageCode,
+    );
+  }
 };
 
 const ensureLanguageTarget = async (
@@ -230,7 +300,7 @@ const discoverLinkedPages = async (nodes: readonly NavNode[], repo: RepoRef, bas
     const candidates = [`${baseDir}${sourcePath}.mdx`, `${baseDir}${sourcePath}.md`];
     const filePath = candidates.find((candidate) => blobs.has(candidate));
     if (!filePath) continue;
-    const raw = await fetchRawText(githubRawUrl(repo.owner, repo.name, repo.branch, filePath));
+    const raw = await getGitHubTextFile(repo.owner, repo.name, repo.branch, filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
     for (const target of mintlifyInternalLinkTargets(body, sourcePath)) {
@@ -251,7 +321,7 @@ const importNodes = async (
   parentId: string | null,
   repo: RepoRef,
   baseDir: string,
-  blobs: Set<string>,
+  blobs: ReadonlySet<string>,
   target: ImportTarget,
   assets: RemoteAssetMigrator,
   routeMap: ReadonlyMap<string, string>,
@@ -302,7 +372,7 @@ const importNodes = async (
       summary.skipped++;
       continue;
     }
-    const raw = await fetchRawText(githubRawUrl(repo.owner, repo.name, repo.branch, filePath));
+    const raw = await getGitHubTextFile(repo.owner, repo.name, repo.branch, filePath);
     if (raw === null) {
       summary.warnings.push(`Could not download "${filePath}" — the page was skipped.`);
       summary.skipped++;

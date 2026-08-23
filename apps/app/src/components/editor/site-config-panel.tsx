@@ -33,7 +33,7 @@ import type { Project } from '@/hooks/api';
  * full-page editor (brand, theme, navigation, SEO, behaviour). Administration —
  * domain, members, billing, integrations, danger — stays in the Settings hub.
  */
-export const EDITOR_CONFIG_SECTIONS = [
+const EDITOR_CONFIG_SECTIONS = [
   { id: 'branding', labelKey: 'settings.branding', icon: Badge },
   { id: 'themes', labelKey: 'settings.themes', icon: LayoutTemplate },
   { id: 'styling', labelKey: 'settings.styling', icon: Paintbrush },
@@ -47,9 +47,18 @@ export const EDITOR_CONFIG_SECTIONS = [
   { id: 'redirects', labelKey: 'settings.redirects', icon: Route },
 ] as const satisfies ReadonlyArray<{ id: string; labelKey: MessageKey; icon: LucideIcon }>;
 
-export type ConfigSectionId = (typeof EDITOR_CONFIG_SECTIONS)[number]['id'];
-
-export const isConfigSectionId = (value: unknown): value is ConfigSectionId => EDITOR_CONFIG_SECTIONS.some((section) => section.id === value);
+export type ConfigSectionId =
+  | 'branding'
+  | 'themes'
+  | 'styling'
+  | 'typography'
+  | 'navbar'
+  | 'footer'
+  | 'banner'
+  | 'seo'
+  | 'search'
+  | 'variables'
+  | 'redirects';
 
 /** The config section list rendered inside the editor's left rail. */
 export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionId; onSelect: (id: ConfigSectionId) => void }) {

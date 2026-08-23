@@ -2,6 +2,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
+import { Type } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import type { Project } from '@/hooks/api';
@@ -123,7 +124,7 @@ export function TypographySection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="T" title={t('settings.typography.title')} />
+      <SectionHeader icon={<Type className="size-4" />} title={t('settings.typography.title')} />
 
       <Field hint={t('settings.typography.preset.hint')} label={t('settings.typography.preset.label')}>
         <div className="flex flex-wrap gap-2">

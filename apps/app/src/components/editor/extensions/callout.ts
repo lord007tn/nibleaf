@@ -3,7 +3,7 @@ import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { preservedClosingTag, sourceMetadataAttributes } from './mdx-roundtrip';
 
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
-export const CALLOUT_VARIANTS = {
+const CALLOUT_VARIANTS = {
   note: { icon: '💡', keyword: 'NOTE', label: 'Note' },
   tip: { icon: '💡', keyword: 'TIP', label: 'Tip' },
   check: { icon: '✅', keyword: 'CHECK', label: 'Check' },
@@ -12,7 +12,7 @@ export const CALLOUT_VARIANTS = {
   info: { icon: 'ℹ️', keyword: 'IMPORTANT', label: 'Info' },
 } as const;
 
-export type CalloutVariant = keyof typeof CALLOUT_VARIANTS;
+type CalloutVariant = keyof typeof CALLOUT_VARIANTS;
 
 const KEYWORD_TO_VARIANT: Record<string, CalloutVariant> = Object.fromEntries(
   Object.entries(CALLOUT_VARIANTS).map(([variant, def]) => [def.keyword, variant as CalloutVariant]),
@@ -167,5 +167,3 @@ export const Callout = Node.create({
     };
   },
 });
-
-export default Callout;

@@ -237,5 +237,3 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     </BubbleMenu>
   );
 }
-
-export default EditorBubbleMenu;

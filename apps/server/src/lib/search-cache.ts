@@ -31,7 +31,7 @@ const authorizationScopeKey = (allowedPageIds: ReadonlySet<string> | null): stri
 const cacheKey = (projectId: string, lang: string, version: string, allowedPageIds: ReadonlySet<string> | null): string =>
   `${projectId}:${lang}:${version}:${authorizationScopeKey(allowedPageIds)}`;
 
-export const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
+const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
   pages
     // Exclude pages we serve `<meta robots noindex>` for, so in-product search
     // never surfaces a page we've told crawlers to ignore.
@@ -69,13 +69,4 @@ export const getCachedIndex = async (
   const index = await createDocIndex(docsFromPages(scoped), oramaLanguageForCode(lang));
   cache.set(mapKey, { key, index });
   return index;
-};
-
-export const invalidateIndex = (projectId: string): void => {
-  const prefix = `${projectId}:`;
-  for (const key of cache.keys()) {
-    if (key.startsWith(prefix)) {
-      cache.delete(key);
-    }
-  }
 };

@@ -4,7 +4,7 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { Check, ChevronDown, Copy, ExternalLink, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
@@ -48,7 +48,7 @@ export function DomainSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="◷" title={t('settings.domain.title')} />
+      <SectionHeader icon={<Globe2 className="size-4" />} title={t('settings.domain.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.domain.description')}</p>
 
       <form

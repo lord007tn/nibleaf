@@ -2,7 +2,6 @@ import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf
 import type {
   AddDomainBody,
   AiDraftBody,
-  CreateApiKeyBody,
   CreateBranchBody,
   CreateCommentBody,
   CreateLanguageBody,
@@ -26,21 +25,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type {
-  AiDraftResult,
-  ApiKey,
-  Asset,
-  Branch,
-  Comment,
-  Deployment,
-  Domain,
-  GitImportSummary,
-  Language,
-  OpenApiConfiguration,
-  Page,
-  Project,
-  WorkspaceSettings,
-} from './types';
+import type { Asset, Comment, Deployment, Language, Page, Project, WorkspaceSettings } from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -54,18 +39,14 @@ export interface ProjectThemeImportResult {
 
 export const useExportProjectTheme = (projectId: string) =>
   useMutation({
-    mutationFn: async () =>
-      getData<{ template: ThemeTemplateV1; json: string }>(
-        await api.app.projects[':id']['theme-template'].$get({ param: { id: projectId } }),
-        'theme template',
-      ),
+    mutationFn: async () => getData(await api.app.projects[':id']['theme-template'].$get({ param: { id: projectId } }), 'theme template'),
   });
 
 export const useImportProjectTheme = (projectId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ template, mode, apply }: { template: unknown; mode: 'merge' | 'replace'; apply: boolean }) =>
-      mutateData<ProjectThemeImportResult>(
+      mutateData(
         await api.app.projects[':id']['theme-template'].import.$post({
           param: { id: projectId },
           json: { template, mode, apply },
@@ -124,7 +105,7 @@ export const useDeleteProject = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (projectId: string) =>
-      mutateData<{ id: string }>(await api.app.projects[':id'].$delete({ param: { id: projectId } }), 'Could not delete the site.'),
+      mutateData(await api.app.projects[':id'].$delete({ param: { id: projectId } }), 'Could not delete the site.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
   });
 };
@@ -133,10 +114,7 @@ export const useUpsertOpenApi = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: UpsertOpenApiBody) =>
-      mutateData<OpenApiConfiguration>(
-        await api.app.projects[':projectId'].openapi.$put({ param: { projectId }, json: body }),
-        'Could not save the OpenAPI document.',
-      ),
+      mutateData(await api.app.projects[':projectId'].openapi.$put({ param: { projectId }, json: body }), 'Could not save the OpenAPI document.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
   });
 };
@@ -145,10 +123,7 @@ export const useSyncOpenApi = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
-      mutateData<OpenApiConfiguration>(
-        await api.app.projects[':projectId'].openapi.sync.$post({ param: { projectId } }),
-        'Could not refresh the OpenAPI document.',
-      ),
+      mutateData(await api.app.projects[':projectId'].openapi.sync.$post({ param: { projectId } }), 'Could not refresh the OpenAPI document.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
   });
 };
@@ -157,10 +132,7 @@ export const useDeleteOpenApi = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
-      mutateData<{ projectId: string }>(
-        await api.app.projects[':projectId'].openapi.$delete({ param: { projectId } }),
-        'Could not remove the OpenAPI document.',
-      ),
+      mutateData(await api.app.projects[':projectId'].openapi.$delete({ param: { projectId } }), 'Could not remove the OpenAPI document.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.openapi.detail(projectId) }),
   });
 };
@@ -193,10 +165,7 @@ export const useDeletePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (pageId: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }),
-        'Could not delete the page.',
-      ),
+      mutateData(await api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }), 'Could not delete the page.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
   });
 };
@@ -205,7 +174,7 @@ export const useReorderPages = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: ReorderPagesBody) =>
-      mutateData<unknown>(await api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }), 'Could not reorder pages.'),
+      mutateData(await api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }), 'Could not reorder pages.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
   });
 };
@@ -262,7 +231,7 @@ export const useAddDomain = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: AddDomainBody) =>
-      mutateData<Domain>(await api.app.projects[':projectId'].domains.$post({ param: { projectId }, json: body }), 'Could not add the domain.'),
+      mutateData(await api.app.projects[':projectId'].domains.$post({ param: { projectId }, json: body }), 'Could not add the domain.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
   });
 };
@@ -271,7 +240,7 @@ export const useVerifyDomain = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<Domain>(await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }), 'Could not verify.'),
+      mutateData(await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }), 'Could not verify.'),
     // Failed checks persist their actionable status before returning an error,
     // so refresh the row on both success and failure.
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
@@ -282,7 +251,7 @@ export const useSetPrimaryDomain = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<Domain>(
+      mutateData(
         await api.app.projects[':projectId'].domains[':id'].primary.$post({ param: { projectId, id } }),
         'Could not set the primary domain.',
       ),
@@ -294,29 +263,8 @@ export const useDeleteDomain = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].domains[':id'].$delete({ param: { projectId, id } }),
-        'Could not remove the domain.',
-      ),
+      mutateData(await api.app.projects[':projectId'].domains[':id'].$delete({ param: { projectId, id } }), 'Could not remove the domain.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
-  });
-};
-
-export const useCreateApiKey = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: CreateApiKeyBody) =>
-      mutateData<ApiKey>(await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }), 'Could not create the key.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
-  });
-};
-
-export const useRevokeApiKey = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<ApiKey>(await api.app.projects[':projectId']['api-keys'][':id'].$delete({ param: { projectId, id } }), 'Could not revoke the key.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
   });
 };
 
@@ -329,7 +277,7 @@ export const useUploadAsset = (projectId: string) => {
   return useMutation({
     mutationFn: async (file: File): Promise<Asset> => {
       const contentType = uploadContentType(file);
-      const presign = await mutateData<{ key: string; uploadUrl: string }>(
+      const presign = await mutateData(
         await api.app.projects[':projectId'].assets.presign.$post({
           param: { projectId },
           json: { filename: file.name, contentType, size: file.size },
@@ -340,7 +288,7 @@ export const useUploadAsset = (projectId: string) => {
       if (!put.ok) {
         throw new Error('Upload failed.');
       }
-      return mutateData<Asset>(
+      return mutateData(
         await api.app.projects[':projectId'].assets.confirm.$post({
           param: { projectId },
           json: { key: presign.key, contentType, size: file.size },
@@ -355,8 +303,7 @@ export const useUploadAsset = (projectId: string) => {
 export const useInviteMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: InviteMemberBody) =>
-      mutateData<{ id: string; email: string }>(await api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
+    mutationFn: async (body: InviteMemberBody) => mutateData(await api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -365,7 +312,7 @@ export const useUpdateMemberRole = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, body }: { id: string; body: UpdateMemberRoleBody }) =>
-      mutateData<unknown>(await api.app.members[':id'].role.$patch({ param: { id }, json: body }), 'Could not update the role.'),
+      mutateData(await api.app.members[':id'].role.$patch({ param: { id }, json: body }), 'Could not update the role.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -373,17 +320,7 @@ export const useUpdateMemberRole = () => {
 export const useRemoveMember = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(await api.app.members[':id'].$delete({ param: { id } }), 'Could not remove the member.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
-  });
-};
-
-export const useCancelInvitation = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(await api.app.members.invitations[':id'].$delete({ param: { id } }), 'Could not revoke the invitation.'),
+    mutationFn: async (id: string) => mutateData(await api.app.members[':id'].$delete({ param: { id } }), 'Could not remove the member.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
   });
 };
@@ -394,10 +331,7 @@ export const useInviteProjectMember = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: InviteMemberBody) =>
-      mutateData<{ id: string; email: string }>(
-        await api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }),
-        'Could not send the invite.',
-      ),
+      mutateData(await api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }), 'Could not send the invite.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };
@@ -406,7 +340,7 @@ export const useUpdateProjectMemberRole = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, body }: { id: string; body: UpdateMemberRoleBody }) =>
-      mutateData<unknown>(
+      mutateData(
         await api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
         'Could not update the role.',
       ),
@@ -418,7 +352,7 @@ export const useTransferProjectOwnership = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: TransferOwnershipBody) =>
-      mutateData<unknown>(
+      mutateData(
         await api.app.projects[':projectId'].members['transfer-ownership'].$post({ param: { projectId }, json: body }),
         'Could not transfer ownership.',
       ),
@@ -430,10 +364,7 @@ export const useRemoveProjectMember = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].members[':id'].$delete({ param: { projectId, id } }),
-        'Could not remove the member.',
-      ),
+      mutateData(await api.app.projects[':projectId'].members[':id'].$delete({ param: { projectId, id } }), 'Could not remove the member.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };
@@ -442,7 +373,7 @@ export const useCancelProjectInvitation = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
+      mutateData(
         await api.app.projects[':projectId'].members.invitations[':id'].$delete({ param: { projectId, id } }),
         'Could not revoke the invitation.',
       ),
@@ -477,10 +408,7 @@ export const useDeleteComment = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }),
-        'Could not delete the comment.',
-      ),
+      mutateData(await api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }), 'Could not delete the comment.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
   });
 };
@@ -490,7 +418,7 @@ export const useDeleteComment = (projectId: string) => {
 export const useAiDraft = (projectId: string) =>
   useMutation({
     mutationFn: async (body: AiDraftBody) =>
-      mutateData<AiDraftResult>(await api.app.projects[':projectId'].ai.$post({ param: { projectId }, json: body }), 'Could not draft content.'),
+      mutateData(await api.app.projects[':projectId'].ai.$post({ param: { projectId }, json: body }), 'Could not draft content.'),
   });
 
 // ─── Languages ───────────────────────────────────────────────────────────────
@@ -523,10 +451,7 @@ export const useDeleteLanguage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].languages[':id'].$delete({ param: { projectId, id } }),
-        'Could not delete the language.',
-      ),
+      mutateData(await api.app.projects[':projectId'].languages[':id'].$delete({ param: { projectId, id } }), 'Could not delete the language.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.languages.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -541,23 +466,8 @@ export const useCreateBranch = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateBranchBody) =>
-      mutateData<Branch>(await api.app.projects[':projectId'].branches.$post({ param: { projectId }, json: body }), 'Could not create the branch.'),
+      mutateData(await api.app.projects[':projectId'].branches.$post({ param: { projectId }, json: body }), 'Could not create the branch.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) }),
-  });
-};
-
-export const useDeleteBranch = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<{ id: string }>(
-        await api.app.projects[':projectId'].branches[':id'].$delete({ param: { projectId, id } }),
-        'Could not delete the branch.',
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-    },
   });
 };
 
@@ -565,10 +475,7 @@ export const useMergeBranch = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<Branch>(
-        await api.app.projects[':projectId'].branches[':id'].merge.$post({ param: { projectId, id } }),
-        'Could not merge the branch.',
-      ),
+      mutateData(await api.app.projects[':projectId'].branches[':id'].merge.$post({ param: { projectId, id } }), 'Could not merge the branch.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -599,10 +506,7 @@ export const useImportFromGit = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
-      mutateData<GitImportSummary>(
-        await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }),
-        'Could not import from Git.',
-      ),
+      mutateData(await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }), 'Could not import from Git.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
       qc.invalidateQueries({ queryKey: ['pages', projectId] });
@@ -616,7 +520,7 @@ export const useRotateGitWebhookSecret = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () =>
-      mutateData<{ webhookSecret: string }>(
+      mutateData(
         await api.app.projects[':projectId'].settings.git['webhook-secret'].$post({ param: { projectId } }),
         'Could not rotate the webhook secret.',
       ),
@@ -641,7 +545,7 @@ export const useImportFromMintlify = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: MintlifyImportBody) =>
-      mutateData<ContentImportSummary>(
+      mutateData(
         await api.app.projects[':projectId'].settings.import.mintlify.$post({ param: { projectId }, json: body }),
         'Could not import from Mintlify.',
       ),
@@ -659,7 +563,7 @@ export const useImportFromGhost = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: Record<string, unknown>) =>
-      mutateData<ContentImportSummary>(
+      mutateData(
         await api.app.projects[':projectId'].settings.import.ghost.$post({ param: { projectId }, json: body }),
         'Could not import from Ghost.',
       ),
@@ -674,7 +578,7 @@ export const useMarkNotificationsRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: MarkNotificationsReadBody) =>
-      mutateData<{ updated: number }>(await api.app.notifications.read.$post({ json: body }), 'Could not update notifications.'),
+      mutateData(await api.app.notifications.read.$post({ json: body }), 'Could not update notifications.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.notifications.list() });
       qc.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });

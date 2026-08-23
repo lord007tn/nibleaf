@@ -147,5 +147,3 @@ export function TableBubbleMenu({ editor }: { editor: Editor }) {
     </BubbleMenu>
   );
 }
-
-export default TableBubbleMenu;

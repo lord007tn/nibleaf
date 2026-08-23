@@ -170,5 +170,3 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
     </Dialog>
   );
 }
-
-export default AddLanguageDialog;

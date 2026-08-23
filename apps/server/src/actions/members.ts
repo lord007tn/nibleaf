@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
-import { renderMemberInvitationEmail } from '@nibleaf/email';
+import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import type { UpdateMemberRoleBody } from '@nibleaf/validators';
@@ -49,7 +49,7 @@ export const inviteMember = async (
   // Wider than `InviteMemberBody` (whose schema excludes `owner`) so the
   // platform-admin bootstrap below can mint a brand-new org's FIRST owner.
   body: { email: string; role: MemberRole },
-  options: { sendEmail?: boolean; bootstrapOwner?: boolean } = {},
+  options: { sendEmail?: boolean; bootstrapOwner?: boolean; language?: EmailLanguage } = {},
 ) => {
   if (body.role === MemberRole.OWNER) {
     // Single-owner rule: `owner` can never be granted through a workspace
@@ -104,6 +104,7 @@ export const inviteMember = async (
     acceptUrl,
     days: INVITE_TTL_DAYS,
     inviterName,
+    language: options.language,
     organizationName: siteName,
     role: body.role,
   });

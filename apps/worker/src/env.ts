@@ -6,7 +6,7 @@ import { keys as storage } from '@nibleaf/storage/keys';
 import { createEnv } from '@t3-oss/env-core';
 import { z } from 'zod';
 
-export const env = createEnv({
+const parsedEnv = createEnv({
   extends: [bullmq(), database(), qdrant(), search(), storage()],
   server: {
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -16,10 +16,7 @@ export const env = createEnv({
     POSTMARK_API_KEY: z.string().optional(),
     POSTMARK_MESSAGE_STREAM: z.string().optional(),
     SMTP_URL: z.string().optional(),
-    EMAIL_DELIVERY_REQUIRED: z
-      .enum(['true', 'false', '1', '0'])
-      .optional()
-      .transform((value) => (value === undefined ? process.env.NODE_ENV === 'production' : value === 'true' || value === '1')),
+    EMAIL_DELIVERY_REQUIRED: z.enum(['true', 'false', '1', '0']).optional(),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),
@@ -41,3 +38,11 @@ export const env = createEnv({
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,
 });
+
+export const env = {
+  ...parsedEnv,
+  EMAIL_DELIVERY_REQUIRED:
+    parsedEnv.EMAIL_DELIVERY_REQUIRED === undefined
+      ? parsedEnv.NODE_ENV === 'production'
+      : parsedEnv.EMAIL_DELIVERY_REQUIRED === 'true' || parsedEnv.EMAIL_DELIVERY_REQUIRED === '1',
+};

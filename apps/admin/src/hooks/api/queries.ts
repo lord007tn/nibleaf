@@ -1,13 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type InferResponseType } from '@/services/api';
 
-export type AdminOverview = InferResponseType<typeof api.admin.overview.$get>['data'];
 export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data'][number];
-export type AdminUserDetail = InferResponseType<(typeof api.admin.users)[':id']['$get']>['data'];
 export type AdminSite = InferResponseType<typeof api.admin.sites.$get>['data'][number];
-export type AdminSiteDetail = InferResponseType<(typeof api.admin.sites)[':id']['$get']>['data'];
-export type AdminFunnel = InferResponseType<typeof api.admin.funnel.$get>['data'];
-export type AdminOperations = InferResponseType<typeof api.admin.operations.$get>['data'];
 
 /** Typed failure used by the admin role gate without parsing error messages. */
 export class AdminApiError extends Error {

@@ -1,13 +1,16 @@
+import { useT } from '@nibleaf/i18n/react';
 import { createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { getQueryContext, QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { routeTree } from './routeTree.gen';
 
 function NotFound() {
-  return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground text-sm">Page not found</div>;
+  const t = useT();
+  return <div className="grid min-h-screen place-items-center bg-background text-muted-foreground text-sm">{t('admin.error.notFound')}</div>;
 }
 
 function ErrorComponent() {
-  return <div className="grid min-h-screen place-items-center bg-background text-destructive text-sm">Something went wrong.</div>;
+  const t = useT();
+  return <div className="grid min-h-screen place-items-center bg-background text-destructive text-sm">{t('error.unexpected')}</div>;
 }
 
 export function getRouter() {

@@ -1,7 +1,7 @@
 import { APP_URL } from '@/lib/links';
 
 /** localStorage key holding an invitation id captured before the user authenticated. */
-export const PENDING_INVITE_KEY = 'nibleaf.pendingInvitation';
+const PENDING_INVITE_KEY = 'nibleaf.pendingInvitation';
 
 /** The shareable accept link for an invitation — works with or without email delivery. */
 export const inviteAcceptUrl = (invitationId: string): string => {

@@ -50,5 +50,5 @@ export const getGitPreviewFn = createServerFn({ method: 'GET' })
   .validator(z.object({ token: z.string().min(1) }))
   .handler(async ({ data }) => {
     const response = await api.public.git.previews[':token'].$get({ param: { token: data.token } });
-    return JSON.stringify(await getData<{ snapshot: import('@nibleaf/shared/site').SiteSnapshot }>(response, 'pull-request preview'));
+    return JSON.stringify(await getData(response, 'pull-request preview'));
   });

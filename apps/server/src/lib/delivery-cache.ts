@@ -1,7 +1,7 @@
 /** Cache policy for published delivery. Credential-dependent responses must not
  * be stored by browsers, reverse proxies, or CDNs and must vary on both supported
  * credential transports. */
-export const PRIVATE_DELIVERY_HEADERS = { 'Cache-Control': 'private, no-store', Vary: 'Cookie, Authorization' } as const;
+const PRIVATE_DELIVERY_HEADERS = { 'Cache-Control': 'private, no-store', Vary: 'Cookie, Authorization' } as const;
 
 export const deliveryCacheHeaders = (isPrivate: boolean, publicPolicy: string): Record<string, string> =>
   isPrivate ? { ...PRIVATE_DELIVERY_HEADERS } : { 'Cache-Control': publicPolicy };

@@ -80,7 +80,7 @@ export const useResolveGitConflict = (projectId: string, conflictId: string) =>
 export const useAuthorizeGitWorkflow = (projectId: string) =>
   useMutation({
     mutationFn: async (token: string) =>
-      mutateData<{ login: string; name: string | null }>(
+      mutateData(
         await api.app.projects[':projectId'].git.authorize.$post({ param: { projectId }, json: { token } }),
         'Could not authorize the GitHub account.',
       ),
@@ -88,18 +88,12 @@ export const useAuthorizeGitWorkflow = (projectId: string) =>
 
 export const useConnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (json: GitConnectionBody) =>
-    mutateData<{ connection: GitWorkflowStatus; webhookSecret: string | null }>(
-      await api.app.projects[':projectId'].git.connection.$put({ param: { projectId }, json }),
-      'Could not connect the repository.',
-    ),
+    mutateData(await api.app.projects[':projectId'].git.connection.$put({ param: { projectId }, json }), 'Could not connect the repository.'),
   );
 
 export const useDisconnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (_: undefined) =>
-    mutateData<{ disconnected: boolean }>(
-      await api.app.projects[':projectId'].git.connection.$delete({ param: { projectId } }),
-      'Could not disconnect the repository.',
-    ),
+    mutateData(await api.app.projects[':projectId'].git.connection.$delete({ param: { projectId } }), 'Could not disconnect the repository.'),
   );
 
 export const useQueueGitOperation = (projectId: string) =>
@@ -112,8 +106,5 @@ export const useQueueGitOperation = (projectId: string) =>
 
 export const useRotateGitWorkflowWebhookSecret = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (_: undefined) =>
-    mutateData<{ webhookSecret: string }>(
-      await api.app.projects[':projectId'].git['webhook-secret'].$post({ param: { projectId } }),
-      'Could not rotate the webhook secret.',
-    ),
+    mutateData(await api.app.projects[':projectId'].git['webhook-secret'].$post({ param: { projectId } }), 'Could not rotate the webhook secret.'),
   );

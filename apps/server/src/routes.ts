@@ -73,4 +73,3 @@ const apiApp = new Hono<HonoEnv>()
 const app = baseApp.route('/api', apiApp);
 
 export default app;
-export type AppType = typeof app;

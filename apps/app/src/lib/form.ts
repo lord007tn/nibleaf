@@ -29,15 +29,3 @@ export const email = (value: string, t?: Translator) => {
   }
   return t ? t('validation.emailInvalid') : 'Enter a valid email address';
 };
-
-export const minLength =
-  (min: number, label = 'Password', t?: Translator) =>
-  (value: string) => {
-    if (value.length >= min) {
-      return;
-    }
-    return t ? t('validation.minLength', { label, min }) : `${label} must be at least ${min} characters`;
-  };
-
-/** Normalise a TanStack Form field's `meta.errors` into clean strings to render. */
-export const fieldErrors = (errors: unknown[]): string[] => errors.filter((error): error is string => typeof error === 'string' && error.length > 0);

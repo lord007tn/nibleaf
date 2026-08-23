@@ -87,7 +87,7 @@ export const useCancelExport = (projectId: string) => {
 export const useGetExportDownload = (projectId: string) =>
   useMutation({
     mutationFn: async ({ runId, artifactId }: { runId: string; artifactId: string }) =>
-      getData<{ url: string }>(
+      getData(
         await api.app.projects[':projectId'].exports[':id'].artifacts[':artifactId'].download.$get({
           param: { projectId, id: runId, artifactId },
         }),

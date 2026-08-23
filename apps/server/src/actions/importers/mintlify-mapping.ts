@@ -1,6 +1,6 @@
 import { slugify } from '@nibleaf/shared';
 import { type LanguageConfig, languageConfigSchema, type ProjectConfig, projectConfigSchema } from '@nibleaf/validators';
-import { z } from 'zod';
+import { importDocumentSchema, nonEmptyImportStringSchema } from '../../validators/importers';
 
 /**
  * Pure mapping logic for the Mintlify importer: locate the config file,
@@ -18,11 +18,12 @@ export interface NavGroupNode {
   /** Stable Nibleaf route segment for localized group labels. */
   slug?: string;
   /** Which schema construct produced this group (tabs/anchors become groups too). */
-  origin: 'group' | 'tab' | 'anchor' | 'dropdown' | 'language' | 'version' | 'menu';
+  origin: 'group' | 'tab' | 'anchor' | 'dropdown' | 'language' | 'version' | 'menu' | 'product';
+  isDefault?: boolean;
   children: NavNode[];
 }
 
-export interface NavPageNode {
+interface NavPageNode {
   kind: 'page';
   /** Repo-relative page path without extension, e.g. `guides/quickstart`. */
   path: string;
@@ -58,9 +59,9 @@ export interface MintlifyLanguageResult {
 
 type Dict = Record<string, unknown>;
 
-const isDict = (value: unknown): value is Dict => z.record(z.string(), z.unknown()).safeParse(value).success;
+const isDict = (value: unknown): value is Dict => importDocumentSchema.safeParse(value).success;
 const asString = (value: unknown) => {
-  const parsed = z.string().trim().min(1).safeParse(value);
+  const parsed = nonEmptyImportStringSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 };
 const isExternalUrl = (value: string): boolean => /^https?:\/\//i.test(value);
@@ -82,8 +83,10 @@ const CONTAINERS = [
   { list: 'languages', label: 'language', origin: 'language' },
   { list: 'versions', label: 'version', origin: 'version' },
   { list: 'tabs', label: 'tab', origin: 'tab' },
+  { list: 'products', label: 'product', origin: 'product' },
   { list: 'dropdowns', label: 'dropdown', origin: 'dropdown' },
   { list: 'anchors', label: 'anchor', origin: 'anchor' },
+  { list: 'menu', label: 'item', origin: 'menu' },
   { list: 'menus', label: 'menu', origin: 'menu' },
 ] as const;
 
@@ -100,12 +103,13 @@ const parsePagesArray = (entries: unknown, warnings: string[]): NavNode[] => {
   }
   const nodes: NavNode[] = [];
   for (const entry of entries) {
-    if (typeof entry === 'string') {
-      if (isExternalUrl(entry)) {
-        warnings.push(`Skipped external navigation link "${entry}".`);
+    const pageEntry = asString(entry);
+    if (pageEntry) {
+      if (isExternalUrl(pageEntry)) {
+        warnings.push(`Skipped external navigation link "${pageEntry}".`);
         continue;
       }
-      const path = normalizePagePath(entry);
+      const path = normalizePagePath(pageEntry);
       if (path) {
         nodes.push({ kind: 'page', path });
       }
@@ -162,10 +166,16 @@ const resolveDivisions = (container: Dict, warnings: string[]): NavNode[] => {
         warnings.push(`Navigation ${label} "${title ?? '(unnamed)'}" has no pages and was skipped.`);
         continue;
       }
-      if (origin === 'language' || origin === 'version') {
+      if (origin === 'language') {
         warnings.push(`Navigation ${label} "${title ?? '(unnamed)'}" was imported as a top-level group.`);
       }
-      nodes.push({ kind: 'group', title: title ?? 'Untitled', origin, children });
+      nodes.push({
+        kind: 'group',
+        title: title ?? 'Untitled',
+        origin,
+        children,
+        ...(origin === 'version' && item.default === true ? { isDefault: true } : {}),
+      });
     }
   }
   const groups = container.groups;
@@ -185,6 +195,13 @@ const parseContainerObject = (entry: Dict, warnings: string[]): NavNode[] => {
   const groupTitle = asString(entry.group);
   const children = resolveDivisions(entry, warnings);
   if (groupTitle) {
+    const root = asString(entry.root);
+    if (root && !isExternalUrl(root)) {
+      const rootPath = normalizePagePath(root);
+      if (rootPath && !children.some((child) => child.kind === 'page' && child.path === rootPath)) {
+        children.unshift({ kind: 'page', path: rootPath });
+      }
+    }
     if (children.length === 0) {
       warnings.push(`Navigation group "${groupTitle}" has no pages and was skipped.`);
       return [];
@@ -209,7 +226,7 @@ const parseContainerObject = (entry: Dict, warnings: string[]): NavNode[] => {
  * Normalize either schema's `navigation` into an ordered tree.
  * - mint.json: an array of `{ group, pages: [path | nested group] }`.
  * - docs.json: an object of nested containers (languages/versions/tabs/anchors/
- *   dropdowns/groups/pages). Tabs, anchors, languages, and versions become
+ *   products/dropdowns/groups/pages/menu). Structural divisions become
  *   top-level groups so the hierarchy survives the import.
  */
 export const parseMintlifyNavigation = (config: Dict): MintlifyNavResult => {
@@ -245,9 +262,7 @@ export const parseMintlifyNavigation = (config: Dict): MintlifyNavResult => {
       wrapper.children.push(...parsed);
     }
     if (versionGroups.size > 0) {
-      warnings.push(
-        `Versioned navigation (${[...versionGroups.keys()].join(', ')}) was imported as top-level groups — not as separate docs versions.`,
-      );
+      warnings.push(`Detected versioned navigation: ${[...versionGroups.keys()].join(', ')}.`);
     }
     return { nodes, warnings };
   }
@@ -256,6 +271,41 @@ export const parseMintlifyNavigation = (config: Dict): MintlifyNavResult => {
   }
   warnings.push('The Mintlify config has no navigation section — no pages were imported from it.');
   return { nodes: [], warnings };
+};
+
+export interface MintlifyVersionNavigation {
+  name: string;
+  isDefault: boolean;
+  nodes: NavNode[];
+}
+
+/** Split top-level Mintlify version containers into Nibleaf branch targets.
+ * Unversioned siblings remain available for the default branch. */
+export const partitionMintlifyVersions = (nodes: readonly NavNode[]) => {
+  const unversioned: NavNode[] = [];
+  const versions = new Map<string, Omit<MintlifyVersionNavigation, 'isDefault'> & { requestedDefault: boolean }>();
+  for (const node of nodes) {
+    if (node.kind !== 'group' || node.origin !== 'version') {
+      unversioned.push(node);
+      continue;
+    }
+    const existing = versions.get(node.title);
+    if (existing) {
+      existing.nodes.push(...node.children);
+      existing.requestedDefault ||= node.isDefault === true;
+    } else {
+      versions.set(node.title, { name: node.title, nodes: [...node.children], requestedDefault: node.isDefault === true });
+    }
+  }
+  const entries = [...versions.values()];
+  const defaultIndex = Math.max(
+    0,
+    entries.findIndex((entry) => entry.requestedDefault),
+  );
+  return {
+    unversioned,
+    versions: entries.map(({ requestedDefault: _requestedDefault, ...entry }, index) => ({ ...entry, isDefault: index === defaultIndex })),
+  };
 };
 
 /**
@@ -459,16 +509,16 @@ export const mapMintlifyConfig = (config: Dict, nav: NavNode[], options: Mintlif
     return safeUrl(value, warnings, what);
   };
   const branding: NonNullable<ProjectConfig['branding']> = {};
-  const logo = config.logo;
-  if (typeof logo === 'string') {
-    const href = brandingUrl(asString(logo), 'logo');
+  const logo = asString(config.logo);
+  if (logo) {
+    const href = brandingUrl(logo, 'logo');
     if (href) {
       branding.logoLight = href;
       branding.logoDark = href;
     }
-  } else if (isDict(logo)) {
-    const light = brandingUrl(asString(logo.light), 'light logo');
-    const dark = brandingUrl(asString(logo.dark), 'dark logo');
+  } else if (isDict(config.logo)) {
+    const light = brandingUrl(asString(config.logo.light), 'light logo');
+    const dark = brandingUrl(asString(config.logo.dark), 'dark logo');
     if (light) {
       branding.logoLight = light;
     }
@@ -476,7 +526,7 @@ export const mapMintlifyConfig = (config: Dict, nav: NavNode[], options: Mintlif
       branding.logoDark = dark;
     }
   }
-  const favicon = typeof config.favicon === 'string' ? config.favicon : isDict(config.favicon) ? asString(config.favicon.light) : undefined;
+  const favicon = asString(config.favicon) ?? (isDict(config.favicon) ? asString(config.favicon.light) : undefined);
   const faviconUrl = brandingUrl(asString(favicon), 'favicon');
   if (faviconUrl) {
     branding.favicon = faviconUrl;

@@ -11,6 +11,7 @@ import {
   type ObjectIdentifier,
   PutBucketCorsCommand,
   PutObjectCommand,
+  S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { logger } from '@nibleaf/logger';
@@ -178,9 +179,6 @@ export const configureUploadCors = (origins: string[], target?: StorageTarget): 
   );
 
 const isNotFound = (error: unknown): boolean => {
-  if (!(error instanceof Object)) {
-    return false;
-  }
-  const { name, $metadata } = error as { name?: string; $metadata?: { httpStatusCode?: number } };
-  return name === 'NotFound' || name === 'NoSuchKey' || $metadata?.httpStatusCode === 404;
+  if (!(error instanceof S3ServiceException)) return false;
+  return error.name === 'NotFound' || error.name === 'NoSuchKey' || error.$metadata.httpStatusCode === 404;
 };

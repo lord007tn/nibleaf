@@ -58,7 +58,7 @@ const normalizeRepository = (value: string): string => {
   return repository;
 };
 
-export const normalizeGitBranch = (value: string, label = 'Git branch'): string => {
+const normalizeGitBranch = (value: string, label = 'Git branch'): string => {
   const branch = value.trim().replace(/^refs\/heads\//, '');
   if (
     !branch ||
@@ -75,7 +75,7 @@ export const normalizeGitBranch = (value: string, label = 'Git branch'): string 
   return branch;
 };
 
-export const normalizeGitPath = (value = ''): string => {
+const normalizeGitPath = (value = ''): string => {
   const path = value
     .trim()
     .replace(/\\/g, '/')
@@ -122,7 +122,7 @@ type AuthoringPage = {
 };
 
 const frontmatterValue = (value: string): string => JSON.stringify(value);
-export const serializeGitPage = (page: AuthoringPage): string => {
+const serializeGitPage = (page: AuthoringPage): string => {
   const fields = [`title: ${frontmatterValue(page.title)}`];
   if (page.description) fields.push(`description: ${frontmatterValue(page.description)}`);
   if (page.icon) fields.push(`icon: ${frontmatterValue(page.icon)}`);
@@ -203,7 +203,13 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   const contentPath = normalizeGitPath(input.contentPath);
   const existing = await prisma.gitConnection.findUnique({ where: { projectId } });
   if (!input.token && !existing?.credentialEncrypted) throw badRequest('A fine-grained GitHub token is required for the first connection.');
-  const provider = input.token ? new GitHubProvider(input.token) : providerFor(existing as NonNullable<typeof existing>);
+  const provider = input.token
+    ? new GitHubProvider(input.token)
+    : existing
+      ? providerFor(existing)
+      : (() => {
+          throw badRequest('A fine-grained GitHub token is required for the first connection.');
+        })();
   await provider.verifyWriteAccess(repository);
   const [baseSha, headSha] = await Promise.all([provider.getBranchSha(repository, baseBranch), provider.getBranchSha(repository, headBranch)]);
   if (!baseSha) throw badRequest(`Base branch ${baseBranch} was not found.`);
@@ -265,7 +271,7 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
  * The credential is held only for this request and is never persisted here. */
 export const authorizeGitHub = async (token: string) => new GitHubProvider(token).verifyIdentity();
 
-export const redactConnection = <T extends { credentialEncrypted: string | null; webhookSecretEncrypted: string | null }>(connection: T) => {
+const redactConnection = <T extends { credentialEncrypted: string | null; webhookSecretEncrypted: string | null }>(connection: T) => {
   const { credentialEncrypted: _credential, webhookSecretEncrypted: _webhook, ...safe } = connection;
   return { ...safe, credentialConfigured: Boolean(connection.credentialEncrypted), webhookConfigured: Boolean(connection.webhookSecretEncrypted) };
 };
@@ -636,12 +642,10 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
     const entries = mergeEntries(states, ours, theirs);
     const existingConflicts = new Map(operation.conflicts.map((conflict) => [conflict.path, conflict]));
-    const staleResolutions = entries
-      .map((entry) => ({ entry, conflict: existingConflicts.get(entry.path) }))
-      .filter(
-        (item): item is { entry: MergeEntry; conflict: NonNullable<typeof item.conflict> } =>
-          item.conflict?.status === 'RESOLVED' && !conflictSnapshotMatches(item.conflict, item.entry),
-      );
+    const staleResolutions = entries.flatMap((entry) => {
+      const conflict = existingConflicts.get(entry.path);
+      return conflict?.status === 'RESOLVED' && !conflictSnapshotMatches(conflict, entry) ? [{ entry, conflict }] : [];
+    });
     if (staleResolutions.length > 0) {
       await prisma.$transaction(
         staleResolutions.map(({ entry, conflict }) =>
@@ -747,8 +751,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
       }
     });
 
-    let pull: Awaited<ReturnType<typeof upsertPullRequest>> = null;
-    if (operation.kind === 'PUSH') pull = await upsertPullRequest(operation, connection, provider, finalSha, changes);
+    let pull = operation.kind === 'PUSH' ? await upsertPullRequest(operation, connection, provider, finalSha, changes) : null;
     if (operation.kind === 'PULL' && request.pullRequestNumber) {
       const remotePull: RemotePullRequest = await provider.getPullRequest(connection.repository, request.pullRequestNumber);
       pull = await prisma.gitPullRequest.upsert({
@@ -882,7 +885,7 @@ export const resolveGitConflict = async (
   return updated;
 };
 
-export const gitWorkspaceStatus = async (projectId: string) => {
+export const getGitWorkspaceStatus = async (projectId: string) => {
   const connection = await prisma.gitConnection.findUnique({
     where: { projectId },
     include: {

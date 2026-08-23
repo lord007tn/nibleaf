@@ -104,5 +104,3 @@ export const CommentDecorations = Extension.create<CommentDecorationOptions>({
     ];
   },
 });
-
-export default CommentDecorations;

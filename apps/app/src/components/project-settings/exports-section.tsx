@@ -56,7 +56,11 @@ export function ExportsSection({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-7">
-      <SectionHeader icon="⇩" title={t('settings.exports.title')} description={t('settings.exports.workflow.description')} />
+      <SectionHeader
+        icon={<Archive className="size-4" />}
+        title={t('settings.exports.title')}
+        description={t('settings.exports.workflow.description')}
+      />
       <nav aria-label={t('settings.exports.workflow.navLabel')} className="grid gap-2 sm:grid-cols-3">
         {(
           [
@@ -216,7 +220,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   const { t } = useLocale();
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const [name, setName] = useState(() => t('settings.exports.workflow.defaultScheduleName'));
-  const [cadence, setCadence] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('DAILY');
+  const [cadence, setCadence] = useState<ExportSchedule['cadence']>('DAILY');
   const [time, setTime] = useState('02:00');
   const [weekday, setWeekday] = useState(1);
   const [monthday, setMonthday] = useState(1);
@@ -258,7 +262,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
       <Input aria-label={t('settings.exports.workflow.timezone')} onChange={(event) => setTimezone(event.target.value)} value={timezone} />
       <select
         className="h-9 rounded-md border bg-background px-3 text-sm"
-        onChange={(event) => setCadence(event.target.value as typeof cadence)}
+        onChange={(event) => setCadence(event.target.value as ExportSchedule['cadence'])}
         value={cadence}
       >
         <option value="DAILY">{t('settings.exports.workflow.daily')}</option>

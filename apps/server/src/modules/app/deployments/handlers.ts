@@ -11,7 +11,7 @@ import {
   rollbackDeployment,
 } from '@/actions/deployments';
 import { assertProjectInOrg } from '@/actions/projects';
-import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextLocale, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import deploymentsRoutes from './routes';
 
@@ -46,7 +46,7 @@ const app = new Hono<HonoEnv>()
   .post('/', ...deploymentsRoutes.publish, validator('json', publishDeploymentBody), async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
     const user = getContextUserOrThrow();
-    return ctx.json({ data: await createDeployment(organizationId, projectId, user.id, ctx.req.valid('json')) }, 201);
+    return ctx.json({ data: await createDeployment(organizationId, projectId, user.id, ctx.req.valid('json'), getContextLocale()) }, 201);
   })
   .post('/:id/rollback', ...deploymentsRoutes.rollback, async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);

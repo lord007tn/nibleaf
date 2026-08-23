@@ -13,12 +13,11 @@ import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
-import { fetchRawText, githubRawUrl, listGitHubFiles } from './importers/github';
+import { getGitHubTextFile, listGitHubFiles } from './importers/github';
 import { ensureGroupPage, type ImportTarget, upsertLeafPage } from './importers/persistence';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { assertProjectInOrg } from './projects';
 
-type GitProvider = NonNullable<GitConfig['provider']>;
 const execFileAsync = promisify(execFile);
 
 interface MarkdownFile {
@@ -146,12 +145,7 @@ const listGitLabFiles = async (
   return files;
 };
 
-const rawFileUrl = (provider: GitProvider, repo: string, branch: string, filePath: string, instanceUrl?: string): string => {
-  if (provider === 'github') {
-    const [owner, name] = repo.split('/');
-    return githubRawUrl(owner ?? '', name ?? '', branch, filePath);
-  }
-
+const gitLabRawFileUrl = (repo: string, branch: string, filePath: string, instanceUrl?: string) => {
   const base = normalizeInstanceUrl(instanceUrl);
   const url = new URL(`${base}/api/v4/projects/${encodeURIComponent(repo)}/repository/files/${encodeURIComponent(filePath)}/raw`);
   url.searchParams.set('ref', branch);
@@ -274,9 +268,11 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
       .map((file) => ({
         path: file.path,
         read: async () => {
-          const rawUrl = rawFileUrl(provider, repo, branch, file.path, safeGitLabInstance);
-          if (provider !== 'gitlab') return fetchRawText(rawUrl);
-          const response = await fetchGitLab(rawUrl);
+          if (provider === 'github') {
+            const [owner, name] = repo.split('/');
+            return getGitHubTextFile(owner as string, name as string, branch, file.path);
+          }
+          const response = await fetchGitLab(gitLabRawFileUrl(repo, branch, file.path, safeGitLabInstance));
           return response.ok ? response.body : null;
         },
       }));

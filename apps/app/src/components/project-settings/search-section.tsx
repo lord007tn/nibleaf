@@ -1,6 +1,7 @@
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
+import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
@@ -35,7 +36,7 @@ export function SearchSection({ project }: { project: Project }) {
 
   return (
     <div>
-      <SectionHeader icon="⌕" title={t('settings.search.title')} />
+      <SectionHeader icon={<Search className="size-4" />} title={t('settings.search.title')} />
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}
         guard={guard}

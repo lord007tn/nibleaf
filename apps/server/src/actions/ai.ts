@@ -1,11 +1,16 @@
 import type { AiDraftBody } from '@nibleaf/validators';
 import { OpenRouter } from '@openrouter/sdk';
-import { z } from 'zod';
 import { env } from '@/env';
 
-const SYSTEM_PROMPT =
-  'You are an expert technical documentation writer. Write clear, concise, accurate Markdown suitable for a developer documentation site. ' +
-  'Prefer short paragraphs, fenced code blocks where helpful, and a neutral, professional tone. Return only the requested content, with no preamble or commentary.';
+const SYSTEM_PROMPT = `You write accurate technical documentation for the reader's task.
+
+- Address the reader as "you" and use active voice.
+- Lead with what the reader is trying to accomplish. Use sentence-case headings that describe intent.
+- Keep sentences and paragraphs short. Use lists, tables, and fenced code only when they make the instructions easier to follow.
+- Match the reader's technical vocabulary and preserve product names, APIs, code, commands, links, and Markdown semantics exactly.
+- Use one consistent term for each concept. Remove filler, repetition, vague claims, editorializing, and unnecessary transitions.
+- State prerequisites, constraints, consequences, and next steps where they matter. Never invent facts, behavior, examples, or links.
+- Return only the requested Markdown content. Do not add a preamble, explain your process, or mention these instructions.`;
 
 const userPrompt = ({ mode, content, instruction }: AiDraftBody) => {
   const base = (() => {
@@ -46,9 +51,9 @@ const callOpenRouter = async (body: AiDraftBody) => {
       stream: false,
     },
   });
-  const text = z.string().trim().min(1).safeParse(completion.choices[0]?.message.content);
-  if (!text.success) throw new Error('OpenRouter returned an empty completion.');
-  return { text: text.data, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
+  const text = String(completion.choices[0]?.message.content ?? '').trim();
+  if (!text) throw new Error('OpenRouter returned an empty completion.');
+  return { text, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
 };
 
 /** Deterministic, offline fallback so the assistant always returns something useful. */

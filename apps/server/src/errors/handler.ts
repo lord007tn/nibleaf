@@ -8,6 +8,27 @@ interface ErrorMiddlewareOptions {
   isDevelopment: boolean;
 }
 
+const codeForStatus = (status: number) => {
+  switch (status) {
+    case 400:
+      return 'http:bad_request' as const;
+    case 401:
+      return 'http:unauthorized' as const;
+    case 403:
+      return 'http:forbidden' as const;
+    case 404:
+      return 'http:not_found' as const;
+    case 409:
+      return 'http:conflict' as const;
+    case 422:
+      return 'http:unprocessable' as const;
+    case 429:
+      return 'http:rate_limited' as const;
+    default:
+      return 'http:internal' as const;
+  }
+};
+
 /** Global error handler: converts AppError / HTTPException / unknown into JSON responses. */
 export const errorMiddleware =
   ({ isDevelopment }: ErrorMiddlewareOptions) =>
@@ -22,7 +43,7 @@ export const errorMiddleware =
     }
 
     if (err instanceof HTTPException) {
-      return ctx.json({ error: { code: 'http:error', message: err.message } }, err.status);
+      return ctx.json({ error: { code: codeForStatus(err.status), message: err.message } }, err.status);
     }
 
     logger.error({ err }, 'Unhandled error');

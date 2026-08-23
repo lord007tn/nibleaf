@@ -2,7 +2,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { useForm } from '@tanstack/react-form';
-import { Plus, TriangleAlert, X } from 'lucide-react';
+import { Plus, Route, TriangleAlert, X } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
@@ -32,7 +32,7 @@ export function RedirectsSection({ project }: { project: Project }) {
         form.handleSubmit();
       }}
     >
-      <SectionHeader icon="⤳" title={t('settings.redirects.title')} />
+      <SectionHeader icon={<Route className="size-4" />} title={t('settings.redirects.title')} />
       <p className="mb-5 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.redirects.description')}</p>
 
       <form.Field mode="array" name="redirects">

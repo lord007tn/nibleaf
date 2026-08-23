@@ -76,7 +76,7 @@ type PublishPage = {
 
 /** One structured check failure, persisted as `Deployment.errorDetails` JSON so
  *  the dashboard can render a per-page failure list. */
-export interface PublishIssue {
+interface PublishIssue {
   type: 'broken-link' | 'grammar';
   pageTitle: string;
   pagePath: string;
@@ -84,7 +84,7 @@ export interface PublishIssue {
 }
 
 /** A check failure that blocks the publish, carrying the structured issues. */
-export class PublishChecksError extends Error {
+class PublishChecksError extends Error {
   readonly issues: PublishIssue[];
   constructor(message: string, issues: PublishIssue[]) {
     super(message);
@@ -94,7 +94,7 @@ export class PublishChecksError extends Error {
 }
 
 const objectValue = (value: unknown): Record<string, unknown> =>
-  value instanceof Object && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  Object.prototype.toString.call(value) === '[object Object]' ? (value as Record<string, unknown>) : {};
 
 const normalizedPagePath = (path: string): string => path.replace(/^\/+|\/+$/g, '').replace(/\.(mdx?|html)$/i, '');
 
@@ -181,11 +181,7 @@ const grammarIssues = (content: string): string[] => {
  * as `Deployment.errorDetails`. Broken links ALWAYS block (when enabled);
  * `skipGrammarChecks` lets a user publish past the grammar linter only.
  */
-export function collectPublishIssues(
-  project: ProjectWithConfig,
-  pages: PublishPage[],
-  options: { skipGrammarChecks?: boolean } = {},
-): PublishIssue[] {
+function collectPublishIssues(project: ProjectWithConfig, pages: PublishPage[], options: { skipGrammarChecks?: boolean } = {}): PublishIssue[] {
   const addons = objectValue(objectValue(project.config).addons);
   if (addons.ciChecks === false) {
     return [];
@@ -292,7 +288,7 @@ const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
  * READY. The live site and search index are served from this snapshot.
  */
 export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Promise<{ pages: number }> {
-  const { deploymentId, projectId, skipGrammarChecks, auto } = job.data;
+  const { deploymentId, projectId, skipGrammarChecks, auto, locale } = job.data;
   log.info({ deploymentId, projectId }, 'building deployment');
 
   await prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
@@ -359,7 +355,14 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       projectId,
       metadata: { auto: auto === true, version: ready.version },
     });
-    await notifyDeployment({ projectId, projectName: project.name, version: ready.version, outcome: 'ready', siteUrl: siteUrlFor(projectId) });
+    await notifyDeployment({
+      projectId,
+      projectName: project.name,
+      version: ready.version,
+      outcome: 'ready',
+      siteUrl: siteUrlFor(projectId),
+      locale,
+    });
     return { pages: pages.length };
   } catch (error) {
     const failed = await prisma.deployment.update({
@@ -397,6 +400,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       version: failed.version,
       outcome: 'failed',
       error: failed.error ?? undefined,
+      locale,
     });
     throw error;
   }
