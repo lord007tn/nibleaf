@@ -41,36 +41,7 @@
   }
 }
 
-@layer utilities {
-  /* Shells are information architectures, not skins. Reference keeps the
-   * familiar left-library/article/right-outline frame. Editorial promotes the
-   * library to a horizontal chapter deck. Console keeps a compact navigation
-   * rail and moves the page outline above the article as a command index. */
-  .nibleaf-site-chrome[data-theme-context="studio-preview"][data-theme-shell="editorial"] [data-theme-region="preview-shell"] {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .nibleaf-site-chrome[data-theme-context="studio-preview"][data-theme-shell="editorial"] [data-theme-region="sidebar"] {
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--theme-border);
-  }
-
-  .nibleaf-site-chrome[data-theme-context="studio-preview"][data-theme-shell="editorial"] [data-theme-region="sidebar"] nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 0.5rem;
-  }
-
-  .nibleaf-site-chrome[data-theme-context="studio-preview"][data-theme-shell="console"] [data-theme-region="preview-shell"] {
-    grid-template-columns: 5.75rem minmax(0, 1fr);
-  }
-
-  .nibleaf-site-chrome[data-theme-context="studio-preview"][data-theme-shell="console"] [data-theme-region="sidebar"] {
-    background: var(--theme-code);
-    color: var(--theme-code-foreground);
-  }
-
+@layer components {
   .nibleaf-site-chrome[data-theme-navigation="compact"] [data-theme-region="sidebar"] nav :is(a, button) {
     min-height: 1.75rem;
     padding-block: 0.2rem;
@@ -81,68 +52,19 @@
     border-inline-start: 1px solid var(--theme-border);
   }
 
-  @media (min-width: 48rem) {
-    .nibleaf-site-chrome[data-theme-context="project-preview"][data-theme-shell="editorial"] {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: auto minmax(0, 1fr);
-    }
-
-    .nibleaf-site-chrome[data-theme-context="project-preview"][data-theme-shell="editorial"] > [data-theme-region="sidebar"] {
-      max-height: 12rem;
-      border-inline-end: 0;
-      border-bottom: 1px solid var(--theme-border);
-    }
-
-    .nibleaf-site-chrome[data-theme-context="project-preview"][data-theme-shell="editorial"] [data-theme-region="sidebar-content"] {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 0.25rem 1rem;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="project-preview"][data-theme-shell="console"] {
-      grid-template-columns: 13rem minmax(0, 1fr);
-    }
-
-    .nibleaf-site-chrome[data-theme-context="project-preview"][data-theme-shell="console"] > [data-theme-region="sidebar"] {
-      margin: 0.75rem;
-      margin-inline-end: 0;
-      border: 1px solid var(--theme-border);
-      border-radius: var(--radius);
-      background: var(--theme-code);
-      color: var(--theme-code-foreground);
-    }
+  .documentation-manuscript-studio-navigation nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.5rem;
   }
 
   @media (min-width: 64rem) {
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="editorial"] [data-theme-region="content-shell"] {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="editorial"]
-      [data-theme-region="content-shell"]
-      > [data-theme-region="sidebar"] {
-      position: relative;
-      top: auto;
-      width: 100%;
-      height: 12rem;
-      border-inline-end: 0;
-      border-bottom: 1px solid var(--theme-border);
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="editorial"]
-      [data-theme-region="content-shell"]
-      > [data-theme-region="sidebar"]:not(:has([data-theme-region="sidebar-content"] > nav > ul > li:nth-child(2))) {
+    .documentation-manuscript-reader-navigation:not(:has([data-theme-region="sidebar-content"] > nav > ul > li:nth-child(2))) {
       height: 6rem;
     }
 
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="editorial"] [data-theme-region="sidebar-content"] {
-      padding-block: 1rem;
-      padding-inline-end: 0;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="editorial"] [data-theme-region="sidebar-content"] > nav > ul {
+    /* biome-ignore lint/style/noDescendingSpecificity: template-owned navigation intentionally overrides the generic tree treatment above. */
+    .documentation-manuscript-navigation > nav > ul {
       display: grid;
       grid-auto-flow: column;
       grid-template-rows: repeat(2, minmax(2rem, auto));
@@ -151,48 +73,22 @@
       overflow-x: auto;
     }
 
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="content-shell"] {
-      grid-template-columns: 13.5rem minmax(0, 1fr);
-      gap: 1.25rem;
-      padding-top: 1rem;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"]
-      [data-theme-region="content-shell"]
-      > [data-theme-region="sidebar"] {
-      top: calc(var(--site-header-h) + 1rem);
-      height: calc(100dvh - var(--site-header-h) - 2rem);
-      border: 1px solid var(--theme-border);
-      border-radius: var(--radius);
-      background: var(--theme-surface);
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="sidebar-content"] {
-      padding: 0.75rem;
+    .documentation-manuscript-preview-navigation [data-theme-region="sidebar-content"] {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.25rem 1rem;
     }
   }
 
   @media (min-width: 80rem) {
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="page-shell"] {
-      display: flex;
-      flex-direction: column;
-      gap: 2rem;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="toc"] {
-      display: block;
-      order: -1;
-      border-bottom: 1px solid var(--theme-border);
-      padding-bottom: 1rem;
-    }
-
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="toc"] > div {
+    .documentation-signal-command-index > div {
       position: static;
       max-height: none;
       overflow: visible;
     }
 
-    .nibleaf-site-chrome[data-theme-context="reader"][data-theme-shell="console"] [data-theme-region="toc"] ul {
+    /* biome-ignore lint/style/noDescendingSpecificity: the Signal command index intentionally flattens the generic nested tree. */
+    .documentation-signal-command-index ul {
       display: flex;
       flex-wrap: wrap;
       gap: 0.25rem 1.25rem;
@@ -276,7 +172,6 @@
 @layer utilities {
   .nibleaf-site-chrome [data-theme-region="header"],
   .nibleaf-site-chrome [data-theme-region="tabs"],
-  /* biome-ignore lint/style/noDescendingSpecificity: this utilities-layer width contract intentionally follows shell-specific component layout rules. */
   .nibleaf-site-chrome [data-theme-region="content-shell"],
   .nibleaf-site-chrome [data-theme-region="footer"] {
     max-width: var(--theme-content-max);

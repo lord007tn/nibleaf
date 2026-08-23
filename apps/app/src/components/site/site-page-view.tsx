@@ -2,6 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
+import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
@@ -294,12 +295,5 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     return <div className="min-w-0 py-9 lg:py-12">{article}</div>;
   }
 
-  return (
-    <div className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]" data-theme-region="page-shell">
-      {article}
-      <aside className="hidden xl:block" data-theme-region="toc">
-        <TableOfContents headings={page.headings} label={tArticle('onThisPage')} />
-      </aside>
-    </div>
-  );
+  return <DocumentationPageLayout article={article} tableOfContents={<TableOfContents headings={page.headings} label={tArticle('onThisPage')} />} />;
 }

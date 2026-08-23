@@ -4,7 +4,7 @@ description: 'Use Nibleaf themes safely across previews and published documentat
 audience: 'documentation owners, designers, and self-hosted operators'
 content_type: 'how-to'
 last_reviewed: '2026-08-23'
-verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, and apps/app/src/components/project-settings/theme-section.tsx'
+verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/themes'
@@ -24,6 +24,18 @@ or trade dress.
 Projects created before theme schema v1 retain their existing palette and layout
 until an owner selects, customizes, or imports a theme. This compatibility mode
 avoids an unrequested visual change to an existing published site.
+
+## Renderer architecture
+
+The app resolves saved theme data once and passes it to a documentation theme
+provider. The provider selects a registered React template from the structural
+`layout.shell` value, while the theme preset continues to own metadata and
+semantic tokens. Each registered template independently composes the published
+reader, project preview, settings preview, and article/page-outline layout.
+Consequently, changing a shell changes the rendered information architecture,
+not merely CSS order or color. The publishing worker uses the same versioned
+shell value for static exports, so exported and interactive renderers share a
+stable layout contract without sharing browser-specific implementation code.
 
 ## Inspiration and ownership boundary
 

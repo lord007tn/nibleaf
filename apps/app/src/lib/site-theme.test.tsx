@@ -1,6 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
+import {
+  DOCUMENTATION_THEME_TEMPLATES,
+  DocumentationPageLayout,
+  DocumentationProjectPreviewLayout,
+  DocumentationReaderLayout,
+  DocumentationStudioPreviewLayout,
+  DocumentationThemeProvider,
+} from '@/components/site/documentation-theme-provider';
 import { projectThemeCss, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
 
 describe('published theme projection', () => {
@@ -55,5 +63,59 @@ describe('published theme projection', () => {
     expect(markup).toContain('data-theme-sidebar="soft"');
     expect(markup).toContain('dir="ltr"');
     expect(markup).toContain('وثائق المنتج');
+  });
+
+  it.each([
+    ['harbor', 'reference', 'harbor-reference'],
+    ['manuscript', 'editorial', 'manuscript-editorial'],
+    ['signal', 'console', 'signal-console'],
+  ] as const)('renders the %s preset with its own reader and page templates', (preset, shell, layout) => {
+    const theme = resolveProjectTheme({ theme: { preset } });
+    const markup = renderToStaticMarkup(
+      <DocumentationThemeProvider className="flex" context="reader" direction="ltr" theme={theme}>
+        <DocumentationReaderLayout
+          banner={<div>banner</div>}
+          content={<main>article</main>}
+          footer={<footer>footer</footer>}
+          header={<header>header</header>}
+          navigation={<nav>navigation</nav>}
+          overlays={<div>search</div>}
+        />
+        <DocumentationPageLayout article={<article>page</article>} tableOfContents={<nav>outline</nav>} />
+        <DocumentationProjectPreviewLayout
+          content={<main>project content</main>}
+          mobileNavigation={<nav>mobile</nav>}
+          navigation={<nav>project navigation</nav>}
+        />
+        <DocumentationStudioPreviewLayout
+          content={<main>studio content</main>}
+          header={<header>studio header</header>}
+          navigation={<nav>studio navigation</nav>}
+        />
+      </DocumentationThemeProvider>,
+    );
+
+    expect(theme.layout.shell).toBe(shell);
+    expect(markup).toContain(`data-documentation-template="${preset}"`);
+    expect(markup).toContain(`data-documentation-layout="${layout}"`);
+    expect(markup).toContain(`data-documentation-layout="${layout}-page"`);
+    expect(markup).toContain(`data-documentation-layout="${layout}-preview"`);
+    expect(markup).toContain(`data-documentation-layout="${layout}-studio"`);
+  });
+
+  it('selects templates by the customizable shell contract without changing preset metadata', () => {
+    const theme = resolveProjectTheme({ theme: { preset: 'harbor', layout: { shell: 'console' } } });
+    const markup = renderToStaticMarkup(
+      <DocumentationThemeProvider context="reader" direction="rtl" theme={theme}>
+        <DocumentationReaderLayout content={<main />} header={<header />} navigation={<nav />} />
+      </DocumentationThemeProvider>,
+    );
+
+    expect(Object.keys(DOCUMENTATION_THEME_TEMPLATES)).toEqual(['reference', 'editorial', 'console']);
+    expect(markup).toContain('data-theme-id="harbor"');
+    expect(markup).toContain('data-theme-shell="console"');
+    expect(markup).toContain('data-documentation-template="signal"');
+    expect(markup).toContain('data-documentation-layout="signal-console"');
+    expect(markup).toContain('dir="rtl"');
   });
 });

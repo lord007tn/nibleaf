@@ -4,7 +4,7 @@ description: 'استخدم سمات Nibleaf بأمان في المعاينة و�
 audience: 'مالكو التوثيق والمصممون ومشغّلو الاستضافة الذاتية'
 content_type: 'how-to'
 last_reviewed: '2026-08-23'
-verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, and apps/app/src/components/project-settings/theme-section.tsx'
+verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'product/themes'
@@ -22,6 +22,16 @@ Nibleaf. ألهمت منتجات التوثيق العامة أنماط المن
 تحتفظ المشاريع المنشأة قبل مخطط السمة v1 بألوانها وتخطيطها الحاليين إلى أن
 يختار المالك سمة أو يخصصها أو يستوردها. يمنع وضع التوافق هذا تغييرًا مرئيًا غير
 مطلوب في موقع منشور قائم.
+
+## بنية المصيّر
+
+يحل التطبيق بيانات السمة المحفوظة مرة واحدة ثم يمررها إلى مزود سمات التوثيق.
+يختار المزود قالب React مسجلًا بحسب قيمة `layout.shell` البنيوية، بينما يظل
+الإعداد المسبق مالكًا للبيانات الوصفية والرموز الدلالية. يركب كل قالب بصورة
+مستقلة القارئ المنشور ومعاينة المشروع ومعاينة الإعدادات وتخطيط المقال وفهرس
+الصفحة. لذلك يغير تبديل الهيكل بنية المعلومات المصيّرة فعلًا، وليس ترتيب CSS أو
+الألوان فقط. ويستخدم عامل النشر قيمة الهيكل ذات الإصدار نفسها في التصديرات
+الثابتة، فتشترك المصيرات في عقد تخطيط مستقر من دون مشاركة شيفرة خاصة بالمتصفح.
 
 ## حدود الإلهام والملكية
 

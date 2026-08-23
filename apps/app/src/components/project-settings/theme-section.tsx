@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, FileJson, RotateCcw, Undo2, Upload } from 'lucide-react';
 import { type ChangeEvent, type CSSProperties, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import type { Project } from '@/hooks/api';
 import { queryKeys, useUpdateProjectConfig } from '@/hooks/api';
 import { getData, mutateData } from '@/hooks/api/client-helpers';
@@ -91,35 +92,27 @@ const downloadText = (fileName: string, contents: string) => {
 export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; mode: PreviewMode; arabic: boolean }) {
   const theme = resolveTheme(config as ThemeOwnedProjectConfig);
   return (
-    <div
-      className={cn('nibleaf-site-chrome overflow-hidden rounded-xl border border-border text-sm shadow-sm', mode === 'dark' && 'dark')}
-      data-theme-callouts={theme.components.callouts}
-      data-theme-context="studio-preview"
-      data-theme-cards={theme.components.cards}
-      data-theme-code={theme.components.codeBlocks}
-      data-theme-density={theme.layout.density}
-      data-theme-header={theme.layout.header}
-      data-theme-id={theme.id}
-      data-theme-navigation={theme.layout.navigation}
-      data-theme-shell={theme.layout.shell}
-      data-theme-sidebar={theme.layout.sidebar}
-      data-theme-tables={theme.components.tables}
-      data-theme-tabs={theme.components.tabs}
-      data-theme-width={theme.layout.contentWidth}
-      dir={arabic ? 'rtl' : 'ltr'}
+    <DocumentationThemeProvider
+      appearance={mode}
+      className="overflow-hidden rounded-xl border border-border text-sm shadow-sm"
+      context="studio-preview"
+      direction={arabic ? 'rtl' : 'ltr'}
       style={{ ...projectThemeVariables(config, mode), ...projectThemeStyle(config) }}
+      theme={theme}
     >
-      <div className="border-border border-b bg-card" data-theme-region="header-shell">
-        <div className="flex items-center gap-2 px-3 py-2.5" data-theme-region="header">
-          <span className="grid size-6 place-items-center rounded-md bg-primary font-semibold text-primary-foreground">N</span>
-          <span className="font-semibold">{arabic ? 'وثائق المنتج' : 'Product docs'}</span>
-          <span className="ms-auto rounded-full border border-border bg-muted px-3 py-1 text-muted-foreground text-xs">
-            {arabic ? 'ابحث في الوثائق' : 'Search documentation'}
-          </span>
-        </div>
-      </div>
-      <div className="grid min-h-[22rem] grid-cols-[7.5rem_minmax(0,1fr)]" data-theme-region="preview-shell">
-        <div className="border-border border-e bg-card/45 p-2 text-xs" data-theme-region="sidebar">
+      <DocumentationStudioPreviewLayout
+        header={
+          <div className="border-border border-b bg-card" data-theme-region="header-shell">
+            <div className="flex items-center gap-2 px-3 py-2.5" data-theme-region="header">
+              <span className="grid size-6 place-items-center rounded-md bg-primary font-semibold text-primary-foreground">N</span>
+              <span className="font-semibold">{arabic ? 'وثائق المنتج' : 'Product docs'}</span>
+              <span className="ms-auto rounded-full border border-border bg-muted px-3 py-1 text-muted-foreground text-xs">
+                {arabic ? 'ابحث في الوثائق' : 'Search documentation'}
+              </span>
+            </div>
+          </div>
+        }
+        navigation={
           <nav aria-label={arabic ? 'التنقل التجريبي' : 'Preview navigation'}>
             <p className="mb-2 px-2 font-semibold">{arabic ? 'البدء' : 'Start here'}</p>
             <a className="mb-1 block rounded-md bg-primary/10 px-2 py-1.5 font-medium text-primary" href="#preview-content">
@@ -129,45 +122,47 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
               {arabic ? 'المصادقة' : 'Authentication'}
             </a>
           </nav>
-        </div>
-        <article className="min-w-0 p-5" data-theme-region="article" id="preview-content">
-          <p className="font-medium text-primary text-xs">{arabic ? 'دليل سريع' : 'Quick guide'}</p>
-          <h3 className="mt-1 font-semibold text-xl">{arabic ? 'ابدأ التكامل' : 'Build your first integration'}</h3>
-          <p className="mt-2 text-muted-foreground leading-relaxed">
-            {arabic
-              ? 'استخدم إعدادات واضحة وآمنة، مع بقاء أوامر الشيفرة باتجاهها الصحيح.'
-              : 'Use safe, predictable defaults while every component inherits your semantic theme.'}
-          </p>
-          <div
-            className="mt-4 rounded-lg border p-3"
-            data-theme-component="callout"
-            style={
-              {
-                '--callout-color': 'var(--theme-info)',
-                borderColor: 'color-mix(in oklab,var(--theme-info) 38%,transparent)',
-                background: 'color-mix(in oklab,var(--theme-info) 10%,transparent)',
-              } as CSSProperties
-            }
-          >
-            {arabic ? 'تدعم الواجهة العربية والإنجليزية من المصدر.' : 'Arabic and English share the same accessible token contract.'}
-          </div>
-          <pre
-            className="mt-4 overflow-x-auto rounded-lg border border-border bg-(--theme-code) p-3 font-mono text-(--theme-code-foreground) text-xs"
-            data-theme-component="code"
-            dir="ltr"
-            id="preview-code"
-          >
-            <code>{['curl https://api.example.com/v1/docs \\', '  -H "Authorization: Bearer $TOKEN"'].join('\n')}</code>
-          </pre>
-          <div className="mt-4 rounded-lg border border-border bg-card p-3" data-theme-component="card">
-            <strong>{arabic ? 'الخطوة التالية' : 'Next step'}</strong>
-            <p className="mt-1 text-muted-foreground">
-              {arabic ? 'انشر مسودة موثقة عندما تصبح جاهزة.' : 'Publish the reviewed draft when it is ready.'}
+        }
+        content={
+          <article className="min-w-0 p-5" data-theme-region="article" id="preview-content">
+            <p className="font-medium text-primary text-xs">{arabic ? 'دليل سريع' : 'Quick guide'}</p>
+            <h3 className="mt-1 font-semibold text-xl">{arabic ? 'ابدأ التكامل' : 'Build your first integration'}</h3>
+            <p className="mt-2 text-muted-foreground leading-relaxed">
+              {arabic
+                ? 'استخدم إعدادات واضحة وآمنة، مع بقاء أوامر الشيفرة باتجاهها الصحيح.'
+                : 'Use safe, predictable defaults while every component inherits your semantic theme.'}
             </p>
-          </div>
-        </article>
-      </div>
-    </div>
+            <div
+              className="mt-4 rounded-lg border p-3"
+              data-theme-component="callout"
+              style={
+                {
+                  '--callout-color': 'var(--theme-info)',
+                  borderColor: 'color-mix(in oklab,var(--theme-info) 38%,transparent)',
+                  background: 'color-mix(in oklab,var(--theme-info) 10%,transparent)',
+                } as CSSProperties
+              }
+            >
+              {arabic ? 'تدعم الواجهة العربية والإنجليزية من المصدر.' : 'Arabic and English share the same accessible token contract.'}
+            </div>
+            <pre
+              className="mt-4 overflow-x-auto rounded-lg border border-border bg-(--theme-code) p-3 font-mono text-(--theme-code-foreground) text-xs"
+              data-theme-component="code"
+              dir="ltr"
+              id="preview-code"
+            >
+              <code>{['curl https://api.example.com/v1/docs \\', '  -H "Authorization: Bearer $TOKEN"'].join('\n')}</code>
+            </pre>
+            <div className="mt-4 rounded-lg border border-border bg-card p-3" data-theme-component="card">
+              <strong>{arabic ? 'الخطوة التالية' : 'Next step'}</strong>
+              <p className="mt-1 text-muted-foreground">
+                {arabic ? 'انشر مسودة موثقة عندما تصبح جاهزة.' : 'Publish the reviewed draft when it is ready.'}
+              </p>
+            </div>
+          </article>
+        }
+      />
+    </DocumentationThemeProvider>
   );
 }
 

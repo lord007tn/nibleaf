@@ -2,6 +2,15 @@
 
 This evidence was captured from the local production-shaped publish pipeline against a bilingual representative documentation project. Each image is a full-page browser capture after a READY local deployment. The capture asserted the expected `data-theme-id`, `data-theme-shell`, appearance class, language direction, viewport, and zero document-level horizontal overflow before writing the file.
 
+## Template-provider follow-up
+
+After the reader, project preview, settings preview, and page-outline composition moved into the registered React documentation templates, the published Manuscript fixture was captured again through the real app and public API. The desktop receipt asserted `data-documentation-template="manuscript"`, `data-documentation-layout="manuscript-editorial"`, a 192 px horizontal chapter deck above the article, and zero page overflow. The mobile receipt asserted a 390 × 844 viewport, Arabic `dir="rtl"`, the same registered template/shell, hidden desktop-only deck and outline, and zero page overflow.
+
+- [Post-refactor Manuscript desktop provider receipt](./manuscript-provider-desktop.png)
+- [Post-refactor Manuscript Arabic mobile provider receipt](./manuscript-provider-ar-mobile.png)
+
+The existing 24-view matrix remains the visual-regression baseline for all three themes. The provider follow-up is intentionally representative because the registry refactor preserves the existing visual contract; automated static-render tests independently assert the distinct Harbor, Manuscript, and Signal reader/page structures and shell overrides.
+
 The 67-second [structural themes recording](./theme-structures.webm) shows all three shell selections, live customization, Arabic RTL preview, draft save, and the published Manuscript reader. The 97-second [workflow recording](./theme-workflow.webm) shows deterministic export, validated replace-preview import, applying to the draft, English/Arabic preview, publish, READY status, and the resulting public page.
 
 ## Harbor
