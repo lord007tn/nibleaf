@@ -7,6 +7,7 @@ import {
   isGa4MeasurementId,
   isGtmContainerId,
   MARKETING_ANALYTICS_CONSENT_KEY,
+  marketingAnalyticsCookieExpirations,
   persistMarketingAnalyticsConsent,
   selectMarketingAnalyticsTarget,
   sendMarketingAnalyticsEvent,
@@ -171,6 +172,26 @@ describe('marketing analytics', () => {
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window['ga-disable-G-ABC123']).toBe(true);
     expect(window.dataLayer).toContainEqual(['consent', 'update', expect.objectContaining({ ad_storage: 'denied', analytics_storage: 'denied' })]);
+  });
+
+  it('expires host-only and parent-domain GA cookies without crossing the registrable boundary', () => {
+    expect(marketingAnalyticsCookieExpirations('_ga=one; session=safe; _ga_STREAM=two', 'app.eu.example.co.uk')).toEqual([
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax',
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax; Domain=app.eu.example.co.uk',
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax; Domain=eu.example.co.uk',
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax; Domain=example.co.uk',
+      '_ga_STREAM=; Max-Age=0; Path=/; SameSite=Lax',
+      '_ga_STREAM=; Max-Age=0; Path=/; SameSite=Lax; Domain=app.eu.example.co.uk',
+      '_ga_STREAM=; Max-Age=0; Path=/; SameSite=Lax; Domain=eu.example.co.uk',
+      '_ga_STREAM=; Max-Age=0; Path=/; SameSite=Lax; Domain=example.co.uk',
+    ]);
+    expect(marketingAnalyticsCookieExpirations('_ga=one', 'docs.customer.github.io')).toEqual([
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax',
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax; Domain=docs.customer.github.io',
+      '_ga=; Max-Age=0; Path=/; SameSite=Lax; Domain=customer.github.io',
+    ]);
+    expect(marketingAnalyticsCookieExpirations('_ga=one', 'localhost')).toEqual(['_ga=; Max-Age=0; Path=/; SameSite=Lax']);
+    expect(marketingAnalyticsCookieExpirations('session=safe', 'app.example.com')).toEqual([]);
   });
 
   it('stops GTM event delivery and denies analytics storage after withdrawal', () => {

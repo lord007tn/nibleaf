@@ -1,3 +1,5 @@
+import { getDomain } from 'tldts';
+
 export const MARKETING_ANALYTICS_CONSENT_KEY = 'nibleaf.marketing.analytics.consent.v1';
 
 export type MarketingAnalyticsConsent = 'accepted' | 'declined' | 'pending';
@@ -176,15 +178,44 @@ export function suspendMarketingAnalytics(target: MarketingAnalyticsTarget): voi
   window.gtag?.('consent', 'update', consentState(false));
 }
 
+/** Build deletion cookies for host-only and domain-scoped GA cookies. Parent
+ * scopes stop at the registrable domain from the Public Suffix List, including
+ * private suffixes such as github.io, so withdrawal never targets a public or
+ * unrelated domain. */
+export function marketingAnalyticsCookieExpirations(cookieHeader: string, hostname: string): string[] {
+  const names = [
+    ...new Set(
+      cookieHeader
+        .split(';')
+        .map((part) => part.split('=')[0]?.trim())
+        .filter((name): name is string => Boolean(name && /^_ga(?:_|$)/u.test(name))),
+    ),
+  ];
+  const normalizedHostname = hostname.trim().toLowerCase().replace(/\.$/u, '');
+  const registrableDomain = normalizedHostname ? getDomain(normalizedHostname, { allowPrivateDomains: true }) : null;
+  const domainScopes: string[] = [];
+  if (registrableDomain && (normalizedHostname === registrableDomain || normalizedHostname.endsWith(`.${registrableDomain}`))) {
+    let scope = normalizedHostname;
+    while (scope) {
+      domainScopes.push(scope);
+      if (scope === registrableDomain) break;
+      scope = scope.slice(scope.indexOf('.') + 1);
+    }
+  }
+
+  return names.flatMap((name) => {
+    const expiration = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+    return [expiration, ...domainScopes.map((domain) => `${expiration}; Domain=${domain}`)];
+  });
+}
+
 export function declineMarketingAnalytics(target: MarketingAnalyticsTarget): void {
   persistMarketingAnalyticsConsent('declined');
   suspendMarketingAnalytics(target);
   if (typeof document === 'undefined') return;
-  for (const part of document.cookie.split(';')) {
-    const name = part.split('=')[0]?.trim();
-    if (!name || !/^_ga(?:_|$)/u.test(name)) continue;
+  for (const expiration of marketingAnalyticsCookieExpirations(document.cookie, window.location.hostname)) {
     // biome-ignore lint/suspicious/noDocumentCookie: Cookie Store is not yet universal; withdrawal must expire GA cookies synchronously.
-    document.cookie = `${name}=; Max-Age=0; Path=/; SameSite=Lax`;
+    document.cookie = expiration;
   }
 }
 
