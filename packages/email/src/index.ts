@@ -1,11 +1,11 @@
 import { createElement } from 'react';
-import { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE, type EmailLanguage } from './i18n';
 import { renderEmail } from './render';
 import { TransactionalEmail } from './templates/transactional';
+import { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE, type EmailLanguage } from './translate';
 
-export type { EmailLanguage } from './i18n';
-export { DEFAULT_EMAIL_LANGUAGE } from './i18n';
 export { TransactionalEmail } from './templates/transactional';
+export type { EmailLanguage } from './translate';
+export { createEmailTranslator, DEFAULT_EMAIL_LANGUAGE } from './translate';
 
 export interface RenderedEmail {
   html: string;
@@ -22,7 +22,7 @@ export async function renderVerificationCodeEmail({
   language?: EmailLanguage;
   purpose: 'change-email' | 'email-verification' | 'forget-password' | 'sign-in';
 }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
   const prefix =
     purpose === 'sign-in'
       ? 'otp.signIn'
@@ -34,15 +34,15 @@ export async function renderVerificationCodeEmail({
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       code,
-      detail: t('otp.expiry', { minutes: '10' }),
+      detail: t('email.otp.expiry', { minutes: 10 }),
       language,
-      message: t(`${prefix}.message`),
-      preview: t(`${prefix}.preview`),
-      title: t('otp.title'),
+      message: t(`email.${prefix}.message`),
+      preview: t(`email.${prefix}.preview`),
+      title: t('email.otp.title'),
     }),
   );
   return {
-    subject: t(`${prefix}.subject`)
+    subject: t(`email.${prefix}.subject`)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -51,19 +51,19 @@ export async function renderVerificationCodeEmail({
 }
 
 export async function renderEmailVerificationEmail({ language = DEFAULT_EMAIL_LANGUAGE, url }: { language?: EmailLanguage; url: string }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
-      action: { label: t('verifyEmail.action'), url },
-      detail: t('verifyEmail.detail'),
+      action: { label: t('email.verifyEmail.action'), url },
+      detail: t('email.verifyEmail.detail'),
       language,
-      message: t('verifyEmail.message'),
-      preview: t('verifyEmail.preview'),
-      title: t('verifyEmail.title'),
+      message: t('email.verifyEmail.message'),
+      preview: t('email.verifyEmail.preview'),
+      title: t('email.verifyEmail.title'),
     }),
   );
   return {
-    subject: t('verifyEmail.subject')
+    subject: t('email.verifyEmail.subject')
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -80,18 +80,18 @@ export async function renderMemberJoinedEmail({
   memberName: string;
   organizationName: string;
 }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
   const params = { memberName, organizationName };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       language,
-      message: t('memberJoined.message', params),
-      preview: t('memberJoined.preview', params),
-      title: t('memberJoined.title', params),
+      message: t('email.memberJoined.message', params),
+      preview: t('email.memberJoined.preview', params),
+      title: t('email.memberJoined.title', params),
     }),
   );
   return {
-    subject: t('memberJoined.subject', params)
+    subject: t('email.memberJoined.subject', params)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -100,18 +100,18 @@ export async function renderMemberJoinedEmail({
 }
 
 export async function renderNewSignInEmail({ ipAddress, language = DEFAULT_EMAIL_LANGUAGE }: { ipAddress?: string; language?: EmailLanguage }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
-      detail: t('newSignIn.detail'),
+      detail: t('email.newSignIn.detail'),
       language,
-      message: ipAddress ? t('newSignIn.withIp', { ipAddress }) : t('newSignIn.withoutIp'),
-      preview: t('newSignIn.preview'),
-      title: t('newSignIn.title'),
+      message: ipAddress ? t('email.newSignIn.withIp', { ipAddress }) : t('email.newSignIn.withoutIp'),
+      preview: t('email.newSignIn.preview'),
+      title: t('email.newSignIn.title'),
     }),
   );
   return {
-    subject: t('newSignIn.subject')
+    subject: t('email.newSignIn.subject')
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -134,20 +134,20 @@ export async function renderMemberInvitationEmail({
   organizationName: string;
   role: string;
 }) {
-  const { t } = createEmailTranslator(language);
-  const params = { days: String(days), inviterName, organizationName, role };
+  const t = createEmailTranslator(language);
+  const params = { days, inviterName, organizationName, role };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
-      action: { label: t('invite.action'), url: acceptUrl },
-      detail: t('invite.expiry', params),
+      action: { label: t('email.invite.action'), url: acceptUrl },
+      detail: t('email.invite.expiry', params),
       language,
-      message: t('invite.message', params),
-      preview: t('invite.preview', params),
-      title: t('invite.title', params),
+      message: t('email.invite.message', params),
+      preview: t('email.invite.preview', params),
+      title: t('email.invite.title', params),
     }),
   );
   return {
-    subject: t('invite.subject', params)
+    subject: t('email.invite.subject', params)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -166,20 +166,20 @@ export async function renderReaderInvitationEmail({
   language?: EmailLanguage;
   projectName: string;
 }) {
-  const { t } = createEmailTranslator(language);
-  const params = { days: String(days), projectName };
+  const t = createEmailTranslator(language);
+  const params = { days, projectName };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
-      action: { label: t('readerInvite.action'), url: activationUrl },
-      detail: t('readerInvite.expiry', params),
+      action: { label: t('email.readerInvite.action'), url: activationUrl },
+      detail: t('email.readerInvite.expiry', params),
       language,
-      message: t('readerInvite.message', params),
-      preview: t('readerInvite.preview', params),
-      title: t('readerInvite.title'),
+      message: t('email.readerInvite.message', params),
+      preview: t('email.readerInvite.preview', params),
+      title: t('email.readerInvite.title'),
     }),
   );
   return {
-    subject: t('readerInvite.subject', params)
+    subject: t('email.readerInvite.subject', params)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
@@ -202,21 +202,21 @@ export async function renderDeploymentEmail({
   siteUrl?: string;
   version: number;
 }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
   const prefix = outcome === 'ready' ? 'deployment.ready' : 'deployment.failed';
-  const params = { error: error ?? '', projectName, version: String(version) };
+  const params = { error: error ?? '', projectName, version };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
-      ...(outcome === 'ready' && siteUrl ? { action: { label: t('deployment.ready.action'), url: siteUrl } } : {}),
-      ...(outcome === 'failed' && error ? { detail: t('deployment.failed.detail', params) } : {}),
+      ...(outcome === 'ready' && siteUrl ? { action: { label: t('email.deployment.ready.action'), url: siteUrl } } : {}),
+      ...(outcome === 'failed' && error ? { detail: t('email.deployment.failed.detail', params) } : {}),
       language,
-      message: t(`${prefix}.message`, params),
-      preview: t(`${prefix}.preview`, params),
-      title: t(`${prefix}.title`, params),
+      message: t(`email.${prefix}.message`, params),
+      preview: t(`email.${prefix}.preview`, params),
+      title: t(`email.${prefix}.title`, params),
     }),
   );
   return {
-    subject: t(`${prefix}.subject`, params)
+    subject: t(`email.${prefix}.subject`, params)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,

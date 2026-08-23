@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { useT } from '@nibleaf/i18n/react';
+import type { MessageKey } from '@nibleaf/i18n';
+import { translateFn, useT } from '@nibleaf/i18n/react';
 import {
   MAX_THEME_TEMPLATE_BYTES,
   type NibleafThemeConfig,
@@ -9,6 +10,8 @@ import {
   THEME_PRESETS,
   THEME_SCHEMA_VERSION,
   type ThemeColorKey,
+  type ThemeComponents,
+  type ThemeLayout,
   type ThemeOwnedProjectConfig,
   type ThemePresetId,
   themeContrastIssues,
@@ -53,12 +56,6 @@ const initialDraft = (project: Project): ThemeDraft => {
 
 const COLOR_FIELDS = THEME_COLOR_KEYS satisfies ReadonlyArray<ThemeColorKey>;
 
-const valueLabel = (value: unknown): string => {
-  if (value === undefined) return '—';
-  if (typeof value === 'string') return value;
-  return JSON.stringify(value);
-};
-
 const downloadText = (fileName: string, contents: string) => {
   const href = URL.createObjectURL(new Blob([contents], { type: 'application/json;charset=utf-8' }));
   const anchor = document.createElement('a');
@@ -70,6 +67,7 @@ const downloadText = (fileName: string, contents: string) => {
 
 export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; mode: PreviewMode; arabic: boolean }) {
   const theme = resolveTheme(config as ThemeOwnedProjectConfig);
+  const t = (key: MessageKey) => translateFn(key, undefined, arabic ? 'ar' : 'en');
   return (
     <DocumentationThemeProvider
       appearance={mode}
@@ -84,33 +82,29 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
           <div className="border-border border-b bg-card" data-theme-region="header-shell">
             <div className="flex items-center gap-2 px-3 py-2.5" data-theme-region="header">
               <span className="grid size-6 place-items-center rounded-md bg-primary font-semibold text-primary-foreground">N</span>
-              <span className="font-semibold">{arabic ? 'وثائق المنتج' : 'Product docs'}</span>
+              <span className="font-semibold">{t('settings.theme.preview.productDocs')}</span>
               <span className="ms-auto rounded-full border border-border bg-muted px-3 py-1 text-muted-foreground text-xs">
-                {arabic ? 'ابحث في الوثائق' : 'Search documentation'}
+                {t('settings.theme.preview.search')}
               </span>
             </div>
           </div>
         }
         navigation={
-          <nav aria-label={arabic ? 'التنقل التجريبي' : 'Preview navigation'}>
-            <p className="mb-2 px-2 font-semibold">{arabic ? 'البدء' : 'Start here'}</p>
+          <nav aria-label={t('settings.theme.preview.navigation')}>
+            <p className="mb-2 px-2 font-semibold">{t('settings.theme.preview.start')}</p>
             <a className="mb-1 block rounded-md bg-primary/10 px-2 py-1.5 font-medium text-primary" href="#preview-content">
-              {arabic ? 'نظرة عامة' : 'Overview'}
+              {t('settings.theme.preview.overview')}
             </a>
             <a className="block rounded-md px-2 py-1.5 text-muted-foreground" href="#preview-code">
-              {arabic ? 'المصادقة' : 'Authentication'}
+              {t('settings.theme.preview.authentication')}
             </a>
           </nav>
         }
         content={
           <article className="min-w-0 p-5" data-theme-region="article" id="preview-content">
-            <p className="font-medium text-primary text-xs">{arabic ? 'دليل سريع' : 'Quick guide'}</p>
-            <h3 className="mt-1 font-semibold text-xl">{arabic ? 'ابدأ التكامل' : 'Build your first integration'}</h3>
-            <p className="mt-2 text-muted-foreground leading-relaxed">
-              {arabic
-                ? 'استخدم إعدادات واضحة وآمنة، مع بقاء أوامر الشيفرة باتجاهها الصحيح.'
-                : 'Use safe, predictable defaults while every component inherits your semantic theme.'}
-            </p>
+            <p className="font-medium text-primary text-xs">{t('settings.theme.preview.guide')}</p>
+            <h3 className="mt-1 font-semibold text-xl">{t('settings.theme.preview.title')}</h3>
+            <p className="mt-2 text-muted-foreground leading-relaxed">{t('settings.theme.preview.body')}</p>
             <div
               className="mt-4 rounded-lg border p-3"
               data-theme-component="callout"
@@ -122,7 +116,7 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
                 } as CSSProperties
               }
             >
-              {arabic ? 'تدعم الواجهة العربية والإنجليزية من المصدر.' : 'Arabic and English share the same accessible token contract.'}
+              {t('settings.theme.preview.callout')}
             </div>
             <pre
               className="mt-4 overflow-x-auto rounded-lg border border-border bg-(--theme-code) p-3 font-mono text-(--theme-code-foreground) text-xs"
@@ -133,10 +127,8 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
               <code>{['curl https://api.example.com/v1/docs \\', '  -H "Authorization: Bearer $TOKEN"'].join('\n')}</code>
             </pre>
             <div className="mt-4 rounded-lg border border-border bg-card p-3" data-theme-component="card">
-              <strong>{arabic ? 'الخطوة التالية' : 'Next step'}</strong>
-              <p className="mt-1 text-muted-foreground">
-                {arabic ? 'انشر مسودة موثقة عندما تصبح جاهزة.' : 'Publish the reviewed draft when it is ready.'}
-              </p>
+              <strong>{t('settings.theme.preview.next')}</strong>
+              <p className="mt-1 text-muted-foreground">{t('settings.theme.preview.publish')}</p>
             </div>
           </article>
         }
@@ -145,7 +137,45 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
   );
 }
 
-function NativeSelect<T extends string>({
+const THEME_OPTION_MESSAGE_KEYS = {
+  reference: 'settings.theme.option.reference',
+  editorial: 'settings.theme.option.editorial',
+  console: 'settings.theme.option.console',
+  compact: 'settings.theme.option.compact',
+  comfortable: 'settings.theme.option.comfortable',
+  relaxed: 'settings.theme.option.relaxed',
+  focused: 'settings.theme.option.focused',
+  balanced: 'settings.theme.option.balanced',
+  wide: 'settings.theme.option.wide',
+  inline: 'settings.theme.option.inline',
+  stacked: 'settings.theme.option.stacked',
+  floating: 'settings.theme.option.floating',
+  bordered: 'settings.theme.option.bordered',
+  soft: 'settings.theme.option.soft',
+  rail: 'settings.theme.option.rail',
+  tree: 'settings.theme.option.tree',
+  sectioned: 'settings.theme.option.sectioned',
+  sharp: 'settings.theme.option.sharp',
+  rounded: 'settings.theme.option.rounded',
+  pill: 'settings.theme.option.pill',
+  system: 'settings.theme.option.system',
+  dim: 'settings.theme.option.dim',
+  vivid: 'settings.theme.option.vivid',
+  outline: 'settings.theme.option.outline',
+  solid: 'settings.theme.option.solid',
+  lifted: 'settings.theme.option.lifted',
+  flat: 'settings.theme.option.flat',
+  underline: 'settings.theme.option.underline',
+  pills: 'settings.theme.option.pills',
+  boxed: 'settings.theme.option.boxed',
+  lines: 'settings.theme.option.lines',
+  rows: 'settings.theme.option.rows',
+  cards: 'settings.theme.option.cards',
+} as const satisfies Record<ThemeOption, MessageKey>;
+
+type ThemeOption = ThemeLayout[keyof ThemeLayout] | ThemeComponents[keyof ThemeComponents];
+
+function NativeSelect<T extends ThemeOption>({
   label,
   value,
   options,
@@ -156,6 +186,7 @@ function NativeSelect<T extends string>({
   options: readonly T[];
   onChange: (value: T) => void;
 }) {
+  const t = useT();
   return (
     <label className="grid gap-1.5 text-[12.5px]">
       <span className="font-medium">{label}</span>
@@ -166,11 +197,69 @@ function NativeSelect<T extends string>({
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {t(THEME_OPTION_MESSAGE_KEYS[option])}
           </option>
         ))}
       </select>
     </label>
+  );
+}
+
+function ThemePresetThumbnail({ presetId }: { presetId: ThemePresetId }) {
+  const colors = THEME_PRESETS[presetId].colors.light;
+  if (presetId === 'manuscript') {
+    return (
+      <span className="mb-3 flex h-20 flex-col overflow-hidden rounded-lg border" style={{ background: colors.muted }} aria-hidden>
+        <span className="mx-auto mt-2 h-2 w-16 rounded-full" style={{ background: colors.accent }} />
+        <span className="mx-3 mt-2 h-2 border-y" style={{ borderColor: colors.border, background: colors.canvas }} />
+        <span
+          className="mx-auto mt-2 flex h-10 w-2/3 flex-col gap-1 border px-2 py-1.5 shadow-sm"
+          style={{ borderColor: colors.border, background: colors.canvas }}
+        >
+          <span className="h-1 w-1/2 rounded-full" style={{ background: colors.foreground }} />
+          <span className="h-1 w-full rounded-full" style={{ background: colors.border }} />
+          <span className="h-1 w-4/5 rounded-full" style={{ background: colors.border }} />
+        </span>
+      </span>
+    );
+  }
+  if (presetId === 'signal') {
+    return (
+      <span
+        className="mb-3 grid h-20 grid-cols-[30%_1fr] grid-rows-[14px_1fr] gap-px overflow-hidden rounded-lg border p-1"
+        style={{ background: colors.code }}
+        aria-hidden
+      >
+        <span className="col-span-2 flex items-center gap-1 border px-1" style={{ borderColor: colors.border, background: colors.surface }}>
+          <span className="size-1.5 rounded-full" style={{ background: colors.accent }} />
+          <span className="h-1 w-10 rounded-full" style={{ background: colors.mutedForeground }} />
+        </span>
+        <span className="flex flex-col gap-1 border p-1" style={{ borderColor: colors.border, background: colors.code }}>
+          <span className="h-1 w-full" style={{ background: colors.accent }} />
+          <span className="h-1 w-2/3" style={{ background: colors.mutedForeground }} />
+          <span className="h-1 w-4/5" style={{ background: colors.mutedForeground }} />
+        </span>
+        <span className="flex flex-col gap-1 border p-2" style={{ borderColor: colors.border, background: colors.canvas }}>
+          <span className="h-1.5 w-1/2" style={{ background: colors.foreground }} />
+          <span className="h-1 w-full" style={{ background: colors.border }} />
+          <span className="mt-1 h-3 w-full" style={{ background: colors.code }} />
+        </span>
+      </span>
+    );
+  }
+  return (
+    <span className="mb-3 grid h-20 grid-cols-[28%_1fr_18%] grid-rows-[16px_1fr] overflow-hidden rounded-lg border" aria-hidden>
+      <span className="col-span-3 border-b" style={{ borderColor: colors.border, background: colors.canvas }}>
+        <span className="m-1.5 block h-1.5 w-10 rounded-full" style={{ background: colors.accent }} />
+      </span>
+      <span className="border-e" style={{ borderColor: colors.border, background: colors.muted }} />
+      <span className="flex flex-col gap-1 p-2" style={{ background: colors.canvas }}>
+        <span className="h-1.5 w-1/2 rounded-full" style={{ background: colors.foreground }} />
+        <span className="h-1 w-full rounded-full" style={{ background: colors.border }} />
+        <span className="h-1 w-4/5 rounded-full" style={{ background: colors.border }} />
+      </span>
+      <span className="border-s" style={{ borderColor: colors.border, background: colors.surface }} />
+    </span>
   );
 }
 
@@ -322,7 +411,6 @@ export function ThemeSection({ project }: { project: Project }) {
       <Field hint={t('settings.theme.galleryHint')} label={t('settings.theme.gallery')}>
         <div className="grid gap-3 lg:grid-cols-3">
           {THEME_PRESET_IDS.map((presetId) => {
-            const preset = THEME_PRESETS[presetId];
             const active = resolved.id === presetId;
             return (
               <button
@@ -335,15 +423,10 @@ export function ThemeSection({ project }: { project: Project }) {
                 onClick={() => change({ theme: fullPresetTheme(presetId), appearance: draft.appearance })}
                 type="button"
               >
-                <span className="mb-3 flex h-12 overflow-hidden rounded-lg border" aria-hidden>
-                  <span className="w-1/3" style={{ background: preset.colors.light.muted }} />
-                  <span className="flex-1" style={{ background: preset.colors.light.canvas }}>
-                    <span className="m-2 block h-1.5 w-8 rounded-full" style={{ background: preset.colors.light.accent }} />
-                  </span>
-                </span>
-                <strong>{preset.metadata.name}</strong>
-                <span className="mt-1 block text-muted-foreground text-xs leading-relaxed">{preset.metadata.description}</span>
-                <span className="mt-2 block text-[11px] text-primary">{preset.rationale}</span>
+                <ThemePresetThumbnail presetId={presetId} />
+                <strong>{t(`settings.theme.preset.${presetId}.name`)}</strong>
+                <span className="mt-1 block text-muted-foreground text-xs leading-relaxed">{t(`settings.theme.preset.${presetId}.description`)}</span>
+                <span className="mt-2 block text-[11px] text-primary">{t(`settings.theme.preset.${presetId}.rationale`)}</span>
               </button>
             );
           })}
@@ -502,7 +585,9 @@ export function ThemeSection({ project }: { project: Project }) {
             onClick={() => setPreviewArabic((value) => !value)}
             type="button"
           >
-            {previewArabic ? 'English · LTR' : 'العربية · RTL'}
+            {previewArabic
+              ? translateFn('settings.theme.preview.switchEnglish', undefined, 'en')
+              : translateFn('settings.theme.preview.switchArabic', undefined, 'ar')}
           </button>
         </div>
         <ThemePreview arabic={previewArabic} config={config} mode={previewMode} />
@@ -620,7 +705,7 @@ export function ThemeSection({ project }: { project: Project }) {
                     <li className="grid gap-1 p-3" key={item.path}>
                       <code className="font-semibold text-primary">{item.path}</code>
                       <span className="break-all text-muted-foreground">
-                        {valueLabel(item.before)} → {valueLabel(item.after)}
+                        {JSON.stringify(item.before) ?? '—'} → {JSON.stringify(item.after) ?? '—'}
                       </span>
                     </li>
                   ))}

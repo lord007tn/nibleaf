@@ -1,5 +1,5 @@
 import { Button, Heading, Link, Section, Text } from 'react-email';
-import { createEmailTranslator, type EmailLanguage } from '../i18n';
+import { createEmailTranslator, type EmailLanguage } from '../translate';
 import { BaseEmail } from './base';
 
 export function TransactionalEmail({
@@ -19,7 +19,7 @@ export function TransactionalEmail({
   preview: string;
   title: string;
 }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
 
   return (
     <BaseEmail language={language} preview={preview}>
@@ -65,7 +65,7 @@ export function TransactionalEmail({
               {action.label}
             </Button>
             <Text style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.55, margin: '18px 0 0' }}>
-              {t('brand.fallbackLink')}
+              {t('email.brand.fallbackLink')}
               <br />
               <Link dir="ltr" href={action.url} style={{ color: '#0f766e', wordBreak: 'break-all' }}>
                 {action.url}

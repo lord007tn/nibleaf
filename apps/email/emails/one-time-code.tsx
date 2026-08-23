@@ -1,14 +1,15 @@
-import { TransactionalEmail } from '@nibleaf/email';
+import { createEmailTranslator, TransactionalEmail } from '@nibleaf/email';
 
 export default function OneTimeCodeEmail() {
+  const t = createEmailTranslator('ar');
   return (
     <TransactionalEmail
       code="123456"
-      detail="تنتهي صلاحية الرمز خلال 10 دقائق، ولا يمكن استخدامه إلا مرة واحدة."
+      detail={t('email.otp.expiry', { minutes: 10 })}
       language="ar"
-      message="استخدم هذا الرمز لمرة واحدة لتسجيل الدخول."
-      preview="استخدم هذا الرمز لمرة واحدة لتسجيل الدخول."
-      title="رمز نيبليف الخاص بك"
+      message={t('email.otp.signIn.message')}
+      preview={t('email.otp.signIn.preview')}
+      title={t('email.otp.title')}
     />
   );
 }

@@ -4,6 +4,64 @@ import type { BlogEntry } from './blog';
  * Article bodies remain in the lazy blog route chunk instead of the homepage. */
 export const BLOG_MANIFEST = [
   {
+    slug: 'choosing-documentation-template',
+    title: 'How to choose a documentation template: reference, editorial, or code-first',
+    metaTitle: 'How to choose a documentation template for your content',
+    description:
+      'A practical framework for choosing Harbor, Manuscript, or Signal based on reader intent, content shape, navigation depth, and code density.',
+    datePublished: '2026-08-23',
+    dateModified: '2026-08-23',
+    tags: ['guide', 'templates', 'information-architecture'],
+    related: ['documentation-templates-harbor-manuscript-signal', 'docs-should-live-in-plain-markdown', 'arabic-documentation-rtl'],
+    readingMinutes: 7,
+    faqs: [
+      {
+        question: 'Which Nibleaf template should a new project use?',
+        answer:
+          'Start with Harbor when the content mixes guides and reference material. Move to Manuscript for chapter-led reading or Signal when code and API scanning dominate the experience.',
+      },
+      {
+        question: 'Should every section of a documentation site use a different template?',
+        answer:
+          'Usually not. A consistent site-level structure is easier to learn. Choose the layout that fits the dominant reader task, then use cards, tabs, callouts, and page organization for local variation.',
+      },
+      {
+        question: 'What should I test before publishing a template change?',
+        answer:
+          'Review representative short and long pages, deep navigation, search, tables, code, mobile behavior, light and dark appearances, and every supported writing direction.',
+      },
+    ],
+  },
+  {
+    slug: 'documentation-templates-harbor-manuscript-signal',
+    title: 'Introducing Harbor, Manuscript, and Signal: three layouts for three kinds of documentation',
+    metaTitle: 'New Nibleaf documentation templates: Harbor, Manuscript, and Signal',
+    description:
+      'Nibleaf now includes three structural documentation templates for product guides, editorial knowledge, and code-first API references.',
+    datePublished: '2026-08-23',
+    dateModified: '2026-08-23',
+    tags: ['announcement', 'templates', 'theming'],
+    related: ['choosing-documentation-template', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
+    readingMinutes: 6,
+    faqs: [
+      {
+        question: 'Are Nibleaf templates only color themes?',
+        answer:
+          'No. Each template owns the placement and behavior of the header, navigation, content frame, page outline, and preview. Colors and component treatments remain customizable inside that structure.',
+      },
+      {
+        question: 'Can a project switch templates without rewriting its pages?',
+        answer:
+          'Yes. Templates render the same portable Markdown and MDX content. Switching changes the reader structure and design tokens, not the stored page source.',
+      },
+      {
+        question: 'Do all three templates support Arabic and RTL?',
+        answer:
+          'Yes. The templates use logical layout properties, flip navigation correctly for RTL, and preserve left-to-right direction for code and commands.',
+      },
+    ],
+  },
+  {
     slug: 'arabic-technical-documentation-rtl-checklist',
     title: 'كيف تنشر وثائق منتج بالعربية من دون أن تكسر RTL والبحث',
     metaTitle: 'وثائق المنتج بالعربية: قائمة فحص RTL والبحث | Nibleaf',

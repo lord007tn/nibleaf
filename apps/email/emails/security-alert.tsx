@@ -1,13 +1,14 @@
-import { TransactionalEmail } from '@nibleaf/email';
+import { createEmailTranslator, TransactionalEmail } from '@nibleaf/email';
 
 export default function SecurityAlertEmail() {
+  const t = createEmailTranslator('en');
   return (
     <TransactionalEmail
-      detail="If this was not you, sign out other sessions immediately and contact support@nibleaf.com."
+      detail={t('email.newSignIn.detail')}
       language="en"
-      message="We noticed a new sign-in to your account from a new device."
-      preview="We noticed a sign-in from a new device or location."
-      title="New sign-in detected"
+      message={t('email.newSignIn.withoutIp')}
+      preview={t('email.newSignIn.preview')}
+      title={t('email.newSignIn.title')}
     />
   );
 }

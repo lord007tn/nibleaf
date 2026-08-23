@@ -1,3 +1,4 @@
+import { translateFn } from '@nibleaf/i18n';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
@@ -62,7 +63,7 @@ describe('published theme projection', () => {
     expect(markup).toContain('data-theme-navigation="tree"');
     expect(markup).toContain('data-theme-sidebar="soft"');
     expect(markup).toContain('dir="ltr"');
-    expect(markup).toContain('وثائق المنتج');
+    expect(markup).toContain(translateFn('settings.theme.preview.productDocs', undefined, 'ar'));
   });
 
   it.each([

@@ -209,7 +209,7 @@ const addLinkedPages = async (
   if (linkedPages.length === 0) return;
   nodes.push({
     kind: 'group',
-    title: languageCode?.toLowerCase().startsWith('ar') ? 'صفحات إضافية' : 'Additional pages',
+    title: siteT(languageCode)('importAdditionalPages'),
     origin: 'group',
     children: linkedPages.map((path) => ({ kind: 'page', path })),
   });
@@ -368,3 +368,5 @@ const importNodes = async (
     summary[outcome === 'imported' ? 'imported' : 'updated']++;
   }
 };
+
+import { siteT } from '@nibleaf/i18n/site';

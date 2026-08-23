@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./react": "./src/react.ts",
     "./standalone": "./src/standalone.ts",
+    "./email": "./src/email.ts",
     "./site": "./src/site.ts",
     "./messages": "./src/paraglide/messages.js",
     "./runtime": "./src/paraglide/runtime.js"

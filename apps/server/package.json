@@ -28,6 +28,7 @@
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/email": "workspace:*",
+    "@nibleaf/i18n": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/qdrant": "workspace:*",
     "@nibleaf/search": "workspace:*",

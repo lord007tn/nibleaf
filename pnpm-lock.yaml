@@ -439,6 +439,9 @@ importers:
       '@nibleaf/email':
         specifier: workspace:*
         version: link:../../packages/email
+      '@nibleaf/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@nibleaf/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -854,6 +857,9 @@ importers:
 
   packages/email:
     dependencies:
+      '@nibleaf/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       react:
         specifier: ^19.2.4
         version: 19.2.7
@@ -954,6 +960,9 @@ importers:
 
   packages/search:
     dependencies:
+      '@nibleaf/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@openrouter/sdk':
         specifier: 0.13.20
         version: 0.13.20

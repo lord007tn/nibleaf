@@ -1,11 +1,10 @@
 import { isRtl, type Locale } from './locales';
 
+export type { MessageFn, MessageVariables } from './message-types';
+
 // biome-ignore lint/suspicious/noTsIgnore: Paraglide generates runtime JavaScript without declaration files.
 // @ts-ignore -- Paraglide generates runtime JavaScript without declaration files.
 import { getLocale, setLocale } from './paraglide/runtime.js';
-
-export type MessageVariables = Record<string, string | number>;
-export type MessageFn = (input?: MessageVariables, options?: { locale?: Locale }) => string;
 
 const languageListeners = new Set<() => void>();
 

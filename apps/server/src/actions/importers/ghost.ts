@@ -1,3 +1,4 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { slugify } from '@nibleaf/shared';
 import type { GhostImportBody } from '@nibleaf/validators';
 import { badRequest } from '@/errors';
@@ -127,7 +128,8 @@ const importByLanguage = async (
   for (const [code, localizedItems] of buckets) {
     const target = targets.get(code);
     if (!target) continue;
-    const localizedGroupTitle = code.toLowerCase().startsWith('ar') ? (groupTitle === 'Blog' ? 'المدونة' : 'الصفحات') : groupTitle;
+    const t = siteT(code);
+    const localizedGroupTitle = groupTitle === 'Blog' ? t('importBlog') : t('importPages');
     await importCollection(localizedItems, localizedGroupTitle, target, languageCodes, ghostSourceUrl, assets, summary, state);
   }
 };

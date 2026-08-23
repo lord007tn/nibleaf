@@ -1,4 +1,5 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
+import { translateFn, useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -38,14 +39,14 @@ function CoverPanel({ entry, className }: { className: string; entry: BlogEntry 
 }
 
 function CardMeta({ entry }: { entry: BlogEntry }) {
-  const arabic = blogLanguage(entry) === 'ar';
+  const language = blogLanguage(entry);
   return (
     <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
       <time dateTime={entry.datePublished}>{dateFormatter(entry).format(new Date(entry.datePublished))}</time>
       <span aria-hidden="true">·</span>
       <span className="inline-flex items-center gap-1">
         <Clock aria-hidden="true" className="size-3.5" />
-        {arabic ? `${blogReadingMinutes(entry)} دقائق` : `${blogReadingMinutes(entry)} min read`}
+        {translateFn('blog.readingMinutes', { minutes: blogReadingMinutes(entry) }, language)}
       </span>
     </div>
   );
@@ -116,6 +117,7 @@ export function ArticleCard({ entry, featured = false }: { entry: BlogEntry; fea
  * so the initial (unfiltered) render is identical on server and client.
  */
 export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; stars?: number }) {
+  const t = useT();
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const filtered =
@@ -134,27 +136,22 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
     <MarketingShell stars={stars}>
       <section className="border-border border-b">
         <div className="mx-auto max-w-6xl px-6 pt-16 pb-10">
-          <Eyebrow>Blog</Eyebrow>
+          <Eyebrow>{t('blog.eyebrow')}</Eyebrow>
           <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <div>
-              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">
-                Product documentation, search, and ownership
-              </h1>
-              <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">
-                Guides and notes from building Nibleaf: deployment architecture, Markdown, bilingual documentation, and source-backed looks at the
-                docs tooling landscape.
-              </p>
+              <h1 className="max-w-2xl text-balance font-semibold text-4xl tracking-tight sm:text-5xl">{t('blog.title')}</h1>
+              <p className="mt-4 max-w-2xl text-lg text-muted-foreground leading-relaxed">{t('blog.description')}</p>
             </div>
             <div className="relative w-full md:w-72">
               <Search aria-hidden="true" className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <label className="sr-only" htmlFor="blog-search">
-                Search articles
+                {t('blog.searchLabel')}
               </label>
               <input
                 className="h-10 w-full rounded-md border border-input bg-transparent ps-9 pe-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 id="blog-search"
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search articles…"
+                placeholder={t('blog.searchPlaceholder')}
                 type="search"
                 value={query}
               />
@@ -178,7 +175,7 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
         ) : null}
         {grid.length === 0 && !featured ? (
           <div className="rounded-xl border border-border border-dashed bg-card px-6 py-16 text-center">
-            <p className="text-muted-foreground text-sm">No articles match “{query}”. Try another search.</p>
+            <p className="text-muted-foreground text-sm">{t('blog.noResults', { query })}</p>
           </div>
         ) : null}
       </section>
@@ -210,7 +207,7 @@ function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar'
   return (
     <section className="mt-12">
       <h2 className="mb-4 border-border border-b pb-3 font-semibold text-2xl tracking-tight rtl:tracking-normal">
-        {language === 'ar' ? 'أسئلة شائعة' : 'Frequently asked questions'}
+        {translateFn('blog.faqTitle', undefined, language)}
       </h2>
       <dl className="flex flex-col gap-5">
         {faqs.map((faq) => (
@@ -225,7 +222,6 @@ function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar'
 }
 
 function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
-  const arabic = language === 'ar';
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
       <div className="relative overflow-hidden rounded-2xl border border-border bg-foreground px-8 py-14 text-center text-background">
@@ -235,20 +231,14 @@ function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
           aria-hidden="true"
         />
         <div className="relative">
-          <h2 className="font-semibold text-3xl tracking-tight rtl:tracking-normal">
-            {arabic ? 'انشر وثائق واضحة بالعربية والإنجليزية' : 'Ship docs your users will love'}
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-background/75">
-            {arabic
-              ? 'جرّب Nibleaf Cloud مجانًا، أو شغّل المنصة مفتوحة المصدر على خادمك.'
-              : 'Start free on Nibleaf Cloud, or run the public AGPL release on your own infrastructure.'}
-          </p>
+          <h2 className="font-semibold text-3xl tracking-tight rtl:tracking-normal">{translateFn('blog.ctaTitle', undefined, language)}</h2>
+          <p className="mx-auto mt-3 max-w-xl text-background/75">{translateFn('blog.ctaBody', undefined, language)}</p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
-              {arabic ? 'أنشئ حسابًا مجانيًا' : 'Create free account'} <ArrowRight className="size-4 rtl:rotate-180" />
+              {translateFn('blog.createAccount', undefined, language)} <ArrowRight className="size-4 rtl:rotate-180" />
             </a>
             <a className={invertedOutlineButton} href="/self-hosting">
-              {arabic ? 'دليل الاستضافة الذاتية' : 'Self-hosting guide'}
+              {translateFn('blog.selfHostingGuide', undefined, language)}
             </a>
           </div>
         </div>
@@ -262,7 +252,7 @@ const shareButton =
 
 function ShareRow({ entry }: { entry: BlogEntry }) {
   const shareUrl = canonicalHref(`/blog/${entry.slug}`);
-  const arabic = blogLanguage(entry) === 'ar';
+  const language = blogLanguage(entry);
   const [copied, setCopied] = useState(false);
   // navigator is undefined during SSR — enable clipboard affordance after mount
   // so server and client render identically.
@@ -285,10 +275,10 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="me-1 text-muted-foreground text-xs">{arabic ? 'مشاركة' : 'Share'}</span>
+      <span className="me-1 text-muted-foreground text-xs">{translateFn('blog.share', undefined, language)}</span>
       {canCopy ? (
         <button
-          aria-label={copied ? (arabic ? 'نُسخ الرابط' : 'Link copied') : arabic ? 'نسخ رابط المقال' : 'Copy article link'}
+          aria-label={translateFn(copied ? 'blog.linkCopied' : 'blog.copyLink', undefined, language)}
           className={shareButton}
           onClick={copyLink}
           type="button"
@@ -302,7 +292,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">{arabic ? 'مشاركة على X' : 'Share on X'}</span>
+        <span className="sr-only">{translateFn('blog.shareX', undefined, language)}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
@@ -313,7 +303,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">{arabic ? 'مشاركة على LinkedIn' : 'Share on LinkedIn'}</span>
+        <span className="sr-only">{translateFn('blog.shareLinkedIn', undefined, language)}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
         </svg>
@@ -356,7 +346,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
     <MarketingShell stars={stars}>
       <article className="mx-auto max-w-3xl px-6 pt-12 pb-20" dir={arabic ? 'rtl' : 'ltr'} lang={language}>
         <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/blog">
-          <ArrowLeft className="size-4 rtl:rotate-180" /> {arabic ? 'كل المقالات' : 'All articles'}
+          <ArrowLeft className="size-4 rtl:rotate-180" /> {translateFn('blog.allArticles', undefined, language)}
         </a>
         <header className="mt-6">
           <TagChips entry={entry} />
@@ -365,22 +355,22 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-border border-y py-4">
             <p className="text-muted-foreground text-sm">
               <time className="datePublished" dateTime={entry.datePublished}>
-                {arabic ? 'نُشر' : 'Published'} {dateFormatter(entry).format(new Date(entry.datePublished))}
+                {translateFn('blog.published', undefined, language)} {dateFormatter(entry).format(new Date(entry.datePublished))}
               </time>
               {entry.dateModified !== entry.datePublished ? (
                 <>
                   {' · '}
                   <time dateTime={entry.dateModified}>
-                    {arabic ? 'آخر تحديث' : 'Updated'} {dateFormatter(entry).format(new Date(entry.dateModified))}
+                    {translateFn('blog.updated', undefined, language)} {dateFormatter(entry).format(new Date(entry.dateModified))}
                   </time>
                 </>
               ) : null}
               {' · '}
-              {arabic ? `${blogReadingMinutes(entry)} دقائق قراءة` : `${blogReadingMinutes(entry)} min read`}
+              {translateFn('blog.readingMinutes', { minutes: blogReadingMinutes(entry) }, language)}
               {' · '}
-              {arabic ? 'بقلم ' : 'By '}
+              {translateFn('blog.by', undefined, language)}{' '}
               <a className="author font-medium text-foreground hover:underline" href="/about" rel="author">
-                {arabic ? 'فريق Nibleaf' : 'The Nibleaf team'}
+                {translateFn('blog.team', undefined, language)}
               </a>
             </p>
             <ShareRow entry={entry} />
@@ -391,7 +381,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
       </article>
       {related.length > 0 ? (
         <aside className="mx-auto max-w-6xl px-6 pb-16">
-          <h2 className={`mb-5 font-semibold text-xl ${arabic ? '' : 'tracking-tight'}`}>{arabic ? 'اقرأ أيضًا' : 'Read next'}</h2>
+          <h2 className={`mb-5 font-semibold text-xl ${arabic ? '' : 'tracking-tight'}`}>{translateFn('blog.readNext', undefined, language)}</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item) => (
               <ArticleCard entry={item} key={item.slug} />

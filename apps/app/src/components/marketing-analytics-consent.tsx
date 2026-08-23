@@ -1,3 +1,4 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { useRouterState } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { useGetPublicMeta } from '@/hooks/api/public';
@@ -14,25 +15,6 @@ import {
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
 
-const copy = {
-  en: {
-    accept: 'Accept analytics',
-    body: 'With your permission, Nibleaf uses Google Analytics to understand which public pages and calls to action are useful. We never send account content, submitted HTML, form text, or email addresses.',
-    decline: 'Decline',
-    manage: 'Privacy choices',
-    privacy: 'Privacy policy',
-    title: 'Optional analytics',
-  },
-  ar: {
-    accept: 'قبول التحليلات',
-    body: 'بعد موافقتك، تستخدم Nibleaf «إحصاءات Google» لفهم الصفحات العامة وعبارات الحث المفيدة. لا نرسل محتوى الحساب أو HTML المُدخل أو نصوص النماذج أو عناوين البريد.',
-    decline: 'رفض',
-    manage: 'خيارات الخصوصية',
-    privacy: 'سياسة الخصوصية',
-    title: 'تحليلات اختيارية',
-  },
-} as const;
-
 export function marketingAnalyticsEnabled(pathname: string, siteProjectId?: string): boolean {
   if (siteProjectId) return false;
   return !['/app', '/sign-in', '/forgot-password', '/reset-password', '/verify-email', '/accept-invite', '/git-preview'].some(
@@ -45,7 +27,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   const [target, setTarget] = useState<MarketingAnalyticsTarget | null>(null);
   const [choice, setChoice] = useState<MarketingAnalyticsChoice>('pending');
   const lastPageView = useRef<string | null>(null);
-  const t = copy[language];
+  const t = siteT(language);
   const { data: publicMeta } = useGetPublicMeta({ enabled });
 
   useEffect(() => {
@@ -76,7 +58,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
         onClick={() => setChoice('pending')}
         type="button"
       >
-        {t.manage}
+        {t('analyticsConsentManage')}
       </button>
     );
   }
@@ -87,11 +69,11 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
       className="fixed end-4 bottom-4 z-50 max-w-sm rounded-xl border border-border bg-background p-4 shadow-xl"
     >
       <h2 className="font-semibold text-sm" id="marketing-analytics-title">
-        {t.title}
+        {t('analyticsConsentTitle')}
       </h2>
-      <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{t.body}</p>
+      <p className="mt-2 text-muted-foreground text-sm leading-relaxed">{t('analyticsConsentBody')}</p>
       <a className="mt-2 inline-block text-primary text-xs hover:underline" href="/privacy">
-        {t.privacy}
+        {t('analyticsConsentPrivacy')}
       </a>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
         <button
@@ -102,7 +84,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
           }}
           type="button"
         >
-          {t.decline}
+          {t('analyticsConsentDecline')}
         </button>
         <button
           className="cursor-pointer rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground text-sm hover:opacity-90"
@@ -112,7 +94,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
           }}
           type="button"
         >
-          {t.accept}
+          {t('analyticsConsentAccept')}
         </button>
       </div>
     </aside>

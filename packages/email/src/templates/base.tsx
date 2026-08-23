@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Body, Container, Head, Hr, Html, Preview, Section, Text } from 'react-email';
-import { createEmailTranslator, type EmailLanguage } from '../i18n';
+import { createEmailTranslator, type EmailLanguage } from '../translate';
 
 const colors = {
   background: '#f1f5f9',
@@ -20,7 +20,7 @@ const bodyStyle: CSSProperties = {
 };
 
 export function BaseEmail({ children, language, preview }: { children: ReactNode; language: EmailLanguage; preview: string }) {
-  const { t } = createEmailTranslator(language);
+  const t = createEmailTranslator(language);
 
   return (
     <Html dir={language === 'ar' ? 'rtl' : 'ltr'} lang={language}>
@@ -38,12 +38,12 @@ export function BaseEmail({ children, language, preview }: { children: ReactNode
           }}
         >
           <Section style={{ padding: '24px 28px', textAlign: language === 'ar' ? 'right' : 'left' }}>
-            <Text style={{ fontSize: '18px', fontWeight: 750, letterSpacing: '-0.02em', margin: 0 }}>{t('brand.name')}</Text>
+            <Text style={{ fontSize: '18px', fontWeight: 750, letterSpacing: '-0.02em', margin: 0 }}>{t('email.brand.name')}</Text>
           </Section>
           <Hr style={{ borderColor: colors.border, margin: 0 }} />
           {children}
           <Section style={{ backgroundColor: colors.surfaceMuted, padding: '18px 28px' }}>
-            <Text style={{ color: colors.footer, fontSize: '12px', lineHeight: 1.55, margin: 0 }}>{t('brand.footer')}</Text>
+            <Text style={{ color: colors.footer, fontSize: '12px', lineHeight: 1.55, margin: 0 }}>{t('email.brand.footer')}</Text>
           </Section>
         </Container>
       </Body>

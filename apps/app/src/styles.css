@@ -70,20 +70,57 @@
     column-gap: 0.5rem;
   }
 
-  @media (min-width: 64rem) {
-    .documentation-manuscript-reader-navigation:not(
-        :has([data-theme-region="sidebar-content"] > nav > ul > li:nth-child(2))
-      ) {
-      height: 6rem;
-    }
+  .nibleaf-site-chrome[data-documentation-template="manuscript"]
+    [data-theme-region="header-shell"] {
+    position: static;
+    border-bottom: 0;
+    background: var(--theme-muted);
+    backdrop-filter: none;
+  }
 
+  .nibleaf-site-chrome[data-documentation-template="manuscript"]
+    [data-theme-region="header"] {
+    min-height: 5rem;
+    height: auto;
+    max-width: 82rem;
+    padding-block: 1rem;
+  }
+
+  .nibleaf-site-chrome[data-documentation-template="manuscript"]
+    [data-theme-region="tabs"] {
+    justify-content: center;
+    border-top: 1px solid var(--theme-border);
+  }
+
+  .nibleaf-site-chrome[data-documentation-template="signal"]
+    [data-theme-region="header-shell"] {
+    position: sticky;
+    top: 0;
+    margin: 0;
+    border: 1px solid var(--theme-border);
+    border-radius: 0;
+    background: var(--theme-surface);
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .nibleaf-site-chrome[data-documentation-template="signal"]
+    [data-theme-region="header"] {
+    min-height: 3.75rem;
+    height: auto;
+    max-width: 100rem;
+    padding-block: 0.5rem;
+  }
+
+  @media (min-width: 64rem) {
     /* biome-ignore lint/style/noDescendingSpecificity: template-owned navigation intentionally overrides the generic tree treatment above. */
     .documentation-manuscript-navigation > nav > ul {
       display: grid;
       grid-auto-flow: column;
-      grid-template-rows: repeat(2, minmax(2rem, auto));
+      grid-template-rows: repeat(2, minmax(2.25rem, auto));
       grid-auto-columns: minmax(13rem, 1fr);
       gap: 0.25rem 1rem;
+      max-height: 8rem;
       overflow-x: auto;
     }
 
@@ -107,6 +144,12 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.25rem 1.25rem;
+    }
+  }
+
+  @media (min-width: 64rem) {
+    .documentation-signal-reader [data-theme-region="content-shell"] {
+      min-height: calc(100dvh - 5.75rem);
     }
   }
 }
@@ -191,7 +234,9 @@
 /* These rules must live in Tailwind's utilities layer so theme mode wins over
  * generated max-width, transition, and animation utilities on the same nodes. */
 @layer utilities {
+  /* biome-ignore lint/style/noDescendingSpecificity: utilities-layer width tokens intentionally override template component layout. */
   .nibleaf-site-chrome [data-theme-region="header"],
+  /* biome-ignore lint/style/noDescendingSpecificity: utilities-layer width tokens intentionally override template component layout. */
   .nibleaf-site-chrome [data-theme-region="tabs"],
   .nibleaf-site-chrome [data-theme-region="content-shell"],
   .nibleaf-site-chrome [data-theme-region="footer"] {
