@@ -7,6 +7,7 @@ import { RedirectsSection } from '@/components/project-settings/redirects-sectio
 import { SearchSection } from '@/components/project-settings/search-section';
 import { SeoSection } from '@/components/project-settings/seo-section';
 import { StylingSection } from '@/components/project-settings/styling-section';
+import { ThemeSection } from '@/components/project-settings/theme-section';
 import { TypographySection } from '@/components/project-settings/typography-section';
 import { VariablesSection } from '@/components/project-settings/variables-section';
 import type { Project } from '@/hooks/api';
@@ -20,6 +21,7 @@ import type { MessageKey } from '@/lib/i18n/messages';
  */
 export const EDITOR_CONFIG_SECTIONS = [
   { id: 'branding', labelKey: 'settings.branding', icon: '▣' },
+  { id: 'themes', labelKey: 'settings.themes', icon: '◈' },
   { id: 'styling', labelKey: 'settings.styling', icon: '◐' },
   { id: 'typography', labelKey: 'settings.typography', icon: 'T' },
   { id: 'navbar', labelKey: 'settings.navbar', icon: '☰' },
@@ -66,6 +68,8 @@ export function ConfigSection({ project, section }: { project: Project; section:
       return <BrandingSection key={`branding-${project.id}`} project={project} />;
     case 'styling':
       return <StylingSection key={`styling-${project.id}`} project={project} />;
+    case 'themes':
+      return <ThemeSection key={`themes-${project.id}`} project={project} />;
     case 'typography':
       return <TypographySection key={`typography-${project.id}`} project={project} />;
     case 'navbar':

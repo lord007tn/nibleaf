@@ -207,7 +207,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const updatedLabel = new Intl.DateTimeFormat(language || 'en', { dateStyle: 'medium' }).format(new Date(page.updatedAt));
 
   const article = (
-    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')}>
+    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">

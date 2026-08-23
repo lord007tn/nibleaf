@@ -12,6 +12,7 @@
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",
+    "./themes": "./src/themes.ts",
     "./export-schedule": "./src/export-schedule.ts",
     "./utils": "./src/utils.ts"
   },

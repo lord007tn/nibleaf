@@ -9,7 +9,7 @@ import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
 import type { PageNode } from '@/hooks/api/types';
 import { useT } from '@/lib/i18n';
-import { typographyVars } from '@/lib/typography';
+import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   component: ProjectPreview,
@@ -42,6 +42,8 @@ function ProjectPreview() {
   const { data: page, isPending: pagePending } = usePage(previewEnabled ? projectId : undefined, selected?.id);
   const contentPending = pagesPending || (Boolean(selected) && pagePending);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
+  const theme = resolveProjectTheme(project?.config);
+  const previewMode = project?.config?.styling?.theme === 'dark' ? 'dark' : 'light';
 
   const updateSearch = (patch: Partial<typeof search>) => {
     navigate({ search: (prev) => ({ ...prev, ...patch }) });
@@ -59,8 +61,26 @@ function ProjectPreview() {
   }
 
   return (
-    <div className="grid h-[calc(100vh-3.5rem)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[280px_1fr] md:grid-rows-1">
-      <div className="border-border border-b bg-card/40 md:hidden">
+    <div
+      className={cn(
+        'nibleaf-site-chrome grid h-[calc(100vh-3.5rem)] grid-cols-1 grid-rows-[auto_minmax(0,1fr)] overflow-hidden md:grid-cols-[280px_1fr] md:grid-rows-1',
+        previewMode === 'dark' && 'dark',
+      )}
+      data-theme-callouts={theme.components.callouts}
+      data-theme-cards={theme.components.cards}
+      data-theme-code={theme.components.codeBlocks}
+      data-theme-density={theme.layout.density}
+      data-theme-header={theme.layout.header}
+      data-theme-id={theme.id}
+      data-theme-navigation={theme.layout.navigation}
+      data-theme-sidebar={theme.layout.sidebar}
+      data-theme-tables={theme.components.tables}
+      data-theme-tabs={theme.components.tabs}
+      data-theme-width={theme.layout.contentWidth}
+      dir={contentDir}
+      style={{ ...projectThemeVariables(project?.config, previewMode), ...projectThemeStyle(project?.config) }}
+    >
+      <div className="border-border border-b bg-card/40 md:hidden" data-theme-region="sidebar">
         <button
           aria-controls="mobile-preview-navigation"
           aria-expanded={mobileNavigationOpen}
@@ -140,7 +160,7 @@ function ProjectPreview() {
         ) : null}
       </div>
 
-      <aside className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex">
+      <aside className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
         <div className="shrink-0 border-border border-b p-4">
           <div className="flex items-center gap-2 font-semibold text-sm">
             <Eye className="size-4 text-muted-foreground" /> {t('preview.title')}
@@ -212,11 +232,7 @@ function ProjectPreview() {
       <main className="overflow-y-auto bg-background">
         {/* Same typography variables the published site sets on its chrome, so
             the preview reads exactly like production. */}
-        <article
-          className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10"
-          dir={contentDir}
-          style={typographyVars(project?.config?.typography)}
-        >
+        <article className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10" data-theme-region="article" dir={contentDir}>
           {contentPending ? (
             <div className="space-y-4">
               <Skeleton className="h-8 w-64" />

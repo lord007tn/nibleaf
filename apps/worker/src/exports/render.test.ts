@@ -56,6 +56,21 @@ const snapshot: SiteSnapshot = {
   ],
 };
 
+const themedSnapshot: SiteSnapshot = {
+  ...snapshot,
+  project: {
+    ...snapshot.project,
+    config: {
+      theme: {
+        preset: 'signal',
+        colors: { light: { accent: '#4f46e5', accentForeground: '#ffffff', focus: '#4f46e5' } },
+      },
+      styling: { theme: 'light' },
+      typography: { bodyFont: 'نسق عربي', headingFont: 'Noto Sans Arabic', codeFont: 'JetBrains Mono', baseSize: '17', leading: '1.9' },
+    },
+  },
+};
+
 const assets = [
   {
     key: 'projects/project_public/assets/logo.png',
@@ -81,6 +96,20 @@ describe('export renderers', () => {
     expect(files['theme/theme.css']).toBeDefined();
     expect(files['theme/theme.js']).toBeDefined();
     expect(files['assets/logo.png']).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it('projects the immutable deployment theme into static, PDF, and Markdown artifacts', () => {
+    const staticFiles = unzipSync(renderStaticHtml(themedSnapshot, assets).bytes);
+    expect(text(required(staticFiles['theme/theme.css']))).toContain('--accent:#4f46e5');
+    expect(text(required(staticFiles['theme/theme.css']))).toContain("--font-body:'نسق عربي'");
+    expect(text(required(staticFiles['theme/theme.css']))).toContain('--font-size:17px');
+    expect(text(required(staticFiles['main/ar/intro/index.html']))).toContain('data-theme-id="signal"');
+    expect(renderPdfHtml(themedSnapshot, assets)).toContain('--accent:#4f46e5');
+
+    const markdownFiles = unzipSync(renderMarkdownZip(themedSnapshot, assets).bytes);
+    expect(JSON.parse(text(required(markdownFiles['project.json'])))).toMatchObject({
+      themeTemplate: { kind: 'nibleaf-theme', version: 1, config: { theme: { preset: 'signal' } } },
+    });
   });
 
   it('does not execute raw published HTML in static archives', () => {

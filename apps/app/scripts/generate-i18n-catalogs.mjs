@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import ts from 'typescript';
+import { parse } from '@babel/parser';
 
 const appRoot = resolve(import.meta.dirname, '..');
 const force = process.argv.includes('--force');
+const allowSourceFallback = process.argv.includes('--allow-source-fallback');
+let translationUnavailable = false;
 const targetLocales = {
   'zh-CN': 'zh-CN',
   hi: 'hi',
@@ -28,43 +30,53 @@ const sources = [
 ];
 
 const propertyName = (property) => {
-  const name = property.name;
-  return name && (ts.isStringLiteral(name) || ts.isIdentifier(name)) ? name.text : undefined;
+  if (property.type === 'SpreadElement' || property.type === 'SpreadProperty') return undefined;
+  const name = property.key;
+  if (name?.type === 'StringLiteral') return name.value;
+  if (name?.type === 'Identifier') return name.name;
+  return undefined;
 };
 
 const unwrap = (expression) => {
   let current = expression;
-  while (ts.isAsExpression(current) || ts.isSatisfiesExpression(current)) current = current.expression;
+  while (current.type === 'TSAsExpression' || current.type === 'TSSatisfiesExpression') current = current.expression;
   return current;
 };
 
 const englishCatalog = async ({ file, variable }) => {
   const source = await readFile(file, 'utf8');
-  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const ast = parse(source, { sourceType: 'module', plugins: ['typescript'] });
   let registry;
-  ast.forEachChild((node) => {
-    if (!ts.isVariableStatement(node)) return;
-    for (const declaration of node.declarationList.declarations) {
-      if (ts.isIdentifier(declaration.name) && declaration.name.text === variable && declaration.initializer) {
-        const candidate = unwrap(declaration.initializer);
-        if (ts.isObjectLiteralExpression(candidate)) registry = candidate;
+  for (const statement of ast.program.body) {
+    const variableStatement = statement.type === 'ExportNamedDeclaration' ? statement.declaration : statement;
+    if (variableStatement?.type !== 'VariableDeclaration') continue;
+    for (const declaration of variableStatement.declarations) {
+      if (declaration.id.type === 'Identifier' && declaration.id.name === variable && declaration.init) {
+        const candidate = unwrap(declaration.init);
+        if (candidate.type === 'ObjectExpression') registry = candidate;
       }
     }
-  });
+  }
   if (!registry) throw new Error(`Unable to find ${variable} in ${file}`);
   const english = registry.properties.find((property) => propertyName(property) === 'en');
-  if (!english || !ts.isPropertyAssignment(english)) throw new Error(`Unable to find ${variable}.en in ${file}`);
-  const object = unwrap(english.initializer);
-  if (!ts.isObjectLiteralExpression(object)) throw new Error(`${variable}.en must be an object literal in ${file}`);
+  if (english?.type !== 'ObjectProperty') throw new Error(`Unable to find ${variable}.en in ${file}`);
+  const object = unwrap(english.value);
+  if (object.type !== 'ObjectExpression') throw new Error(`${variable}.en must be an object literal in ${file}`);
   return Object.fromEntries(
     object.properties.map((property) => {
-      if (!ts.isPropertyAssignment(property)) throw new Error(`Unsupported spread/method in ${variable}.en`);
+      if (property.type !== 'ObjectProperty') throw new Error(`Unsupported spread/method in ${variable}.en`);
       const key = propertyName(property);
-      const value = unwrap(property.initializer);
-      if (!key || (!ts.isStringLiteral(value) && !ts.isNoSubstitutionTemplateLiteral(value))) {
+      const value = unwrap(property.value);
+      const text =
+        value.type === 'StringLiteral'
+          ? value.value
+          : value.type === 'TemplateLiteral' && value.expressions.length === 0
+            ? value.quasis[0]?.value.cooked
+            : undefined;
+      if (!key || text === undefined) {
         throw new Error(`Every ${variable}.en value must be a plain string (${key ?? 'unknown key'})`);
       }
-      return [key, value.text];
+      return [key, text];
     }),
   );
 };
@@ -193,7 +205,24 @@ for (const source of sources) {
       Object.entries(catalog).filter(([key, value]) => !(key in existing) || (hasSourceSnapshot && previousSource[key] !== value)),
     );
     process.stdout.write(`${source.variable}: ${locale} (${Object.keys(pending).length}/${Object.keys(catalog).length} messages) `);
-    const additions = Object.keys(pending).length > 0 ? await translateCatalog(pending, target) : {};
+    let additions = {};
+    if (Object.keys(pending).length > 0) {
+      if (allowSourceFallback && translationUnavailable) {
+        additions = pending;
+        process.stdout.write('source fallback (provider unavailable) ');
+      } else
+        try {
+          additions = await translateCatalog(pending, target);
+        } catch (error) {
+          if (!allowSourceFallback) throw error;
+          translationUnavailable = true;
+          // Explicit recovery mode keeps shipped catalogs key-complete when the
+          // translation provider is unavailable. Runtime already treats English
+          // as the fallback; Arabic remains hand-reviewed in messages.ts.
+          process.stdout.write(`source fallback (${error instanceof Error ? error.message : 'translation unavailable'}) `);
+          additions = pending;
+        }
+    }
     const translated = Object.fromEntries(Object.keys(catalog).map((key) => [key, additions[key] ?? existing[key]]));
     await writeFile(outputFile, `${JSON.stringify(translated, null, 2)}\n`, 'utf8');
   }

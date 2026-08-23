@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { resolveTheme, type ThemeColorTokens, type ThemeOwnedProjectConfig, themeTemplateFromConfig } from '@nibleaf/shared/themes';
 import { strToU8, zipSync } from 'fflate';
 import { Marked } from 'marked';
 
@@ -119,10 +120,102 @@ export const renderPageMarkdown = (snapshot: SiteSnapshot, page: SnapshotPage, a
     );
 };
 
-const baseCss = `
-:root{color-scheme:light dark;--bg:#fff;--fg:#172033;--muted:#667085;--line:#d8dee9;--accent:#5b4be8;--code:#f5f6f8} @media(prefers-color-scheme:dark){:root{--bg:#10131a;--fg:#ecedf1;--muted:#a6adbb;--line:#303642;--code:#191e28}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 system-ui,-apple-system,"Segoe UI","Noto Sans Arabic",Arial,sans-serif}a{color:var(--accent)}.layout{display:grid;grid-template-columns:280px minmax(0,850px);gap:48px;max-width:1240px;margin:auto;padding:32px}.sidebar{position:sticky;top:0;height:100vh;overflow:auto;border-inline-end:1px solid var(--line);padding-inline-end:24px}.brand{font-weight:750;font-size:1.1rem}.meta{color:var(--muted);font-size:.86rem}.nav a{display:block;padding:5px 0;text-decoration:none}.nav .active{font-weight:700}.search{width:100%;margin:18px 0;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}main{min-width:0;padding-bottom:100px}img{max-width:100%;height:auto}pre{overflow:auto;padding:16px;border-radius:8px;background:var(--code);direction:ltr;text-align:left}code{font-family:ui-monospace,"Cascadia Code",monospace}table{display:block;overflow:auto;border-collapse:collapse}th,td{border:1px solid var(--line);padding:8px 12px}blockquote{border-inline-start:4px solid var(--accent);margin-inline:0;padding-inline-start:16px;color:var(--muted)}@media(max-width:760px){.layout{display:block;padding:20px}.sidebar{position:static;height:auto;border:0;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}}
+const LEGACY_LIGHT = {
+  canvas: '#ffffff',
+  foreground: '#172033',
+  surface: '#ffffff',
+  surfaceRaised: '#ffffff',
+  muted: '#f5f6f8',
+  mutedForeground: '#667085',
+  border: '#d8dee9',
+  accent: '#5b4be8',
+  accentForeground: '#ffffff',
+  focus: '#5b4be8',
+  code: '#f5f6f8',
+  codeForeground: '#172033',
+  info: '#5b4be8',
+  success: '#15803d',
+  warning: '#b45309',
+  danger: '#b91c1c',
+} satisfies ThemeColorTokens;
+const LEGACY_DARK = {
+  ...LEGACY_LIGHT,
+  canvas: '#10131a',
+  foreground: '#ecedf1',
+  surface: '#191e28',
+  surfaceRaised: '#191e28',
+  muted: '#191e28',
+  mutedForeground: '#a6adbb',
+  border: '#303642',
+  code: '#191e28',
+  codeForeground: '#ecedf1',
+} satisfies ThemeColorTokens;
+
+const safeHex = (value: string, fallback: string): string => (/^#[0-9a-fA-F]{6}$/.test(value) ? value.toLowerCase() : fallback);
+const safeFont = (value?: string): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && /^[\p{L}\p{N} ._-]+$/u.test(trimmed) ? trimmed : undefined;
+};
+const declarations = (tokens: ThemeColorTokens, fallback: ThemeColorTokens): string =>
+  [
+    `--bg:${safeHex(tokens.canvas, fallback.canvas)}`,
+    `--fg:${safeHex(tokens.foreground, fallback.foreground)}`,
+    `--surface:${safeHex(tokens.surface, fallback.surface)}`,
+    `--muted-surface:${safeHex(tokens.muted, fallback.muted)}`,
+    `--muted:${safeHex(tokens.mutedForeground, fallback.mutedForeground)}`,
+    `--line:${safeHex(tokens.border, fallback.border)}`,
+    `--accent:${safeHex(tokens.accent, fallback.accent)}`,
+    `--accent-fg:${safeHex(tokens.accentForeground, fallback.accentForeground)}`,
+    `--focus:${safeHex(tokens.focus, fallback.focus)}`,
+    `--code:${safeHex(tokens.code, fallback.code)}`,
+    `--code-fg:${safeHex(tokens.codeForeground, fallback.codeForeground)}`,
+    `--info:${safeHex(tokens.info, fallback.info)}`,
+    `--success:${safeHex(tokens.success, fallback.success)}`,
+    `--warning:${safeHex(tokens.warning, fallback.warning)}`,
+    `--danger:${safeHex(tokens.danger, fallback.danger)}`,
+  ].join(';');
+
+const themeConfigOf = (snapshot: SiteSnapshot): ThemeOwnedProjectConfig =>
+  (snapshot.project.config && typeof snapshot.project.config === 'object' ? snapshot.project.config : {}) as ThemeOwnedProjectConfig;
+
+const exportThemeCss = (snapshot: SiteSnapshot, print = false): string => {
+  const config = themeConfigOf(snapshot);
+  const theme = resolveTheme(config);
+  const preset = resolveTheme({ theme: { preset: theme.id } });
+  const explicit = Boolean(config.theme);
+  const light = explicit ? theme.colors.light : LEGACY_LIGHT;
+  const dark = explicit ? theme.colors.dark : LEGACY_DARK;
+  const lightFallback = explicit ? preset.colors.light : LEGACY_LIGHT;
+  const darkFallback = explicit ? preset.colors.dark : LEGACY_DARK;
+  const appearance = explicit ? (config.styling?.theme ?? 'system') : 'system';
+  const initial = !print && appearance === 'dark' ? declarations(dark, darkFallback) : declarations(light, lightFallback);
+  const darkRule = !print && appearance === 'system' ? `@media(prefers-color-scheme:dark){:root{${declarations(dark, darkFallback)}}}` : '';
+  const radius = theme.layout.radius === 'sharp' ? '2px' : theme.layout.radius === 'pill' ? '16px' : '8px';
+  const contentMax = theme.layout.contentWidth === 'focused' ? '1120px' : theme.layout.contentWidth === 'wide' ? '1520px' : '1240px';
+  const sidebarWidth = theme.layout.density === 'compact' ? '250px' : theme.layout.density === 'relaxed' ? '300px' : '280px';
+  const typography = config.typography;
+  const fontSize = typography?.baseSize
+    ? `${typography.baseSize}px`
+    : theme.layout.density === 'compact'
+      ? '15px'
+      : theme.layout.density === 'relaxed'
+        ? '17px'
+        : '16px';
+  const leading = typography?.leading ?? '1.7';
+  const flow = `${typography?.flow ?? '1.25'}em`;
+  const bodyFont = safeFont(typography?.bodyFont);
+  const headingFont = safeFont(typography?.headingFont);
+  const codeFont = safeFont(typography?.codeFont);
+  const bodyStack = bodyFont
+    ? `'${bodyFont}',"Noto Sans Arabic","Segoe UI",system-ui,sans-serif`
+    : 'system-ui,-apple-system,"Segoe UI","Noto Sans Arabic",Arial,sans-serif';
+  const headingStack = headingFont ? `'${headingFont}',"Noto Sans Arabic","Segoe UI",system-ui,sans-serif` : 'var(--font-body)';
+  const codeStack = codeFont ? `'${codeFont}',ui-monospace,"Cascadia Code",monospace` : 'ui-monospace,"Cascadia Code",monospace';
+  return `
+:root{color-scheme:${print || appearance === 'light' ? 'light' : appearance === 'dark' ? 'dark' : 'light dark'};${initial};--radius:${radius};--content-max:${contentMax};--sidebar-width:${sidebarWidth};--font-size:${fontSize};--font-body:${bodyStack};--font-heading:${headingStack};--font-code:${codeStack};--leading:${leading};--flow:${flow}}${darkRule}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--fg);font:var(--font-size)/var(--leading) var(--font-body)}:is(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading)}main :is(p,pre,table,blockquote){margin-block:var(--flow)}a{color:var(--accent)}a:focus-visible,input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}.layout{display:grid;grid-template-columns:var(--sidebar-width) minmax(0,850px);gap:48px;max-width:var(--content-max);margin:auto;padding:32px}.sidebar{position:sticky;top:0;height:100vh;overflow:auto;border-inline-end:1px solid var(--line);padding-inline-end:24px}.brand{font-weight:750;font-size:1.1rem}.meta{color:var(--muted);font-size:.86rem}.nav a{display:block;padding:5px 0;text-decoration:none}.nav .active{font-weight:700}.search{width:100%;margin:18px 0;padding:9px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--fg)}main{min-width:0;padding-bottom:100px}img{max-width:100%;height:auto}pre{overflow:auto;padding:16px;border-radius:var(--radius);background:var(--code);color:var(--code-fg);direction:ltr;text-align:left}code{font-family:var(--font-code)}table{display:block;overflow:auto;border-collapse:collapse}th,td{border:1px solid var(--line);padding:8px 12px}blockquote{border-inline-start:4px solid var(--info);margin-inline:0;padding:12px 16px;color:var(--muted);background:color-mix(in oklab,var(--info) 9%,transparent)}body[data-theme-sidebar="soft"] .sidebar{border:0;background:var(--muted-surface);padding:20px}body[data-theme-sidebar="rail"] .sidebar{border-inline-end-width:2px}body[data-theme-navigation="compact"] .nav a{padding:2px 0;font-size:.86em}body[data-theme-code="vivid"] pre{box-shadow:inset 0 2px var(--accent)}body[data-theme-callouts="outline"] blockquote{background:transparent}body[data-theme-callouts="solid"] blockquote{background:var(--info);color:var(--accent-fg)}@media(max-width:760px){.layout{display:block;padding:20px}.sidebar{position:static;height:auto;border:0;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:28px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 `;
+};
 
 const navHtml = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   const current = outputPath(snapshot, page);
@@ -144,7 +237,8 @@ const pageDocument = (snapshot: SiteSnapshot, page: SnapshotPage, assets: Export
   const current = outputPath(snapshot, page);
   const themeCss = path.posix.relative(path.posix.dirname(current), 'theme/theme.css');
   const themeJs = path.posix.relative(path.posix.dirname(current), 'theme/theme.js');
-  return `<!doctype html><html lang="${escapeHtml(page.languageCode)}" dir="${direction.toLowerCase()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Nibleaf static export"><meta name="description" content="${escapeHtml(page.description ?? snapshot.project.description ?? '')}"><title>${escapeHtml(page.title)} – ${escapeHtml(snapshot.project.name)}</title><link rel="stylesheet" href="${themeCss}"></head><body><div class="layout"><aside class="sidebar"><div class="brand">${escapeHtml(snapshot.project.name)}</div><div class="meta">Published archive · ${escapeHtml(snapshot.generatedAt)}</div><input class="search" type="search" placeholder="Search" data-static-search><div class="nav" data-static-nav>${navHtml(snapshot, page)}</div></aside><main><h1>${escapeHtml(page.title)}</h1>${renderPageMarkdown(snapshot, page, assets)}</main></div><script src="${themeJs}"></script></body></html>`;
+  const theme = resolveTheme(themeConfigOf(snapshot));
+  return `<!doctype html><html lang="${escapeHtml(page.languageCode)}" dir="${direction.toLowerCase()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="generator" content="Nibleaf static export"><meta name="description" content="${escapeHtml(page.description ?? snapshot.project.description ?? '')}"><title>${escapeHtml(page.title)} – ${escapeHtml(snapshot.project.name)}</title><link rel="stylesheet" href="${themeCss}"></head><body data-theme-id="${theme.id}" data-theme-sidebar="${theme.layout.sidebar}" data-theme-navigation="${theme.layout.navigation}" data-theme-code="${theme.components.codeBlocks}" data-theme-callouts="${theme.components.callouts}"><div class="layout"><aside class="sidebar"><div class="brand">${escapeHtml(snapshot.project.name)}</div><div class="meta">Published archive · ${escapeHtml(snapshot.generatedAt)}</div><input class="search" type="search" placeholder="Search" data-static-search><div class="nav" data-static-nav>${navHtml(snapshot, page)}</div></aside><main><h1>${escapeHtml(page.title)}</h1>${renderPageMarkdown(snapshot, page, assets)}</main></div><script src="${themeJs}"></script></body></html>`;
 };
 
 const themeJs = (searchEntries: Array<{ title: string; path: string; text: string }>): string =>
@@ -161,7 +255,7 @@ const plainText = (markdown: string): string =>
 
 export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): RenderedArtifact => {
   const files: Record<string, Uint8Array> = {
-    'theme/theme.css': strToU8(baseCss),
+    'theme/theme.css': strToU8(exportThemeCss(snapshot)),
   };
   // Static HTML is a publishable reader artifact, not a source backup. Match
   // the live reader and PDF export by omitting hidden pages entirely, including
@@ -178,8 +272,9 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   );
   const searchEntries = pages.map((page) => ({ title: page.title, path: outputPath(snapshot, page), text: plainText(page.content) }));
   files['theme/theme.js'] = strToU8(themeJs(searchEntries));
+  const theme = resolveTheme(themeConfigOf(snapshot));
   files['export.json'] = strToU8(
-    `${JSON.stringify({ generator: 'nibleaf', generatedAt: snapshot.generatedAt, project: { id: snapshot.project.id, name: snapshot.project.name, slug: snapshot.project.slug }, pages: pages.length }, null, 2)}\n`,
+    `${JSON.stringify({ generator: 'nibleaf', generatedAt: snapshot.generatedAt, project: { id: snapshot.project.id, name: snapshot.project.name, slug: snapshot.project.slug }, theme: { id: theme.id, schemaVersion: 1 }, pages: pages.length }, null, 2)}\n`,
   );
   return { bytes: zipSync(files, { level: 6 }), contentType: 'application/zip', extension: 'zip' };
 };
@@ -206,7 +301,7 @@ export const renderMarkdownZip = (snapshot: SiteSnapshot, assets: ExportAsset[])
   }
   for (const asset of assets) files[assetName(asset)] = asset.bytes;
   files['project.json'] = encoder.encode(
-    `${JSON.stringify({ name: snapshot.project.name, slug: snapshot.project.slug, description: snapshot.project.description, languages: snapshot.project.languages, versions: snapshot.project.versions, pagesCount: snapshot.pages.filter((page) => page.kind === 'PAGE').length, publishedAt: snapshot.generatedAt, generator: 'nibleaf' }, null, 2)}\n`,
+    `${JSON.stringify({ name: snapshot.project.name, slug: snapshot.project.slug, description: snapshot.project.description, languages: snapshot.project.languages, versions: snapshot.project.versions, themeTemplate: themeTemplateFromConfig(themeConfigOf(snapshot) as Record<string, unknown>), pagesCount: snapshot.pages.filter((page) => page.kind === 'PAGE').length, publishedAt: snapshot.generatedAt, generator: 'nibleaf' }, null, 2)}\n`,
   );
   return { bytes: zipSync(files, { level: 6 }), contentType: 'application/zip', extension: 'zip' };
 };
@@ -227,5 +322,6 @@ export const renderPdfHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): st
       return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(page.title)}</h1>${html}</article>`;
     })
     .join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${baseCss}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt}a{text-decoration:none;color:#4438ca}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt;background:#fff;color:#111}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f4f5}thead{display:table-header-group}}</style></head><body><header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta">Published ${escapeHtml(snapshot.generatedAt)}</p></header>${content}</body></html>`;
+  const theme = resolveTheme(themeConfigOf(snapshot));
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${exportThemeCss(snapshot, true)}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt}a{text-decoration:none}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}}</style></head><body data-theme-id="${theme.id}"><header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta">Published ${escapeHtml(snapshot.generatedAt)}</p></header>${content}</body></html>`;
 };

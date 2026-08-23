@@ -2,3 +2,140 @@
 /* Document typography for rendered Markdown (published sites, preview, editor
  * parity). See the header of typeset.css for provenance and the variable API. */
 @import "./typeset.css";
+
+/* Published documentation theme contract. Components use semantic variables;
+ * preset/layout choices are expressed with data attributes so search and future
+ * AI surfaces can share tokens without depending on the renderer DOM shape. */
+@layer components {
+  .nibleaf-site-chrome {
+    color: var(--theme-foreground);
+    background: var(--theme-canvas);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="header-shell"] {
+    background: color-mix(in oklab, var(--theme-canvas) 88%, transparent);
+    border-color: var(--theme-border);
+  }
+
+  .nibleaf-site-chrome[data-theme-header="inline"] [data-theme-region="header-shell"] {
+    background: var(--theme-canvas);
+    backdrop-filter: none;
+  }
+
+  .nibleaf-site-chrome[data-theme-header="floating"] [data-theme-region="header-shell"] {
+    top: 0.75rem;
+    margin-inline: 0.75rem;
+    border: 1px solid var(--theme-border);
+    border-radius: calc(var(--radius) + 0.35rem);
+    box-shadow: 0 12px 35px color-mix(in oklab, var(--theme-foreground) 9%, transparent);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="header"],
+  .nibleaf-site-chrome [data-theme-region="tabs"],
+  .nibleaf-site-chrome [data-theme-region="content-shell"],
+  .nibleaf-site-chrome [data-theme-region="footer"] {
+    max-width: var(--theme-content-max);
+  }
+
+  .nibleaf-site-chrome[data-theme-sidebar="soft"] [data-theme-region="sidebar"] {
+    background: var(--theme-muted);
+    border-inline-end-color: transparent;
+    padding-inline: 0.5rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-sidebar="rail"] [data-theme-region="sidebar"] {
+    border-inline-end-width: 2px;
+  }
+
+  .nibleaf-site-chrome[data-theme-navigation="compact"] [data-theme-region="sidebar"] nav :is(a, button) {
+    min-height: 1.75rem;
+    padding-block: 0.2rem;
+    font-size: 0.8125rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-navigation="tree"] [data-theme-region="sidebar"] nav ul ul {
+    border-inline-start: 1px solid var(--theme-border);
+  }
+
+  .nibleaf-site-chrome[data-theme-width="focused"] [data-theme-region="article"] {
+    max-width: 42rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-width="wide"] [data-theme-region="article"] {
+    max-width: 54rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-cards="lifted"] [data-theme-component="card"] {
+    border-color: transparent;
+    box-shadow: 0 10px 30px color-mix(in oklab, var(--theme-foreground) 10%, transparent);
+  }
+
+  .nibleaf-site-chrome[data-theme-cards="flat"] [data-theme-component="card"] {
+    border-color: transparent;
+    background: var(--theme-muted);
+  }
+
+  .nibleaf-site-chrome[data-theme-callouts="outline"] [data-theme-component="callout"] {
+    background: transparent;
+  }
+
+  .nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"] {
+    color: var(--theme-canvas);
+    background: var(--callout-color);
+    border-color: var(--callout-color);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="pills"] [data-theme-component="tabs-list"] {
+    display: inline-flex;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: var(--theme-muted);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="boxed"] [data-theme-component="tabs-list"] {
+    border: 1px solid var(--theme-border);
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: var(--theme-surface);
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="rows"] .typeset table :is(th, td) {
+    border-inline: 0;
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table {
+    border-collapse: separate;
+    border-spacing: 0 0.35rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table :is(th, td) {
+    background: var(--theme-surface);
+  }
+
+  .nibleaf-site-chrome[data-theme-code="dim"] [data-theme-component="code"] {
+    background: color-mix(in oklab, var(--theme-code) 86%, var(--theme-canvas));
+  }
+
+  .nibleaf-site-chrome[data-theme-code="vivid"] [data-theme-component="code"] {
+    box-shadow:
+      inset 0 2px 0 var(--theme-accent),
+      0 10px 28px color-mix(in oklab, var(--theme-foreground) 12%, transparent);
+  }
+
+  [data-theme-surface="search"],
+  [data-theme-surface="ai"] {
+    color: var(--theme-foreground, var(--foreground));
+    background: var(--theme-surface-raised, var(--popover));
+    border-color: var(--theme-border, var(--border));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nibleaf-site-chrome *,
+    [data-theme-surface="search"] * {
+      scroll-behavior: auto;
+      transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
+      animation-iteration-count: 1;
+    }
+  }
+}

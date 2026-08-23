@@ -7,20 +7,31 @@ import { siteT } from '@/lib/site-i18n';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────
 
-const CALLOUT: Record<CalloutType, { icon: LucideIcon; cls: string }> = {
-  note: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
-  info: { icon: Info, cls: 'border-primary/30 bg-primary/10 text-foreground' },
-  tip: { icon: Lightbulb, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100' },
-  check: { icon: Check, cls: 'border-border bg-muted/50 text-foreground' },
-  warning: { icon: AlertTriangle, cls: 'border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-100' },
-  danger: { icon: OctagonAlert, cls: 'border-red-500/30 bg-red-500/10 text-red-900 dark:text-red-100' },
+const CALLOUT: Record<CalloutType, { icon: LucideIcon; token: string }> = {
+  note: { icon: Info, token: 'var(--theme-info,var(--primary))' },
+  info: { icon: Info, token: 'var(--theme-info,var(--primary))' },
+  tip: { icon: Lightbulb, token: 'var(--theme-success,var(--primary))' },
+  check: { icon: Check, token: 'var(--theme-success,var(--primary))' },
+  warning: { icon: AlertTriangle, token: 'var(--theme-warning,var(--primary))' },
+  danger: { icon: OctagonAlert, token: 'var(--theme-danger,var(--destructive))' },
 };
 
 export function Callout({ type, children }: { type?: string; children?: ReactNode }) {
   const meta = CALLOUT[normalizeType(type)];
   const Icon = meta.icon;
   return (
-    <div className={cn('my-5 flex gap-3 rounded-xl border p-4', meta.cls)} role="note">
+    <div
+      className="my-5 flex gap-3 rounded-xl border p-4 text-foreground"
+      data-theme-component="callout"
+      role="note"
+      style={
+        {
+          '--callout-color': meta.token,
+          borderColor: `color-mix(in oklab,${meta.token} 38%,transparent)`,
+          background: `color-mix(in oklab,${meta.token} 10%,transparent)`,
+        } as CSSProperties
+      }
+    >
       <Icon className="mt-0.5 size-5 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div>
     </div>
@@ -53,11 +64,13 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
   );
   const base = 'block rounded-xl border border-border bg-card p-5 transition-all';
   return href ? (
-    <a href={href} className={cn(base, 'hover:-translate-y-px hover:border-primary/50 hover:shadow-sm')}>
+    <a data-theme-component="card" href={href} className={cn(base, 'hover:-translate-y-px hover:border-primary/50 hover:shadow-sm')}>
       {inner}
     </a>
   ) : (
-    <div className={base}>{inner}</div>
+    <div className={base} data-theme-component="card">
+      {inner}
+    </div>
   );
 }
 
@@ -98,7 +111,7 @@ export function Tabs({ children, language }: { children?: ReactNode; language?: 
   if (tabs.length === 0) return null;
   return (
     <div className="my-5">
-      <div className="flex gap-1 border-border border-b">
+      <div className="flex gap-1 border-border border-b" data-theme-component="tabs-list">
         {tabs.map((tab, i) => (
           <button
             key={tab.key}

@@ -1,0 +1,112 @@
+---
+title: 'Choose, customize, and share a documentation theme'
+description: 'Use Nibleaf themes safely across previews and published documentation, then export or import a validated, versioned theme template.'
+audience: 'documentation owners, designers, and self-hosted operators'
+content_type: 'how-to'
+last_reviewed: '2026-08-23'
+verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, and apps/app/src/components/project-settings/theme-section.tsx'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/themes'
+---
+
+Nibleaf includes three original themes. **Harbor** is a calm, balanced default
+for mixed guide and reference libraries. **Manuscript** gives long-form reading a
+warmer canvas and narrower measure. **Signal** uses a compact, technical rhythm
+for large API and engineering libraries. Their names, tokens, layouts, and assets
+are Nibleaf-owned implementations. Public documentation products informed the
+general product patterns—preset galleries, semantic customization, and preview
+before publish—but Nibleaf does not copy their proprietary code, assets, names,
+or trade dress.
+
+Projects created before theme schema v1 retain their existing palette and layout
+until an owner selects, customizes, or imports a theme. This compatibility mode
+avoids an unrequested visual change to an existing published site.
+
+## Inspiration and ownership boundary
+
+The design process reviewed the public customization and navigation guidance for
+[Fumadocs](https://www.fumadocs.dev/docs/guides/customize-ui),
+[Mintlify](https://www.mintlify.com/docs/organize/settings-appearance), and
+[ReadMe](https://docs.readme.com/main/docs/design-themes). Those sources informed
+general expectations such as presets, semantic settings, layout choices, and a
+preview-first workflow. Harbor, Manuscript, and Signal use original Nibleaf
+names, token values, component treatments, code, and assets. Product names in
+this paragraph belong to their respective owners and do not imply affiliation.
+
+## Customize a draft safely
+
+Open **Site editor → Themes**. Select a starter theme, then adjust appearance,
+density, content width, radius, header, sidebar, navigation, code, callouts,
+cards, tabs, tables, and semantic light/dark colors. The preview can switch
+independently between English/Arabic and light/dark modes.
+
+The editor validates text and accent contrast before saving. **Undo** returns to
+the previous edit, **Cancel changes** restores the last saved project settings,
+and **Reset** restores the selected preset. These actions affect only the draft.
+The current `READY` deployment remains public until the project is published
+again. Preview both language directions and both color modes before publishing.
+
+Theme components consume stable semantic variables such as
+`--theme-canvas`, `--theme-foreground`, `--theme-surface`, `--theme-accent`,
+`--theme-focus`, and `--theme-code`. Search uses the same interface, and future
+AI surfaces can opt into it with `data-theme-surface="ai"` without depending on
+the page renderer's internal structure.
+
+## Export and inspect a template
+
+Choose **Export** to download a canonical UTF-8 JSON file. The output is sorted
+deterministically so reviews and round-trip comparisons remain useful. It
+contains only theme-owned settings: theme metadata and tokens plus supported
+branding and typography references. It does not contain content, credentials,
+members, analytics, or executable code.
+
+```json
+{
+  "kind": "nibleaf-theme",
+  "version": 1,
+  "metadata": {
+    "name": "Product docs theme",
+    "description": "Shared theme for product documentation",
+    "author": "Documentation team"
+  },
+  "config": {
+    "theme": {
+      "preset": "harbor"
+    },
+    "styling": {
+      "theme": "system"
+    }
+  }
+}
+```
+
+Schema v1 accepts only known bounded fields. A template is limited to 128 KiB,
+12 levels of nesting, and 600 traversed values. Asset references must be HTTPS
+URLs or root-relative paths without traversal, credentials, or protocol-relative
+hosts. Unknown fields, executable CSS/JavaScript, prototype-pollution keys, and
+future schema versions fail with actionable errors. The importer migrates the
+documented legacy v0 shape to v1 before validation.
+
+## Preview and apply an import
+
+Paste JSON or select a file, choose **Merge** or **Replace**, then preview the
+exact changes. Merge updates fields supplied by the template and keeps other
+theme-owned settings. Replace resets theme-owned settings first. Neither mode
+changes SEO, navigation, content, analytics, access, or other project settings.
+
+The first import request is a dry-run. Apply only after reviewing the change
+list and any accessibility warnings. Applying updates the project draft; it does
+not silently publish. Publish explicitly, verify the resulting deployment, and
+keep the exported previous template as a rollback checkpoint.
+
+## Roll back a theme
+
+Before a significant theme change, export the current template. To roll back,
+import that file using **Replace**, review the diff, apply it to the draft, and
+publish a new deployment. Existing immutable deployments and previously created
+export artifacts remain unchanged. If an import fails validation, no project
+settings are written.
+
+For a full content and site archive, use [published exports](/product/exports).
+Theme templates are small design interchange files, not project backups.

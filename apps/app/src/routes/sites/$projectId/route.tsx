@@ -1,5 +1,6 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { type CSSProperties, useEffect, useMemo, useState } from 'react';
@@ -21,6 +22,7 @@ import { siteT } from '@/lib/site-i18n';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
+import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteChrome,
@@ -113,6 +115,7 @@ function SiteChrome() {
   // and a visitor's toggle never clobber the editor/dashboard theme.
   const configTheme = config?.styling?.theme; // 'light' | 'dark' | 'system' | undefined
   const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(configTheme === 'dark' ? 'dark' : 'light');
+  const [siteThemeHydratedFor, setSiteThemeHydratedFor] = useState<string>();
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -122,6 +125,7 @@ function SiteChrome() {
     // An explicit visitor choice always wins over the configured default.
     if (stored === 'dark' || stored === 'light') {
       setSiteTheme(stored);
+      setSiteThemeHydratedFor(projectId);
       return;
     }
     // 'system' follows the visitor's OS preference, and keeps following it live
@@ -130,6 +134,7 @@ function SiteChrome() {
     if (configTheme === 'system') {
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       setSiteTheme(mq.matches ? 'dark' : 'light');
+      setSiteThemeHydratedFor(projectId);
       const onChange = (e: MediaQueryListEvent) => {
         if (window.localStorage.getItem(storageKey)) {
           return;
@@ -140,6 +145,7 @@ function SiteChrome() {
       return () => mq.removeEventListener('change', onChange);
     }
     setSiteTheme(configTheme === 'dark' ? 'dark' : 'light');
+    setSiteThemeHydratedFor(projectId);
   }, [projectId, configTheme]);
   const toggleSiteTheme = () => {
     setSiteTheme((current) => {
@@ -164,17 +170,21 @@ function SiteChrome() {
       return;
     }
     const root = document.documentElement;
-    const dashboardWasDark = root.classList.contains('dark');
+    const dashboardTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const dashboardWasDark =
+      dashboardTheme === 'dark' ||
+      ((dashboardTheme === null || dashboardTheme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
     return () => {
       root.classList.toggle('dark', dashboardWasDark);
     };
   }, []);
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === 'undefined' || siteThemeHydratedFor !== projectId) {
       return;
     }
     document.documentElement.classList.toggle('dark', siteTheme === 'dark');
-  }, [siteTheme]);
+    document.documentElement.style.colorScheme = siteTheme;
+  }, [projectId, siteTheme, siteThemeHydratedFor]);
 
   // Apply the configured favicon on the published site.
   const faviconUrl = config?.branding?.favicon || '/favicon.svg';
@@ -210,7 +220,7 @@ function SiteChrome() {
     );
   }
 
-  const accent = config?.styling?.primaryColor ?? '#5546e8';
+  const resolvedTheme = resolveProjectTheme(config);
   // Search is on by default; only an explicit `false` hides it.
   const showSearch = config?.navbar?.showSearch !== false;
   const searchHotkey = config?.search?.hotkey;
@@ -230,63 +240,15 @@ function SiteChrome() {
   const logo = publishedSiteLogo(configuredLogo, siteTheme);
   const logoHref = branding?.logoHref?.trim() || undefined;
 
-  // Apply the configured corner radius + typography. Font names are charset-guarded
-  // before being interpolated into the scoped <style> below (defense-in-depth).
-  const safeFont = (font?: string): string | undefined => {
-    const trimmed = font?.trim();
-    return trimmed && /^[A-Za-z0-9 ]+$/.test(trimmed) ? trimmed : undefined;
-  };
-  const headingFont = safeFont(config?.typography?.headingFont);
-  const bodyFont = safeFont(config?.typography?.bodyFont);
-  const codeFont = safeFont(config?.typography?.codeFont);
-  const baseSize = config?.typography?.baseSize;
-  const radius = config?.styling?.radius;
-  const radiusValue = radius === 'sharp' ? '0px' : radius === 'pill' ? '1rem' : radius === 'rounded' ? '0.5rem' : undefined;
   // --site-header-h drives every sticky offset (sidebar, TOC, heading scroll
   // margins) so they stay correct whether or not the tab row renders.
   const headerHeight = navTabs.length > 0 ? '6.75rem' : '4rem';
   const chromeStyle = {
+    ...projectThemeStyle(config),
     '--site-header-h': headerHeight,
     '--content-scroll-mt': `calc(${headerHeight} + 1.5rem)`,
   } as Record<string, string | number>;
-  if (bodyFont) {
-    chromeStyle.fontFamily = `'${bodyFont}', var(--font-sans, system-ui, sans-serif)`;
-  }
-  if (baseSize) {
-    chromeStyle.fontSize = `${baseSize}px`;
-  }
-  // Reading rhythm (typeset.css): line height + block spacing for rendered doc
-  // content. Base size cascades via em (--typeset-size defaults to 1em), so
-  // only these two need explicit wiring. Values come from the enum-validated
-  // config, never free text.
-  const leading = config?.typography?.leading;
-  const flow = config?.typography?.flow;
-  if (leading) {
-    chromeStyle['--typeset-leading'] = leading;
-  }
-  if (flow) {
-    chromeStyle['--typeset-flow'] = `${flow}em`;
-  }
-  // Accent/radius tokens are set on :root (not the chrome wrapper) so portaled
-  // surfaces — the mobile drawer, search dialog, dropdown menus — pick them up
-  // too. The site route owns the whole document while mounted, and the <style>
-  // element unmounts with it, restoring the dashboard tokens. In dark mode the
-  // configured accent is lightness-lifted via color-mix so accent-colored text
-  // keeps AA contrast on the dark background (falls back to the raw accent on
-  // engines without color-mix, which matches the old behavior).
-  const safeAccent = /^#[0-9a-fA-F]{3,8}$/.test(accent) ? accent : '#5546e8';
-  const darkAccent = `color-mix(in oklab,${safeAccent} 72%,white)`;
-  const themeCss = [
-    `:root{--primary:${safeAccent};--ring:${safeAccent};${radiusValue ? `--radius:${radiusValue};` : ''}}`,
-    // Two dark selectors: :root.dark covers portaled surfaces (which inherit
-    // from <html>), while .nibleaf-site-chrome.dark out-specifies the design
-    // system's `.dark` token rule that matches the wrapper's own dark class.
-    `:root.dark,.nibleaf-site-chrome.dark{--primary:${darkAccent};--ring:${darkAccent}}`,
-    headingFont ? `.nibleaf-site-chrome :is(h1,h2,h3,h4,h5,h6){font-family:'${headingFont}',var(--font-sans,sans-serif)}` : '',
-    codeFont ? `.nibleaf-site-chrome :is(code,pre,kbd){font-family:'${codeFont}',var(--font-mono,monospace)}` : '',
-  ]
-    .filter(Boolean)
-    .join('');
+  const themeCss = projectThemeCss(config);
   // The active language may localize the site name (brand + footer copyright).
   const siteName = site?.languageConfig?.name || site?.project.name;
   const brandInner = (
@@ -361,15 +323,27 @@ function SiteChrome() {
         'nibleaf-site-chrome flex min-h-screen flex-col bg-background [&_code]:[direction:ltr] [&_pre]:[direction:ltr]',
         siteTheme === 'dark' && 'dark',
       )}
+      data-theme-callouts={resolvedTheme.components.callouts}
+      data-theme-cards={resolvedTheme.components.cards}
+      data-theme-code={resolvedTheme.components.codeBlocks}
+      data-theme-density={resolvedTheme.layout.density}
+      data-theme-header={resolvedTheme.layout.header}
+      data-theme-id={resolvedTheme.id}
+      data-theme-navigation={resolvedTheme.layout.navigation}
+      data-theme-schema="1"
+      data-theme-sidebar={resolvedTheme.layout.sidebar}
+      data-theme-tables={resolvedTheme.components.tables}
+      data-theme-tabs={resolvedTheme.components.tabs}
+      data-theme-width={resolvedTheme.layout.contentWidth}
       style={chromeStyle as CSSProperties}
     >
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: accent is regex-guarded hex, radius is enum-derived, font names are charset-guarded above. */}
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: theme colors are hex-guarded, layout values are enum-derived, and font names are charset-guarded. */}
       <style dangerouslySetInnerHTML={{ __html: themeCss }} />
       <SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} />
 
       {/* Header block (main row + optional tab row) sticks as one unit. */}
-      <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md">
-        <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6">
+      <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md" data-theme-region="header-shell">
+        <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6" data-theme-region="header">
           <MobileNav
             nodes={site?.nav ?? []}
             projectId={projectId}
@@ -462,7 +436,7 @@ function SiteChrome() {
         </header>
 
         {navTabs.length > 0 ? (
-          <nav className="mx-auto flex h-11 max-w-[90rem] items-center gap-1 overflow-x-auto px-4 sm:px-6">
+          <nav className="mx-auto flex h-11 max-w-[90rem] items-center gap-1 overflow-x-auto px-4 sm:px-6" data-theme-region="tabs">
             {navTabs.map((tab) => {
               const active = !tab.external && isNavActive(tab.href);
               return (
@@ -487,8 +461,14 @@ function SiteChrome() {
         ) : null}
       </div>
 
-      <div className="mx-auto w-full max-w-[90rem] flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10">
-        <aside className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-border/60 border-e lg:block">
+      <div
+        className="mx-auto w-full max-w-[90rem] flex-1 px-4 sm:px-6 lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10"
+        data-theme-region="content-shell"
+      >
+        <aside
+          className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-border/60 border-e lg:block"
+          data-theme-region="sidebar"
+        >
           {/* Base UI sets position:relative inline on its ScrollArea root. Keep
               sticky positioning on the outer aside so the entire navigation
               viewport remains visible while this inner viewport scrolls. */}
@@ -527,7 +507,10 @@ function SiteChrome() {
       {hasFooterContent || showBadge ? (
         <footer className="mt-auto border-border/60 border-t">
           {hasFooterContent && footer ? (
-            <div className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row">
+            <div
+              className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
+              data-theme-region="footer"
+            >
               <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
               <div className="flex items-center gap-1">
                 {footer.github ? (

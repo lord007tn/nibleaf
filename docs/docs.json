@@ -28,6 +28,7 @@
             "x-nibleaf": { "slug": "use-nibleaf" },
             "pages": [
               "product/authoring",
+              "product/themes",
               "product/markdown-mdx",
               "git-authoring",
               "product/publishing",
@@ -87,6 +88,7 @@
             "x-nibleaf": { "slug": "use-nibleaf" },
             "pages": [
               "ar/product/authoring",
+              "ar/product/themes",
               "ar/product/markdown-mdx",
               "ar/git-authoring",
               "ar/product/publishing",
