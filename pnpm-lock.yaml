@@ -612,8 +612,8 @@ importers:
         specifier: ^4.13.3
         version: 4.13.3
       marked:
-        specifier: ^16.3.0
-        version: 16.4.2
+        specifier: ^18.0.10
+        version: 18.0.11
       nodemailer:
         specifier: ^9.0.5
         version: 9.0.5
@@ -8353,6 +8353,11 @@ packages:
 
   marked@16.4.2:
     resolution: {integrity: sha512-TI3V8YYWvkVf3KJe1dRkpnjs68JUPyEa5vjKrp1XEEJUAOaQc+Qj+L1qWbPd0SJuAdQkFU0h73sXXqwDYxsiDA==}
+    engines: {node: '>= 20'}
+    hasBin: true
+
+  marked@18.0.11:
+    resolution: {integrity: sha512-HnslJfsZkRPBDJRHvVtAaWlZHEpSu7u8LgQuJCELjRKuWR+hpq4A7sLq3p8HaI9ypVoXDXxV34CsQJEe1+J5Aw==}
     engines: {node: '>= 20'}
     hasBin: true
 
@@ -18236,6 +18241,8 @@ snapshots:
   marked@15.0.12: {}
 
   marked@16.4.2: {}
+
+  marked@18.0.11: {}
 
   math-intrinsics@1.1.0: {}
 
