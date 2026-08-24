@@ -1,7 +1,32 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Info, Lightbulb, type LucideIcon, OctagonAlert } from 'lucide-react';
-import { Children, type CSSProperties, isValidElement, type ReactElement, type ReactNode, useState } from 'react';
+import {
+  AlertTriangle,
+  Braces,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  File as FileIcon,
+  FolderClosed,
+  FolderOpen,
+  Info,
+  Lightbulb,
+  Link as LinkIcon,
+  type LucideIcon,
+  OctagonAlert,
+} from 'lucide-react';
+import {
+  Children,
+  type CSSProperties,
+  isValidElement,
+  type ReactElement,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  useId,
+  useRef,
+  useState,
+} from 'react';
+import { z } from 'zod';
 import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 
@@ -104,21 +129,67 @@ export function Step({ title, children }: { title?: string; children?: ReactNode
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 
+const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
+
+function handleTabKeyDown(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  current: number,
+  count: number,
+  language: string | undefined,
+  setActive: (index: number) => void,
+  tabRefs: Array<HTMLButtonElement | null>,
+) {
+  const explicitDirection = event.currentTarget.closest('[dir]')?.getAttribute('dir');
+  const rtl = explicitDirection ? explicitDirection === 'rtl' : /^(ar|fa|he|ur)(-|$)/i.test(language ?? '');
+  let next: number | undefined;
+  if (event.key === 'Home') {
+    next = 0;
+  } else if (event.key === 'End') {
+    next = count - 1;
+  } else if (event.key === 'ArrowRight') {
+    next = (current + (rtl ? -1 : 1) + count) % count;
+  } else if (event.key === 'ArrowLeft') {
+    next = (current + (rtl ? 1 : -1) + count) % count;
+  }
+  if (next === undefined) {
+    return;
+  }
+  event.preventDefault();
+  setActive(next);
+  tabRefs[next]?.focus();
+}
+
 export function Tabs({ children, language }: { children?: ReactNode; language?: string }) {
-  const tabs = Children.toArray(children).filter(isValidElement) as Array<React.ReactElement<{ title?: string; children?: ReactNode }>>;
+  const tabs = Children.toArray(children).filter((child) => isValidElement<{ title?: string; children?: ReactNode }>(child));
   const [active, setActive] = useState(0);
+  const tabsId = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const t = siteT(language);
   if (tabs.length === 0) return null;
   return (
     <div className="my-5">
-      <div className="flex gap-1 border-border border-b" data-theme-component="tabs-list">
+      <div
+        className="flex gap-1 overflow-x-auto border-border border-b"
+        data-theme-component="tabs-list"
+        role="tablist"
+        aria-orientation="horizontal"
+      >
         {tabs.map((tab, i) => (
           <button
             key={tab.key}
+            ref={(element) => {
+              tabRefs.current[i] = element;
+            }}
             type="button"
             onClick={() => setActive(i)}
+            onKeyDown={(event) => handleTabKeyDown(event, i, tabs.length, language, setActive, tabRefs.current)}
+            id={`${tabsId}-tab-${i}`}
+            role="tab"
+            aria-controls={`${tabsId}-panel-${i}`}
+            aria-selected={i === active}
+            tabIndex={i === active ? 0 : -1}
             className={cn(
-              '-mb-px cursor-pointer border-b-2 px-3 py-2 font-medium text-sm transition-colors',
+              '-mb-px shrink-0 cursor-pointer border-b-2 px-3 py-2 font-medium text-sm transition-colors',
               i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
@@ -126,7 +197,18 @@ export function Tabs({ children, language }: { children?: ReactNode; language?: 
           </button>
         ))}
       </div>
-      <div className="pt-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{tabs[active]}</div>
+      {tabs.map((tab, i) => (
+        <div
+          key={tab.key}
+          id={`${tabsId}-panel-${i}`}
+          role="tabpanel"
+          aria-labelledby={`${tabsId}-tab-${i}`}
+          hidden={i !== active}
+          className="pt-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+        >
+          {tab}
+        </div>
+      ))}
     </div>
   );
 }
@@ -152,20 +234,30 @@ export function Accordion({
   children?: ReactNode;
   language?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
+  const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
+  const accordionId = useId();
   const t = siteT(language);
   return (
     <div>
       <button
+        id={`${accordionId}-trigger`}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={`${accordionId}-panel`}
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-start font-medium"
       >
         {title ?? t('details')}
         <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>
-      {open ? <div className="px-4 pb-4 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
+      <section
+        id={`${accordionId}-panel`}
+        aria-labelledby={`${accordionId}-trigger`}
+        hidden={!open}
+        className="px-4 pb-4 text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+      >
+        {children}
+      </section>
     </div>
   );
 }
@@ -196,7 +288,12 @@ export function Icon({ icon, name, color, size }: { icon?: string; name?: string
   if (!resolved) {
     return null;
   }
-  const px = typeof size === 'number' ? size : Number(String(size ?? '').replace(/[^0-9.]/g, '')) || undefined;
+  const parsedSize = z.coerce
+    .number()
+    .min(1)
+    .max(128)
+    .safeParse(String(size ?? '').replace(/[^0-9.]/g, ''));
+  const px = parsedSize.success ? parsedSize.data : undefined;
   const style: CSSProperties = { color };
   if (px) {
     style.width = px;
@@ -210,8 +307,6 @@ export function Icon({ icon, name, color, size }: { icon?: string; name?: string
 }
 
 // ─── API reference: ParamField / ResponseField / Expandable ───────────────────
-
-const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
 
 function FieldRow({
   name,
@@ -327,20 +422,30 @@ export function Expandable({
   children?: ReactNode;
   language?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen === true || defaultOpen === 'true');
+  const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
+  const expandableId = useId();
   const t = siteT(language);
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border">
       <button
+        id={`${expandableId}-trigger`}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-controls={`${expandableId}-panel`}
         className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-start font-medium text-sm"
       >
         <ChevronRight className={cn('size-4 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} aria-hidden />
         {title ?? t('showProperties')}
       </button>
-      {open ? <div className="border-border border-t px-4 py-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
+      <section
+        id={`${expandableId}-panel`}
+        aria-labelledby={`${expandableId}-trigger`}
+        hidden={!open}
+        className="border-border border-t px-4 py-3 [&>:first-child]:mt-0 [&>:last-child]:mb-0"
+      >
+        {children}
+      </section>
     </div>
   );
 }
@@ -409,14 +514,178 @@ export function MdxButton({ href, variant, children }: { href?: string; variant?
   );
 }
 
+// ─── Authored file tree ─────────────────────────────────────────────────────
+
+/** Visualizes authored names only. It deliberately has no path, repository,
+ * manifest, snapshot, or network integration. */
+export function FileTree({ children }: { children?: ReactNode }) {
+  return (
+    <ul
+      className="my-5 list-none rounded-xl border border-border bg-muted/25 p-3 font-mono text-sm [&_ul]:ms-4 [&_ul]:list-none [&_ul]:border-border [&_ul]:border-s [&_ul]:ps-2"
+      data-theme-component="file-tree"
+    >
+      {children}
+    </ul>
+  );
+}
+
+export function Folder({ name, defaultOpen, children }: { name?: string; defaultOpen?: string | boolean; children?: ReactNode }) {
+  const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
+  const folderId = useId();
+  if (!name) {
+    return (
+      <li>
+        <ul>{children}</ul>
+      </li>
+    );
+  }
+  const FolderIcon = open ? FolderOpen : FolderClosed;
+  return (
+    <li className="my-0.5">
+      <button
+        id={`${folderId}-trigger`}
+        type="button"
+        aria-controls={`${folderId}-contents`}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-start hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} aria-hidden />
+        <FolderIcon className="size-4 shrink-0 text-primary" aria-hidden />
+        <span className="min-w-0 truncate">{name}</span>
+      </button>
+      <ul id={`${folderId}-contents`} aria-labelledby={`${folderId}-trigger`} hidden={!open}>
+        {children}
+      </ul>
+    </li>
+  );
+}
+
+export function File({ name, icon }: { name?: string; icon?: string }) {
+  if (!name) {
+    return null;
+  }
+  return (
+    <li className="flex items-center gap-2 rounded-md px-2 py-1 text-muted-foreground">
+      <span className="size-3.5 shrink-0" aria-hidden />
+      {icon && hasIcon(icon) ? (
+        <PageIcon name={icon} className="size-4 shrink-0" aria-hidden />
+      ) : (
+        <FileIcon className="size-4 shrink-0" aria-hidden />
+      )}
+      <span className="min-w-0 truncate">{name}</span>
+    </li>
+  );
+}
+
+// ─── Authored API examples ──────────────────────────────────────────────────
+
+export function ApiExample({ title, children }: { title?: string; children?: ReactNode }) {
+  return (
+    <section className="my-6 overflow-hidden rounded-xl border border-border" data-theme-component="api-example" aria-label={title}>
+      {title ? <div className="border-border border-b bg-muted/40 px-4 py-3 font-semibold">{title}</div> : null}
+      <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0 rtl:lg:divide-x-reverse">{children}</div>
+    </section>
+  );
+}
+
+function ExamplePanel({ title, status, kind, children }: { title?: string; status?: string; kind: 'request' | 'response'; children?: ReactNode }) {
+  return (
+    <section data-example-kind={kind} className="min-w-0 p-4 [&>:last-child]:mb-0" aria-label={title}>
+      {title || status ? (
+        <div className="mb-3 flex min-h-6 items-center justify-between gap-3">
+          {title ? (
+            <div className="flex items-center gap-2 font-semibold text-sm">
+              <Braces className="size-4 text-primary" aria-hidden />
+              {title}
+            </div>
+          ) : (
+            <span />
+          )}
+          {status ? <code className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs">{status}</code> : null}
+        </div>
+      ) : null}
+      <div className="[&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div>
+    </section>
+  );
+}
+
+export function RequestExample({ title, children }: { title?: string; children?: ReactNode }) {
+  return (
+    <ExamplePanel title={title} kind="request">
+      {children}
+    </ExamplePanel>
+  );
+}
+
+export function ResponseExample({ title, status, children }: { title?: string; status?: string; children?: ReactNode }) {
+  return (
+    <ExamplePanel title={title} status={status} kind="response">
+      {children}
+    </ExamplePanel>
+  );
+}
+
+// ─── Related content ────────────────────────────────────────────────────────
+
+export function RelatedContent({ title, children }: { title?: string; children?: ReactNode }) {
+  return (
+    <section className="my-8" data-theme-component="related-content">
+      {title ? <h2 className="mb-3 text-lg">{title}</h2> : null}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+    </section>
+  );
+}
+
+export function RelatedCard({
+  title,
+  description,
+  href,
+  icon,
+  children,
+}: {
+  title?: string;
+  description?: string;
+  href?: string;
+  icon?: string;
+  children?: ReactNode;
+}) {
+  const body = (
+    <>
+      <span className="mt-0.5 text-primary" aria-hidden>
+        {icon && hasIcon(icon) ? <PageIcon name={icon} className="size-4" /> : <LinkIcon className="size-4" />}
+      </span>
+      <span className="min-w-0">
+        {title ? <span className="block font-semibold text-foreground">{title}</span> : null}
+        {description ? <span className="mt-1 block text-muted-foreground text-sm">{description}</span> : null}
+        {children ? <span className="mt-1 block text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</span> : null}
+      </span>
+    </>
+  );
+  const className = 'flex gap-3 rounded-xl border border-border bg-card p-4 no-underline transition-colors hover:border-primary/50';
+  return href ? (
+    <a href={href} className={className} data-theme-component="related-card">
+      {body}
+    </a>
+  ) : (
+    <div className={className} data-theme-component="related-card">
+      {body}
+    </div>
+  );
+}
+
 // ─── CodeGroup (tabbed code blocks) ───────────────────────────────────────────
 
 type CodeProps = { className?: string; 'data-title'?: string; 'data-lang'?: string };
 type PreElement = ReactElement<{ 'data-title'?: string; 'data-lang'?: string; children?: { props?: CodeProps } }>;
 
 export function CodeGroup({ children, language }: { children?: ReactNode; language?: string }) {
-  const blocks = Children.toArray(children).filter(isValidElement) as PreElement[];
+  const blocks = Children.toArray(children).filter((child) =>
+    isValidElement<{ 'data-title'?: string; 'data-lang'?: string; children?: { props?: CodeProps } }>(child),
+  );
   const [active, setActive] = useState(0);
+  const codeGroupId = useId();
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   if (blocks.length === 0) {
     return null;
   }
@@ -431,12 +700,21 @@ export function CodeGroup({ children, language }: { children?: ReactNode; langua
   };
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-border">
-      <div className="flex gap-1 overflow-x-auto border-border border-b bg-muted/40 px-2 pt-1.5">
+      <div className="flex gap-1 overflow-x-auto border-border border-b bg-muted/40 px-2 pt-1.5" role="tablist" aria-orientation="horizontal">
         {blocks.map((block, index) => (
           <button
             key={block.key}
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
             type="button"
             onClick={() => setActive(index)}
+            onKeyDown={(event) => handleTabKeyDown(event, index, blocks.length, language, setActive, tabRefs.current)}
+            id={`${codeGroupId}-tab-${index}`}
+            role="tab"
+            aria-controls={`${codeGroupId}-panel-${index}`}
+            aria-selected={index === active}
+            tabIndex={index === active ? 0 : -1}
             className={cn(
               '-mb-px shrink-0 cursor-pointer rounded-t-md border-b-2 px-3 py-1.5 font-mono text-xs transition-colors',
               index === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -446,7 +724,18 @@ export function CodeGroup({ children, language }: { children?: ReactNode; langua
           </button>
         ))}
       </div>
-      <div className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0">{blocks[active]}</div>
+      {blocks.map((block, index) => (
+        <div
+          key={block.key}
+          id={`${codeGroupId}-panel-${index}`}
+          role="tabpanel"
+          aria-labelledby={`${codeGroupId}-tab-${index}`}
+          hidden={index !== active}
+          className="[&>div]:my-0 [&>div]:rounded-none [&>div]:border-0"
+        >
+          {block}
+        </div>
+      ))}
     </div>
   );
 }

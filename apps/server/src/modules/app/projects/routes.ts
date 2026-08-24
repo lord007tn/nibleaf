@@ -34,7 +34,7 @@ const projectsRoutes = {
   themeRepositoryExport: createRouteConfig({
     guard: [isAuthenticated, requireProjectMember('id')],
     tags: ['projects'],
-    description: 'Download a standalone Harbor theme repository with a vendored runtime contract, local snapshot fixture, and editable source code.',
+    description: 'Download a standalone Harbor, Manuscript, or Signal repository with a vendored runtime contract and editable source code.',
     responses: { 200: { description: 'runnable theme repository zip archive' }, ...errorResponses },
   }),
   themeExport: createRouteConfig({
@@ -42,6 +42,12 @@ const projectsRoutes = {
     tags: ['projects'],
     description: 'Export the draft theme as a deterministic, versioned Nibleaf theme template.',
     responses: { 200: { description: 'theme template' }, ...errorResponses },
+  }),
+  themeCatalog: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember('id')],
+    tags: ['projects'],
+    description: 'Get the sanitized theme and documentation-component capability catalog.',
+    responses: { 200: { description: 'theme capability catalog' }, ...errorResponses },
   }),
   themeImport: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],

@@ -1,16 +1,18 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { Check, Copy } from 'lucide-react';
-import { type ComponentProps, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
+import { type ComponentProps, type FunctionComponent, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
+import { z } from 'zod';
 import {
   Accordion,
   AccordionGroup,
+  ApiExample,
   Badge,
   Banner,
   Callout,
@@ -20,10 +22,17 @@ import {
   Column,
   Columns,
   Expandable,
+  File,
+  FileTree,
+  Folder,
   Frame,
   Icon,
   MdxButton,
   ParamField,
+  RelatedCard,
+  RelatedContent,
+  RequestExample,
+  ResponseExample,
   ResponseField,
   Step,
   Steps,
@@ -32,7 +41,14 @@ import {
   Tooltip,
   Update,
 } from '@/components/site/mdx-components';
-import { normalizeMdxBlocks, rehypeMermaid, remarkCallouts, remarkCodeMeta, sanitizeSchema } from '@/components/site/mdx-config';
+import {
+  normalizeMdxBlocks,
+  rehypeAuthoredComponentProps,
+  rehypeMermaid,
+  remarkCallouts,
+  remarkCodeMeta,
+  sanitizeSchema,
+} from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
 import { siteHref } from '@/lib/site-paths';
 
@@ -173,7 +189,7 @@ const htmlComponents: Components = {
  *  are rewritten to the site base. */
 function anchorRenderer(site: SiteLinkContext | undefined) {
   return function Anchor({ className, href, ...props }: ComponentProps<'a'>) {
-    const isHeadingAnchor = typeof className === 'string' && className.split(/\s+/).includes('heading-anchor');
+    const isHeadingAnchor = className?.split(/\s+/).includes('heading-anchor');
     if (isHeadingAnchor) {
       return <a className={cn('font-[inherit] text-inherit no-underline hover:no-underline', className)} href={href} {...props} />;
     }
@@ -188,11 +204,83 @@ function anchorRenderer(site: SiteLinkContext | undefined) {
 }
 
 // MDX component tags. react-markdown's Components type only knows HTML tags, so
-// these custom-tag renderers are declared separately and merged with a cast.
-type MdxProps = { children?: ReactNode; [key: string]: unknown };
-const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
+// custom tags are typed separately and merged into the HTML component map.
+interface MdxProps {
+  children?: ReactNode;
+  type?: unknown;
+  title?: unknown;
+  href?: unknown;
+  icon?: unknown;
+  cols?: unknown;
+  defaultopen?: unknown;
+  caption?: unknown;
+  tip?: unknown;
+  color?: unknown;
+  size?: unknown;
+  label?: unknown;
+  description?: unknown;
+  path?: unknown;
+  query?: unknown;
+  header?: unknown;
+  body?: unknown;
+  name?: unknown;
+  dataDisplayName?: unknown;
+  'data-display-name'?: unknown;
+  required?: unknown;
+  default?: unknown;
+  deprecated?: unknown;
+  variant?: unknown;
+  status?: unknown;
+}
 
-const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
+type DocumentationTag =
+  | 'callout'
+  | 'note'
+  | 'info'
+  | 'tip'
+  | 'check'
+  | 'warning'
+  | 'danger'
+  | 'card'
+  | 'cardgroup'
+  | 'tabs'
+  | 'tab'
+  | 'accordion'
+  | 'accordiongroup'
+  | 'steps'
+  | 'step'
+  | 'mdxframe'
+  | 'tooltip'
+  | 'icon'
+  | 'update'
+  | 'codegroup'
+  | 'expandable'
+  | 'paramfield'
+  | 'responsefield'
+  | 'columns'
+  | 'column'
+  | 'banner'
+  | 'badge'
+  | 'button'
+  | 'filetree'
+  | 'folder'
+  | 'file'
+  | 'apiexample'
+  | 'requestexample'
+  | 'responseexample'
+  | 'relatedcontent'
+  | 'relatedcard'
+  | 'mermaid';
+type ButtonMdxProps = ComponentProps<'button'> & { href?: unknown; variant?: unknown };
+type DocumentationComponents = Omit<Record<DocumentationTag, FunctionComponent<MdxProps>>, 'button'> & {
+  button: FunctionComponent<ButtonMdxProps>;
+};
+
+const optionalStringSchema = z.string().optional().catch(undefined);
+const str = (value: unknown) => optionalStringSchema.parse(value);
+const authoredName = (props: MdxProps): string | undefined => str(props['data-display-name']) ?? str(props.dataDisplayName) ?? str(props.name);
+
+const mdxComponents: DocumentationComponents = {
   callout: ({ type, children }) => <Callout type={str(type)}>{children}</Callout>,
   note: ({ children }) => <Callout type="note">{children}</Callout>,
   info: ({ children }) => <Callout type="info">{children}</Callout>,
@@ -218,7 +306,7 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
   step: ({ title, children }) => <Step title={str(title)}>{children}</Step>,
   mdxframe: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
   tooltip: ({ tip, children }) => <Tooltip tip={str(tip)}>{children}</Tooltip>,
-  icon: ({ icon, name, color, size }) => <Icon icon={str(icon)} name={str(name)} color={str(color)} size={str(size)} />,
+  icon: (props) => <Icon icon={str(props.icon)} name={authoredName(props)} color={str(props.color)} size={str(props.size)} />,
   update: ({ label, description, children }) => (
     <Update label={str(label)} description={str(description)}>
       {children}
@@ -230,34 +318,60 @@ const mdxComponents: Record<string, (props: MdxProps) => ReactNode> = {
       {children}
     </Expandable>
   ),
-  paramfield: ({ path, query, header, body, name, type, required, default: def, deprecated, children }) => (
+  paramfield: (props) => (
     <ParamField
-      path={str(path)}
-      query={str(query)}
-      header={str(header)}
-      body={str(body)}
-      name={str(name)}
-      type={str(type)}
-      required={required}
-      default={str(def)}
-      deprecated={deprecated}
+      path={str(props.path)}
+      query={str(props.query)}
+      header={str(props.header)}
+      body={str(props.body)}
+      name={authoredName(props)}
+      type={str(props.type)}
+      required={props.required}
+      default={str(props.default)}
+      deprecated={props.deprecated}
     >
-      {children}
+      {props.children}
     </ParamField>
   ),
-  responsefield: ({ name, type, required, default: def, deprecated, children }) => (
-    <ResponseField name={str(name)} type={str(type)} required={required} default={str(def)} deprecated={deprecated}>
-      {children}
+  responsefield: (props) => (
+    <ResponseField
+      name={authoredName(props)}
+      type={str(props.type)}
+      required={props.required}
+      default={str(props.default)}
+      deprecated={props.deprecated}
+    >
+      {props.children}
     </ResponseField>
   ),
   columns: ({ children }) => <Columns>{children}</Columns>,
   column: ({ children }) => <Column>{children}</Column>,
   banner: ({ type, children }) => <Banner type={str(type)}>{children}</Banner>,
   badge: ({ color, children }) => <Badge color={str(color)}>{children}</Badge>,
-  button: ({ href, variant, children }) => (
+  button: ({ href, variant, children }: ButtonMdxProps) => (
     <MdxButton href={str(href)} variant={str(variant)}>
       {children}
     </MdxButton>
+  ),
+  filetree: ({ children }) => <FileTree>{children}</FileTree>,
+  folder: (props) => (
+    <Folder name={authoredName(props)} defaultOpen={str(props.defaultopen)}>
+      {props.children}
+    </Folder>
+  ),
+  file: (props) => <File name={authoredName(props)} icon={str(props.icon)} />,
+  apiexample: ({ title, children }) => <ApiExample title={str(title)}>{children}</ApiExample>,
+  requestexample: ({ title, children }) => <RequestExample title={str(title)}>{children}</RequestExample>,
+  responseexample: ({ title, status, children }) => (
+    <ResponseExample title={str(title)} status={str(status)}>
+      {children}
+    </ResponseExample>
+  ),
+  relatedcontent: ({ title, children }) => <RelatedContent title={str(title)}>{children}</RelatedContent>,
+  relatedcard: ({ title, description, href, icon, children }) => (
+    <RelatedCard title={str(title)} description={str(description)} href={str(href)} icon={str(icon)}>
+      {children}
+    </RelatedCard>
   ),
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
@@ -286,60 +400,74 @@ export function MarkdownRenderer({
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
 }) {
-  const components = useMemo(
-    () =>
-      ({
-        ...htmlComponents,
-        pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
-        a: anchorRenderer(site),
-        ...mdxComponents,
-        tabs: ({ children }: MdxProps) => <Tabs language={site?.lang}>{children}</Tabs>,
-        accordion: ({ title, defaultopen, children }: MdxProps) => (
-          <Accordion title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
-            {children}
-          </Accordion>
-        ),
-        codegroup: ({ children }: MdxProps) => <CodeGroup language={site?.lang}>{children}</CodeGroup>,
-        expandable: ({ title, defaultopen, children }: MdxProps) => (
-          <Expandable title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
-            {children}
-          </Expandable>
-        ),
-        paramfield: ({ path, query, header, body, name, type, required, default: def, deprecated, children }: MdxProps) => (
-          <ParamField
-            path={str(path)}
-            query={str(query)}
-            header={str(header)}
-            body={str(body)}
-            name={str(name)}
-            type={str(type)}
-            required={required}
-            default={str(def)}
-            deprecated={deprecated}
-            language={site?.lang}
-          >
-            {children}
-          </ParamField>
-        ),
-        responsefield: ({ name, type, required, default: def, deprecated, children }: MdxProps) => (
-          <ResponseField name={str(name)} type={str(type)} required={required} default={str(def)} deprecated={deprecated} language={site?.lang}>
-            {children}
-          </ResponseField>
-        ),
-        // Card links are internal doc targets too — rewrite them to the site base.
-        card: ({ title, href, icon, children }: MdxProps) => (
-          <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
-            {children}
-          </Card>
-        ),
-        button: ({ href, variant, children }: MdxProps) => (
-          <MdxButton href={resolveDocHref(str(href), site)} variant={str(variant)}>
-            {children}
-          </MdxButton>
-        ),
-      }) as unknown as Components,
-    [site],
-  );
+  const components = useMemo(() => {
+    const localizedMdxComponents: DocumentationComponents = {
+      ...mdxComponents,
+      tabs: ({ children }: MdxProps) => <Tabs language={site?.lang}>{children}</Tabs>,
+      accordion: ({ title, defaultopen, children }: MdxProps) => (
+        <Accordion title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
+          {children}
+        </Accordion>
+      ),
+      codegroup: ({ children }: MdxProps) => <CodeGroup language={site?.lang}>{children}</CodeGroup>,
+      expandable: ({ title, defaultopen, children }: MdxProps) => (
+        <Expandable title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
+          {children}
+        </Expandable>
+      ),
+      paramfield: (props: MdxProps) => (
+        <ParamField
+          path={str(props.path)}
+          query={str(props.query)}
+          header={str(props.header)}
+          body={str(props.body)}
+          name={authoredName(props)}
+          type={str(props.type)}
+          required={props.required}
+          default={str(props.default)}
+          deprecated={props.deprecated}
+          language={site?.lang}
+        >
+          {props.children}
+        </ParamField>
+      ),
+      responsefield: (props: MdxProps) => (
+        <ResponseField
+          name={authoredName(props)}
+          type={str(props.type)}
+          required={props.required}
+          default={str(props.default)}
+          deprecated={props.deprecated}
+          language={site?.lang}
+        >
+          {props.children}
+        </ResponseField>
+      ),
+      // Card links are internal doc targets too — rewrite them to the site base.
+      card: ({ title, href, icon, children }: MdxProps) => (
+        <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
+          {children}
+        </Card>
+      ),
+      button: ({ href, variant, children }: ButtonMdxProps) => (
+        <MdxButton href={resolveDocHref(str(href), site)} variant={str(variant)}>
+          {children}
+        </MdxButton>
+      ),
+      relatedcard: ({ title, description, href, icon, children }: MdxProps) => (
+        <RelatedCard title={str(title)} description={str(description)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
+          {children}
+        </RelatedCard>
+      ),
+    };
+    const mergedComponents: Components = {
+      ...htmlComponents,
+      pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
+      a: anchorRenderer(site),
+      ...localizedMdxComponents,
+    };
+    return mergedComponents;
+  }, [site]);
   return (
     <div className={cn('typeset', className)}>
       <ReactMarkdown
@@ -347,6 +475,7 @@ export function MarkdownRenderer({
         remarkPlugins={[remarkGfm, ...extraRemarkPlugins, remarkCallouts, remarkCodeMeta]}
         rehypePlugins={[
           ...extraRehypePlugins,
+          rehypeAuthoredComponentProps,
           [rehypeSanitize, sanitizeSchema],
           rehypeMermaid,
           rehypeSlug,

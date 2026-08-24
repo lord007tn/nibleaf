@@ -58,6 +58,72 @@ describe('Markdown renderer — Mintlify component parity', () => {
     expect(html).toContain('b.py');
   });
 
+  it('renders authored file trees without treating names as repository paths', async () => {
+    const html = await render(
+      '<FileTree>\n  <Folder name="src" defaultOpen>\n    <File name="index.ts" icon="file-code" />\n    <File name="types.ts" />\n  </Folder>\n</FileTree>',
+    );
+    expect(html).toContain('data-theme-component="file-tree"');
+    expect(html).toContain('src');
+    expect(html).toContain('index.ts');
+    expect(html).toContain('types.ts');
+    expect(html).toContain('aria-expanded="true"');
+    expect(html).not.toContain('<ul><p><li');
+    expect(html).not.toContain('&lt;File');
+  });
+
+  it('renders authored request and response examples with safe metadata', async () => {
+    const html = await render(
+      '<ApiExample title="Create item">\n<RequestExample title="Request">\n`POST /items`\n</RequestExample>\n<ResponseExample title="Response" status="201">\nCreated.\n</ResponseExample>\n</ApiExample>',
+    );
+    expect(html).toContain('data-theme-component="api-example"');
+    expect(html).toContain('data-example-kind="request"');
+    expect(html).toContain('data-example-kind="response"');
+    expect(html).toContain('Create item');
+    expect(html).toContain('201');
+  });
+
+  it('renders related cards and rewrites their internal links to the published site base', async () => {
+    const html = await render(
+      '<RelatedContent title="Continue reading">\n  <RelatedCard title="Authentication" description="Secure the API" href="/authentication" icon="key" />\n  <RelatedCard title="Errors" description="Handle failures" href="/errors" />\n</RelatedContent>',
+      'en',
+    );
+    expect(html).toContain('data-theme-component="related-content"');
+    expect(html).toContain('Authentication');
+    expect(html).toContain('Secure the API');
+    expect(html).toContain('href="/sites/reader-test/authentication?lang=en"');
+    expect(html).toContain('href="/sites/reader-test/errors?lang=en"');
+    expect(html).not.toMatch(/<a[^>]*>\s*<a/i);
+  });
+
+  it('strips unsafe attributes and URL protocols from authored components', async () => {
+    const html = await render(
+      '<RelatedContent title="Safe">\n<RelatedCard title="Unsafe target" href="javascript:alert(1)" onclick="alert(2)" data-secret="snapshot" />\n</RelatedContent>',
+    );
+    expect(html).toContain('Unsafe target');
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('onclick');
+    expect(html).not.toContain('data-secret');
+  });
+
+  it('keeps Banner portable by stripping unsupported dismissal metadata', async () => {
+    const html = await render('<Banner type="warning" dismissible>Important update.</Banner>');
+    expect(html).toContain('Important update.');
+    expect(html).not.toContain('dismissible');
+  });
+
+  it('connects tab, accordion, expandable, and code-group controls to their panels', async () => {
+    const html = await render(
+      '<Tabs>\n<Tab title="One">First</Tab>\n<Tab title="Two">Second</Tab>\n</Tabs>\n<Accordion title="Details">Inside</Accordion>\n<Expandable title="Properties">Nested</Expandable>\n<CodeGroup>\n\n```js title="one.js"\n1\n```\n\n```js title="two.js"\n2\n```\n\n</CodeGroup>',
+    );
+    expect(html.match(/role="tablist"/g)).toHaveLength(2);
+    const renderedTabs = html.match(/role="tab"/g) ?? [];
+    expect(renderedTabs.length).toBeGreaterThanOrEqual(3);
+    expect(html.match(/role="tabpanel"/g)).toHaveLength(renderedTabs.length);
+    expect(html).toContain('aria-selected="true"');
+    expect(html).toContain('aria-controls=');
+    expect(html).toContain('aria-labelledby=');
+  });
+
   it('renders an inline Icon as an svg', async () => {
     const html = await render('Click <Icon icon="rocket" /> to launch');
     expect(html).toContain('<svg');
@@ -78,6 +144,13 @@ describe('Markdown renderer — Mintlify component parity', () => {
   it('still renders pre-existing components (Card, Callout)', async () => {
     expect(await render('<Card title="Hello">body</Card>')).toContain('Hello');
     expect(await render('> [!WARNING]\n> be careful')).toContain('be careful');
+  });
+
+  it('parses Markdown children inside an authored Callout component', async () => {
+    const html = await render('<Callout type="tip">\n**Bold guidance** with [details](/guide).\n</Callout>', 'en');
+    expect(html).toContain('data-theme-component="callout"');
+    expect(html).toContain('<strong>Bold guidance</strong>');
+    expect(html).toContain('href="/sites/reader-test/guide?lang=en"');
   });
 
   it('localizes code controls and default MDX labels for an Arabic reader', async () => {

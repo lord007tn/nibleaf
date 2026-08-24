@@ -3,8 +3,8 @@ title: 'مرجع Markdown ومكونات MDX'
 description: 'استخدم Markdown وامتدادات GitHub والرياضيات والمخططات ومكونات التوثيق التي يعرضها Nibleaf ويحوّلها ذهابًا وإيابًا بأمان.'
 audience: 'مؤلفو التوثيق الذين يعملون في وضع المصدر'
 content_type: 'reference'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/components/site/mdx-config.ts and apps/app/src/components/markdown.tsx'
+last_reviewed: '2026-08-23'
+verified_against: 'packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/site/mdx-components.tsx, apps/app/src/components/markdown.tsx, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates.ts'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'product/markdown-mdx'
@@ -58,6 +58,9 @@ docker compose -f docker-compose.prod.yml up -d
 | `ParamField`, `ResponseField` | أوصاف حقول API | `name` و`type` و`required` و`default` و`deprecated` |
 | `CodeGroup` | عينات شيفرة بديلة | تصبح لغات الشيفرة المسيّجة تسميات |
 | `Expandable`, `Update`, `Columns`, `Column`, `Banner` | محتوى منظّم تكميلي | حقول العنوان أو التسمية الخاصة بكل مكوّن |
+| `FileTree`, `Folder`, `File` | رسوم توضيحية لبنية المشروع يكتبها المؤلف | `name` للملف والمجلد، و`defaultOpen` للمجلد، و`icon` للملف |
+| `ApiExample`, `RequestExample`, `ResponseExample` | قراءة متجاورة للطلب والاستجابة | `title` و`status` للاستجابة |
+| `RelatedContent`, `RelatedCard` | قراءات تالية في نهاية الصفحة | `title` للمجموعة والبطاقة، و`description` و`href` و`icon` للبطاقة |
 
 ضع وسوم الكتل في أسطر مستقلة، واترك سطرًا فارغًا حول عناصر Markdown الفرعية:
 
@@ -70,6 +73,17 @@ docker compose -f docker-compose.prod.yml up -d
   </Step>
 </Steps>
 ```
+
+شجرة الملفات رسم توضيحي وليست متصفحًا للمستودع. يعرض Nibleaf الأسماء المكتوبة
+في محتوى الصفحة فقط؛ فلا يجتاز المستودع المصدّر، ولا يقرأ ملفات البيان أو
+اللقطات، ولا يجلب مسارًا، ولا يرسل طلب شبكة. وتلتزم أمثلة API والبطاقات المرتبطة
+بالحد نفسه الذي يقتصر على بيانات المؤلف. تمر الروابط كذلك عبر مطهّر روابط الموقع
+المنشور وآلية إعادة الكتابة.
+
+تستخدم علامات التبويب ومجموعات الشيفرة موضع تبويب متحركًا. تنقل بالسهيمين
+الأيسر والأيمن، مع عكس الاتجاه في RTL، أو بمفتاحي Home وEnd. تربط الأكورديونات
+والعناصر القابلة للتوسيع والمجلدات كل زر بلوحته عبر معرّفات وصول ثابتة. وتستخدم
+شجرة الملفات قوائم متداخلة بدل نمط شجرة ARIA غير مكتمل.
 
 ## المكونات المضمّنة
 
@@ -90,3 +104,13 @@ Mermaid كتلة مسيّجة باللغة `mermaid` وتُعرض لدى الع�
 يمكن الاحتفاظ بمكونات وتعبيرات JSX المخصصة كمصدر أو كتل للقراءة فقط، لكن لا
 يستطيع Nibleaf ضمان بيئة تشغيل مخصصة لها. أبق الصفحة في وضع Markdown، وتحقق
 من النتيجة المنشورة، وفضّل مجموعة المكونات المدعومة لتوثيق قابل للنقل.
+
+## قابلية النقل والترحيل
+
+يمثل الكتالوج في `@nibleaf/shared/documentation-components` عقد التأليف البرمجي
+ذا الإصدار الذي يستخدمه المحرر ومصيّر التطبيق والأرشيف الثابت ومستودعات السمات
+المعتمدة على Git. مخطط الإصدار 1 إضافي، ولذلك لا تحتاج الصفحات القائمة إلى
+ترحيل. يدعم `Banner` السمة `type`، بينما لا تدخل `dismissible` عمدًا في العقد
+القابل للنقل. تطهّر مستودعات السمات المستقلة MDX الخام بقائمة سماح صريحة، وتفصل
+مصدر السمة والمكونات الذي يملكه العميل عن ملفات البيان واللقطات التي يملكها
+Nibleaf.

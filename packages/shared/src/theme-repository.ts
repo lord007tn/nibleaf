@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { SiteSnapshot, SnapshotPage } from './site';
-import { THEME_REPOSITORY_TEMPLATE_SOURCES, type ThemeRepositoryTemplateSource, themeUtilitiesSource } from './theme-repository-templates';
+import {
+  THEME_REPOSITORY_TEMPLATE_SOURCES,
+  type ThemeRepositoryTemplateSource,
+  themeMdxComponentsSource,
+  themeUtilitiesSource,
+} from './theme-repository-templates';
 import { THEME_PRESET_IDS, type ThemePresetId } from './themes';
 
 export const THEME_REPOSITORY_SCHEMA_VERSION = 1 as const;
@@ -117,6 +122,8 @@ const packageJson = (templateId: ThemePresetId) =>
       react: '^19.2.4',
       'react-dom': '^19.2.4',
       'react-markdown': '^10.1.0',
+      'rehype-raw': '^7.0.0',
+      'rehype-sanitize': '^6.0.0',
       'remark-gfm': '^4.0.1',
       zod: '^4.4.3',
     },
@@ -126,6 +133,7 @@ const packageJson = (templateId: ThemePresetId) =>
       '@types/react': '^19.2.0',
       '@types/react-dom': '^19.2.0',
       '@vitejs/plugin-react': '^6.1.0',
+      jsdom: '^30.0.1',
       'oxc-transform-react': '0.145.0',
       typescript: '^7.0.2',
       vite: '^8.2.2',
@@ -292,11 +300,71 @@ import { App } from './App';
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 `;
 
-const testSource = (template: ThemeRepositoryTemplateSource) => `import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+const testSource = (template: ThemeRepositoryTemplateSource) => `// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import * as m from '../paraglide/messages.js';
-import { loadSnapshot } from '../nibleaf/runtime';
+import { loadSnapshot, type SiteSnapshot } from '../nibleaf/runtime';
 import { ${template.componentName} } from './${template.componentName}';
+import { Tooltip, nextTabIndex } from './mdx-components';
+
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean;
+}
+
+let mountedRoot: Root | undefined;
+beforeAll(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; });
+const mountTheme = async (snapshot: SiteSnapshot) => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  mountedRoot = createRoot(container);
+  await act(async () => { mountedRoot?.render(<${template.componentName} snapshot={snapshot} />); });
+  return container;
+};
+const changeScope = async (container: HTMLElement, scope: 'language' | 'version', value: string) => {
+  const select = container.querySelector<HTMLSelectElement>('[data-scope="' + scope + '"]');
+  expect(select).not.toBeNull();
+  if (!select) return;
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+};
+const updateSearch = async (input: HTMLInputElement, value: string) => {
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  expect(setValue).toBeDefined();
+  await act(async () => {
+    setValue?.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+};
+const searchableSnapshot = () => {
+  const snapshot = loadSnapshot();
+  const english = snapshot.pages.find((page) => page.kind === 'PAGE' && page.languageCode === 'en');
+  const arabic = snapshot.pages.find((page) => page.kind === 'PAGE' && page.languageCode === 'ar');
+  expect(english).toBeDefined();
+  expect(arabic).toBeDefined();
+  if (!english || !arabic) return;
+  const nextVersion = { id: 'version_test_next', name: 'Test next', slug: 'test-next', isDefault: false };
+  return {
+    ...snapshot,
+    project: { ...snapshot.project, versions: [...snapshot.project.versions, nextVersion, { id: 'version_test_empty', name: 'Test empty', slug: 'test-empty', isDefault: false }] },
+    pages: [
+      ...snapshot.pages,
+      { ...english, id: 'search-target', title: 'Keyboard search target', slug: 'keyboard-target', path: '/keyboard-target', translationKey: 'keyboard-target', position: 80 },
+      { ...english, id: 'next-en', versionId: nextVersion.id, title: 'Next English guide', slug: 'next-guide', path: '/next-guide', translationKey: 'guide', position: 81 },
+      { ...arabic, id: 'next-ar', versionId: nextVersion.id, title: 'دليل الإصدار التالي', slug: 'next-guide-ar', path: '/ar/next-guide', translationKey: 'guide', position: 82 },
+    ],
+  } satisfies SiteSnapshot;
+};
+
+afterEach(async () => {
+  if (mountedRoot) await act(async () => { mountedRoot?.unmount(); });
+  mountedRoot = undefined;
+  document.body.replaceChildren();
+});
 
 describe('${template.displayName} theme', () => {
   it('renders localized fixture content through the vendored runtime contract', () => {
@@ -306,12 +374,124 @@ describe('${template.displayName} theme', () => {
     expect(english).toContain(m.themeLabel({}, { locale: 'en' }));
     expect(english).toContain('id="overview"');
     expect(english).toContain('id="next-steps"');
+    expect(english).toContain('class="mdx-callout"');
+    expect(english).toContain('<strong>Portable callout');
+    expect(english).toContain('<ul class="mdx-file-tree">');
+    expect(english).toContain('<li class="mdx-folder">');
+    expect(english).not.toContain('<ul><p><li');
+    expect(english).toContain('role="tooltip"');
+    expect(english).toContain('aria-describedby=');
+    expect(english).toContain('aria-label="star"');
     const arabicPage = snapshot.pages.find((page) => page.languageCode === 'ar');
     expect(arabicPage).toBeDefined();
     if (!arabicPage) return;
+    expect(english).not.toContain(arabicPage.title);
     const arabic = renderToStaticMarkup(<${template.componentName} snapshot={{ ...snapshot, pages: [arabicPage] }} />);
     expect(arabic).toContain('dir="rtl"');
     expect(arabic).toContain(m.themeLabel({}, { locale: 'ar' }));
+    expect(arabic).not.toContain(snapshot.pages.find((item) => item.languageCode === 'en')?.title);
+  });
+
+  it('keeps navigation inside the selected language and version while preserving translation context', async () => {
+    const snapshot = searchableSnapshot();
+    if (!snapshot) return;
+    const english = snapshot.pages.find((item) => item.languageCode === 'en' && item.versionId === 'version_main');
+    const arabic = snapshot.pages.find((item) => item.languageCode === 'ar' && item.versionId === 'version_main');
+    const englishAuthentication = snapshot.pages.find(
+      (item) => item.languageCode === 'en' && item.translationKey === 'authentication',
+    );
+    const arabicAuthentication = snapshot.pages.find(
+      (item) => item.languageCode === 'ar' && item.translationKey === 'authentication',
+    );
+    const container = await mountTheme(snapshot);
+    const navigation = container.querySelector('nav');
+    expect(navigation?.textContent).toContain(english?.title);
+    expect(navigation?.textContent).not.toContain(arabic?.title);
+
+    const pageSelector = container.querySelector<HTMLSelectElement>('.mobile-page-picker select');
+    expect(englishAuthentication).toBeDefined();
+    expect(arabicAuthentication).toBeDefined();
+    expect(pageSelector).not.toBeNull();
+    if (pageSelector && englishAuthentication) {
+      await act(async () => {
+        pageSelector.value = englishAuthentication.id;
+        pageSelector.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    }
+
+    await changeScope(container, 'language', 'ar');
+    expect(container.querySelector('.harbor,.manuscript,.signal')?.getAttribute('dir')).toBe('rtl');
+    expect(navigation?.textContent).toContain(arabic?.title);
+    expect(navigation?.textContent).not.toContain(english?.title);
+    expect(container.querySelector('h1')?.textContent).toBe(arabicAuthentication?.title);
+    const scopeSelectors = [...container.querySelectorAll<HTMLSelectElement>('.scope-controls select')];
+    expect(scopeSelectors.map((item) => item.dataset.scope)).toEqual([
+      'language',
+      'version',
+    ]);
+    scopeSelectors[0]?.focus();
+    expect(document.activeElement).toBe(scopeSelectors[0]);
+    scopeSelectors[1]?.focus();
+    expect(document.activeElement).toBe(scopeSelectors[1]);
+
+    await changeScope(container, 'version', 'version_test_next');
+    expect(navigation?.textContent).toContain('دليل الإصدار التالي');
+    expect(navigation?.textContent).not.toContain('Next English guide');
+    expect(container.querySelector('h1')?.textContent).toBe('دليل الإصدار التالي');
+  });
+
+  it('keeps selectors and mobile-capable search available for an empty scope', async () => {
+    const snapshot = searchableSnapshot();
+    if (!snapshot) return;
+    const container = await mountTheme(snapshot);
+    await changeScope(container, 'version', 'version_test_empty');
+    expect(container.querySelector('.empty-scope')?.textContent).toBe(m.noVisiblePages({}, { locale: 'en' }));
+    expect(container.querySelectorAll('.scope-controls select')).toHaveLength(2);
+    expect(container.querySelector<HTMLInputElement>('[role="search"] input[type="search"]')).not.toBeNull();
+  });
+
+  it('searches only the selected snapshot scope and moves focus to a result with the keyboard', async () => {
+    const snapshot = searchableSnapshot();
+    if (!snapshot) return;
+    const container = await mountTheme(snapshot);
+    const input = container.querySelector<HTMLInputElement>('[role="search"] input[type="search"]');
+    expect(input).not.toBeNull();
+    if (!input) return;
+    await updateSearch(input, 'Keyboard search target');
+    const result = container.querySelector<HTMLButtonElement>('[data-search-result]');
+    expect(result?.textContent).toBe('Keyboard search target');
+    expect(container.querySelector('.search-results')?.textContent).not.toContain('دليل الإصدار التالي');
+    input.focus();
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' })); });
+    expect(document.activeElement).toBe(result);
+    await act(async () => { result?.click(); });
+    expect(container.querySelector('h1')?.textContent).toBe('Keyboard search target');
+
+    await updateSearch(input, 'Keyboard');
+    input.focus();
+    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' })); });
+    expect(input.value).toBe('');
+  });
+
+  it('moves tab focus predictably in LTR and RTL directions', () => {
+    expect(nextTabIndex(0, 3, 'ArrowRight', 'ltr')).toBe(1);
+    expect(nextTabIndex(0, 3, 'ArrowRight', 'rtl')).toBe(2);
+    expect(nextTabIndex(2, 3, 'Home', 'rtl')).toBe(0);
+    expect(nextTabIndex(0, 3, 'End', 'ltr')).toBe(2);
+  });
+
+  it('exposes tooltip text to keyboard and pointer users without trapping focus', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(<Tooltip tip="Auth token">credential</Tooltip>);
+    const trigger = container.querySelector<HTMLElement>('.mdx-tooltip-trigger');
+    const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
+    expect(trigger).not.toBeNull();
+    expect(tooltip).not.toBeNull();
+    if (!trigger || !tooltip) return;
+    expect(trigger.tabIndex).toBe(0);
+    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip.id);
+    expect(tooltip.textContent).toBe('Auth token');
+    expect(tooltip.tabIndex).toBe(-1);
   });
 });
 `;
@@ -341,6 +521,8 @@ Then open the URL printed by Vite. Run \`corepack pnpm check\` before pushing.
 - Edit documentation MDX under \`${normalizedContentPath(contentPath) || '.'}/\`; Nibleaf and Git reconcile it with the recorded common base.
 - Do not hand-edit \`.nibleaf/\` or \`nibleaf.theme.json\`. Nibleaf regenerates and verifies those files.
 
+Language and version selectors always scope navigation and the built-in client-side search to matching snapshot pages. Switching scope keeps the current \`translationKey\` when a matching page exists and otherwise opens the first visible page in the selected scope. The search is intentionally local and performs no network or search-provider request; replace the content adapter and search UI together if the repository later needs a remote index.
+
 The manifest is the source of truth for ownership. Customer-owned code is never overwritten after the first scaffold. Generated data and customer code are deliberately separate.
 `;
 
@@ -355,6 +537,10 @@ const messages = (templateId: ThemePresetId) => {
       themeLabel: labels[templateId].en,
       loading: 'Loading documentation',
       search: 'Search documentation',
+      searchResults: 'Search results',
+      noSearchResults: 'No pages match this search.',
+      language: 'Language',
+      version: 'Version',
       github: 'GitHub',
       documentation: 'Documentation',
       page: 'Page',
@@ -373,6 +559,10 @@ const messages = (templateId: ThemePresetId) => {
       themeLabel: labels[templateId].ar,
       loading: 'جارٍ تحميل التوثيق',
       search: 'ابحث في التوثيق',
+      searchResults: 'نتائج البحث',
+      noSearchResults: 'لا توجد صفحات مطابقة لهذا البحث.',
+      language: 'اللغة',
+      version: 'الإصدار',
       github: 'GitHub',
       documentation: 'التوثيق',
       page: 'الصفحة',
@@ -426,6 +616,7 @@ const customerFiles = (templateId: ThemePresetId, contentPath = 'content'): Arra
     { path: 'src/adapters/content.ts', content: adapterSource(contentPath) },
     { path: 'src/adapters/content.test.ts', content: adapterTestSource },
     { path: 'src/theme/theme-utils.ts', content: themeUtilitiesSource },
+    { path: 'src/theme/mdx-components.tsx', content: themeMdxComponentsSource },
     { path: `src/theme/${template.componentName}.tsx`, content: template.source },
     { path: `src/theme/${template.componentName}.test.tsx`, content: testSource(template) },
     { path: `src/theme/${templateId}.css`, content: template.style },

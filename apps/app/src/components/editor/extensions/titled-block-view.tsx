@@ -1,4 +1,21 @@
+import type { MessageKey } from '@nibleaf/i18n';
+import { useLocale } from '@nibleaf/i18n/react';
 import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from '@tiptap/react';
+import { z } from 'zod';
+
+type EditableAttribute = 'title' | 'caption' | 'name' | 'icon' | 'href' | 'description' | 'status';
+
+const placeholderByAttribute: Record<EditableAttribute, MessageKey> = {
+  title: 'editor.block.titlePlaceholder',
+  caption: 'editor.block.captionPlaceholder',
+  name: 'editor.block.namePlaceholder',
+  icon: 'editor.block.iconPlaceholder',
+  href: 'editor.block.hrefPlaceholder',
+  description: 'editor.block.descriptionPlaceholder',
+  status: 'editor.block.statusPlaceholder',
+};
+
+const editorAttribute = z.string().catch('');
 
 /**
  * Editing UI for title-bearing MDX blocks (Step / Card / Tab / Accordion / Frame):
@@ -9,11 +26,22 @@ import { NodeViewContent, type NodeViewProps, NodeViewWrapper } from '@tiptap/re
  * `pl-step`), and keystrokes in the inputs are kept from bubbling to ProseMirror.
  */
 export function TitledBlockView({ node, updateAttributes, extension }: NodeViewProps) {
+  const { t } = useLocale();
   const tag = extension.name.replace(/^mdx/, '');
   const base = `pl-${tag.toLowerCase()}`;
-  const attr = extension.name === 'mdxFrame' ? 'caption' : 'title';
-  const value = (node.attrs[attr] as string) ?? '';
-  const isCard = extension.name === 'mdxCard';
+  const attr: EditableAttribute =
+    extension.name === 'mdxFrame' ? 'caption' : extension.name === 'mdxFolder' || extension.name === 'mdxFile' ? 'name' : 'title';
+  const value = editorAttribute.parse(node.attrs[attr]);
+  const extraAttributes: EditableAttribute[] =
+    extension.name === 'mdxCard'
+      ? ['icon', 'href']
+      : extension.name === 'mdxFile'
+        ? ['icon']
+        : extension.name === 'mdxResponseExample'
+          ? ['status']
+          : extension.name === 'mdxRelatedCard'
+            ? ['description', 'icon', 'href']
+            : [];
   const stop = {
     onKeyDown: (event: React.KeyboardEvent) => event.stopPropagation(),
     onMouseDown: (event: React.MouseEvent) => event.stopPropagation(),
@@ -23,29 +51,27 @@ export function TitledBlockView({ node, updateAttributes, extension }: NodeViewP
       <input
         className={`${base}-title-input`}
         value={value}
-        placeholder={attr === 'caption' ? 'Caption' : 'Title'}
+        aria-label={t(placeholderByAttribute[attr])}
+        placeholder={t(placeholderByAttribute[attr])}
         onChange={(event) => updateAttributes({ [attr]: event.target.value })}
         {...stop}
       />
-      {isCard ? (
+      {extraAttributes.length > 0 ? (
         <div className="pl-card-meta">
-          <input
-            className="pl-card-meta-input"
-            value={(node.attrs.icon as string) ?? ''}
-            placeholder="icon (e.g. rocket)"
-            onChange={(event) => updateAttributes({ icon: event.target.value })}
-            {...stop}
-          />
-          <input
-            className="pl-card-meta-input"
-            value={(node.attrs.href as string) ?? ''}
-            placeholder="href (e.g. /quickstart)"
-            onChange={(event) => updateAttributes({ href: event.target.value })}
-            {...stop}
-          />
+          {extraAttributes.map((extraAttribute) => (
+            <input
+              className="pl-card-meta-input"
+              key={extraAttribute}
+              value={editorAttribute.parse(node.attrs[extraAttribute])}
+              aria-label={t(placeholderByAttribute[extraAttribute])}
+              placeholder={t(placeholderByAttribute[extraAttribute])}
+              onChange={(event) => updateAttributes({ [extraAttribute]: event.target.value })}
+              {...stop}
+            />
+          ))}
         </div>
       ) : null}
-      <NodeViewContent className={`${base}-body`} />
+      {node.isLeaf ? null : <NodeViewContent className={`${base}-body`} />}
     </NodeViewWrapper>
   );
 }

@@ -9,14 +9,20 @@ import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProp
 import {
   AppWindow,
   Badge as BadgeIcon,
+  BookOpen,
+  Braces,
   CircleCheck,
   Code2,
   Columns3,
+  FileText,
+  Folder,
+  FolderTree,
   Frame as FrameIcon,
   Heading1,
   Heading2,
   Heading3,
   Image as ImageIcon,
+  Inbox,
   Info,
   LayoutGrid,
   Lightbulb,
@@ -31,6 +37,7 @@ import {
   OctagonAlert,
   PanelTop,
   Quote,
+  Send,
   Sparkles,
   Table as TableIcon,
   TriangleAlert,
@@ -446,6 +453,142 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .focus()
         .deleteRange(range)
         .insertContent({ type: 'mdxCodeGroup', content: [{ type: 'codeBlock', attrs: { language: 'bash' } }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.fileTree.title',
+    descKey: 'editor.slash.fileTree.desc',
+    icon: FolderTree,
+    glyph: '⌘',
+    keywords: ['file', 'folder', 'tree', 'structure'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxFileTree',
+          content: [{ type: 'mdxFile', attrs: { name: '', icon: '' } }],
+        })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.folder.title',
+    descKey: 'editor.slash.folder.desc',
+    icon: Folder,
+    glyph: '▸',
+    keywords: ['folder', 'directory', 'tree'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxFolder', attrs: { name: '' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.file.title',
+    descKey: 'editor.slash.file.desc',
+    icon: FileText,
+    glyph: '⌑',
+    keywords: ['file', 'document', 'tree'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxFile', attrs: { name: '', icon: '' } })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.apiExample.title',
+    descKey: 'editor.slash.apiExample.desc',
+    icon: Braces,
+    glyph: '{}',
+    keywords: ['api', 'request', 'response', 'example'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxApiExample',
+          attrs: { title: '' },
+          content: [
+            { type: 'mdxRequestExample', attrs: { title: '' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxResponseExample', attrs: { title: '', status: '' }, content: [{ type: 'paragraph' }] },
+          ],
+        })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.requestExample.title',
+    descKey: 'editor.slash.requestExample.desc',
+    icon: Send,
+    glyph: '→',
+    keywords: ['api', 'request', 'example'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxRequestExample', attrs: { title: '' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.responseExample.title',
+    descKey: 'editor.slash.responseExample.desc',
+    icon: Inbox,
+    glyph: '←',
+    keywords: ['api', 'response', 'example'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({ type: 'mdxResponseExample', attrs: { title: '', status: '' }, content: [{ type: 'paragraph' }] })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.relatedContent.title',
+    descKey: 'editor.slash.relatedContent.desc',
+    icon: BookOpen,
+    glyph: '↗',
+    keywords: ['related', 'content', 'navigation', 'resources'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxRelatedContent',
+          attrs: { title: '' },
+          content: [
+            {
+              type: 'mdxRelatedCard',
+              attrs: { title: '', description: '', href: '', icon: '' },
+              content: [{ type: 'paragraph' }],
+            },
+          ],
+        })
+        .run(),
+  },
+  {
+    titleKey: 'editor.slash.relatedCard.title',
+    descKey: 'editor.slash.relatedCard.desc',
+    icon: BookOpen,
+    glyph: '◇',
+    keywords: ['related', 'card', 'link', 'resource'],
+    command: ({ editor, range }) =>
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .insertContent({
+          type: 'mdxRelatedCard',
+          attrs: { title: '', description: '', href: '', icon: '' },
+          content: [{ type: 'paragraph' }],
+        })
         .run(),
   },
   {

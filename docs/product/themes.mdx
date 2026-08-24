@@ -37,14 +37,22 @@ not merely CSS order or color. The publishing worker uses the same versioned
 shell value for static exports, so exported and interactive renderers share a
 stable layout contract without sharing browser-specific implementation code.
 
+The responsive structures remain distinct. Harbor collapses its persistent
+library and page outline into compact navigation around a reference article.
+Manuscript preserves its masthead, horizontally scrollable chapter deck, and
+paper-like reading surface before reducing to a single long-form column. Signal
+keeps a compact command bar, library rail, wide code canvas, and command index,
+then converts the rail into a horizontally scrollable mobile navigator. Logical
+CSS properties preserve those relationships in both LTR and RTL.
+
 ## Inspiration and ownership boundary
 
-The design process reviewed the public customization and navigation guidance for
-[Fumadocs](https://www.fumadocs.dev/docs/guides/customize-ui),
-[Mintlify](https://www.mintlify.com/docs/organize/settings-appearance), and
-[ReadMe](https://docs.readme.com/main/docs/design-themes), plus public navigation
-guidance from [Docusaurus](https://docusaurus.io/docs/sidebar) and
-[GitBook](https://gitbook.com/docs/publishing-documentation/customization). Those
+The design process reviewed the current public docs-layout and component
+inventories for [Fumadocs](https://www.fumadocs.dev/docs/ui/layouts/docs),
+[Mintlify](https://mintlify.com/docs/themes), and
+[ReadMe](https://docs.readme.com/main/docs/built-in-components), including
+[ReadMe's AI-discovery guidance](https://docs.readme.com/main/docs/ai-discoverability).
+Those
 sources informed general expectations such as presets, semantic settings,
 collapsible navigation, page outlines, layout choices, and a preview-first
 workflow. Harbor, Manuscript, and Signal use original Nibleaf
@@ -69,6 +77,26 @@ Theme components consume stable semantic variables such as
 `--theme-focus`, and `--theme-code`. Search uses the same interface, and future
 AI surfaces can opt into it with `data-theme-surface="ai"` without depending on
 the page renderer's internal structure.
+
+The authenticated theme catalog returns stable theme/component IDs, structural
+capabilities, and Paraglide message keys. Preset names, descriptions, and
+rationales shown in the dashboard are localized through Paraglide rather than
+taken from hard-coded repository metadata. A custom theme's exported metadata
+remains repository identity, not a translated UI-copy contract. Adapters receive
+this sanitized catalog through a shared action; they never receive filesystem
+paths, manifests, snapshots, repository binaries, or customer page content.
+
+## SEO and AI discovery defaults
+
+Every theme uses the same publication rules while rendering its own structure.
+Published pages emit a canonical, robots directive, Open Graph/Twitter metadata,
+language alternates with `x-default`, and `TechArticle` plus breadcrumb JSON-LD.
+Static archives also include `robots.txt`, `sitemap.xml`, root `llms.txt` and
+`llms-full.txt`, plus scoped copies for every enabled language/version. Hidden,
+private, noindex, disabled-language, and externally canonicalized pages are
+excluded from discovery files. Archive URLs remain root-relative because the
+portable snapshot has no trustworthy eventual host; the serving host resolves
+them without inventing a domain.
 
 ## Export and inspect a template
 
@@ -117,6 +145,11 @@ list and any accessibility warnings. Applying updates the project draft; it does
 not silently publish. Publish explicitly, verify the resulting deployment, and
 keep the exported previous template as a rollback checkpoint.
 
+Concurrent draft changes are protected with an optimistic compare-and-swap
+update. Theme apply recomputes every theme-owned section from the latest project
+configuration in one transaction, preserving sibling settings. Repeated
+contention returns a conflict instead of overwriting another settings editor.
+
 ## Roll back a theme
 
 Before a significant theme change, export the current template. To roll back,
@@ -127,3 +160,13 @@ settings are written.
 
 For a full content and site archive, use [published exports](/product/exports).
 Theme templates are small design interchange files, not project backups.
+
+## Run and edit the Git-native repository
+
+The repository export keeps theme/runtime/schema IDs at version 1 and requires
+no migration from the existing Git-native contract. Each export is a standalone
+Vite application with Paraglide, a validated vendored snapshot adapter, safe MDX
+renderers, tests, and a production build. Harbor, Manuscript, and Signal ship
+different customer-owned React and CSS layout files. Nibleaf-owned manifest,
+snapshot, and content-map files remain the reconciliation boundary; edit theme
+source and documentation content, not `.nibleaf/`.
