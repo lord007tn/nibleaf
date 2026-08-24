@@ -12,6 +12,7 @@ import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
 import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
+import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
 import {
   acceptsHtml,
   appendVary,
@@ -778,6 +779,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
       res.headers.set('cache-control', 'private, no-store');
+      return encodePublicRouteManifestResponse(res);
     }
     return res;
   } catch {
@@ -793,6 +795,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       }
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
       wrapped.headers.set('cache-control', 'private, no-store');
+      return encodePublicRouteManifestResponse(wrapped);
     }
     return wrapped;
   }

@@ -37,4 +37,12 @@ describe('marketing sitemap', () => {
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');
   });
+
+  it('excludes route templates and intentionally blocked app and signup surfaces', () => {
+    const paths = marketingSitemapEntries().map((entry) => entry.path);
+
+    expect(paths).not.toContain('/sites/$projectId');
+    expect(paths.some((path) => path === '/app' || path.startsWith('/app/'))).toBe(false);
+    expect(paths).not.toContain('/sign-up');
+  });
 });
