@@ -84,7 +84,7 @@ const inlineScriptJson = (value: string): string =>
  * appearance wins before CSS paints. Inputs are JSON-encoded and the default is
  * already constrained by ProjectConfig's appearance enum. */
 export const siteThemeNoFlashScript = (projectId: string, configured: 'light' | 'dark' | 'system' = 'light'): string =>
-  `(function(){try{var k='nibleaf.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';}catch(_){}})();`;
+  `(function(){try{var k='nibleaf.site.theme.'+${inlineScriptJson(projectId)};var s=localStorage.getItem(k);var c=${inlineScriptJson(configured)};var d=s==='dark'||(s!=='light'&&(c==='dark'||(c==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)));var r=d?'dark':'light';var e=document.documentElement;e.classList.remove('light','dark');e.classList.add(r);e.style.colorScheme=r;}catch(_){}})();`;
 
 export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const theme = resolveProjectTheme(config);

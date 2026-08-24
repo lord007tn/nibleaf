@@ -1,10 +1,10 @@
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
-import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
+import { ThemeProvider } from '@nibleaf/design-system/theme';
 import { isRtl, translateFn } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import type { QueryClient } from '@tanstack/react-query';
-import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter } from '@tanstack/react-router';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import appCss from '@/styles.css?url';
 
@@ -43,21 +43,17 @@ function RootComponent() {
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
-  const nonce = useRouter().options.ssr?.nonce;
   const { locale } = useLocale();
   return (
     <html lang={locale} dir={isRtl(locale) ? 'rtl' : 'ltr'} suppressHydrationWarning>
       <head>
-        {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} suppressHydrationWarning />
         <HeadContent />
       </head>
       <body>
         <ThemeProvider>
           <ConfirmProvider>{children}</ConfirmProvider>
+          <Toaster position="bottom-right" richColors />
         </ThemeProvider>
-        <Toaster position="bottom-right" richColors />
         <Scripts />
       </body>
     </html>

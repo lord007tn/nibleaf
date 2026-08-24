@@ -170,21 +170,22 @@ function SiteChrome() {
       return;
     }
     const root = document.documentElement;
-    const dashboardColorScheme = root.style.colorScheme;
     const dashboardTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const dashboardWasDark =
-      dashboardTheme === 'dark' ||
-      ((dashboardTheme === null || dashboardTheme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const dashboardUsesSystem = dashboardTheme !== 'light' && dashboardTheme !== 'dark';
+    const dashboardWasDark = dashboardTheme === 'dark' || (dashboardUsesSystem && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const dashboardResolvedTheme = dashboardWasDark ? 'dark' : 'light';
     return () => {
-      root.classList.toggle('dark', dashboardWasDark);
-      root.style.colorScheme = dashboardColorScheme;
+      root.classList.remove('light', 'dark');
+      root.classList.add(dashboardResolvedTheme);
+      root.style.colorScheme = dashboardResolvedTheme;
     };
   }, []);
   useEffect(() => {
     if (typeof document === 'undefined' || siteThemeHydratedFor !== projectId) {
       return;
     }
-    document.documentElement.classList.toggle('dark', siteTheme === 'dark');
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(siteTheme);
     document.documentElement.style.colorScheme = siteTheme;
   }, [projectId, siteTheme, siteThemeHydratedFor]);
 
