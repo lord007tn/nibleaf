@@ -383,7 +383,7 @@ function SiteChrome() {
                   </button>
                 ) : null}
 
-                <nav className="hidden shrink-0 items-center gap-5 text-sm md:flex">
+                <nav className="hidden shrink-0 items-center gap-5 text-sm lg:flex">
                   {headerLinks.map((link) => (
                     <a
                       key={`${link.label}-${link.href}`}
