@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { AppError, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { mutateProjectConfig } from './project-config';
+import { invalidatePublishedSiteConfig } from './sites';
 import { resolveProjectCapability } from './usage';
 
 type AddonIntent = 'read' | 'write';
@@ -275,6 +276,7 @@ export const updateProjectAddon = async (ctx: Context<HonoEnv>, projectId: strin
     await updateProjection(tx, authorization.organizationId, projectId);
     return next;
   });
+  invalidatePublishedSiteConfig(projectId);
   return serializeAddon(definition, row, capability);
 };
 
@@ -332,6 +334,7 @@ const setProjectAddonEnabled = async (ctx: Context<HonoEnv>, projectId: string, 
     await updateProjection(tx, authorization.organizationId, projectId);
     return next;
   });
+  invalidatePublishedSiteConfig(projectId);
   return serializeAddon(definition, row ?? undefined, capability);
 };
 

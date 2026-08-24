@@ -22,6 +22,6 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'How does search work?',
-    a: 'Every published site is indexed with Orama for full-text and fuzzy search, served directly from your API — no external service.',
+    a: 'The built-in Orama path provides full-text and fuzzy results. Source main also includes an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers; operators start in shadow mode and retain the legacy path for rollback.',
   },
 ];

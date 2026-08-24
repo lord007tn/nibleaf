@@ -6,15 +6,15 @@ describe('marketing sitemap', () => {
     const lastmodByPath = Object.fromEntries(MARKETING_SITEMAP.map((entry) => [entry.path, entry.lastmod]));
 
     expect(lastmodByPath).toEqual({
-      '/': '2026-08-17',
+      '/': '2026-08-24',
       '/ar': '2026-08-22',
       '/ar/documentation-platforms': '2026-08-22',
       '/cloud': '2026-07-13',
-      '/pricing': '2026-08-15',
+      '/pricing': '2026-08-24',
       '/self-hosting': '2026-08-15',
-      '/about': '2026-08-15',
+      '/about': '2026-08-24',
       '/contact': '2026-08-15',
-      '/developers': '2026-08-22',
+      '/developers': '2026-08-24',
       '/tools/rtl-documentation-readiness': '2026-08-19',
       '/compare/nibleaf-vs-mintlify': '2026-08-17',
       '/compare/nibleaf-vs-gitbook': '2026-08-17',
@@ -32,7 +32,7 @@ describe('marketing sitemap', () => {
     const xml = marketingSitemap('https://nibleaf.com');
 
     expect(xml.match(/<url>/g)).toHaveLength(entries.length);
-    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-08-15</lastmod>');
+    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-08-24</lastmod>');
     expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');

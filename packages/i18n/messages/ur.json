@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "انضمام غیر فعال ہو گیا",
   "settings_integrations_verifiedtoast": "انضمام کی توثیق ہو گئی",
   "settings_integrations_deletedtoast": "انضمام حذف کر دیا گیا",
-  "settings_integrations_testmessage": "Nibleaf انضمام کی توثیق کامیاب ہوگئی ۔"
+  "settings_integrations_testmessage": "Nibleaf انضمام کی توثیق کامیاب ہوگئی ۔",
+  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
+  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
+  "marketing.release.mcpTitle": "Read-only MCP control plane",
+  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
+  "marketing.release.mcpLabel": "Read the MCP guide",
+  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
 }

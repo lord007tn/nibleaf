@@ -124,7 +124,7 @@ export const nibleafProductLimitations = [
   'Live multi-user co-editing is not currently available.',
   'SAML/SCIM is not currently available.',
   'Adaptive content is not currently available.',
-  'A built-in AI assistant is not currently available.',
+  'Grounded answers require optional operator-configured providers and explicit project opt-in; they are not part of the v0.1.2 self-hosted artifact.',
 ] as const;
 
 const mintlifyPricing: PricingTable = {
@@ -303,7 +303,13 @@ export const nibleafVsMintlify: Comparison = {
       nibleaf: partial('GA4, Plausible, Git webhooks, and API access'),
       competitor: yes('Broad analytics, support, webhook, and websocket integrations'),
     },
-    { feature: 'AI assistant & agent', nibleaf: no('Not a current focus'), competitor: yes('Pro plan, metered by credits') },
+    {
+      feature: 'AI assistant & agent',
+      nibleaf: partial(
+        'Grounded answers and read-only MCP are in source main; provider setup is optional and the v0.1.2 artifact does not include them',
+      ),
+      competitor: yes('Pro plan, metered by credits'),
+    },
     { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
@@ -417,7 +423,11 @@ export const nibleafVsGitbook: Comparison = {
       nibleaf: partial('Invitations, JWT handoff, and page-scoped access; no adaptive personalization'),
       competitor: yes('Ultimate plan'),
     },
-    { feature: 'AI search & assistant', nibleaf: no('Not a current focus'), competitor: yes('Search from Premium; assistant from Ultimate') },
+    {
+      feature: 'AI search & assistant',
+      nibleaf: partial('Optional hybrid retrieval and grounded answers are in source main; they require operator configuration and project opt-in'),
+      competitor: yes('Search from Premium; assistant from Ultimate'),
+    },
     { feature: 'SAML SSO', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
@@ -425,7 +435,7 @@ export const nibleafVsGitbook: Comparison = {
     reasons: [
       'You need two-way GitLab sync today — Nibleaf’s two-way workflow currently targets GitHub.',
       'You need adaptive reader personalization rather than invitations, JWT handoff, and page-scoped access.',
-      'You want AI search and an AI assistant answering questions from your docs now.',
+      'You want a hosted AI assistant that is already operated for you, without configuring and evaluating optional retrieval and answer providers.',
       'You need SAML SSO or GitBook’s mature enterprise governance today.',
     ],
   },
@@ -441,7 +451,7 @@ export const nibleafVsGitbook: Comparison = {
   },
   verdict: [
     'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook says that path is not recommended or supported and it does not include the hosted workspace and editor.',
-    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references, with a public self-hosted release for operators. If you need two-way GitLab sync, adaptive content, AI answers, or SAML today, GitBook is the safer fit.',
+    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Source main also includes optional hybrid retrieval, grounded answers, and read-only MCP, but the published v0.1.2 self-hosted artifact does not. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
   ],
   faqs: [
     {
@@ -501,7 +511,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       feature: 'Built-in search',
-      nibleaf: yes('Full-text + fuzzy (Orama), no external service'),
+      nibleaf: partial('Built-in Orama path; optional Qdrant hybrid path is in source main but not the v0.1.2 artifact'),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
     {
@@ -584,7 +594,7 @@ const nibleafAlternativeEntry = (_vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. It now includes two-way GitHub authoring, pull-request previews, private reader access, and Scalar-powered OpenAPI references; it still lacks SAML/SCIM, adaptive content, and a built-in AI assistant. Its public AGPL-3.0 release can be self-hosted with Docker Compose.`,
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Source main includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP. It still lacks SAML/SCIM and adaptive content; the published v0.1.2 self-hosted artifact predates the latest capability set.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -693,7 +703,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of August 2026, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, built-in AI answers, and SAML SSO. Nibleaf now ships two-way GitHub authoring, immutable pull-request previews, private reader invitations, JWT handoff, and page-scoped access.',
+      a: 'As of August 2026, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, SAML SSO, and a published self-host image for the capabilities currently merged in source main. The source tree includes optional hybrid retrieval and grounded answers plus read-only MCP; providers and project opt-in remain explicit.',
     },
   ],
 };

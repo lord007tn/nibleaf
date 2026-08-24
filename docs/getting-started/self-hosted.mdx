@@ -3,7 +3,7 @@ title: 'Install Nibleaf on one Linux server'
 description: 'Install the pinned Nibleaf release with the guided installer or Docker Compose, then verify migrations, sign-up, storage, and publishing.'
 audience: 'operators evaluating or installing self-hosted Nibleaf'
 content_type: 'tutorial'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-24'
 verified_against: 'scripts/install.sh, docker-compose.prod.yml, and .env.production.example'
 lang: 'en'
 dir: 'ltr'
@@ -13,6 +13,12 @@ translation_key: 'getting-started/self-hosted'
 The recommended production path pulls the pinned multi-architecture image from
 GHCR. It does not compile the monorepo on the server. Complete this tutorial on
 a disposable host before moving real content.
+
+The published installer and self-host manifest currently identify v0.1.2. The
+August 2026 capability set is merged into source but is not a published image.
+Use this tutorial for the pinned artifact it downloads; do not substitute a
+`main` commit into production without the separate
+[combined migration review](/self-hosting/combined-release-migration).
 
 ## Prerequisites
 

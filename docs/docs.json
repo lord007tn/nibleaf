@@ -33,6 +33,7 @@
             "pages": [
               "product/authoring",
               "product/themes",
+              "product/add-ons",
               "product/markdown-mdx",
               "git-authoring",
               "product/publishing",
@@ -55,11 +56,17 @@
               "self-hosting/mcp",
               "self-hosting/search-ai",
               "self-hosting/production",
+              "self-hosting/combined-release-migration",
               "self-hosting/clickhouse-analytics",
               "self-hosting/usage-metering",
               "self-hosting/backups-upgrades",
               "self-hosting/troubleshooting"
             ]
+          },
+          {
+            "group": "Releases",
+            "x-nibleaf": { "slug": "releases" },
+            "pages": ["releases/august-2026-capabilities"]
           },
           {
             "group": "Reference",
@@ -111,6 +118,7 @@
             "pages": [
               "ar/product/authoring",
               "ar/product/themes",
+              "ar/product/add-ons",
               "ar/product/markdown-mdx",
               "ar/git-authoring",
               "ar/product/publishing",
@@ -133,11 +141,17 @@
               "ar/self-hosting/mcp",
               "ar/self-hosting/search-ai",
               "ar/self-hosting/production",
+              "ar/self-hosting/combined-release-migration",
               "ar/self-hosting/clickhouse-analytics",
               "ar/self-hosting/usage-metering",
               "ar/self-hosting/backups-upgrades",
               "ar/self-hosting/troubleshooting"
             ]
+          },
+          {
+            "group": "الإصدارات",
+            "x-nibleaf": { "slug": "releases" },
+            "pages": ["ar/releases/august-2026-capabilities"]
           },
           {
             "group": "المرجع",

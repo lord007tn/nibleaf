@@ -71,7 +71,10 @@ jobs:
           pnpm --filter @nibleaf/database exec prisma migrate deploy
           pnpm --filter @nibleaf/database exec prisma migrate status
           pnpm --filter @nibleaf/database smoke
+          # Preserve migration ownership: add-ons -> integrations (ApiKey.expiresAt) -> MCP.
           pnpm --filter @nibleaf/database smoke:addons-migration
+          pnpm --filter @nibleaf/database smoke:integrations-migration
+          pnpm --filter @nibleaf/database smoke:mcp-migration
 
       - name: Exercise ClickHouse analytics migrations
         env:
@@ -121,6 +124,26 @@ jobs:
           # while Rollup renders production chunks on GitHub-hosted runners.
           NODE_OPTIONS: --max-old-space-size=6144
         run: pnpm build:app
+
+      - name: Smoke production app runtime
+        shell: bash
+        run: |
+          pnpm --filter @nibleaf/app start > /tmp/nibleaf-app-runtime.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
+              break
+            fi
+            if ! kill -0 "$app_pid" 2>/dev/null; then
+              cat /tmp/nibleaf-app-runtime.log
+              exit 1
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
+          grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
+          grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
 
       - name: Enforce public JavaScript budget
         shell: bash

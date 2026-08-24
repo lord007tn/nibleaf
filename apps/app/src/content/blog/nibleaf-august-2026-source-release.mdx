@@ -1,0 +1,132 @@
+---
+title: 'Nibleaf’s August 2026 source release: six capabilities, one migration path'
+metaTitle: 'Nibleaf August 2026 source release: search, themes, usage, add-ons, integrations, and MCP'
+description: 'A technical launch note for the capabilities merged into Nibleaf main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.'
+datePublished: '2026-08-24'
+dateModified: '2026-08-24'
+tags: ['announcement', 'release', 'operations']
+related: ['documentation-templates-harbor-manuscript-signal', 'self-host-documentation-site-docker-compose', 'docs-should-live-in-plain-markdown']
+translationOf: 'nibleaf-august-2026-source-release-ar'
+readingMinutes: 10
+---
+
+Six Nibleaf capability branches are now integrated into the public `main`
+source tree: hybrid search diagnostics, provider-neutral usage, project add-ons,
+portable documentation themes, project integrations, and a read-only MCP control
+plane.
+
+This is a source-release announcement, not a deployment receipt. No production
+deployment or new self-hosted image is implied. The checksummed installer still
+points to v0.1.2; operators should wait for a separately published v0.2 image or
+build the reviewed source themselves before following the new migration path.
+
+## Search can move forward without removing the rollback
+
+The new search path combines tenant-filtered BM25 and dense vectors in Qdrant.
+The server derives the project, deployment, version, language, visibility, and
+reader page grants; a browser cannot submit its own retrieval scope. Arabic,
+English, and mixed-language content share one contract while keeping language-
+aware normalization and ranking lanes.
+
+`SEARCH_RUNTIME=shadow` is the safe starting point. It builds and evaluates the
+hybrid path while readers continue receiving legacy results. After operators
+verify scoped counts, authorization negatives, relevance, and latency, they can
+switch to `hybrid`. Setting `SEARCH_RUNTIME=legacy` remains the immediate
+retrieval rollback.
+
+Grounded answers are separate. They require an enabled answer runtime, a pinned
+model, and an explicit project setting. Results mode works without an answer
+model. Nibleaf validates the complete structured answer and its citations before
+returning it, and refuses unsupported claims rather than streaming unchecked
+model text.
+
+## Usage describes consumption without pretending to be billing
+
+The usage contract records provider-neutral events and reconciled aggregates.
+ClickHouse stores high-volume facts and rollups; PostgreSQL retains plans,
+entitlements, deletion fences, and export checkpoints. Unknown provider state
+stays unknown instead of becoming zero.
+
+Configured limit behavior is advisory in this source release. There is no
+payment flow and no claim of atomic quota enforcement. That boundary is
+deliberate: a future provider can consume finalized aggregates without owning
+tenant identity, authorization, or raw reader data.
+
+## Add-ons make optional behavior explicit
+
+Project add-ons move optional site and publishing behavior into a durable,
+audited registry. The current catalog covers feedback, edit suggestions, issue
+links, consent presentation, CI checks, broken-link checks, grammar linting, and
+preview deployments. Grammar linting is marked preview; a catalog entry does not
+promise that every operator or plan has enabled it.
+
+Availability combines the current plan and entitlement with the durable project
+setting. Configuration uses revision checks, URL templates accept only documented
+placeholders over HTTP(S), and the public projection fails closed when current
+availability is unknown. Consent settings feed the same published-site boundary
+as analytics rather than creating a second privacy switch.
+
+## Integrations have clear credential ownership
+
+The integrations engine distinguishes project-managed connections from
+instance-managed providers. Project webhook credentials are encrypted at rest
+and become write-only after saving. Instance credentials remain with the
+operator and are never exposed through project settings.
+
+The catalog reports configured, unavailable, healthy, unhealthy, or unverified
+state without turning provider absence into success. Destructive lifecycle
+operations require authenticated dashboard authorization and explicit
+confirmation. The final MCP surface does not expose those mutations.
+
+## Themes now travel as data or as real repositories
+
+Harbor, Manuscript, and Signal are structural templates, not color presets.
+They change navigation, content framing, and page-outline composition while
+rendering the same Markdown and MDX source. Draft theme state remains separate
+from the immutable theme embedded in a published deployment.
+
+Teams can exchange bounded, schema-validated theme JSON without executable CSS
+or JavaScript. They can also generate an ordinary runnable Git repository with
+editable components, layouts, styles, assets, adapters, and fixtures. Platform,
+shared-content, and customer-owned paths have explicit ownership so a sync can
+reconcile changes instead of overwriting them blindly.
+
+## MCP is project-bound and read-only
+
+The MCP endpoint authenticates scoped API keys bound to one project. It can read
+project metadata, content, search diagnostics, usage and entitlements, add-on
+state, integration health, operations, and theme data. Theme import is preview-
+only with `apply=false`; the protocol does not provide content, integration, or
+configuration mutations.
+
+Keys can expire and rotate, wildcard legacy scopes are normalized without
+granting MCP authority, and audit events record bounded operation metadata rather
+than content or credentials. Private reader authorization and project scope are
+still derived on the server.
+
+## One ordered migration and rollback path
+
+The integrated PostgreSQL sequence is intentional:
+
+1. search configuration and diagnostics;
+2. usage plans, entitlements, and ingest state;
+3. project add-ons;
+4. project integrations; and
+5. MCP keys and audit state.
+
+Integrations owns the nullable `ApiKey.expiresAt` column. MCP relies on that
+ownership and preserves the column during its rollback. Reverse application
+components before reversing schema, and reverse MCP before integrations.
+ClickHouse and Qdrant remain optional operational systems with separate backup,
+cutover, and rollback checks.
+
+## What to verify before exposing the source release
+
+Run the migration and runtime smoke tests against disposable PostgreSQL,
+ClickHouse, and Qdrant instances. Then run documentation parity, self-host
+integrity, dead-code, type, lint, unit, production-build, and public-bundle gates.
+For a real release, also verify the exact image digest and rendered English/LTR
+and Arabic/RTL behavior on desktop and mobile.
+
+The source tree provides the contracts; an image, deployment, or provider result
+needs its own evidence. Start with the [operator migration guide](https://docs.nibleaf.com/self-hosting/combined-release-migration), the [MCP reference](https://docs.nibleaf.com/self-hosting/mcp), and the [template announcement](/blog/documentation-templates-harbor-manuscript-signal).

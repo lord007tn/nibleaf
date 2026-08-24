@@ -1,3 +1,4 @@
+import { translateFn } from '@nibleaf/i18n';
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
@@ -27,7 +28,7 @@ const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: 
   {
     title: 'Search, SEO & analytics',
     rows: [
-      { label: 'Built-in full-text + fuzzy search (Orama)', cloud: true, self: true },
+      { label: translateFn('marketing.release.searchCapability'), cloud: true, self: true },
       { label: 'SSR, canonicals, JSON-LD, sitemaps, hreflang', cloud: true, self: true },
       { label: 'Product analytics; Cloudflare also processes hosted traffic', cloud: true, self: true },
     ],

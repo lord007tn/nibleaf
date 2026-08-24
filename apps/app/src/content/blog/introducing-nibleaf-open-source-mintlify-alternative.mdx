@@ -3,7 +3,7 @@ title: 'Why we built Nibleaf for teams that want to own their docs'
 metaTitle: 'Why we built Nibleaf for documentation ownership'
 description: 'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-17'
+dateModified: '2026-08-24'
 tags: ['announcement', 'open-source']
 related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl']
 readingMinutes: 7
@@ -50,7 +50,7 @@ Because snapshots are immutable, rollback is trivial: republish a previous snaps
 
 ## Search that ships in the box
 
-Docs search is where hosted platforms usually earn their subscription and static generators usually send you to a third party. Nibleaf ships search inside the platform: full-text plus fuzzy matching powered by Orama, served from your own instance with the Cmd+K interface readers expect. There is no Algolia account to configure, no crawler to schedule, and no search-as-a-service bill.
+Docs search is where hosted platforms usually earn their subscription and static generators usually send you to a third party. Nibleaf keeps a built-in Orama full-text and fuzzy path behind the Cmd+K interface, with no Algolia account or crawler required. Source `main` also includes an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers. Operators start that path in shadow mode, supply and evaluate their chosen embedding and answer providers, and retain `SEARCH_RUNTIME=legacy` as the immediate rollback. The checksummed v0.1.2 self-hosted artifact remains on the built-in path until a later image is published.
 
 Search selects an Arabic tokenizer for Arabic projects, applies spelling normalization, and adds conservative light morphology for common prefixes, attached pronouns, and plural or dual forms. Exact tokens retain the strongest ranking, while code, mixed identifiers, short words, and ambiguous terms are protected from stemming.
 

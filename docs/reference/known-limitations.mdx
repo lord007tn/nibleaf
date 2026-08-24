@@ -3,7 +3,7 @@ title: 'Known limitations and product boundaries'
 description: 'Evaluate Nibleaf honestly against beta operations, identity, Git workflows, API portals, exports, private readers, and search requirements.'
 audience: 'technical evaluators, operators, and documentation leads'
 content_type: 'reference'
-last_reviewed: '2026-08-21'
+last_reviewed: '2026-08-24'
 verified_against: 'README.md, apps/app/src/lib/comparison-data.ts, and current main branch'
 lang: 'en'
 dir: 'ltr'
@@ -76,16 +76,46 @@ Chromium-compatible browser in the worker image.
 
 ## Search and multilingual behavior
 
-Search is full-text and fuzzy, not semantic retrieval. Language-specific
-tokenization and Arabic normalization improve matching but do not guarantee
-that every inflected or synonymous term resolves to the intended page. Build
-acceptance queries from real reader vocabulary.
+Nibleaf retains the legacy full-text/fuzzy runtime as an immediate rollback, and
+the current source also includes tenant-safe hybrid retrieval plus optional
+grounded answers. Hybrid search requires Qdrant and an embedding provider; the
+legacy runtime does not. Keep `SEARCH_RUNTIME=shadow` until project-, version-,
+language-, and authorization-scoped evaluation supports a cutover. No benchmark
+or provider result is implied by the presence of the implementation.
+
+Language-specific tokenization, Arabic normalization, and conservative light
+morphology improve matching but do not guarantee that every inflected,
+synonymous, dialectal, or ambiguous term resolves to the intended page. A
+grounded answer is withheld when evidence is insufficient. Build acceptance
+queries from real reader vocabulary and retain the tested legacy rollback.
 
 Each language has an independent page tree. Nibleaf does not translate source
 content automatically or guarantee parity between languages. The Languages
 settings report default-branch coverage using explicit translation keys and the
 same-path fallback used by published `hreflang`; operators still own translation
 quality and cutover parity.
+
+## Capability and integration boundaries
+
+Usage metering is provider-neutral and does not enable billing or payments.
+Coverage may be complete, partial, or unavailable; missing evidence must not be
+displayed as zero. Entitlements and meter limits remain advisory in this source
+capability set.
+
+Add-ons expose reader actions, consent controls, previews, and local publish
+checks. The grammar linter is a preview-quality bounded check, not a general
+proofreading or writing-quality service. A project entitlement can make an
+add-on unavailable even when it appears in the catalog.
+
+An integration catalog entry is discovery metadata, not proof that a provider
+runtime, credential, or external account is available. Configurable credentials
+are encrypted with a dedicated operator-managed key. Provider-visible tests and
+destructive deletion require explicit actions and safe confirmation boundaries.
+
+The HTTP MCP endpoint is disabled by default and project-bound. Its new-domain
+adapters are read-only; it cannot publish, reindex, export usage, accept provider
+credentials, or mutate add-ons, themes, usage, search, or integrations. Theme
+import preview validates a template without writing project state.
 
 ## Report a blocking gap
 

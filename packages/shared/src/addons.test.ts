@@ -5,6 +5,7 @@ import {
   defaultProjectAddonProvisioning,
   legacyConsentBannerEnabled,
   parseAddonConfigRecord,
+  projectAddonRowsForDelivery,
   projectConfigWithAddons,
 } from './addons';
 
@@ -132,5 +133,63 @@ describe('Project.config compatibility projection', () => {
     expect(addons).not.toHaveProperty('issueUrl');
     expect(addons).toMatchObject({ editSuggestions: true, issueLinks: true, futureField: 'keep' });
     expect(JSON.parse(JSON.stringify(projected))).toEqual(projected);
+  });
+});
+
+describe('delivery entitlement projection', () => {
+  const assignment = (overrides: Record<string, unknown> = {}) => ({
+    status: 'active',
+    effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+    plan: {
+      key: 'pro',
+      active: true,
+      entitlements: [],
+    },
+    ...overrides,
+  });
+  const feedback = [{ key: 'feedback' as const, enabled: true, config: { placement: 'after-content', presentation: 'compact' } }];
+  const now = new Date('2026-08-24T00:00:00.000Z');
+
+  it('fails closed for missing and expired plan state', () => {
+    expect(projectAddonRowsForDelivery(feedback, null, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    expect(
+      projectAddonRowsForDelivery(feedback, assignment({ expiresAt: new Date('2026-08-23T00:00:00.000Z') }), now).find(
+        (addon) => addon.key === 'feedback',
+      ),
+    ).toMatchObject({ enabled: false });
+  });
+
+  it('suppresses disabled and unavailable entitlements without changing the stored preference', () => {
+    const disabled = assignment({
+      plan: {
+        key: 'pro',
+        active: true,
+        entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }],
+      },
+    });
+    const unavailable = assignment({
+      plan: {
+        key: 'pro',
+        active: true,
+        entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: { active: false } }],
+      },
+    });
+
+    expect(projectAddonRowsForDelivery(feedback, disabled, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    expect(projectAddonRowsForDelivery(feedback, unavailable, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    expect(feedback[0]?.enabled).toBe(true);
+  });
+
+  it('keeps meter quantities and limits outside capability availability', () => {
+    const entitled = assignment({
+      plan: {
+        key: 'pro',
+        active: true,
+        entitlements: [{ capabilityKey: 'addons.feedback', enabled: true, meter: { active: true }, limit: 0n, quantity: 10n }],
+      },
+    });
+
+    expect(projectAddonRowsForDelivery(feedback, entitled, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: true });
   });
 });

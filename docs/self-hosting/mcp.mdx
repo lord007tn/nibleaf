@@ -174,6 +174,10 @@ rollback drops MCP audit data and those provenance columns, but deliberately
 preserves the shared `ApiKey.expiresAt` field and does not restore wildcard
 authority. Back up audit records first if your retention policy requires them.
 
+Because MCP is the final dependent migration, disable and reverse it before the
+integration schema. Follow the complete reverse order in the
+[combined release migration guide](/self-hosting/combined-release-migration).
+
 ## Troubleshoot safely
 
 - `503 mcp:disabled`: enable MCP on the API service and recreate it.

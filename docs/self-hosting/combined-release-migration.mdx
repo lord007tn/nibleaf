@@ -1,0 +1,132 @@
+---
+title: 'Migrate and roll back the combined capability release'
+description: 'Apply the search, usage, add-on, integration, and MCP migrations in dependency order, verify degraded states, and reverse them safely.'
+audience: 'self-hosted Nibleaf operators preparing an upgrade from the published v0.1.2 artifact'
+content_type: 'how-to'
+last_reviewed: '2026-08-24'
+verified_against: 'packages/database/prisma/migrations/20260823180000 through 20260823240000, packages/clickhouse/src/migrations.ts, and the feature operator guides'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/combined-release-migration'
+---
+
+This runbook covers the capability set merged into `main` through MCP commit
+`9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c`. The published self-host manifest
+still identifies v0.1.2. Do not apply these instructions to a production v0.1.2
+installation until a matching image or reviewed source build exists. A merged
+branch is not a released container, and this documentation change performs no
+deployment.
+
+## Establish the recovery point
+
+Record the current image tag and digest, application commit, environment file
+revision, and database migration status. Stop nonessential writes, then capture
+Postgres and object storage from one recovery point. If ClickHouse is enabled,
+capture its schema version and the retention/export evidence required by your
+policy. Test the restore in an isolated environment before changing production.
+
+Keep MCP disabled and search in `shadow` or `legacy` during the database change.
+Do not enable integrations, add-ons, or usage consumers merely because the
+tables exist. Unknown provider health or usage coverage remains unknown, not
+zero and not successful.
+
+## Apply migrations in dependency order
+
+Install the exact application revision and generate the Prisma client before
+typechecking or starting services. The normal deployment command applies the
+five additive Postgres migrations in filename order:
+
+1. `20260823180000_search_configuration_diagnostics`
+2. `20260823210000_usage_metering`
+3. `20260823220000_project_addons`
+4. `20260823230000_add_project_integrations`
+5. `20260823240000_mcp_control_plane`
+
+The integrations migration owns nullable `ApiKey.expiresAt` as a shared
+authentication prerequisite. The MCP migration depends on it and must remain
+last. Do not copy that column into the MCP migration or remove it while MCP or
+another consumer still depends on it.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm db:deploy
+pnpm --filter @nibleaf/database exec prisma migrate status
+```
+
+When ClickHouse-backed analytics and usage are enabled, apply their forward-only
+migrations with a time-limited operator identity after the compatible
+application packages are installed:
+
+```bash
+pnpm analytics:migrate
+```
+
+The usage UI and API must report unavailable or partial state until coverage and
+reconciliation are complete. Do not infer a completed backfill from successful
+table creation.
+
+## Start conservatively and verify
+
+Start API, app, and worker processes with MCP disabled. Confirm health, sign-in,
+one project read, and one publish. Then verify each boundary before enabling the
+next one:
+
+1. Search settings update only the target project's search configuration;
+   diagnostics expose bounded metadata without content or vectors. Keep hybrid
+   retrieval in shadow until project/language/version evidence supports cutover.
+2. Usage totals distinguish complete, partial, and unavailable coverage;
+   entitlements are advisory and no payment provider is enabled.
+3. Existing projects have durable add-on rows, preserved recognized consent,
+   and an initial audit trail. Test one signed-out accept and decline flow.
+4. Integration secrets encrypt and decrypt with the dedicated key. Verify one
+   non-production connection without placing credentials in logs or screenshots.
+5. Issue a new project-bound MCP key with `mcp:connect` and one exact read scope.
+   Confirm capabilities, then revoke it and confirm access stops.
+
+Run the migration smoke commands before treating the schema as ready:
+
+```bash
+pnpm --filter @nibleaf/database smoke:addons-migration
+pnpm --filter @nibleaf/database smoke:integrations-migration
+pnpm --filter @nibleaf/database smoke:mcp-migration
+```
+
+Search, usage, add-ons, integrations, and MCP have separate operator guides.
+Keep the links in the [August 2026 source capability notes](/releases/august-2026-capabilities)
+with the durable upgrade record.
+
+## Roll back in reverse order
+
+Prefer runtime rollback over destructive schema reversal. Disable MCP and stop
+its clients first. Return search to `SEARCH_RUNTIME=legacy`, disable optional
+ClickHouse reads, deactivate affected plans or add-ons, and stop integration
+mutations while the prior application image is restored.
+
+If a schema rollback is still required, deploy code that no longer reads the
+affected schema, preserve required audit/export evidence, stop all writers, and
+reverse dependencies in this order:
+
+1. MCP control-plane tables and MCP-owned API-key provenance columns.
+2. Integration tables and encrypted credentials. Remove shared
+   `ApiKey.expiresAt` only after MCP is gone and no remaining consumer needs it.
+3. Add-on state and audit history.
+4. Usage consumers, Postgres usage state, then ClickHouse usage structures.
+5. Search diagnostics state. The application can normally leave this additive
+   table in place while using the legacy runtime.
+
+Prisma does not automatically execute the repository's `rollback.sql` files.
+For a successfully applied migration, ship reviewed down statements as a new,
+later forward migration. Use `prisma migrate resolve --rolled-back` only for a
+failed migration after partial statements have been safely reversed, never to
+rewrite the history of a successful production migration. Follow the detailed
+destructive boundaries in [usage metering](/self-hosting/usage-metering),
+[integrations](/reference/integrations-engine), [MCP](/self-hosting/mcp),
+[add-ons](/product/add-ons), and [search](/self-hosting/search-ai).
+
+## Record the decision
+
+Keep the exact image or commit, migration output, feature flags, provider health,
+smoke results, and restore evidence in the private operational system. Do not
+place customer data, credentials, internal hosts, usage exports, or private
+provider responses in this public repository.

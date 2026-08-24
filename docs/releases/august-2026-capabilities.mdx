@@ -1,0 +1,97 @@
+---
+title: 'August 2026 source capability notes'
+description: 'Review the six merged source capabilities, their product boundaries, migration requirements, and availability before planning an upgrade.'
+audience: 'documentation teams, evaluators, and self-hosted operators tracking Nibleaf main'
+content_type: 'explanation'
+last_reviewed: '2026-08-24'
+verified_against: 'merged PRs #103 through #108 on main at 9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'releases/august-2026-capabilities'
+---
+
+Six capability pull requests are integrated in Nibleaf source on `main`. They
+form one coherent control plane for search, usage, add-ons, themes,
+integrations, and agent access. This is source availability, not deployment
+evidence: the committed self-host manifest still points to v0.1.2, and no Cloud
+or self-host deployment is performed by these documentation changes.
+
+## Integrated source baseline
+
+| Capability | Pull request | Main commit | What changed |
+| --- | --- | --- | --- |
+| Project add-ons | #103 | `7fd56e22810fca0b073ec6a6d81cfa2c8ec5e874` | Durable add-on state, entitlement-aware availability, consent controls, reader actions, publish checks, and audit history. |
+| Documentation themes | #104 | `4afdce5ad3ad3010ef33238015baaa36ee770871` | Harbor, Manuscript, and Signal render distinct responsive structures with safe template import/export and portable Git repositories. |
+| Usage metering | #105 | `7210ca4481192da9f2ba2a0df36cc1a08caef7f0` | Provider-neutral exact quantities, advisory entitlements, reconciliation, export, deletion, and degraded states across Postgres and optional ClickHouse. |
+| Search configuration | #106 | `24b47d096562c8f222880ca5275a6c623e0c2594` | Project settings, privacy-safe index diagnostics, bounded reindex controls, and reader configuration for the hybrid search foundation. |
+| Integrations engine | #107 | `767b2fa6ef0a63c4c8498696038ecc35419e6d25` | Project-owned provider connections, encrypted credentials, revisions, idempotency, verification, confirmation, audit, and key rotation. |
+| MCP control plane | #108 | `9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c` | Authenticated project-bound HTTP MCP with least-privilege read adapters, audit, expiration, host checks, and bounded rate limiting. |
+
+## Search and grounded answers
+
+The search domain supports tenant-, deployment-, language-, version-, and
+reader-authorization-scoped retrieval. Project settings expose result count,
+language/version filters, and optional grounded answers. Diagnostics show
+health, counts, stable issue codes, and bounded identifiers; they never return
+document content or vectors.
+
+Hybrid operation is not a universal quality claim. Keep `SEARCH_RUNTIME=shadow`
+until real acceptance queries and provider evidence support a cutover. The
+immediate retrieval rollback remains `legacy`. Unsupported grounded answers are
+withheld rather than invented. See [search and AI operations](/self-hosting/search-ai).
+
+## Usage and entitlement truth
+
+Usage facts use provider-neutral meters and exact integer quantities. Postgres
+owns plans, assignments, entitlements, checkpoints, and bounded low-volume
+receipts; optional ClickHouse stores high-volume facts and rollups. Coverage can
+be complete, partial, or unavailable. Missing history is never presented as
+zero, and the feature does not enable billing or payments.
+
+Limits remain advisory in this source capability set. Export waits for pending
+or late usage to reconcile, and privacy deletion covers both stores and search
+erasure boundaries. See [usage metering](/self-hosting/usage-metering).
+
+## Add-ons and consent
+
+Project add-ons group reader engagement, privacy, and publishing helpers behind
+durable state and explicit entitlements. Feedback records a bounded sentiment
+event; edit and issue links require safe URL templates; consent gates optional
+analytics; local publish checks validate internal links and an explicitly
+preview-quality grammar linter. See [project add-ons](/product/add-ons).
+
+## Portable documentation themes
+
+Harbor, Manuscript, and Signal now own different reader structures rather than
+acting as color presets. All three use the same Markdown/MDX contract, semantic
+tokens, localization, search, metadata, and immutable publication boundary.
+Theme templates are deterministic, schema-validated JSON without executable
+CSS or JavaScript. Standalone Git exports separate platform, shared-content, and
+customer-owned files. See [documentation themes](/product/themes).
+
+## Integrations and MCP
+
+The integration engine separates external provider connections from add-ons and
+usage. It encrypts configurable credentials with a dedicated key, redacts
+responses and audits, uses revisions and idempotency, and requires explicit
+confirmation for destructive deletion. A provider listed in the catalog is not
+proof that its runtime or credentials are available.
+
+MCP exposes project-bound read adapters for capabilities, published content,
+search configuration and diagnostics, aggregate usage, entitlements, add-ons,
+theme catalogs/templates, integration summaries, and bounded operational
+metadata. It cannot publish, reindex, export usage, accept provider credentials,
+or mutate the new domains. Theme-import preview validates without writing. See
+[integrations](/reference/integrations-engine) and [MCP](/self-hosting/mcp).
+
+## Upgrade boundary
+
+The Postgres migrations must run in timestamp order, with integrations before
+MCP because integrations owns `ApiKey.expiresAt`. Optional ClickHouse migrations
+and reconciliation have their own gate. Read the
+[combined migration and rollback guide](/self-hosting/combined-release-migration)
+before selecting a source revision or future image.
+
+Do not replace the v0.1.2 installer, compose digest, or container reference with
+these commits. A future published artifact needs its own build, security and
+migration checks, exact digest, release notes, and signed-out runtime validation.
