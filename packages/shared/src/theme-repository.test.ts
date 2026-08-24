@@ -82,6 +82,12 @@ describe('Git-native theme repository contract', () => {
     expect(component?.content).toContain('../paraglide/messages.js');
     expect(component?.content).toContain("from 'lucide-react'");
     expect(component?.content).toContain('normalizeDocumentationMarkdown(page.content)');
+    expect(component?.content).toContain('useScopedDocumentation(snapshot)');
+    expect(component?.content).toContain('data-scope="language"');
+    expect(component?.content).toContain('data-scope="version"');
+    expect(component?.content).toContain('data-documentation-search');
+    expect(component?.content).toContain('moveFocusToFirstSearchResult(event)');
+    expect(component?.content).not.toContain('<div className="search"');
     expect(component?.content).not.toMatch(/[⌕↗]/u);
     expect(component?.content).not.toMatch(
       /['"](?:Search documentation|GitHub|Documentation|Choose documentation page|On this page|Overview|Next steps|Chapters|Command index|Customer-owned component|Nibleaf sync preserves it)['"]/u,
@@ -91,7 +97,13 @@ describe('Git-native theme repository contract', () => {
     expect(themeStyles?.ownership).toBe('CUSTOMER');
     expect(themeStyles?.content).toContain('.mdx-tooltip:hover .mdx-tooltip-content');
     expect(themeStyles?.content).toContain('.mdx-tooltip:focus-within .mdx-tooltip-content');
+    expect(themeStyles?.content).toContain('.documentation-search');
+    expect(themeStyles?.content).toContain('.scope-controls');
+    expect(themeStyles?.content).toContain('padding-inline-start:2rem');
+    expect(themeStyles?.content).toContain('padding-inline:.5rem 1.7rem');
+    expect(themeStyles?.content).not.toContain('padding:.45rem .7rem .45rem 2rem');
     expect(byPath.get('messages/ar.json')?.content).toContain('اختر صفحة التوثيق');
+    expect(byPath.get('messages/en.json')?.content).toContain('No pages match this search.');
     expect(JSON.parse(byPath.get(THEME_REPOSITORY_MANIFEST_PATH)?.content ?? '{}').template).toEqual({ id: templateId, version: 1 });
     expect(JSON.parse(byPath.get(THEME_REPOSITORY_SNAPSHOT_PATH)?.content ?? '{}').project.config.theme).toEqual({
       preset: templateId,
