@@ -1,4 +1,5 @@
 import type { Prisma } from '@nibleaf/database';
+import type { ProjectConfig } from '@nibleaf/validators';
 import { z } from 'zod';
 import { conflict, notFound } from '@/errors';
 
@@ -36,3 +37,17 @@ export const mutateProjectConfig = async (
 
   throw conflict('Project configuration changed repeatedly. Retry the update.', { projectId });
 };
+
+/** Update exactly one top-level config section using the same optimistic retry
+ * primitive used by multi-section derived mutations such as theme imports. */
+export const updateProjectConfigSection = <Section extends keyof ProjectConfig>(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  projectId: string,
+  section: Section,
+  createSection: (current: unknown) => ProjectConfig[Section],
+) =>
+  mutateProjectConfig(tx, organizationId, projectId, (current) => ({
+    ...current,
+    [section]: createSection(current[section]),
+  }));

@@ -1,20 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  ADDON_REGISTRY,
-  addonAvailable,
-  addonConfigSchemas,
-  legacyConsentBannerEnabled,
-  parseAddonConfigRecord,
-  projectConfigWithAddons,
-} from './addons';
-
-describe('add-on availability', () => {
-  it('lets an explicit entitlement override plan eligibility in either direction', () => {
-    const definition = ADDON_REGISTRY.feedback;
-    expect(addonAvailable(definition, { plan: 'unknown', entitlements: { 'addons.feedback': true } })).toBe(true);
-    expect(addonAvailable(definition, { plan: 'free', entitlements: { 'addons.feedback': false } })).toBe(false);
-  });
-});
+import { addonConfigSchemas, legacyConsentBannerEnabled, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 
 describe('legacy consent migration', () => {
   it('prefers a valid explicit consent add-on value', () => {

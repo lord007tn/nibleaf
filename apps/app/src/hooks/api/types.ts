@@ -195,7 +195,17 @@ export interface ProjectAddon {
     plans: readonly string[];
     entitlement: `addons.${AddonId}`;
     available: boolean;
-    plan: string;
+    schemaVersion: 1;
+    projectId: string;
+    capabilityKey: string;
+    availability: 'complete' | 'unavailable';
+    decision: 'enabled' | 'disabled' | 'unknown';
+    planKey: string | null;
+    source: 'plan' | 'compatibility' | null;
+    limit: string | null;
+    meterKey: string | null;
+    behavior: 'observe' | 'warn' | 'block';
+    enforcement: 'advisory';
   };
 }
 

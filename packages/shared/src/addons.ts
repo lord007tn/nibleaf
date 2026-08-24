@@ -184,17 +184,6 @@ export const addonDefinitions = ADDON_IDS.map((id) => ADDON_REGISTRY[id]);
 
 export const isAddonId = (value: string): value is AddonId => ADDON_IDS.some((id) => id === value);
 
-export const addonAvailable = (
-  definition: AddonDefinition,
-  availability: { plan: string; entitlements?: Readonly<Record<string, boolean>> },
-): boolean => {
-  const override = availability.entitlements?.[definition.availability.entitlement];
-  if (override !== undefined) {
-    return override;
-  }
-  return definition.availability.state !== 'coming_soon' && definition.availability.plans.includes(availability.plan);
-};
-
 export interface ProjectAddonProjectionRow {
   key: AddonId;
   enabled: boolean;

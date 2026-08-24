@@ -4,7 +4,6 @@ import {
   type AddonDefinition,
   type AddonId,
   addonAuditActionSchema,
-  addonAvailable,
   addonDefinitions,
   isAddonId,
   projectConfigWithAddons,
@@ -17,13 +16,23 @@ import { z } from 'zod';
 import { AppError, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { mutateProjectConfig } from './project-config';
-import { parseWorkspaceMetadata } from './workspace';
+import { resolveProjectCapability } from './usage';
 
 type AddonIntent = 'read' | 'write';
 
-interface WorkspaceAvailability {
-  plan: string;
-  entitlements: Record<string, boolean>;
+interface AddonCapabilityResolution {
+  schemaVersion: 1;
+  projectId: string;
+  capabilityKey: string;
+  availability: 'complete' | 'unavailable';
+  decision: 'enabled' | 'disabled' | 'unknown';
+  planKey: string | null;
+  source: 'plan' | 'compatibility' | null;
+  limit: string | null;
+  meterKey: string | null;
+  behavior: 'observe' | 'warn' | 'block';
+  enforcement: 'advisory';
+  available: boolean;
 }
 
 const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, intent: AddonIntent) => {
@@ -36,10 +45,10 @@ const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, 
     }
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, organizationId: true, config: true, organization: { select: { metadata: true } } },
+      select: { id: true, organizationId: true },
     });
     if (!project) throw notFound('project', { id: projectId });
-    return { project, actorUserId: null, actorApiKeyId: apiKey.id };
+    return { organizationId: project.organizationId, actorUserId: null, actorApiKeyId: apiKey.id };
   }
 
   const user = ctx.get('user');
@@ -52,9 +61,8 @@ const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, 
     select: {
       id: true,
       organizationId: true,
-      config: true,
       organization: {
-        select: { metadata: true, members: { where: { userId: user.id }, take: 1, select: { role: true } } },
+        select: { members: { where: { userId: user.id }, take: 1, select: { role: true } } },
       },
     },
   });
@@ -63,16 +71,7 @@ const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, 
   if (intent === 'write' && !roleAtLeast(role, MemberRole.ADMIN)) {
     throw new AppError({ code: 'auth:insufficient_role', message: 'Project administrator access is required.' });
   }
-  return { project, actorUserId: user.id, actorApiKeyId: null };
-};
-
-const workspaceAvailabilitySchema = z
-  .object({ plan: z.string().max(40).default('free'), entitlements: z.record(z.string(), z.boolean()).default({}) })
-  .passthrough();
-
-const workspaceAvailability = (metadata: string | null): WorkspaceAvailability => {
-  const parsed = workspaceAvailabilitySchema.safeParse(parseWorkspaceMetadata(metadata));
-  return parsed.success ? { plan: parsed.data.plan, entitlements: parsed.data.entitlements } : { plan: 'free', entitlements: {} };
+  return { organizationId: project.organizationId, actorUserId: user.id, actorApiKeyId: null };
 };
 
 const addonError = (
@@ -106,15 +105,33 @@ const validateConfig = <Id extends AddonId>(addonId: Id, config: unknown) => {
 const configurationComplete = (addonId: AddonId, config: Record<string, unknown>) =>
   !ADDON_REGISTRY[addonId].requiresConfiguration || z.string().trim().min(1).safeParse(config.urlTemplate).success;
 
+const resolveAddonAvailability = async (ctx: Context<HonoEnv>, projectId: string, definition: AddonDefinition) => {
+  const capability = await resolveProjectCapability(ctx, projectId, {
+    capabilityKey: definition.availability.entitlement,
+    eligiblePlanKeys: definition.availability.plans,
+  });
+  const behavior = z.enum(['observe', 'warn', 'block']).catch('observe').parse(capability.behavior);
+  return {
+    ...capability,
+    behavior,
+    available: definition.availability.state !== 'coming_soon' && capability.availability === 'complete' && capability.decision === 'enabled',
+  };
+};
+
 const serializeAddon = (
   definition: AddonDefinition,
   row: { enabled: boolean; config: unknown; revision: number; updatedAt: Date } | undefined,
-  availability: WorkspaceAvailability,
+  capability: AddonCapabilityResolution,
 ) => {
   const config = parseStoredConfig(definition.id, row?.config ?? definition.defaultConfig);
   const enabled = row?.enabled ?? definition.defaultEnabled;
-  const available = addonAvailable(definition, availability);
-  const status = !available ? 'unavailable' : !enabled ? 'inactive' : configurationComplete(definition.id, config) ? 'active' : 'needs_configuration';
+  const status = !capability.available
+    ? 'unavailable'
+    : !enabled
+      ? 'inactive'
+      : configurationComplete(definition.id, config)
+        ? 'active'
+        : 'needs_configuration';
   return {
     id: definition.id,
     group: definition.group,
@@ -123,7 +140,7 @@ const serializeAddon = (
     revision: row?.revision ?? 0,
     updatedAt: row?.updatedAt?.toISOString() ?? null,
     status,
-    availability: { ...definition.availability, available, plan: availability.plan },
+    availability: { ...definition.availability, ...capability },
   } as const;
 };
 
@@ -134,29 +151,35 @@ const listRows = async (projectId: string) =>
   });
 
 export const listProjectAddons = async (ctx: Context<HonoEnv>, projectId: string) => {
-  const { project } = await authorizeProjectAddons(ctx, projectId, 'read');
+  await authorizeProjectAddons(ctx, projectId, 'read');
   const rows = await listRows(projectId);
   const byId = new Map(rows.map((row) => [row.key, row]));
-  const availability = workspaceAvailability(project.organization.metadata);
-  return addonDefinitions.map((definition) => serializeAddon(definition, byId.get(definition.id), availability));
+  return Promise.all(
+    addonDefinitions.map(async (definition) =>
+      serializeAddon(definition, byId.get(definition.id), await resolveAddonAvailability(ctx, projectId, definition)),
+    ),
+  );
 };
 
 export const getProjectAddon = async (ctx: Context<HonoEnv>, projectId: string, addonId: string) => {
   const definition = definitionFor(addonId);
-  const { project } = await authorizeProjectAddons(ctx, projectId, 'read');
+  await authorizeProjectAddons(ctx, projectId, 'read');
   const row = await prisma.projectAddon.findUnique({
     where: { projectId_key: { projectId, key: definition.id } },
     select: { enabled: true, config: true, revision: true, updatedAt: true },
   });
-  return serializeAddon(definition, row ?? undefined, workspaceAvailability(project.organization.metadata));
+  return serializeAddon(definition, row ?? undefined, await resolveAddonAvailability(ctx, projectId, definition));
 };
 
-const assertAvailable = (addonId: AddonId, metadata: string | null) => {
-  const availability = workspaceAvailability(metadata);
-  if (!addonAvailable(ADDON_REGISTRY[addonId], availability)) {
-    throw addonError('addon:unavailable', 'This add-on is not available for the project.', { addonId, plan: availability.plan });
+const assertAvailable = (addonId: AddonId, capability: AddonCapabilityResolution) => {
+  if (!capability.available) {
+    throw addonError('addon:unavailable', 'This add-on is not available for the project.', {
+      addonId,
+      availability: capability.availability,
+      decision: capability.decision,
+      planKey: capability.planKey,
+    });
   }
-  return availability;
 };
 
 const assertRevision = (addonId: AddonId, expectedRevision: number, actualRevision: number) => {
@@ -206,10 +229,11 @@ const updateProjection = async (tx: Prisma.TransactionClient, organizationId: st
 export const updateProjectAddon = async (ctx: Context<HonoEnv>, projectId: string, addonId: string, input: UpdateProjectAddonBody) => {
   const definition = definitionFor(addonId);
   const authorization = await authorizeProjectAddons(ctx, projectId, 'write');
-  const availability = assertAvailable(definition.id, authorization.project.organization.metadata);
+  const capability = await resolveAddonAvailability(ctx, projectId, definition);
+  assertAvailable(definition.id, capability);
   const config = validateConfig(definition.id, input.config);
   const row = await prisma.$transaction(async (tx) => {
-    await lockProjectAddonMutations(tx, authorization.project.organizationId, projectId);
+    await lockProjectAddonMutations(tx, authorization.organizationId, projectId);
     const current = await tx.projectAddon.findUnique({ where: { projectId_key: { projectId, key: definition.id } } });
     assertRevision(definition.id, input.expectedRevision, current?.revision ?? 0);
     const revision = (current?.revision ?? 0) + 1;
@@ -248,20 +272,19 @@ export const updateProjectAddon = async (ctx: Context<HonoEnv>, projectId: strin
         revision,
       },
     });
-    await updateProjection(tx, authorization.project.organizationId, projectId);
+    await updateProjection(tx, authorization.organizationId, projectId);
     return next;
   });
-  return serializeAddon(definition, row, availability);
+  return serializeAddon(definition, row, capability);
 };
 
 const setProjectAddonEnabled = async (ctx: Context<HonoEnv>, projectId: string, addonId: string, input: MutateProjectAddonBody, enabled: boolean) => {
   const definition = definitionFor(addonId);
   const authorization = await authorizeProjectAddons(ctx, projectId, 'write');
-  const availability = enabled
-    ? assertAvailable(definition.id, authorization.project.organization.metadata)
-    : workspaceAvailability(authorization.project.organization.metadata);
+  const capability = await resolveAddonAvailability(ctx, projectId, definition);
+  if (enabled) assertAvailable(definition.id, capability);
   const row = await prisma.$transaction(async (tx) => {
-    await lockProjectAddonMutations(tx, authorization.project.organizationId, projectId);
+    await lockProjectAddonMutations(tx, authorization.organizationId, projectId);
     const current = await tx.projectAddon.findUnique({ where: { projectId_key: { projectId, key: definition.id } } });
     assertRevision(definition.id, input.expectedRevision, current?.revision ?? 0);
     const currentEnabled = current?.enabled ?? definition.defaultEnabled;
@@ -306,10 +329,10 @@ const setProjectAddonEnabled = async (ctx: Context<HonoEnv>, projectId: string, 
         revision,
       },
     });
-    await updateProjection(tx, authorization.project.organizationId, projectId);
+    await updateProjection(tx, authorization.organizationId, projectId);
     return next;
   });
-  return serializeAddon(definition, row ?? undefined, availability);
+  return serializeAddon(definition, row ?? undefined, capability);
 };
 
 export const activateProjectAddon = (ctx: Context<HonoEnv>, projectId: string, addonId: string, input: MutateProjectAddonBody) =>
