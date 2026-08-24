@@ -65,6 +65,7 @@
             "x-nibleaf": { "slug": "reference" },
             "pages": [
               "reference/environment-variables",
+              "reference/integrations-engine",
               "reference/api",
               "reference/known-limitations"
             ]
@@ -141,6 +142,7 @@
             "x-nibleaf": { "slug": "reference" },
             "pages": [
               "ar/reference/environment-variables",
+              "ar/reference/integrations-engine",
               "ar/reference/api",
               "ar/reference/known-limitations"
             ]

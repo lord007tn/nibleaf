@@ -374,6 +374,12 @@ describe('gitConfigSchema', () => {
     expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'file:///etc/passwd' }).success).toBe(false);
     expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'acme/docs', instanceUrl: 'file:///srv/gitlab' }).success).toBe(false);
   });
+
+  it('rejects credential-bearing Git URLs on new writes', () => {
+    expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://token@git.example.com/acme/docs.git' }).success).toBe(false);
+    expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://git.example.com/acme/docs.git?access_token=secret' }).success).toBe(false);
+    expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'acme/docs', instanceUrl: 'https://token@gitlab.example.com' }).success).toBe(false);
+  });
 });
 
 describe('paginationQuery', () => {

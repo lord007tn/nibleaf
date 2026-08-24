@@ -40,9 +40,9 @@ export class ApiResponseError extends Error {
   }
 }
 
-export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string) {
+export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string) {
   if (!res.ok) {
-    const error = await readApiError(res, `Failed to load ${what}.`);
+    const error = await readApiError(res, fallback ?? `Failed to load ${what}.`);
     throw new ApiResponseError(error.message, res.status, error.code);
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;

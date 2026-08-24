@@ -75,6 +75,9 @@ export const queryKeys = {
   gitWorkflow: {
     detail: (projectId: string) => ['git-workflow', projectId] as const,
   },
+  integrations: {
+    all: (projectId: string) => ['integrations', projectId] as const,
+  },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
     page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,
