@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "Integrasi diverifikasi",
   "settings_integrations_deletedtoast": "Integrasi dihapus",
   "settings_integrations_testmessage": "Integrasi Nibleaf berhasil.",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "Pencarian bawaan pada setiap publikasi, dengan jalur hibrida opsional yang aman untuk tenant di source main",
+  "marketing.release.searchCapability": "Pencarian bawaan dengan jalur hibrida opsional yang aman untuk tenant di source main",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, pencarian bawaan, penyimpanan yang kompatibel dengan S3, serta layanan Qdrant dan ClickHouse opsional membentuk arsitektur deployment. Container publik yang dipatok dan penginstal Docker Compose terpandu tetap berada di v0.1.2 hingga rilis terpisah diterbitkan.",
+  "marketing.release.mcpTitle": "Control plane MCP hanya-baca",
+  "marketing.release.mcpBody": "Source main mencakup resource dan tool MCP yang terikat ke proyek untuk konten, diagnostik pencarian, penggunaan, add-on, integrasi, operasi, dan tema. Kunci dengan cakupan terbatas dapat kedaluwarsa; operasi tulis tidak disediakan.",
+  "marketing.release.mcpLabel": "Baca panduan MCP",
+  "marketing.release.mcpBoundary": "Kontrak MCP di source main adalah permukaan terpisah yang terikat ke proyek, memiliki cakupan terbatas, dan hanya-baca; kontrak ini bukan API tulis berbasis sesi dashboard."
 }

@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "Integration verifiziert",
   "settings_integrations_deletedtoast": "Integration gelöscht",
   "settings_integrations_testmessage": "Nibleaf-Integrationsüberprüfung erfolgreich.",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "Integrierte Suche bei jeder Veröffentlichung, mit einem optionalen mandantensicheren Hybridpfad in Source Main",
+  "marketing.release.searchCapability": "Integrierte Suche mit einem optionalen mandantensicheren Hybridpfad in Source Main",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, die integrierte Suche, S3-kompatibler Speicher sowie optionale Qdrant- und ClickHouse-Dienste bilden die Bereitstellungsarchitektur. Der angeheftete öffentliche Container und der geführte Docker-Compose-Installer bleiben bei v0.1.2, bis eine separate Version veröffentlicht wird.",
+  "marketing.release.mcpTitle": "Schreibgeschützte MCP-Steuerungsebene",
+  "marketing.release.mcpBody": "Source Main enthält projektgebundene MCP-Ressourcen und Werkzeuge für Inhalte, Suchdiagnosen, Nutzung, Add-ons, Integrationen, Vorgänge und Themes. Bereichsgebundene Schlüssel können ablaufen; Schreibvorgänge werden nicht bereitgestellt.",
+  "marketing.release.mcpLabel": "MCP-Leitfaden lesen",
+  "marketing.release.mcpBoundary": "Der MCP-Vertrag in Source Main ist eine separate, projektgebundene, bereichsbegrenzte und schreibgeschützte Oberfläche; er ist keine Schreib-API für Dashboard-Sitzungen."
 }

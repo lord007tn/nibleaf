@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "Integración verificada",
   "settings_integrations_deletedtoast": "Integración eliminada",
   "settings_integrations_testmessage": "La verificación de la integración de Nibleaf ha tenido éxito.",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "Búsqueda integrada en cada publicación, con una ruta híbrida opcional y segura por tenant en la rama principal del código fuente",
+  "marketing.release.searchCapability": "Búsqueda integrada con una ruta híbrida opcional y segura por tenant en la rama principal del código fuente",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, la búsqueda integrada, el almacenamiento compatible con S3 y los servicios opcionales Qdrant y ClickHouse forman la arquitectura de despliegue. El contenedor público fijado y el instalador guiado de Docker Compose permanecen en v0.1.2 hasta que se publique una versión independiente.",
+  "marketing.release.mcpTitle": "Plano de control MCP de solo lectura",
+  "marketing.release.mcpBody": "La rama principal del código fuente incluye recursos y herramientas MCP vinculados al proyecto para contenido, diagnósticos de búsqueda, uso, complementos, integraciones, operaciones y temas. Las claves con alcance pueden caducar; no se exponen operaciones de escritura.",
+  "marketing.release.mcpLabel": "Leer la guía de MCP",
+  "marketing.release.mcpBoundary": "El contrato MCP de la rama principal del código fuente es una superficie independiente, vinculada al proyecto, con alcance limitado y de solo lectura; no es una API de escritura basada en la sesión del panel."
 }

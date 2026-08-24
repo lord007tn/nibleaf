@@ -135,7 +135,7 @@ jobs:
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           ready=0
           for attempt in {1..30}; do
-            if curl --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
               ready=1
               break
             fi
@@ -149,7 +149,7 @@ jobs:
             cat /tmp/nibleaf-app-runtime.log
             exit 1
           fi
-          curl --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
+          curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
 

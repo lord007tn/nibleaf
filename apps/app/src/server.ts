@@ -506,6 +506,7 @@ Last reviewed: 2026-08-24
 - First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
 - Versioned publishing: every publish is an immutable snapshot, rollback is atomic
 - Built-in Orama full-text/fuzzy search remains the default and immediate rollback; source main adds an optional tenant-filtered Qdrant hybrid path, privacy-safe diagnostics, and opt-in grounded answers
+- Usage, add-ons, integrations, themes, and MCP below are source-main-only capabilities and are absent from the pinned v0.1.2 artifact
 - Provider-neutral usage events and ClickHouse rollups keep missing state unknown and limits advisory; they do not implement payments
 - Audited project add-ons and integrations expose explicit availability, consent, credential ownership, and health without returning stored secrets
 - Harbor, Manuscript, and Signal support validated theme exchange and runnable Git-native repositories
@@ -593,6 +594,7 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Branches: git-style, database-backed branches - fork, edit in isolation, and merge into main.
 - Anchored comments: review comments pinned to the exact block, Figma-style.
 - Search: the built-in Orama full-text/fuzzy path remains the default and immediate rollback. Source main adds an optional tenant-filtered Qdrant BM25+dense path, privacy-safe diagnostics, and opt-in grounded answers. Operators begin with SEARCH_RUNTIME=shadow and must evaluate their configured providers before cutover.
+- The usage, add-on, integration, theme, and MCP capabilities below are source-main-only and are absent from the pinned v0.1.2 self-host artifact.
 - Usage and entitlements: provider-neutral events, exact ClickHouse rollups, deletion fences, and explicit unknown states. Limits remain advisory and no payment flow is present.
 - Project add-ons: audited feedback, edit/issue links, consent presentation, publishing checks, grammar-lint preview, and preview-deployment controls with current plan/entitlement availability.
 - Integrations: project-managed encrypted write-only webhook credentials and instance-managed provider status with explicit ownership and health states.

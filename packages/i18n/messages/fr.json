@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "Intégration vérifiée",
   "settings_integrations_deletedtoast": "Intégration supprimée",
   "settings_integrations_testmessage": "La vérification de l'intégration de Nibleaf a réussi.",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "Recherche intégrée à chaque publication, avec un parcours hybride facultatif et isolé par tenant dans la branche principale du code source",
+  "marketing.release.searchCapability": "Recherche intégrée avec un parcours hybride facultatif et isolé par tenant dans la branche principale du code source",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, la recherche intégrée, le stockage compatible S3 et les services facultatifs Qdrant et ClickHouse composent l’architecture de déploiement. Le conteneur public épinglé et l’installateur guidé Docker Compose restent en v0.1.2 jusqu’à la publication d’une version distincte.",
+  "marketing.release.mcpTitle": "Plan de contrôle MCP en lecture seule",
+  "marketing.release.mcpBody": "La branche principale du code source comprend des ressources et outils MCP liés au projet pour le contenu, le diagnostic de recherche, l’usage, les modules complémentaires, les intégrations, les opérations et les thèmes. Les clés à portée limitée peuvent expirer ; aucune opération d’écriture n’est exposée.",
+  "marketing.release.mcpLabel": "Lire le guide MCP",
+  "marketing.release.mcpBoundary": "Le contrat MCP de la branche principale du code source est une surface distincte, liée au projet, à portée limitée et en lecture seule ; il ne s’agit pas d’une API d’écriture fondée sur la session du tableau de bord."
 }

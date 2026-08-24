@@ -1,4 +1,4 @@
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale } from '@nibleaf/i18n/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Bot, Braces, ShieldCheck, Terminal } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -30,7 +30,7 @@ function DeveloperRoute() {
 }
 
 export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
-  const t = useT();
+  const { locale, t } = useLocale();
   const resources = [
     {
       icon: Braces,
@@ -50,7 +50,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
       icon: ShieldCheck,
       title: t('marketing.release.mcpTitle'),
       body: t('marketing.release.mcpBody'),
-      href: 'https://docs.nibleaf.com/self-hosting/mcp',
+      href: locale === 'ar' ? 'https://docs.nibleaf.com/ar/self-hosting/mcp' : 'https://docs.nibleaf.com/self-hosting/mcp',
       label: t('marketing.release.mcpLabel'),
     },
     {

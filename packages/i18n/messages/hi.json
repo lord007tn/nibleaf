@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "एकीकरण सत्यापित",
   "settings_integrations_deletedtoast": "एकीकरण नष्ट कर दिया",
   "settings_integrations_testmessage": "Nibleaf एकीकरण सत्यापन सफल रहा।",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "हर प्रकाशन में अंतर्निहित खोज, source main में वैकल्पिक tenant-safe hybrid path के साथ",
+  "marketing.release.searchCapability": "अंतर्निहित खोज, source main में वैकल्पिक tenant-safe hybrid path के साथ",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, अंतर्निहित खोज, S3-compatible storage और वैकल्पिक Qdrant व ClickHouse सेवाएँ deployment architecture बनाती हैं। अलग release प्रकाशित होने तक pinned public container और guided Docker Compose installer v0.1.2 पर बने रहेंगे।",
+  "marketing.release.mcpTitle": "केवल-पढ़ने योग्य MCP control plane",
+  "marketing.release.mcpBody": "Source main में content, search diagnostics, usage, add-ons, integrations, operations और themes के लिए project-bound MCP resources और tools शामिल हैं। Scoped keys की समय-सीमा समाप्त हो सकती है; write operations उपलब्ध नहीं हैं।",
+  "marketing.release.mcpLabel": "MCP गाइड पढ़ें",
+  "marketing.release.mcpBoundary": "Source main का MCP contract एक अलग project-bound, scoped और read-only surface है; यह dashboard-session write API नहीं है।"
 }

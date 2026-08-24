@@ -153,6 +153,7 @@ describe('delivery entitlement projection', () => {
 
   it('fails closed for missing and expired plan state', () => {
     expect(projectAddonRowsForDelivery(feedback, null, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    expect(projectAddonRowsForDelivery(feedback, assignment(), now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
     expect(
       projectAddonRowsForDelivery(feedback, assignment({ expiresAt: new Date('2026-08-23T00:00:00.000Z') }), now).find(
         (addon) => addon.key === 'feedback',

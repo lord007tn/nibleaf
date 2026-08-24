@@ -267,7 +267,8 @@ export const projectAddonRowsForDelivery = (
       activePlan &&
       availability.state !== 'coming_soon' &&
       availability.plans.some((planKey) => planKey === assignment.plan.key) &&
-      (entitlement ? entitlement.enabled && (entitlement.meter?.active ?? true) : true);
+      entitlement?.enabled === true &&
+      (entitlement.meter?.active ?? true);
     return {
       key: definition.id,
       enabled: (row?.enabled ?? definition.defaultEnabled) && capabilityAvailable,

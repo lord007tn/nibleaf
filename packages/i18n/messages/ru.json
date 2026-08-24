@@ -2599,11 +2599,11 @@
   "settings_integrations_verifiedtoast": "Проверка интеграции",
   "settings_integrations_deletedtoast": "Интеграция удалена",
   "settings_integrations_testmessage": "Интеграция Nibleaf прошла успешно.",
-  "marketing.release.searchPublishing": "Built-in search on every publish, with an optional tenant-safe hybrid path in source main",
-  "marketing.release.searchCapability": "Built-in search with an optional tenant-safe hybrid path in source main",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The pinned public container and guided Docker Compose installer remain v0.1.2 until a separate release is published.",
-  "marketing.release.mcpTitle": "Read-only MCP control plane",
-  "marketing.release.mcpBody": "Source main includes project-bound MCP resources and tools for content, search diagnostics, usage, add-ons, integrations, operations, and themes. Scoped keys can expire; write operations are not exposed.",
-  "marketing.release.mcpLabel": "Read the MCP guide",
-  "marketing.release.mcpBoundary": "The MCP contract in source main is a separate project-bound, scoped, read-only surface; it is not a dashboard-session write API."
+  "marketing.release.searchPublishing": "Встроенный поиск при каждой публикации с дополнительным безопасным для арендаторов гибридным путём в основной ветке исходного кода",
+  "marketing.release.searchCapability": "Встроенный поиск с дополнительным безопасным для арендаторов гибридным путём в основной ветке исходного кода",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, встроенный поиск, S3-совместимое хранилище и дополнительные сервисы Qdrant и ClickHouse образуют архитектуру развёртывания. Закреплённый публичный контейнер и пошаговый установщик Docker Compose остаются на версии v0.1.2 до публикации отдельного выпуска.",
+  "marketing.release.mcpTitle": "Панель управления MCP только для чтения",
+  "marketing.release.mcpBody": "Основная ветка исходного кода содержит привязанные к проекту ресурсы и инструменты MCP для контента, диагностики поиска, использования, дополнений, интеграций, операций и тем. Срок действия ключей с ограниченной областью может истекать; операции записи не предоставляются.",
+  "marketing.release.mcpLabel": "Прочитать руководство по MCP",
+  "marketing.release.mcpBoundary": "Контракт MCP в основной ветке исходного кода — это отдельная, привязанная к проекту, ограниченная по области и доступная только для чтения поверхность; это не API записи на основе сессии панели управления."
 }
