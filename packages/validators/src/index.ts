@@ -33,6 +33,23 @@ export {
   safeInlineAssetContentType,
 } from './assets';
 export {
+  type CreateIntegrationDeleteConfirmationBody,
+  type CreateProjectIntegrationBody,
+  configurableIntegrationProviderIdSchema,
+  createIntegrationDeleteConfirmationBody,
+  createProjectIntegrationBody,
+  type DeleteProjectIntegrationBody,
+  deleteProjectIntegrationBody,
+  type IntegrationRevisionBody,
+  integrationConnectionSummarySchema,
+  integrationProviderIdSchema,
+  integrationRevisionBody,
+  type UpdateProjectIntegrationBody,
+  updateProjectIntegrationBody,
+  type VerifyProjectIntegrationBody,
+  verifyProjectIntegrationBody,
+} from './integrations';
+export {
   parseThemeTemplate,
   type ThemeImportBody,
   type ThemeTemplateParseResult,
@@ -892,12 +909,18 @@ export const gitConfigSchema = z.object({
   cloneUrl: z
     .url()
     .max(500)
-    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'Clone URL must use http(s).')
+    .refine((value) => {
+      const url = new URL(value);
+      return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
+    }, 'Clone URL must use http(s) without credentials, query parameters, or fragments.')
     .optional(),
   instanceUrl: z
     .url()
     .max(200)
-    .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol), 'GitLab instance URL must use http(s).')
+    .refine((value) => {
+      const url = new URL(value);
+      return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
+    }, 'GitLab instance URL must use http(s) without credentials, query parameters, or fragments.')
     .optional(),
   branch: z.string().max(120).optional(),
   path: z

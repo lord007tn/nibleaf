@@ -2,6 +2,7 @@ export * from './addons';
 export * from './constants';
 export * from './crypto';
 export * from './ids';
+export * from './integrations';
 export * from './rbac';
 export * from './redirects';
 export * from './site';

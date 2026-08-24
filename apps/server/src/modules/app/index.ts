@@ -12,6 +12,7 @@ import domains from './domains/handlers';
 import exports from './exports/handlers';
 import git from './git/handlers';
 import imports from './imports/handlers';
+import integrations from './integrations/handlers';
 import languages from './languages/handlers';
 import members from './members/handlers';
 import notifications from './notifications/handlers';
@@ -42,6 +43,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/settings', projectSettings)
   .route('/projects/:projectId/reader-access', readerAccess)
   .route('/projects/:projectId/settings/import', imports)
+  .route('/projects/:projectId/integrations', integrations)
   .route('/projects/:projectId/git', git)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)

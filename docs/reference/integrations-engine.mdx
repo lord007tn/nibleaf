@@ -1,0 +1,165 @@
+---
+title: 'Integrations engine'
+description: 'Understand provider ownership, secure project connections, lifecycle actions, MCP boundaries, and safe migration or key rotation.'
+audience: 'self-hosted operators, contributors, and security reviewers'
+content_type: 'reference'
+last_reviewed: '2026-08-23'
+verified_against: 'packages/shared/src/integrations.ts and apps/server/src/actions/integrations'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'reference/integrations-engine'
+---
+
+Nibleaf's integrations catalog is a discovery and lifecycle layer for external
+provider connections. It does not replace provider-specific domain models. Git,
+analytics, and instance infrastructure remain authoritative in their existing
+modules; project webhook connections use the common encrypted lifecycle.
+
+## Ownership and provider inventory
+
+| Provider group | Providers | Lifecycle owner | Provider boundary |
+| --- | --- | --- | --- |
+| Source control | GitHub, GitLab, public Git | Existing Git connection or workspace metadata adapter | Official Octokit for GitHub; existing Git adapters for other imports |
+| Site analytics | Google Analytics 4, Plausible | Existing project configuration adapter | Published-site analytics configuration |
+| Webhooks and automation | Slack, Discord, Zapier | Project integration engine | Official `@slack/webhook`; Got only for Discord and Zapier, which have no required server SDK here |
+| AI and search | OpenRouter, Qdrant | Instance-managed, read-only in project settings | Official `@openrouter/sdk` and `@qdrant/js-client-rest` |
+| Product analytics | ClickHouse | Instance-managed, read-only in project settings | Existing ClickHouse client boundary |
+| Email | Postmark, SMTP | Instance-managed, read-only in project settings | Official Postmark SDK or the existing SMTP transport |
+| Asset storage | Maxio, MinIO, Amazon S3, Cloudflare R2, Backblaze B2 | Instance-managed, read-only in project settings | Existing AWS S3 SDK boundary |
+| Custom domains | Cloudflare for SaaS | Existing domain provisioning adapter | Existing Cloudflare provider boundary |
+
+Google OAuth signs users into Nibleaf and is intentionally outside the
+project-integration catalog. Add-ons own product feature switches, usage owns
+metering, and integrations own external provider connections. No provider in
+this engine processes payments.
+
+Unavailable planned providers remain discoverable only when the manifest says
+so and advertise no mutation. Adding a catalog entry does not imply that a
+connection is functional.
+
+## Public contract
+
+Every catalog response contains static capability/category metadata and an
+optional project connection summary. The summary is provider-discriminated and
+allowlisted. It includes status, health, revision, safe configuration, and only
+`credential.configured`; it never includes credential material, a fingerprint,
+provider response bodies, or arbitrary provider configuration.
+
+The shared domain actions use the verbs `list`, `get`, `create`, `update`,
+`activate`, `deactivate`, `verify`, and `delete`. Dashboard sessions exclusively
+own credential creation and replacement. Provider-visible Slack and Zapier test
+events require explicit dashboard confirmation; Discord and GitHub verification
+are passive.
+
+API keys must carry the exact `integrations:read`, `integrations:write`,
+`integrations:verify`, or `integrations:delete` scope required by the action.
+The legacy `*` scope grants no integration access. Every action reloads the key,
+checks revocation and expiry, binds it to the project, and applies project
+authorization itself. Cross-tenant access returns the ordinary not-found
+envelope.
+
+The stable action exports are `listProjectIntegrations`,
+`getProjectIntegration`, `createProjectIntegration`,
+`updateProjectIntegration`, `activateProjectIntegration`,
+`deactivateProjectIntegration`, `verifyProjectIntegration`,
+`createIntegrationDeleteConfirmation`, and `deleteProjectIntegration`. Their
+shared request boundaries are `integrationProviderIdSchema`,
+`configurableIntegrationProviderIdSchema`, `createProjectIntegrationBody`,
+`updateProjectIntegrationBody`, `integrationRevisionBody`,
+`verifyProjectIntegrationBody`, `createIntegrationDeleteConfirmationBody`,
+`deleteProjectIntegrationBody`, and `integrationConnectionSummarySchema`.
+
+Lifecycle clients may branch on the stable integration errors
+`integration:not_found`, `integration:provider_unsupported`,
+`integration:provider_unavailable`, `integration:already_connected`,
+`integration:invalid_configuration`, `integration:credentials_required`,
+`integration:credentials_invalid`, `integration:inactive`,
+`integration:verification_failed`, `integration:rate_limited`,
+`integration:idempotency_conflict`, `integration:revision_conflict`,
+`integration:external_confirmation_required`,
+`integration:confirmation_invalid`, `integration:confirmation_expired`, and
+`integration:confirmation_consumed`. Unknown database or provider failures are
+sanitized at the normal error boundary and are not relabeled as one of these
+business conditions.
+
+MCP may expose credential-free `list`, `get`, `activate`, `deactivate`, passive
+`verify`, and confirmed `delete` only. MCP tools never accept, return, or persist
+credentials. A Better Auth dashboard session mints the single-use delete
+confirmation, optionally bound to one API key, project, provider, connection,
+and revision. MCP cannot mint that confirmation or send a provider-visible test.
+
+## Secrets, replay, and audit
+
+Set a distinct `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` containing exactly 32
+base64-encoded bytes. It must not silently reuse the Git credential key.
+Credentials use versioned AES-256-GCM envelopes. HMAC digests for idempotency
+keys, request comparisons, and confirmations are purpose-separated. New writes
+use the current key; reads also try `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS` during
+a bounded rotation window.
+
+Mutation idempotency records retain a strict, redacted result DTO for the
+configured retention window. Replaying an older key returns its original result
+even after later mutations or deletion. A reused key with a different request
+returns `integration:idempotency_conflict`. Raw keys, credential-bearing request
+bodies, and provider response bodies are never persisted.
+
+Request digests use an explicit provider-discriminated canonical serialization
+that excludes the separately digested idempotency key. Equivalent dashboard and
+MCP requests replay regardless of object property order; changing the provider,
+revision, configuration, or credential changes the digest and conflicts.
+
+Connection revisions use an atomic compare-and-swap predicate. Webhook
+verification commits the terminal delivery state, connection health/revision,
+and audit record in one transaction after the external call. A competing update
+is recorded and replayed as `integration:revision_conflict`.
+
+Verification delivery records use a bounded running lease. A stale passive
+Discord check can be reclaimed safely. A stale Slack or Zapier test is finalized
+as the sanitized `integration:provider_unavailable` outcome without resending an
+external message; retrying it requires a new dashboard confirmation and
+idempotency key. Nibleaf does not claim exactly-once external webhook delivery.
+
+Audit rows contain stable `projectId` and `providerId` values independent of the
+mutable connection relation. Deleting a connection clears the optional relation
+but preserves provider identity and the secret-free lifecycle history.
+Consumed delete confirmations likewise retain a digest-only tombstone with a
+cleared connection relation. Consumption uses one atomic claim, so replays and
+concurrent losers return `integration:confirmation_consumed` after deletion.
+Consumed tombstones remain available for the configured retention window, then
+are removed by bounded project-local cleanup. Expired unconsumed challenges are
+removed when the next challenge is created.
+
+## Key rotation and rollback
+
+1. Generate a new independent 32-byte base64 key. Set it as
+   `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` and add the old key to
+   `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS`.
+2. Deploy all API replicas together. New credentials and digests now use the new
+   key; existing ciphertext, ledger entries, and confirmations remain readable.
+3. Reconnect each project-owned webhook to re-encrypt it. Keep the old key until
+   every credential is replaced and the longest idempotency and confirmation TTL
+   has elapsed.
+4. Verify each connection, then remove the old key. To roll back during the
+   window, restore the old key as current and retain the new key as previous.
+
+The additive migration owns the nullable `ApiKey.expiresAt` column as a shared
+authentication prerequisite. The MCP control-plane migration depends on it. To
+roll back, first roll back any dependent MCP migration, stop integration
+mutations, preserve required audit evidence, and remove the integration tables
+in foreign-key-safe reverse order. Drop `ApiKey.expiresAt` only when rolling back
+integrations before that dependent migration and after confirming no other
+consumer relies on it. Restoring the prior application release is the final
+step; never delete encrypted data before the rollback decision is complete.
+
+## Adding a provider
+
+1. Add the provider ID, manifest, capabilities, truthful availability, and an
+   explicit branch in the public configuration union and replay validator.
+2. Decide whether an existing domain model remains authoritative, the provider
+   is instance-managed, or the common project lifecycle is appropriate.
+3. Add a provider-specific boundary. Prefer the official SDK, then Got when no
+   SDK is suitable; do not add raw HTTP beside an available supported client.
+4. Define secret fields as write-only, verification side effects, webhook
+   signature/replay boundaries, stable safe error codes, and audit metadata.
+5. Add tenant, exact-scope, redaction, CAS, idempotency, rotation, RTL, mobile,
+   and provider failure tests before advertising mutation support.

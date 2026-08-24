@@ -37,6 +37,9 @@ export const env = createEnv({
     SERVICE_NAME: z.string().default('nibleaf-api'),
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4315').transform(csv),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
+    POSTMARK_API_KEY: z.string().optional(),
+    POSTMARK_MESSAGE_STREAM: z.string().optional(),
+    SMTP_URL: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
     AI_DRAFT_MODEL: z.string().default('openai/gpt-4o-mini'),
     EXPORT_MAX_ACTIVE_PER_PROJECT: z.coerce.number().int().min(1).max(20).default(3),
@@ -52,6 +55,14 @@ export const env = createEnv({
     /** Base64-encoded 32-byte AES key used only for Git provider credentials
      * and webhook secrets. Generate with: openssl rand -base64 32 */
     GIT_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Current key for project integration credentials and one-time
+     * confirmations. Kept distinct from Git credentials. */
+    INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Comma-separated prior keys accepted for decrypt-only rotation windows. */
+    INTEGRATION_CREDENTIAL_PREVIOUS_KEYS: z.string().default('').transform(csv),
+    INTEGRATION_CONFIRMATION_TTL_SECONDS: z.coerce.number().int().min(60).max(1800).default(300),
+    INTEGRATION_CONFIRMATION_RETENTION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+    INTEGRATION_IDEMPOTENCY_TTL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     /** Shared API/worker authentication secret for opaque Git job execution. */
     GIT_WORKER_SECRET: z.string().min(32).optional(),
     /** Explicit override required before the demo seed may touch production. */

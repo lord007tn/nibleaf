@@ -136,6 +136,18 @@ place: existing ciphertext cannot be decrypted with a new key. Follow the
 [Git authoring rotation procedure](/git-authoring). If `WORKER_QUEUES` is set,
 include `git`.
 
+### Project integrations
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` | To create project webhook connections | None | Independent 32-byte base64 key for versioned AES-256-GCM credential envelopes and purpose-separated HMAC digests. Do not reuse the Git key. |
+| `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS` | During key rotation only | Empty | Comma-separated prior integration keys accepted for decrypt and digest lookup during a bounded dual-read window. |
+| `INTEGRATION_CONFIRMATION_TTL_SECONDS` | No | `300` | Lifetime of a one-time, revision-bound integration delete confirmation; accepted range is 60–1800 seconds. |
+| `INTEGRATION_CONFIRMATION_RETENTION_HOURS` | No | `24` | Retention for consumed confirmation tombstones before bounded cleanup; accepted range is 1–168 hours. Expired unconsumed challenges are removed on the next project challenge. |
+| `INTEGRATION_IDEMPOTENCY_TTL_HOURS` | No | `24` | Retention for secret-free durable mutation replays; accepted range is 1–168 hours. |
+
+Follow the rotation and rollback procedure in [Integrations engine](/reference/integrations-engine).
+
 ### General operator settings
 
 | Variable | Required | Default | Purpose |

@@ -416,6 +416,10 @@ model Project {
   usageIngestCheckpoints UsageIngestCheckpoint[]
   addons          ProjectAddon[]
   addonAuditEvents ProjectAddonAuditEvent[]
+  integrations                  ProjectIntegration[]
+  integrationAuditEvents        IntegrationAuditEvent[]
+  integrationConfirmations      IntegrationConfirmation[]
+  integrationIdempotencyRecords IntegrationIdempotencyRecord[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -702,6 +706,129 @@ model GitAuditEvent {
   @@index([projectId, createdAt])
   @@index([connectionId, createdAt])
   @@map("git_audit_event")
+}
+
+/// Project-owned external connections whose lifecycle is not already owned by
+/// a provider-specific model such as GitConnection or Project.config.analytics.
+/// Secrets are versioned AES-GCM envelopes; config contains allowlisted,
+/// non-secret provider settings only.
+model ProjectIntegration {
+  id                     String    @id @default(cuid())
+  projectId              String
+  project                Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  providerId             String
+  status                 String    @default("ACTIVE")
+  config                 Json?
+  credentialEncrypted    String
+  revision               Int       @default(1)
+  lastVerificationStatus String    @default("UNVERIFIED")
+  lastVerificationCode   String?
+  lastVerifiedAt         DateTime?
+  createdById            String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  auditEvents   IntegrationAuditEvent[]
+  deliveries    IntegrationWebhookDelivery[]
+  confirmations IntegrationConfirmation[]
+
+  @@unique([projectId, providerId])
+  @@index([projectId, status])
+  @@map("project_integration")
+}
+
+/// Append-only, secret-free lifecycle audit trail. Provider responses, raw
+/// webhook payloads, credentials, and client idempotency keys are prohibited.
+model IntegrationAuditEvent {
+  id             String              @id @default(cuid())
+  connectionId   String?
+  connection     ProjectIntegration? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  projectId      String
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  providerId     String
+  organizationId String
+  principalType  String
+  principalId    String
+  action         String
+  result         String
+  code           String?
+  metadata       Json?
+  createdAt      DateTime            @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([projectId, providerId, createdAt])
+  @@index([connectionId, createdAt])
+  @@map("integration_audit_event")
+}
+
+/// One-time, short-lived confirmation issued from a Better Auth dashboard
+/// session and optionally bound to an MCP API key. Only the token digest is
+/// persisted; consuming it is transactional with deletion.
+model IntegrationConfirmation {
+  id                 String              @id @default(cuid())
+  projectId          String
+  project            Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  connectionId       String?
+  connection         ProjectIntegration? @relation(fields: [connectionId], references: [id], onDelete: SetNull)
+  providerId         String
+  connectionRevision Int
+  principalType      String
+  principalId        String
+  tokenDigest        String              @unique
+  expiresAt          DateTime
+  consumedAt         DateTime?
+  createdById        String
+  createdAt          DateTime            @default(now())
+
+  @@index([projectId, expiresAt])
+  @@index([projectId, consumedAt])
+  @@map("integration_confirmation")
+}
+
+/// Delivery bookkeeping deliberately excludes request and response bodies.
+/// Idempotency keys are digested before persistence.
+model IntegrationWebhookDelivery {
+  id                String             @id @default(cuid())
+  connectionId      String
+  connection        ProjectIntegration @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  event             String
+  eventVersion      Int                @default(1)
+  idempotencyDigest String
+  requestDigest     String
+  status            String             @default("PENDING")
+  attempts          Int                @default(0)
+  responseStatus    Int?
+  errorCode         String?
+  result            Json?
+  createdAt         DateTime           @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+
+  @@unique([connectionId, idempotencyDigest])
+  @@index([status, startedAt])
+  @@map("integration_webhook_delivery")
+}
+
+/// Bounded mutation replay ledger. Caller keys and credential-bearing request
+/// bodies are HMAC-digested before persistence; expired rows are pruned by the
+/// lifecycle action boundary.
+model IntegrationIdempotencyRecord {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  providerId     String
+  action         String
+  keyDigest      String
+  requestDigest  String
+  connectionId   String?
+  resultRevision Int?
+  result         Json
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+
+  @@unique([projectId, providerId, action, keyDigest])
+  @@index([projectId, expiresAt])
+  @@map("integration_idempotency_record")
 }
 
 /// A language/locale a project's docs are authored in. Each language owns its
@@ -1002,39 +1129,39 @@ model Deployment {
 /// enter this table. `issueSample` is bounded worker-authored metadata containing
 /// only page/chunk identifiers, language/version, status, and a stable code.
 model SearchIndexRun {
-  id                   String               @id @default(cuid())
-  projectId            String
-  project              Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deploymentId         String?
-  deployment           Deployment?          @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
-  status               SearchIndexRunStatus @default(PENDING)
-  jobId                String?              @unique
-  claimToken           String?
-  claimExpiresAt       DateTime?
-  attempt              Int                  @default(0)
-  logicalIndexId       String
-  schemaVersion        String
-  revisionId           String
-  embeddingModel       String
-  vectorSize           Int
-  expectedChunks       Int                  @default(0)
-  expectedPages        Int                  @default(0)
-  indexedChunks        Int                  @default(0)
-  indexedPages         Int                  @default(0)
-  embeddedChunks       Int                  @default(0)
-  reusedChunks         Int                  @default(0)
-  unchangedChunks      Int                  @default(0)
-  metadataUpdatedChunks Int                 @default(0)
-  deletedChunks        Int                  @default(0)
-  staleChunks          Int                  @default(0)
-  failedChunks         Int                  @default(0)
-  errorCode            String?
-  issueSample          Json?
-  requestedById        String?
-  startedAt            DateTime?
-  completedAt          DateTime?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+  id                    String               @id @default(cuid())
+  projectId             String
+  project               Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deploymentId          String?
+  deployment            Deployment?          @relation(fields: [deploymentId], references: [id], onDelete: SetNull)
+  status                SearchIndexRunStatus @default(PENDING)
+  jobId                 String?              @unique
+  claimToken            String?
+  claimExpiresAt        DateTime?
+  attempt               Int                  @default(0)
+  logicalIndexId        String
+  schemaVersion         String
+  revisionId            String
+  embeddingModel        String
+  vectorSize            Int
+  expectedChunks        Int                  @default(0)
+  expectedPages         Int                  @default(0)
+  indexedChunks         Int                  @default(0)
+  indexedPages          Int                  @default(0)
+  embeddedChunks        Int                  @default(0)
+  reusedChunks          Int                  @default(0)
+  unchangedChunks       Int                  @default(0)
+  metadataUpdatedChunks Int                  @default(0)
+  deletedChunks         Int                  @default(0)
+  staleChunks           Int                  @default(0)
+  failedChunks          Int                  @default(0)
+  errorCode             String?
+  issueSample           Json?
+  requestedById         String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
   @@index([projectId, createdAt])
   @@index([deploymentId, createdAt])
@@ -1181,6 +1308,7 @@ model ApiKey {
   createdAt    DateTime  @default(now())
   lastUsedAt   DateTime?
   revokedAt    DateTime?
+  expiresAt    DateTime?
 
   @@index([projectId])
   @@map("api_key")
