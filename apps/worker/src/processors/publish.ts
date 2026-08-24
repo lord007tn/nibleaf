@@ -9,6 +9,7 @@ import {
 } from '@nibleaf/clickhouse';
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
+import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
@@ -309,6 +310,24 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
         branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
         openApiDocument: true,
         addons: { select: { key: true, enabled: true, config: true } },
+        organization: {
+          select: {
+            usagePlan: {
+              select: {
+                status: true,
+                effectiveAt: true,
+                expiresAt: true,
+                plan: {
+                  select: {
+                    key: true,
+                    active: true,
+                    entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
     if (!project) {
@@ -339,11 +358,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     }));
-    const issues = collectPublishIssues(project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
+    const draftSnapshot = buildSnapshot(
+      { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+      pageRows,
+      new Date().toISOString(),
+    );
+    const issues = collectPublishIssues(draftSnapshot.project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
     }
-    const redirectValidation = validateSnapshotRedirects(buildSnapshot(project, pageRows, new Date().toISOString()));
+    const redirectValidation = validateSnapshotRedirects(draftSnapshot);
     if (redirectValidation.issues.length > 0) {
       throw new Error(summarizeRedirectIssues(redirectValidation.issues));
     }

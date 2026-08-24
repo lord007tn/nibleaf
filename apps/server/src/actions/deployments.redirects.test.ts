@@ -21,7 +21,7 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 
-import { createDeployment } from './deployments';
+import { createDeployment, getCurrentSnapshot } from './deployments';
 
 const project = (redirects: Array<{ from: string; to: string }>) => ({
   id: 'project-1',
@@ -32,6 +32,19 @@ const project = (redirects: Array<{ from: string; to: string }>) => ({
   icon: null,
   config: { redirects },
   takedownAt: null,
+  addons: [{ key: 'feedback', enabled: true, config: { placement: 'after-content', presentation: 'compact' } }],
+  organization: {
+    usagePlan: {
+      status: 'active',
+      effectiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      expiresAt: null,
+      plan: {
+        key: 'pro',
+        active: true,
+        entitlements: [] as { capabilityKey: string; enabled: boolean; meter: { active: boolean } | null }[],
+      },
+    },
+  },
   languages: [
     {
       id: 'language-1',
@@ -111,6 +124,16 @@ describe('createDeployment redirect preflight', () => {
       name: 'publish-deployment',
       data: { deploymentId: 'deployment-3', projectId: 'project-1', skipGrammarChecks: false, auto: false },
     });
+  });
+
+  it('removes enabled add-ons from preflight delivery when the entitlement is disabled', async () => {
+    const value = project([]);
+    value.organization.usagePlan.plan.entitlements.push({ capabilityKey: 'addons.feedback', enabled: false, meter: null });
+    mocks.projectFindUnique.mockResolvedValue(value);
+
+    const snapshot = await getCurrentSnapshot('project-1');
+
+    expect(snapshot.project.config).toMatchObject({ addons: { feedback: false } });
   });
 
   it('does not reveal or publish a project outside the caller organization', async () => {

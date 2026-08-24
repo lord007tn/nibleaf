@@ -2,7 +2,7 @@ import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
 import type { SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
-import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import {
   buildNavTree,
   defaultLanguage,
@@ -76,6 +76,7 @@ interface LiveChromeRow {
     projectTranslations: { name: string | null; description: string | null }[];
   }[];
   addons: { key: string; enabled: boolean; config: unknown }[];
+  organization: { usagePlan: AddonDeliveryPlanAssignment | null };
 }
 
 /** A snapshot project enriched with the fields the published-site edge needs
@@ -124,6 +125,24 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       accessMode: true,
       takedownAt: true,
       addons: { select: { key: true, enabled: true, config: true } },
+      organization: {
+        select: {
+          usagePlan: {
+            select: {
+              status: true,
+              effectiveAt: true,
+              expiresAt: true,
+              plan: {
+                select: {
+                  key: true,
+                  active: true,
+                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
       // ONLY an explicitly-designated primary domain may become the canonical /
       // 301 target. `verified` proves TXT ownership, not that the domain's CNAME
       // resolves here — consolidating onto a merely-verified domain would 301 a
@@ -166,12 +185,7 @@ const overlayLiveChrome = (project: SnapshotProject, live: LiveChromeRow | null)
   // so they never appear publicly until the next publish, and the frozen
   // label/direction/isDefault keep the exactly-one-default invariant intact.
   const liveByCode = new Map(live.languages.map((language) => [language.code, language]));
-  const liveConfig = projectConfigWithAddons(
-    live.config,
-    live.addons.flatMap((addon) =>
-      isAddonId(addon.key) ? [{ key: addon.key, enabled: addon.enabled, config: parseAddonConfigRecord(addon.config) }] : [],
-    ),
-  );
+  const liveConfig = projectConfigWithAddons(live.config, projectAddonRowsForDelivery(live.addons, live.organization.usagePlan));
   return {
     ...project,
     name: live.name,
@@ -213,8 +227,8 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // serving within the cache TTL (15s). notFound (not forbidden) so a taken
   // down site's existence is not advertised.
   const live = await getLiveChrome(projectId);
-  if (live?.takedownAt) {
-    throw notFound('site', { identifier, reason: 'takedown' });
+  if (!live || live.takedownAt) {
+    throw notFound('site', { identifier, reason: live?.takedownAt ? 'takedown' : 'delivery_configuration_unavailable' });
   }
   // Cheap metadata-only lookup — the heavy `snapshot` JSONB column is only
   // fetched (and parsed) on a cache miss for this deployment id.
@@ -245,16 +259,16 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // `primaryDomain` rides along so the app edge can consolidate canonicals and
   // 301 secondary origins onto the verified primary domain.
   const overlaid = overlayLiveChrome(frozen.project, live);
-  const accessMode = live?.accessMode ?? 'PUBLIC';
+  const accessMode = live.accessMode;
   const project: PublicSnapshotProject = {
     ...overlaid,
     // Keep the legacy config flag coherent for older clients and SEO helpers,
     // while the database enum remains the authorization source of truth.
     config: { ...(overlaid.config ?? {}), visibility: accessMode === 'PUBLIC' ? 'public' : 'private' },
-    primaryDomain: live?.domains[0]?.domain.toLowerCase() ?? null,
+    primaryDomain: live.domains[0]?.domain.toLowerCase() ?? null,
     accessMode,
   };
-  const viewer = await resolveViewerAccess(projectId, live?.accessMode ?? 'PUBLIC', getContext<HonoEnv>().req.raw.headers);
+  const viewer = await resolveViewerAccess(projectId, live.accessMode, getContext<HonoEnv>().req.raw.headers);
   if (!viewer) {
     throw notFound('site', { identifier: projectId, reason: 'private' });
   }

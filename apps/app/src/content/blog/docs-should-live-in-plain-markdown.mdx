@@ -3,7 +3,7 @@ title: 'Your Docs Should Live in Plain Markdown (Even With a Visual Editor)'
 metaTitle: 'Why documentation should live in Markdown | Nibleaf'
 description: 'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-17'
+dateModified: '2026-08-24'
 tags: ['markdown', 'content-ownership']
 related: ['open-source-documentation-tools', 'introducing-nibleaf-open-source-mintlify-alternative', 'self-host-documentation-site-docker-compose']
 readingMinutes: 7
@@ -104,7 +104,7 @@ Credit where due — several platforms get this right, each with different trade
 
 Nibleaf is an AGPL-3.0 codebase built around this invariant. The editor uses blocks and a slash menu, then stores the result as Markdown in the database. MDX components such as callouts, tabs, and code groups cover layouts that Markdown alone cannot express. Teams can export the content as Markdown, but the live source is not a folder in Git unless they export and commit it.
 
-Because storage is Markdown, the rest of the system composes on top of it: built-in Orama full-text and fuzzy search (with a dedicated Arabic tokenizer) indexes your actual content, publishing produces immutable snapshots so readers never see half-written pages and you can roll back to any previous snapshot, and per-language page trees keep translations as parallel Markdown, including Arabic and RTL layout.
+Because storage is Markdown, the rest of the system composes on top of it: the built-in Orama full-text/fuzzy path and the optional tenant-filtered Qdrant hybrid path index the same published source, publishing produces immutable snapshots so readers never see half-written pages and you can roll back to any previous snapshot, and per-language page trees keep translations as parallel Markdown, including Arabic and RTL layout. The hybrid path is present in source `main`, starts in shadow mode, and is not a claim about the still-published v0.1.2 self-host image.
 
 The managed cloud is in [free beta](/sign-up). The public AGPL-3.0 release also includes a pinned container and guided [Docker Compose installation](/self-hosting) for teams that operate their own infrastructure.
 

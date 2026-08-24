@@ -1,3 +1,4 @@
+import { useLocale } from '@nibleaf/i18n/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Bot, Braces, ShieldCheck, Terminal } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -28,31 +29,38 @@ function DeveloperRoute() {
   return <DeveloperResourcesPage stars={stars} />;
 }
 
-const resources = [
-  {
-    icon: Braces,
-    title: 'Nibleaf public OpenAPI',
-    body: 'A typed OpenAPI 3.1 contract for reading published sites, pages, search results, changelogs, sitemaps, and agent indexes. Every operation has a unique operationId and description.',
-    href: '/openapi.json',
-    label: 'Open openapi.json',
-  },
-  {
-    icon: Bot,
-    title: 'Agent-readable content',
-    body: 'Start with llms.txt, request canonical marketing URLs with Accept: text/markdown, and use each published site’s own sitemap and llms files for recovery and retrieval.',
-    href: '/llms.txt',
-    label: 'Read llms.txt',
-  },
-  {
-    icon: Terminal,
-    title: 'Official Nibleaf CLI',
-    body: 'The @nibleaf/cli package inspects a Nibleaf site’s machine-readable endpoints and fetches canonical pages as Markdown for scripts and agents.',
-    href: 'https://www.npmjs.com/package/@nibleaf/cli',
-    label: 'View the npm package',
-  },
-] as const;
-
 export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
+  const { locale, t } = useLocale();
+  const resources = [
+    {
+      icon: Braces,
+      title: 'Nibleaf public OpenAPI',
+      body: 'A typed OpenAPI 3.1 contract for reading published sites, pages, search results, changelogs, sitemaps, and agent indexes. Every operation has a unique operationId and description.',
+      href: '/openapi.json',
+      label: 'Open openapi.json',
+    },
+    {
+      icon: Bot,
+      title: 'Agent-readable content',
+      body: 'Start with llms.txt, request canonical marketing URLs with Accept: text/markdown, and use each published site’s own sitemap and llms files for recovery and retrieval.',
+      href: '/llms.txt',
+      label: 'Read llms.txt',
+    },
+    {
+      icon: ShieldCheck,
+      title: t('marketing.release.mcpTitle'),
+      body: t('marketing.release.mcpBody'),
+      href: locale === 'ar' ? 'https://docs.nibleaf.com/ar/self-hosting/mcp' : 'https://docs.nibleaf.com/self-hosting/mcp',
+      label: t('marketing.release.mcpLabel'),
+    },
+    {
+      icon: Terminal,
+      title: 'Official Nibleaf CLI',
+      body: 'The @nibleaf/cli package inspects a Nibleaf site’s machine-readable endpoints and fetches canonical pages as Markdown for scripts and agents.',
+      href: 'https://www.npmjs.com/package/@nibleaf/cli',
+      label: 'View the npm package',
+    },
+  ] as const;
   return (
     <MarketingShell stars={stars}>
       <section className="border-border border-b">
@@ -72,7 +80,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
         <h2 className="font-semibold text-3xl tracking-tight" id="developer-entry-points">
           Predictable entry points
         </h2>
-        <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
           {resources.map((resource) => (
             <article className="flex flex-col rounded-xl border border-border bg-card p-6" key={resource.title}>
               <span className={`${iconTile} size-11`}>
@@ -121,7 +129,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
           <p className="mt-3 text-muted-foreground leading-relaxed">
             Public published sites require no credentials. Private reader sites use their configured reader session and intentionally return 404 to
             unauthorized callers. Dashboard endpoints use an authenticated browser session and are not a supported third-party write API. Do not send
-            session cookies or secrets to the CLI.
+            session cookies or secrets to the CLI. {t('marketing.release.mcpBoundary')}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a className={primaryButton} href="https://docs.nibleaf.com/reference/api">

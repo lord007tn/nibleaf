@@ -3,7 +3,7 @@ title: 'Back up, restore, and upgrade Nibleaf'
 description: 'Capture Postgres and object storage as one recovery set, test restoration in isolation, and upgrade or roll back a pinned Nibleaf release.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-24'
 verified_against: 'scripts/backup.sh, docker-compose.prod.yml, and packages/database/prisma/migrations'
 lang: 'en'
 dir: 'ltr'
@@ -57,8 +57,14 @@ Read each intervening release note and check for release-specific migration or
 configuration changes. Create and restore-test a backup, then change
 `NIBLEAF_VERSION` to an existing release tag in `.env`:
 
+The six August 2026 capabilities are currently merged source, while the
+published self-host manifest remains v0.1.2. Do not invent a newer tag or replace
+the committed installer and Compose digests. When a matching future artifact is
+available, use the [combined release migration guide](/self-hosting/combined-release-migration)
+for its search, usage, add-on, integration, and MCP dependency order.
+
 ```dotenv
-NIBLEAF_VERSION=v0.2.0
+NIBLEAF_VERSION=vX.Y.Z
 ```
 
 Pull and recreate the services:
@@ -76,6 +82,12 @@ one publish, one search, and one public page.
 If no schema migration ran, pin the prior image and recreate the services. If a
 forward-only migration changed the database, stop writes and restore the
 pre-upgrade recovery set before starting the older application.
+
+For the combined capability schema, prefer runtime rollback and reverse MCP,
+integrations, add-ons, usage, then search only after deploying code that no
+longer reads the removed state. The integrations migration owns the shared
+nullable `ApiKey.expiresAt`; do not remove it while MCP or another consumer
+depends on it.
 
 Do not combine an application upgrade with a PostgreSQL major-version change.
 Treat the database upgrade as a separate dump-and-restore project.

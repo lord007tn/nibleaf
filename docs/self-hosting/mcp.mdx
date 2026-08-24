@@ -167,12 +167,19 @@ until it completes. The migration deliberately uses the repository's normal
 Prisma migration path instead of a multi-step concurrent-index procedure that
 could leave a partially applied or invalid index requiring manual recovery.
 
-Before application rollback, disable MCP and stop MCP clients. Apply
-`rollback.sql` from the MCP migration only after deploying an application that
-does not read MCP audit data or MCP-owned API-key provenance columns. The
-rollback drops MCP audit data and those provenance columns, but deliberately
-preserves the shared `ApiKey.expiresAt` field and does not restore wildcard
-authority. Back up audit records first if your retention policy requires them.
+Before application rollback, disable MCP and stop MCP clients. Do not execute
+the MCP `rollback.sql` after a successful Prisma migration. Deploy an
+application that does not read MCP audit data or MCP-owned API-key provenance
+columns, then ship reviewed down statements as a later forward migration in
+reverse dependency order. Use the repository rollback statements directly only
+to reverse a failed, partially applied migration; after safely reversing the
+partial statements, mark that failed migration rolled back and rerun the
+corrected forward migration. Back up audit records first if your retention
+policy requires them.
+
+Because MCP is the final dependent migration, disable and reverse it before the
+integration schema. Follow the complete reverse order in the
+[combined release migration guide](/self-hosting/combined-release-migration).
 
 ## Troubleshoot safely
 

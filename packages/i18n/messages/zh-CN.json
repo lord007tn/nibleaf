@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "整合已失效",
   "settings_integrations_verifiedtoast": "整合核实",
   "settings_integrations_deletedtoast": "删除整合",
-  "settings_integrations_testmessage": "Nibleaf整合核查成功."
+  "settings_integrations_testmessage": "Nibleaf整合核查成功.",
+  "marketing.release.searchPublishing": "每次发布都提供内置搜索，并在源码主分支中提供可选的租户安全混合路径",
+  "marketing.release.searchCapability": "内置搜索，并在源码主分支中提供可选的租户安全混合路径",
+  "marketing.release.stack": "PostgreSQL、Hono、TanStack Start、BullMQ、内置搜索、兼容 S3 的存储，以及可选的 Qdrant 和 ClickHouse 服务共同构成部署架构。在单独发布新版本之前，固定的公共容器和引导式 Docker Compose 安装程序仍为 v0.1.2。",
+  "marketing.release.mcpTitle": "只读 MCP 控制平面",
+  "marketing.release.mcpBody": "源码主分支包含与项目绑定的 MCP 资源和工具，用于内容、搜索诊断、用量、附加功能、集成、操作和主题。限定范围的密钥可以过期；不提供写入操作。",
+  "marketing.release.mcpLabel": "阅读 MCP 指南",
+  "marketing.release.mcpBoundary": "源码主分支中的 MCP 合约是一个独立的、与项目绑定的、限定范围且只读的接口；它不是基于仪表板会话的写入 API。"
 }

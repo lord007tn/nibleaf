@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "انضمام غیر فعال ہو گیا",
   "settings_integrations_verifiedtoast": "انضمام کی توثیق ہو گئی",
   "settings_integrations_deletedtoast": "انضمام حذف کر دیا گیا",
-  "settings_integrations_testmessage": "Nibleaf انضمام کی توثیق کامیاب ہوگئی ۔"
+  "settings_integrations_testmessage": "Nibleaf انضمام کی توثیق کامیاب ہوگئی ۔",
+  "marketing.release.searchPublishing": "ہر اشاعت میں بلٹ اِن تلاش، source main میں اختیاری اور tenant-safe hybrid path کے ساتھ",
+  "marketing.release.searchCapability": "بلٹ اِن تلاش، source main میں اختیاری اور tenant-safe hybrid path کے ساتھ",
+  "marketing.release.stack": "PostgreSQL، Hono، TanStack Start، BullMQ، بلٹ اِن تلاش، S3-compatible storage اور اختیاری Qdrant و ClickHouse خدمات deployment architecture بناتی ہیں۔ الگ release شائع ہونے تک pinned public container اور guided Docker Compose installer v0.1.2 پر برقرار رہیں گے۔",
+  "marketing.release.mcpTitle": "صرف پڑھنے کے لیے MCP control plane",
+  "marketing.release.mcpBody": "Source main میں content، search diagnostics، usage، add-ons، integrations، operations اور themes کے لیے project-bound MCP resources اور tools شامل ہیں۔ Scoped keys کی میعاد ختم ہو سکتی ہے؛ write operations دستیاب نہیں ہیں۔",
+  "marketing.release.mcpLabel": "MCP رہنما پڑھیں",
+  "marketing.release.mcpBoundary": "Source main کا MCP contract ایک الگ project-bound، scoped اور read-only surface ہے؛ یہ dashboard-session write API نہیں ہے۔"
 }

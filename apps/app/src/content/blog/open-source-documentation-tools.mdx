@@ -3,7 +3,7 @@ title: 'Open-source documentation tools in 2026: how to choose'
 metaTitle: '7 open-source documentation tools compared (2026)'
 description: 'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-17'
+dateModified: '2026-08-24'
 tags: ['comparison', 'open-source']
 related: ['self-host-documentation-site-docker-compose', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
 readingMinutes: 7
@@ -38,7 +38,7 @@ Neither model is better. A five-person infra startup and a forty-person team wit
 | **Fumadocs** | Git + MDX inside your app | Orama in-browser index; Algolia swappable | i18n with per-locale search tokenizers | Deploys with your Next.js app | Docs embedded in a Next.js product |
 | **BookStack** | Web editor (WYSIWYG or Markdown), database | Built-in cross-book search | UI translations; no linked translations, RTL rough edges | Self-host (PHP + MySQL) | Internal knowledge bases and team wikis |
 | **Wiki.js** | Web editors, database, optional git sync | Built-in, with pluggable engines | UI translations, locale namespacing | Self-host (Node.js) | Existing installs; v3 has no ETA |
-| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama full-text + fuzzy, Arabic tokenizer | Per-language page trees, first-class RTL, hreflang | Free cloud beta or public Docker Compose release | Mixed teams with non-developer writers; Arabic/English docs |
+| **Nibleaf** | Notion-style web editor that round-trips plain Markdown | Built-in Orama rollback path; optional tenant-filtered Qdrant hybrid path in source `main` | Per-language page trees, first-class RTL, hreflang | Free cloud beta or public v0.1.2 Docker Compose release | Mixed teams with non-developer writers; Arabic/English docs |
 
 ## The docs-as-code generators
 
@@ -76,7 +76,7 @@ Nibleaf is our project, so read the next section with that in mind. The competit
 
 Nibleaf is an AGPL-3.0 project for teams stuck between the two models: they want the web-editor experience so non-developers can contribute, but they also need Markdown export. Its public repository and pinned container release can be installed with Docker Compose. The editor is a Notion-style block editor with a slash menu that round-trips Markdown stored in the database. Publishing creates immutable snapshots, so readers do not see in-progress edits.
 
-Search is built in with Orama full-text and fuzzy matching behind a Cmd+K UI, so it does not require an Algolia account. Arabic projects select an Arabic tokenizer, and the i18n model uses per-language page trees with RTL layout, hreflang, and an English and Arabic interface. Nibleaf also includes custom-domain verification, SSR metadata, sitemaps, product analytics, team roles, and anchored review comments. The hosted service runs behind Cloudflare, whose delivery and security processing is described in the privacy policy.
+Search includes an Orama full-text and fuzzy path behind a Cmd+K UI, so the built-in mode does not require an Algolia account. Source `main` adds an optional Qdrant BM25+dense path, privacy-safe diagnostics, and grounded answers that require explicit operator and project opt-in; the published v0.1.2 self-host artifact does not yet include that path. Arabic projects keep language-aware normalization, and the i18n model uses per-language page trees with RTL layout, hreflang, and an English and Arabic interface. Nibleaf also includes custom-domain verification, SSR metadata, sitemaps, product analytics, team roles, and anchored review comments. The hosted service runs behind Cloudflare, whose delivery and security processing is described in the privacy policy.
 
 The deployment design includes the app, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. The public repository, pinned container release, and guided installer provide an anonymous installation path. The managed cloud is available in [free beta](/pricing) at nibleaf.com.
 

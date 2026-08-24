@@ -3,7 +3,7 @@ title: 'Take a self-hosted installation to production'
 description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
 audience: 'operators responsible for production readiness'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-24'
 verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
@@ -49,6 +49,13 @@ password-reset message.
 For enabled optional workflows, also create and download one [export](/product/exports),
 exercise a [redirect](/redirects), complete one [Git push and preview](/git-authoring),
 and prove both authorized and unauthorized [private reader access](/private-reader-access).
+
+For a compatible build of the combined capability set, additionally verify
+search diagnostics without content leakage, complete/partial/unavailable usage
+states, one add-on consent cycle, one non-production integration lifecycle, and
+one least-privilege MCP key from creation through revocation. Follow the
+[combined migration guide](/self-hosting/combined-release-migration); do not
+claim these checks for the published v0.1.2 artifact.
 
 ## Verify security boundaries
 

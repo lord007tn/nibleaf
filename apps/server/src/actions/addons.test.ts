@@ -8,6 +8,7 @@ const database = vi.hoisted(() => ({
   findAuditCursor: vi.fn(),
   listAuditEvents: vi.fn(),
   resolveCapability: vi.fn(),
+  invalidatePublishedSiteConfig: vi.fn(),
   transaction: vi.fn(),
 }));
 
@@ -22,6 +23,7 @@ vi.mock('@nibleaf/database', () => ({
 }));
 
 vi.mock('./usage', () => ({ resolveProjectCapability: database.resolveCapability }));
+vi.mock('./sites', () => ({ invalidatePublishedSiteConfig: database.invalidatePublishedSiteConfig }));
 
 import { activateProjectAddon, deactivateProjectAddon, listProjectAddonAuditEvents, updateProjectAddon } from './addons';
 
@@ -93,6 +95,7 @@ describe('project add-on mutations', () => {
     database.findAuditCursor.mockReset();
     database.listAuditEvents.mockReset();
     database.resolveCapability.mockReset();
+    database.invalidatePublishedSiteConfig.mockClear();
     database.resolveCapability.mockImplementation(async (_ctx, requestedProjectId: string, input: { capabilityKey: string }) => ({
       schemaVersion: 1,
       projectId: requestedProjectId,
@@ -198,6 +201,21 @@ describe('project add-on mutations', () => {
     expect(addon).toMatchObject({ enabled: true, revision: 1 });
     expect(rows.get('feedback')).toMatchObject({ enabled: true, revision: 1 });
     expect(auditEvents).toHaveLength(0);
+    expect(database.invalidatePublishedSiteConfig).toHaveBeenCalledWith(projectId);
+  });
+
+  it('invalidates same-replica live chrome after every successful mutation', async () => {
+    await updateProjectAddon(userContext, projectId, 'feedback', {
+      expectedRevision: 1,
+      config: { placement: 'after-navigation', presentation: 'card' },
+    });
+    await activateProjectAddon(userContext, projectId, 'feedback', { expectedRevision: 2 });
+    await deactivateProjectAddon(userContext, projectId, 'feedback', { expectedRevision: 2 });
+
+    expect(database.invalidatePublishedSiteConfig).toHaveBeenCalledTimes(3);
+    expect(database.invalidatePublishedSiteConfig).toHaveBeenNthCalledWith(1, projectId);
+    expect(database.invalidatePublishedSiteConfig).toHaveBeenNthCalledWith(2, projectId);
+    expect(database.invalidatePublishedSiteConfig).toHaveBeenNthCalledWith(3, projectId);
   });
 
   it('does not treat a legacy wildcard API key as an add-on write scope', async () => {

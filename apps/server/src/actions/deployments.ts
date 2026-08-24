@@ -1,6 +1,7 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
+import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
@@ -91,6 +92,24 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
       openApiDocument: true,
       addons: { select: { key: true, enabled: true, config: true } },
+      organization: {
+        select: {
+          usagePlan: {
+            select: {
+              status: true,
+              effectiveAt: true,
+              expiresAt: true,
+              plan: {
+                select: {
+                  key: true,
+                  active: true,
+                  entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
   if (!project) {
@@ -108,7 +127,11 @@ export const getCurrentSnapshot = async (projectId: string): Promise<SiteSnapsho
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   }));
-  return buildSnapshot(project, pageRows, new Date().toISOString());
+  return buildSnapshot(
+    { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+    pageRows,
+    new Date().toISOString(),
+  );
 };
 
 /** Stable JSON compare (key-order independent) for the page `config` blob. */

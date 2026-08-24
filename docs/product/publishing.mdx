@@ -3,8 +3,8 @@ title: 'Publish and verify a documentation version'
 description: 'Turn the reviewed default-branch draft into an immutable snapshot, verify the public response, and recover from a failed publish.'
 audience: 'workspace owners and editors responsible for releases'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/worker/src/processors/publish.ts and apps/server/src/actions/sites.ts'
+last_reviewed: '2026-08-24'
+verified_against: 'apps/worker/src/processors/publish.ts, apps/server/src/actions/sites.ts, and packages/shared/src/addons.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/publishing'
@@ -29,6 +29,13 @@ Check the pages that changed:
 
 For a large change, merge a reviewed documentation branch into the default
 draft before selecting **Publish**.
+
+When the CI-check add-on is enabled, the worker runs the configured local gates
+before creating a ready deployment. Enabled broken-link checks always block on
+an unresolved internal target. The preview grammar linter can be bypassed only
+when every finding is grammar-only and an editor explicitly chooses to publish
+anyway. Disabling the CI-check umbrella skips both checks; record any emergency
+bypass and restore the gate afterward. See [project add-ons](/product/add-ons).
 
 ## Publish one coherent version
 
@@ -62,3 +69,5 @@ content to the default draft and publish forward.
 
 Pinning an older application image does not roll back page drafts or a database
 migration. Self-hosters should use the separate [upgrade and restore process](/self-hosting/backups-upgrades).
+For the merged August capability set, also follow the
+[ordered migration and rollback guide](/self-hosting/combined-release-migration).

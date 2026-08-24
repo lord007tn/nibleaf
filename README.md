@@ -78,8 +78,15 @@ Private customer documentation supports dedicated reader accounts, audience/page
 - **Branches** — git-style, database-backed branches: fork, edit in isolation, and merge
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
-- **Hybrid search** — full-text + fuzzy ([Orama](https://oramasearch.com)), bilingual
-  (including an Arabic tokenizer), built into every published site and available via `⌘K`.
+- **Tenant-safe search** — built-in Orama full-text/fuzzy search remains the default and
+  immediate rollback; source `main` also includes an optional Qdrant BM25+dense hybrid path,
+  privacy-safe diagnostics, and opt-in grounded answers for English, Arabic, and mixed content.
+- **Usage and entitlements** — provider-neutral usage events, ClickHouse rollups, explicit
+  unknown states, and advisory limits without a payment or billing claim.
+- **Project add-ons and integrations** — audited optional capabilities, consent controls,
+  encrypted write-only project credentials, and clear project-versus-instance ownership.
+- **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
+  validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
 - **Multilingual & RTL** — 12 interface languages, arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
@@ -214,7 +221,10 @@ packages/
   auth        better-auth (email OTP + Google OAuth + organizations)
   storage     S3-compatible object storage
   bullmq      Typed queues/workers (publish, search, email, analytics, export)
-  search      Orama full-text + fuzzy search (bilingual)
+  search      Language-aware legacy + Qdrant hybrid retrieval contracts
+  qdrant      Versioned collection, alias, and tenant-filtered SDK operations
+  clickhouse  Optional analytics and usage facts/rollups
+  usage       Provider-neutral events, periods, limits, and entitlement contracts
   validators  Shared Zod schemas — the server↔app contract
   shared      Constants, RBAC, ids, snapshot/site helpers
   design-system  Brand + shadcn/Base UI components
@@ -252,7 +262,11 @@ better-auth session cookies stay first-party with no CORS dance.
 ## 🧰 Tech stack
 
 TanStack Start · React 19 · Hono · better-auth · Prisma · PostgreSQL · BullMQ · Dragonfly ·
-Orama · shadcn/ui (Base UI) · Tailwind CSS v4 · Zod · Pino · tsdown · Vite · Biome.
+Orama · optional Qdrant and ClickHouse · shadcn/ui (Base UI) · Tailwind CSS v4 · Zod · Pino · tsdown · Vite · Biome.
+
+> **Release boundary:** the integrated capabilities above are present in source `main`. The
+> checksummed installer and pinned public container remain v0.1.2 until a separate release is
+> published. Do not treat a source merge as an image or deployment receipt.
 
 ## 💻 Local development
 

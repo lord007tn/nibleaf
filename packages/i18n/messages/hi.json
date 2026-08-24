@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "एकीकरण निष्क्रिय",
   "settings_integrations_verifiedtoast": "एकीकरण सत्यापित",
   "settings_integrations_deletedtoast": "एकीकरण नष्ट कर दिया",
-  "settings_integrations_testmessage": "Nibleaf एकीकरण सत्यापन सफल रहा।"
+  "settings_integrations_testmessage": "Nibleaf एकीकरण सत्यापन सफल रहा।",
+  "marketing.release.searchPublishing": "हर प्रकाशन में अंतर्निहित खोज, source main में वैकल्पिक tenant-safe hybrid path के साथ",
+  "marketing.release.searchCapability": "अंतर्निहित खोज, source main में वैकल्पिक tenant-safe hybrid path के साथ",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, अंतर्निहित खोज, S3-compatible storage और वैकल्पिक Qdrant व ClickHouse सेवाएँ deployment architecture बनाती हैं। अलग release प्रकाशित होने तक pinned public container और guided Docker Compose installer v0.1.2 पर बने रहेंगे।",
+  "marketing.release.mcpTitle": "केवल-पढ़ने योग्य MCP control plane",
+  "marketing.release.mcpBody": "Source main में content, search diagnostics, usage, add-ons, integrations, operations और themes के लिए project-bound MCP resources और tools शामिल हैं। Scoped keys की समय-सीमा समाप्त हो सकती है; write operations उपलब्ध नहीं हैं।",
+  "marketing.release.mcpLabel": "MCP गाइड पढ़ें",
+  "marketing.release.mcpBoundary": "Source main का MCP contract एक अलग project-bound, scoped और read-only surface है; यह dashboard-session write API नहीं है।"
 }

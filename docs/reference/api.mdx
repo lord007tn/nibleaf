@@ -3,7 +3,7 @@ title: 'Nibleaf API and OpenAPI reference'
 description: 'Find the self-hosted server specification, understand browser-session authentication, and separate Nibleaf APIs from published customer API references.'
 audience: 'developers integrating with or extending Nibleaf'
 content_type: 'reference'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-08-24'
 verified_against: 'apps/server/src/index.ts, apps/server/src/actions/openapi.ts, apps/server/src/modules, and apps/app/src/components/site/openapi-reference-view.tsx'
 lang: 'en'
 dir: 'ltr'
@@ -45,6 +45,15 @@ Public site routes expose only reader-facing published content, search, metadata
 and explicitly public workflows. They do not grant dashboard privileges.
 Operator and worker credentials are separate from reader and workspace access.
 
+The authenticated HTTP MCP endpoint is a separate, explicit integration
+contract. It is disabled by default, accepts project-bound API keys with
+`mcp:connect` and exact read scopes, and does not turn undocumented dashboard
+routes into a supported public write API. Its read adapters cover bounded
+content, search, usage, entitlement, add-on, theme, integration, and operational
+summaries. Theme-import preview validates without writing; publishing, reindex,
+usage export, provider credentials, and new-domain mutations remain unavailable.
+See [Connect MCP clients securely](/self-hosting/mcp).
+
 ## Integrate safely
 
 - Use the OpenAPI document served by the target environment.
@@ -54,6 +63,8 @@ Operator and worker credentials are separate from reader and workspace access.
 - Handle documented error responses and rate limits rather than retrying every
   failure indefinitely.
 - Revalidate the specification and affected workflows before an upgrade.
+- For MCP, rotate project-bound keys rather than reusing a browser session or a
+  legacy wildcard key.
 
 Nibleaf is pre-1.0, so undocumented internal routes are not a compatibility
 contract. Propose stable integration needs through a public issue without

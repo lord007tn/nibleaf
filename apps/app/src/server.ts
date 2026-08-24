@@ -496,7 +496,7 @@ function marketingLlms(origin: string): string {
 
 > Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
-Last reviewed: 2026-08-22
+Last reviewed: 2026-08-24
 
 ## Key facts
 
@@ -505,7 +505,12 @@ Last reviewed: 2026-08-22
 - Notion-style WYSIWYG editor over plain Markdown/MDX - content round-trips losslessly, no proprietary format
 - First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
 - Versioned publishing: every publish is an immutable snapshot, rollback is atomic
-- Built-in full-text + fuzzy search (Orama), bilingual including an Arabic tokenizer - no external search service
+- Built-in Orama full-text/fuzzy search remains the default and immediate rollback; source main adds an optional tenant-filtered Qdrant hybrid path, privacy-safe diagnostics, and opt-in grounded answers
+- Usage, add-ons, integrations, themes, and MCP below are source-main-only capabilities and are absent from the pinned v0.1.2 artifact
+- Provider-neutral usage events and ClickHouse rollups keep missing state unknown and limits advisory; they do not implement payments
+- Audited project add-ons and integrations expose explicit availability, consent, credential ownership, and health without returning stored secrets
+- Harbor, Manuscript, and Signal support validated theme exchange and runnable Git-native repositories
+- Project-bound MCP uses expiring scoped keys and read-only adapters; theme import is preview-only
 - Custom-domain and project-subdomain workflows are active; operators must still verify their own DNS and TLS configuration
 - First-party reader analytics (page views, top pages, top searches); the hosted service also uses Cloudflare for delivery, security, and web analytics
 - Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
@@ -588,7 +593,13 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Versioned publishing: every publish is an immutable snapshot with atomic roll-forward; readers never see a half-written page.
 - Branches: git-style, database-backed branches - fork, edit in isolation, and merge into main.
 - Anchored comments: review comments pinned to the exact block, Figma-style.
-- Hybrid search: full-text + fuzzy search powered by Orama, bilingual (including an Arabic tokenizer), built into every published site and available via Cmd+K. No external search service.
+- Search: the built-in Orama full-text/fuzzy path remains the default and immediate rollback. Source main adds an optional tenant-filtered Qdrant BM25+dense path, privacy-safe diagnostics, and opt-in grounded answers. Operators begin with SEARCH_RUNTIME=shadow and must evaluate their configured providers before cutover.
+- The usage, add-on, integration, theme, and MCP capabilities below are source-main-only and are absent from the pinned v0.1.2 self-host artifact.
+- Usage and entitlements: provider-neutral events, exact ClickHouse rollups, deletion fences, and explicit unknown states. Limits remain advisory and no payment flow is present.
+- Project add-ons: audited feedback, edit/issue links, consent presentation, publishing checks, grammar-lint preview, and preview-deployment controls with current plan/entitlement availability.
+- Integrations: project-managed encrypted write-only webhook credentials and instance-managed provider status with explicit ownership and health states.
+- Documentation themes: Harbor, Manuscript, and Signal structural templates, bounded JSON exchange, and runnable Git-native repositories with platform/shared/customer ownership.
+- MCP: project-bound, expiring scoped API keys expose read-only content, search, usage, add-on, integration, operation, and theme adapters. Theme import is preview-only and cannot apply changes.
 - Bilingual and RTL: per-language page trees, RTL layout, hreflang, and localized dashboard/editor/site chrome in English and Arabic.
 - Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
 - SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
@@ -626,6 +637,10 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Support: support@nibleaf.com
 - RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
 - Product documentation: https://docs.nibleaf.com
+- Integrated release notes: https://docs.nibleaf.com/releases/august-2026-capabilities
+- Ordered migration and rollback guide: https://docs.nibleaf.com/self-hosting/combined-release-migration
+- Add-ons reference: https://docs.nibleaf.com/product/add-ons
+- MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
 - Public source: https://github.com/lord007tn/nibleaf
 `;
 }

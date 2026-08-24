@@ -1,3 +1,4 @@
+import { useT } from '@nibleaf/i18n/react';
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
@@ -6,7 +7,7 @@ import { marketingFaqs } from '@/lib/marketing-faqs';
 /** A comparison cell: `true` renders a check, a string renders as explanatory text. */
 type Cell = true | string;
 
-const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: Cell }[] }[] = [
+const buildFeatureGroups = (searchCapability: string): { title: string; rows: { label: string; cloud: Cell; self: Cell }[] }[] => [
   {
     title: 'Authoring',
     rows: [
@@ -27,7 +28,7 @@ const featureGroups: { title: string; rows: { label: string; cloud: Cell; self: 
   {
     title: 'Search, SEO & analytics',
     rows: [
-      { label: 'Built-in full-text + fuzzy search (Orama)', cloud: true, self: true },
+      { label: searchCapability, cloud: true, self: true },
       { label: 'SSR, canonicals, JSON-LD, sitemaps, hreflang', cloud: true, self: true },
       { label: 'Product analytics; Cloudflare also processes hosted traffic', cloud: true, self: true },
     ],
@@ -77,6 +78,8 @@ function CellValue({ value }: { value: Cell }) {
 }
 
 export function PricingPage({ stars = 0 }: { stars?: number }) {
+  const t = useT();
+  const featureGroups = buildFeatureGroups(t('marketing.release.searchCapability'));
   return (
     <MarketingShell stars={stars}>
       {/* Header */}

@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "ইন্টিগ্রেশন নিষ্ক্রিয় করা হয়েছে",
   "settings_integrations_verifiedtoast": "ইন্টিগ্রেশন যাচাই করা হয়েছে",
   "settings_integrations_deletedtoast": "ইন্টিগ্রেশন মুছে ফেলা হয়েছে",
-  "settings_integrations_testmessage": "Nibleaf ইন্টিগ্রেশন যাচাইকরণ সফল হয়েছে ।"
+  "settings_integrations_testmessage": "Nibleaf ইন্টিগ্রেশন যাচাইকরণ সফল হয়েছে ।",
+  "marketing.release.searchPublishing": "প্রতিটি প্রকাশে অন্তর্নির্মিত অনুসন্ধান, source main-এ ঐচ্ছিক tenant-safe hybrid path-সহ",
+  "marketing.release.searchCapability": "অন্তর্নির্মিত অনুসন্ধান, source main-এ ঐচ্ছিক tenant-safe hybrid path-সহ",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, অন্তর্নির্মিত অনুসন্ধান, S3-compatible storage এবং ঐচ্ছিক Qdrant ও ClickHouse সেবা deployment architecture গঠন করে। আলাদা release প্রকাশ না হওয়া পর্যন্ত pinned public container ও guided Docker Compose installer v0.1.2-তেই থাকবে।",
+  "marketing.release.mcpTitle": "শুধু-পঠন MCP control plane",
+  "marketing.release.mcpBody": "Source main-এ content, search diagnostics, usage, add-ons, integrations, operations এবং themes-এর জন্য project-bound MCP resources ও tools রয়েছে। Scoped key-এর মেয়াদ শেষ হতে পারে; write operation উন্মুক্ত নয়।",
+  "marketing.release.mcpLabel": "MCP নির্দেশিকা পড়ুন",
+  "marketing.release.mcpBoundary": "Source main-এর MCP contract একটি পৃথক project-bound, scoped, read-only surface; এটি dashboard-session write API নয়।"
 }

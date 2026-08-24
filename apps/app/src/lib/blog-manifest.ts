@@ -5,6 +5,102 @@ import type { BlogEntry } from './blog';
  * Article bodies remain in the lazy blog route chunk instead of the homepage. */
 export const BLOG_MANIFEST = [
   {
+    slug: 'choosing-documentation-template-ar',
+    title: 'كيف تختار قالب التوثيق: مرجعي أم تحريري أم موجه للشيفرة؟',
+    metaTitle: 'كيف تختار قالب التوثيق المناسب لمحتواك؟',
+    description: 'إطار عملي لاختيار Harbor أو Manuscript أو Signal وفق مهمة القارئ وشكل المحتوى وعمق التنقل وكثافة الشيفرة، لا وفق لقطة شاشة.',
+    language: 'ar',
+    datePublished: '2026-08-24',
+    dateModified: '2026-08-24',
+    tags: ['دليل', 'القوالب', 'بنية المعلومات'],
+    related: [
+      'documentation-templates-harbor-manuscript-signal-ar',
+      'choosing-documentation-template',
+      'arabic-technical-documentation-rtl-checklist',
+    ],
+    translationOf: 'choosing-documentation-template',
+    readingMinutes: 8,
+    faqs: [
+      {
+        question: 'أي قالب يستخدمه مشروع Nibleaf الجديد؟',
+        answer:
+          'ابدأ بـ Harbor عندما يجمع المحتوى بين الأدلة والمراجع. استخدم Manuscript للقراءة المتتابعة عبر الفصول، أو Signal عندما يكون مسح الشيفرة وواجهات API هو المهمة الغالبة.',
+      },
+      {
+        question: 'هل يجب أن يستخدم كل قسم قالباً مختلفاً؟',
+        answer:
+          'غالباً لا. البنية الثابتة أسهل في التعلم. اختر التخطيط الذي يخدم المهمة الغالبة، ثم استخدم البطاقات والتبويبات والتنبيهات وتنظيم الصفحات للاختلافات المحلية.',
+      },
+      {
+        question: 'ماذا أختبر قبل نشر تغيير القالب؟',
+        answer: 'راجع صفحات قصيرة وطويلة، وأعمق فرع للتنقل، والبحث والجداول والشيفرة والهاتف والمظهرين الفاتح والداكن وكل اتجاه كتابة تدعمه.',
+      },
+    ],
+  },
+  {
+    slug: 'documentation-templates-harbor-manuscript-signal-ar',
+    title: 'تقديم Harbor وManuscript وSignal: ثلاثة قوالب لثلاثة أنماط من التوثيق',
+    metaTitle: 'قوالب Nibleaf الجديدة للتوثيق: Harbor وManuscript وSignal',
+    description: 'يقدّم Nibleaf ثلاثة قوالب بنيوية لأدلة المنتجات، وقواعد المعرفة الطويلة، ومراجع API كثيفة الشيفرة، مع دعم كامل للعربية وRTL.',
+    language: 'ar',
+    datePublished: '2026-08-24',
+    dateModified: '2026-08-24',
+    tags: ['إعلان', 'القوالب', 'السمات'],
+    related: ['choosing-documentation-template-ar', 'documentation-templates-harbor-manuscript-signal', 'nibleaf-august-2026-source-release-ar'],
+    translationOf: 'documentation-templates-harbor-manuscript-signal',
+    readingMinutes: 7,
+    faqs: [
+      {
+        question: 'هل قوالب Nibleaf مجرد ألوان مختلفة؟',
+        answer:
+          'لا. يملك كل قالب موضع الرأس والتنقل وإطار المحتوى وفهرس الصفحة وسلوك المعاينة، بينما تبقى الألوان ومعالجات المكوّنات قابلة للتخصيص داخل تلك البنية.',
+      },
+      {
+        question: 'هل يمكن تبديل القالب من دون إعادة كتابة الصفحات؟',
+        answer: 'نعم. تعرض القوالب محتوى Markdown وMDX المحمول نفسه. يغيّر التبديل بنية القارئ ورموز التصميم، ولا يغيّر مصدر الصفحة المخزن.',
+      },
+      {
+        question: 'هل تدعم القوالب الثلاثة العربية وRTL؟',
+        answer: 'نعم. تستخدم القوالب خصائص تخطيط منطقية، وتعكس التنقل الاتجاهي في RTL، وتبقي الشيفرة والأوامر من اليسار إلى اليمين.',
+      },
+    ],
+  },
+  {
+    slug: 'nibleaf-august-2026-source-release-ar',
+    title: 'إصدار مصدر Nibleaf في أغسطس 2026: ست قدرات ومسار ترحيل واحد',
+    metaTitle: 'إصدار مصدر Nibleaf: البحث والسمات والاستخدام والإضافات والتكاملات وMCP',
+    description:
+      'إعلان تقني عن القدرات المدمجة في فرع Nibleaf الرئيسي: البحث الهجين والاستخدام والإضافات والتكاملات والسمات المحمولة وMCP للقراءة فقط.',
+    language: 'ar',
+    datePublished: '2026-08-24',
+    dateModified: '2026-08-24',
+    tags: ['إعلان', 'إصدار', 'العمليات'],
+    related: [
+      'documentation-templates-harbor-manuscript-signal-ar',
+      'arabic-technical-documentation-rtl-checklist',
+      'nibleaf-august-2026-source-release',
+    ],
+    translationOf: 'nibleaf-august-2026-source-release',
+    readingMinutes: 11,
+  },
+  {
+    slug: 'nibleaf-august-2026-source-release',
+    title: 'Nibleaf’s August 2026 source release: six capabilities, one migration path',
+    metaTitle: 'Nibleaf August 2026 source release: search, themes, usage, add-ons, integrations, and MCP',
+    description:
+      'A technical launch note for the capabilities merged into Nibleaf main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.',
+    datePublished: '2026-08-24',
+    dateModified: '2026-08-24',
+    tags: ['announcement', 'release', 'operations'],
+    related: [
+      'documentation-templates-harbor-manuscript-signal',
+      'self-host-documentation-site-docker-compose',
+      'docs-should-live-in-plain-markdown',
+    ],
+    translationOf: 'nibleaf-august-2026-source-release-ar',
+    readingMinutes: 10,
+  },
+  {
     slug: 'choosing-documentation-template',
     title: 'How to choose a documentation template: reference, editorial, or code-first',
     metaTitle: 'How to choose a documentation template for your content',
@@ -13,7 +109,8 @@ export const BLOG_MANIFEST = [
     datePublished: '2026-08-23',
     dateModified: '2026-08-23',
     tags: ['guide', 'templates', 'information-architecture'],
-    related: ['documentation-templates-harbor-manuscript-signal', 'docs-should-live-in-plain-markdown', 'arabic-documentation-rtl'],
+    related: ['documentation-templates-harbor-manuscript-signal', 'choosing-documentation-template-ar', 'arabic-documentation-rtl'],
+    translationOf: 'choosing-documentation-template-ar',
     readingMinutes: 7,
     faqs: [
       {
@@ -42,7 +139,8 @@ export const BLOG_MANIFEST = [
     datePublished: '2026-08-23',
     dateModified: '2026-08-23',
     tags: ['announcement', 'templates', 'theming'],
-    related: ['choosing-documentation-template', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
+    related: ['choosing-documentation-template', 'documentation-templates-harbor-manuscript-signal-ar', 'nibleaf-august-2026-source-release'],
+    translationOf: 'documentation-templates-harbor-manuscript-signal-ar',
     readingMinutes: 6,
     faqs: [
       {
@@ -173,7 +271,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-17',
+    dateModified: '2026-08-24',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
@@ -210,7 +308,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-17',
+    dateModified: '2026-08-24',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
     readingMinutes: 7,
@@ -239,7 +337,7 @@ export const BLOG_MANIFEST = [
     description:
       'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-17',
+    dateModified: '2026-08-24',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',

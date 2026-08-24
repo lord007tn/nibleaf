@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "Integração desactivada",
   "settings_integrations_verifiedtoast": "Integração verificada",
   "settings_integrations_deletedtoast": "Integração apagada",
-  "settings_integrations_testmessage": "A verificação da integração do Nibleaf foi bem sucedida."
+  "settings_integrations_testmessage": "A verificação da integração do Nibleaf foi bem sucedida.",
+  "marketing.release.searchPublishing": "Pesquisa integrada em cada publicação, com um caminho híbrido opcional e seguro por tenant na branch principal do código-fonte",
+  "marketing.release.searchCapability": "Pesquisa integrada com um caminho híbrido opcional e seguro por tenant na branch principal do código-fonte",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, pesquisa integrada, armazenamento compatível com S3 e os serviços opcionais Qdrant e ClickHouse formam a arquitetura de implantação. O contêiner público fixado e o instalador guiado do Docker Compose permanecem na v0.1.2 até que uma versão separada seja publicada.",
+  "marketing.release.mcpTitle": "Plano de controle MCP somente leitura",
+  "marketing.release.mcpBody": "A branch principal do código-fonte inclui recursos e ferramentas MCP vinculados ao projeto para conteúdo, diagnóstico de pesquisa, uso, add-ons, integrações, operações e temas. Chaves com escopo podem expirar; operações de escrita não são expostas.",
+  "marketing.release.mcpLabel": "Leia o guia do MCP",
+  "marketing.release.mcpBoundary": "O contrato MCP na branch principal do código-fonte é uma superfície separada, vinculada ao projeto, com escopo limitado e somente leitura; não é uma API de escrita baseada na sessão do painel."
 }

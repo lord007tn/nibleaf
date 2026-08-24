@@ -375,6 +375,7 @@ function ShowcaseEditor() {
 }
 
 function ShowcasePublish() {
+  const t = useT();
   return (
     <ShowcaseRow
       flip
@@ -384,7 +385,7 @@ function ShowcasePublish() {
       body="Every publish is an immutable snapshot with its own search index. Readers never see a half-written page, and rolling back is one click — republish any earlier version."
       bullets={[
         'Immutable snapshots — no live-editing accidents in production',
-        'Full-text + fuzzy search rebuilt on every publish, no Algolia bill',
+        t('marketing.release.searchPublishing'),
         'Cmd+K multilingual search UI with an Arabic-aware tokenizer',
       ]}
       cta={{ href: '/pricing', label: 'See what ships on every plan' }}

@@ -1,0 +1,106 @@
+---
+title: 'Configure project add-ons and consent controls'
+description: 'Enable reader actions, consent controls, preview access, and local publishing checks while preserving entitlement and audit boundaries.'
+audience: 'documentation owners, project administrators, and self-hosted operators'
+content_type: 'how-to'
+last_reviewed: '2026-08-24'
+verified_against: 'packages/shared/src/addons.ts, apps/server/src/actions/addons.ts, apps/worker/src/processors/publish.ts, and apps/app/src/components/site/site-page-view.tsx'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/add-ons'
+---
+
+Nibleaf add-ons are project-scoped product capabilities, not external-provider
+connections. Open **Project settings → Add-ons** to inspect availability, save
+configuration, activate or deactivate a capability, and review its bounded audit
+history. The server derives the project and organization from the authenticated
+session or project-bound API key on every action.
+
+## Understand the catalog
+
+| Group | Add-on | Current behavior |
+| --- | --- | --- |
+| Reader engagement | Feedback | Shows a localized helpful/not-helpful control and records a consent-aware analytics event without storing free-text feedback. |
+| Reader engagement | Edit suggestions | Opens a configured HTTP(S) edit URL after replacing the supported page-path placeholder. |
+| Reader engagement | Issue links | Opens a configured HTTP(S) issue URL with the current page URL or path. |
+| Privacy | Consent banner | Blocks optional analytics until the reader accepts; declining remains a valid persisted choice. |
+| Publishing | CI checks | Enables the local publish-check umbrella. Turning it off skips the broken-link and grammar gates. |
+| Publishing | Broken links | Blocks a publish when an enabled internal link does not resolve inside the same language and branch. |
+| Publishing | Grammar linter | Preview capability. When enabled, grammar-only findings can be explicitly bypassed; broken links cannot. |
+| Publishing | Preview deployments | Controls access to unpublished project preview routes. |
+
+The catalog state `available` means the implementation can be used when the
+project's entitlement permits it. `preview` identifies behavior that is still
+being evaluated. An unavailable or unknown entitlement must remain unavailable
+in the interface; it is not equivalent to a zero limit or a disabled choice.
+
+## Configure reader actions safely
+
+Feedback can appear after page content or after previous/next navigation, using
+a compact row or card presentation. The action records only the page target and
+helpful/not-helpful choice through the existing analytics boundary. It does not
+collect a comment, prompt, search query, or arbitrary reader text.
+
+Edit and issue links remain inactive until their URL templates validate. Use
+`{path}` or `{encodedPath}` for edit links. Issue links may also use `{url}`.
+Templates must be HTTP(S), cannot contain embedded credentials, are capped in
+length, and reject unknown placeholders. Open a representative nested page in
+preview and confirm the final external URL before publishing.
+
+## Preserve the consent boundary
+
+The consent add-on manages optional published-site analytics. When it is
+disabled, optional scripts remain blocked rather than loading without a banner.
+When enabled, the reader can accept or decline, and the choice is kept in local
+browser storage for that project. Necessary application behavior does not depend
+on analytics consent.
+
+Changing card placement, density, or button layout changes presentation only.
+It does not broaden which scripts are permitted. Verify the signed-out public
+site in English and Arabic at desktop and mobile widths, including accept,
+decline, and reopening the consent control.
+
+## Operate publishing checks
+
+CI checks run inside the existing publish worker and do not call a hosted linting
+service. Broken-link validation is language- and branch-scoped. The grammar
+linter is deliberately bounded and marked preview; treat its findings as review
+assistance rather than a general writing-quality claim.
+
+Keep the umbrella enabled in production unless an incident requires a temporary
+bypass. If a grammar-only publish is intentionally allowed, record the decision
+and correct the copy afterward. Do not bypass a broken-link failure; repair the
+target or remove the stale link.
+
+## Respect authorization, revisions, and audit history
+
+API keys need the exact `addons:read` or `addons:write` scope and must be bound to
+the same project. The legacy wildcard scope grants no add-on access. Every
+mutation uses an expected revision so concurrent saves fail with
+`addon:revision_conflict` instead of silently overwriting a newer decision.
+
+Activation also verifies configuration and entitlement state. Clients can
+branch on `addon:not_found`, `addon:unavailable`,
+`addon:configuration_required`, and `addon:revision_conflict` without exposing
+an internal database or policy error. Audit rows contain the actor, action,
+before/after enabled state, redacted configuration, and resulting revision.
+
+MCP can list add-ons, read one add-on, and inspect audit history with
+`addons:read`. It cannot configure, activate, or deactivate an add-on. See
+[Connect MCP clients securely](/self-hosting/mcp) for the complete read-only
+boundary.
+
+## Migrate and roll back
+
+The add-on migration backfills durable rows and initial audit events for existing
+projects. Recognized legacy consent state is preserved, while malformed state
+falls back to the privacy-preserving default. Durable add-on rows become
+authoritative; the published project configuration remains a compatibility
+projection for readers and workers.
+
+For an application rollback, first deploy code that no longer writes or expects
+the durable add-on tables. Preserve required audit evidence, stop add-on
+mutations, then follow the reverse order in the
+[combined release migration guide](/self-hosting/combined-release-migration).
+The reviewed add-on `rollback.sql` removes add-on state and audit history, so it
+is a destructive schema rollback rather than a feature toggle.

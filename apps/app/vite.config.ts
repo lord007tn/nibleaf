@@ -30,24 +30,39 @@ export default defineConfig(({ mode }) => {
   });
   const apiTarget = configEnv.VITE_API_URL;
   return {
-    build: {
-      rolldownOptions: {
-        output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: 'public-site-i18n',
-                test: (id) =>
-                  /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),
+    // Keep the manual i18n groups in the browser bundle. Nitro's generated
+    // service namespace must stay in one SSR chunk: Rolldown otherwise splits
+    // the TanStack Start entry across a cycle and leaves an invalid
+    // `ssr_exports` re-export that fails only when the production server starts.
+    environments: {
+      client: {
+        build: {
+          rolldownOptions: {
+            output: {
+              codeSplitting: {
+                groups: [
+                  {
+                    name: 'public-site-i18n',
+                    test: (id) =>
+                      /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),
+                  },
+                  {
+                    name: 'standalone-i18n',
+                    test: (id) =>
+                      /\/packages\/i18n\/src\/paraglide\/messages\/(?:common_loading|error_(?:backhome|badge|title|tryagain|unexpected)|notfound_(?:backhome|badge|body|title))\.js$/.test(
+                        id.replaceAll('\\', '/'),
+                      ),
+                  },
+                ],
               },
-              {
-                name: 'standalone-i18n',
-                test: (id) =>
-                  /\/packages\/i18n\/src\/paraglide\/messages\/(?:common_loading|error_(?:backhome|badge|title|tryagain|unexpected)|notfound_(?:backhome|badge|body|title))\.js$/.test(
-                    id.replaceAll('\\', '/'),
-                  ),
-              },
-            ],
+            },
+          },
+        },
+      },
+      ssr: {
+        build: {
+          rolldownOptions: {
+            output: { codeSplitting: false },
           },
         },
       },

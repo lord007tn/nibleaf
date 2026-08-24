@@ -3,7 +3,7 @@ title: 'Integrations engine'
 description: 'Understand provider ownership, secure project connections, lifecycle actions, MCP boundaries, and safe migration or key rotation.'
 audience: 'self-hosted operators, contributors, and security reviewers'
 content_type: 'reference'
-last_reviewed: '2026-08-23'
+last_reviewed: '2026-08-24'
 verified_against: 'packages/shared/src/integrations.ts and apps/server/src/actions/integrations'
 lang: 'en'
 dir: 'ltr'
@@ -150,6 +150,10 @@ in foreign-key-safe reverse order. Drop `ApiKey.expiresAt` only when rolling bac
 integrations before that dependent migration and after confirming no other
 consumer relies on it. Restoring the prior application release is the final
 step; never delete encrypted data before the rollback decision is complete.
+
+The complete release dependency order and the distinction between runtime and
+destructive schema rollback are documented in the
+[combined release migration guide](/self-hosting/combined-release-migration).
 
 ## Adding a provider
 

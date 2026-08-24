@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "Integrasi dinonaktifkan",
   "settings_integrations_verifiedtoast": "Integrasi diverifikasi",
   "settings_integrations_deletedtoast": "Integrasi dihapus",
-  "settings_integrations_testmessage": "Integrasi Nibleaf berhasil."
+  "settings_integrations_testmessage": "Integrasi Nibleaf berhasil.",
+  "marketing.release.searchPublishing": "Pencarian bawaan pada setiap publikasi, dengan jalur hibrida opsional yang aman untuk tenant di source main",
+  "marketing.release.searchCapability": "Pencarian bawaan dengan jalur hibrida opsional yang aman untuk tenant di source main",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, pencarian bawaan, penyimpanan yang kompatibel dengan S3, serta layanan Qdrant dan ClickHouse opsional membentuk arsitektur deployment. Container publik yang dipatok dan penginstal Docker Compose terpandu tetap berada di v0.1.2 hingga rilis terpisah diterbitkan.",
+  "marketing.release.mcpTitle": "Control plane MCP hanya-baca",
+  "marketing.release.mcpBody": "Source main mencakup resource dan tool MCP yang terikat ke proyek untuk konten, diagnostik pencarian, penggunaan, add-on, integrasi, operasi, dan tema. Kunci dengan cakupan terbatas dapat kedaluwarsa; operasi tulis tidak disediakan.",
+  "marketing.release.mcpLabel": "Baca panduan MCP",
+  "marketing.release.mcpBoundary": "Kontrak MCP di source main adalah permukaan terpisah yang terikat ke proyek, memiliki cakupan terbatas, dan hanya-baca; kontrak ini bukan API tulis berbasis sesi dashboard."
 }

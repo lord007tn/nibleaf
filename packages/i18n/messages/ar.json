@@ -2598,5 +2598,12 @@
   "settings_integrations_deactivatedtoast": "تم إيقاف التكامل",
   "settings_integrations_verifiedtoast": "تم التحقق من التكامل",
   "settings_integrations_deletedtoast": "تم حذف التكامل",
-  "settings_integrations_testmessage": "نجح التحقق من تكامل Nibleaf."
+  "settings_integrations_testmessage": "نجح التحقق من تكامل Nibleaf.",
+  "marketing.release.searchPublishing": "بحث مدمج مع كل نشر، ومسار هجين اختياري وآمن للمستأجر في المصدر الرئيسي",
+  "marketing.release.searchCapability": "بحث مدمج مع مسار هجين اختياري وآمن للمستأجر في المصدر الرئيسي",
+  "marketing.release.stack": "تتكون بنية النشر من PostgreSQL وHono وTanStack Start وBullMQ والبحث المدمج والتخزين المتوافق مع S3، مع خدمتي Qdrant وClickHouse الاختياريتين. تبقى صورة الحاوية العامة والمثبت الموجّه عند v0.1.2 إلى أن يُنشر إصدار منفصل.",
+  "marketing.release.mcpTitle": "مستوى تحكم MCP للقراءة فقط",
+  "marketing.release.mcpBody": "يتضمن المصدر الرئيسي موارد وأدوات MCP مقيدة بالمشروع للمحتوى وتشخيص البحث والاستخدام والإضافات والتكاملات والعمليات والسمات. يمكن أن تنتهي المفاتيح المقيدة، ولا توجد عمليات كتابة.",
+  "marketing.release.mcpLabel": "اقرأ دليل MCP",
+  "marketing.release.mcpBoundary": "عقد MCP في المصدر الرئيسي سطح منفصل ومقيد بالمشروع والصلاحيات وللقراءة فقط؛ وليس واجهة كتابة تستخدم جلسة لوحة التحكم."
 }

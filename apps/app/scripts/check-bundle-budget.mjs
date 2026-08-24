@@ -37,15 +37,40 @@ const manifestFile = existsSync(serverRoot)
   ? readdirSync(serverRoot).find((name) => name.startsWith('_tanstack-start-manifest_') && name.endsWith('.mjs'))
   : undefined;
 
-if (!manifestFile) {
-  console.error('Bundle manifest not found. Run `pnpm --filter @nibleaf/app build` before this check.');
-  process.exit(2);
+let manifestFactory;
+if (manifestFile) {
+  const manifestModule = await import(`${pathToFileURL(join(serverRoot, manifestFile)).href}?t=${Date.now()}`);
+  manifestFactory = manifestModule.tsrStartManifest;
+} else {
+  // Runtime-safe SSR builds keep TanStack's service namespace in one chunk.
+  // Read the generated literal from that chunk so bundle budgets remain
+  // enforceable without reintroducing the circular SSR chunk split.
+  const ssrRoot = join(serverRoot, '_ssr');
+  const marker = 'tsrStartManifest = () => (';
+  const ssrSource = existsSync(ssrRoot)
+    ? readdirSync(ssrRoot)
+        .filter((name) => name.endsWith('.mjs'))
+        .map((name) => readFileSync(join(ssrRoot, name), 'utf8'))
+        .find((source) => source.includes(marker))
+    : undefined;
+  const start = ssrSource?.indexOf(marker);
+  const end = start === undefined || start < 0 ? -1 : ssrSource.indexOf('\n}));', start + marker.length);
+  if (ssrSource && start !== undefined && start >= 0 && end >= 0) {
+    const manifestLiteral = ssrSource
+      .slice(start + marker.length, end)
+      .trimEnd()
+      .replace(/\);$/, '');
+    const manifestJson = manifestLiteral
+      .replace(/([{,]\s*)([$A-Z_a-z][$\w]*):/g, '$1"$2":')
+      .replace(/\bvoid 0\b/g, 'null')
+      .replace(/!0/g, 'true')
+      .replace(/!1/g, 'false');
+    manifestFactory = () => JSON.parse(manifestJson);
+  }
 }
 
-const manifestModule = await import(`${pathToFileURL(join(serverRoot, manifestFile)).href}?t=${Date.now()}`);
-const manifestFactory = manifestModule.tsrStartManifest;
 if (typeof manifestFactory !== 'function') {
-  console.error(`Unexpected TanStack Start manifest shape in ${manifestFile}.`);
+  console.error('Bundle manifest not found. Run `pnpm --filter @nibleaf/app build` before this check.');
   process.exit(2);
 }
 
