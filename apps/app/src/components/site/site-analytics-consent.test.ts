@@ -2,7 +2,7 @@
 
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { appendAnalyticsScript, SiteAnalyticsConsent } from './site-analytics-consent';
 
@@ -77,5 +77,23 @@ describe('SiteAnalyticsConsent', () => {
     const acceptAfterReopen = [...container.querySelectorAll('button')].find((button) => button.textContent === acceptLabel);
     await act(async () => acceptAfterReopen?.click());
     expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('accepted');
+  });
+
+  it('reloads after an accepted visitor reopens privacy choices and withdraws consent', async () => {
+    const reloadPage = vi.fn();
+    window.localStorage.setItem('nibleaf.analytics.consent.project-withdraw', 'accepted');
+
+    await act(async () =>
+      root.render(createElement(SiteAnalyticsConsent, { projectId: 'project-withdraw', config: consentConfig, lang: 'en', reloadPage })),
+    );
+    expect(document.head.querySelectorAll('script')).toHaveLength(2);
+
+    const manage = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Privacy choices');
+    await act(async () => manage?.click());
+    const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');
+    await act(async () => decline?.click());
+
+    expect(window.localStorage.getItem('nibleaf.analytics.consent.project-withdraw')).toBe('declined');
+    expect(reloadPage).toHaveBeenCalledOnce();
   });
 });

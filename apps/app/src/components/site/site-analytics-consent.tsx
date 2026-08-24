@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { type AnalyticsScript, analyticsDeliveryMode, analyticsScripts } from '@/lib/site-seo';
 
@@ -53,11 +53,22 @@ export function appendAnalyticsScript(projectId: string, index: number, script: 
   document.head.appendChild(el);
 }
 
-export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: string; config: ProjectConfig | null; lang?: string }) {
+export function SiteAnalyticsConsent({
+  projectId,
+  config,
+  lang,
+  reloadPage = () => window.location.reload(),
+}: {
+  projectId: string;
+  config: ProjectConfig | null;
+  lang?: string;
+  reloadPage?: () => void;
+}) {
   const scripts = useMemo(() => analyticsScripts(config), [config]);
   const mode = analyticsDeliveryMode(config);
   const requiresConsent = mode === 'consent' && scripts.length > 0;
   const [choice, setChoice] = useState<'pending' | 'accepted' | 'declined'>('pending');
+  const acceptedBeforeManage = useRef(false);
   const t = siteT(lang);
   const settings = config?.addons?.consentBanner;
 
@@ -65,6 +76,7 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
     if (typeof window === 'undefined' || !requiresConsent) {
       return;
     }
+    acceptedBeforeManage.current = false;
     setChoice(readConsent(projectId));
   }, [projectId, requiresConsent]);
 
@@ -87,16 +99,25 @@ export function SiteAnalyticsConsent({ projectId, config, lang }: { projectId: s
     } catch {
       // The choice remains effective for this page when storage is unavailable.
     }
-    if (choice === 'accepted' && next === 'declined') {
-      window.location.reload();
+    if ((choice === 'accepted' || acceptedBeforeManage.current) && next === 'declined') {
+      reloadPage();
       return;
     }
+    acceptedBeforeManage.current = false;
     setChoice(next);
   };
 
   if (choice !== 'pending') {
     return (
-      <Button className="fixed end-4 bottom-4 z-40 shadow-lg" onClick={() => setChoice('pending')} size="sm" variant="outline">
+      <Button
+        className="fixed end-4 bottom-4 z-40 shadow-lg"
+        onClick={() => {
+          acceptedBeforeManage.current = choice === 'accepted';
+          setChoice('pending');
+        }}
+        size="sm"
+        variant="outline"
+      >
         {t('analyticsConsentManage')}
       </Button>
     );

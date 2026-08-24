@@ -1,18 +1,18 @@
 -- Manual rollback for operators who must return to a pre-add-on application.
--- This preserves the authoritative state in the legacy Project.config
--- projection before removing the new tables. Stop application writes first.
+-- This preserves the state representable by the pre-add-on Project.config
+-- schema before removing the new tables. Placement and presentation controls
+-- did not exist in that schema and are intentionally discarded. Stop
+-- application writes first.
 UPDATE "project" AS project
 SET "config" = jsonb_set(
   jsonb_set(
     CASE WHEN jsonb_typeof(project."config") = 'object' THEN project."config" ELSE '{}'::jsonb END,
     '{addons}',
-    ((CASE WHEN jsonb_typeof(project."config"->'addons') = 'object' THEN project."config"->'addons' ELSE '{}'::jsonb END) - 'editUrl' - 'issueUrl') || jsonb_build_object(
+    ((CASE WHEN jsonb_typeof(project."config"->'addons') = 'object' THEN project."config"->'addons' ELSE '{}'::jsonb END)
+      - 'editUrl' - 'issueUrl' - 'feedbackPlacement' - 'feedbackPresentation' - 'consentBanner') || jsonb_build_object(
       'feedback', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
-      'feedbackPlacement', (SELECT "config"->>'placement' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
-      'feedbackPresentation', (SELECT "config"->>'presentation' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
       'editSuggestions', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'edit-suggestions'),
       'issueLinks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'issue-links'),
-      'consentBanner', (SELECT jsonb_build_object('enabled', "enabled") || "config" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'consent-banner'),
       'ciChecks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'ci-checks'),
       'brokenLinks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'broken-links'),
       'grammarLinter', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'grammar-linter'),

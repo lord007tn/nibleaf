@@ -53,6 +53,13 @@ try {
         if ('editUrl' in (config.addons ?? {}) || 'issueUrl' in (config.addons ?? {})) {
           throw new Error(`rollback retained a stale URL template for ${row.id}`);
         }
+        if (
+          'feedbackPlacement' in (config.addons ?? {}) ||
+          'feedbackPresentation' in (config.addons ?? {}) ||
+          'consentBanner' in (config.addons ?? {})
+        ) {
+          throw new Error(`rollback retained add-on-only presentation settings for ${row.id}`);
+        }
       }
 
       await tx.$executeRawUnsafe('SET LOCAL search_path TO public');

@@ -158,7 +158,11 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                 aria-label={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.label' : 'settings.addons.issueUrl.label')}
                 className="h-9 font-mono text-sm"
                 onChange={(event) => setDraftConfig({ ...config, urlTemplate: event.target.value })}
-                placeholder={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.placeholder' : 'settings.addons.issueUrl.placeholder')}
+                placeholder={
+                  addon.id === 'edit-suggestions'
+                    ? t('settings.addons.editUrl.placeholder', { path: '{path}' })
+                    : t('settings.addons.issueUrl.placeholder', { url: '{url}' })
+                }
                 value={stringConfig(config, 'urlTemplate')}
               />
             </ConfigurationField>

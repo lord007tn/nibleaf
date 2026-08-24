@@ -24,7 +24,7 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { getData, mutateData } from './client-helpers';
+import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type { Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
 
@@ -499,6 +499,14 @@ export const useUpdateProjectAddon = (projectId: string) => {
       qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
     },
+    onError: async (error, variables) => {
+      if (error instanceof ApiResponseError && error.code === 'addon:revision_conflict') {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.addons.detail(projectId, variables.addonId), exact: true, refetchType: 'all' }),
+          qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId), exact: true, refetchType: 'all' }),
+        ]);
+      }
+    },
   });
 };
 
@@ -516,6 +524,14 @@ const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deac
       qc.setQueryData(queryKeys.addons.detail(projectId, addon.id), addon);
       qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    },
+    onError: async (error, variables) => {
+      if (error instanceof ApiResponseError && error.code === 'addon:revision_conflict') {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.addons.detail(projectId, variables.addonId), exact: true, refetchType: 'all' }),
+          qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId), exact: true, refetchType: 'all' }),
+        ]);
+      }
     },
   });
 };
