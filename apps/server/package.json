@@ -34,6 +34,7 @@
     "@nibleaf/search": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/storage": "workspace:*",
+    "@nibleaf/usage": "workspace:*",
     "@nibleaf/validators": "workspace:*",
     "@openrouter/sdk": "0.13.20",
     "@scalar/hono-api-reference": "^0.10.19",

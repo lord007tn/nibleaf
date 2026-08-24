@@ -1,13 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
+import { keys as clickHouseKeys, clickHouseWritesEnabled } from '@nibleaf/clickhouse';
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, OpenRouterEmbeddingProvider, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
+import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
 import { z } from 'zod';
 import { env } from '../env';
+import { DurableUsageEnqueueError, enqueueUsageEvents } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'search' });
 const BATCH_SIZE = 64;
@@ -251,7 +254,7 @@ const claimRun = async (data: ReindexProjectJobData, deployment: { id: string },
           },
         });
         if (claimed.count !== 1) throw new SearchRunBusy('Search index run ownership changed.');
-        return { kind: 'claimed' as const, id: run.id, claimToken };
+        return { kind: 'claimed' as const, id: run.id, claimToken, startedAt: run.startedAt ?? now };
       });
     } catch (error) {
       const raced = error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
@@ -336,7 +339,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     await renewRunClaim(run);
     await client.ensureHybridCollection();
     const [project, previousDeployment] = await Promise.all([
-      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true } }),
+      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true, organizationId: true } }),
       prisma.deployment.findFirst({
         where: { projectId: job.data.projectId, status: 'READY', id: { not: deployment.id }, version: { lt: deployment.version } },
         orderBy: { version: 'desc' },
@@ -416,7 +419,6 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
       if (dense?.length === client.vectorSize) reused.push(pointFromChunk(item.chunk, dense, item.payload));
       else toEmbed.push(item);
     }
-
     let embedded = 0;
     for (let offset = 0; offset < toEmbed.length; offset += BATCH_SIZE) {
       await renewRunClaim(run);
@@ -432,6 +434,44 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
       };
       const embeddedBatch = await embedBatch();
       const points = batch.map((item, index) => pointFromChunk(item.chunk, embeddedBatch.vectors[index] ?? [], item.payload));
+      const occurredAt = run.startedAt.toISOString();
+      const batchScope = batch
+        .map(({ chunk }) => `${chunk.id}:${chunk.contentHash}`)
+        .sort()
+        .join('|');
+      const embeddedBytes = batch.reduce((total, { chunk }) => total + Buffer.byteLength(embeddingText(chunk), 'utf8'), 0);
+      const usageEvents = [
+        buildUsageEvent(
+          {
+            eventId: deterministicUsageEventId(`search-index:${deployment.id}:${batchScope}:chunks`),
+            occurredAt,
+            meterKey: 'embedded_chunk',
+            quantity: String(points.length),
+            kind: 'usage',
+            correctionOfEventId: null,
+          },
+          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+        ),
+        buildUsageEvent(
+          {
+            eventId: deterministicUsageEventId(`search-index:${deployment.id}:${batchScope}:bytes`),
+            occurredAt,
+            meterKey: 'indexed_content_byte',
+            quantity: String(embeddedBytes),
+            kind: 'usage',
+            correctionOfEventId: null,
+          },
+          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+        ),
+      ];
+      if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) {
+        try {
+          await enqueueUsageEvents(usageEvents);
+        } catch (error) {
+          if (!(error instanceof DurableUsageEnqueueError) || !error.outboxPersisted) throw error;
+          log.warn({ projectId: job.data.projectId, deploymentId: deployment.id }, 'search usage enqueue deferred to the durable outbox');
+        }
+      }
       await client.upsert(points);
       await renewRunClaim(run);
       embedded += points.length;

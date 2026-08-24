@@ -155,6 +155,9 @@ importers:
       '@nibleaf/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../../packages/usage
       '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
@@ -460,6 +463,9 @@ importers:
       '@nibleaf/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../../packages/usage
       '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
@@ -581,6 +587,9 @@ importers:
       '@nibleaf/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../../packages/usage
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@7.0.2)(valibot@1.4.2(typescript@7.0.2))(zod@4.4.3)
@@ -642,6 +651,9 @@ importers:
       '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../bullmq
+      '@nibleaf/clickhouse':
+        specifier: workspace:*
+        version: link:../clickhouse
       '@nibleaf/database':
         specifier: workspace:*
         version: link:../database
@@ -688,6 +700,9 @@ importers:
       '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@7.0.2)(valibot@1.4.2(typescript@7.0.2))(zod@4.4.3)
@@ -710,6 +725,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(jsdom@30.0.1(@noble/hashes@2.3.0))(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/cli:
     devDependencies:
@@ -737,6 +755,9 @@ importers:
       '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@7.0.2)(valibot@1.4.2(typescript@7.0.2))(zod@4.4.3)
@@ -765,6 +786,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@prisma/adapter-pg':
         specifier: 7.9.1
         version: 7.9.1
@@ -799,6 +823,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(jsdom@30.0.1(@noble/hashes@2.3.0))(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/design-system:
     dependencies:
@@ -1055,6 +1082,25 @@ importers:
         version: 7.0.2
 
   packages/tsconfig: {}
+
+  packages/usage:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@nibleaf/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      tsdown:
+        specifier: ^0.22.14
+        version: 0.22.14(oxc-resolver@11.24.2)(tsx@4.22.4)(typescript@7.0.2)(unrun@0.3.1)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(jsdom@30.0.1(@noble/hashes@2.3.0))(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/validators:
     dependencies:
@@ -15231,6 +15277,14 @@ snapshots:
       chai: 5.3.3
       tinyrainbow: 2.0.0
 
+  '@vitest/mocker@3.2.6(vite@7.3.6(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0))':
+    dependencies:
+      '@vitest/spy': 3.2.6
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 7.3.6(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
+
   '@vitest/mocker@3.2.6(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
       '@vitest/spy': 3.2.6
@@ -20762,7 +20816,7 @@ snapshots:
     dependencies:
       '@types/chai': 5.2.3
       '@vitest/expect': 3.2.6
-      '@vitest/mocker': 3.2.6(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0))
+      '@vitest/mocker': 3.2.6(vite@7.3.6(@types/node@22.19.21)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0))
       '@vitest/pretty-format': 3.2.6
       '@vitest/runner': 3.2.6
       '@vitest/snapshot': 3.2.6

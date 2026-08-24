@@ -7,6 +7,11 @@ export const deleteProjectAnalytics = async (
   client: ClickHouseClient = getClickHouseClient('writer'),
 ): Promise<void> => {
   const params = { tenant_id: tenantId, project_id: projectId };
+  await client.insert({
+    table: 'analytics_deletion_tombstones',
+    format: 'JSONEachRow',
+    values: [{ tenant_id: tenantId, project_id: projectId, deleted_at: new Date().toISOString(), reason: 'privacy_deletion' }],
+  });
   await Promise.all([
     client.command({
       query: 'ALTER TABLE analytics_events DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
@@ -63,6 +68,7 @@ export const rebuildProjectAnalyticsRollups = async (
         uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
       FROM analytics_events FINAL
       WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       GROUP BY day, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
     query_params: queryParams,
   });
@@ -72,6 +78,7 @@ export const rebuildProjectAnalyticsRollups = async (
         latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
       FROM analytics_events FINAL
       WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
         AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
     query_params: queryParams,
   });
@@ -81,6 +88,7 @@ export const rebuildProjectAnalyticsRollups = async (
         uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
       FROM analytics_events FINAL
       WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       GROUP BY hour, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
     query_params: queryParams,
   });
@@ -90,6 +98,7 @@ export const rebuildProjectAnalyticsRollups = async (
         latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
       FROM analytics_events FINAL
       WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
         AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
     query_params: queryParams,
   });
@@ -142,6 +151,7 @@ export const exportProjectAnalytics = async (
     FROM analytics_events FINAL
     WHERE tenant_id = {tenant_id:String}
       AND project_id = {project_id:String}
+      AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       AND occurred_at < parseDateTime64BestEffort({before:String})
     ORDER BY occurred_at DESC, event_id DESC
     LIMIT {limit:UInt32}`,

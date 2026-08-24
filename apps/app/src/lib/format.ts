@@ -8,9 +8,9 @@ import { useLocale } from '@nibleaf/i18n/react';
  */
 export function useFormatters() {
   const { locale } = useLocale();
-  const tag = locale;
+  const tag = locale === 'ar' ? 'ar-u-nu-arab' : locale;
   return {
-    number: (value: number) => new Intl.NumberFormat(tag).format(value),
+    number: (value: number | bigint) => new Intl.NumberFormat(tag).format(value),
     date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),
     /** A signed percentage like “+12.5%” / “−4%” for trend badges. `value` is
      *  already in percent units (e.g. 12.5 → “+12.5%”). `style:'percent'` lets

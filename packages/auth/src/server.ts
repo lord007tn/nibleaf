@@ -1,6 +1,6 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import {
   createEmailTranslator,
   type RenderedEmail,
@@ -16,6 +16,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
 import { admin, emailOTP, organization } from 'better-auth/plugins';
+import { reassignOrDeleteOrgs } from './account-deletion';
 import { keys } from './keys.server';
 import { googleOAuthEnabled } from './providers';
 
@@ -69,28 +70,6 @@ async function userNotificationEnabled(userId: string, id: string): Promise<bool
     return true;
   }
   return memberships.some((m) => notificationEnabled(m.organization.metadata, id));
-}
-
-/**
- * Before a user is deleted, never orphan an organization: if they are the sole
- * member, delete the org (cascades its projects/pages); if they are the last
- * owner but others remain, promote the earliest remaining member to owner.
- */
-async function reassignOrDeleteOrgs(userId: string): Promise<void> {
-  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true, role: true } });
-  for (const membership of memberships) {
-    const members = await prisma.member.findMany({
-      where: { organizationId: membership.organizationId },
-      select: { id: true, userId: true, role: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    const others = members.filter((m) => m.userId !== userId);
-    if (others.length === 0) {
-      await prisma.organization.delete({ where: { id: membership.organizationId } }).catch(() => undefined);
-    } else if (membership.role === 'owner' && !others.some((m) => m.role === 'owner') && others[0]) {
-      await prisma.member.update({ where: { id: others[0].id }, data: { role: 'owner' } }).catch(() => undefined);
-    }
-  }
 }
 
 // ─── Starter site template ───────────────────────────────────────────────────
@@ -670,11 +649,15 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
       return;
     }
     const firstName = user.name?.split(' ')[0]?.trim();
-    const org = await prisma.organization.create({
-      data: {
-        name: firstName ? `${firstName}'s workspace` : 'My workspace',
-        slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
-      },
+    const org = await prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: firstName ? `${firstName}'s workspace` : 'My workspace',
+          slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
+        },
+      });
+      await assignDefaultUsagePlan(tx, organization.id);
+      return organization;
     });
     await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
     await logPlatformEvent('signup_completed', { userId: user.id });

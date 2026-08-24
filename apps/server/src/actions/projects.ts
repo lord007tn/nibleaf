@@ -1,14 +1,11 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
-import { keys as clickHouseKeys, deleteProjectAnalytics } from '@nibleaf/clickhouse';
-import { type Prisma, prisma } from '@nibleaf/database';
-import { createLogger } from '@nibleaf/logger';
+import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
+import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfig, UpdateProjectBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
-const log = createLogger({ action: 'projects' });
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
 
 /** Throw unless the project exists and belongs to the organization. Returns it. */
@@ -80,6 +77,7 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
     // creator its owner. That org is the site's member boundary (per-site
     // members/roles). Slug is left null to avoid the global org-slug unique.
     const org = await tx.organization.create({ data: { name: body.name } });
+    await assignDefaultUsagePlan(tx, org.id);
     await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER } });
     const project = await tx.project.create({
       data: {
@@ -166,17 +164,14 @@ export const updateProject = async (organizationId: string, id: string, body: Up
 
 export const deleteProject = async (organizationId: string, id: string) => {
   await assertProjectInOrg(organizationId, id);
-  // Queue tenant erasure before deleting the source record. If Redis is
-  // unavailable, fail while the project still exists so cleanup stays
-  // retryable instead of silently orphaning retained search collections.
-  await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: id } }, { jobId: `search-delete-${id}` });
-  // Each site owns its organization (1:1), so deleting the site deletes its org —
-  // which cascades the project itself plus its members and pending invitations.
-  await prisma.organization.delete({ where: { id: organizationId } });
-  if (clickHouseKeys().ANALYTICS_MODE !== 'disabled') {
-    await deleteProjectAnalytics(organizationId, id).catch((error) => {
-      log.error({ error, organizationId, projectId: id }, 'project deleted but ClickHouse analytics erasure requires retry');
-    });
+  try {
+    await eraseProjectOrganization(organizationId, id);
+  } catch (error) {
+    if (error instanceof TenantUsageDeletionPendingError) {
+      throw conflict('Usage ingestion is still draining. Retry project deletion.', { reason: 'usage_ingestion_pending' });
+    }
+    if (error instanceof TenantErasureProjectNotFoundError) throw notFound('project', { id });
+    throw error;
   }
   return { id };
 };

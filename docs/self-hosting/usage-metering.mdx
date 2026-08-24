@@ -1,0 +1,253 @@
+---
+title: 'Operate usage metering'
+description: 'Configure, reconcile, retain, export, delete, and roll back provider-neutral Nibleaf usage without enabling payments.'
+audience: 'self-hosted operators, privacy owners, and future billing integrators'
+content_type: 'how-to'
+last_reviewed: '2026-08-24'
+last_verified: '2026-08-24'
+verified_against: '@nibleaf/usage, @nibleaf/clickhouse migration 3, Prisma usage models, and server usage actions'
+owner: 'platform'
+review_cadence: 'quarterly'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/usage-metering'
+---
+
+Nibleaf separates product usage from payments. Postgres stores plans, meter
+configuration, entitlements, export checkpoints, and an organization-level
+marker proving that usage facts may have been written. It also holds a bounded,
+content-free ingestion outbox until queued facts are confirmed in ClickHouse. ClickHouse stores
+immutable high-volume facts, rebuilt hourly projections, reconciliation
+coverage, durable pending work, and deletion tombstones.
+`@nibleaf/usage` owns provider-neutral event and period semantics. No part of
+this path creates a customer, subscription, checkout, invoice, or charge.
+
+## What Nibleaf measures
+
+Current snapshot quantities come from authoritative product rows: editor seats,
+published pages, custom domains, and uploaded asset bytes. UTC-period facts are
+public page views, search queries, completed AI answers, known AI input/output
+tokens, newly embedded chunks, indexed input bytes, and builds.
+
+Nibleaf does not infer a missing quantity as zero. An unavailable sink produces
+an `unavailable` reading. If an answer exists without token usage, the related
+token readings are `partial` with a null quantity.
+
+## Privacy boundary
+
+Usage facts contain only a server-derived organization/project scope, event id,
+schema version, UTC timestamps, meter key, decimal-string quantity, correction
+link, and trusted source. They never contain prompts, answers, search terms or
+hashes, document content, vectors, asset names or URLs, secrets, IP addresses or
+hashes, raw user agents, user/session ids, provider/model names, or raw errors.
+
+## Periods, retries, corrections, and late data
+
+- Billing periods are half-open UTC ranges: `[start, endExclusive)`.
+- A retry reuses its deterministic event id. ClickHouse `FINAL` reads remove
+  duplicates before aggregation.
+- Before Redis enqueue, Nibleaf persists the validated content-free `UsageEvent
+  v1` batch and its tenant/project-scoped deterministic job id. A definite
+  enqueue failure or timeout with an unknown outcome is therefore recoverable:
+  the five-minute analytics worker adds a missing job or retries a failed one.
+  ClickHouse failure retries only that analytics job and does not undo search
+  or publishing work.
+- Deterministic ids use an RFC 9562 UUIDv8 application-defined layout derived
+  from purpose- and domain-separated SHA-256 bytes. The version and variant
+  bits are set explicitly; this unreleased contract has no UUIDv5 ids to
+  migrate.
+- Corrections are new signed events that reference the original event. Facts
+  are not edited in place.
+- A late event is assigned by `occurredAt` to its original UTC period. Exports
+  stop with `usage:export_not_ready` until that period is reconciled. Late
+  events enqueue an immediate rebuild; a five-minute worker also finds durable
+  pending periods after crashes or restarts.
+- Quantities cross service boundaries as canonical decimal strings. This avoids
+  JSON integer precision loss. Each fact must fit a signed 64-bit integer;
+  reconciled rollups, summaries, provider records, and checkpoints use the
+  wider exact `Decimal(38,0)` domain. Overflow is rejected instead of wrapped,
+  narrowed, or rounded.
+
+Historical totals are returned from hourly projections only when an exact
+closed UTC month has a matching coverage proof. Missing meters or rows are not
+silently interpreted as zero. Arbitrary sub-hour historical ranges and ranges
+crossing the raw-retention boundary are reported unavailable.
+
+Summaries inspect actual pending project receipts that overlap the requested
+period. Recent pending work is `partial`; work still pending after 24 hours is
+`unavailable`, never a complete zero. Successfully drained outbox receipts are
+kept for 24 hours for crash/idempotency proof and then pruned. Pending receipts
+are never pruned automatically.
+
+## Limits are advisory in this release
+
+ClickHouse is eventually consistent and is never a concurrency gate. The
+dashboard preserves the configured `observe`, `warn`, or `block` behavior, but
+returns `enforcement=advisory`; no product action is blocked in this release.
+Enabling enforcement later requires an approved, transaction-safe reservation,
+commit, release, and reconciliation lifecycle wired into every block-capable
+entry point. This release intentionally has no unused reservation model or
+action that could imply stronger enforcement.
+
+There is deliberately no `reserveProjectUsage` action in this version: an
+unwired reservation name would claim atomic enforcement that does not exist.
+The stable v1 replacement is `getProjectUsageSummary` for advisory meter state,
+`getProjectEntitlements`/`checkProjectEntitlement` for public capability checks,
+and `resolveProjectCapability` for already-authorized internal product actions.
+
+## Snapshot semantics and plan provisioning
+
+- `editor_seat` counts active, non-suspended organization members.
+- `published_page` uses the latest `READY` deployment with an immutable
+  snapshot. If none exists, the value is unavailable rather than draft pages.
+- `custom_domain` counts only verified domains with active TLS.
+- `asset_storage_byte` sums persisted asset sizes exactly.
+
+Every organization creation transaction calls `assignDefaultUsagePlan`. The
+database migration also backfills existing organizations with the active
+provider-neutral `free` plan. It has no invented commercial limits. Plan status,
+expiry, and active plan/meter flags are evaluated before any entitlement is
+granted. Existing bounded organization metadata is only a temporary fallback
+when no relational assignment exists; malformed or oversized metadata is
+unknown.
+
+## Apply and verify
+
+```bash
+pnpm db:deploy
+pnpm analytics:migrate
+pnpm --filter @nibleaf/usage test
+pnpm --filter @nibleaf/clickhouse test
+```
+
+Grant the analytics reader `SELECT` on `usage_events`, `usage_hourly`,
+`usage_reconciliation_state`, `usage_reconciliation_coverage`, and
+`usage_deletion_tombstones`. Both roles also need the corresponding access to
+`analytics_deletion_tombstones`. Grant the writer `INSERT` on those tables and the
+documented `ALTER DELETE` permission used for reconciliation and privacy
+deletion. Keep ClickHouse optional: an outage must not stop authoring or serving
+documentation; summaries remain explicitly partial or unavailable.
+
+## Export and future provider adapters
+
+`getProjectUsageSummary` and `getProjectEntitlements` derive the organization
+from the authenticated principal and project membership. `exportProjectUsage`
+also requires a current owner/admin role. Cross-tenant requests use the normal
+project-not-found response.
+
+The future `UsageBillingProvider` receives only finalized aggregates:
+
+```text
+tenantId, meterKey, periodStart, periodEndExclusive,
+quantity, reconciliationId
+```
+
+`UsageProviderCheckpoint.quantity` is stored as Postgres `numeric(38,0)` and
+provider/public boundaries keep it as a canonical string. The unreleased
+ClickHouse migration 3 creates `usage_hourly.quantity` as `Decimal(38,0)`;
+`usage_events.quantity` remains `Int64`, preserving the event contract while
+preventing rollup narrowing when multiple maximum-sized facts share an hour.
+
+The documented Polar mapping is intentionally mechanical:
+
+| Nibleaf meter | Suggested Polar event name | Aggregation |
+| --- | --- | --- |
+| `public_page_view` | `nibleaf_public_page_view` | sum |
+| `search_query` | `nibleaf_search_query` | sum |
+| `ai_answer` | `nibleaf_ai_answer` | sum |
+| `ai_input_token` | `nibleaf_ai_input_token` | sum |
+| `ai_output_token` | `nibleaf_ai_output_token` | sum |
+| `embedded_chunk` | `nibleaf_embedded_chunk` | sum |
+| `indexed_content_byte` | `nibleaf_indexed_content_byte` | sum |
+| `build` | `nibleaf_build` | sum |
+
+This table is documentation, not provider configuration. Do not send anything
+until a separate approved payment project defines commercial plans, legal terms,
+provider objects, and reconciliation ownership.
+
+## Privacy deletion
+
+The deletion workflow first sets a Postgres fence under the same organization
+row lock used to create ingestion receipts. New batches are rejected; existing
+pending batches may drain. Deletion returns a retryable conflict until none
+remain, then writes a project tombstone, deletes facts, hourly projections,
+reconciliation state, and coverage synchronously, queues search erasure, and
+marks export checkpoints `deletion_pending`. Better Auth account deletion uses
+this same workflow rather than deleting an organization directly. Queries and
+the worker exclude both usage and analytics tombstones; ordinary analytics
+events and sensitive search-query rows are dropped for a tombstoned scope. A
+shared/exclusive Postgres advisory lock closes the race between an in-flight
+analytics insert and the deletion fence, so late queued work cannot resurrect
+raw analytics. The ClickHouse tombstone filter is defense in depth; the
+Postgres advisory write fence is the serialization boundary for every
+production runtime insert. The Postgres marker is persisted before a ClickHouse insert; therefore switching
+`ANALYTICS_MODE` to `disabled` cannot skip deletion of historical facts from an
+earlier mode. False-positive markers cause a safe deletion attempt, never a
+false claim that no facts exist. An accepted provider export remains a separate
+external deletion reconciliation obligation; the checkpoint records that
+obligation without storing provider payloads or payment identifiers.
+
+## Rollback
+
+1. Set `ANALYTICS_MODE=disabled` if ClickHouse is unhealthy. The dashboard will
+   preserve snapshot quantities and mark event meters unavailable.
+2. Deactivate a plan or assignment to withdraw entitlements. Meter limits are
+   already advisory; do not delete facts merely to disable a configured limit.
+3. Before dropping schema, export aggregate reconciliation evidence, finish or
+   cancel pending checkpoints, and preserve deletion tombstones.
+4. Drop ClickHouse tables in dependency-safe order only after consumers are
+   rolled back: reconciliation coverage and state, hourly projections, facts,
+   then tombstones. Reverse the Postgres migration only after removing provider
+   checkpoints, organization assignments, entitlements, plan meters, meters,
+   plans, drained/pending ingestion receipts, and storage markers. A runtime rollback does not delete metering data;
+   this emergency schema rollback does, so preserve required evidence first.
+
+Prisma does not apply down migrations automatically, and the reviewed
+`rollback.sql` never writes Prisma's private `_prisma_migrations` table. Choose
+the path that matches the migration state:
+
+- **Successfully applied migration:** ship the reviewed rollback statements as
+  a new, later forward migration in the rollback release, then run
+  `pnpm db:deploy`. Prisma records both the feature and its reversal normally.
+  For example, copy `rollback.sql` to
+  `packages/database/prisma/migrations/<later_timestamp>_rollback_usage_metering/migration.sql`
+  and review that new migration before deployment. Do not add this generated
+  reversal to the feature release itself.
+- **Failed migration:** after reversing any partial application with the
+  reviewed statements, mark that failed migration rolled back through Prisma
+  (use the final integrated directory name if it changes):
+
+```bash
+pnpm --filter @nibleaf/database exec prisma migrate resolve --rolled-back 20260823210000_usage_metering
+```
+
+Do not use `migrate resolve --rolled-back` for a successfully applied migration.
+The real PostgreSQL round-trip check returned Prisma `P3012` for that misuse,
+then passed when the same statements were deployed as a new forward rollback
+migration: all eight usage tables were removed, the fixture organization
+survived, and both migrations had normal completed records.
+
+For ClickHouse, preserve any required evidence and then run:
+
+```sql
+DROP TABLE IF EXISTS usage_reconciliation_coverage;
+DROP TABLE IF EXISTS usage_reconciliation_state;
+DROP TABLE IF EXISTS usage_hourly;
+DROP TABLE IF EXISTS usage_events;
+DROP TABLE IF EXISTS usage_deletion_tombstones;
+DROP TABLE IF EXISTS analytics_deletion_tombstones;
+```
+
+The ClickHouse migration runner is forward-only; these explicit statements are
+the down procedure. Do not run either rollback while usage consumers are live.
+
+## Current product research
+
+The design was checked against Mintlify's public pages on 2026-08-23. Mintlify
+currently separates editor-seat/feature entitlements from monthly AI credits,
+shows traffic/search/assistant analytics with a short delay, and supports
+time-range exports. Nibleaf uses those presentation concepts, not Mintlify's
+commercial limits or its raw conversation/search export model. See the current
+[Mintlify pricing page](https://www.mintlify.com/pricing),
+[analytics documentation](https://www.mintlify.com/docs/optimize/analytics), and
+[search analytics API](https://www.mintlify.com/docs/api/analytics/searches).

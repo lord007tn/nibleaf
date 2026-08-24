@@ -25,6 +25,7 @@
     "@nibleaf/search": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@nibleaf/storage": "workspace:*",
+    "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
     "bullmq": "^5.77.6",
     "fflate": "^0.8.2",
