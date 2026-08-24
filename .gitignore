@@ -35,15 +35,28 @@ Thumbs.db
 
 # test artifacts
 coverage
-playwright-report
-test-results
+.playwright/
+.playwright-cli/
+.playwright-mcp/
+**/playwright/.auth/
+**/playwright/.cache/
+playwright-report/
+blob-report/
+test-results/
 *.tgz
 
 # dogfood / QA artifacts (screenshots, videos, saved auth state — never publish)
 /dogfood-output/
 /output/
-/.playwright-cli/
 
 # local SEO working files and evidence are never shipped
 .seo-cache/
 seo-audit/
+
+# local temporary files and directories
+*.tmp
+*.temp
+.tmp/
+.temp/
+tmp/
+temp/
