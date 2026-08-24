@@ -127,7 +127,13 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                   onValueChange={(placement) => setDraftConfig({ ...config, placement })}
                 >
                   <SelectTrigger aria-label={t('settings.addons.feedback.placement')} className="h-9 w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {t(
+                        stringConfig(config, 'placement', 'after-content') === 'after-navigation'
+                          ? 'settings.addons.feedback.placement.afterNavigation'
+                          : 'settings.addons.feedback.placement.afterContent',
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="after-content">{t('settings.addons.feedback.placement.afterContent')}</SelectItem>
@@ -141,7 +147,13 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                   onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
                 >
                   <SelectTrigger aria-label={t('settings.addons.feedback.presentation')} className="h-9 w-full">
-                    <SelectValue />
+                    <SelectValue>
+                      {t(
+                        stringConfig(config, 'presentation', 'compact') === 'card'
+                          ? 'settings.addons.feedback.presentation.card'
+                          : 'settings.addons.feedback.presentation.compact',
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="compact">{t('settings.addons.feedback.presentation.compact')}</SelectItem>
@@ -177,7 +189,15 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                     onValueChange={(placement) => setDraftConfig({ ...config, placement })}
                   >
                     <SelectTrigger aria-label={t('settings.addons.consent.placement')} className="h-9 w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'placement', 'bottom-end') === 'bottom-start'
+                            ? 'settings.addons.consent.placement.start'
+                            : stringConfig(config, 'placement', 'bottom-end') === 'bottom-center'
+                              ? 'settings.addons.consent.placement.center'
+                              : 'settings.addons.consent.placement.end',
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="bottom-start">{t('settings.addons.consent.placement.start')}</SelectItem>
@@ -192,7 +212,13 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                     onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
                   >
                     <SelectTrigger aria-label={t('settings.addons.consent.presentation')} className="h-9 w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'presentation', 'comfortable') === 'compact'
+                            ? 'settings.addons.consent.presentation.compact'
+                            : 'settings.addons.consent.presentation.comfortable',
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="compact">{t('settings.addons.consent.presentation.compact')}</SelectItem>
@@ -206,7 +232,13 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                     onValueChange={(buttonLayout) => setDraftConfig({ ...config, buttonLayout })}
                   >
                     <SelectTrigger aria-label={t('settings.addons.consent.buttons')} className="h-9 w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'buttonLayout', 'inline') === 'stacked'
+                            ? 'settings.addons.consent.buttons.stacked'
+                            : 'settings.addons.consent.buttons.inline',
+                        )}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="inline">{t('settings.addons.consent.buttons.inline')}</SelectItem>
