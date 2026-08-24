@@ -1,5 +1,6 @@
 import type { ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
 import type { QdrantFilter, QdrantIndexedPoint, QdrantPoint } from '@nibleaf/qdrant';
+import { usageEventBatchSchema } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -46,6 +47,14 @@ type SearchRunUpdate = Partial<Omit<SearchRunState, 'attempt'>> & { attempt?: { 
 const runStatusFilterSchema = z.object({ in: z.array(runStatusSchema) }).strict();
 
 const mocks = vi.hoisted(() => ({
+  DurableUsageEnqueueError: class DurableUsageEnqueueError extends Error {
+    constructor(
+      readonly outboxPersisted: boolean,
+      cause: unknown,
+    ) {
+      super('Durable analytics queue enqueue failed.', { cause });
+    }
+  },
   apiKey: 'embedding-key' as string | undefined,
   loseDisabledClaim: false,
   accessMode: 'READERS' as 'PUBLIC' | 'WORKSPACE' | 'READERS',
@@ -94,8 +103,7 @@ const mocks = vi.hoisted(() => ({
   deletePoints: vi.fn(async (_ids: Array<string | number>, _filter: QdrantFilter) => undefined),
   deleteByFilterAllVersions: vi.fn(async (_filter: QdrantFilter) => 1),
   embed: vi.fn(async (inputs: string[]) => ({ vectors: inputs.map(() => [0.1, 0.2]), model: 'test' })),
-  insertUsageEvents: vi.fn(async (_events: unknown[]) => undefined),
-  markUsageStorageWritten: vi.fn(async (_organizationId: string) => undefined),
+  enqueueUsageEvents: vi.fn(async (_events: unknown[]) => 'usage-job-a'),
 }));
 
 const deploymentIdFrom = (filter: QdrantFilter) => {
@@ -124,10 +132,9 @@ vi.mock('../env', () => ({
   },
 }));
 
-vi.mock('@nibleaf/clickhouse', () => ({ insertUsageEvents: mocks.insertUsageEvents }));
+vi.mock('@nibleaf/clickhouse', () => ({ keys: () => ({ ANALYTICS_MODE: 'clickhouse' }), clickHouseWritesEnabled: () => true }));
 
 vi.mock('@nibleaf/database', () => ({
-  markUsageStorageWritten: mocks.markUsageStorageWritten,
   Prisma: { JsonNull: null, PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {} },
   prisma: (() => {
     const matches = (run: SearchRunState, where: SearchRunWhere): boolean => {
@@ -191,6 +198,11 @@ vi.mock('@nibleaf/database', () => ({
     };
     return db;
   })(),
+}));
+
+vi.mock('../lib/usage-ingest', () => ({
+  DurableUsageEnqueueError: mocks.DurableUsageEnqueueError,
+  enqueueUsageEvents: mocks.enqueueUsageEvents,
 }));
 
 vi.mock('@nibleaf/qdrant', () => ({
@@ -257,11 +269,42 @@ describe('hybrid search differential indexing jobs', () => {
       },
     });
     expect(mocks.embed).toHaveBeenCalledOnce();
-    expect(mocks.markUsageStorageWritten).toHaveBeenCalledWith('organization-a');
-    expect(mocks.insertUsageEvents).toHaveBeenCalledWith([
+    expect(mocks.enqueueUsageEvents).toHaveBeenCalledWith([
       expect.objectContaining({ tenantId: 'organization-a', projectId: 'tenant-a', meterKey: 'embedded_chunk', quantity: '1' }),
       expect.objectContaining({ tenantId: 'organization-a', projectId: 'tenant-a', meterKey: 'indexed_content_byte' }),
     ]);
+    expect(mocks.enqueueUsageEvents.mock.invocationCallOrder[0]).toBeLessThan(mocks.upsert.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it('durably acknowledges usage before Qdrant and preserves the same events when an upsert retry is needed', async () => {
+    mocks.upsert.mockRejectedValueOnce(new Error('qdrant unavailable'));
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'stable-search-job'))).rejects.toThrow();
+    const firstEvents = usageEventBatchSchema.parse(mocks.enqueueUsageEvents.mock.calls[0]?.[0]);
+    expect(mocks.enqueueUsageEvents.mock.invocationCallOrder[0]).toBeLessThan(mocks.upsert.mock.invocationCallOrder[0] ?? 0);
+
+    mocks.upsert.mockResolvedValue(undefined);
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'stable-search-job'))).resolves.toMatchObject({ indexed: 1, embedded: 1 });
+    const retriedEvents = usageEventBatchSchema.parse(mocks.enqueueUsageEvents.mock.calls[1]?.[0]);
+    expect(retriedEvents.map((event) => ({ eventId: event.eventId, occurredAt: event.occurredAt }))).toEqual(
+      firstEvents.map((event) => ({ eventId: event.eventId, occurredAt: event.occurredAt })),
+    );
+  });
+
+  it('finishes Qdrant indexing when Redis fails after the usage outbox is durable', async () => {
+    mocks.enqueueUsageEvents.mockRejectedValueOnce(new mocks.DurableUsageEnqueueError(true, new Error('redis unavailable')));
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'post-outbox-failure'))).resolves.toMatchObject({
+      indexed: 1,
+      embedded: 1,
+    });
+    expect(mocks.upsert).toHaveBeenCalledOnce();
+    expect(mocks.runs).toContainEqual(expect.objectContaining({ jobId: 'post-outbox-failure', status: 'READY' }));
+  });
+
+  it('fails closed before Qdrant when the usage outbox cannot be persisted', async () => {
+    mocks.enqueueUsageEvents.mockRejectedValueOnce(new Error('postgres unavailable'));
+    await expect(handleSearchJobs(job('index-deployment', undefined, 'pre-outbox-failure'))).rejects.toThrow('postgres unavailable');
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.runs).toContainEqual(expect.objectContaining({ jobId: 'pre-outbox-failure', status: 'FAILED' }));
   });
 
   it('skips unchanged current-deployment chunks without embedding or writing them again', async () => {

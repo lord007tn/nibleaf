@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   queryRaw: vi.fn(),
   assertProjectAccess: vi.fn(),
   queryUsageMeterTotals: vi.fn(),
+  pendingFindFirst: vi.fn(),
   analyticsMode: 'disabled',
   UsageHistoryUnavailableError: class UsageHistoryUnavailableError extends Error {},
 }));
@@ -24,6 +25,7 @@ vi.mock('@nibleaf/database', () => ({
     organizationUsagePlan: { findUnique: mocks.planFindUnique },
     organization: { findUnique: mocks.organizationFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst },
+    usageIngestCheckpoint: { findFirst: mocks.pendingFindFirst },
     $queryRaw: mocks.queryRaw,
   },
 }));
@@ -61,6 +63,7 @@ describe('usage authorization and entitlement policy', () => {
       .mockResolvedValueOnce([{ quantity: 2n }])
       .mockResolvedValueOnce([{ quantity: 1_610_612_736n }])
       .mockResolvedValueOnce([{ quantity: 1n }]);
+    mocks.pendingFindFirst.mockResolvedValue(null);
   });
 
   const setSnapshots = (values: { members?: bigint | null; assets?: bigint | null; domains?: bigint | null; pages?: number | null } = {}) => {
@@ -165,6 +168,28 @@ describe('usage authorization and entitlement policy', () => {
     expect(JSON.stringify(unavailable)).not.toContain('private clickhouse');
   });
 
+  it('reports overlapping durable ingestion as partial and stale pending work as unavailable', async () => {
+    mocks.analyticsMode = 'clickhouse';
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date() });
+    const partial = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a', {
+      periodStart: '2026-08-01T00:00:00Z',
+      periodEndExclusive: '2026-09-01T00:00:00Z',
+    });
+    expect(partial.meters.find((meter) => meter.key === 'search_query')).toMatchObject({ availability: 'partial', quantity: null });
+
+    setSnapshots();
+    mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) });
+    const unavailable = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a', {
+      periodStart: '2026-08-01T00:00:00Z',
+      periodEndExclusive: '2026-09-01T00:00:00Z',
+    });
+    expect(unavailable.meters.find((meter) => meter.key === 'search_query')).toMatchObject({ availability: 'unavailable', quantity: null });
+    expect(mocks.pendingFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ projectId: 'project-a', writtenAt: null }) }),
+    );
+  });
+
   it('enforces exact public read scopes for summaries, entitlements, and checks', async () => {
     await expect(getProjectUsageSummary(apiContext('project-a'), 'project-a')).rejects.toMatchObject({ code: 'auth:insufficient_scope' });
     await expect(getProjectEntitlements(apiContext('project-a', ['usage:read']), 'project-a')).rejects.toMatchObject({
@@ -225,6 +250,10 @@ describe('usage authorization and entitlement policy', () => {
   it('blocks late or reconciliation-pending exports and sanitizes ClickHouse failures', async () => {
     mocks.analyticsMode = 'clickhouse';
     const period = { periodStart: '2026-08-01T00:00:00Z', periodEndExclusive: '2026-09-01T00:00:00Z' };
+    mocks.pendingFindFirst.mockResolvedValueOnce({ id: 'pending-usage' });
+    await expect(exportProjectUsage(sessionContext(), 'project-a', period)).rejects.toMatchObject({ code: 'usage:export_not_ready' });
+
+    mocks.pendingFindFirst.mockResolvedValue(null);
     mocks.queryUsageMeterTotals.mockResolvedValueOnce([
       { meterKey: 'build', quantity: '2', eventCount: '2', lateEventCount: '1', lastReceivedAt: '2026-08-23T00:00:00Z' },
     ]);

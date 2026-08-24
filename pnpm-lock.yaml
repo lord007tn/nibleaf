@@ -651,6 +651,9 @@ importers:
       '@nibleaf/bullmq':
         specifier: workspace:*
         version: link:../bullmq
+      '@nibleaf/clickhouse':
+        specifier: workspace:*
+        version: link:../clickhouse
       '@nibleaf/database':
         specifier: workspace:*
         version: link:../database
@@ -697,6 +700,9 @@ importers:
       '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@7.0.2)(valibot@1.4.2(typescript@7.0.2))(zod@4.4.3)
@@ -719,6 +725,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(jsdom@30.0.1(@noble/hashes@2.3.0))(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/cli:
     devDependencies:
@@ -777,6 +786,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@nibleaf/usage':
+        specifier: workspace:*
+        version: link:../usage
       '@prisma/adapter-pg':
         specifier: 7.9.1
         version: 7.9.1
@@ -811,6 +823,9 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@22.19.21)(jiti@2.7.0)(jsdom@30.0.1(@noble/hashes@2.3.0))(lightningcss@1.33.0)(tsx@4.22.4)(yaml@2.9.0)
 
   packages/design-system:
     dependencies:

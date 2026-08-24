@@ -290,6 +290,13 @@ export const migrations: ClickHouseMigration[] = [
         reason LowCardinality(String)
       ) ENGINE = ReplacingMergeTree(deleted_at)
       ORDER BY (tenant_id, project_id)`,
+      `CREATE TABLE IF NOT EXISTS analytics_deletion_tombstones (
+        tenant_id LowCardinality(String),
+        project_id String,
+        deleted_at DateTime64(3, 'UTC'),
+        reason LowCardinality(String)
+      ) ENGINE = ReplacingMergeTree(deleted_at)
+      ORDER BY (tenant_id, project_id)`,
       `CREATE TABLE IF NOT EXISTS usage_reconciliation_state (
         tenant_id LowCardinality(String),
         project_id String,

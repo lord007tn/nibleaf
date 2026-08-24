@@ -111,6 +111,27 @@ const retryable = (error: unknown): boolean => {
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+const excludeTombstonedAnalytics = async (events: AnalyticsEventEnvelope[], client: ClickHouseClient) => {
+  const scopes = [...new Map(events.map((event) => [JSON.stringify([event.tenantId, event.projectId]), event])).values()];
+  const result = await client.query({
+    query: `SELECT tenant_id AS tenantId, project_id AS projectId
+      FROM analytics_deletion_tombstones FINAL
+      WHERE (tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)})`,
+    query_params: {
+      tenant_ids: scopes.map((event) => event.tenantId),
+      project_ids: scopes.map((event) => event.projectId),
+    },
+    format: 'JSONEachRow',
+  });
+  const tombstoned = new Set(
+    (await result.json<{ tenantId: string; projectId: string }>()).map((row) => JSON.stringify([row.tenantId, row.projectId])),
+  );
+  return events.filter((event) => !tombstoned.has(JSON.stringify([event.tenantId, event.projectId])));
+};
+
+/** Low-level ClickHouse transport. Production runtime callers must hold the
+ * Postgres tenant analytics write fence; the tombstone query is only a
+ * defense-in-depth filter. */
 export const insertAnalyticsEvents = async (
   events: AnalyticsEventEnvelope[],
   options: { client?: ClickHouseClient; attempts?: number } = {},
@@ -121,8 +142,10 @@ export const insertAnalyticsEvents = async (
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      await client.insert({ table: 'analytics_events', format: 'JSONEachRow', values: events.map(eventToClickHouseRow) });
-      const sensitive = events
+      const accepted = await excludeTombstonedAnalytics(events, client);
+      if (accepted.length === 0) return;
+      await client.insert({ table: 'analytics_events', format: 'JSONEachRow', values: accepted.map(eventToClickHouseRow) });
+      const sensitive = accepted
         .filter((event): event is AnalyticsEventEnvelope & { sensitiveQueryText: string } => Boolean(event.sensitiveQueryText))
         .map((event) => ({
           event_id: event.eventId,

@@ -15,7 +15,8 @@ translation_key: 'self-hosting/usage-metering'
 
 Nibleaf separates product usage from payments. Postgres stores plans, meter
 configuration, entitlements, export checkpoints, and an organization-level
-marker proving that usage facts may have been written. ClickHouse stores
+marker proving that usage facts may have been written. It also holds a bounded,
+content-free ingestion outbox until queued facts are confirmed in ClickHouse. ClickHouse stores
 immutable high-volume facts, rebuilt hourly projections, reconciliation
 coverage, durable pending work, and deletion tombstones.
 `@nibleaf/usage` owns provider-neutral event and period semantics. No part of
@@ -45,6 +46,12 @@ hashes, raw user agents, user/session ids, provider/model names, or raw errors.
 - Billing periods are half-open UTC ranges: `[start, endExclusive)`.
 - A retry reuses its deterministic event id. ClickHouse `FINAL` reads remove
   duplicates before aggregation.
+- Before Redis enqueue, Nibleaf persists the validated content-free `UsageEvent
+  v1` batch and its tenant/project-scoped deterministic job id. A definite
+  enqueue failure or timeout with an unknown outcome is therefore recoverable:
+  the five-minute analytics worker adds a missing job or retries a failed one.
+  ClickHouse failure retries only that analytics job and does not undo search
+  or publishing work.
 - Deterministic ids use an RFC 9562 UUIDv8 application-defined layout derived
   from purpose- and domain-separated SHA-256 bytes. The version and variant
   bits are set explicitly; this unreleased contract has no UUIDv5 ids to
@@ -65,6 +72,12 @@ Historical totals are returned from hourly projections only when an exact
 closed UTC month has a matching coverage proof. Missing meters or rows are not
 silently interpreted as zero. Arbitrary sub-hour historical ranges and ranges
 crossing the raw-retention boundary are reported unavailable.
+
+Summaries inspect actual pending project receipts that overlap the requested
+period. Recent pending work is `partial`; work still pending after 24 hours is
+`unavailable`, never a complete zero. Successfully drained outbox receipts are
+kept for 24 hours for crash/idempotency proof and then pruned. Pending receipts
+are never pruned automatically.
 
 ## Limits are advisory in this release
 
@@ -109,7 +122,8 @@ pnpm --filter @nibleaf/clickhouse test
 
 Grant the analytics reader `SELECT` on `usage_events`, `usage_hourly`,
 `usage_reconciliation_state`, `usage_reconciliation_coverage`, and
-`usage_deletion_tombstones`. Grant the writer `INSERT` on those tables and the
+`usage_deletion_tombstones`. Both roles also need the corresponding access to
+`analytics_deletion_tombstones`. Grant the writer `INSERT` on those tables and the
 documented `ALTER DELETE` permission used for reconciliation and privacy
 deletion. Keep ClickHouse optional: an outage must not stop authoring or serving
 documentation; summaries remain explicitly partial or unavailable.
@@ -153,11 +167,20 @@ provider objects, and reconciliation ownership.
 
 ## Privacy deletion
 
-The deletion workflow writes a project tombstone first, deletes facts, hourly
-projections, reconciliation state, and coverage synchronously, and marks export
-checkpoints `deletion_pending`. Queries and the worker exclude tombstoned
-projects, so a retry or backfill cannot resurrect deleted usage. The Postgres
-ever-written marker is persisted before a ClickHouse insert; therefore switching
+The deletion workflow first sets a Postgres fence under the same organization
+row lock used to create ingestion receipts. New batches are rejected; existing
+pending batches may drain. Deletion returns a retryable conflict until none
+remain, then writes a project tombstone, deletes facts, hourly projections,
+reconciliation state, and coverage synchronously, queues search erasure, and
+marks export checkpoints `deletion_pending`. Better Auth account deletion uses
+this same workflow rather than deleting an organization directly. Queries and
+the worker exclude both usage and analytics tombstones; ordinary analytics
+events and sensitive search-query rows are dropped for a tombstoned scope. A
+shared/exclusive Postgres advisory lock closes the race between an in-flight
+analytics insert and the deletion fence, so late queued work cannot resurrect
+raw analytics. The ClickHouse tombstone filter is defense in depth; the
+Postgres advisory write fence is the serialization boundary for every
+production runtime insert. The Postgres marker is persisted before a ClickHouse insert; therefore switching
 `ANALYTICS_MODE` to `disabled` cannot skip deletion of historical facts from an
 earlier mode. False-positive markers cause a safe deletion attempt, never a
 false claim that no facts exist. An accepted provider export remains a separate
@@ -176,7 +199,7 @@ obligation without storing provider payloads or payment identifiers.
    rolled back: reconciliation coverage and state, hourly projections, facts,
    then tombstones. Reverse the Postgres migration only after removing provider
    checkpoints, organization assignments, entitlements, plan meters, meters,
-   plans, and storage markers. A runtime rollback does not delete metering data;
+   plans, drained/pending ingestion receipts, and storage markers. A runtime rollback does not delete metering data;
    this emergency schema rollback does, so preserve required evidence first.
 
 Prisma does not apply down migrations automatically, and the reviewed
@@ -201,7 +224,7 @@ pnpm --filter @nibleaf/database exec prisma migrate resolve --rolled-back 202608
 Do not use `migrate resolve --rolled-back` for a successfully applied migration.
 The real PostgreSQL round-trip check returned Prisma `P3012` for that misuse,
 then passed when the same statements were deployed as a new forward rollback
-migration: all seven usage tables were removed, the fixture organization
+migration: all eight usage tables were removed, the fixture organization
 survived, and both migrations had normal completed records.
 
 For ClickHouse, preserve any required evidence and then run:
@@ -212,6 +235,7 @@ DROP TABLE IF EXISTS usage_reconciliation_state;
 DROP TABLE IF EXISTS usage_hourly;
 DROP TABLE IF EXISTS usage_events;
 DROP TABLE IF EXISTS usage_deletion_tombstones;
+DROP TABLE IF EXISTS analytics_deletion_tombstones;
 ```
 
 The ClickHouse migration runner is forward-only; these explicit statements are

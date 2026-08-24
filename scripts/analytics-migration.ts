@@ -8,7 +8,7 @@ import {
   keys,
   rebuildProjectAnalyticsRollups,
 } from '@nibleaf/clickhouse';
-import { prisma } from '@nibleaf/database';
+import { prisma, runWithTenantAnalyticsWriteFence } from '@nibleaf/database';
 import type { ProjectConfig } from '@nibleaf/validators';
 
 const command = process.argv[2];
@@ -105,10 +105,21 @@ const backfill = async (): Promise<void> => {
         ),
       );
     }
-    await insertAnalyticsEvents(envelopes);
-    migrated += rows.length;
+    const scopes = new Map<string, AnalyticsEventEnvelope[]>();
+    for (const envelope of envelopes) {
+      const key = JSON.stringify([envelope.tenantId, envelope.projectId]);
+      scopes.set(key, [...(scopes.get(key) ?? []), envelope]);
+    }
+    let accepted = 0;
+    for (const scopedEvents of scopes.values()) {
+      const first = scopedEvents[0];
+      if (!first) continue;
+      const result = await runWithTenantAnalyticsWriteFence(first.tenantId, first.projectId, null, () => insertAnalyticsEvents(scopedEvents));
+      if (result.accepted) accepted += scopedEvents.length;
+    }
+    migrated += accepted;
     cursor = rows.at(-1)?.id;
-    process.stdout.write(`backfilled=${migrated} cursor=${cursor}\n`);
+    process.stdout.write(`backfilled=${migrated} skipped=${rows.length - accepted} cursor=${cursor}\n`);
   }
 };
 

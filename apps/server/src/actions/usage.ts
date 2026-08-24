@@ -39,6 +39,7 @@ const units: Record<SummaryMeterKey, 'byte' | 'count' | 'token'> = {
 };
 
 const currentUtcPeriod = () => utcBillingPeriod(new Date().toISOString());
+const USAGE_PENDING_STALE_MS = 24 * 60 * 60 * 1000;
 
 const parsePeriod = (period?: { periodStart?: string; periodEndExclusive?: string }) => {
   if (!period?.periodStart && !period?.periodEndExclusive) return currentUtcPeriod();
@@ -142,7 +143,21 @@ const getProjectUsageSummaryForOrganization = async (
   period?: { periodStart?: string; periodEndExclusive?: string },
 ) => {
   const range = parsePeriod(period);
-  const [planState, snapshots] = await Promise.all([getEffectivePlanConfiguration(organizationId), getSnapshotQuantities(organizationId, projectId)]);
+  const [planState, snapshots, pendingCheckpoint] = await Promise.all([
+    getEffectivePlanConfiguration(organizationId),
+    getSnapshotQuantities(organizationId, projectId),
+    prisma.usageIngestCheckpoint.findFirst({
+      where: {
+        organizationId,
+        projectId,
+        writtenAt: null,
+        firstOccurredAt: { lt: new Date(range.endExclusive) },
+        lastOccurredAt: { gte: new Date(range.start) },
+      },
+      orderBy: { enqueuedAt: 'asc' },
+      select: { enqueuedAt: true },
+    }),
+  ]);
   const plan = planState.configured;
   let highVolume = new Map<MeterKey, UsageMeterTotal>();
   let highVolumeAvailability: MeterReading['availability'] = 'unavailable';
@@ -151,7 +166,11 @@ const getProjectUsageSummaryForOrganization = async (
       highVolume = new Map(
         (await queryUsageMeterTotals(organizationId, projectId, range.start, range.endExclusive)).map((row) => [row.meterKey, row]),
       );
-      highVolumeAvailability = 'complete';
+      highVolumeAvailability = pendingCheckpoint
+        ? Date.now() - pendingCheckpoint.enqueuedAt.getTime() > USAGE_PENDING_STALE_MS
+          ? 'unavailable'
+          : 'partial'
+        : 'complete';
     } catch {
       highVolumeAvailability = 'unavailable';
     }
@@ -386,6 +405,17 @@ export const exportProjectUsage = async (ctx: Context<HonoEnv>, projectId: strin
   const range = parsePeriod(period);
   if (clickHouseKeys().ANALYTICS_MODE !== 'clickhouse') throw new AppError({ code: 'usage:unavailable', message: 'Usage facts are unavailable.' });
   try {
+    const pendingCheckpoint = await prisma.usageIngestCheckpoint.findFirst({
+      where: {
+        organizationId,
+        projectId,
+        writtenAt: null,
+        firstOccurredAt: { lt: new Date(range.endExclusive) },
+        lastOccurredAt: { gte: new Date(range.start) },
+      },
+      select: { id: true },
+    });
+    if (pendingCheckpoint) throw new AppError({ code: 'usage:export_not_ready', message: 'Usage ingestion is pending.' });
     const meters = await queryUsageMeterTotals(organizationId, projectId, range.start, range.endExclusive);
     if (meters.some((meter) => meter.lateEventCount !== '0'))
       throw new AppError({ code: 'usage:export_not_ready', message: 'Late usage is pending reconciliation.' });

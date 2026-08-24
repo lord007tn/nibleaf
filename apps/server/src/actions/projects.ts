@@ -1,5 +1,4 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
-import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
+import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
@@ -165,22 +164,14 @@ export const updateProject = async (organizationId: string, id: string, body: Up
 
 export const deleteProject = async (organizationId: string, id: string) => {
   await assertProjectInOrg(organizationId, id);
-  // Queue tenant erasure before deleting the source record. If Redis is
-  // unavailable, fail while the project still exists so cleanup stays
-  // retryable instead of silently orphaning retained search collections.
-  await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: id } }, { jobId: `search-delete-${id}` });
-  // Privacy erasure is fail-closed while the source scope still exists. The
-  // tombstone prevents late retries/backfills from resurrecting deleted facts.
-  const storageMarker = await prisma.usageStorageMarker.findUnique({ where: { organizationId }, select: { organizationId: true } });
-  if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) || storageMarker) {
-    await Promise.all([deleteProjectAnalytics(organizationId, id), deleteProjectUsage(organizationId, id)]);
+  try {
+    await eraseProjectOrganization(organizationId, id);
+  } catch (error) {
+    if (error instanceof TenantUsageDeletionPendingError) {
+      throw conflict('Usage ingestion is still draining. Retry project deletion.', { reason: 'usage_ingestion_pending' });
+    }
+    if (error instanceof TenantErasureProjectNotFoundError) throw notFound('project', { id });
+    throw error;
   }
-  await prisma.usageProviderCheckpoint.updateMany({
-    where: { organizationId },
-    data: { status: 'deletion_pending', hasError: false },
-  });
-  // Each site owns its organization (1:1), so deleting the site deletes its org —
-  // which cascades the project itself plus its members and pending invitations.
-  await prisma.organization.delete({ where: { id: organizationId } });
   return { id };
 };

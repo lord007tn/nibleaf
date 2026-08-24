@@ -57,6 +57,15 @@ integration('ClickHouse schema integration', () => {
     expect(JSON.stringify(exported)).not.toContain('queryHash');
     expect(JSON.stringify(exported)).not.toContain('sessionHash');
     await deleteProjectAnalytics(event.tenantId, event.projectId, client);
+    await insertAnalyticsEvents([
+      event,
+      fixedAnalyticsEvent({
+        eventId: '00000000-0000-4000-8000-000000000011',
+        tenantId: event.tenantId,
+        projectId: event.projectId,
+        sensitiveQueryText: 'must not return after erasure',
+      }),
+    ]);
     const afterDelete = await client.query({
       query:
         'SELECT tenant_id AS tenant, count() AS count FROM analytics_events FINAL WHERE project_id = {project:String} GROUP BY tenant_id ORDER BY tenant_id',
@@ -64,6 +73,12 @@ integration('ClickHouse schema integration', () => {
       format: 'JSONEachRow',
     });
     expect(await afterDelete.json()).toEqual([{ tenant: otherTenantEvent.tenantId, count: 1 }]);
+    const sensitiveAfterDelete = await client.query({
+      query: 'SELECT count() AS count FROM analytics_sensitive_queries FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}',
+      query_params: { tenant: event.tenantId, project: event.projectId },
+      format: 'JSONEachRow',
+    });
+    expect(Number((await sensitiveAfterDelete.json<{ count: number }>())[0]?.count)).toBe(0);
   });
 
   it('reconciles a closed UTC period with exact coverage and tenant isolation', async () => {

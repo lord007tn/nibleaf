@@ -88,7 +88,7 @@ export const queryProjectAnalytics = async (
 ): Promise<ProjectAnalyticsOverview> => {
   const tz = safeTimezone(timezone);
   const params = { tenant_id: tenantId, project_id: projectId, days: RANGE_DAYS[range], timezone: tz };
-  const common = `tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
+  const common = `tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
   try {
     const [totals, visitors, days, pages, referrers, languages, devices, search, ai, noAnswer, engagement] = await Promise.all([
       json<CountRow>(
@@ -160,7 +160,7 @@ export const queryProjectAnalytics = async (
       ),
       json<Record<string, string | number>>(
         client,
-        `SELECT uniqCombined64(event_id) AS engaged, avgIf(engagement_ms, engagement_ms > 0) AS average_ms FROM analytics_events FINAL WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND occurred_at >= now() - toIntervalDay({days:UInt16}) AND event_name = 'page_engaged'`,
+        `SELECT uniqCombined64(event_id) AS engaged, avgIf(engagement_ms, engagement_ms > 0) AS average_ms FROM analytics_events FINAL WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND occurred_at >= now() - toIntervalDay({days:UInt16}) AND event_name = 'page_engaged'`,
         params,
       ),
     ]);
@@ -249,7 +249,7 @@ export const queryWorkspaceAnalytics = async (
     days: RANGE_DAYS[range],
     timezone: tz,
   };
-  const common = `(tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)}) AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
+  const common = `(tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)}) AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
   try {
     const [total, visitors, days, byProject, pages, referrers, devices, search, ai] = await Promise.all([
       json<CountRow>(

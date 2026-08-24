@@ -81,6 +81,26 @@ export const usageEventSchema = z
 
 export type UsageEvent = z.infer<typeof usageEventSchema>;
 
+export const usageEventBatchSchema = z
+  .array(usageEventSchema)
+  .min(1)
+  .max(1000)
+  .superRefine((events, context) => {
+    const first = events[0];
+    if (!first) return;
+    if (events.some((event) => event.tenantId !== first.tenantId || event.projectId !== first.projectId)) {
+      context.addIssue({ code: 'custom', message: 'A usage batch must belong to one tenant and project' });
+    }
+    if (new Set(events.map((event) => event.eventId)).size !== events.length) {
+      context.addIssue({ code: 'custom', message: 'A usage batch cannot repeat an event id' });
+    }
+  });
+
+export type UsageEventBatch = z.infer<typeof usageEventBatchSchema>;
+
+export const canonicalUsageEventBatch = (events: UsageEvent[]) =>
+  usageEventBatchSchema.parse(events).toSorted((left, right) => left.eventId.localeCompare(right.eventId));
+
 export interface UsageEventContext {
   tenantId: string;
   projectId: string;

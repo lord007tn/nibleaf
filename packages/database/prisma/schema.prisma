@@ -113,6 +113,7 @@ model Organization {
   projects    Project[]
   usagePlan          OrganizationUsagePlan?
   usageStorageMarker UsageStorageMarker?
+  usageIngestCheckpoints UsageIngestCheckpoint[]
 
   @@map("organization")
 }
@@ -222,10 +223,37 @@ model UsageProviderCheckpoint {
 model UsageStorageMarker {
   organizationId String       @id
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  firstWrittenAt DateTime     @default(now())
-  lastWrittenAt  DateTime     @updatedAt
+  firstEnqueuedAt DateTime    @default(now())
+  lastEnqueuedAt  DateTime    @default(now())
+  lastWrittenAt   DateTime?
+  deletionPendingAt DateTime?
 
   @@map("usage_storage_marker")
+}
+
+/// Content-free, idempotent receipt for a durable usage-ingestion batch. A
+/// pending row makes usage summaries partial until ClickHouse has accepted the
+/// deduplicated events and the worker records successful drainage.
+model UsageIngestCheckpoint {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  projectId      String
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  firstOccurredAt DateTime
+  lastOccurredAt DateTime
+  events          Json
+  payloadDigest   String
+  enqueuedAt     DateTime     @default(now())
+  lastQueuedAt    DateTime?
+  enqueueAttemptCount Int     @default(0)
+  writtenAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId, writtenAt])
+  @@index([projectId, writtenAt, firstOccurredAt, lastOccurredAt], map: "usage_ingest_project_pending_period_idx")
+  @@map("usage_ingest_checkpoint")
 }
 
 model Member {
@@ -385,6 +413,7 @@ model Project {
   gitConnection   GitConnection?
   gitPreviews     GitPreview[]
   searchIndexRuns SearchIndexRun[]
+  usageIngestCheckpoints UsageIngestCheckpoint[]
 
   @@unique([organizationId, slug])
   @@unique([slug])

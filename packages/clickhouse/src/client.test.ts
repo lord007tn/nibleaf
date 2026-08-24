@@ -4,6 +4,8 @@ import { AnalyticsBatchWriter, eventToClickHouseRow, insertAnalyticsEvents } fro
 import { fixedAnalyticsEvent } from './testing';
 
 describe('ClickHouse ingestion', () => {
+  const query = vi.fn(async () => ({ json: async () => [] }));
+
   it('maps only flattened bounded columns into the raw fact row', () => {
     const row = eventToClickHouseRow(fixedAnalyticsEvent());
     expect(row).toMatchObject({ event_name: 'page_view', project_id: 'project-1', path: 'docs/start', device: 'desktop' });
@@ -16,14 +18,14 @@ describe('ClickHouse ingestion', () => {
       .fn()
       .mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 503 }))
       .mockResolvedValue(undefined);
-    await insertAnalyticsEvents([fixedAnalyticsEvent()], { client: { insert } as unknown as ClickHouseClient, attempts: 2 });
+    await insertAnalyticsEvents([fixedAnalyticsEvent()], { client: { insert, query } as unknown as ClickHouseClient, attempts: 2 });
     expect(insert).toHaveBeenCalledTimes(2);
     expect(insert.mock.calls[0]?.[0].values[0].event_id).toBe(insert.mock.calls[1]?.[0].values[0].event_id);
   });
 
   it('applies bounded backpressure before accepting more buffered events', () => {
     const writer = new AnalyticsBatchWriter({
-      client: { insert: vi.fn().mockResolvedValue(undefined) } as unknown as ClickHouseClient,
+      client: { insert: vi.fn().mockResolvedValue(undefined), query } as unknown as ClickHouseClient,
       maxBatchSize: 100,
       maxBufferedEvents: 2,
       flushIntervalMs: 30_000,
@@ -39,7 +41,7 @@ describe('ClickHouse ingestion', () => {
       .mockRejectedValueOnce(Object.assign(new Error('invalid'), { status: 400 }))
       .mockResolvedValue(undefined);
     const writer = new AnalyticsBatchWriter({
-      client: { insert } as unknown as ClickHouseClient,
+      client: { insert, query } as unknown as ClickHouseClient,
       maxBatchSize: 100,
       maxBufferedEvents: 1,
       flushIntervalMs: 30_000,
@@ -50,5 +52,15 @@ describe('ClickHouse ingestion', () => {
     expect(writer.enqueue(fixedAnalyticsEvent({ eventId: '00000000-0000-4000-8000-000000000002' }))).toBe(false);
     await writer.flush();
     expect(writer.buffered).toBe(0);
+  });
+
+  it('drops raw and sensitive-query facts for a tombstoned tenant/project', async () => {
+    const event = fixedAnalyticsEvent({ sensitiveQueryText: 'private search' });
+    const insert = vi.fn();
+    const tombstoneQuery = vi.fn(async () => ({
+      json: async () => [{ tenantId: event.tenantId, projectId: event.projectId }],
+    }));
+    await insertAnalyticsEvents([event], { client: { insert, query: tombstoneQuery } as unknown as ClickHouseClient });
+    expect(insert).not.toHaveBeenCalled();
   });
 });

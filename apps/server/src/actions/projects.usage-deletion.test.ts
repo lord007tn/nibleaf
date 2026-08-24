@@ -1,55 +1,40 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  createJob: vi.fn(),
-  deleteProjectAnalytics: vi.fn(),
-  deleteProjectUsage: vi.fn(),
-  projectFindUnique: vi.fn(),
-  markerFindUnique: vi.fn(),
-  checkpointUpdateMany: vi.fn(),
-  organizationDelete: vi.fn(),
-}));
+const mocks = vi.hoisted(() => {
+  class PendingError extends Error {}
+  class NotFoundError extends Error {}
+  return { eraseProjectOrganization: vi.fn(), projectFindFirst: vi.fn(), PendingError, NotFoundError };
+});
 
-vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { SEARCH: 'search' } }));
-vi.mock('@nibleaf/clickhouse', () => ({
-  clickHouseWritesEnabled: (mode: string) => mode !== 'disabled',
-  keys: () => ({ ANALYTICS_MODE: 'disabled' }),
-  deleteProjectAnalytics: mocks.deleteProjectAnalytics,
-  deleteProjectUsage: mocks.deleteProjectUsage,
+vi.mock('@nibleaf/auth/tenant-erasure', () => ({
+  eraseProjectOrganization: mocks.eraseProjectOrganization,
+  TenantUsageDeletionPendingError: mocks.PendingError,
+  TenantErasureProjectNotFoundError: mocks.NotFoundError,
 }));
 vi.mock('@nibleaf/database', () => ({
-  prisma: {
-    project: { findFirst: mocks.projectFindUnique },
-    usageStorageMarker: { findUnique: mocks.markerFindUnique },
-    usageProviderCheckpoint: { updateMany: mocks.checkpointUpdateMany },
-    organization: { delete: mocks.organizationDelete },
-  },
+  assignDefaultUsagePlan: vi.fn(),
+  prisma: { project: { findFirst: mocks.projectFindFirst } },
 }));
 
 import { deleteProject } from './projects';
 
-describe('project usage privacy erasure', () => {
+describe('project usage privacy erasure action', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-a' });
-    mocks.createJob.mockResolvedValue(undefined);
-    mocks.deleteProjectAnalytics.mockResolvedValue(undefined);
-    mocks.deleteProjectUsage.mockResolvedValue(undefined);
-    mocks.checkpointUpdateMany.mockResolvedValue({ count: 0 });
-    mocks.organizationDelete.mockResolvedValue({ id: 'org-a' });
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-a', organizationId: 'org-a' });
+    mocks.eraseProjectOrganization.mockResolvedValue(undefined);
   });
 
-  it('erases ClickHouse facts after mode rollback when an ever-written marker exists', async () => {
-    mocks.markerFindUnique.mockResolvedValue({ organizationId: 'org-a' });
-    await deleteProject('org-a', 'project-a');
-    expect(mocks.deleteProjectAnalytics).toHaveBeenCalledWith('org-a', 'project-a');
-    expect(mocks.deleteProjectUsage).toHaveBeenCalledWith('org-a', 'project-a');
-    expect(mocks.organizationDelete).toHaveBeenCalledAfter(mocks.deleteProjectUsage);
+  it('delegates all retained-store cleanup to the shared fail-closed workflow', async () => {
+    await expect(deleteProject('org-a', 'project-a')).resolves.toEqual({ id: 'project-a' });
+    expect(mocks.eraseProjectOrganization).toHaveBeenCalledWith('org-a', 'project-a');
   });
 
-  it('skips ClickHouse only when disabled mode has no ever-written marker', async () => {
-    mocks.markerFindUnique.mockResolvedValue(null);
-    await deleteProject('org-a', 'project-a');
-    expect(mocks.deleteProjectUsage).not.toHaveBeenCalled();
+  it('returns a stable retryable conflict while usage ingestion is pending', async () => {
+    mocks.eraseProjectOrganization.mockRejectedValue(new mocks.PendingError());
+    await expect(deleteProject('org-a', 'project-a')).rejects.toMatchObject({
+      code: 'database:conflict',
+      details: { reason: 'usage_ingestion_pending' },
+    });
   });
 });

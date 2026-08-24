@@ -1,4 +1,3 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
 import {
   type AnalyticsEventEnvelope,
   type AnalyticsEventInput,
@@ -7,19 +6,16 @@ import {
   buildAnalyticsEvent,
   keys as clickHouseKeys,
   clickHouseReadsEnabled,
-  clickHouseWritesEnabled,
   exportProjectAnalytics,
-  insertAnalyticsEvents,
-  insertUsageEvents,
   type PublicAnalyticsEvent,
   queryProjectAnalytics,
   queryWorkspaceAnalytics,
   relationalWritesEnabled,
-  usageEventsFromAnalytics,
 } from '@nibleaf/clickhouse';
-import { markUsageStorageWritten, prisma } from '@nibleaf/database';
+import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { AnalyticsRange, ProjectConfig } from '@nibleaf/validators';
+import { enqueueAnalyticsEvent } from '@/lib/usage-ingest';
 import { assertProjectInOrg } from './projects';
 
 const log = createLogger({ action: 'analytics' });
@@ -317,23 +313,6 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
 /** How long the hot path waits for the queue before falling back to a direct
  *  insert. BullMQ buffers commands while redis reconnects (they'd otherwise
  *  hang the request), so a stalled enqueue must be treated as a failure. */
-const TRACK_ENQUEUE_TIMEOUT_MS = 1500;
-
-const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
-  new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`enqueue timed out after ${ms}ms`)), ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-
 /** Record a public analytics event (pageview, search, or feedback) for a project. The
  *  optional `meta` carries request-derived dimensions (device class, country)
  *  so the analytics breakdowns aren't permanently empty.
@@ -402,27 +381,13 @@ const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput)
     hashSalt: hashSalt ?? 'disabled-relational-mode',
   });
   try {
-    await withTimeout(
-      createJob(
-        QueueNames.ANALYTICS,
-        { name: 'track-event', data: { kind: 'track-event', envelope } },
-        { jobId: `analytics-${envelope.eventId}`, attempts: 8, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: 10_000 },
-      ),
-      TRACK_ENQUEUE_TIMEOUT_MS,
-    );
+    await enqueueAnalyticsEvent(envelope);
   } catch (error) {
     const fallback = legacyEvent(envelope);
     if (relationalWritesEnabled(config.ANALYTICS_MODE) && fallback) {
       await prisma.analyticsEvent.upsert({ where: { id: fallback.id }, create: fallback, update: {} }).catch(() => undefined);
     }
-    if (clickHouseWritesEnabled(config.ANALYTICS_MODE)) {
-      await insertAnalyticsEvents([envelope], { attempts: 1 }).catch(() => undefined);
-      const usageEvents = usageEventsFromAnalytics(envelope);
-      await (usageEvents.length > 0 ? markUsageStorageWritten(envelope.tenantId) : Promise.resolve())
-        .then(() => insertUsageEvents(usageEvents))
-        .catch(() => undefined);
-    }
-    log.warn({ error, eventId: envelope.eventId, projectId: envelope.projectId }, 'analytics enqueue unavailable; fallback attempted');
+    log.warn({ error, eventId: envelope.eventId, projectId: envelope.projectId }, 'analytics enqueue unavailable; relational fallback attempted');
   }
 };
 
