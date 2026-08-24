@@ -42,6 +42,7 @@ model User {
   comments        Comment[]
   exportJobs      ExportJob[]      @relation("ExportJobCreator")
   exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
+  apiKeysCreated  ApiKey[]         @relation("ApiKeyCreator")
 
   @@map("user")
 }
@@ -420,6 +421,7 @@ model Project {
   integrationAuditEvents        IntegrationAuditEvent[]
   integrationConfirmations      IntegrationConfirmation[]
   integrationIdempotencyRecords IntegrationIdempotencyRecord[]
+  mcpAuditEvents  McpAuditEvent[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -1305,14 +1307,43 @@ model ApiKey {
   hashedSecret String    @unique
   lastFour     String
   scopes       String[]
+  createdById  String?
+  createdBy    User?     @relation("ApiKeyCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  rotatedFromId String?
   createdAt    DateTime  @default(now())
   lastUsedAt   DateTime?
-  revokedAt    DateTime?
   expiresAt    DateTime?
+  revokedAt    DateTime?
 
   @@index([projectId])
+  @@index([createdById])
+  @@index([rotatedFromId])
   @@map("api_key")
 }
+
+/// Privacy-minimized append-only audit for MCP authentication and operations.
+/// Inputs, content, credentials, network identifiers, and provider payloads
+/// are intentionally absent.
+model McpAuditEvent {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKeyId   String?
+  requestId  String
+  kind       String
+  operation  String
+  capability String
+  outcome    String
+  errorCode  String?
+  durationMs Int
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([requestId])
+  @@map("mcp_audit_event")
+}
+
 
 model Asset {
   id          String   @id @default(cuid())

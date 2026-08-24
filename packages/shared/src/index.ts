@@ -3,6 +3,7 @@ export * from './constants';
 export * from './crypto';
 export * from './ids';
 export * from './integrations';
+export * from './mcp';
 export * from './rbac';
 export * from './redirects';
 export * from './site';

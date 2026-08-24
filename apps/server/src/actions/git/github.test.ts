@@ -63,12 +63,17 @@ describe('GitHub provider adapter', () => {
     }));
     let activeBlobs = 0;
     let maxActiveBlobs = 0;
+    let releaseBlobRequests: () => void = () => undefined;
+    const concurrentBlobRequests = new Promise<void>((resolve) => {
+      releaseBlobRequests = resolve;
+    });
     const request = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
       if (url.includes('/git/trees/')) return json({ truncated: false, tree: entries });
       activeBlobs += 1;
       maxActiveBlobs = Math.max(maxActiveBlobs, activeBlobs);
-      await new Promise((resolve) => setTimeout(resolve, 5));
+      if (activeBlobs === 2) releaseBlobRequests();
+      await concurrentBlobRequests;
       activeBlobs -= 1;
       const sha = url.split('/').pop() ?? '';
       return json({ encoding: 'base64', content: Buffer.from(sha).toString('base64') });

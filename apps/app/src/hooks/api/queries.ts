@@ -1,8 +1,10 @@
+import { useT } from '@nibleaf/i18n/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import type {
+  ApiKey,
   Branch,
   Comment,
   Deployment,
@@ -43,6 +45,19 @@ export const useProjectAddons = (projectId: string) =>
     queryKey: queryKeys.addons.all(projectId),
     queryFn: async () => getData<ProjectAddon[]>(await api.app.projects[':projectId'].addons.$get({ param: { projectId } }), 'project add-ons'),
   });
+
+export const useApiKeys = (projectId: string | undefined) => {
+  const t = useT();
+  return useQuery({
+    queryKey: queryKeys.apiKeys.all(projectId ?? ''),
+    enabled: Boolean(projectId),
+    queryFn: async () =>
+      getData<ApiKey[]>(
+        await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
+        t('settings.apiKeys.title'),
+      ),
+  });
+};
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
   useQuery({

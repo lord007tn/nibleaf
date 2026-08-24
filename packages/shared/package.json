@@ -11,6 +11,7 @@
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
     "./integrations": "./src/integrations.ts",
+    "./mcp": "./src/mcp.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",

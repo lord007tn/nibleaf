@@ -36,6 +36,15 @@ export const env = createEnv({
     CLOUDFLARE_SAAS_WORKER_SCRIPT: z.string().default('nibleaf-custom-domain-edge'),
     SERVICE_NAME: z.string().default('nibleaf-api'),
     CORS_ALLOWED_ORIGINS: z.string().default('http://localhost:4310,http://localhost:4315').transform(csv),
+    MCP_ENABLED: z
+      .enum(['true', 'false', '1', '0'])
+      .default('false')
+      .transform((value) => value === 'true' || value === '1'),
+    MCP_ALLOWED_HOSTS: z
+      .string()
+      .optional()
+      .transform((value) => (value ? csv(value) : [])),
+    MCP_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(10_000).default(120),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     POSTMARK_API_KEY: z.string().optional(),
     POSTMARK_MESSAGE_STREAM: z.string().optional(),

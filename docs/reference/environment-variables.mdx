@@ -106,6 +106,18 @@ When `MARKETING_GTM_ID` is enabled, configure one Google tag in GTM with automat
 
 ## Operator and lifecycle settings
 
+### Model Context Protocol
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `MCP_ENABLED` | No | `false` | Enables the authenticated project-bound `/api/mcp` endpoint. Keep it disabled until proxy and key-lifecycle checks pass. |
+| `MCP_ALLOWED_HOSTS` | No | Empty | Comma-separated additional public hostnames. `API_URL` and `APP_URL` hosts are already allowed. Schemes, paths, wildcard values, and ambiguous forwarded chains are rejected. |
+| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-key requests accepted by one API process per minute. Add an ingress/shared-edge limit for deployment-wide enforcement. |
+
+See [secure MCP client setup and operations](/self-hosting/mcp) before enabling
+the endpoint. API-key secrets are project-admin managed, displayed once, and
+must not be stored in environment examples or repository configuration.
+
 ### Export workers
 
 | Variable | Required | Default | Purpose |

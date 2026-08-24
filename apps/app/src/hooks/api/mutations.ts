@@ -1,7 +1,9 @@
+import { useT } from '@nibleaf/i18n/react';
 import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf/shared/themes';
 import type {
   AddDomainBody,
   AiDraftBody,
+  CreateApiKeyBody,
   CreateBranchBody,
   CreateCommentBody,
   CreateLanguageBody,
@@ -12,6 +14,7 @@ import type {
   MintlifyImportBody,
   ProjectConfigUpdate,
   ReorderPagesBody,
+  RotateApiKeyBody,
   TransferOwnershipBody,
   UpdateLanguageBody,
   UpdateMemberRoleBody,
@@ -26,7 +29,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
+import type { ApiKey, ApiKeySecret, Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -67,6 +70,45 @@ export const useCreateProject = () => {
   return useMutation({
     mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+  });
+};
+
+export const useCreateApiKey = (projectId: string) => {
+  const queryClient = useQueryClient();
+  const t = useT();
+  return useMutation({
+    mutationFn: async (body: CreateApiKeyBody) =>
+      mutateData<ApiKeySecret>(
+        await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
+        t('settings.apiKeys.createError'),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
+  });
+};
+
+export const useRotateApiKey = (projectId: string) => {
+  const queryClient = useQueryClient();
+  const t = useT();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: RotateApiKeyBody }) =>
+      mutateData<ApiKeySecret>(
+        await api.app.projects[':projectId']['api-keys'][':id'].rotate.$post({ param: { projectId, id }, json: body }),
+        t('settings.apiKeys.rotateError'),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
+  });
+};
+
+export const useRevokeApiKey = (projectId: string) => {
+  const queryClient = useQueryClient();
+  const t = useT();
+  return useMutation({
+    mutationFn: async (id: string) =>
+      mutateData<ApiKey>(
+        await api.app.projects[':projectId']['api-keys'][':id'].$delete({ param: { projectId, id } }),
+        t('settings.apiKeys.revokeError'),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
   });
 };
 

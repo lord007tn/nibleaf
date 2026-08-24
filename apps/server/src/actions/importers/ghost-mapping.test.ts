@@ -283,5 +283,5 @@ describe('ghostItemToMarkdown', () => {
 
     await expect(ghostItemToMarkdown({ ...base, html: null, lexical })).resolves.toMatchObject({ markdown: 'Lexical body' });
     await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc })).resolves.toMatchObject({ markdown: 'Mobiledoc body' });
-  });
+  }, 20_000); // Cold official-renderer initialization can exceed Vitest's 5 s default in the combined single-worker suite.
 });

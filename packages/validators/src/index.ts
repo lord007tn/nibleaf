@@ -1,3 +1,4 @@
+import { MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
@@ -695,11 +696,24 @@ export type TransferOwnershipBody = z.infer<typeof transferOwnershipBody>;
 
 // ─── API keys ─────────────────────────────────────────────────────────────—
 
+const apiKeyScopes = z
+  .array(z.enum(MCP_SCOPES))
+  .min(1)
+  .max(MCP_SCOPES.length)
+  .transform((scopes) => [...new Set(scopes)])
+  .refine((scopes) => scopes.includes('mcp:connect'), { message: 'MCP API keys require mcp:connect.' });
+
+const apiKeyExpiryDays = z.number().int().min(1).max(365);
+
 export const createApiKeyBody = z.object({
   name: z.string().min(1).max(80),
-  scopes: z.array(z.string()).default(['*']),
+  scopes: apiKeyScopes.default(['mcp:connect', 'projects:read', 'pages:read']),
+  expiresInDays: apiKeyExpiryDays.default(90),
 });
 export type CreateApiKeyBody = z.infer<typeof createApiKeyBody>;
+
+export const rotateApiKeyBody = z.object({ scopes: apiKeyScopes, expiresInDays: apiKeyExpiryDays });
+export type RotateApiKeyBody = z.infer<typeof rotateApiKeyBody>;
 
 // ─── Assets ──────────────────────────────────────────────────────────────—
 
