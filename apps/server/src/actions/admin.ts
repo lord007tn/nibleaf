@@ -1,6 +1,6 @@
 import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
-import { addonDefinitions, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { inviteMember } from './members';
@@ -51,13 +51,12 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
         ) as Prisma.InputJsonValue,
       },
     });
+    const defaultAddons = defaultProjectAddonProvisioning(project.id, adminUserId);
     await tx.projectAddon.createMany({
-      data: addonDefinitions.map((definition) => ({
-        projectId: project.id,
-        key: definition.id,
-        enabled: definition.defaultEnabled,
-        config: definition.defaultConfig as Prisma.InputJsonValue,
-      })),
+      data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
+    });
+    await tx.projectAddonAuditEvent.createMany({
+      data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
     });
     await tx.language.create({
       data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },

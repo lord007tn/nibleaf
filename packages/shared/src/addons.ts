@@ -182,6 +182,32 @@ export const ADDON_REGISTRY = {
 
 export const addonDefinitions = ADDON_IDS.map((id) => ADDON_REGISTRY[id]);
 
+/** Keep default durable rows and their initial audit trail derived from the
+ * same registry snapshot so every provisioning path records identical state. */
+export const defaultProjectAddonProvisioning = (projectId: string, actorUserId: string) => {
+  const addons = addonDefinitions.map((definition) => ({
+    projectId,
+    key: definition.id,
+    enabled: definition.defaultEnabled,
+    config: definition.defaultConfig,
+    revision: 1,
+  }));
+  return {
+    addons,
+    auditEvents: addons.map((addon) => ({
+      projectId,
+      addonKey: addon.key,
+      actorUserId,
+      actorApiKeyId: null,
+      action: 'configured',
+      previousEnabled: null,
+      nextEnabled: addon.enabled,
+      nextConfig: addon.config,
+      revision: addon.revision,
+    })),
+  };
+};
+
 export const isAddonId = (value: string): value is AddonId => ADDON_IDS.some((id) => id === value);
 
 export interface ProjectAddonProjectionRow {

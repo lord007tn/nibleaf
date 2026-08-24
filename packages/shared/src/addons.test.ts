@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { addonConfigSchemas, legacyConsentBannerEnabled, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
+import {
+  addonConfigSchemas,
+  addonDefinitions,
+  defaultProjectAddonProvisioning,
+  legacyConsentBannerEnabled,
+  parseAddonConfigRecord,
+  projectConfigWithAddons,
+} from './addons';
+
+describe('default add-on provisioning', () => {
+  it.each([
+    ['project creation', 'creator-user'],
+    ['admin invitation', 'admin-user'],
+    ['Better Auth starter', 'member-user'],
+  ])('keeps %s rows and configured audit events in parity', (_path, actorUserId) => {
+    const provisioning = defaultProjectAddonProvisioning('project-a', actorUserId);
+
+    expect(provisioning.addons).toHaveLength(addonDefinitions.length);
+    expect(provisioning.auditEvents).toHaveLength(provisioning.addons.length);
+    for (const addon of provisioning.addons) {
+      expect(provisioning.auditEvents).toContainEqual({
+        projectId: addon.projectId,
+        addonKey: addon.key,
+        actorUserId,
+        actorApiKeyId: null,
+        action: 'configured',
+        previousEnabled: null,
+        nextEnabled: addon.enabled,
+        nextConfig: addon.config,
+        revision: addon.revision,
+      });
+    }
+  });
+});
 
 describe('legacy consent migration', () => {
   it('prefers a valid explicit consent add-on value', () => {

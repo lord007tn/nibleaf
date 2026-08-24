@@ -1,6 +1,6 @@
 import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
-import { addonDefinitions, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfigUpdate, UpdateProjectBody } from '@nibleaf/validators';
@@ -94,13 +94,12 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
         ) as Prisma.InputJsonValue,
       },
     });
+    const defaultAddons = defaultProjectAddonProvisioning(project.id, userId);
     await tx.projectAddon.createMany({
-      data: addonDefinitions.map((definition) => ({
-        projectId: project.id,
-        key: definition.id,
-        enabled: definition.defaultEnabled,
-        config: definition.defaultConfig as Prisma.InputJsonValue,
-      })),
+      data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
+    });
+    await tx.projectAddonAuditEvent.createMany({
+      data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
     });
     // Every project starts with a single default language that owns its page tree.
     await tx.language.create({

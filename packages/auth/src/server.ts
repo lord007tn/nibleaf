@@ -12,7 +12,7 @@ import {
 import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
-import { addonDefinitions, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
@@ -481,7 +481,7 @@ async function uniqueStarterSlug(): Promise<string> {
 /** Create the starter docs site (a customer-product docs template) for a freshly
  *  created workspace. Returns the project so the caller can auto-publish it, or
  *  null when the workspace already has one. */
-async function createStarterProject(organizationId: string): Promise<{ id: string } | null> {
+async function createStarterProject(organizationId: string, actorUserId: string): Promise<{ id: string } | null> {
   const existing = await prisma.project.findFirst({ where: { organizationId }, select: { id: true } });
   if (existing) {
     return null;
@@ -511,13 +511,12 @@ async function createStarterProject(organizationId: string): Promise<{ id: strin
               ) as Prisma.InputJsonValue,
             },
           });
+          const defaultAddons = defaultProjectAddonProvisioning(project.id, actorUserId);
           await tx.projectAddon.createMany({
-            data: addonDefinitions.map((definition) => ({
-              projectId: project.id,
-              key: definition.id,
-              enabled: definition.defaultEnabled,
-              config: definition.defaultConfig as Prisma.InputJsonValue,
-            })),
+            data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
+          });
+          await tx.projectAddonAuditEvent.createMany({
+            data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
           });
           const language = await tx.language.create({
             data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
@@ -683,7 +682,7 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
     });
     await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
     await logPlatformEvent('signup_completed', { userId: user.id });
-    const project = await createStarterProject(org.id);
+    const project = await createStarterProject(org.id, user.id);
     if (project) {
       await publishStarterSite(project.id, user.id, locale);
     }
@@ -785,7 +784,7 @@ export const auth = betterAuth({
           }
         },
         afterCreateOrganization: async ({ organization: org, member }) => {
-          const project = await createStarterProject(org.id).catch(() => null);
+          const project = await createStarterProject(org.id, member.userId).catch(() => null);
           if (project) {
             await publishStarterSite(project.id, member.userId);
           }
