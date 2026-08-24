@@ -13,7 +13,7 @@
     "@cloudflare/workers-types": "^5.20260821.1",
     "@nibleaf/tsconfig": "workspace:*",
     "typescript": "^7.0.2",
-    "vitest": "^3.2.4",
+    "vitest": "^4.1.11",
     "wrangler": "^4.125.0"
   }
 }
