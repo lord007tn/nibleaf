@@ -6,20 +6,21 @@ SET "config" = jsonb_set(
   jsonb_set(
     CASE WHEN jsonb_typeof(project."config") = 'object' THEN project."config" ELSE '{}'::jsonb END,
     '{addons}',
-    (CASE WHEN jsonb_typeof(project."config"->'addons') = 'object' THEN project."config"->'addons' ELSE '{}'::jsonb END) || jsonb_build_object(
+    ((CASE WHEN jsonb_typeof(project."config"->'addons') = 'object' THEN project."config"->'addons' ELSE '{}'::jsonb END) - 'editUrl' - 'issueUrl') || jsonb_build_object(
       'feedback', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
       'feedbackPlacement', (SELECT "config"->>'placement' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
       'feedbackPresentation', (SELECT "config"->>'presentation' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'feedback'),
       'editSuggestions', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'edit-suggestions'),
-      'editUrl', (SELECT "config"->>'urlTemplate' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'edit-suggestions'),
       'issueLinks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'issue-links'),
-      'issueUrl', (SELECT "config"->>'urlTemplate' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'issue-links'),
       'consentBanner', (SELECT jsonb_build_object('enabled', "enabled") || "config" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'consent-banner'),
       'ciChecks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'ci-checks'),
       'brokenLinks', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'broken-links'),
       'grammarLinter', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'grammar-linter'),
       'previewDeployments', (SELECT "enabled" FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'preview-deployments')
-    ), TRUE
+    ) || jsonb_strip_nulls(jsonb_build_object(
+      'editUrl', (SELECT "config"->>'urlTemplate' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'edit-suggestions'),
+      'issueUrl', (SELECT "config"->>'urlTemplate' FROM "project_addon" WHERE "projectId" = project."id" AND "key" = 'issue-links')
+    )), TRUE
   ),
   '{analytics}',
   (CASE WHEN jsonb_typeof(project."config"->'analytics') = 'object' THEN project."config"->'analytics' ELSE '{}'::jsonb END) || jsonb_build_object(
