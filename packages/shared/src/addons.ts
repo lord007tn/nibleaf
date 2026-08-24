@@ -67,10 +67,13 @@ const urlTemplateSchema = (allowedPlaceholders: readonly string[]) =>
     .min(1)
     .max(500)
     .refine((value) => {
+      const substituted = value
+        .replaceAll('{path}', 'page')
+        .replaceAll('{encodedPath}', 'page')
+        .replaceAll('{url}', 'https%3A%2F%2Fdocs.example.com');
+      if (/[{}]/.test(substituted)) return false;
       try {
-        const parsed = new URL(
-          value.replaceAll('{path}', 'page').replaceAll('{encodedPath}', 'page').replaceAll('{url}', 'https%3A%2F%2Fdocs.example.com'),
-        );
+        const parsed = new URL(substituted);
         return ['http:', 'https:'].includes(parsed.protocol) && !(parsed.username || parsed.password);
       } catch {
         return false;

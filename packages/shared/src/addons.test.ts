@@ -63,6 +63,14 @@ describe('add-on configuration validation', () => {
       expect(addonConfigSchemas['edit-suggestions'].safeParse({ urlTemplate }).success).toBe(false);
     },
   );
+
+  it('rejects unmatched and nested braces in every URL-template add-on', () => {
+    for (const addonId of ['edit-suggestions', 'issue-links'] as const) {
+      for (const urlTemplate of ['https://example.com/{path', 'https://example.com/path}', 'https://example.com/{{path}}']) {
+        expect(addonConfigSchemas[addonId].safeParse({ urlTemplate }).success).toBe(false);
+      }
+    }
+  });
 });
 
 describe('Project.config compatibility projection', () => {
