@@ -20,6 +20,7 @@
     "generate": "prisma generate",
     "migrate:dev": "pnpm with-env prisma migrate dev",
     "migrate:deploy": "pnpm with-env prisma migrate deploy",
+    "smoke:addons-migration": "tsx ./scripts/addons-migration-smoke.ts",
     "push": "pnpm with-env prisma db push",
     "smoke": "tsx ./scripts/runtime-smoke.ts",
     "studio": "pnpm with-env prisma studio",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@nibleaf/validators": "workspace:*",
     "@types/node": "^22.15.0",
     "dotenv-cli": "^11.0.0",
     "prisma": "7.9.1",

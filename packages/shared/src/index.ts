@@ -1,3 +1,4 @@
+export * from './addons';
 export * from './constants';
 export * from './crypto';
 export * from './ids';

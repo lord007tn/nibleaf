@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./addons": "./src/addons.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
@@ -25,7 +26,8 @@
   },
   "dependencies": {
     "github-slugger": "^2.0.0",
-    "nanoid": "^5.1.16"
+    "nanoid": "^5.1.16",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",

@@ -388,6 +388,23 @@ describe('siteHead analytics scripts', () => {
     const head = siteHead(shell({ analytics: { ga4: 'G-ABC123', plausible: 'docs.example.com', cookieConsent: true } }));
     expect(head.scripts).toBeUndefined();
   });
+
+  it('blocks optional third-party analytics when the consent add-on is explicitly disabled', () => {
+    const head = siteHead(
+      shell({
+        analytics: { ga4: 'G-ABC123', plausible: 'docs.example.com', cookieConsent: false },
+        addons: {
+          consentBanner: {
+            enabled: false,
+            placement: 'bottom-end',
+            presentation: 'comfortable',
+            buttonLayout: 'inline',
+          },
+        },
+      }),
+    );
+    expect(head.scripts).toBeUndefined();
+  });
 });
 
 describe('pageHead not-found (soft-404)', () => {

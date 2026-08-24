@@ -10,12 +10,13 @@ import type {
   InviteMemberBody,
   MarkNotificationsReadBody,
   MintlifyImportBody,
-  ProjectConfig,
+  ProjectConfigUpdate,
   ReorderPagesBody,
   TransferOwnershipBody,
   UpdateLanguageBody,
   UpdateMemberRoleBody,
   UpdatePageBody,
+  UpdateProjectAddonBody,
   UpdateProjectBody,
   UpdateWorkspaceSettingsBody,
   UpsertOpenApiBody,
@@ -23,9 +24,9 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { getData, mutateData } from './client-helpers';
+import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { Asset, Comment, Deployment, Language, Page, Project, WorkspaceSettings } from './types';
+import type { Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -89,7 +90,7 @@ export const useUpdateProject = (projectId: string) => {
 export const useUpdateProjectConfig = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ config, icon }: { config: ProjectConfig; icon?: string | null }) =>
+    mutationFn: async ({ config, icon }: { config: ProjectConfigUpdate; icon?: string | null }) =>
       mutateData<Project>(
         await api.app.projects[':id'].$patch({ param: { id: projectId }, json: icon === undefined ? { config } : { config, icon } }),
         'Could not update the site configuration.',
@@ -484,6 +485,59 @@ export const useMergeBranch = (projectId: string) => {
 };
 
 // ─── Workspace settings ──────────────────────────────────────────────────────
+
+export const useUpdateProjectAddon = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ addonId, body }: { addonId: string; body: UpdateProjectAddonBody }) =>
+      mutateData<ProjectAddon>(
+        await api.app.projects[':projectId'].addons[':addonId'].$patch({ param: { projectId, addonId }, json: body }),
+        'Could not update the add-on.',
+      ),
+    onSuccess: (addon) => {
+      qc.setQueryData(queryKeys.addons.detail(projectId, addon.id), addon);
+      qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    },
+    onError: async (error, variables) => {
+      if (error instanceof ApiResponseError && error.code === 'addon:revision_conflict') {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.addons.detail(projectId, variables.addonId), exact: true, refetchType: 'all' }),
+          qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId), exact: true, refetchType: 'all' }),
+        ]);
+      }
+    },
+  });
+};
+
+const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deactivate') => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ addonId, expectedRevision }: { addonId: string; expectedRevision: number }) => {
+      const response =
+        action === 'activate'
+          ? await api.app.projects[':projectId'].addons[':addonId'].activate.$post({ param: { projectId, addonId }, json: { expectedRevision } })
+          : await api.app.projects[':projectId'].addons[':addonId'].deactivate.$post({ param: { projectId, addonId }, json: { expectedRevision } });
+      return mutateData<ProjectAddon>(response, action === 'activate' ? 'Could not enable the add-on.' : 'Could not disable the add-on.');
+    },
+    onSuccess: (addon) => {
+      qc.setQueryData(queryKeys.addons.detail(projectId, addon.id), addon);
+      qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+    },
+    onError: async (error, variables) => {
+      if (error instanceof ApiResponseError && error.code === 'addon:revision_conflict') {
+        await Promise.all([
+          qc.invalidateQueries({ queryKey: queryKeys.addons.detail(projectId, variables.addonId), exact: true, refetchType: 'all' }),
+          qc.invalidateQueries({ queryKey: queryKeys.addons.all(projectId), exact: true, refetchType: 'all' }),
+        ]);
+      }
+    },
+  });
+};
+
+export const useActivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'activate');
+export const useDeactivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'deactivate');
 
 /** Update workspace/site settings. Pass a projectId to write the SITE's own org
  *  settings (per-site workspace); omit it for the account view. */

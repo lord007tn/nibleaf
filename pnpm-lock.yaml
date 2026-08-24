@@ -805,6 +805,9 @@ importers:
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
+      '@nibleaf/validators':
+        specifier: workspace:*
+        version: link:../validators
       '@types/node':
         specifier: ^22.15.0
         version: 22.19.21
@@ -1042,6 +1045,9 @@ importers:
       nanoid:
         specifier: ^5.1.16
         version: 5.1.16
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@nibleaf/tsconfig':
         specifier: workspace:*

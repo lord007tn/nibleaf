@@ -98,6 +98,12 @@ export function analyticsScripts(config: ProjectConfig | null): AnalyticsScript[
   return scripts;
 }
 
+export const analyticsDeliveryMode = (config: ProjectConfig | null): 'blocked' | 'consent' | 'direct' => {
+  const consentAddon = config?.addons?.consentBanner;
+  if (consentAddon) return consentAddon.enabled ? 'consent' : 'blocked';
+  return config?.analytics?.cookieConsent ? 'consent' : 'direct';
+};
+
 /** A Google Fonts stylesheet <link> (+ preconnects) for the configured fonts, so
  *  custom typography actually loads. Font names are charset-guarded. */
 function fontLinks(config: ProjectConfig | null): Tag[] {
@@ -189,7 +195,7 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
     { rel: 'sitemap', type: 'application/xml', href: `${canonicalBase}/sitemap.xml` },
     ...fontLinks(config),
   ];
-  const scripts = config?.analytics?.cookieConsent ? [] : analyticsScripts(config);
+  const scripts = analyticsDeliveryMode(config) === 'direct' ? analyticsScripts(config) : [];
   return { meta, links, ...(scripts.length ? { scripts } : {}) };
 }
 

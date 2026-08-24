@@ -18,6 +18,7 @@ import {
   paginationQuery,
   presignAssetBody,
   projectConfigSchema,
+  projectConfigUpdateSchema,
   resolveRedirectTarget,
   searchConfigurationSchema,
   searchIndexDiagnosticsQuery,
@@ -173,6 +174,14 @@ describe('projectConfigSchema', () => {
     expect(resolveRedirectTarget([...redirects, { from: '/current', to: 'https://example.com/docs' }], '/old')).toBe('https://example.com/docs');
     expect(resolveRedirectTarget([{ from: '/', to: '/start' }], '/')).toBe('/start');
     expect(resolveRedirectTarget(redirects, '/missing')).toBeNull();
+  });
+});
+
+describe('projectConfigUpdateSchema', () => {
+  it('keeps add-on state and consent projection exclusive to add-on actions', () => {
+    expect(projectConfigUpdateSchema.safeParse({ addons: { feedback: false } }).success).toBe(false);
+    expect(projectConfigUpdateSchema.safeParse({ analytics: { cookieConsent: false } }).success).toBe(false);
+    expect(projectConfigUpdateSchema.safeParse({ analytics: { ga4: 'G-ABC123' } }).success).toBe(true);
   });
 });
 

@@ -13,6 +13,7 @@ import type {
   Page,
   PageNode,
   Project,
+  ProjectAddon,
   WorkspaceSettings,
 } from './types';
 
@@ -35,6 +36,12 @@ export const useProject = (projectId: string | undefined) =>
     enabled: Boolean(projectId),
     queryFn: async () =>
       getData<Project>(await api.app.projects[':id'].$get({ param: { id: requireQueryValue(projectId, 'Project ID') } }), 'project'),
+  });
+
+export const useProjectAddons = (projectId: string) =>
+  useQuery({
+    queryKey: queryKeys.addons.all(projectId),
+    queryFn: async () => getData<ProjectAddon[]>(await api.app.projects[':projectId'].addons.$get({ param: { projectId } }), 'project add-ons'),
   });
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>

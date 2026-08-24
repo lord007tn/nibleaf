@@ -45,6 +45,7 @@ function ReaderActions({
   const editUrl = addons?.editSuggestions !== false ? applyUrlTemplate(addons?.editUrl, path, pageUrl) : null;
   const issueUrl = addons?.issueLinks !== false ? applyUrlTemplate(addons?.issueUrl, path, pageUrl) : null;
   const showFeedback = addons?.feedback !== false;
+  const presentation = addons?.feedbackPresentation ?? 'compact';
 
   if (!showFeedback && !editUrl && !issueUrl) {
     return null;
@@ -56,7 +57,12 @@ function ReaderActions({
   };
 
   return (
-    <div className="mt-14 flex flex-col gap-4 border-border/70 border-t pt-6 text-sm sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={cn(
+        'flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between',
+        presentation === 'card' ? 'mt-8 rounded-xl border border-border bg-muted/30 p-4 sm:p-5' : 'mt-14 border-border/70 border-t pt-6',
+      )}
+    >
       {showFeedback ? (
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
           {sentiment ? (
@@ -150,6 +156,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     addons?.feedback !== false ||
     (addons?.editSuggestions !== false && Boolean(addons?.editUrl?.trim())) ||
     (addons?.issueLinks !== false && Boolean(addons?.issueUrl?.trim()));
+  const readerActionsAfterNavigation = addons?.feedbackPlacement === 'after-navigation';
   const readableText = page.content
     .replace(/<[^>]+>/g, ' ')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
@@ -205,11 +212,14 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         <Markdown content={page.content} site={{ projectId, lang: language, version: versionPrefix }} />
       </div>
 
-      <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />
+      {readerActionsAfterNavigation ? null : <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />}
 
       {prev || next ? (
         <nav
-          className={cn('flex items-center justify-between gap-6 text-sm', hasReaderActions ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6')}
+          className={cn(
+            'flex items-center justify-between gap-6 text-sm',
+            hasReaderActions && !readerActionsAfterNavigation ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6',
+          )}
           aria-label={`${tArticle('previous')} / ${tArticle('next')}`}
         >
           {prev ? (
@@ -236,6 +246,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
         </nav>
       ) : null}
+      {readerActionsAfterNavigation ? <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} /> : null}
     </article>
   );
 

@@ -71,6 +71,7 @@ jobs:
           pnpm --filter @nibleaf/database exec prisma migrate deploy
           pnpm --filter @nibleaf/database exec prisma migrate status
           pnpm --filter @nibleaf/database smoke
+          pnpm --filter @nibleaf/database smoke:addons-migration
 
       - name: Exercise ClickHouse analytics migrations
         env:

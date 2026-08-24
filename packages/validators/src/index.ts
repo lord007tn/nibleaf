@@ -14,6 +14,18 @@ export {
   validateRedirectGraph,
 } from '@nibleaf/shared/redirects';
 export {
+  addonConfigSchemas,
+  addonIdParam,
+  addonIdSchema,
+  type ListProjectAddonAuditQuery,
+  listProjectAddonAuditQuery,
+  type MutateProjectAddonBody,
+  mutateProjectAddonBody,
+  parseAddonConfig,
+  type UpdateProjectAddonBody,
+  updateProjectAddonBody,
+} from './addons';
+export {
   inferSafeInlineAssetContentType,
   isSafeInlineAssetContentType,
   normalizeAssetContentType,
@@ -287,6 +299,8 @@ export const projectConfigSchema = z
     addons: z
       .object({
         feedback: z.boolean().optional(),
+        feedbackPlacement: z.enum(['after-content', 'after-navigation']).optional(),
+        feedbackPresentation: z.enum(['compact', 'card']).optional(),
         editSuggestions: z.boolean().optional(),
         issueLinks: z.boolean().optional(),
         ciChecks: z.boolean().optional(),
@@ -295,6 +309,15 @@ export const projectConfigSchema = z
         previewDeployments: z.boolean().optional(),
         editUrl: z.string().max(500).optional(),
         issueUrl: z.string().max(500).optional(),
+        consentBanner: z
+          .object({
+            enabled: z.boolean(),
+            placement: z.enum(['bottom-start', 'bottom-center', 'bottom-end']),
+            presentation: z.enum(['compact', 'comfortable']),
+            buttonLayout: z.enum(['inline', 'stacked']),
+          })
+          .strict()
+          .optional(),
       })
       .strict()
       .optional(),
@@ -315,6 +338,14 @@ export const projectConfigSchema = z
   })
   .strict();
 export type ProjectConfig = z.infer<typeof projectConfigSchema>;
+
+/** Project settings that remain owned by the generic config endpoint. Add-on
+ * state/config and the legacy cookie-consent projection are action-owned and
+ * cannot be written through this compatibility surface. */
+export const projectConfigUpdateSchema = projectConfigSchema.omit({ addons: true }).extend({
+  analytics: projectConfigSchema.shape.analytics.unwrap().omit({ cookieConsent: true }).optional(),
+});
+export type ProjectConfigUpdate = z.infer<typeof projectConfigUpdateSchema>;
 
 // ─── Per-language config (SEO + behaviour overrides) ─────────────────────────
 
@@ -449,7 +480,7 @@ export const updateProjectBody = z
       .optional(),
     description: z.string().max(500).nullable().optional(),
     icon: z.string().max(64).nullable().optional(),
-    config: projectConfigSchema.optional(),
+    config: projectConfigUpdateSchema.optional(),
   })
   .strict();
 export type UpdateProjectBody = z.infer<typeof updateProjectBody>;

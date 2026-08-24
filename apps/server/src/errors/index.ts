@@ -28,7 +28,11 @@ export type ErrorCode =
   | 'usage:unavailable'
   | 'usage:export_not_ready'
   | 'entitlement:unknown'
-  | 'entitlement:disabled';
+  | 'entitlement:disabled'
+  | 'addon:not_found'
+  | 'addon:unavailable'
+  | 'addon:configuration_required'
+  | 'addon:revision_conflict';
 
 const ERROR_STATUS = {
   'http:bad_request': 400,
@@ -59,6 +63,10 @@ const ERROR_STATUS = {
   'usage:export_not_ready': 409,
   'entitlement:unknown': 503,
   'entitlement:disabled': 403,
+  'addon:not_found': 404,
+  'addon:unavailable': 403,
+  'addon:configuration_required': 422,
+  'addon:revision_conflict': 409,
 } as const satisfies Record<ErrorCode, ContentfulStatusCode>;
 
 export interface AppErrorOptions {

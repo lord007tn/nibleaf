@@ -12,9 +12,8 @@ const placeholders = (value: string) => [...value.matchAll(/\{([A-Za-z0-9_]+)\}/
 
 describe('Paraglide message catalogs', () => {
   const english = loadCatalog('en');
-  const expectedKeys = Object.keys(english)
-    .filter((key) => key !== '$schema')
-    .sort();
+  const orderedKeys = Object.keys(english).filter((key) => key !== '$schema');
+  const expectedKeys = [...orderedKeys].sort();
 
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
@@ -25,6 +24,21 @@ describe('Paraglide message catalogs', () => {
     ).toEqual(expectedKeys);
     for (const key of expectedKeys) expect(placeholders(catalog[key] ?? '')).toEqual(placeholders(english[key] ?? ''));
   });
+
+  it.each(INTERFACE_LOCALES.filter(({ code }) => !['en', 'ar'].includes(code)).map(({ code }) => code))(
+    '%s localizes the complete new add-on and managed-consent copy',
+    (locale) => {
+      const catalog = loadCatalog(locale);
+      const firstAddonKey = orderedKeys.indexOf('settings_addons_group_engagement_title');
+      const lastAddonKey = orderedKeys.indexOf('settings_addons_boundary');
+      const localizedKeys = orderedKeys
+        .slice(Math.min(firstAddonKey, lastAddonKey), Math.max(firstAddonKey, lastAddonKey) + 1)
+        .filter((key) => !key.endsWith('_placeholder'))
+        .concat('settings_analytics_cookieconsent_managed');
+
+      for (const key of localizedKeys) expect(catalog[key]).not.toBe(english[key]);
+    },
+  );
 
   it('maps every stable dotted UI key to a generated message id', () => {
     expect(new Set(Object.values(MESSAGE_IDS)).size).toBe(Object.keys(MESSAGE_IDS).length);

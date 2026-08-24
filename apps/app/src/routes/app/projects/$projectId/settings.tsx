@@ -181,7 +181,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
     authentication: <AuthenticationSection key={`authentication-${project.id}`} project={project} />,
     search: <SearchSection key={`search-${project.id}`} project={project} />,
-    addons: <AddonsSection key={`addons-${project.id}`} project={project} />,
+    addons: <AddonsSection key={`addons-${project.id}`} projectId={project.id} />,
     git: <GitTab key={`git-${projectId}`} projectId={projectId} />,
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,

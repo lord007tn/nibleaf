@@ -1,4 +1,5 @@
 import GithubSlugger from 'github-slugger';
+import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 import { excerpt, stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
@@ -549,6 +550,7 @@ type ProjectRow = {
   config: unknown;
   languages: LanguageRow[];
   branches: BranchRow[];
+  addons?: { key: string; enabled: boolean; config: unknown }[];
   openApiDocument?: {
     title: string;
     path: string;
@@ -603,6 +605,22 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
   // Resolve Mintlify-style `{{ variables }}` once, then bake the substituted text
   // into the snapshot so the live site, search index and SEO all see final values.
   const variables = variablesFromConfig(project.config);
+  const addonConfig = project.addons
+    ? projectConfigWithAddons(
+        project.config,
+        project.addons.flatMap((addon) =>
+          isAddonId(addon.key)
+            ? [
+                {
+                  key: addon.key,
+                  enabled: addon.enabled,
+                  config: parseAddonConfigRecord(addon.config),
+                },
+              ]
+            : [],
+        ),
+      )
+    : ((project.config as Record<string, unknown> | null) ?? null);
   return {
     project: {
       id: project.id,
@@ -610,7 +628,7 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
       slug: project.slug,
       description: project.description,
       icon: project.icon,
-      config: (project.config as Record<string, unknown> | null) ?? null,
+      config: addonConfig,
       languages,
       versions,
     },

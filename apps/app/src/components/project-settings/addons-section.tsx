@@ -1,128 +1,326 @@
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@nibleaf/design-system/components/ui/accordion';
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm } from '@tanstack/react-form';
-import { useState } from 'react';
-import type { Project } from '@/hooks/api';
-import { useUpdateProjectConfig } from '@/hooks/api';
-import { FIELD_MONO, Field, SaveBar, SectionHeader, saveConfigSection, ToggleRow } from './shared';
+import type { AddonGroup, AddonId } from '@nibleaf/shared/addons';
+import { Blocks, CheckCircle2, MessageSquareText, Rocket, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { type ComponentType, type ReactNode, useState } from 'react';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import type { ProjectAddon } from '@/hooks/api';
+import { useActivateProjectAddon, useDeactivateProjectAddon, useProjectAddons, useUpdateProjectAddon } from '@/hooks/api';
+import { SectionHeader } from './shared';
 
-export function AddonsSection({ project }: { project: Project }) {
+const GROUPS = [
+  { id: 'engagement', icon: MessageSquareText },
+  { id: 'privacy', icon: ShieldCheck },
+  { id: 'publishing', icon: Rocket },
+] as const satisfies ReadonlyArray<{ id: AddonGroup; icon: ComponentType<{ className?: string }> }>;
+
+const ADDON_KEYS: Record<AddonId, { title: MessageKey; description: MessageKey }> = {
+  feedback: { title: 'settings.addons.feedback.title', description: 'settings.addons.feedback.hint' },
+  'edit-suggestions': { title: 'settings.addons.editSuggestions.title', description: 'settings.addons.editSuggestions.hint' },
+  'issue-links': { title: 'settings.addons.issueLinks.title', description: 'settings.addons.issueLinks.hint' },
+  'consent-banner': { title: 'settings.addons.consent.title', description: 'settings.addons.consent.description' },
+  'ci-checks': { title: 'settings.addons.ciChecks.title', description: 'settings.addons.ciChecks.hint' },
+  'broken-links': { title: 'settings.addons.brokenLinks.title', description: 'settings.addons.brokenLinks.hint' },
+  'grammar-linter': { title: 'settings.addons.grammarLinter.title', description: 'settings.addons.grammarLinter.hint' },
+  'preview-deployments': { title: 'settings.addons.previewDeployments.title', description: 'settings.addons.previewDeployments.hint' },
+};
+
+const stringConfig = (config: Record<string, unknown>, key: string, fallback = '') => {
+  const value = z.string().safeParse(config[key]);
+  return value.success ? value.data : fallback;
+};
+
+function StatusBadge({ addon }: { addon: ProjectAddon }) {
   const t = useT();
-  const update = useUpdateProjectConfig(project.id);
-  const addons = project.config?.addons ?? {};
-  const [feedback, setFeedback] = useState<boolean>(addons.feedback ?? true);
-  const [editSuggestions, setEditSuggestions] = useState<boolean>(addons.editSuggestions ?? true);
-  const [issueLinks, setIssueLinks] = useState<boolean>(addons.issueLinks ?? true);
-  const [ciChecks, setCiChecks] = useState<boolean>(addons.ciChecks ?? true);
-  const [brokenLinks, setBrokenLinks] = useState<boolean>(addons.brokenLinks ?? true);
-  const [grammarLinter, setGrammarLinter] = useState<boolean>(addons.grammarLinter ?? false);
-  const [previewDeployments, setPreviewDeployments] = useState<boolean>(addons.previewDeployments ?? true);
+  const statusKey = `settings.addons.status.${addon.status.replace('_', '')}` as MessageKey;
+  return (
+    <Badge variant={addon.status === 'unavailable' ? 'destructive' : addon.status === 'active' ? 'secondary' : 'outline'}>
+      {addon.status === 'active' ? <CheckCircle2 aria-hidden /> : addon.status === 'needs_configuration' ? <TriangleAlert aria-hidden /> : null}
+      {t(statusKey)}
+    </Badge>
+  );
+}
 
-  const form = useForm({
-    defaultValues: {
-      editUrl: addons.editUrl ?? '',
-      issueUrl: addons.issueUrl ?? '',
-    },
-    onSubmit: async ({ value }) => {
-      await saveConfigSection(update, {
-        addons: {
-          feedback,
-          editSuggestions,
-          issueLinks,
-          ciChecks,
-          brokenLinks,
-          grammarLinter,
-          previewDeployments,
-          editUrl: value.editUrl.trim() || undefined,
-          issueUrl: value.issueUrl.trim() || undefined,
-        },
-      });
-    },
-  });
+function ConfigurationField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid gap-1.5 text-sm">
+      <span className="font-medium">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: string }) {
+  const t = useT();
+  const update = useUpdateProjectAddon(projectId);
+  const activate = useActivateProjectAddon(projectId);
+  const deactivate = useDeactivateProjectAddon(projectId);
+  const [draftConfig, setDraftConfig] = useState<Record<string, unknown> | null>(null);
+  const config = draftConfig ?? addon.config;
+  const configurable = ['feedback', 'edit-suggestions', 'issue-links', 'consent-banner'].includes(addon.id);
+  const pending = update.isPending || activate.isPending || deactivate.isPending;
+  const keys = ADDON_KEYS[addon.id];
+
+  const save = () => {
+    const nextConfig =
+      addon.id === 'edit-suggestions' || addon.id === 'issue-links'
+        ? (() => {
+            const urlTemplate = stringConfig(config, 'urlTemplate').trim();
+            return urlTemplate ? { urlTemplate } : {};
+          })()
+        : config;
+    update.mutate(
+      { addonId: addon.id, body: { config: nextConfig, expectedRevision: addon.revision } },
+      {
+        onSuccess: () => toast.success(t('common.saved')),
+        onError: () => toast.error(t('settings.saveError')),
+      },
+    );
+  };
+  const toggle = (enabled: boolean) => {
+    const mutation = enabled ? activate : deactivate;
+    mutation.mutate(
+      { addonId: addon.id, expectedRevision: addon.revision },
+      {
+        onSuccess: () => toast.success(t('common.saved')),
+        onError: () => toast.error(t('settings.saveError')),
+      },
+    );
+  };
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.handleSubmit();
-      }}
-    >
-      <SectionHeader description={t('settings.addons.description')} icon="◩" title={t('settings.addons.title')} />
-
-      <ToggleRow
-        checked={feedback}
-        hint={t('settings.addons.feedback.hint')}
-        onCheckedChange={setFeedback}
-        title={t('settings.addons.feedback.title')}
-      />
-      <ToggleRow
-        checked={editSuggestions}
-        hint={t('settings.addons.editSuggestions.hint')}
-        onCheckedChange={setEditSuggestions}
-        title={t('settings.addons.editSuggestions.title')}
-      />
-      {editSuggestions ? (
-        <form.Field name="editUrl">
-          {(field) => (
-            <Field className="mt-4" hint={t('settings.addons.editUrl.hint')} label={t('settings.addons.editUrl.label')}>
-              <Input
-                className={FIELD_MONO}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://github.com/acme/docs/edit/main/{path}.mdx"
-                value={field.state.value}
-              />
-            </Field>
-          )}
-        </form.Field>
-      ) : null}
-      <ToggleRow
-        checked={issueLinks}
-        hint={t('settings.addons.issueLinks.hint')}
-        onCheckedChange={setIssueLinks}
-        title={t('settings.addons.issueLinks.title')}
-      />
-      {issueLinks ? (
-        <form.Field name="issueUrl">
-          {(field) => (
-            <Field className="mt-4" hint={t('settings.addons.issueUrl.hint')} label={t('settings.addons.issueUrl.label')}>
-              <Input
-                className={FIELD_MONO}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://github.com/acme/docs/issues/new?title=Docs%20feedback&body={url}"
-                value={field.state.value}
-              />
-            </Field>
-          )}
-        </form.Field>
-      ) : null}
-      <ToggleRow
-        checked={ciChecks}
-        hint={t('settings.addons.ciChecks.hint')}
-        onCheckedChange={setCiChecks}
-        title={t('settings.addons.ciChecks.title')}
-      />
-      <ToggleRow
-        checked={brokenLinks}
-        hint={t('settings.addons.brokenLinks.hint')}
-        onCheckedChange={setBrokenLinks}
-        title={t('settings.addons.brokenLinks.title')}
-      />
-      <ToggleRow
-        checked={grammarLinter}
-        hint={t('settings.addons.grammarLinter.hint')}
-        onCheckedChange={setGrammarLinter}
-        title={t('settings.addons.grammarLinter.title')}
-      />
-      <ToggleRow
-        checked={previewDeployments}
-        hint={t('settings.addons.previewDeployments.hint')}
-        onCheckedChange={setPreviewDeployments}
-        title={t('settings.addons.previewDeployments.title')}
-      />
-
-      <div className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+    <article className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-start gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h4 className="font-semibold text-sm">{t(keys.title)}</h4>
+            <StatusBadge addon={addon} />
+            {addon.availability.state === 'preview' ? <Badge variant="outline">{t('settings.addons.availability.preview')}</Badge> : null}
+          </div>
+          <p className="mt-1 text-muted-foreground text-sm leading-relaxed">{t(keys.description)}</p>
+          {!addon.availability.available ? <p className="mt-2 text-destructive text-xs">{t('settings.addons.unavailableDescription')}</p> : null}
+        </div>
+        <Switch
+          aria-label={t(addon.enabled ? 'settings.addons.disable' : 'settings.addons.enable', { name: t(keys.title) })}
+          checked={addon.enabled}
+          disabled={!addon.availability.available || pending}
+          onCheckedChange={toggle}
+        />
       </div>
-    </form>
+
+      {configurable ? (
+        <div className="mt-4 grid gap-4 border-border border-t pt-4">
+          {addon.id === 'feedback' ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <ConfigurationField label={t('settings.addons.feedback.placement')}>
+                <Select
+                  value={stringConfig(config, 'placement', 'after-content')}
+                  onValueChange={(placement) => setDraftConfig({ ...config, placement })}
+                >
+                  <SelectTrigger aria-label={t('settings.addons.feedback.placement')} className="h-9 w-full">
+                    <SelectValue>
+                      {t(
+                        stringConfig(config, 'placement', 'after-content') === 'after-navigation'
+                          ? 'settings.addons.feedback.placement.afterNavigation'
+                          : 'settings.addons.feedback.placement.afterContent',
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="after-content">{t('settings.addons.feedback.placement.afterContent')}</SelectItem>
+                    <SelectItem value="after-navigation">{t('settings.addons.feedback.placement.afterNavigation')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </ConfigurationField>
+              <ConfigurationField label={t('settings.addons.feedback.presentation')}>
+                <Select
+                  value={stringConfig(config, 'presentation', 'compact')}
+                  onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
+                >
+                  <SelectTrigger aria-label={t('settings.addons.feedback.presentation')} className="h-9 w-full">
+                    <SelectValue>
+                      {t(
+                        stringConfig(config, 'presentation', 'compact') === 'card'
+                          ? 'settings.addons.feedback.presentation.card'
+                          : 'settings.addons.feedback.presentation.compact',
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compact">{t('settings.addons.feedback.presentation.compact')}</SelectItem>
+                    <SelectItem value="card">{t('settings.addons.feedback.presentation.card')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </ConfigurationField>
+            </div>
+          ) : null}
+
+          {addon.id === 'edit-suggestions' || addon.id === 'issue-links' ? (
+            <ConfigurationField label={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.label' : 'settings.addons.issueUrl.label')}>
+              <Input
+                aria-label={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.label' : 'settings.addons.issueUrl.label')}
+                className="h-9 font-mono text-sm"
+                onChange={(event) => setDraftConfig({ ...config, urlTemplate: event.target.value })}
+                placeholder={
+                  addon.id === 'edit-suggestions'
+                    ? t('settings.addons.editUrl.placeholder', { path: '{path}' })
+                    : t('settings.addons.issueUrl.placeholder', { url: '{url}' })
+                }
+                value={stringConfig(config, 'urlTemplate')}
+              />
+            </ConfigurationField>
+          ) : null}
+
+          {addon.id === 'consent-banner' ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <ConfigurationField label={t('settings.addons.consent.placement')}>
+                  <Select
+                    value={stringConfig(config, 'placement', 'bottom-end')}
+                    onValueChange={(placement) => setDraftConfig({ ...config, placement })}
+                  >
+                    <SelectTrigger aria-label={t('settings.addons.consent.placement')} className="h-9 w-full">
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'placement', 'bottom-end') === 'bottom-start'
+                            ? 'settings.addons.consent.placement.start'
+                            : stringConfig(config, 'placement', 'bottom-end') === 'bottom-center'
+                              ? 'settings.addons.consent.placement.center'
+                              : 'settings.addons.consent.placement.end',
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bottom-start">{t('settings.addons.consent.placement.start')}</SelectItem>
+                      <SelectItem value="bottom-center">{t('settings.addons.consent.placement.center')}</SelectItem>
+                      <SelectItem value="bottom-end">{t('settings.addons.consent.placement.end')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ConfigurationField>
+                <ConfigurationField label={t('settings.addons.consent.presentation')}>
+                  <Select
+                    value={stringConfig(config, 'presentation', 'comfortable')}
+                    onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
+                  >
+                    <SelectTrigger aria-label={t('settings.addons.consent.presentation')} className="h-9 w-full">
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'presentation', 'comfortable') === 'compact'
+                            ? 'settings.addons.consent.presentation.compact'
+                            : 'settings.addons.consent.presentation.comfortable',
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="compact">{t('settings.addons.consent.presentation.compact')}</SelectItem>
+                      <SelectItem value="comfortable">{t('settings.addons.consent.presentation.comfortable')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ConfigurationField>
+                <ConfigurationField label={t('settings.addons.consent.buttons')}>
+                  <Select
+                    value={stringConfig(config, 'buttonLayout', 'inline')}
+                    onValueChange={(buttonLayout) => setDraftConfig({ ...config, buttonLayout })}
+                  >
+                    <SelectTrigger aria-label={t('settings.addons.consent.buttons')} className="h-9 w-full">
+                      <SelectValue>
+                        {t(
+                          stringConfig(config, 'buttonLayout', 'inline') === 'stacked'
+                            ? 'settings.addons.consent.buttons.stacked'
+                            : 'settings.addons.consent.buttons.inline',
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inline">{t('settings.addons.consent.buttons.inline')}</SelectItem>
+                      <SelectItem value="stacked">{t('settings.addons.consent.buttons.stacked')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </ConfigurationField>
+              </div>
+              <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
+                <div className="font-medium text-xs uppercase tracking-wide">{t('settings.addons.consent.preview')}</div>
+                <p className="mt-1 text-muted-foreground text-sm">{t('settings.addons.consent.previewDescription')}</p>
+              </div>
+            </>
+          ) : null}
+
+          <div className="flex justify-end">
+            <Button className="h-9" disabled={pending} onClick={save} type="button">
+              {pending ? t('common.saving') : t('common.save')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+export function AddonsSection({ projectId }: { projectId: string }) {
+  const t = useT();
+  const { data, isLoading, isError, refetch } = useProjectAddons(projectId);
+
+  return (
+    <div>
+      <SectionHeader description={t('settings.addons.description')} icon={<Blocks className="size-4" />} title={t('settings.addons.title')} />
+      {isLoading ? (
+        <div className="grid gap-3">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : null}
+      {isError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p>{t('settings.addons.loadError')}</p>
+          <Button className="mt-3" onClick={() => refetch()} size="sm" variant="outline">
+            {t('common.retry')}
+          </Button>
+        </div>
+      ) : null}
+      {data ? (
+        <Accordion className="overflow-hidden rounded-xl border border-border bg-card" defaultValue={['engagement']} multiple>
+          {GROUPS.map((group) => {
+            const items = data.filter((addon) => addon.group === group.id);
+            const Icon = group.icon;
+            return (
+              <AccordionItem className="px-4 sm:px-5" key={group.id} value={group.id}>
+                <AccordionTrigger className="items-center gap-3 py-4 hover:no-underline">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="size-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold">{t(`settings.addons.group.${group.id}.title` as MessageKey)}</span>
+                      <span className="mt-0.5 block text-muted-foreground text-xs">
+                        {t(`settings.addons.group.${group.id}.description` as MessageKey)}
+                      </span>
+                    </span>
+                  </span>
+                  <Badge className="ms-auto me-2" variant="outline">
+                    {items.filter((addon) => addon.enabled).length}/{items.length}
+                  </Badge>
+                </AccordionTrigger>
+                <AccordionContent className="grid gap-3 pb-5">
+                  {items.map((addon) => (
+                    <AddonCard addon={addon} key={`${addon.id}-${addon.revision}`} projectId={projectId} />
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
+      ) : null}
+      <p className={cn('mt-4 text-muted-foreground text-xs', !data && 'hidden')}>{t('settings.addons.boundary')}</p>
+    </div>
   );
 }
