@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "生产部署密钥",
   "settings_apikeys_create": "创建密钥",
   "settings_apikeys_empty": "还没有 API 键。",
+  "settings_apikeys_loaderror": "无法加载 API 密钥。请重试。",
   "settings_apikeys_created_title": "已创建密钥",
   "settings_apikeys_created_description": "现在复制这个秘密。它将不会再次显示。",
   "settings_apikeys_created_toast": "API 密钥已创建",

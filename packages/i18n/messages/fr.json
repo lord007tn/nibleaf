@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "Clé de déploiement en production",
   "settings_apikeys_create": "Créer une clé",
   "settings_apikeys_empty": "Pas encore de clés API.",
+  "settings_apikeys_loaderror": "Impossible de charger les clés API. Réessayez.",
   "settings_apikeys_created_title": "Clé créée",
   "settings_apikeys_created_description": "Copiez ce secret maintenant. Il ne sera plus affiché.",
   "settings_apikeys_created_toast": "Clé API créée",

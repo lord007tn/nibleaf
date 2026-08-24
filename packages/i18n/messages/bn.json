@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "উত্পাদন স্থাপন কী",
   "settings_apikeys_create": "কী তৈরি করুন",
   "settings_apikeys_empty": "এখনো কোনো API কী নেই।",
+  "settings_apikeys_loaderror": "API কী লোড করা যায়নি। আবার চেষ্টা করুন।",
   "settings_apikeys_created_title": "কী তৈরি করা হয়েছে",
   "settings_apikeys_created_description": "এখন এই গোপন অনুলিপি. এটা আর দেখানো হবে না।",
   "settings_apikeys_created_toast": "API কী তৈরি করা হয়েছে",

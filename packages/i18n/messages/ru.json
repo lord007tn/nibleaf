@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "Ключ производственного развертывания",
   "settings_apikeys_create": "Создать ключ",
   "settings_apikeys_empty": "Ключей API пока нет.",
+  "settings_apikeys_loaderror": "Не удалось загрузить ключи API. Повторите попытку.",
   "settings_apikeys_created_title": "Ключ создан",
   "settings_apikeys_created_description": "Скопируйте этот секрет сейчас. Оно больше не будет показано.",
   "settings_apikeys_created_toast": "Ключ API создан",

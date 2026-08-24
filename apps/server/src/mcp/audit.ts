@@ -1,8 +1,11 @@
 import { prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
 import type { Context } from 'hono';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import type { McpPrincipal } from './types';
+
+const log = createLogger({ module: 'mcp-audit' });
 
 export const recordMcpAudit = async (
   ctx: Context<HonoEnv>,
@@ -31,7 +34,8 @@ export const recordMcpAudit = async (
       },
       select: { id: true },
     });
-  } catch {
+  } catch (error) {
+    log.error({ errorName: error instanceof Error ? error.name : 'UnknownError', requestId: ctx.get('requestId') }, 'MCP audit persistence failed');
     throw new AppError({ code: 'storage:error', message: 'The MCP audit event could not be persisted.' });
   }
 };

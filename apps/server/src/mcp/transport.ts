@@ -5,22 +5,10 @@ import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
 import { recordMcpAudit } from './audit';
 import { authenticateMcpRequest, mcpAuthInfo } from './auth';
-import { checkMcpRateLimit } from './rate-limit';
+import { checkMcpRateLimit, finalizeMcpRateLimitRejectionAudit } from './rate-limit';
 import { createNibleafMcpServer } from './server';
 
 const log = createLogger({ module: 'mcp-transport' });
-
-const configuredHostname = (value: string) => {
-  try {
-    return new URL(value).hostname;
-  } catch {
-    return value.split(':')[0]?.trim() ?? '';
-  }
-};
-
-const allowedHostnames = Array.from(
-  new Set([new URL(env.API_URL).hostname, new URL(env.APP_URL).hostname, ...env.MCP_ALLOWED_HOSTS.map(configuredHostname)].filter(Boolean)),
-);
 
 const transportError = (status: 400 | 403, message: string) =>
   new Response(JSON.stringify({ error: { code: 'mcp:invalid_request', message } }), {
@@ -34,8 +22,14 @@ const hasControlOrWhitespace = (value: string) =>
     return codePoint <= 32 || codePoint === 127;
   });
 
+const authorityPattern = /^(?:\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9.-]+)(?::([0-9]{1,5}))?$/;
+
 const isSafeAuthority = (value: string) => {
   if (!value || hasControlOrWhitespace(value) || ['@', ',', '/', '?', '#', '\\'].some((character) => value.includes(character))) return false;
+  const match = authorityPattern.exec(value);
+  if (!match) return false;
+  const port = match[1];
+  if (port && (Number(port) < 1 || Number(port) > 65_535)) return false;
   try {
     const parsed = new URL(`http://${value}`);
     return (
@@ -44,13 +38,22 @@ const isSafeAuthority = (value: string) => {
       parsed.hostname.length > 0 &&
       parsed.pathname === '/' &&
       parsed.search === '' &&
-      parsed.hash === '' &&
-      parsed.host === value.toLowerCase()
+      parsed.hash === ''
     );
   } catch {
     return false;
   }
 };
+
+const configuredHostname = (value: string) => {
+  const authority = value.trim();
+  if (!isSafeAuthority(authority)) return '';
+  return new URL(`http://${authority}`).hostname;
+};
+
+const allowedHostnames = Array.from(
+  new Set([new URL(env.API_URL).hostname, new URL(env.APP_URL).hostname, ...env.MCP_ALLOWED_HOSTS.map(configuredHostname)].filter(Boolean)),
+);
 
 const isSafeOrigin = (value: string) => {
   if (!value || hasControlOrWhitespace(value) || value.includes('@') || value.includes(',')) return false;
@@ -103,6 +106,12 @@ const withTransportHeaders = (response: Response, limit: { limit: number; remain
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 };
 
+const auditUnavailableResponse = () =>
+  new Response(JSON.stringify({ error: { code: 'storage:error', message: 'The MCP audit service is unavailable.' } }), {
+    status: 503,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, no-store' },
+  });
+
 export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response> => {
   const request = ctx.req.raw;
   const rejected =
@@ -117,21 +126,23 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
 
   const limit = checkMcpRateLimit(authenticated.apiKey.id);
   if (!limit.allowed) {
-    try {
-      await recordMcpAudit(ctx, authenticated, {
-        kind: 'tool',
-        operation: 'transport_rate_limit',
-        capability: 'mcp:connect',
-        outcome: 'failed',
-        errorCode: 'http:rate_limited',
-        durationMs: 0,
-      });
-    } catch {
-      return new Response(JSON.stringify({ error: { code: 'storage:error', message: 'The MCP audit service is unavailable.' } }), {
-        status: 503,
-        headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, no-store' },
-      });
+    if (limit.shouldAuditRejection) {
+      try {
+        await recordMcpAudit(ctx, authenticated, {
+          kind: 'tool',
+          operation: 'transport_rate_limit',
+          capability: 'mcp:connect',
+          outcome: 'failed',
+          errorCode: 'http:rate_limited',
+          durationMs: 0,
+        });
+        finalizeMcpRateLimitRejectionAudit(authenticated.apiKey.id, limit.resetAt, true);
+      } catch {
+        finalizeMcpRateLimitRejectionAudit(authenticated.apiKey.id, limit.resetAt, false);
+        return auditUnavailableResponse();
+      }
     }
+    if (limit.auditPending) return auditUnavailableResponse();
     return withTransportHeaders(
       new Response(JSON.stringify({ error: { code: 'http:rate_limited', message: 'The MCP request limit has been reached.' } }), {
         status: 429,

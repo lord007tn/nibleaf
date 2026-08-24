@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "उत्पादन परिनियोजन कुंजी",
   "settings_apikeys_create": "कुंजी बनाएं",
   "settings_apikeys_empty": "अभी तक कोई API कुंजी नहीं है।",
+  "settings_apikeys_loaderror": "API कुंजियां लोड नहीं की जा सकीं। फिर से कोशिश करें।",
   "settings_apikeys_created_title": "कुंजी बनाई गई",
   "settings_apikeys_created_description": "अब इस रहस्य को कॉपी करें. इसे दोबारा नहीं दिखाया जाएगा.",
   "settings_apikeys_created_toast": "API कुंजी बनाई गई",

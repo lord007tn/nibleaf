@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "Clave de implementación de producción",
   "settings_apikeys_create": "Crear clave",
   "settings_apikeys_empty": "Aún no hay claves API.",
+  "settings_apikeys_loaderror": "No se pudieron cargar las claves de API. Inténtalo de nuevo.",
   "settings_apikeys_created_title": "Clave creada",
   "settings_apikeys_created_description": "Copia este secreto ahora. No se volverá a mostrar.",
   "settings_apikeys_created_toast": "API clave creada",

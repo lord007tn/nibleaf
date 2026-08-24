@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "Produktionsbereitstellungsschlüssel",
   "settings_apikeys_create": "Schlüssel erstellen",
   "settings_apikeys_empty": "Noch keine API-Schlüssel.",
+  "settings_apikeys_loaderror": "API-Schlüssel konnten nicht geladen werden. Versuchen Sie es erneut.",
   "settings_apikeys_created_title": "Schlüssel erstellt",
   "settings_apikeys_created_description": "Kopieren Sie dieses Geheimnis jetzt. Es wird nicht erneut angezeigt.",
   "settings_apikeys_created_toast": "API Schlüssel erstellt",

@@ -989,6 +989,7 @@
   "settings_apikeys_nameplaceholder": "Production deploy key",
   "settings_apikeys_create": "Create key",
   "settings_apikeys_empty": "No API keys yet.",
+  "settings_apikeys_loaderror": "Could not load API keys. Try again.",
   "settings_apikeys_created_title": "Key created",
   "settings_apikeys_created_description": "Copy this secret now. It will not be shown again.",
   "settings_apikeys_created_toast": "API key created",

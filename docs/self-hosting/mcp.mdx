@@ -3,7 +3,7 @@ title: 'Connect MCP clients securely'
 description: 'Enable the project-bound Nibleaf MCP endpoint, issue least-privilege keys, configure a client, rotate access, and operate the audit and rate-limit boundaries.'
 audience: 'self-hosted Nibleaf operators and project administrators'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
+last_reviewed: '2026-08-24'
 verified_against: 'apps/server/src/mcp and the official Model Context Protocol server SDK 2.0.0'
 lang: 'en'
 dir: 'ltr'
@@ -89,9 +89,19 @@ capability.
 
 The capability resource is authoritative. On this release the stable surface
 includes project metadata; page metadata and authored page content; languages
-and versions; aggregate analytics without search terms; safe theme template
-export and non-writing import preview; redacted export and deployment summaries;
-pending publish-change metadata; and redacted Git integration status.
+and versions; aggregate analytics without search terms; search configuration and
+content-free index diagnostics; exact aggregate usage and advisory entitlement
+summaries; add-on catalog, state, and audit reads; safe theme template/catalog
+metadata and non-writing import preview; redacted export and deployment
+summaries; pending publish-change metadata; and truth-based integration catalog,
+connection, and Git status reads.
+
+The currently issuable domain scopes are `search:read`, `usage:read`,
+`entitlements:read`, `addons:read`, `themes:read`, and `integrations:read`, in
+addition to the project/page/language/version/analytics/export/deployment reads.
+No new-domain write scope, `usage:export`, search reindex, integration
+verification/deletion, credential, or payment scope is issuable through this
+release. `exports:read` remains the separate redacted export-job read surface.
 
 Project resources use bound URIs such as:
 
@@ -101,7 +111,13 @@ nibleaf://projects/{boundProjectId}/pages
 nibleaf://projects/{boundProjectId}/pages/{pageId}
 nibleaf://projects/{boundProjectId}/languages
 nibleaf://projects/{boundProjectId}/versions
+nibleaf://projects/{boundProjectId}/search/configuration
+nibleaf://projects/{boundProjectId}/usage
+nibleaf://projects/{boundProjectId}/entitlements
+nibleaf://projects/{boundProjectId}/addons
+nibleaf://projects/{boundProjectId}/theme-catalog
 nibleaf://projects/{boundProjectId}/theme-template
+nibleaf://projects/{boundProjectId}/integrations
 nibleaf://projects/{boundProjectId}/deployments/latest
 ```
 
@@ -109,6 +125,10 @@ A different project ID or a page outside the bound project returns the same
 not-found protocol result as a missing resource. Read projections omit provider
 payloads, preview bearer URLs, storage keys and checksums, deployment snapshots,
 theme filesystem state, raw errors, credentials, and analytics search terms.
+Search diagnostics expose logical schema/revision/model metadata but not physical
+collections, content, vectors, hashes, or raw provider payloads. Usage quantities
+and limits remain exact decimal strings or `null`; partial and unavailable data
+is never rewritten as zero, and configured blocking behavior is advisory only.
 The `pages:read` scope does include authored content inside the one bound project;
 grant it only when the client needs document bodies.
 
@@ -124,7 +144,9 @@ fails, the operation fails closed with a sanitized storage error.
 `MCP_RATE_LIMIT_PER_MIN` is a bounded, per-key, per-API-process defense. It is
 not deployment-global across replicas. Enforce a deployment-wide limit at the
 trusted ingress or shared edge and monitor HTTP `429`, `Retry-After`, and
-`X-RateLimit-*` headers. Never describe an individual process's counter as the
+`X-RateLimit-*` headers. To bound audit write amplification, the transport
+records one `transport_rate_limit` rejection per key/window instead of one row
+for every repeated `429`. Never describe an individual process's counter as the
 global customer allowance.
 
 ## Rotate, revoke, and roll back
@@ -134,6 +156,16 @@ the client with the once-visible secret, verify `tools/list`, then remove the ol
 secret from its store. Revocation is irreversible and requires the dashboard
 confirmation dialog. It takes effect on the next request. A database backup is
 not a reason to re-enable a leaked key.
+
+Apply the MCP migration during a low-activity window before enabling the
+endpoint. It adds nullable provenance columns and two indexes to the existing,
+operator-managed `api_key` table, then creates the initially empty audit table.
+PostgreSQL's standard index and foreign-key DDL can briefly block API-key
+create, rotate, or revoke writes. Check the table size and active locks first,
+pause those dashboard operations during the migration, and keep MCP disabled
+until it completes. The migration deliberately uses the repository's normal
+Prisma migration path instead of a multi-step concurrent-index procedure that
+could leave a partially applied or invalid index requiring manual recovery.
 
 Before application rollback, disable MCP and stop MCP clients. Apply
 `rollback.sql` from the MCP migration only after deploying an application that

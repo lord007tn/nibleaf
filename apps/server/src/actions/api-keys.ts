@@ -2,7 +2,7 @@ import { prisma } from '@nibleaf/database';
 import { hashApiKeySecret } from '@nibleaf/shared/crypto';
 import { newApiKeySecret } from '@nibleaf/shared/ids';
 import type { CreateApiKeyBody, RotateApiKeyBody } from '@nibleaf/validators';
-import { notFound } from '@/errors';
+import { conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
 
 const expiresAt = (days: number) => new Date(Date.now() + days * 86_400_000);
@@ -62,12 +62,15 @@ export const createApiKey = async (organizationId: string, projectId: string, cr
 
 export const rotateApiKey = async (organizationId: string, projectId: string, id: string, createdById: string, body: RotateApiKeyBody) => {
   await assertProjectInOrg(organizationId, projectId);
-  const { secret } = newApiKeySecret('live');
-  const key = await prisma.$transaction(async (tx) => {
+  const rotated = await prisma.$transaction(async (tx) => {
     const current = await tx.apiKey.findFirst({ where: { id, projectId }, select: { id: true, name: true } });
     if (!current) throw notFound('api key', { id });
-    await tx.apiKey.update({ where: { id }, data: { revokedAt: new Date() } });
-    return tx.apiKey.create({
+
+    const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: new Date() } });
+    if (claimed.count !== 1) throw conflict('API key has already been rotated or revoked.');
+
+    const { secret } = newApiKeySecret('live');
+    const key = await tx.apiKey.create({
       data: {
         projectId,
         createdById,
@@ -90,8 +93,9 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
         rotatedFromId: true,
       },
     });
+    return { key, secret };
   });
-  return { ...apiKeyDto(key), secret };
+  return { ...apiKeyDto(rotated.key), secret: rotated.secret };
 };
 
 export const revokeApiKey = async (organizationId: string, projectId: string, id: string) => {

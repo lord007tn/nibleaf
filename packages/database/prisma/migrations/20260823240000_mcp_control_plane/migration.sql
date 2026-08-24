@@ -1,8 +1,12 @@
 ALTER TABLE "api_key"
   ADD COLUMN "createdById" TEXT,
-  ADD COLUMN "rotatedFromId" TEXT,
-  ADD COLUMN "expiresAt" TIMESTAMP(3);
+  ADD COLUMN "rotatedFromId" TEXT;
 
+-- This operator-managed table is expected to stay small. These standard Prisma
+-- migration statements deliberately remain recoverable through the repository's
+-- normal migration workflow; apply them in the documented low-activity window
+-- with API-key lifecycle writes paused rather than using a partially resumable
+-- concurrent-index procedure.
 CREATE INDEX "api_key_createdById_idx" ON "api_key"("createdById");
 CREATE INDEX "api_key_rotatedFromId_idx" ON "api_key"("rotatedFromId");
 ALTER TABLE "api_key" ADD CONSTRAINT "api_key_createdById_fkey"

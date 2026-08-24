@@ -36,7 +36,9 @@ describe('API-key lifecycle route permissions', () => {
 
   it.each(guardedRoutes)('rejects project members from %s', async (_name, route) => {
     vi.mocked(prisma.member.findUnique).mockResolvedValue({ role: MemberRole.MEMBER } as never);
-    await expect(route[1](context(), vi.fn())).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    const next = vi.fn();
+    await expect(route[1](context(), next)).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it.each(guardedRoutes)('allows project admins to %s', async (_name, route) => {

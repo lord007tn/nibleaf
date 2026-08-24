@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "Kunci penerapan produksi",
   "settings_apikeys_create": "Buat kunci",
   "settings_apikeys_empty": "Belum ada kunci API.",
+  "settings_apikeys_loaderror": "Kunci API tidak dapat dimuat. Coba lagi.",
   "settings_apikeys_created_title": "Kunci dibuat",
   "settings_apikeys_created_description": "Salin rahasia ini sekarang. Itu tidak akan ditampilkan lagi.",
   "settings_apikeys_created_toast": "Kunci API dibuat",

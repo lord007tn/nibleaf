@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const migrationDirectory = new URL('../../../../packages/database/prisma/migrations/20260823190000_mcp_control_plane/', import.meta.url);
+const migrationDirectory = new URL('../../../../packages/database/prisma/migrations/20260823240000_mcp_control_plane/', import.meta.url);
 const migration = readFileSync(new URL('migration.sql', migrationDirectory), 'utf8');
 const rollback = readFileSync(new URL('rollback.sql', migrationDirectory), 'utf8');
 
@@ -13,6 +13,7 @@ describe('MCP migration safety contract', () => {
   });
 
   it('rolls MCP-owned schema back in foreign-key-safe order without dropping the shared expiry column', () => {
+    expect(migration).not.toMatch(/ADD\s+COLUMN\s+"expiresAt"/i);
     expect(rollback.indexOf('DROP CONSTRAINT IF EXISTS "mcp_audit_event_projectId_fkey"')).toBeLessThan(
       rollback.indexOf('DROP TABLE IF EXISTS "mcp_audit_event"'),
     );

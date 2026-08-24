@@ -38,7 +38,7 @@ const formattedDate = (value: string, locale: string) =>
 
 export function ApiKeysTab({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
-  const { data: keys = [], isLoading } = useApiKeys(projectId);
+  const { data: keys = [], error, isError, isLoading } = useApiKeys(projectId);
   const create = useCreateApiKey(projectId);
   const rotate = useRotateApiKey(projectId);
   const revoke = useRevokeApiKey(projectId);
@@ -180,7 +180,11 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
       ) : null}
 
       <SettingsSection>
-        {isLoading ? null : keys.length === 0 ? (
+        {isLoading ? null : isError || error ? (
+          <p className="py-3 text-center text-destructive text-sm" role="alert">
+            {t('settings.apiKeys.loadError')}
+          </p>
+        ) : keys.length === 0 ? (
           <p className="py-3 text-center text-muted-foreground text-sm">{t('settings.apiKeys.empty')}</p>
         ) : (
           <div className="flex flex-col divide-y divide-border">

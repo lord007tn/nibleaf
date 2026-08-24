@@ -14,7 +14,16 @@ const availableTools = [
   ['list_languages', 'languages:read'],
   ['list_versions', 'versions:read'],
   ['get_analytics_overview', 'analytics:read'],
+  ['get_search_configuration', 'search:read'],
+  ['get_search_index_diagnostics', 'search:read'],
+  ['get_usage_summary', 'usage:read'],
+  ['get_entitlements', 'entitlements:read'],
+  ['check_entitlement', 'entitlements:read'],
+  ['list_addons', 'addons:read'],
+  ['get_addon', 'addons:read'],
+  ['list_addon_audit_events', 'addons:read'],
   ['get_theme_template', 'themes:read'],
+  ['get_theme_catalog', 'themes:read'],
   ['preview_theme_import', 'themes:read'],
   ['list_exports', 'exports:read'],
   ['get_export', 'exports:read'],
@@ -22,6 +31,8 @@ const availableTools = [
   ['get_deployment', 'deployments:read'],
   ['get_pending_changes', 'deployments:read'],
   ['get_git_integration_status', 'integrations:read'],
+  ['list_integrations', 'integrations:read'],
+  ['get_integration', 'integrations:read'],
 ] as const satisfies ReadonlyArray<readonly [string, McpScope]>;
 
 const availableResources = (projectId: string) =>
@@ -32,7 +43,13 @@ const availableResources = (projectId: string) =>
     [`nibleaf://projects/${projectId}/pages/{pageId}`, 'pages:read'],
     [`nibleaf://projects/${projectId}/languages`, 'languages:read'],
     [`nibleaf://projects/${projectId}/versions`, 'versions:read'],
+    [`nibleaf://projects/${projectId}/search/configuration`, 'search:read'],
+    [`nibleaf://projects/${projectId}/usage`, 'usage:read'],
+    [`nibleaf://projects/${projectId}/entitlements`, 'entitlements:read'],
+    [`nibleaf://projects/${projectId}/addons`, 'addons:read'],
+    [`nibleaf://projects/${projectId}/theme-catalog`, 'themes:read'],
     [`nibleaf://projects/${projectId}/theme-template`, 'themes:read'],
+    [`nibleaf://projects/${projectId}/integrations`, 'integrations:read'],
     [`nibleaf://projects/${projectId}/deployments/latest`, 'deployments:read'],
   ] as const satisfies ReadonlyArray<readonly [string, McpScope]>;
 
@@ -51,10 +68,6 @@ const getCapabilityDto = (principal: McpPrincipal) => ({
     .filter(([, scope]) => principal.apiKey.scopes.includes(scope))
     .map(([uri, scope]) => ({ uri, scope })),
   unavailable: [
-    { domain: 'search', reason: 'Pending context-authenticated search read actions on the integration baseline.' },
-    { domain: 'usage_entitlements', reason: 'Pending provider-neutral usage and entitlement actions on the integration baseline.' },
-    { domain: 'addons', reason: 'Pending context-authenticated add-on actions on the integration baseline.' },
-    { domain: 'integrations_lifecycle', reason: 'Pending provider-discriminated integration actions on the integration baseline.' },
     { domain: 'mutations', reason: 'Actor, confirmation, idempotency, or revision-safe action dependencies are not available in this release.' },
   ],
   excluded: ['credentials', 'provider_payloads', 'payment_actions', 'database_primitives', 'filesystem_access', 'code_execution'],

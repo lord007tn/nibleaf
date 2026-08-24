@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { themeImportBodySchema } from '@nibleaf/validators';
 import type { Context } from 'hono';
-import { exportProjectTheme, importProjectTheme } from '@/actions/themes';
+import { exportProjectTheme, getProjectThemeCatalog, importProjectTheme } from '@/actions/themes';
 import type { HonoEnv } from '@/lib/hono/context';
 import { runMcpReadTool, runMcpResource } from './result';
 import type { McpPrincipal } from './types';
@@ -24,9 +24,34 @@ const previewThemeImportDto = async (organizationId: string, projectId: string, 
   };
 };
 
+const getThemeCatalogDto = async (organizationId: string, projectId: string) => {
+  const catalog = await getProjectThemeCatalog(organizationId, projectId);
+  return {
+    schemaVersion: catalog.schemaVersion,
+    repositorySchemaVersion: catalog.repositorySchemaVersion,
+    runtimeContractVersion: catalog.runtimeContractVersion,
+    componentSchemaVersion: catalog.componentSchemaVersion,
+    current: catalog.current,
+    presets: catalog.presets,
+    authoring: catalog.authoring,
+  };
+};
+
 export const registerThemeSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
   if (!principal.apiKey.scopes.includes('themes:read')) return;
   const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
+  server.registerTool(
+    'get_theme_catalog',
+    {
+      title: 'Get theme catalog',
+      description: 'Read safe theme preset and documentation-component capability metadata without customer content or repository internals.',
+      annotations: readOnly,
+    },
+    () =>
+      runMcpReadTool(ctx, principal, 'get_theme_catalog', 'themes:read', () =>
+        getThemeCatalogDto(principal.project.organizationId, principal.project.id),
+      ),
+  );
   server.registerTool(
     'get_theme_template',
     {
@@ -50,6 +75,15 @@ export const registerThemeSurface = (server: McpServer, ctx: Context<HonoEnv>, p
     (input) =>
       runMcpReadTool(ctx, principal, 'preview_theme_import', 'themes:read', () =>
         previewThemeImportDto(principal.project.organizationId, principal.project.id, input),
+      ),
+  );
+  server.registerResource(
+    'theme-catalog',
+    `nibleaf://projects/${principal.project.id}/theme-catalog`,
+    { title: 'Nibleaf theme catalog', mimeType: 'application/json' },
+    (uri) =>
+      runMcpResource(ctx, principal, 'theme-catalog', 'themes:read', uri, () =>
+        getThemeCatalogDto(principal.project.organizationId, principal.project.id),
       ),
   );
   server.registerResource(

@@ -989,6 +989,7 @@
   "settings_apikeys_nameplaceholder": "مفتاح نشر الإنتاج",
   "settings_apikeys_create": "إنشاء مفتاح",
   "settings_apikeys_empty": "لا توجد مفاتيح API بعد.",
+  "settings_apikeys_loaderror": "تعذّر تحميل مفاتيح API. حاول مرة أخرى.",
   "settings_apikeys_created_title": "تم إنشاء المفتاح",
   "settings_apikeys_created_description": "انسخ هذا السر الآن. لن يظهر مرة أخرى.",
   "settings_apikeys_created_toast": "تم إنشاء مفتاح API",

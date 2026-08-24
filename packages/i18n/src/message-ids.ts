@@ -989,6 +989,7 @@ export const MESSAGE_IDS = {
   'settings.apiKeys.namePlaceholder': 'settings_apikeys_nameplaceholder',
   'settings.apiKeys.create': 'settings_apikeys_create',
   'settings.apiKeys.empty': 'settings_apikeys_empty',
+  'settings.apiKeys.loadError': 'settings_apikeys_loaderror',
   'settings.apiKeys.created.title': 'settings_apikeys_created_title',
   'settings.apiKeys.created.description': 'settings_apikeys_created_description',
   'settings.apiKeys.created.toast': 'settings_apikeys_created_toast',

@@ -700,7 +700,8 @@ const apiKeyScopes = z
   .array(z.enum(MCP_SCOPES))
   .min(1)
   .max(MCP_SCOPES.length)
-  .transform((scopes) => [...new Set(scopes)]);
+  .transform((scopes) => [...new Set(scopes)])
+  .refine((scopes) => scopes.includes('mcp:connect'), { message: 'MCP API keys require mcp:connect.' });
 
 const apiKeyExpiryDays = z.number().int().min(1).max(365);
 

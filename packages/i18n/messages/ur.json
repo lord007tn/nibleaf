@@ -968,6 +968,7 @@
   "settings_apikeys_nameplaceholder": "پیداوار کی تعیناتی کی کلید",
   "settings_apikeys_create": "کلید بنائیں",
   "settings_apikeys_empty": "ابھی تک کوئی API کلیدیں نہیں ہیں۔",
+  "settings_apikeys_loaderror": "API کلیدیں لوڈ نہیں ہو سکیں۔ دوبارہ کوشش کریں۔",
   "settings_apikeys_created_title": "کلید بنائی گئی۔",
   "settings_apikeys_created_description": "اب اس راز کو کاپی کریں۔ اسے دوبارہ نہیں دکھایا جائے گا۔",
   "settings_apikeys_created_toast": "API کلید بنائی گئی۔",
