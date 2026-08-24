@@ -30,12 +30,12 @@
     "bullmq": "^5.77.6",
     "fflate": "^0.8.2",
     "got": "14.6.4",
-    "hono": "^4.13.2",
+    "hono": "^4.13.3",
     "marked": "^16.3.0",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^9.0.5",
     "pdf-lib": "^1.17.1",
     "playwright-core": "^1.55.0",
-    "postmark": "^5.0.0",
+    "postmark": "^5.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -44,7 +44,7 @@
     "@types/nodemailer": "^8.0.1",
     "dotenv-cli": "^11.0.0",
     "tsdown": "^0.22.14",
-    "tsx": "^4.22.3",
+    "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }
 }

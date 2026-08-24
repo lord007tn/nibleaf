@@ -55,9 +55,9 @@
     "@nibleaf/tsconfig": "workspace:*",
     "knip": "6.32.2",
     "react-doctor": "0.9.12",
-    "turbo": "^2.9.16",
+    "turbo": "^2.10.11",
     "typescript": "^7.0.2",
-    "tsx": "4.22.4",
+    "tsx": "4.23.12",
     "ultracite": "7.10.6",
     "vitest": "^3.2.4"
   }
