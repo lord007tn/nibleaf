@@ -27,7 +27,7 @@
     "@nibleaf/storage": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
-    "bullmq": "^5.77.6",
+    "bullmq": "^6.2.0",
     "fflate": "^0.8.2",
     "got": "15.1.0",
     "hono": "^4.13.3",
