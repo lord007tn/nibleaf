@@ -1,4 +1,4 @@
-import { THEME_NOFLASH_SCRIPT, ThemeProvider } from '@nibleaf/design-system/theme';
+import { ThemeProvider } from '@nibleaf/design-system/theme';
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
@@ -68,19 +68,14 @@ function RootDocument({ children }: { children: ReactNode }) {
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning>
       <head>
-        {/* Set the theme class before paint to avoid a flash of the wrong theme. */}
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: trusted, static inline theme bootstrap. */}
-        <script dangerouslySetInnerHTML={{ __html: THEME_NOFLASH_SCRIPT }} nonce={nonce} suppressHydrationWarning />
-        {siteThemeBootstrap ? (
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: project id and enum default are JSON-encoded into a fixed bootstrap.
-          <script dangerouslySetInnerHTML={{ __html: siteThemeBootstrap }} nonce={nonce} suppressHydrationWarning />
-        ) : null}
         {nonce ? <meta property="csp-nonce" content={nonce} /> : null}
         {siteProjectId ? <meta name="nibleaf-site-project" content={siteProjectId} /> : null}
         <HeadContent />
       </head>
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider applyDocumentTheme={!siteProjectId} initialThemeScript={siteThemeBootstrap ?? undefined}>
+          {children}
+        </ThemeProvider>
         <RootMarketingAnalytics pathname={pathname} siteProjectId={siteProjectId} language={lang === 'ar' ? 'ar' : 'en'} />
         <Scripts />
       </body>

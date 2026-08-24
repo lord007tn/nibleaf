@@ -36,6 +36,8 @@ describe('published theme projection', () => {
     const projectId = 'project";</script><script>alert(1)</script>\u2028';
     const script = siteThemeNoFlashScript(projectId, 'system');
     expect(script).toContain('localStorage.getItem(k)');
+    expect(script).toContain("classList.remove('light','dark')");
+    expect(script).toContain('classList.add(r)');
     expect(script).toContain('\\u003c/script\\u003e\\u003cscript\\u003ealert(1)');
     expect(script).not.toContain('</script>');
     expect(script).not.toContain('\u2028');

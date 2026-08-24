@@ -847,6 +847,9 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.2.5
         version: 5.2.8
+      '@tanstack/react-router':
+        specifier: ^1.167.4
+        version: 1.170.16(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
