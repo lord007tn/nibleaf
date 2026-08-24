@@ -42,7 +42,7 @@ describe('public route manifest encoding', () => {
 
     const html = await response.text();
     expect(html).toContain(`<code>${PLACEHOLDER}</code>`);
-    expect(html.match(new RegExp(PLACEHOLDER.replace('$', '\\$&'), 'g'))).toHaveLength(1);
+    expect(html.split(PLACEHOLDER)).toHaveLength(2);
     expect(html).toContain(ENCODED);
     expect(response.status).toBe(203);
     expect(response.statusText).toBe('Non-Authoritative Information');
