@@ -134,7 +134,7 @@ jobs:
           app_pid=$!
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           ready=0
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
               ready=1
               break
@@ -152,6 +152,42 @@ jobs:
           curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
+
+      - name: Build production admin
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm --filter @nibleaf/admin build
+
+      - name: Smoke production admin runtime
+        shell: bash
+        env:
+          BETTER_AUTH_SECRET: ci-admin-runtime-smoke-only-0123456789abcdef
+          PORT: "4315"
+        run: |
+          pnpm --filter @nibleaf/admin start > /tmp/nibleaf-admin-runtime.log 2>&1 &
+          admin_pid=$!
+          trap 'kill "$admin_pid" 2>/dev/null || true' EXIT
+          ready=0
+          for attempt in {1..30}; do
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error http://127.0.0.1:4315/sign-in > /tmp/nibleaf-admin-sign-in.html; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$admin_pid" 2>/dev/null; then
+              cat /tmp/nibleaf-admin-runtime.log
+              exit 1
+            fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/nibleaf-admin-runtime.log
+            exit 1
+          fi
+          grep --fixed-strings --quiet "<title>Nibleaf Admin</title>" /tmp/nibleaf-admin-sign-in.html
+          if grep --fixed-strings --quiet "__exportAll is not a function" /tmp/nibleaf-admin-runtime.log; then
+            cat /tmp/nibleaf-admin-runtime.log
+            exit 1
+          fi
 
       - name: Enforce public JavaScript budget
         shell: bash
