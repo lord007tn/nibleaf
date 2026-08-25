@@ -10,6 +10,7 @@ const connection = (): Redis => {
     port: env.REDIS_PORT,
     db: env.REDIS_DB,
     ...(env.REDIS_PASSWORD ? { password: env.REDIS_PASSWORD } : {}),
+    protocol: 2,
     enableOfflineQueue: false,
     lazyConnect: true,
     maxRetriesPerRequest: 1,
