@@ -34,7 +34,7 @@
     "check:dead-code": "knip --include files,dependencies,exports,types,duplicates --no-config-hints",
     "check:react": "react-doctor --project @nibleaf/app,@nibleaf/admin --no-dead-code --no-supply-chain --no-score --blocking error",
     "release:notes": "pnpm dlx changelogithub@14.0.0",
-    "release:check": "node scripts/check-release-contract.mjs",
+    "release:check": "node --test scripts/coolify-release-probes.test.mjs && node scripts/check-release-contract.mjs",
     "self-host:check": "node scripts/self-host-release.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "theme-repository:fixture": "tsx scripts/theme-repository-fixture.ts",
