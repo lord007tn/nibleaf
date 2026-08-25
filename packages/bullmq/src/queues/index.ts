@@ -15,13 +15,13 @@ function makeQueue<Q extends QueueNames>(name: Q): Queue<QueueJobMap[Q]['data'],
   });
 }
 
-export const queues: Record<QueueNames, Queue<unknown, unknown, string>> = {
-  [QueueNames.PUBLISH]: makeQueue(QueueNames.PUBLISH) as Queue<unknown, unknown, string>,
-  [QueueNames.SEARCH]: makeQueue(QueueNames.SEARCH) as Queue<unknown, unknown, string>,
-  [QueueNames.EMAIL]: makeQueue(QueueNames.EMAIL) as Queue<unknown, unknown, string>,
-  [QueueNames.ANALYTICS]: makeQueue(QueueNames.ANALYTICS) as Queue<unknown, unknown, string>,
-  [QueueNames.EXPORT]: makeQueue(QueueNames.EXPORT) as Queue<unknown, unknown, string>,
-  [QueueNames.GIT]: makeQueue(QueueNames.GIT) as Queue<unknown, unknown, string>,
+export const queues: Record<QueueNames, Queue> = {
+  [QueueNames.PUBLISH]: makeQueue(QueueNames.PUBLISH),
+  [QueueNames.SEARCH]: makeQueue(QueueNames.SEARCH),
+  [QueueNames.EMAIL]: makeQueue(QueueNames.EMAIL),
+  [QueueNames.ANALYTICS]: makeQueue(QueueNames.ANALYTICS),
+  [QueueNames.EXPORT]: makeQueue(QueueNames.EXPORT),
+  [QueueNames.GIT]: makeQueue(QueueNames.GIT),
 };
 
 const queueEventsCache: Partial<Record<QueueNames, QueueEvents>> = {};

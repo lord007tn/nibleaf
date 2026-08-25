@@ -1,4 +1,4 @@
-import type { JobsOptions } from 'bullmq';
+import type { JobsOptions, RepeatOptions } from 'bullmq';
 import { QueueNames } from './constants';
 import { queues } from './queues/index';
 import type { CreateJobOptions, QueueJobMap } from './types';
@@ -13,14 +13,21 @@ export async function createJob<Q extends QueueNames>(
 ) {
   const queue = queues[queueName];
   const finalOptions: JobsOptions = { ...options };
-  if (finalOptions.repeat && !finalOptions.repeat.tz) {
-    finalOptions.repeat = { ...finalOptions.repeat, tz: 'UTC' };
-  }
   if (finalOptions.jobId) {
     finalOptions.jobId = sanitizeJobId(finalOptions.jobId);
   }
   queueLogger.debug({ queue: queueName, name: payload.name, jobId: finalOptions.jobId }, 'Creating job');
   return await queue.add(payload.name, payload.data, finalOptions);
+}
+
+async function upsertScheduledJob<Q extends QueueNames>(
+  queueName: Q,
+  schedulerId: string,
+  schedule: Omit<RepeatOptions, 'key'>,
+  payload: { name: QueueJobMap[Q]['name']; data: QueueJobMap[Q]['data'] },
+): Promise<void> {
+  const queue = queues[queueName];
+  await queue.upsertJobScheduler(schedulerId, schedule.tz ? schedule : { ...schedule, tz: 'UTC' }, { name: payload.name, data: payload.data });
 }
 
 export async function getJob<Q extends QueueNames>(queueName: Q, jobId: string) {
@@ -38,15 +45,17 @@ export async function removeJob<Q extends QueueNames>(queueName: Q, jobId: strin
 
 /** Schedule the daily analytics rollup (00:10 UTC). Idempotent — BullMQ upserts by job id. */
 export async function scheduleAnalyticsRollup(): Promise<void> {
-  await createJob(
+  await upsertScheduledJob(
     QueueNames.ANALYTICS,
+    'rollup-analytics-daily',
+    { pattern: '10 0 * * *', tz: 'UTC' },
     { name: 'rollup-analytics', data: {} },
-    { jobId: 'rollup-analytics-daily', repeat: { pattern: '10 0 * * *', tz: 'UTC' } },
   );
-  await createJob(
+  await upsertScheduledJob(
     QueueNames.ANALYTICS,
+    'reconcile-usage-periods',
+    { pattern: '*/5 * * * *', tz: 'UTC' },
     { name: 'reconcile-usage', data: {} },
-    { jobId: 'reconcile-usage-periods', repeat: { pattern: '*/5 * * * *', tz: 'UTC' } },
   );
   queueLogger.info('Scheduled daily analytics rollup job');
 }
@@ -54,15 +63,17 @@ export async function scheduleAnalyticsRollup(): Promise<void> {
 /** Poll due database-backed archive schedules once a minute. The fixed job id
  * makes startup idempotent across any number of worker replicas. */
 export async function scheduleExportMaintenance(): Promise<void> {
-  await createJob(
+  await upsertScheduledJob(
     QueueNames.EXPORT,
+    'dispatch-export-schedules',
+    { pattern: '* * * * *', tz: 'UTC' },
     { name: 'dispatch-export-schedules', data: { requestedAt: new Date().toISOString() } },
-    { jobId: 'dispatch-export-schedules', repeat: { pattern: '* * * * *', tz: 'UTC' } },
   );
-  await createJob(
+  await upsertScheduledJob(
     QueueNames.EXPORT,
+    'cleanup-exports',
+    { pattern: '17 2 * * *', tz: 'UTC' },
     { name: 'cleanup-exports', data: { requestedAt: new Date().toISOString() } },
-    { jobId: 'cleanup-exports', repeat: { pattern: '17 2 * * *', tz: 'UTC' } },
   );
 }
 
