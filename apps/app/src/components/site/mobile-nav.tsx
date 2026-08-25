@@ -16,7 +16,7 @@ export interface MobileNavLink {
  * Hamburger + slide-in drawer that exposes the full page tree below `lg`, where
  * the desktop sidebar is hidden. Without it, multi-page sites are unnavigable on
  * phones (only search + the prev/next pager survive). The header's section links
- * (Docs/Changelog/custom) are mirrored at the top since they're hidden below `md`.
+ * (Docs/Changelog/custom) are mirrored at the top since they're hidden below `lg`.
  */
 export function MobileNav({
   nodes,
