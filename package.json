@@ -49,7 +49,7 @@
     "analytics:rollback": "tsx scripts/analytics-migration.ts rollback"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.9",
+    "@biomejs/biome": "2.5.10",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/tsconfig": "workspace:*",
