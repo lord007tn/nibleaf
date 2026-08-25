@@ -134,7 +134,7 @@ jobs:
           app_pid=$!
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           ready=0
-          for attempt in {1..30}; do
+          for _ in {1..30}; do
             if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
               ready=1
               break
