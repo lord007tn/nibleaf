@@ -37,12 +37,15 @@ RUN pnpm exec turbo run build --concurrency=1
 
 FROM base AS runner
 ARG VERSION=0.1.1
+ARG REVISION=development
 ENV NODE_ENV=production
+ENV NIBLEAF_REVISION=$REVISION
 LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.description="Self-hosted documentation platform" \
   org.opencontainers.image.licenses="AGPL-3.0-only" \
   org.opencontainers.image.source="https://github.com/lord007tn/nibleaf" \
-  org.opencontainers.image.version=$VERSION
+  org.opencontainers.image.version=$VERSION \
+  org.opencontainers.image.revision=$REVISION
 COPY --from=build /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 EXPOSE 4310 4311 4312 4315

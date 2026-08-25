@@ -15,14 +15,38 @@ function makeQueue<Q extends QueueNames>(name: Q): Queue<QueueJobMap[Q]['data'],
   });
 }
 
-export const queues: Record<QueueNames, Queue<unknown, unknown, string>> = {
-  [QueueNames.PUBLISH]: makeQueue(QueueNames.PUBLISH) as Queue<unknown, unknown, string>,
-  [QueueNames.SEARCH]: makeQueue(QueueNames.SEARCH) as Queue<unknown, unknown, string>,
-  [QueueNames.EMAIL]: makeQueue(QueueNames.EMAIL) as Queue<unknown, unknown, string>,
-  [QueueNames.ANALYTICS]: makeQueue(QueueNames.ANALYTICS) as Queue<unknown, unknown, string>,
-  [QueueNames.EXPORT]: makeQueue(QueueNames.EXPORT) as Queue<unknown, unknown, string>,
-  [QueueNames.GIT]: makeQueue(QueueNames.GIT) as Queue<unknown, unknown, string>,
-};
+const queueCache: Partial<Record<QueueNames, Queue<unknown, unknown, string>>> = {};
+
+/**
+ * Return an owned producer queue, creating its Redis connection on first use.
+ *
+ * Importing `@nibleaf/bullmq` must be side-effect free. Eager construction used
+ * to open six Redis clients merely because an action module imported
+ * `createJob`; unit tests that never queued work then leaked reconnect attempts
+ * beyond Vitest environment teardown. Lazy ownership also gives each process a
+ * finite set of clients that `closeQueues()` can deterministically release.
+ */
+export function getQueue(name: QueueNames): Queue<unknown, unknown, string> {
+  const existing = queueCache[name];
+  if (existing) {
+    return existing;
+  }
+  const queue = makeQueue(name) as Queue<unknown, unknown, string>;
+  queueCache[name] = queue;
+  return queue;
+}
+
+/** Backwards-compatible lazy registry for dashboards and worker maintenance. */
+export const queues = {} as Record<QueueNames, Queue<unknown, unknown, string>>;
+for (const name of Object.values(QueueNames)) {
+  Object.defineProperty(queues, name, {
+    configurable: false,
+    enumerable: true,
+    get: () => getQueue(name),
+  });
+}
+
+const allQueues = () => Object.values(QueueNames).map((name) => getQueue(name));
 
 const queueEventsCache: Partial<Record<QueueNames, QueueEvents>> = {};
 
@@ -48,16 +72,21 @@ export function getAllQueueEvents(): Partial<Record<QueueNames, QueueEvents>> {
 }
 
 export async function pauseAllQueues(): Promise<void> {
-  await Promise.all(Object.values(queues).map((q) => q.pause()));
+  await Promise.all(allQueues().map((q) => q.pause()));
 }
 export async function resumeAllQueues(): Promise<void> {
-  await Promise.all(Object.values(queues).map((q) => q.resume()));
+  await Promise.all(allQueues().map((q) => q.resume()));
 }
 export async function drainAllQueues(): Promise<void> {
-  await Promise.all(Object.values(queues).map((q) => q.drain()));
+  await Promise.all(allQueues().map((q) => q.drain()));
 }
 export async function closeQueues(): Promise<void> {
-  await Promise.all(Object.values(queues).map((q) => q.close()));
+  const ownedQueues = Object.values(queueCache);
+  for (const name of Object.values(QueueNames)) {
+    delete queueCache[name];
+  }
+  await Promise.all(ownedQueues.map((q) => q.close()));
+  queueLogger.debug({ count: ownedQueues.length }, 'Closed producer queues');
 }
 export async function closeQueueEvents(): Promise<void> {
   await Promise.all(Object.values(queueEventsCache).map((e) => e?.close()));

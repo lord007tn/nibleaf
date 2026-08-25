@@ -29,6 +29,7 @@ const app = new Hono()
       {
         status,
         service: 'worker',
+        revision: process.env.NIBLEAF_REVISION ?? 'development',
         email: {
           status: email.provider ? 'ok' : email.required ? 'misconfigured' : 'disabled',
           provider: email.provider ?? 'none',

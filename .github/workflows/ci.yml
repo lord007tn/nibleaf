@@ -106,6 +106,9 @@ jobs:
             exit 1
           fi
 
+      - name: Check deployment release contract
+        run: pnpm release:check
+
       - name: Check for unused source files
         run: pnpm check:dead-code
 
