@@ -24,13 +24,13 @@
     "@inlang/paraglide-js": "2.24.1"
   },
   "peerDependencies": {
-    "react": "^19.2.4"
+    "react": "^19.2.8"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.15.0",
-    "@types/react": "^19.2.0",
-    "react": "^19.2.4",
+    "@types/react": "^19.2.18",
+    "react": "^19.2.8",
     "typescript": "^7.0.2",
     "vitest": "^3.2.4"
   }
