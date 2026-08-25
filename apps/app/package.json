@@ -94,7 +94,7 @@
     "@types/react-dom": "^19.2.4",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.0",
-    "jsdom": "^26.1.0",
+    "jsdom": "^30.0.1",
     "oxc-transform-react": "0.145.0",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
