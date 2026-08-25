@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
+    "@types/node": "^22.15.0",
     "typescript": "^7.0.2"
   }
 }
