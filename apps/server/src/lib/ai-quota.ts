@@ -22,6 +22,7 @@ const getRedis = (): Redis => {
       port: redisEnv.REDIS_PORT,
       db: redisEnv.REDIS_DB,
       ...(redisEnv.REDIS_PASSWORD ? { password: redisEnv.REDIS_PASSWORD } : {}),
+      protocol: 2,
       // Quota checks must fail fast, not queue up while redis is down.
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,

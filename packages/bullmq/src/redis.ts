@@ -13,6 +13,9 @@ export const redisConnectionConfig: RedisOptions = {
   port: env.REDIS_PORT,
   db: env.REDIS_DB,
   ...(env.REDIS_PASSWORD ? { password: env.REDIS_PASSWORD } : {}),
+  // Keep the v5 RESP2 wire contract for Dragonfly and self-hosted Redis.
+  // ioredis 6 defaults to RESP3; switching protocol is a separate migration.
+  protocol: 2,
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: null,
 };
