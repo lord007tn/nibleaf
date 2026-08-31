@@ -21,6 +21,14 @@
       "!**/components/ui"
     ]
   },
+  // Email templates run directly through tsx in production, where JSX uses the
+  // classic runtime and requires React to remain in scope.
+  "overrides": [
+    {
+      "includes": ["packages/email/src/templates/**"],
+      "javascript": { "jsxRuntime": "reactClassic" }
+    }
+  ],
   "assist": {
     "actions": {
       "source": {
