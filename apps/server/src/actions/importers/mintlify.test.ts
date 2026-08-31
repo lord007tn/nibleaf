@@ -123,8 +123,12 @@ import { prisma } from '@nibleaf/database';
 import { promoteImportReplacementBranch } from '../branches';
 import { mintlifyImporter } from './mintlify';
 
-const runImport = (): Promise<ImportSummary> =>
-  mintlifyImporter.run({ organizationId: 'org', projectId: 'project', input: { repo: 'acme/docs', branch: 'main' } as MintlifyImportBody });
+const runImport = (input: Partial<MintlifyImportBody> = {}): Promise<ImportSummary> =>
+  mintlifyImporter.run({
+    organizationId: 'org',
+    projectId: 'project',
+    input: { repo: 'acme/docs', branch: 'main', ...input } as MintlifyImportBody,
+  });
 
 const setNavigation = (navigation: unknown): void => {
   mem.repoFiles.set('docs.json', JSON.stringify({ navigation }));
@@ -154,6 +158,16 @@ describe('Mintlify replacement safety', () => {
     expect(prisma.branch.deleteMany).toHaveBeenCalledWith({
       where: { id: 'import-branch', projectId: 'project', isDefault: false },
     });
+  });
+
+  it('uses explicit navigation as the exact source of truth for a replacement import', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    mem.repoFiles.set('intro.mdx', '# Intro\n\n[Hidden appendix](/appendix)');
+    mem.repoFiles.set('appendix.mdx', '# Appendix');
+
+    await runImport({ replaceExisting: true });
+
+    expect(mem.rows.filter((row) => row.kind === 'PAGE').map((row) => row.slug)).toEqual(['intro']);
   });
 });
 
