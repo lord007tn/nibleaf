@@ -1,8 +1,9 @@
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
 import { badRequest, ImportError } from '@/errors';
 import { importDocumentSchema } from '@/validators/importers';
+import { createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
@@ -45,12 +46,20 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     const branch = input.branch?.trim() || (await getGitHubDefaultBranch(owner, name));
     const tree = await listGitHubFiles(owner, name, branch);
     const blobs = new Set(tree.filter((item) => item.type === 'blob').map((item) => item.path));
+    const textCache = new Map<string, Promise<string | null>>();
+    const loadText = (filePath: string) => {
+      const cached = textCache.get(filePath);
+      if (cached) return cached;
+      const pending = getGitHubTextFile(owner, name, branch, filePath);
+      textCache.set(filePath, pending);
+      return pending;
+    };
 
     const configPath = findMintlifyConfigPath([...blobs]);
     if (!configPath) {
       throw badRequest('No docs.json or mint.json found — is this a Mintlify docs repository?');
     }
-    const rawConfig = await getGitHubTextFile(owner, name, branch, configPath);
+    const rawConfig = await loadText(configPath);
     if (rawConfig === null) {
       throw badRequest(`Could not download ${configPath} from the repository.`);
     }
@@ -60,75 +69,84 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
     } catch (error) {
       throw new ImportError({ code: 'import:invalid_document', message: `Could not parse ${configPath} — it is not valid JSON.`, cause: error });
     }
-    const resolvedConfig = await resolveMintlifyReferences(parsedConfig, configPath, blobs, (filePath) =>
-      getGitHubTextFile(owner, name, branch, filePath),
-    );
+    const resolvedConfig = await resolveMintlifyReferences(parsedConfig, configPath, blobs, loadText);
     const checkedConfig = importDocumentSchema.safeParse(resolvedConfig);
     if (!checkedConfig.success) {
       throw new ImportError({ code: 'import:invalid_document', message: `Could not parse ${configPath} — it is not valid JSON.` });
     }
     const config = checkedConfig.data;
 
-    const summary = emptySummary();
-    // Nav page paths are relative to the config file's directory.
-    const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
-    const repository = { owner, name, branch };
-    const defaultTarget = await defaultImportTarget(projectId);
-    const assets = new RemoteAssetMigrator(projectId, 'mintlify');
-    const state = { pages: 0, capWarned: false, versions: new Set<string>() };
-    const languageResult = parseMintlifyLanguages(config);
-    summary.warnings.push(...languageResult.warnings);
-    let chromeNodes: NavNode[];
+    const replacementBranch = await createImportReplacementBranch(projectId, 'mintlify', input.replaceExisting !== true);
+    try {
+      const summary = emptySummary();
+      // Nav page paths are relative to the config file's directory.
+      const baseDir = configPath.includes('/') ? `${configPath.slice(0, configPath.lastIndexOf('/'))}/` : '';
+      const repository = { owner, name, branch, loadText };
+      const currentTarget = await defaultImportTarget(projectId);
+      const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
+      const assets = new RemoteAssetMigrator(projectId, 'mintlify');
+      const state = { pages: 0, capWarned: false, versions: new Set<string>() };
+      const languageResult = parseMintlifyLanguages(config);
+      summary.warnings.push(...languageResult.warnings);
+      let chromeNodes: NavNode[];
 
-    if (languageResult.languages.length > 0) {
-      chromeNodes = languageResult.languages.find((language) => language.isDefault)?.nodes ?? languageResult.languages[0]?.nodes ?? [];
-      const orderedLanguages = languageResult.languages
-        .map((language, position) => ({ language, position }))
-        .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
-      for (const { language, position } of orderedLanguages) {
-        const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
-        await importNavigation(language.nodes, target, language.code, repository, baseDir, blobs, assets, summary, state);
+      if (languageResult.languages.length > 0) {
+        chromeNodes = languageResult.languages.find((language) => language.isDefault)?.nodes ?? languageResult.languages[0]?.nodes ?? [];
+        const orderedLanguages = languageResult.languages
+          .map((language, position) => ({ language, position }))
+          .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
+        for (const { language, position } of orderedLanguages) {
+          const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
+          await importNavigation(language.nodes, target, language.code, repository, baseDir, blobs, assets, summary, state);
+        }
+      } else {
+        const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
+        summary.warnings.push(...navWarnings);
+        if (nodes.length === 0) {
+          throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
+        }
+        chromeNodes = nodes;
+        await importNavigation(nodes, defaultTarget, undefined, repository, baseDir, blobs, assets, summary, state);
       }
-    } else {
-      const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
-      summary.warnings.push(...navWarnings);
-      if (nodes.length === 0) {
-        throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
+      if (state.versions.size > 0) {
+        summary.warnings.push(`Imported Mintlify versions as Nibleaf documentation versions: ${[...state.versions].join(', ')}.`);
       }
-      chromeNodes = nodes;
-      await importNavigation(nodes, defaultTarget, undefined, repository, baseDir, blobs, assets, summary, state);
-    }
-    if (state.versions.size > 0) {
-      summary.warnings.push(`Imported Mintlify versions as Nibleaf documentation versions: ${[...state.versions].join(', ')}.`);
-    }
-    summary.assetsImported = assets.migrated;
-    summary.assetsSkipped = assets.skipped;
-    if (assets.skipped > 0) {
-      const reasons = [...assets.failures].slice(0, 3).join('; ');
-      summary.warnings.push(
-        `${assets.skipped} Mintlify image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source references were preserved.`,
-      );
-    }
+      summary.assetsImported = assets.migrated;
+      summary.assetsSkipped = assets.skipped;
+      if (assets.skipped > 0) {
+        const reasons = [...assets.failures].slice(0, 3).join('; ');
+        summary.warnings.push(
+          `${assets.skipped} Mintlify image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source references were preserved.`,
+        );
+      }
 
-    // Site chrome → project config, but only into keys that are currently empty.
-    const rawRepoUrl = (path: string) => githubRawUrl(owner, name, branch, path);
-    const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, chromeNodes, {
-      resolveRepoAsset: (path) => resolveMintlifyConfigAsset(path, configPath, blobs, rawRepoUrl),
-    });
-    summary.warnings.push(...configWarnings);
-    if (Object.keys(patch).length > 0) {
-      const existing = (project.config as ProjectConfig | null) ?? {};
-      const { merged, set, kept } = mergeConfigPreservingExisting(existing, patch);
-      if (set.length > 0) {
-        await prisma.project.update({ where: { id: projectId }, data: { config: merged as object } });
-        summary.warnings.push(`Applied site settings from ${configPath}: ${set.join(', ')}.`);
+      // Site chrome → project config, but only into keys that are currently empty.
+      const rawRepoUrl = (path: string) => githubRawUrl(owner, name, branch, path);
+      const { config: patch, warnings: configWarnings } = mapMintlifyConfig(config, chromeNodes, {
+        resolveRepoAsset: (path) => resolveMintlifyConfigAsset(path, configPath, blobs, rawRepoUrl),
+      });
+      summary.warnings.push(...configWarnings);
+      let replacementConfig: Prisma.InputJsonValue | undefined;
+      if (Object.keys(patch).length > 0) {
+        const existing = (project.config as ProjectConfig | null) ?? {};
+        const { merged, set, kept } = mergeConfigPreservingExisting(existing, patch);
+        if (set.length > 0) {
+          replacementConfig = merged as Prisma.InputJsonValue;
+          summary.warnings.push(`Applied site settings from ${configPath}: ${set.join(', ')}.`);
+        }
+        if (kept.length > 0) {
+          summary.warnings.push(`Kept your existing settings for: ${kept.join(', ')}.`);
+        }
       }
-      if (kept.length > 0) {
-        summary.warnings.push(`Kept your existing settings for: ${kept.join(', ')}.`);
-      }
-    }
 
-    return summary;
+      await promoteImportReplacementBranch(projectId, replacementBranch.id, replacementConfig);
+      summary.warnings.push('Replaced the existing draft navigation only after the complete Mintlify import succeeded.');
+
+      return summary;
+    } catch (error) {
+      await prisma.branch.deleteMany({ where: { id: replacementBranch.id, projectId, isDefault: false } }).catch(() => undefined);
+      throw error;
+    }
   },
 };
 
@@ -248,6 +266,7 @@ interface RepoRef {
   owner: string;
   name: string;
   branch: string;
+  loadText(filePath: string): Promise<string | null>;
 }
 
 const stripLanguagePrefix = (path: string, languageCode: string): string => {
@@ -300,7 +319,7 @@ const discoverLinkedPages = async (nodes: readonly NavNode[], repo: RepoRef, bas
     const candidates = [`${baseDir}${sourcePath}.mdx`, `${baseDir}${sourcePath}.md`];
     const filePath = candidates.find((candidate) => blobs.has(candidate));
     if (!filePath) continue;
-    const raw = await getGitHubTextFile(repo.owner, repo.name, repo.branch, filePath);
+    const raw = await repo.loadText(filePath);
     if (raw === null) continue;
     const { body } = parseFrontmatter(raw);
     for (const target of mintlifyInternalLinkTargets(body, sourcePath)) {
@@ -372,7 +391,7 @@ const importNodes = async (
       summary.skipped++;
       continue;
     }
-    const raw = await getGitHubTextFile(repo.owner, repo.name, repo.branch, filePath);
+    const raw = await repo.loadText(filePath);
     if (raw === null) {
       summary.warnings.push(`Could not download "${filePath}" — the page was skipped.`);
       summary.skipped++;

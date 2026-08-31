@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub-Repository",
   "settings_import_mintlify_branch": "Zweig (optional)",
   "settings_import_mintlify_invalidrepo": "Verwenden Sie das Formular Eigentümer/Repo.",
+  "settings_import_mintlify_replaceexisting": "Aktuellen Entwurf durch dieses Repository ersetzen",
   "settings_import_ghost_title": "Geist",
   "settings_import_ghost_description": "Laden Sie einen Ghost JSON-Export hoch – veröffentlichte Beiträge und Seiten werden in Markdown konvertiert.",
   "settings_import_ghost_file": "Datei exportieren (.json)",

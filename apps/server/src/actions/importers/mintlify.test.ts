@@ -37,6 +37,7 @@ const mem = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
+    branch: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     project: { update: vi.fn(async () => ({})) },
     language: {
       findFirst: vi.fn(async ({ where }: { where: { code: { equals: string } } }) =>
@@ -44,6 +45,10 @@ vi.mock('@nibleaf/database', () => ({
       ),
     },
   },
+}));
+vi.mock('../branches', () => ({
+  createImportReplacementBranch: vi.fn(async () => ({ id: 'import-branch' })),
+  promoteImportReplacementBranch: vi.fn(async () => ({})),
 }));
 vi.mock('../languages', () => ({
   createLanguage: vi.fn(async (_projectId: string, body: { code: string }) => {
@@ -114,6 +119,8 @@ vi.mock('./persistence', () => ({
   },
 }));
 
+import { prisma } from '@nibleaf/database';
+import { promoteImportReplacementBranch } from '../branches';
 import { mintlifyImporter } from './mintlify';
 
 const runImport = (): Promise<ImportSummary> =>
@@ -124,7 +131,30 @@ const setNavigation = (navigation: unknown): void => {
 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
   mem.reset();
+});
+
+describe('Mintlify replacement safety', () => {
+  it('promotes the isolated replacement only after a complete import', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    mem.repoFiles.set('intro.mdx', '# Intro');
+
+    await runImport();
+
+    expect(promoteImportReplacementBranch).toHaveBeenCalledWith('project', 'import-branch', undefined);
+  });
+
+  it('deletes the isolated replacement when the import fails', async () => {
+    setNavigation([]);
+
+    await expect(runImport()).rejects.toThrow('empty navigation');
+
+    expect(promoteImportReplacementBranch).not.toHaveBeenCalled();
+    expect(prisma.branch.deleteMany).toHaveBeenCalledWith({
+      where: { id: 'import-branch', projectId: 'project', isDefault: false },
+    });
+  });
 });
 
 describe('mintlify importNodes slug collisions', () => {

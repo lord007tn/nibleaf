@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub ذخیرہ",
   "settings_import_mintlify_branch": "برانچ (اختیاری)",
   "settings_import_mintlify_invalidrepo": "فارم کے مالک/ریپو کا استعمال کریں۔",
+  "settings_import_mintlify_replaceexisting": "موجودہ مسودے کو اس ریپوزٹری سے تبدیل کریں",
   "settings_import_ghost_title": "بھوت",
   "settings_import_ghost_description": "ایک گھوسٹ اپ لوڈ کریں JSON برآمد — شائع شدہ پوسٹس اور صفحات کو Markdown میں تبدیل کر دیا جاتا ہے۔",
   "settings_import_ghost_file": "فائل برآمد کریں (.json)",

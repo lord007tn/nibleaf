@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub भंडार",
   "settings_import_mintlify_branch": "शाखा (वैकल्पिक)",
   "settings_import_mintlify_invalidrepo": "प्रपत्र स्वामी/रेपो का उपयोग करें.",
+  "settings_import_mintlify_replaceexisting": "मौजूदा ड्राफ़्ट को इस रिपॉज़िटरी से बदलें",
   "settings_import_ghost_title": "भूत",
   "settings_import_ghost_description": "एक घोस्ट JSON निर्यात अपलोड करें - प्रकाशित पोस्ट और पेज Markdown में परिवर्तित हो जाते हैं।",
   "settings_import_ghost_file": "फ़ाइल निर्यात करें (.json)",

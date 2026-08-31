@@ -1416,6 +1416,7 @@
   "settings_import_mintlify_repo": "GitHub repository",
   "settings_import_mintlify_branch": "Branch (optional)",
   "settings_import_mintlify_invalidrepo": "Use the form owner/repo.",
+  "settings_import_mintlify_replaceexisting": "Replace the current draft with this repository",
   "settings_import_ghost_title": "Ghost",
   "settings_import_ghost_description": "Upload a Ghost JSON export — published posts and pages are converted to Markdown.",
   "settings_import_ghost_file": "Export file (.json)",

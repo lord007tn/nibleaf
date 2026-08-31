@@ -1416,6 +1416,7 @@
   "settings_import_mintlify_repo": "مستودع GitHub",
   "settings_import_mintlify_branch": "الفرع (اختياري)",
   "settings_import_mintlify_invalidrepo": "استخدم الصيغة owner/repo.",
+  "settings_import_mintlify_replaceexisting": "استبدل المسودة الحالية بهذا المستودع",
   "settings_import_ghost_title": "Ghost",
   "settings_import_ghost_description": "ارفع ملف تصدير Ghost بصيغة JSON — تُحوَّل المنشورات والصفحات المنشورة إلى Markdown.",
   "settings_import_ghost_file": "ملف التصدير (‎.json)",
