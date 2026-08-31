@@ -1,0 +1,116 @@
+name: Registry alias
+
+# Recovery-only registry maintenance. This workflow deliberately has no push
+# or pull-request trigger and never builds or deploys an image.
+on:
+  workflow_dispatch:
+    inputs:
+      source_digest:
+        description: Existing GHCR digest to alias (sha256-64 hex)
+        required: true
+        type: string
+      source_revision:
+        description: OCI source revision expected in the existing image (40 hex)
+        required: true
+        type: string
+      target_tag:
+        description: New immutable tag (must equal sha-<source_revision>)
+        required: true
+        type: string
+      confirm_exact_alias:
+        description: Confirm this is an exact registry-side alias, not a rebuild
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: nibleaf-registry-maintenance
+  cancel-in-progress: false
+
+jobs:
+  alias:
+    name: Create exact immutable alias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate request
+        env:
+          CONFIRM_EXACT_ALIAS: ${{ inputs.confirm_exact_alias }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          if [[ "$CONFIRM_EXACT_ALIAS" != "true" ]]; then
+            echo "::error::Exact registry-side alias confirmation is required"
+            exit 1
+          fi
+          if [[ ! "$SOURCE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Source digest must be sha256:<64 lowercase hex>"
+            exit 1
+          fi
+          if [[ ! "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Source revision must be 40 lowercase hex characters"
+            exit 1
+          fi
+          if [[ "$TARGET_TAG" != "sha-$SOURCE_REVISION" ]]; then
+            echo "::error::Target tag must equal sha-$SOURCE_REVISION"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify source and reject overwrite
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          docker buildx imagetools inspect "$IMAGE@$SOURCE_DIGEST" >/dev/null
+          actual_revision=$(docker buildx imagetools inspect \
+            --format '{{json .Image.Config.Labels}}' \
+            "$IMAGE@$SOURCE_DIGEST" | jq -r '."org.opencontainers.image.revision" // empty')
+          if [[ "$actual_revision" != "$SOURCE_REVISION" ]]; then
+            echo "::error::Source image revision $actual_revision does not match $SOURCE_REVISION"
+            exit 1
+          fi
+          if docker buildx imagetools inspect "$IMAGE:$TARGET_TAG" >/dev/null 2>&1; then
+            echo "::error::Immutable target $IMAGE:$TARGET_TAG already exists"
+            exit 1
+          fi
+
+      - name: Create and verify exact alias
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_DIGEST: ${{ inputs.source_digest }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:$TARGET_TAG" \
+            "$IMAGE@$SOURCE_DIGEST"
+          actual_digest=$(docker buildx imagetools inspect "$IMAGE:$TARGET_TAG" \
+            | awk '$1 == "Digest:" { print $2; exit }')
+          if [[ "$actual_digest" != "$SOURCE_DIGEST" ]]; then
+            echo "::error::Alias resolved to $actual_digest, expected $SOURCE_DIGEST"
+            exit 1
+          fi
+          {
+            echo "### Immutable registry alias"
+            echo "- Source revision: \`$SOURCE_REVISION\`"
+            echo "- Source digest: \`$SOURCE_DIGEST\`"
+            echo "- Immutable tag: \`$TARGET_TAG\`"
+            echo "- Operation: registry-side alias; no rebuild or deployment"
+          } >> "$GITHUB_STEP_SUMMARY"
