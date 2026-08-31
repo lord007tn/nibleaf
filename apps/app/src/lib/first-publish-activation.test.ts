@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FIRST_PUBLISH_CONTEXT_KEY, recordFirstPublishStage, trackFirstPublishCta, trackFirstPublishLanding } from './first-publish-activation';
+import {
+  completeFirstPublishAttribution,
+  FIRST_PUBLISH_CONTEXT_KEY,
+  readFirstPublishAttribution,
+  recordFirstPublishStage,
+  trackFirstPublishCta,
+  trackFirstPublishLanding,
+} from './first-publish-activation';
 import { persistMarketingAnalyticsConsent } from './marketing-analytics';
 
 describe('first-publish attribution privacy boundary', () => {
@@ -28,9 +35,15 @@ describe('first-publish attribution privacy boundary', () => {
     expect(trackFirstPublishLanding('docker_compose_guide')).toBe(true);
     expect(trackFirstPublishCta('docker_compose_guide')).toBe(true);
     expect(await recordFirstPublishStage('project_entered')).toBe(true);
-    expect(await recordFirstPublishStage('publish_ready')).toBe(true);
+    expect(readFirstPublishAttribution()).toEqual({
+      entry_point: 'organic_content',
+      intent: 'first_publish',
+      source: 'docker_compose_guide',
+    });
+    completeFirstPublishAttribution({ entry_point: 'organic_content', intent: 'first_publish', source: 'docker_compose_guide' });
+    expect(window.localStorage.getItem(FIRST_PUBLISH_CONTEXT_KEY)).toBeNull();
 
-    expect(request).toHaveBeenCalledTimes(4);
+    expect(request).toHaveBeenCalledTimes(3);
     expect(JSON.parse(request.mock.calls[0]?.[1]?.body as string)).toEqual({
       event: 'first_publish_landing_viewed',
       properties: { entry_point: 'organic_content', intent: 'first_publish', source: 'docker_compose_guide' },
@@ -48,10 +61,6 @@ describe('first-publish attribution privacy boundary', () => {
     expect(request.mock.calls[2]?.[0]).toBe('/api/app/activation-events');
     expect(JSON.parse(request.mock.calls[2]?.[1]?.body as string)).toEqual({
       stage: 'project_entered',
-      properties: { entry_point: 'organic_content', intent: 'first_publish', source: 'docker_compose_guide' },
-    });
-    expect(JSON.parse(request.mock.calls[3]?.[1]?.body as string)).toEqual({
-      stage: 'publish_ready',
       properties: { entry_point: 'organic_content', intent: 'first_publish', source: 'docker_compose_guide' },
     });
     const bodies = request.mock.calls.map((call) => call[1]?.body).join(' ');

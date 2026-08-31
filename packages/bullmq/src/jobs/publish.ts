@@ -1,5 +1,11 @@
 export type PublishJobName = 'publish-deployment';
 
+export interface FirstPublishAttribution {
+  entry_point: 'organic_content';
+  intent: 'first_publish';
+  source: 'docker_compose_guide' | 'mintlify_introduction';
+}
+
 export interface PublishDeploymentJobData {
   deploymentId: string;
   projectId: string;
@@ -9,6 +15,9 @@ export interface PublishDeploymentJobData {
   /** True for system-triggered publishes (e.g. the starter site published at
    *  sign-up) so activation metrics can exclude them. */
   auto?: boolean;
+  /** Consent-gated, identifier-free article attribution. The worker may write
+   *  its aggregate READY receipt only after this exact job succeeds. */
+  firstPublishAttribution?: FirstPublishAttribution;
   /** Paraglide interface locale resolved when the publish was requested. */
   locale?: string;
 }

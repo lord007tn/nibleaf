@@ -14,7 +14,7 @@ describe('authenticated activation-event privacy boundary', () => {
         stage: 'publish_ready',
         properties: { entry_point: 'organic_content', intent: 'first_publish', source: 'docker_compose_guide' },
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it.each(['userId', 'projectId', 'email', 'content'])('rejects the extra %s field', (field) => {

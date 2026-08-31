@@ -5,7 +5,7 @@ const CONTEXT_KEY = 'nibleaf.first-publish-attribution.v1';
 const MAX_CONTEXT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const SOURCES = new Set<FirstPublishSource>(['docker_compose_guide', 'mintlify_introduction']);
 
-export type FirstPublishStage = 'editor_entered' | 'project_entered' | 'publish_ready';
+export type FirstPublishStage = 'editor_entered' | 'project_entered';
 
 type FirstPublishContext = {
   capturedAt: number;
@@ -13,6 +13,8 @@ type FirstPublishContext = {
   intent: 'first_publish';
   source: FirstPublishSource;
 };
+
+export type FirstPublishAttribution = Pick<FirstPublishContext, 'entry_point' | 'intent' | 'source'>;
 
 const baseProperties = (source: FirstPublishSource) => ({
   entry_point: 'organic_content' as const,
@@ -66,6 +68,29 @@ export function trackFirstPublishCta(source: FirstPublishSource): boolean {
     placement: 'article_bridge',
   });
   return true;
+}
+
+/** Return the consented, privacy-minimized attribution that may accompany a
+ *  user-initiated publish job. The worker records its READY receipt only after
+ *  that exact job reaches the trusted terminal state. */
+export function readFirstPublishAttribution(): FirstPublishAttribution | null {
+  if (!consented()) return null;
+  const raw = window.localStorage.getItem(CONTEXT_KEY);
+  const context = parseContext(raw);
+  if (!context) {
+    if (raw) window.localStorage.removeItem(CONTEXT_KEY);
+    return null;
+  }
+  return { entry_point: context.entry_point, intent: context.intent, source: context.source };
+}
+
+/** Consume attribution after the exact user-initiated deployment reaches
+ *  READY. Session deduplication remains intact for earlier journey stages. */
+export function completeFirstPublishAttribution(expected: FirstPublishAttribution): void {
+  const context = parseContext(window.localStorage.getItem(CONTEXT_KEY));
+  if (context?.entry_point === expected.entry_point && context.intent === expected.intent && context.source === expected.source) {
+    window.localStorage.removeItem(CONTEXT_KEY);
+  }
 }
 
 export async function recordFirstPublishStage(stage: FirstPublishStage): Promise<boolean> {

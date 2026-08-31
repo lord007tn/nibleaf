@@ -70,6 +70,16 @@ const logPlatformEvent = (type: string, data: { userId?: string | null; projectI
     })
     .catch(() => undefined);
 
+/** Write the privacy-minimized article receipt only for a user-initiated job
+ *  whose immutable snapshot has already reached READY. */
+export const recordAttributedFirstPublishReady = async (
+  attribution: PublishDeploymentJobData['firstPublishAttribution'],
+  auto: boolean | undefined,
+): Promise<void> => {
+  if (auto === true || !attribution) return;
+  await logPlatformEvent('publish_ready', { metadata: { ...attribution } });
+};
+
 type ProjectWithConfig = { config: unknown };
 type PublishPage = {
   id: string;
@@ -296,7 +306,7 @@ const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
  * READY. The live site and search index are served from this snapshot.
  */
 export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Promise<{ pages: number }> {
-  const { deploymentId, projectId, skipGrammarChecks, auto, locale } = job.data;
+  const { deploymentId, projectId, skipGrammarChecks, auto, firstPublishAttribution, locale } = job.data;
   const lifecycleOccurredAt = new Date(job.timestamp ?? Date.now()).toISOString();
   log.info({ deploymentId, projectId }, 'building deployment');
 
@@ -398,6 +408,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       projectId,
       metadata: { auto: auto === true, version: ready.version },
     });
+    await recordAttributedFirstPublishReady(firstPublishAttribution, auto);
     await notifyDeployment({
       projectId,
       projectName: project.name,

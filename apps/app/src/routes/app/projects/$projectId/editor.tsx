@@ -83,8 +83,8 @@ function EditorPage() {
   const { data: project } = useProject(projectId);
 
   useEffect(() => {
-    if (firstPublish) void recordFirstPublishStage('editor_entered');
-  }, [firstPublish]);
+    if (firstPublish && project) void recordFirstPublishStage('editor_entered');
+  }, [firstPublish, project]);
 
   // Top-level editor view: writing content vs. configuring the whole site.
   const [view, setView] = useState<'content' | 'config'>('content');

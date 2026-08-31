@@ -6,7 +6,7 @@ const activationEventRoutes = {
   record: createRouteConfig({
     guard: isAuthenticated,
     tags: ['activation'],
-    description: 'Record a consented, allowlisted first-publish stage for the signed-in user.',
+    description: 'Record a consented, allowlisted first-publish navigation stage. READY completion is worker-authored.',
     responses: { 200: { description: 'recorded' }, ...errorResponses },
   }),
 };
