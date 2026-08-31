@@ -1,5 +1,6 @@
 import { appendFile } from 'node:fs/promises';
 
+import { normalizeCoolifyLiteral } from './coolify-env-literal.mjs';
 import { publicTargets, verifyTarget } from './coolify-release-probes.mjs';
 
 const required = (name) => {
@@ -115,7 +116,7 @@ const summary = async (lines) => {
 
 const envs = await api(`/applications/${applicationUuid}/envs`);
 const imageTagEnv = Array.isArray(envs) ? envs.find((entry) => entry.key === 'NIBLEAF_IMAGE_TAG' && !entry.is_preview) : undefined;
-const currentTag = imageTagEnv?.real_value ?? imageTagEnv?.value;
+const currentTag = normalizeCoolifyLiteral(imageTagEnv?.real_value ?? imageTagEnv?.value);
 if (imageTagEnv && currentTag === undefined) {
   throw new Error(
     'Provider NIBLEAF_IMAGE_TAG is present but masked; COOLIFY_NIBLEAF_API_TOKEN requires read:sensitive as well as read, write, and deploy.',
