@@ -252,6 +252,9 @@ jobs:
       # to a workflow dispatched on main that also builds the main ref.
       - name: Deploy exact image with Coolify, verify production, and compensate on failure
         if: inputs.publish && inputs.deploy && inputs.ref == 'main' && github.ref == 'refs/heads/main'
+        # This dedicated token must have exactly deploy, read, write, and
+        # read:sensitive: the controller verifies the current image pin before
+        # replacing it, updates that one variable, and triggers deployment.
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}

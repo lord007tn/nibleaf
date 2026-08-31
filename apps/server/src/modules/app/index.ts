@@ -26,7 +26,12 @@ import readerAccess from './reader-access/handlers';
 import workspace from './workspace/handlers';
 
 const app = new Hono<HonoEnv>()
-  .get('/health', (ctx) => ctx.json({ ok: true }))
+  .get('/health', (ctx) => {
+    const revision = process.env.NIBLEAF_REVISION ?? 'development';
+    return ctx.json({ ok: true, revision }, 200, {
+      'x-nibleaf-revision': revision,
+    });
+  })
   .route('/activation-events', activationEvents)
   .route('/projects', projects)
   .route('/projects/:projectId/pages', pages)

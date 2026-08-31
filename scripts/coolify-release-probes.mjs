@@ -21,7 +21,9 @@ export const verifyTarget = async ({ name, url, revision: revisionContract }, ex
   }
   if (name === 'api') {
     const health = await response.json();
-    if (health.ok !== true) throw new Error('API health body did not report ok: true.');
+    if (health.ok !== true || health.revision !== expectedRevision) {
+      throw new Error('API health body did not prove ok: true and the expected revision.');
+    }
   } else if (name === 'app readiness') {
     const health = await response.json();
     if (health.status !== 'ok' || (health.revision !== expectedRevision && !(allowMissingRevision && health.revision === undefined))) {

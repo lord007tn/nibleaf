@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises';
 
-const [workflow, dockerfile, compose, runbook] = await Promise.all([
+const [workflow, dockerfile, compose, runbook, releaseScript] = await Promise.all([
   readFile('.github/workflows/docker.yml', 'utf8'),
   readFile('Dockerfile', 'utf8'),
   readFile('docker-compose.coolify.yml', 'utf8'),
   readFile('operations/deployment-reliability.md', 'utf8'),
+  readFile('scripts/coolify-release.mjs', 'utf8'),
 ]);
 
 const requireMatch = (condition, message) => {
@@ -16,6 +17,8 @@ requireMatch(!/pull_request\s*:/m.test(workflow), 'Docker workflow must never bu
 requireMatch(workflow.includes('nibleaf-production-release'), 'production releases need one non-cancelling concurrency lock');
 requireMatch(workflow.includes('actions/attest@v4'), 'published images need source provenance');
 requireMatch(workflow.includes('scripts/coolify-release.mjs'), 'deployment must use the fail-closed verifier and compensation path');
+requireMatch(workflow.includes('read:sensitive'), 'workflow must document the Coolify release token scopes');
+requireMatch(releaseScript.includes('requires read:sensitive'), 'release controller must diagnose masked provider state');
 requireMatch(dockerfile.includes('FROM node:22-alpine'), 'production must stay on Node 22');
 requireMatch(dockerfile.includes('org.opencontainers.image.revision=$REVISION'), 'image must carry the exact source revision');
 
