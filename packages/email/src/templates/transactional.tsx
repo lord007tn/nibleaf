@@ -1,3 +1,4 @@
+import React from 'react';
 import { Button, Heading, Link, Section, Text } from 'react-email';
 import { createEmailTranslator, type EmailLanguage, emailDirection } from '../translate';
 import { BaseEmail } from './base';

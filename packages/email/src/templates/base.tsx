@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import React from 'react';
 import { Body, Container, Head, Hr, Html, Preview, Section, Text } from 'react-email';
 import { createEmailTranslator, type EmailLanguage, emailDirection } from '../translate';
 
@@ -11,7 +11,7 @@ const colors = {
   surfaceMuted: '#f8fafc',
 };
 
-const bodyStyle: CSSProperties = {
+const bodyStyle: React.CSSProperties = {
   backgroundColor: colors.background,
   color: colors.brand,
   fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -19,7 +19,7 @@ const bodyStyle: CSSProperties = {
   padding: '24px 12px',
 };
 
-export function BaseEmail({ children, language, preview }: { children: ReactNode; language: EmailLanguage; preview: string }) {
+export function BaseEmail({ children, language, preview }: { children: React.ReactNode; language: EmailLanguage; preview: string }) {
   const t = createEmailTranslator(language);
   const direction = emailDirection(language);
 
