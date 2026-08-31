@@ -7,6 +7,7 @@ import {
   initializeMarketingAnalytics,
   isGa4MeasurementId,
   isGtmContainerId,
+  MARKETING_ANALYTICS_CONSENT_EVENT,
   MARKETING_ANALYTICS_CONSENT_KEY,
   marketingAnalyticsCookieExpirations,
   persistMarketingAnalyticsConsent,
@@ -28,6 +29,8 @@ const isGtmMarketingEvent = (entry: unknown): entry is GtmMarketingEvent =>
 const gtmMarketingEvents = (): GtmMarketingEvent[] => (window.dataLayer ?? []).filter(isGtmMarketingEvent);
 const GTM_MARKETING_EVENT_NAMES_FOR_TEST = new Set([
   'cta_clicked',
+  'first_publish_cta_clicked',
+  'first_publish_landing_viewed',
   'free_tool_completed',
   'free_tool_cta_clicked',
   'free_tool_started',
@@ -143,6 +146,18 @@ describe('marketing analytics', () => {
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
     sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' });
     sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
+    sendMarketingAnalyticsEvent('first_publish_landing_viewed', {
+      entry_point: 'organic_content',
+      intent: 'first_publish',
+      source: 'mintlify_introduction',
+    });
+    sendMarketingAnalyticsEvent('first_publish_cta_clicked', {
+      destination: 'signup',
+      entry_point: 'organic_content',
+      intent: 'first_publish',
+      placement: 'article_bridge',
+      source: 'mintlify_introduction',
+    });
     sendMarketingAnalyticsEvent('free_tool_started', {
       input_mode: 'html',
       page_path: '/tools/rtl-documentation-readiness',
@@ -169,11 +184,13 @@ describe('marketing analytics', () => {
     sendMarketingAnalyticsEvent('sign_up', { email: 'private@example.com', method: 'email_otp' });
 
     const events = gtmMarketingEvents();
-    expect(events).toHaveLength(6);
+    expect(events).toHaveLength(8);
     expect(events.map(({ event_name }) => event_name)).toEqual([
       'page_view',
       'cta_clicked',
       'sign_up',
+      'first_publish_landing_viewed',
+      'first_publish_cta_clicked',
       'free_tool_started',
       'free_tool_completed',
       'free_tool_cta_clicked',
@@ -214,6 +231,19 @@ describe('marketing analytics', () => {
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window['ga-disable-G-ABC123']).toBe(true);
     expect(gtagCommandValues()).toContainEqual(['consent', 'update', expect.objectContaining({ ad_storage: 'denied', analytics_storage: 'denied' })]);
+  });
+
+  it('notifies mounted consent-gated article bridges when consent changes', () => {
+    const listener = vi.fn();
+    window.addEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, listener);
+
+    persistMarketingAnalyticsConsent('accepted');
+
+    expect(listener).toHaveBeenCalledOnce();
+    const event = listener.mock.calls[0]?.[0];
+    expect(event).toBeInstanceOf(CustomEvent);
+    expect((event as CustomEvent).detail).toBe('accepted');
+    window.removeEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, listener);
   });
 
   it('expires host-only and parent-domain GA cookies without crossing the registrable boundary', () => {

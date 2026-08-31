@@ -4,6 +4,8 @@ import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { type BlogEntry, type BlogFaq, blogEntry, blogLanguage, blogReadingMinutes } from '@/lib/blog';
+import { MARKETING_ANALYTICS_CONSENT_EVENT, trackFirstPublishCta, trackFirstPublishLanding } from '@/lib/first-publish-activation';
+import type { FirstPublishSource } from '@/lib/marketing-events';
 import { canonicalHref } from '@/lib/marketing-seo';
 
 const dateFormatter = (entry: BlogEntry) =>
@@ -199,9 +201,40 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="my-4 text-muted-foreground text-[13px]">{children}</p>;
 }
 
+/** One consent-gated bridge shared by the two evidence-led acquisition articles. */
+function FirstPublishBridge({ source }: { source: FirstPublishSource }) {
+  useEffect(() => {
+    const recordLanding = () => trackFirstPublishLanding(source);
+    recordLanding();
+    window.addEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, recordLanding);
+    return () => window.removeEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, recordLanding);
+  }, [source]);
+
+  return (
+    <aside className="my-8 overflow-hidden rounded-2xl border border-primary/25 bg-primary/5 p-6 sm:p-7">
+      <p className="mb-2 font-semibold text-xl tracking-tight text-foreground">Take the shortest path to a manual publish</p>
+      <p className="mb-5 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+        New accounts receive a starter project; returning accounts open their first available project. Make one visible edit, preview it, then publish
+        it yourself. The initial starter deployment is automatic and does not count as this activation milestone.
+      </p>
+      <a
+        className={`${primaryButton} !text-primary-foreground !no-underline hover:!text-primary-foreground`}
+        href="/sign-up?intent=first-publish"
+        onClick={() => trackFirstPublishCta(source)}
+      >
+        Start the manual-publish path <ArrowRight className="size-4" />
+      </a>
+      <p className="!mt-3 !mb-0 text-muted-foreground text-xs">
+        Measurement is first-party, consent-gated, and limited to this article source plus landing, CTA, project, editor, and manual publish-ready
+        stages.
+      </p>
+    </aside>
+  );
+}
+
 /** Components every MDX article can use without importing them. */
 // biome-ignore lint/suspicious/noExplicitAny: MDX component maps are untyped by design.
-export const articleMdxComponents: Record<string, ComponentType<any>> = { Callout, Note };
+export const articleMdxComponents: Record<string, ComponentType<any>> = { Callout, FirstPublishBridge, Note };
 
 function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar' | 'en' }) {
   return (
@@ -331,6 +364,8 @@ const proseClass = [
   '[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-start [&_th]:font-semibold',
   '[&_td]:border [&_td]:border-border [&_td]:px-4 [&_td]:py-2.5 [&_td]:align-top',
   '[&_hr]:my-8 [&_hr]:border-border',
+  '[&_figure]:my-8 [&_figure_img]:w-full [&_figure_img]:rounded-xl [&_figure_img]:border [&_figure_img]:border-border [&_figure_img]:shadow-sm',
+  '[&_figcaption]:mt-2 [&_figcaption]:text-center [&_figcaption]:text-muted-foreground [&_figcaption]:text-xs',
 ].join(' ');
 
 /**

@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => {
       super('queue unavailable');
     }
   }
-  return { buildAnalyticsEvent: vi.fn(), enqueueAnalyticsEvent: vi.fn(), DurableUsageEnqueueError };
+  return { buildAnalyticsEvent: vi.fn(), enqueueAnalyticsEvent: vi.fn(), platformEventCreate: vi.fn(), DurableUsageEnqueueError };
 });
 
 vi.mock('@nibleaf/clickhouse', () => ({
@@ -15,7 +15,7 @@ vi.mock('@nibleaf/clickhouse', () => ({
   deterministicAnalyticsEventId: () => 'event-a',
   buildAnalyticsEvent: mocks.buildAnalyticsEvent,
 }));
-vi.mock('@nibleaf/database', () => ({ Prisma: { DbNull: null }, prisma: {} }));
+vi.mock('@nibleaf/database', () => ({ Prisma: { DbNull: null }, prisma: { platformEvent: { create: mocks.platformEventCreate } } }));
 vi.mock('../env', () => ({ env: { APP_URL: 'https://nibleaf.test' } }));
 vi.mock('../lib/notify', () => ({ notifyDeployment: vi.fn() }));
 vi.mock('../lib/usage-ingest', () => ({
@@ -23,12 +23,13 @@ vi.mock('../lib/usage-ingest', () => ({
   enqueueAnalyticsEvent: mocks.enqueueAnalyticsEvent,
 }));
 
-import { trackPublishLifecycle } from './publish';
+import { recordAttributedFirstPublishReady, trackPublishLifecycle } from './publish';
 
 describe('publish usage queue isolation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.buildAnalyticsEvent.mockReturnValue({ eventId: 'event-a', tenantId: 'org-a', projectId: 'project-a' });
+    mocks.platformEventCreate.mockResolvedValue({ id: 'event-a' });
   });
 
   it('keeps publishing non-blocking after the usage outbox is durable and Redis rejects enqueue', async () => {
@@ -54,5 +55,18 @@ describe('publish usage queue isolation', () => {
         '2026-08-24T00:00:00.000Z',
       ),
     ).rejects.toThrow('postgres unavailable');
+  });
+
+  it('records identifier-free source attribution only after a user-initiated READY transition', async () => {
+    const attribution = { entry_point: 'organic_content' as const, intent: 'first_publish' as const, source: 'mintlify_introduction' as const };
+
+    await recordAttributedFirstPublishReady(attribution, false);
+    expect(mocks.platformEventCreate).toHaveBeenCalledWith({
+      data: { type: 'publish_ready', userId: null, projectId: null, metadata: attribution },
+    });
+
+    mocks.platformEventCreate.mockClear();
+    await recordAttributedFirstPublishReady(attribution, true);
+    expect(mocks.platformEventCreate).not.toHaveBeenCalled();
   });
 });

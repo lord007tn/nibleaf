@@ -17,7 +17,13 @@ import { authClient, signIn } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-up')({
   validateSearch: (search) =>
-    z.object({ invite: z.string().optional().catch(undefined), email: z.string().optional().catch(undefined) }).parse(search),
+    z
+      .object({
+        invite: z.string().optional().catch(undefined),
+        email: z.string().optional().catch(undefined),
+        intent: z.literal('first-publish').optional().catch(undefined),
+      })
+      .parse(search),
   head: () => ({ meta: [{ title: 'Sign up — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignUpPage,
 });
@@ -42,13 +48,14 @@ function SignUpPage() {
 
   const normalizedEmail = email.trim().toLowerCase();
   const invitationId = search.invite ?? readPendingInvitation() ?? undefined;
-  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : '/app';
+  const firstPublish = search.intent === 'first-publish';
+  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : firstPublish ? '/app?firstPublish=true' : '/app';
 
   const finishSignUp = async () => {
     if (invitationId) {
       await navigate({ to: '/accept-invite/$invitationId', params: { invitationId } });
     } else {
-      await navigate({ to: '/app' });
+      await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
     }
   };
 

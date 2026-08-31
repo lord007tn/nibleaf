@@ -59,6 +59,7 @@ import {
 } from '@/hooks/api';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
+import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { typographyVars } from '@/lib/typography';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
@@ -68,6 +69,7 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   validateSearch: (search) =>
     z
       .object({
+        firstPublish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
         page: z.string().min(1).optional().catch(undefined),
         publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
       })
@@ -77,8 +79,12 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
 function EditorPage() {
   const t = useT();
   const { projectId } = Route.useParams();
-  const { page: pageParam, publish: publishParam } = Route.useSearch();
+  const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
+
+  useEffect(() => {
+    if (firstPublish && project) void recordFirstPublishStage('editor_entered');
+  }, [firstPublish, project]);
 
   // Top-level editor view: writing content vs. configuring the whole site.
   const [view, setView] = useState<'content' | 'config'>('content');

@@ -1,9 +1,27 @@
 import { z } from 'zod';
 import { sendMarketingAnalyticsEvent } from './marketing-analytics';
 
-export type MarketingEventName = 'free_tool_started' | 'free_tool_completed' | 'free_tool_cta_clicked';
+export type FirstPublishSource = 'docker_compose_guide' | 'mintlify_introduction';
+export type MarketingEventName =
+  | 'first_publish_cta_clicked'
+  | 'first_publish_landing_viewed'
+  | 'free_tool_started'
+  | 'free_tool_completed'
+  | 'free_tool_cta_clicked';
 
 type MarketingEventProperties = {
+  first_publish_landing_viewed: {
+    entry_point: 'organic_content';
+    intent: 'first_publish';
+    source: FirstPublishSource;
+  };
+  first_publish_cta_clicked: {
+    destination: 'signup';
+    entry_point: 'organic_content';
+    intent: 'first_publish';
+    placement: 'article_bridge';
+    source: FirstPublishSource;
+  };
   free_tool_started: {
     input_mode: 'html';
     page_path: '/tools/rtl-documentation-readiness';
@@ -29,6 +47,26 @@ type MarketingEventProperties = {
 };
 
 function allowlistedProperties<E extends MarketingEventName>(event: E, value: MarketingEventProperties[E]): boolean {
+  if (event === 'first_publish_landing_viewed') {
+    return z
+      .strictObject({
+        entry_point: z.literal('organic_content'),
+        intent: z.literal('first_publish'),
+        source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+      })
+      .safeParse(value).success;
+  }
+  if (event === 'first_publish_cta_clicked') {
+    return z
+      .strictObject({
+        destination: z.literal('signup'),
+        entry_point: z.literal('organic_content'),
+        intent: z.literal('first_publish'),
+        placement: z.literal('article_bridge'),
+        source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+      })
+      .safeParse(value).success;
+  }
   if (event === 'free_tool_started') {
     return z
       .strictObject({

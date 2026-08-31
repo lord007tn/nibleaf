@@ -3,7 +3,10 @@
   "ignore": ["apps/docs/.source/**"],
   "workspaces": {
     ".": {
-      "entry": ["scripts/split-ghost-by-language.mjs"]
+      "entry": [
+        "scripts/graceful-web-service.mjs",
+        "scripts/split-ghost-by-language.mjs"
+      ]
     },
     "apps/server": {
       "entry": ["src/scripts/grant-admin.ts"],

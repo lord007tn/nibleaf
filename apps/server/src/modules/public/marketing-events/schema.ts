@@ -8,6 +8,32 @@ const common = {
 export const marketingEventBody = z.discriminatedUnion('event', [
   z
     .object({
+      event: z.literal('first_publish_landing_viewed'),
+      properties: z
+        .object({
+          entry_point: z.literal('organic_content'),
+          intent: z.literal('first_publish'),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      event: z.literal('first_publish_cta_clicked'),
+      properties: z
+        .object({
+          destination: z.literal('signup'),
+          entry_point: z.literal('organic_content'),
+          intent: z.literal('first_publish'),
+          placement: z.literal('article_bridge'),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
       event: z.literal('free_tool_started'),
       properties: z
         .object({

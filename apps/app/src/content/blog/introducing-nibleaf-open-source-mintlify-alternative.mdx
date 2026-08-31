@@ -1,99 +1,89 @@
 ---
 title: 'Why we built Nibleaf for teams that want to own their docs'
-metaTitle: 'Why we built Nibleaf for documentation ownership'
-description: 'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.'
+metaTitle: 'Nibleaf: an open-source Mintlify alternative to evaluate'
+description: 'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-24'
+dateModified: '2026-08-31'
 tags: ['announcement', 'open-source']
 related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl']
-readingMinutes: 7
+readingMinutes: 12
 faqs:
   - question: 'Is Nibleaf available as a hosted product?'
     answer: 'Yes. Nibleaf Cloud is available in beta, and the public AGPL-3.0 release can be installed with a pinned GHCR image and Docker Compose.'
   - question: 'Does Nibleaf lock content into a proprietary format?'
     answer: 'Pages are stored as Markdown in the database and can be exported as Markdown. The live source is not a directory in Git unless the team exports and commits it.'
   - question: 'Does Nibleaf support Arabic and right-to-left documentation?'
-    answer: 'Yes. Each language gets its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.'
+    answer: 'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.'
 ---
 
-Documentation tooling has quietly turned into rent. Somewhere along the way, publishing a docs site — a folder of Markdown rendered with a search box — became a subscription with per-seat pricing, usage meters, and a dashboard you can never take with you. Your content lives on someone else's servers. Your readers' traffic flows through someone else's analytics. And when pricing changes, your options are pay up or migrate.
+Nibleaf is an open-source documentation platform for teams that want a browser editor and a portable, operator-controlled stack. It is not a drop-in winner for every Mintlify team. Mintlify is the stronger choice when a mature Git-first workflow, managed previews, integrations, API-documentation features, and an established hosted service matter more than running the complete application yourself.
 
-We built Nibleaf to combine a browser editor, Markdown content, publishing, search, and Arabic support in one product. The codebase is AGPL-3.0 licensed, the repository and container release are public, and the managed cloud is available in beta.
+This page is the existing owner of that evaluation. We have not created another “Mintlify alternative” URL; the detailed feature matrix remains at [Nibleaf vs Mintlify](/compare/nibleaf-vs-mintlify).
 
-This post covers why we built it and what is in the box.
-
-## Why docs tooling became rent
-
-To be fair to the incumbents: they are good products. Mintlify keeps MDX source in your Git repository and now offers Enterprise teams a self-hosted custom frontend, while its content engine, editor, search, and AI remain managed services. GitBook has a capable hosted editor and publishes an open-source reader renderer that can be self-hosted, although GitBook says that route is not recommended or supported and it does not include the hosted workspace or editor. Nibleaf's distinction is a public full-stack deployment that includes authoring, publishing, search, analytics, and the reader. We break down the boundaries in [Nibleaf vs GitBook](/compare/nibleaf-vs-gitbook), [Nibleaf vs Mintlify](/compare/nibleaf-vs-mintlify), [GitBook's public renderer](https://github.com/gitbookio/gitbook), and [Mintlify's custom-frontend announcement](https://www.mintlify.com/blog/custom-frontends-on-mintlify).
-
-The open-source side of the spectrum has the opposite problem. Docusaurus is excellent and MIT-licensed, but it is a static site generator, not a platform: there is no hosted editor for non-developers, search usually means wiring up an external service, and every contributor needs Git and a build pipeline. We compare the trade-offs honestly in [Nibleaf vs Docusaurus](/compare/nibleaf-vs-docusaurus).
-
-Nibleaf's premise is that you should not have to choose. A documentation platform can combine an editor, publishing, search, analytics, and custom domains while keeping content portable and its codebase under an open-source license.
-
-## An editor that writes Markdown, not a format you rent
-
-The core design decision in Nibleaf is the editor. It is a Notion-style WYSIWYG editor — blocks, a slash menu, inline formatting — because most people who write documentation are not developers, and asking a support engineer or product manager to hand-edit MDX in a pull request is how docs go stale.
-
-But WYSIWYG editors have a bad reputation for a reason: most of them persist an internal document format, and your content is only as portable as their export button. Nibleaf's editor round-trips **plain Markdown**. What you type in blocks is stored as Markdown; what is stored as Markdown loads back into blocks. There is no proprietary intermediate format at any point. MDX components — callouts, tabs, code groups, and the rest — are supported inside the same flow.
-
-<Callout title="Why this matters">
-If you ever leave Nibleaf, you leave with a folder of Markdown files that any other tool can read. Portability is not an export feature; it is the storage format.
+<Callout title="Disclosure and verification date">
+Nibleaf publishes this comparison. We rechecked the Nibleaf source, the public v0.1.2 self-host release metadata, and the linked Mintlify primary sources on 31 August 2026. Product plans and capabilities change, so verify any purchase or migration decision against the vendors' current documentation.
 </Callout>
 
-Writing is collaborative, too: each site has a team with owner, admin, and editor roles, and reviewers can leave comments anchored to specific blocks instead of pasting screenshots into Slack.
+## A hands-on evaluation you can repeat
 
-## Publishing is versioned, and readers never see drafts
+Use the same small fixture in each product: five linked pages, one code block, one image, and one Arabic page. Ask a developer and a non-developer to complete the workflow. Record **observed**, **not tested**, or **requires plan/access** instead of filling evidence gaps with assumptions.
 
-Nibleaf separates writing from publishing. Every publish produces an **immutable snapshot** of your site: the pages, the navigation tree, the settings, all frozen at that moment. Readers are always served a complete snapshot, never a half-written page — you can edit for a week and nothing changes on the live site until you publish.
+1. Create or import the fixture and identify the live source of truth.
+2. Edit a page without Git, preview the draft, and publish it.
+3. Make an intentionally incomplete change and confirm readers cannot see it.
+4. Restore or republish a previous version and verify the public result.
+5. Search for an exact identifier, a misspelling, and an Arabic term.
+6. Export the content, inspect the files, and open them without the platform.
+7. List which parts of authoring, deployment, search, analytics, and AI remain vendor-managed.
 
-Because snapshots are immutable, rollback is trivial: republish a previous snapshot and the live site is instantly back to a known-good state. No cache invalidation dance, no rebuild pipeline to babysit.
+For Nibleaf, we applied that method to the source and repository evidence described below. For Mintlify, we used its current [quickstart](https://www.mintlify.com/docs/quickstart), [web-editor tutorial](https://www.mintlify.com/docs/editor/tutorial), [GitHub deployment guide](https://www.mintlify.com/docs/deploy/github), [analytics guide](https://www.mintlify.com/docs/guides/analytics), and [custom-frontend guide](https://www.mintlify.com/docs/guides/custom-frontend). We did not claim paid-plan behavior we could not exercise.
 
-## Search that ships in the box
+## Where Mintlify wins today
 
-Docs search is where hosted platforms usually earn their subscription and static generators usually send you to a third party. Nibleaf keeps a built-in Orama full-text and fuzzy path behind the Cmd+K interface, with no Algolia account or crawler required. Source `main` also includes an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers. Operators start that path in shadow mode, supply and evaluate their chosen embedding and answer providers, and retain `SEARCH_RUNTIME=legacy` as the immediate rollback. The checksummed v0.1.2 self-hosted artifact remains on the built-in path until a later image is published.
+Mintlify's docs-as-code workflow keeps documentation in Git and connects publishing to a familiar branch and review model. Its managed product has broader deployment previews, integrations, API-reference tooling, search, AI, and analytics. Its Enterprise custom frontend also gives teams control over the reader implementation while Mintlify continues to manage content, search, the assistant, and the editor.
 
-Search selects an Arabic tokenizer for Arabic projects, applies spelling normalization, and adds conservative light morphology for common prefixes, attached pronouns, and plural or dual forms. Exact tokens retain the strongest ranking, while code, mixed identifiers, short words, and ambiguous terms are protected from stemming.
+That split is valuable for teams that want frontend ownership without operating the authoring and content services. Mintlify also documents the trade-off clearly: a custom frontend needs its own analytics and SEO work, and several hosted-product capabilities are not available in that headless mode.
 
-## Arabic-first, not RTL-as-an-afterthought
+If those managed capabilities are your priority, Mintlify may be the better choice. Nibleaf's case is different: it offers a public full-stack deployment boundary, including the editor and core content services, rather than only a custom reader.
 
-Most documentation platforms treat right-to-left languages as a CSS patch: flip the layout with `dir="rtl"` and hope. If you have ever shipped Arabic docs, you know the reality — mirrored icons that should not mirror, code blocks fighting the text direction, search that returns nothing, navigation trees that assume English.
+## What Nibleaf owns differently
 
-Nibleaf was designed bilingual from the start:
+Nibleaf's browser editor writes Markdown stored in PostgreSQL. Authors can work visually, in rich text, or in Markdown source; the supported model is then exportable as Markdown. The important limitation is explicit: the live source is database-backed, **not** a directory in Git unless your team exports and commits it.
 
-| Capability | How Nibleaf handles it |
-| --- | --- |
-| Content structure | Per-language page trees — Arabic docs are not translations bolted onto an English tree |
-| Layout | First-class RTL rendering in the reader, not a flipped stylesheet |
-| Search | Arabic tokenizer in the built-in index |
-| SEO | `hreflang` annotations generated per language |
-| Product UI | Dashboard and reader localized in English and Arabic |
+Every publish creates an immutable snapshot of pages and site configuration. Readers receive a complete READY snapshot, not a working draft. A user can republish an earlier version, but that is an application-level content rollback—not a promise that every database migration or infrastructure change is reversible.
 
-If your users are in the Middle East and North Africa — or you are a global company that keeps deprioritizing the Arabic docs because the tooling fights you — this is the platform gap Nibleaf exists to close.
+<figure>
+  <img src="/images/first-publish/editor-en.png" alt="Nibleaf editor in English showing the page tree, visual editor, preview control, and Publish button" />
+  <figcaption>The current English editor. The product also localizes the dashboard and editor for Arabic and applies RTL direction where appropriate.</figcaption>
+</figure>
 
-## The rest of a real platform
+The built-in search path works without an external crawler. Source `main` also contains an optional, tenant-filtered hybrid-search path, but the published v0.1.2 image remains the release boundary: newer source capabilities are not presented here as if they already ship in that image.
 
-The features that make hosted docs products feel finished are present in the managed product:
+For multilingual sites, each language gets its own page tree. The reader and editor support RTL layout, Arabic search uses a dedicated tokenizer, and generated pages include language metadata. The [Arabic documentation guide](/blog/arabic-documentation-rtl) contains the broader checklist.
 
-- **Custom domains** with guided DNS verification, plus wildcard project subdomains out of the box.
-- **SEO built in**: server-side rendering, canonical URLs, Open Graph and Twitter cards, JSON-LD, sitemaps, robots controls, and per-page noindex.
-- **Product analytics**: page views, unique visitors, top pages, top searches, and device and language breakdowns are collected by the Nibleaf application. The hosted service also runs behind Cloudflare, which processes delivery and security telemetry as described in the privacy policy.
-- **Bring your own storage**: assets go to any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2) or the bundled storage service.
+<figure>
+  <img src="/images/first-publish/dashboard-ar-rtl.jpg" alt="Nibleaf Arabic dashboard rendered right-to-left with project navigation and analytics cards" />
+  <figcaption>A reproducible Arabic/RTL product surface from the repository's integration evidence.</figcaption>
+</figure>
 
-## Cloud beta and self-hosting
+## Ownership is a system boundary, not a slogan
 
-**Nibleaf Cloud** is the usable option today. It is in free beta, with no paid plan currently offered. Details are on the [pricing page](/pricing), and you can [create a workspace](/sign-up) to evaluate the editor and publishing workflow.
+The codebase is AGPL-3.0 licensed. The public self-host release uses Docker Compose for the app, API, worker, PostgreSQL, queue/cache, and S3-compatible asset storage. Operators can replace the bundled object store with an external compatible service.
 
-The codebase is licensed under AGPL-3.0. The public repository, pinned GHCR release, and guided Docker Compose installer can be fetched without private credentials. The [self-hosting guide](/self-hosting) covers the operational work that remains yours: TLS, DNS, backups, monitoring, and restore testing.
+That control creates responsibility. A self-hosting team owns TLS, DNS, email, secrets, backups, restore tests, monitoring, storage policy, upgrades, and incident response. Compose on one host is not a zero-downtime or multi-region architecture. The [Docker Compose first-publish guide](/blog/self-host-documentation-site-docker-compose) shows the actual release-to-manual-publish path and its recovery boundaries.
 
-## Where Nibleaf stands today
+## Where Nibleaf does not win yet
 
-Nibleaf is in beta, and we would rather be precise than promotional about that. The editor, versioned publishing, search, i18n, domains, SEO, and analytics described above are shipped and running in production. Mintlify has years of head start on breadth, and Docusaurus has an enormous plugin ecosystem; if those strengths are what you need today, the detailed [Nibleaf vs Mintlify comparison](/compare/nibleaf-vs-mintlify) lays out exactly where each tool wins.
+Nibleaf is in beta, has a smaller ecosystem, and has less operational history than Mintlify or long-established static generators. Its visual editor intentionally supports a bounded MDX model; teams with a large collection of custom React components must test round-trip fidelity before migrating. Git is an export/sync workflow, not the default live authoring store.
 
-What Nibleaf offers now is a browser editor over Markdown, versioned publishing, built-in search, multilingual sites, a managed beta, and a public self-hosted release. Content can be exported as Markdown.
+The current public container is v0.1.2. Source `main` can be ahead of that artifact, so a source-level feature is not a release claim. Self-hosting also does not remove external dependencies you choose, such as an email provider, an external object store, analytics, or optional AI services.
 
-## How to start
+These limits are reasons to run the fixture, not reasons to hide the comparison. Teams that only need a developer-owned static site should also test [Docusaurus](/compare/nibleaf-vs-docusaurus); it may be simpler than operating a platform.
 
-- **Cloud**: [sign up](/sign-up) for a free beta workspace at nibleaf.com.
-- **Self-hosting**: follow the [deployment guide](/self-hosting), then test DNS, backups, and restoration on a disposable server.
+## From evaluation to a first manual publish
 
-If you have been paying rent on a folder of Markdown, come take a look.
+Nibleaf provisions a starter project and performs an automatic starter deployment after sign-up. That proves provisioning, not author activation. The meaningful path is to open the starter project, make a visible edit, preview it, and click Publish yourself until the deployment is READY.
+
+<FirstPublishBridge source="mintlify_introduction" />
+
+For a deeper product walkthrough, read [authoring](https://docs.nibleaf.com/product/authoring) and [publishing](https://docs.nibleaf.com/product/publishing). For infrastructure ownership, start with [self-hosting](/self-hosting) and rehearse a restore before moving production documentation.

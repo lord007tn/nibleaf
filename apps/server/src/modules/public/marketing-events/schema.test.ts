@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { marketingEventBody } from './schema';
 
 describe('marketing event privacy boundary', () => {
+  it('accepts only fixed first-publish attribution dimensions', () => {
+    expect(
+      marketingEventBody.safeParse({
+        event: 'first_publish_cta_clicked',
+        properties: {
+          destination: 'signup',
+          entry_point: 'organic_content',
+          intent: 'first_publish',
+          placement: 'article_bridge',
+          source: 'mintlify_introduction',
+        },
+      }).success,
+    ).toBe(true);
+  });
+
   it('accepts only the documented free-tool completion dimensions', () => {
     expect(
       marketingEventBody.safeParse({
@@ -33,5 +48,19 @@ describe('marketing event privacy boundary', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it.each(['projectId', 'email', 'url', 'document_text'])('rejects first-publish payloads containing %s', (property) => {
+    expect(
+      marketingEventBody.safeParse({
+        event: 'first_publish_landing_viewed',
+        properties: {
+          entry_point: 'organic_content',
+          intent: 'first_publish',
+          source: 'docker_compose_guide',
+          [property]: 'private',
+        },
+      }).success,
+    ).toBe(false);
   });
 });

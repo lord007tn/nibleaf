@@ -304,14 +304,14 @@ export const BLOG_MANIFEST = [
   {
     slug: 'introducing-nibleaf-open-source-mintlify-alternative',
     title: 'Why we built Nibleaf for teams that want to own their docs',
-    metaTitle: 'Why we built Nibleaf for documentation ownership',
+    metaTitle: 'Nibleaf: an open-source Mintlify alternative to evaluate',
     description:
-      'Why Nibleaf combines a visual Markdown editor, versioned publishing, built-in search, and Arabic support in one documentation platform.',
+      'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-24',
+    dateModified: '2026-08-31',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
-    readingMinutes: 7,
+    readingMinutes: 12,
     faqs: [
       {
         question: 'Is Nibleaf available as a hosted product?',
@@ -326,7 +326,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Does Nibleaf support Arabic and right-to-left documentation?',
         answer:
-          'Yes. Each language gets its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.',
+          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.',
       },
     ],
   },
@@ -367,12 +367,12 @@ export const BLOG_MANIFEST = [
     slug: 'self-host-documentation-site-docker-compose',
     title: 'Self-Host a Documentation Site with Docker Compose',
     description:
-      'A practical walkthrough for self-hosting a documentation site with Docker Compose: server sizing, secrets, custom domains, backups, and upgrades.',
+      'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-15',
+    dateModified: '2026-08-31',
     tags: ['self-hosting', 'docker', 'guide'],
     related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
-    readingMinutes: 6,
+    readingMinutes: 13,
     faqs: [
       {
         question: 'How much RAM do I need to self-host a documentation site?',
@@ -382,12 +382,12 @@ export const BLOG_MANIFEST = [
       {
         question: 'How do I back up a self-hosted documentation site?',
         answer:
-          'Back up PostgreSQL and the object-storage bucket. Queue and cache state is disposable. Test restoring both backups, not only creating them.',
+          'Back up PostgreSQL and the asset bucket. The guided installer does not install the repository backup helper, so obtain scripts/backup.sh from the matching release checkout or implement equivalent tested commands.',
       },
       {
         question: 'Do I have to run database migrations manually when upgrading?',
         answer:
-          'The production Compose stack includes a one-shot migration service that applies pending migrations before the application services start.',
+          'The production Compose stack includes a one-shot migrate service. Confirm its successful completion before treating the application services as healthy.',
       },
       {
         question: 'Can I use my own domain with a self-hosted docs site?',

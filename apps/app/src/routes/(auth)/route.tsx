@@ -1,13 +1,14 @@
-import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
+import { createFileRoute, Navigate, Outlet, redirect, useLocation } from '@tanstack/react-router';
 import { AuthProviders } from '@/components/auth-providers';
 import { getSessionFn } from '@/functions/session';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)')({
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (await getSessionFn()) {
-      throw redirect({ to: '/app' });
+      const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
+      throw redirect({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
     }
   },
   // Keep every auth utility page (sign-in/up, forgot/reset password, verify
@@ -32,11 +33,13 @@ function AuthRoute() {
 
 function AuthGuard() {
   const { data: session } = useSession();
+  const location = useLocation();
 
   // Do not replace the outlet while better-auth revalidates on window focus.
   // Unmounting here erased the email/OTP step when users switched to their inbox.
   if (session) {
-    return <Navigate to="/app" />;
+    const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
+    return <Navigate to="/app" search={firstPublish ? { firstPublish: true } : {}} />;
   }
   return <Outlet />;
 }

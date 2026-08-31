@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { translateFn } from '@nibleaf/i18n';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
@@ -78,6 +79,8 @@ const CONFIGURED_HOST = serverEnv.APP_URL.replace(/^https?:\/\//, '')
   .split('/')[0]
   ?.toLowerCase();
 const IS_CLOUD_MARKETING = CONFIGURED_HOST === MARKETING_HOST;
+const REVISION = process.env.NIBLEAF_REVISION ?? 'development';
+const DRAIN_FILE = process.env.NIBLEAF_DRAIN_FILE ?? '/tmp/nibleaf-draining';
 
 /** Compatibility copies of the public self-hosting artifacts. The documented
  * command uses versioned GitHub release assets and verifies their committed
@@ -766,6 +769,7 @@ const APP_SECURITY_HEADERS = {
 async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string): Promise<Response> {
   const res = await response;
   try {
+    res.headers.set('x-nibleaf-revision', REVISION);
     for (const [name, value] of Object.entries(APP_SECURITY_HEADERS)) {
       if (!res.headers.has(name)) {
         res.headers.set(name, value);
@@ -784,6 +788,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
     return res;
   } catch {
     const wrapped = new Response(res.body, res);
+    wrapped.headers.set('x-nibleaf-revision', REVISION);
     for (const [name, value] of Object.entries(APP_SECURITY_HEADERS)) {
       if (!wrapped.headers.has(name)) {
         wrapped.headers.set(name, value);
@@ -958,6 +963,27 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
 };
 
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
+  if (new URL(request.url).pathname === '/health') {
+    if (existsSync(DRAIN_FILE)) {
+      return Response.json(
+        { status: 'shutting_down', service: 'app', revision: REVISION },
+        { status: 503, headers: { 'cache-control': 'no-store', 'x-nibleaf-revision': REVISION } },
+      );
+    }
+    try {
+      const upstream = await got(`${SELF}/api/app/health`, { retry: { limit: 0 }, throwHttpErrors: false, timeout: { request: 5000 } });
+      const ready = upstream.statusCode === 200;
+      return Response.json(
+        { status: ready ? 'ok' : 'unavailable', service: 'app', revision: REVISION },
+        { status: ready ? 200 : 503, headers: { 'cache-control': 'no-store', 'x-nibleaf-revision': REVISION } },
+      );
+    } catch {
+      return Response.json(
+        { status: 'unavailable', service: 'app', revision: REVISION },
+        { status: 503, headers: { 'cache-control': 'no-store', 'x-nibleaf-revision': REVISION } },
+      );
+    }
+  }
   const nonce = randomBytes(18).toString('base64');
   return ssrNonce.run(nonce, () => withSecurityHeaders(handleRequestInner(request, ...rest), nonce));
 };

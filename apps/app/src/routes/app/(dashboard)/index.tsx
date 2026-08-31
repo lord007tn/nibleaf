@@ -10,19 +10,22 @@ import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
+import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { required } from '@/lib/form';
 import { useFormatters, viewsTrend } from '@/lib/format';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
   component: ProjectsPage,
-  validateSearch: (search: Record<string, unknown>): { newSite?: boolean } =>
-    search.newSite === true || search.newSite === 'true' ? { newSite: true } : {},
+  validateSearch: (search: Record<string, unknown>): { firstPublish?: boolean; newSite?: boolean } => ({
+    ...(search.firstPublish === true || search.firstPublish === 'true' ? { firstPublish: true } : {}),
+    ...(search.newSite === true || search.newSite === 'true' ? { newSite: true } : {}),
+  }),
 });
 
 /** Controlled create dialog so multiple triggers (header button + the empty
@@ -103,7 +106,7 @@ function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
 }
 
 function ProjectsPage() {
-  const { newSite } = Route.useSearch();
+  const { firstPublish, newSite } = Route.useSearch();
   const { data: projects, isPending } = useProjects();
   const [range, setRange] = useState<AnalyticsRange>('30d');
   const { data: analytics, isPending: analyticsPending } = useWorkspaceAnalytics(range);
@@ -115,6 +118,18 @@ function ProjectsPage() {
   const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
   const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
+
+  useEffect(() => {
+    const starterProject = projects?.[0];
+    if (!firstPublish || !starterProject) return;
+    void recordFirstPublishStage('project_entered');
+    void navigate({
+      to: '/app/projects/$projectId/editor',
+      params: { projectId: starterProject.id },
+      search: { firstPublish: true },
+      replace: true,
+    });
+  }, [firstPublish, navigate, projects]);
 
   return (
     <div className="flex flex-col gap-6">

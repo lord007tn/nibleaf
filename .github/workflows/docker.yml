@@ -34,13 +34,43 @@ on:
         required: true
         default: false
         type: boolean
+      compose_replacement_ack:
+        description: Acknowledge that the current Coolify Compose deployment can interrupt traffic
+        required: true
+        default: false
+        type: boolean
+      migration_mode:
+        description: Compatibility of migrations in this release
+        required: true
+        default: none
+        type: choice
+        options:
+          - none
+          - expand-contract
+          - restore-required
+      migration_evidence:
+        description: Privacy-safe migration inventory/dry-run evidence reference (required to deploy)
+        required: false
+        type: string
+      backup_reference:
+        description: Verified pre-deploy backup and restore-test reference (required to deploy)
+        required: false
+        type: string
+      rollback_image_tag:
+        description: Currently deployed immutable sha-<40 hex> tag (required to deploy)
+        required: false
+        type: string
 
 permissions:
+  attestations: write
   contents: read
+  id-token: write
   packages: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ inputs.ref }}
+  # Every production dispatch shares one lock even when refs differ. A second
+  # release waits; it never cancels a migration or compensation in flight.
+  group: ${{ inputs.deploy && 'nibleaf-production-release' || format('{0}-{1}', github.workflow, inputs.ref) }}
   cancel-in-progress: false
 
 jobs:
@@ -52,6 +82,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Resolve immutable source revision
+        id: source
+        shell: bash
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Checkout did not resolve to a full Git revision"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "image_tag=sha-$sha" >> "$GITHUB_OUTPUT"
 
       - name: Validate dispatch
         env:
@@ -59,6 +102,12 @@ jobs:
           PUBLISH: ${{ inputs.publish }}
           REF: ${{ inputs.ref }}
           TAG: ${{ inputs.image_tag }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          COMPOSE_REPLACEMENT_ACK: ${{ inputs.compose_replacement_ack }}
+          MIGRATION_MODE: ${{ inputs.migration_mode }}
+          MIGRATION_EVIDENCE: ${{ inputs.migration_evidence }}
+          BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          ROLLBACK_IMAGE_TAG: ${{ inputs.rollback_image_tag }}
         run: |
           if [[ ! "$TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
             echo "Invalid Docker tag: $TAG"
@@ -73,6 +122,30 @@ jobs:
           if [[ "$DEPLOY" == "true" && ( "$REF" != "main" || "$GITHUB_REF" != "refs/heads/main" ) ]]; then
             echo "Coolify deployment is allowed only for a main-branch workflow building main"
             exit 1
+          fi
+
+          if [[ "$DEPLOY" == "true" ]]; then
+            remote_main=$(git ls-remote origin refs/heads/main | cut -f1)
+            if [[ "$SOURCE_SHA" != "$remote_main" ]]; then
+              echo "::error::Checked-out revision $SOURCE_SHA is no longer current main ($remote_main)"
+              exit 1
+            fi
+            if [[ "$COMPOSE_REPLACEMENT_ACK" != "true" ]]; then
+              echo "::error::Coolify Docker Compose does not provide application-level rolling updates; acknowledge the replacement window"
+              exit 1
+            fi
+            if [[ "$MIGRATION_MODE" == "restore-required" ]]; then
+              echo "::error::Restore-required migrations cannot use the automatic deployment path"
+              exit 1
+            fi
+            if [[ -z "$MIGRATION_EVIDENCE" || -z "$BACKUP_REFERENCE" ]]; then
+              echo "::error::Deployment requires migration inventory/dry-run evidence and a verified backup/restore reference"
+              exit 1
+            fi
+            if [[ ! "$ROLLBACK_IMAGE_TAG" =~ ^sha-[0-9a-f]{40}$ ]]; then
+              echo "::error::Rollback must name the currently deployed immutable sha-<40 hex> image tag"
+              exit 1
+            fi
           fi
 
       # QEMU emulates arm64 so the published image runs on Graviton/Ampere/
@@ -91,16 +164,23 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Reject an existing release image tag
-        if: inputs.publish && startsWith(inputs.image_tag, 'v')
+      - name: Reject existing immutable image tags
+        if: inputs.publish
         env:
           IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
           TAG: ${{ inputs.image_tag }}
         run: |
-          if docker buildx imagetools inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
-            echo "::error::Release image tag $IMAGE:$TAG already exists and is immutable by policy"
-            exit 1
+          candidates=("sha-$SOURCE_SHA")
+          if [[ "$TAG" == v* ]]; then
+            candidates+=("$TAG")
           fi
+          for candidate in "${candidates[@]}"; do
+            if docker buildx imagetools inspect "$IMAGE:$candidate" >/dev/null 2>&1; then
+              echo "::error::Immutable image tag $IMAGE:$candidate already exists"
+              exit 1
+            fi
+          done
 
       - name: Docker metadata
         id: meta
@@ -109,8 +189,10 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ inputs.image_tag }}
+            type=raw,value=${{ steps.source.outputs.image_tag }}
 
       - name: Build and publish
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -122,6 +204,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
+            REVISION=${{ steps.source.outputs.sha }}
             VITE_API_URL=http://server:4311
             VITE_APP_URL=https://nibleaf.com
             VITE_SITE_BASE_DOMAIN=nibleaf.com
@@ -129,89 +212,59 @@ jobs:
             type=gha,scope=nibleaf-image
           cache-to: |
             type=gha,mode=max,scope=nibleaf-image,ignore-error=true
+          provenance: mode=max
+          sbom: true
+
+      - name: Verify published immutable image
+        if: inputs.publish
+        shell: bash
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Build did not return a registry digest"
+            exit 1
+          fi
+          docker buildx imagetools inspect "$IMAGE@$DIGEST" >/dev/null
+          tag_digest=$(docker buildx imagetools inspect "$IMAGE:sha-$SOURCE_SHA" | awk '$1 == "Digest:" { print $2; exit }')
+          if [[ "$tag_digest" != "$DIGEST" ]]; then
+            echo "::error::Immutable tag resolved to $tag_digest, expected build digest $DIGEST"
+            exit 1
+          fi
+          {
+            echo "### Published image"
+            echo "- Source: \`$SOURCE_SHA\`"
+            echo "- Immutable tag: \`sha-$SOURCE_SHA\`"
+            echo "- Digest: \`$DIGEST\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest published image provenance
+        if: inputs.publish
+        uses: actions/attest@v4
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
       # Deployment requires an explicit publish + deploy choice and is limited
       # to a workflow dispatched on main that also builds the main ref.
-      - name: Deploy with Coolify and verify completion
+      - name: Deploy exact image with Coolify, verify production, and compensate on failure
         if: inputs.publish && inputs.deploy && inputs.ref == 'main' && github.ref == 'refs/heads/main'
         env:
           COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: ${{ secrets.COOLIFY_NIBLEAF_DEPLOY_WEBHOOK }}
           COOLIFY_NIBLEAF_API_TOKEN: ${{ secrets.COOLIFY_NIBLEAF_API_TOKEN }}
           COOLIFY_CF_ACCESS_CLIENT_ID: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_ID }}
           COOLIFY_CF_ACCESS_CLIENT_SECRET: ${{ secrets.COOLIFY_CF_ACCESS_CLIENT_SECRET }}
+          NIBLEAF_BACKUP_REFERENCE: ${{ inputs.backup_reference }}
+          NIBLEAF_MIGRATION_EVIDENCE: ${{ inputs.migration_evidence }}
+          NIBLEAF_MIGRATION_MODE: ${{ inputs.migration_mode }}
+          NIBLEAF_ROLLBACK_IMAGE_TAG: ${{ inputs.rollback_image_tag }}
+          NIBLEAF_SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
           if [[ -z "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" || -z "$COOLIFY_NIBLEAF_API_TOKEN" || -z "$COOLIFY_CF_ACCESS_CLIENT_ID" || -z "$COOLIFY_CF_ACCESS_CLIENT_SECRET" ]]; then
             echo "::error::Missing a Coolify deployment or Cloudflare Access secret"
             exit 1
           fi
-
-          response=$(curl --fail-with-body --silent --show-error \
-            --location \
-            --proto-redir '=https' \
-            --request POST \
-            --header "Accept: application/json" \
-            --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
-            --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
-            --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
-            "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK")
-
-          printf '%s\n' "$response"
-          if ! printf '%s' "$response" | jq --exit-status . >/dev/null; then
-            echo "::error::Coolify deploy webhook did not return JSON"
-            exit 1
-          fi
-
-          deployment_uuid=$(printf '%s' "$response" | jq --exit-status --raw-output '.deployments[0].deployment_uuid // empty')
-          if [[ -z "$deployment_uuid" ]]; then
-            echo "::error::Coolify did not return a deployment UUID"
-            exit 1
-          fi
-
-          coolify_api_base="${COOLIFY_NIBLEAF_DEPLOY_WEBHOOK%%/deploy*}"
-          if [[ "$coolify_api_base" == "$COOLIFY_NIBLEAF_DEPLOY_WEBHOOK" ]]; then
-            echo "::error::Could not derive the Coolify API base URL from the deployment webhook"
-            exit 1
-          fi
-
-          echo "Coolify deployment UUID: $deployment_uuid"
-          deadline=$((SECONDS + 1800))
-
-          while (( SECONDS < deadline )); do
-            deployment=$(curl --fail-with-body --silent --show-error \
-              --retry 3 \
-              --retry-all-errors \
-              --location \
-              --proto-redir '=https' \
-              --header "Accept: application/json" \
-              --header "Authorization: Bearer ${COOLIFY_NIBLEAF_API_TOKEN}" \
-              --header "CF-Access-Client-Id: ${COOLIFY_CF_ACCESS_CLIENT_ID}" \
-              --header "CF-Access-Client-Secret: ${COOLIFY_CF_ACCESS_CLIENT_SECRET}" \
-              "${coolify_api_base}/deployments/${deployment_uuid}")
-            status=$(printf '%s' "$deployment" | jq --exit-status --raw-output '.status // empty')
-
-            echo "Coolify deployment status: $status"
-            case "$status" in
-              finished)
-                {
-                  echo "### Coolify deployment"
-                  echo "- UUID: \`$deployment_uuid\`"
-                  echo "- Status: **finished**"
-                } >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-                ;;
-              failed|cancelled-by-user)
-                echo "::error::Coolify deployment $deployment_uuid ended with status: $status"
-                exit 1
-                ;;
-              queued|in_progress)
-                sleep 15
-                ;;
-              *)
-                echo "::error::Coolify deployment $deployment_uuid returned an unknown status: $status"
-                exit 1
-                ;;
-            esac
-          done
-
-          echo "::error::Timed out waiting for Coolify deployment $deployment_uuid to finish"
-          exit 1
+          node scripts/coolify-release.mjs
