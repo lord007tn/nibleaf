@@ -1,135 +1,139 @@
 ---
 title: 'Self-Host a Documentation Site with Docker Compose'
-description: 'A practical walkthrough for self-hosting a documentation site with Docker Compose: server sizing, secrets, custom domains, backups, and upgrades.'
+description: 'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-15'
+dateModified: '2026-08-31'
 tags: ['self-hosting', 'docker', 'guide']
 related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
-readingMinutes: 6
+readingMinutes: 13
 faqs:
   - question: 'How much RAM do I need to self-host a documentation site?'
     answer: 'The project’s starting recommendation is 2 GB when pulling a prebuilt image. Measure the complete stack under your own content and traffic before choosing production capacity.'
   - question: 'How do I back up a self-hosted documentation site?'
-    answer: 'Back up PostgreSQL and the object-storage bucket. Queue and cache state is disposable. Test restoring both backups, not only creating them.'
+    answer: 'Back up PostgreSQL and the asset bucket. The guided installer does not install the repository backup helper, so obtain scripts/backup.sh from the matching release checkout or implement equivalent tested commands.'
   - question: 'Do I have to run database migrations manually when upgrading?'
-    answer: 'The production Compose stack includes a one-shot migration service that applies pending migrations before the application services start.'
+    answer: 'The production Compose stack includes a one-shot migrate service. Confirm its successful completion before treating the application services as healthy.'
   - question: 'Can I use my own domain with a self-hosted docs site?'
     answer: 'Yes. Configure DNS and TLS at the reverse proxy, then set the application and site-domain environment values consistently.'
 ---
 
-Self-hosting a documentation platform is not mainly a Docker problem. The containers are the easy part. The work is deciding where state lives, which hostnames must resolve, how upgrades are pinned, and whether a backup can be restored after the original server is gone.
+Self-hosting a documentation platform is a state-and-recovery problem more than a Docker problem. A successful `docker compose up` is only the start: you still need a manual publish, a public-reader check, and a restore rehearsal.
 
-This guide gives you a production checklist for a Compose-based docs stack. It uses Nibleaf's architecture as the concrete example, including its public repository, pinned container release, and guided installer.
+This workflow was verified on 31 August 2026 against `release/self-host.json`, `scripts/install.sh`, `docker-compose.prod.yml`, and the product's sign-up and publishing code. The published release at that boundary is **v0.1.2**. Source `main` may contain features that are not in that image.
 
-<Callout title="Nibleaf installer">
-The public repository, pinned GHCR release, and guided installer are anonymously accessible. Start with the [self-hosting guide](/self-hosting), then use this article to plan DNS, backups, upgrades, and recovery before moving production content.
+<Callout title="Use a disposable host first">
+Start from the [canonical self-hosting page](/self-hosting). Do not move production content until you have completed the manual-publish and restore checks in this article from outside the server's network.
 </Callout>
 
-## Draw the stack before renting a server
+## Know what the release installs
 
-A full documentation platform usually has more state than a static site generator. Nibleaf's Compose design separates six jobs:
+The guided installer writes two files into the chosen installation directory: `.env` and `docker-compose.yml`. It pulls the pinned image and starts the stack. It does **not** clone the repository or install `scripts/backup.sh`.
 
-| Service | Responsibility | Durable state? |
+The release manifest currently records:
+
+```text
+version: v0.1.2
+installer sha256: d23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a
+compose sha256: 1097cc899705fed843acd71eff11eed8ffa8c54d7edea4bba948ab4e84d4cce9
+```
+
+Those hashes are evidence for the published files, not a substitute for reviewing the script. Download, verify, inspect, then run it:
+
+```bash
+curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
+printf '%s  %s\n' \
+  'd23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a' \
+  'nibleaf-install.sh' | sha256sum --check -
+less nibleaf-install.sh
+sh nibleaf-install.sh
+```
+
+Recheck [release/self-host.json](https://github.com/lord007tn/nibleaf/blob/main/release/self-host.json) before using that command later; a new release should change the version and checksums.
+
+## Map the services and durable state
+
+The production Compose file separates these jobs:
+
+| Service | Responsibility | Restore from backup? |
 | --- | --- | --- |
-| App | Dashboard and published-site rendering | No |
-| API | Authentication, content, publishing, and domain operations | No |
-| Worker | Search indexing and background jobs | No |
-| PostgreSQL | Users, pages, versions, comments, and analytics | Yes |
-| Cache and queue | Short-lived jobs and cached values | No |
-| Object storage | Uploaded images and other assets | Yes |
+| `app` | Dashboard and published reader | No |
+| `server` | Authentication, content, publishing, and domains | No |
+| `worker` | Publish jobs and search indexing | No |
+| `migrate` | One-shot database migrations | No |
+| `postgres` | Accounts, projects, pages, snapshots, and events | **Yes** |
+| `dragonfly` | Queue and disposable cache state | No |
+| `maxio` | Bundled S3-compatible uploaded assets | **Yes** |
 
-This distinction drives the backup plan. Recreating an app container is routine. Losing the database or object bucket is data loss.
+If you configure external S3 or R2 instead of `maxio`, that remote bucket remains durable state and needs its own versioning, backup, and restore plan. The repository helper cannot copy an external provider for you.
 
-## Size from a measurement, not a slogan
+Only the reverse-proxied web entry point should be public. Keep PostgreSQL, Dragonfly, Maxio, the internal API, the migration job, and the worker on the Compose network. Follow Docker's [production guidance](https://docs.docker.com/compose/how-tos/production/) for controlled changes and overrides.
 
-The project's starting recommendation is 2 GB of RAM when a prebuilt image is available. That is a planning floor, not a benchmark. Content volume, concurrent publishing, image processing, search index size, and database cache all change the result.
+## Install to the first manual publish
 
-Before production, load a representative export and record:
+After the installer finishes, change into the directory it reports. The generated file is named `docker-compose.yml`, so normal Compose commands find it without a `-f` flag.
 
-- Idle memory after every service has started.
-- Peak memory during a publish and search reindex.
-- Database and object-store growth after importing real content.
-- Response time for a large page and a search query under modest concurrency.
-- Free disk after one backup cycle.
+```bash
+cd nibleaf
+docker compose ps
+docker compose logs migrate
+docker compose logs --tail=100 server worker app
+```
 
-Leave headroom for an upgrade, when old and new images may coexist briefly. If building the monorepo on the server, budget separately for the build process. A small runtime host may not have enough memory for a production JavaScript build.
+Do not continue if `migrate` failed or the long-running services are restarting. Then complete the application proof:
 
-## Treat configuration as four groups
+1. Open `$APP_URL/sign-up` through the final TLS hostname and create the first owner.
+2. Nibleaf provisions a starter project and performs a system-initiated starter publish. Treat that as provisioning evidence only.
+3. Open the starter project and its editor. Change a visible sentence and wait for the saved state.
+4. Open Preview and confirm the draft contains the change while the public READY site still shows the previous snapshot.
+5. Click **Publish** yourself and wait until the deployment is READY.
+6. In a signed-out browser, open the published page and confirm the change, an uploaded image, and search.
+7. Request a missing page and confirm a real HTTP 404. If the site has Arabic, confirm initial HTML contains `lang="ar"` and `dir="rtl"`.
 
-Compose files become hard to review when every variable looks equally important. Group them by failure mode instead.
+<figure>
+  <img src="/images/first-publish/editor-en.png" alt="Nibleaf editor showing the editable starter page, Preview control, saved state, and Publish button" />
+  <figcaption>The manual milestone begins after the automatic starter deployment: edit, preview, click Publish, then verify the READY reader anonymously.</figcaption>
+</figure>
 
-### Public origins
+<FirstPublishBridge source="docker_compose_guide" />
 
-The dashboard URL, published-site base domain, storage public URL, and authentication origin must agree with the reverse proxy. A mismatch can break cookies, canonical URLs, uploaded images, or project links even when the containers are healthy.
+## Configure origins, secrets, mail, and storage
 
-If projects use subdomains such as `project.docs.example.com`, create and test a wildcard DNS record before launch. Test one expected project hostname and one random hostname from outside your own network. A healthy container cannot compensate for an absent wildcard record.
+The dashboard URL, authentication origin, site-domain base, storage public URL, and reverse-proxy hostname must agree. Origin drift can break secure cookies, redirects, canonical URLs, uploaded images, and project links while every container still looks healthy.
 
-### Secrets
+Generate independent authentication, database, analytics-hash, and storage secrets. Do not keep the example defaults. Store a recovery copy outside the host and outside broadly shared content backups. Configure email before requiring verified sign-in, and disable open signup after the intended owners exist if the installation is private.
 
-Generate independent values for the authentication secret, database password, and storage credentials. Do not reuse examples from an env template. Keep the production env file outside backups that are broadly shared, and decide how a replacement host will receive those secrets during recovery.
+For an external S3-compatible service, verify the endpoint, region, access mode, bucket, CORS rules, and public asset hostname together. Upload and read one image through the exact hostname readers will use.
 
-### Object storage
+## Back up, restore, and state the boundary truthfully
 
-"S3 compatible" does not mean one endpoint value is enough. An external provider can require a provider name, endpoint, region, credentials, bucket, path-style mode, and a browser-accessible public URL. Confirm uploads and public reads through the exact hostname readers will use.
+A complete backup includes PostgreSQL and the asset store. Queue/cache state is disposable. The guided installer does not deliver the repository helper, so either:
 
-### Mail and account policy
+- obtain `scripts/backup.sh` from a checkout or archive that matches the installed release and review it; or
+- implement equivalent `pg_dump` and bucket-copy commands in your own operations repository.
 
-If production sign-in requires verified email, configure delivery before inviting users. For a private installation, decide when open signup should be disabled and test that existing users can still sign in afterward.
+The helper covers PostgreSQL and the bundled Maxio volume. It does not capture an external S3/R2 bucket, TLS material, DNS, provider settings, or secrets stored outside Compose. Protect those separately.
 
-## Keep the network boundary boring
+Restore into a clean, isolated installation: load the database, restore assets, supply the original secrets, start the pinned version, and open several published pages including images. Then run search and a manual publish. A created archive is not restore evidence.
 
-Only the web entry point should be exposed publicly. PostgreSQL, the queue, the internal API, the worker, and bundled object storage should remain on the Compose network unless there is a documented operational reason to expose them.
+Record the observed recovery point and recovery time. Do not claim zero downtime from a single-host Compose deployment; continuous external probes and overlapping provider-side capacity would be needed to establish that separately.
 
-Put a TLS-terminating reverse proxy in front of the app. Then verify the forwarded host and protocol headers reach the application correctly. Those values often determine redirects, secure cookies, canonical URLs, and generated sitemap links.
+## Upgrade and rollback without wishful thinking
 
-Use the [Docker Compose production guidance](https://docs.docker.com/compose/how-tos/production/) as the baseline for restart behavior, configuration overrides, and controlled updates. A platform-specific compose file should add health checks and service dependencies, not weaken that boundary.
+Use a versioned image or digest. Before an upgrade:
 
-## Back up the two stores that matter
+1. Read release notes and environment changes.
+2. Create and verify database and asset backups.
+3. Pull the exact target image.
+4. Run the one-shot migration and inspect its logs.
+5. Start the stateless services and check internal health plus the public hostname.
+6. Repeat the manual-publish, search, image, canonical, sitemap, and 404 checks.
 
-For this architecture, a complete backup has two parts:
+Database migrations may be forward-only. “Rollback” may require restoring the pre-upgrade database and asset backups before starting the old image. Republishing an earlier content snapshot only rolls back reader content; it does not reverse schema, secrets, DNS, or infrastructure changes.
 
-1. A consistent PostgreSQL dump containing accounts, pages, versions, comments, and analytics.
-2. A versioned copy of the object-storage bucket containing uploaded assets.
+## Monitor the user path and size from measurements
 
-The cache and queue can be rebuilt. Do not spend your recovery budget protecting disposable state while leaving the object bucket on the same disk as the server.
+The project's 2 GB recommendation is a starting point for pulling a prebuilt image, not a production benchmark. Observe idle memory, peak memory during publish and indexing, database and bucket growth, disk after a backup cycle, queue depth, migration status, and latency from an external probe. Leave upgrade headroom.
 
-Store backups away from the host. Encrypt them. Set a retention policy. Then perform a restore into a clean environment and open several published pages, including pages with images. A successful backup command only proves that a file was written. A restore proves that the file is useful.
+Monitor at least the dashboard, server health, worker failures, PostgreSQL, object-store reads/writes, certificate expiry, disk, and a public published page. Container health alone cannot prove DNS, TLS, canonical output, wildcard subdomains, or the reader path.
 
-Record two timings during the exercise: recovery point objective, or how much recent work can be lost, and recovery time objective, or how long the service can remain unavailable. Those numbers are more actionable than saying backups run daily.
-
-## Pin upgrades and make rollback explicit
-
-Production should use a versioned image tag or digest. A mutable `latest` tag makes two servers started on different days potentially run different software, and it makes incident reconstruction harder.
-
-A safe upgrade sequence is:
-
-1. Read the release notes and new environment requirements.
-2. Back up PostgreSQL and object storage.
-3. Pull the exact target version.
-4. Run the migration job once.
-5. Start the stateless services and check their health.
-6. Publish a small test change, search for it, and verify a stored image.
-
-Database migrations may be forward-only, so rollback cannot mean "start the old image and hope." Document whether rollback restores the database backup, redeploys only stateless services, or republishes a prior content snapshot. Practice the path you intend to use.
-
-## Check SEO from the public hostname
-
-Production readiness includes the reader-facing output, not only the dashboard. From the final custom domain, check:
-
-- HTTP redirects reach the canonical HTTPS URL without a chain.
-- Missing projects and missing pages return a real HTTP 404.
-- `robots.txt` references the correct sitemap origin.
-- Sitemap URLs return 200 and use matching canonical URLs.
-- Pages marked `noindex` are absent from the sitemap and language alternates.
-- Arabic pages return `lang="ar"` and `dir="rtl"` in the initial HTML.
-- Published assets load without exposing an internal storage hostname.
-
-Run these checks again after changing the reverse proxy, base domain, or CDN. Those layers can change status codes and origins without touching application code.
-
-## Decide whether Compose is the right tool
-
-Compose fits a small team that wants one understandable deployment on one host and accepts responsibility for database, storage, mail, DNS, TLS, monitoring, and restores. It is less attractive when the team has no operator or needs multi-region failover.
-
-If engineers alone maintain a small set of Markdown files, a static generator may be simpler. The [Nibleaf and Docusaurus comparison](/compare/nibleaf-vs-docusaurus) explains that trade-off. If the team needs a visual editor today and does not want to operate the stack, [Nibleaf Cloud is in free beta](/pricing).
-
-For Nibleaf specifically, run the [guided installer](/self-hosting) on a disposable server first. Complete this checklist there, including a restore rehearsal, before moving real documentation.
+Compose is a reasonable fit for a small team that accepts one understandable host and owns the operational work. If the team needs managed operations, use [Nibleaf Cloud](/pricing). If it only needs developer-maintained Markdown, compare a static generator such as [Docusaurus](/compare/nibleaf-vs-docusaurus) before operating a full platform.

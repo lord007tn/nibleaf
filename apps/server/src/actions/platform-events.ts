@@ -52,6 +52,33 @@ export function logFirstContentEdit(userId: string, projectId: string): void {
   })().catch(() => undefined);
 }
 
+const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction'] as const;
+type FirstPublishSource = (typeof FIRST_PUBLISH_SOURCES)[number];
+type FirstPublishStage = 'editor_entered' | 'project_entered' | 'publish_ready';
+
+export async function recordFirstPublishStage(input: {
+  stage: FirstPublishStage;
+  properties: { entry_point: 'organic_content'; intent: 'first_publish'; source: FirstPublishSource };
+}): Promise<void> {
+  await prisma.platformEvent.create({
+    data: {
+      type: input.stage,
+      userId: null,
+      projectId: null,
+      metadata: input.properties,
+    },
+  });
+}
+
+export interface FirstPublishSourceJourney {
+  source: FirstPublishSource;
+  landingViews: number;
+  ctaClicks: number;
+  projectEntered: number;
+  editorEntered: number;
+  ready: number;
+}
+
 export interface ActivationFunnel {
   days: number;
   /** Accounts that completed sign-up provisioning. */
@@ -66,6 +93,8 @@ export interface ActivationFunnel {
   readyWithin24Hours: number;
   /** Median sign-up -> first user-initiated READY publish in hours, among converters. */
   medianHoursToReady: number | null;
+  /** Consent-gated, source-level event receipts. They never store users or projects. */
+  sourceJourneys: FirstPublishSourceJourney[];
 }
 
 /** Activation funnel counts for the admin overview (last `days` days). All four
@@ -85,7 +114,7 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       distinct: ['userId'],
       select: { userId: true },
     });
-  const [signups, edited, published, ready, signupEvents, readyEvents] = await Promise.all([
+  const [signups, edited, published, ready, signupEvents, readyEvents, sourceEvents] = await Promise.all([
     prisma.platformEvent.count({ where: { type: 'signup_completed', createdAt: { gte: since } } }),
     distinctUsers('page_edited', false),
     distinctUsers('publish_clicked', true),
@@ -98,6 +127,37 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       where: { type: 'publish_ready', createdAt: { gte: since }, userId: { not: null }, metadata: { path: ['auto'], equals: false } },
       select: { userId: true, createdAt: true },
     }),
+    prisma.platformEvent.findMany({
+      where: {
+        type: { in: ['first_publish_landing_viewed', 'first_publish_cta_clicked', 'project_entered', 'editor_entered', 'publish_ready'] },
+        createdAt: { gte: since },
+      },
+      select: { type: true, metadata: true },
+    }),
   ]);
-  return { days, signups, edited: edited.length, published: published.length, ready: ready.length, ...activationTiming(signupEvents, readyEvents) };
+
+  const sourceJourneys = FIRST_PUBLISH_SOURCES.map((source) => {
+    const attributed = sourceEvents.filter((event) => {
+      const metadata = event.metadata as Record<string, unknown> | null;
+      return metadata?.source === source;
+    });
+    return {
+      source,
+      landingViews: attributed.filter((event) => event.type === 'first_publish_landing_viewed').length,
+      ctaClicks: attributed.filter((event) => event.type === 'first_publish_cta_clicked').length,
+      projectEntered: attributed.filter((event) => event.type === 'project_entered').length,
+      editorEntered: attributed.filter((event) => event.type === 'editor_entered').length,
+      ready: attributed.filter((event) => event.type === 'publish_ready').length,
+    };
+  });
+
+  return {
+    days,
+    signups,
+    edited: edited.length,
+    published: published.length,
+    ready: ready.length,
+    ...activationTiming(signupEvents, readyEvents),
+    sourceJourneys,
+  };
 }

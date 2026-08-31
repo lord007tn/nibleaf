@@ -18,7 +18,7 @@ import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Roc
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
-import type { PendingChange, Project } from '@/hooks/api/types';
+import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { siteHref } from '@/lib/links';
 
 interface PublishModalProps {
@@ -26,7 +26,7 @@ interface PublishModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after the publish mutation is fired, to hand off to the deploy pipeline. */
-  onPublished: () => void;
+  onPublished: (deployment: Deployment) => void;
 }
 
 /** Visual treatment per change status. */
@@ -63,10 +63,10 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
     }
     const trimmed = message.trim();
     publish.mutate(trimmed || undefined, {
-      onSuccess: () => {
+      onSuccess: (deployment) => {
         setMessage('');
         onOpenChange(false);
-        onPublished();
+        onPublished(deployment);
       },
       onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
     });

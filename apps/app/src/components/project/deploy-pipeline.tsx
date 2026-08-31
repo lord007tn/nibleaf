@@ -8,12 +8,14 @@ import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { useDeployments, useRollback } from '@/hooks/api';
 import type { DeploymentStatus, Project } from '@/hooks/api/types';
+import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { siteHref } from '@/lib/links';
 
 interface DeployPipelineProps {
   project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  trackedDeploymentId?: string | null;
 }
 
 const STEP_KEYS = ['deploy.step.queued', 'deploy.step.building', 'deploy.step.indexing', 'deploy.step.live'] as const;
@@ -44,7 +46,7 @@ function activeStep(status: DeploymentStatus | undefined): number {
 type StepState = 'done' | 'active' | 'failed' | 'pending';
 
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
-export function DeployPipeline({ project, open, onOpenChange }: DeployPipelineProps) {
+export function DeployPipeline({ project, open, onOpenChange, trackedDeploymentId }: DeployPipelineProps) {
   const rollback = useRollback(project.id);
   const confirm = useConfirm();
   const t = useT();
@@ -70,6 +72,7 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
     }
     if (done && latest && announced.current !== latest.id) {
       announced.current = latest.id;
+      if (latest.id === trackedDeploymentId) void recordFirstPublishStage('publish_ready');
       toast.success(t('deploy.published'), {
         action: {
           label: t('deploy.viewSiteArrow'),
@@ -77,7 +80,7 @@ export function DeployPipeline({ project, open, onOpenChange }: DeployPipelinePr
         },
       });
     }
-  }, [open, done, latest, project.id, t]);
+  }, [open, done, latest, project.id, t, trackedDeploymentId]);
 
   const viewSite = () => window.location.assign(siteHref(project.id));
 

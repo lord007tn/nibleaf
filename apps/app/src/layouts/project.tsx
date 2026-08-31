@@ -16,6 +16,7 @@ import type { Project } from '@/hooks/api/types';
 export function PublishControl({ project, initialPublishOpen = false }: { project: Project; initialPublishOpen?: boolean }) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
   const [deployOpen, setDeployOpen] = useState(false);
+  const [publishedDeploymentId, setPublishedDeploymentId] = useState<string | null>(null);
   const t = useT();
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
@@ -34,8 +35,16 @@ export function PublishControl({ project, initialPublishOpen = false }: { projec
         <span className="hidden sm:inline">{building ? t('project.publishing') : t('project.publish')}</span>
       </Button>
 
-      <PublishModal onOpenChange={setPublishOpen} onPublished={() => setDeployOpen(true)} open={publishOpen} project={project} />
-      <DeployPipeline onOpenChange={setDeployOpen} open={deployOpen} project={project} />
+      <PublishModal
+        onOpenChange={setPublishOpen}
+        onPublished={(deployment) => {
+          setPublishedDeploymentId(deployment.id);
+          setDeployOpen(true);
+        }}
+        open={publishOpen}
+        project={project}
+      />
+      <DeployPipeline onOpenChange={setDeployOpen} open={deployOpen} project={project} trackedDeploymentId={publishedDeploymentId} />
     </div>
   );
 }

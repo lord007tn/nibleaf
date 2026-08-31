@@ -1,6 +1,7 @@
 import { getDomain } from 'tldts';
 
 export const MARKETING_ANALYTICS_CONSENT_KEY = 'nibleaf.marketing.analytics.consent.v1';
+export const MARKETING_ANALYTICS_CONSENT_EVENT = 'nibleaf:marketing-analytics-consent';
 
 export type MarketingAnalyticsConsent = 'accepted' | 'declined' | 'pending';
 export type MarketingAnalyticsLanguage = 'ar' | 'en';
@@ -37,6 +38,8 @@ const CTA_PLACEMENTS = new Set<MarketingCtaPlacement>(['final', 'header', 'hero'
 const TOOL_RESULTS = new Set(['insufficient_evidence', 'material_gaps', 'strong_evidence', 'work_remaining']);
 const GTM_MARKETING_EVENT_NAMES = new Set([
   'cta_clicked',
+  'first_publish_cta_clicked',
+  'first_publish_landing_viewed',
   'free_tool_completed',
   'free_tool_cta_clicked',
   'free_tool_started',
@@ -54,6 +57,24 @@ const validVersion = (value: unknown): boolean => typeof value === 'string' && /
 
 /** Final privacy boundary for every event delivered to the Nibleaf GA property. */
 function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<string, unknown>): boolean {
+  if (event === 'first_publish_landing_viewed') {
+    return (
+      exactKeys(properties, ['entry_point', 'intent', 'source']) &&
+      properties.entry_point === 'organic_content' &&
+      properties.intent === 'first_publish' &&
+      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction')
+    );
+  }
+  if (event === 'first_publish_cta_clicked') {
+    return (
+      exactKeys(properties, ['destination', 'entry_point', 'intent', 'placement', 'source']) &&
+      properties.destination === 'signup' &&
+      properties.entry_point === 'organic_content' &&
+      properties.intent === 'first_publish' &&
+      properties.placement === 'article_bridge' &&
+      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction')
+    );
+  }
   if (event === 'sign_up') return exactKeys(properties, ['method']) && properties.method === 'email_otp';
   if (event === 'cta_clicked') {
     return (
@@ -117,6 +138,7 @@ export const readMarketingAnalyticsConsent = (): MarketingAnalyticsConsent => {
 
 export const persistMarketingAnalyticsConsent = (choice: Exclude<MarketingAnalyticsConsent, 'pending'>): void => {
   window.localStorage.setItem(MARKETING_ANALYTICS_CONSENT_KEY, choice);
+  window.dispatchEvent(new CustomEvent(MARKETING_ANALYTICS_CONSENT_EVENT, { detail: choice }));
 };
 
 const responseNonce = (): string | undefined => document.querySelector<HTMLMetaElement>('meta[property="csp-nonce"]')?.content || undefined;
