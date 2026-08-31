@@ -97,7 +97,18 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
           .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
         for (const { language, position } of orderedLanguages) {
           const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
-          await importNavigation(language.nodes, target, language.code, repository, baseDir, blobs, assets, summary, state);
+          await importNavigation(
+            language.nodes,
+            target,
+            language.code,
+            input.replaceExisting !== true,
+            repository,
+            baseDir,
+            blobs,
+            assets,
+            summary,
+            state,
+          );
         }
       } else {
         const { nodes, warnings: navWarnings } = parseMintlifyNavigation(config);
@@ -106,7 +117,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
           throw badRequest(`${configPath} has an empty navigation — nothing to import.`);
         }
         chromeNodes = nodes;
-        await importNavigation(nodes, defaultTarget, undefined, repository, baseDir, blobs, assets, summary, state);
+        await importNavigation(nodes, defaultTarget, undefined, input.replaceExisting !== true, repository, baseDir, blobs, assets, summary, state);
       }
       if (state.versions.size > 0) {
         summary.warnings.push(`Imported Mintlify versions as Nibleaf documentation versions: ${[...state.versions].join(', ')}.`);
@@ -179,6 +190,7 @@ const importNavigation = async (
   sourceNodes: readonly NavNode[],
   defaultTarget: ImportTarget,
   languageCode: string | undefined,
+  includeLinkedPages: boolean,
   repository: RepoRef,
   baseDir: string,
   blobs: ReadonlySet<string>,
@@ -202,7 +214,7 @@ const importNavigation = async (
             }),
         );
   for (const partition of partitions) {
-    await addLinkedPages(partition.nodes, languageCode, repository, baseDir, blobs, summary);
+    if (includeLinkedPages) await addLinkedPages(partition.nodes, languageCode, repository, baseDir, blobs, summary);
     const removedPlaceholders = await removeImportPlaceholders(partition.target);
     if (removedPlaceholders > 0) {
       summary.warnings.push(
