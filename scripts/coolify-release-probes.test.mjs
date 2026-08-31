@@ -7,10 +7,10 @@ const revision = 'a'.repeat(40);
 const response = (body, responseRevision = revision) =>
   Response.json(body, { headers: responseRevision === null ? {} : { 'x-nibleaf-revision': responseRevision } });
 
-test('API health accepts its real body contract and proves revision through the response header', async () => {
+test('API health proves revision through both its response header and body', async () => {
   await assert.doesNotReject(() =>
     verifyTarget({ name: 'api', url: 'https://nibleaf.com/api/app/health', revision: 'required' }, revision, false, async () =>
-      response({ ok: true }),
+      response({ ok: true, revision }),
     ),
   );
 });
@@ -19,9 +19,19 @@ test('API health rejects an unsuccessful body even when the revision header matc
   await assert.rejects(
     () =>
       verifyTarget({ name: 'api', url: 'https://nibleaf.com/api/app/health', revision: 'required' }, revision, false, async () =>
-        response({ ok: false }),
+        response({ ok: false, revision }),
       ),
-    /API health body did not report ok: true/,
+    /API health body did not prove ok: true and the expected revision/,
+  );
+});
+
+test('API health rejects a stale body revision even when the response header matches', async () => {
+  await assert.rejects(
+    () =>
+      verifyTarget({ name: 'api', url: 'https://nibleaf.com/api/app/health', revision: 'required' }, revision, false, async () =>
+        response({ ok: true, revision: '0'.repeat(40) }),
+      ),
+    /API health body did not prove ok: true and the expected revision/,
   );
 });
 
