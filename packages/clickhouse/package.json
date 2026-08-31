@@ -21,11 +21,11 @@
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
-    "zod": "^4.4.3"
+    "zod": "^4.5.1"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "tsx": "4.23.12",
     "tsdown": "^0.22.14",
     "typescript": "^7.0.2",
