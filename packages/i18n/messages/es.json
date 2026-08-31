@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub repositorio",
   "settings_import_mintlify_branch": "Sucursal (opcional)",
   "settings_import_mintlify_invalidrepo": "Utilice el formulario propietario/repositorio.",
+  "settings_import_mintlify_replaceexisting": "Reemplazar el borrador actual con este repositorio",
   "settings_import_ghost_title": "fantasma",
   "settings_import_ghost_description": "Cargue una exportación Ghost JSON: las publicaciones y páginas publicadas se convierten a Markdown.",
   "settings_import_ghost_file": "Exportar archivo (.json)",

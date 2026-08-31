@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "Репозиторий GitHub",
   "settings_import_mintlify_branch": "Филиал (необязательно)",
   "settings_import_mintlify_invalidrepo": "Используйте владельца формы/репозиторий.",
+  "settings_import_mintlify_replaceexisting": "Заменить текущий черновик этим репозиторием",
   "settings_import_ghost_title": "Призрак",
   "settings_import_ghost_description": "Загрузите экспорт Ghost JSON — опубликованные сообщения и страницы преобразуются в Markdown.",
   "settings_import_ghost_file": "Экспортировать файл (.json)",

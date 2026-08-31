@@ -37,21 +37,29 @@ export const getGitHubDefaultBranch = async (owner: string, repo: string) => {
   }
 };
 
-/** Read one text file from a public repository through GitHub's official SDK. */
+/** Read one text file from a public repository through GitHub's raw-content
+ * origin. The Contents API allows only 60 unauthenticated requests per hour;
+ * a bilingual documentation import can legitimately exceed that by itself.
+ * The repository tree is still obtained through GitHub's API first, so callers
+ * only request paths that GitHub reported for the selected public revision. */
 export const getGitHubTextFile = async (owner: string, repo: string, branch: string, filePath: string) => {
+  let response: Response;
   try {
-    const response = await github.request('GET /repos/{owner}/{repo}/contents/{path}', {
-      owner,
-      repo,
-      path: filePath,
-      ref: branch,
-      mediaType: { format: 'raw' },
+    response = await fetch(githubRawUrl(owner, repo, branch, filePath), {
+      headers: { Accept: 'text/plain', 'User-Agent': 'nibleaf-importer' },
+      redirect: 'error',
     });
-    return String(response.data);
   } catch (error) {
-    if (error instanceof RequestError && error.status === 404) return null;
     throw githubFailure(error);
   }
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw badRequest(`GitHub raw content error (${response.status}). Try again shortly.`, {
+      provider: 'github',
+      providerStatus: response.status,
+    });
+  }
+  return await response.text();
 };
 
 /** raw.githubusercontent.com URL for a browser-reachable repository asset. */

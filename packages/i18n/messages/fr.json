@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "Dépôt GitHub",
   "settings_import_mintlify_branch": "Branche (facultatif)",
   "settings_import_mintlify_invalidrepo": "Utilisez le formulaire propriétaire/dépôt.",
+  "settings_import_mintlify_replaceexisting": "Remplacer le brouillon actuel par ce dépôt",
   "settings_import_ghost_title": "Fantôme",
   "settings_import_ghost_description": "Téléchargez une exportation Ghost JSON : les articles et les pages publiés sont convertis en Markdown.",
   "settings_import_ghost_file": "Exporter le fichier (.json)",

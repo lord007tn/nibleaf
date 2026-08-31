@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ghostImportBody } from '@nibleaf/validators';
@@ -132,6 +133,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('');
+  const [replaceExisting, setReplaceExisting] = useState(false);
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
@@ -168,7 +170,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       }
       const trimmedBranch = branch.trim();
       mintlify.mutate(
-        { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}) },
+        { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}), replaceExisting },
         { onSuccess: handleSuccess, onError: handleError },
       );
       return;
@@ -257,6 +259,12 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                         value={branch}
                       />
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-3 py-2.5">
+                    <Label className="leading-snug" htmlFor="import-mintlify-replace">
+                      {t('settings.import.mintlify.replaceExisting')}
+                    </Label>
+                    <Switch checked={replaceExisting} id="import-mintlify-replace" onCheckedChange={setReplaceExisting} />
                   </div>
                 </div>
               ) : null}

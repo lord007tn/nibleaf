@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub সংগ্রহস্থল",
   "settings_import_mintlify_branch": "শাখা (ঐচ্ছিক)",
   "settings_import_mintlify_invalidrepo": "ফর্ম মালিক/রেপো ব্যবহার করুন.",
+  "settings_import_mintlify_replaceexisting": "বর্তমান খসড়াটি এই রিপোজিটরি দিয়ে প্রতিস্থাপন করুন",
   "settings_import_ghost_title": "ভূত",
   "settings_import_ghost_description": "একটি ঘোস্ট আপলোড করুন JSON রপ্তানি — প্রকাশিত পোস্ট এবং পৃষ্ঠাগুলিকে Markdown এ রূপান্তরিত করা হয়েছে৷",
   "settings_import_ghost_file": "ফাইল রপ্তানি করুন (.json)",

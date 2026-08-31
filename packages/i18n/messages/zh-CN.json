@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "GitHub 存储库",
   "settings_import_mintlify_branch": "分支机构（可选）",
   "settings_import_mintlify_invalidrepo": "使用所有者/存储库表单。",
+  "settings_import_mintlify_replaceexisting": "使用此仓库替换当前草稿",
   "settings_import_ghost_title": "幽灵",
   "settings_import_ghost_description": "上传 Ghost JSON 导出 — 发布的帖子和页面将转换为 Markdown。",
   "settings_import_ghost_file": "导出文件（.json）",

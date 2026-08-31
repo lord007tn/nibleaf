@@ -1530,6 +1530,7 @@ export const MESSAGE_IDS = {
   'settings.import.mintlify.repo': 'settings_import_mintlify_repo',
   'settings.import.mintlify.branch': 'settings_import_mintlify_branch',
   'settings.import.mintlify.invalidRepo': 'settings_import_mintlify_invalidrepo',
+  'settings.import.mintlify.replaceExisting': 'settings_import_mintlify_replaceexisting',
   'settings.import.ghost.title': 'settings_import_ghost_title',
   'settings.import.ghost.description': 'settings_import_ghost_description',
   'settings.import.ghost.file': 'settings_import_ghost_file',

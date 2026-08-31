@@ -1,4 +1,4 @@
-import { type Branch, prisma } from '@nibleaf/database';
+import { type Branch, type Prisma, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
 import type { CreateBranchBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
@@ -23,6 +23,32 @@ export const assertBranchInProject = async (projectId: string, id: string) => {
     throw notFound('branch', { id });
   }
   return branch;
+};
+
+/** Create an empty, non-default branch used to assemble an authoritative
+ * importer replacement away from the editable main tree. It is promoted only
+ * after the whole import succeeds; failures can delete it without touching the
+ * user's current draft. */
+export const createImportReplacementBranch = async (projectId: string, source: string, preserveExisting: boolean) => {
+  const name = `import-${source}-${newId()}`;
+  return preserveExisting ? createBranch(projectId, { name }) : prisma.branch.create({ data: { projectId, name, isDefault: false } });
+};
+
+/** Atomically replace main with a completed import branch and, when supplied,
+ * apply the imported project chrome in the same commit. */
+export const promoteImportReplacementBranch = async (projectId: string, id: string, projectConfig?: Prisma.InputJsonValue) => {
+  const branch = await assertBranchInProject(projectId, id);
+  if (branch.isDefault) throw conflict('The default branch cannot be promoted as an import replacement.');
+  const main = await getDefaultBranch(projectId);
+  await prisma.$transaction(async (tx) => {
+    await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
+    await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+    await tx.branch.delete({ where: { id: branch.id } });
+    if (projectConfig !== undefined) {
+      await tx.project.update({ where: { id: projectId }, data: { config: projectConfig } });
+    }
+  });
+  return main;
 };
 
 /** Create a branch by forking another branch's pages (the default by default).
@@ -59,6 +85,8 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
           icon: p.icon,
           description: p.description,
           content: p.content,
+          config: p.config ?? undefined,
+          translationKey: p.translationKey,
           position: p.position,
           hidden: p.hidden,
         })),

@@ -1395,6 +1395,7 @@
   "settings_import_mintlify_repo": "repositori GitHub",
   "settings_import_mintlify_branch": "Cabang (opsional)",
   "settings_import_mintlify_invalidrepo": "Gunakan pemilik formulir/repo.",
+  "settings_import_mintlify_replaceexisting": "Ganti draf saat ini dengan repositori ini",
   "settings_import_ghost_title": "Hantu",
   "settings_import_ghost_description": "Unggah ekspor Ghost JSON — postingan dan halaman yang dipublikasikan akan dikonversi ke Markdown.",
   "settings_import_ghost_file": "Ekspor file (.json)",
