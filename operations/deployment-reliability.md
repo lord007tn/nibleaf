@@ -24,9 +24,10 @@ Every Compose deployment must use the manual Docker workflow and must:
    migrations in the automatic path;
 5. atomically change Coolify's `NIBLEAF_IMAGE_TAG` from the known rollback tag
    to the exact candidate tag, then run the one-shot migrations before services;
-6. wait for the provider deployment to finish, then prove app, API readiness,
-   admin on port 4315, docs, and both sitemaps are HTTP 200 and expose the exact
-   revision for at least three consecutive probe rounds; and
+6. wait for the provider deployment to finish, then prove the image-backed app,
+   API readiness, admin on port 4315, and app sitemap expose the exact revision
+   while the separately published docs and docs sitemap are HTTP 200 for at
+   least three consecutive probe rounds; and
 7. restore the previous tag, trigger a compensation deployment, and re-probe
    that exact previous revision when deployment or verification fails.
 
