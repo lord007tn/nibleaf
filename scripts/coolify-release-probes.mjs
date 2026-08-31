@@ -1,14 +1,14 @@
 export const publicTargets = [
-  ['app', 'https://nibleaf.com/'],
-  ['app readiness', 'https://nibleaf.com/health'],
-  ['api', 'https://nibleaf.com/api/app/health'],
-  ['admin', 'https://admin.nibleaf.com/sign-in'],
-  ['docs', 'https://docs.nibleaf.com/'],
-  ['app sitemap', 'https://nibleaf.com/sitemap.xml'],
-  ['docs sitemap', 'https://docs.nibleaf.com/sitemap.xml'],
+  { name: 'app', url: 'https://nibleaf.com/', revision: 'required' },
+  { name: 'app readiness', url: 'https://nibleaf.com/health', revision: 'required' },
+  { name: 'api', url: 'https://nibleaf.com/api/app/health', revision: 'required' },
+  { name: 'admin', url: 'https://admin.nibleaf.com/sign-in', revision: 'required' },
+  { name: 'docs', url: 'https://docs.nibleaf.com/', revision: 'separate-publication' },
+  { name: 'app sitemap', url: 'https://nibleaf.com/sitemap.xml', revision: 'required' },
+  { name: 'docs sitemap', url: 'https://docs.nibleaf.com/sitemap.xml', revision: 'separate-publication' },
 ];
 
-export const verifyTarget = async ([name, url], expectedRevision, allowMissingRevision = false, fetchImpl = fetch) => {
+export const verifyTarget = async ({ name, url, revision: revisionContract }, expectedRevision, allowMissingRevision = false, fetchImpl = fetch) => {
   const response = await fetchImpl(url, {
     headers: { 'user-agent': 'nibleaf-release-verifier/1.0' },
     redirect: 'follow',
@@ -16,7 +16,7 @@ export const verifyTarget = async ([name, url], expectedRevision, allowMissingRe
   });
   if (response.status !== 200) throw new Error(`${name} returned HTTP ${response.status}.`);
   const revision = response.headers.get('x-nibleaf-revision');
-  if (revision !== expectedRevision && !(allowMissingRevision && revision === null)) {
+  if (revisionContract === 'required' && revision !== expectedRevision && !(allowMissingRevision && revision === null)) {
     throw new Error(`${name} served revision ${revision ?? 'missing'}, expected ${expectedRevision}.`);
   }
   if (name === 'api') {

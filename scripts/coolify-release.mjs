@@ -163,6 +163,7 @@ await summary([
   `- Migration mode: \`${migrationMode}\``,
   `- Migration evidence: \`${migrationEvidence}\``,
   `- Backup/restore evidence: \`${backupReference}\``,
-  '- App, API readiness, admin, docs, and both sitemaps: **200 on exact revision**',
+  '- App, API readiness, admin, and app sitemap: **200 on exact image revision**',
+  '- Docs and docs sitemap: **200 reachability** (publication identity is verified separately)',
   '- Availability claim: **replacement deployment verified; zero downtime not claimed**',
 ]);
