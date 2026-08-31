@@ -12,5 +12,3 @@ export const firstPublishActivationBody = z
       .strict(),
   })
   .strict();
-
-export type FirstPublishActivationBody = z.infer<typeof firstPublishActivationBody>;

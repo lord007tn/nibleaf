@@ -70,7 +70,7 @@ export async function recordFirstPublishStage(input: {
   });
 }
 
-export interface FirstPublishSourceJourney {
+interface FirstPublishSourceJourney {
   source: FirstPublishSource;
   landingViews: number;
   ctaClicks: number;
