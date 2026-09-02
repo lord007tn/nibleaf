@@ -1,5 +1,6 @@
 import {
   type ResolvedTheme,
+  readableOnBackground,
   resolveTheme,
   safeThemeFontFamily,
   safeThemeHex,
@@ -36,11 +37,17 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
   '--ring': tokens.focus,
 });
 
+// Derived (non-contract) variables: the accent as drawn on the always-dark
+// code surface (Signal's rail, code-block chrome) is nudged towards white until
+// it passes AA there, since a light-mode accent rarely reads on near-black.
+const derivedDeclarations = (tokens: ThemeColorTokens): string =>
+  `--theme-code-accent:${readableOnBackground(tokens.accent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)}`;
+
 const tokenDeclarations = (tokens: ThemeColorTokens): string => {
   const semantic = Object.entries(tokens)
     .map(([key, value]) => `${THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens]}:${value}`)
     .join(';');
-  return [semantic, ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`)].join(';');
+  return [semantic, derivedDeclarations(tokens), ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`)].join(';');
 };
 
 // Projects created before theme schema v1 keep the design-system palette they
@@ -65,6 +72,8 @@ const legacyTokenDeclarations = (accent: string): string =>
     '--theme-success:#15803d',
     '--theme-warning:#d97706',
     '--theme-danger:var(--destructive)',
+    `--theme-code-accent:color-mix(in oklab,${accent} 55%,white)`,
+    '--theme-code-muted:#a3aab8',
   ].join(';');
 
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
@@ -121,6 +130,8 @@ export const projectThemeVariables = (config?: ProjectConfig | null, mode: 'ligh
   const tokens = safeTokens(theme.colors[mode], preset.colors[mode]);
   return {
     ...Object.fromEntries(Object.entries(tokens).map(([key, value]) => [THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens], value])),
+    '--theme-code-accent': readableOnBackground(tokens.accent, tokens.code),
+    '--theme-code-muted': readableOnBackground(tokens.mutedForeground, tokens.code),
     ...designSystemAliases(tokens),
     '--radius': radiusValue(theme.layout.radius),
     color: tokens.foreground,

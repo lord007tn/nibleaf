@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
+import { useFormatters } from '@/lib/format';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ const formattedDate = (value: string, locale: string) =>
 
 export function ApiKeysTab({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
+  const { number } = useFormatters();
   const { data: keys = [], error, isError, isLoading } = useApiKeys(projectId);
   const create = useCreateApiKey(projectId);
   const rotate = useRotateApiKey(projectId);
@@ -47,6 +49,8 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
   const [expiryDays, setExpiryDays] = useState<ExpiryDays>(90);
   const [secret, setSecret] = useState<string | null>(null);
   const [revokeCandidate, setRevokeCandidate] = useState<ApiKey | null>(null);
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const expiryOptions = EXPIRY_OPTIONS.map((days) => ({ value: String(days), label: t('settings.apiKeys.expiryDays', { days: number(days) }) }));
 
   const toggleScope = (scope: IssuableMcpScope) => {
     if (scope === 'mcp:connect') return;
@@ -120,6 +124,7 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
               value={name}
             />
             <Select
+              items={expiryOptions}
               onValueChange={(value) => {
                 const parsed = expiryOptionSchema.safeParse(value);
                 if (parsed.success) setExpiryDays(expiryDaysByValue[parsed.data]);
@@ -130,9 +135,9 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EXPIRY_OPTIONS.map((days) => (
-                  <SelectItem key={days} value={String(days)}>
-                    {t('settings.apiKeys.expiryDays', { days })}
+                {expiryOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>

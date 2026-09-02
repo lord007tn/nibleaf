@@ -3,8 +3,8 @@ title: 'اختيار سمة التوثيق وتخصيصها ومشاركتها'
 description: 'استخدم سمات Nibleaf بأمان في المعاينة والتوثيق المنشور، ثم صدّر قالب سمة مُصدّرًا أو استورده وفق مخطط مُتحقق منه وذي إصدار.'
 audience: 'مالكو التوثيق والمصممون ومشغّلو الاستضافة الذاتية'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
+last_reviewed: '2026-09-02'
+verified_against: 'packages/shared/src/themes.ts, packages/shared/src/theme-repository.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'product/themes'
@@ -153,9 +153,34 @@ HTTPS أو مسارات تبدأ من الجذر من دون انتقال بين
 
 ## تشغيل مستودع Git وتعديله
 
-يحافظ تصدير المستودع على معرّفات السمة وبيئة التشغيل والمخطط في الإصدار 1، ولا
-يتطلب ترحيلًا من عقد Git القائم. كل تصدير تطبيق Vite مستقل يضم Paraglide ومحول
-لقطة مضمّنًا ومتحققًا منه ومصيّرات MDX آمنة واختبارات وبناء إنتاج. توفر Harbor
-وManuscript وSignal ملفات React وCSS مختلفة يملكها العميل. وتظل ملفات البيان
-واللقطة وخريطة المحتوى التي يملكها Nibleaf حد المصالحة؛ عدّل مصدر السمة ومحتوى
-التوثيق، ولا تعدّل `.nibleaf/`.
+يصدّر عقد المستودع v2 مشروع توثيق مألوفًا: تطبيق TanStack Start مع Vite
+وTailwind CSS v4 يعتمد اصطلاحات المحتوى المعروفة من fumadocs وMintlify. يشغّله
+الأمر `corepack pnpm install && corepack pnpm dev`، ويولّد `corepack pnpm build`
+موقعًا ثابتًا مسبق التصيير لكل الصفحات القابلة للوصول (`.output/public`) يمكن
+نشره على أي استضافة ثابتة. لا يتطلب المستودع اعتمادية `workspace:` ولا أسرارًا
+ولا طلبات شبكة أثناء البناء.
+
+- `docs.json` ملف بيان متوافق مع Mintlify (`name` و`colors`
+  و`navigation.languages[].pages` و`navigation.versions[]` عندما يملك المشروع
+  أكثر من إصدار) مع كتلة `x-nibleaf` تضم رموز السمة المحلولة واللغات مع
+  اتجاهها والإصدارات ومسار المحتوى. يعيد Nibleaf توليده في كل مزامنة؛ لا تعدّله
+  يدويًا.
+- يحتوي `content/` صفحات MDX بالبيانات الوصفية نفسها التي تكتبها مزامنة Git
+  (`title` و`description` و`icon` و`hidden` اختياريًا). تقع اللغة الافتراضية في
+  جذر المحتوى، واللغات الأخرى في `content/<code>/`، والإصدارات غير الافتراضية
+  في `content/versions/<slug>/`. المجلدات مجموعات تنقّل؛ وأي ملف لم يُدرج بعد في
+  `docs.json` يُلحق بمجموعته كي يستمر الموقع في العمل إلى أن يلحق به Nibleaf.
+- يضم `src/components/layout/` هياكل Harbor وManuscript وSignal مبنية بأدوات
+  Tailwind ورموز `docs.json` (الوضعان الفاتح والداكن، وخصائص CSS المنطقية
+  لاتجاه RTL). يربط `src/styles.css` الرموز بالأدوات، ويصيّر
+  `src/components/mdx/` مكونات التأليف عبر قائمة السماح نفسها المستخدمة في
+  المنصة، وتحفظ `messages/{en,ar}.json` نصوص الواجهة ثنائية اللغة. كل ما يقع
+  تحت `src/` و`messages/` و`public/` وملفات الأدوات مملوك للعميل ولا يُستبدل بعد
+  الدفع الأول.
+- يحتفظ `.nibleaf/` ببيانات المصالحة فقط: `manifest.json` (إصدار المخطط 2
+  والمشروع والقالب وتجزئتا `docs.json` وخريطة المحتوى) و`content-map.json`. لا
+  توجد لقطة محتوى كاملة.
+
+تفشل مستودعات المخطط v1 (`nibleaf.theme.json` مع `.nibleaf/snapshot.json`)
+برسالة صريحة. احذف تلك الملفات المولّدة وادفع مجددًا من Nibleaf لإعادة توليد
+تخطيط v2؛ ولا تُمسّ الملفات التي يملكها العميل.

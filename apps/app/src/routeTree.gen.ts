@@ -9,86 +9,60 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TermsRouteImport } from './routes/terms'
-import { Route as SelfHostingRouteImport } from './routes/self-hosting'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as DevelopersRouteImport } from './routes/developers'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as CloudRouteImport } from './routes/cloud'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as ArRouteRouteImport } from './routes/ar/route'
-import { Route as AppRouteRouteImport } from './routes/app/route'
-import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as BlogIndexRouteImport } from './routes/blog.index'
-import { Route as ArIndexRouteImport } from './routes/ar/index'
-import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
-import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
-import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
-import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
-import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
-import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
-import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
-import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
-import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
-import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
-import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
-import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
-import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
-import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
-import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
+import { Route as authRouteRouteImport } from './routes/(auth)/route'
+import { Route as AboutRouteImport } from './routes/about'
+import { Route as AppRouteRouteImport } from './routes/app/route'
+import { Route as ArRouteRouteImport } from './routes/ar/route'
+import { Route as CloudRouteImport } from './routes/cloud'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DevelopersRouteImport } from './routes/developers'
+import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SelfHostingRouteImport } from './routes/self-hosting'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
-import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
+import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
+import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
+import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
+import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
+import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
+import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
+import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
+import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
 import { Route as AppdashboardRouteRouteImport } from './routes/app/(dashboard)/route'
-import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$projectId/index'
+import { Route as ArIndexRouteImport } from './routes/ar/index'
+import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
+import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
+import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
+import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
+import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
+import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
 import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
-import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
-import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
-import { Route as AppdashboardSitesRouteImport } from './routes/app/(dashboard)/sites'
-import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
-import { Route as AppdashboardMembersRouteImport } from './routes/app/(dashboard)/members'
 import { Route as AppdashboardAnalyticsRouteImport } from './routes/app/(dashboard)/analytics'
+import { Route as AppdashboardMembersRouteImport } from './routes/app/(dashboard)/members'
+import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
+import { Route as AppdashboardSitesRouteImport } from './routes/app/(dashboard)/sites'
 import { Route as AppProjectsProjectIdRouteRouteImport } from './routes/app/projects/$projectId/route'
+import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$projectId/index'
+import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
+import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
 import { Route as AppProjectsProjectIdIndexRouteImport } from './routes/app/projects/$projectId/index'
-import { Route as AppProjectsProjectIdSettingsRouteImport } from './routes/app/projects/$projectId/settings'
-import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
-import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/projects/$projectId/analytics'
+import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
+import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
+import { Route as AppProjectsProjectIdSettingsRouteImport } from './routes/app/projects/$projectId/settings'
 
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SelfHostingRoute = SelfHostingRouteImport.update({
-  id: '/self-hosting',
-  path: '/self-hosting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevelopersRoute = DevelopersRouteImport.update({
-  id: '/developers',
-  path: '/developers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CloudRoute = CloudRouteImport.update({
-  id: '/cloud',
-  path: '/cloud',
+const authRouteRoute = authRouteRouteImport.update({
+  id: '/(auth)',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -96,55 +70,120 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ArRouteRoute = ArRouteRouteImport.update({
-  id: '/ar',
-  path: '/ar',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/app',
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const authRouteRoute = authRouteRouteImport.update({
-  id: '/(auth)',
+const ArRouteRoute = ArRouteRouteImport.update({
+  id: '/ar',
+  path: '/ar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CloudRoute = CloudRouteImport.update({
+  id: '/cloud',
+  path: '/cloud',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DevelopersRoute = DevelopersRouteImport.update({
+  id: '/developers',
+  path: '/developers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SelfHostingRoute = SelfHostingRouteImport.update({
+  id: '/self-hosting',
+  path: '/self-hosting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authResetPasswordRoute = authResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authSignInRoute = authSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authSignUpRoute = authSignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => authRouteRoute,
+} as any)
+const AcceptInviteInvitationIdRoute =
+  AcceptInviteInvitationIdRouteImport.update({
+    id: '/accept-invite/$invitationId',
+    path: '/accept-invite/$invitationId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AlternativesGitbookRoute = AlternativesGitbookRouteImport.update({
+  id: '/alternatives/gitbook',
+  path: '/alternatives/gitbook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlternativesMintlifyRoute = AlternativesMintlifyRouteImport.update({
+  id: '/alternatives/mintlify',
+  path: '/alternatives/mintlify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
+  id: '/alternatives/readme',
+  path: '/alternatives/readme',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppdashboardRouteRoute = AppdashboardRouteRouteImport.update({
+  id: '/(dashboard)',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const ArIndexRoute = ArIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ArRouteRoute,
 } as any)
-const ToolsRtlDocumentationReadinessRoute =
-  ToolsRtlDocumentationReadinessRouteImport.update({
-    id: '/tools/rtl-documentation-readiness',
-    path: '/tools/rtl-documentation-readiness',
-    getParentRoute: () => rootRouteImport,
+const ArDocumentationPlatformsRoute =
+  ArDocumentationPlatformsRouteImport.update({
+    id: '/documentation-platforms',
+    path: '/documentation-platforms',
+    getParentRoute: () => ArRouteRoute,
   } as any)
-const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
-  id: '/git-preview/$token',
-  path: '/git-preview/$token',
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareNibleafVsMintlifyRoute =
-  CompareNibleafVsMintlifyRouteImport.update({
-    id: '/compare/nibleaf-vs-mintlify',
-    path: '/compare/nibleaf-vs-mintlify',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const CompareNibleafVsGitbookRoute = CompareNibleafVsGitbookRouteImport.update({
-  id: '/compare/nibleaf-vs-gitbook',
-  path: '/compare/nibleaf-vs-gitbook',
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompareNibleafVsDocusaurusRoute =
@@ -153,100 +192,41 @@ const CompareNibleafVsDocusaurusRoute =
     path: '/compare/nibleaf-vs-docusaurus',
     getParentRoute: () => rootRouteImport,
   } as any)
-const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: '/blog/$slug',
-  path: '/blog/$slug',
+const CompareNibleafVsGitbookRoute = CompareNibleafVsGitbookRouteImport.update({
+  id: '/compare/nibleaf-vs-gitbook',
+  path: '/compare/nibleaf-vs-gitbook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ArDocumentationPlatformsRoute =
-  ArDocumentationPlatformsRouteImport.update({
-    id: '/documentation-platforms',
-    path: '/documentation-platforms',
-    getParentRoute: () => ArRouteRoute,
-  } as any)
-const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
-  id: '/alternatives/readme',
-  path: '/alternatives/readme',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AlternativesMintlifyRoute = AlternativesMintlifyRouteImport.update({
-  id: '/alternatives/mintlify',
-  path: '/alternatives/mintlify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AlternativesGitbookRoute = AlternativesGitbookRouteImport.update({
-  id: '/alternatives/gitbook',
-  path: '/alternatives/gitbook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AcceptInviteInvitationIdRoute =
-  AcceptInviteInvitationIdRouteImport.update({
-    id: '/accept-invite/$invitationId',
-    path: '/accept-invite/$invitationId',
+const CompareNibleafVsMintlifyRoute =
+  CompareNibleafVsMintlifyRouteImport.update({
+    id: '/compare/nibleaf-vs-mintlify',
+    path: '/compare/nibleaf-vs-mintlify',
     getParentRoute: () => rootRouteImport,
   } as any)
-const authVerifyEmailRoute = authVerifyEmailRouteImport.update({
-  id: '/verify-email',
-  path: '/verify-email',
-  getParentRoute: () => authRouteRoute,
-} as any)
-const authSignUpRoute = authSignUpRouteImport.update({
-  id: '/sign-up',
-  path: '/sign-up',
-  getParentRoute: () => authRouteRoute,
-} as any)
-const authSignInRoute = authSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => authRouteRoute,
-} as any)
-const authResetPasswordRoute = authResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => authRouteRoute,
-} as any)
-const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => authRouteRoute,
+const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
+  id: '/git-preview/$token',
+  path: '/git-preview/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SitesProjectIdRouteRoute = SitesProjectIdRouteRouteImport.update({
   id: '/sites/$projectId',
   path: '/sites/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppdashboardRouteRoute = AppdashboardRouteRouteImport.update({
-  id: '/(dashboard)',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const SitesProjectIdIndexRoute = SitesProjectIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SitesProjectIdRouteRoute,
-} as any)
+const ToolsRtlDocumentationReadinessRoute =
+  ToolsRtlDocumentationReadinessRouteImport.update({
+    id: '/tools/rtl-documentation-readiness',
+    path: '/tools/rtl-documentation-readiness',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppdashboardIndexRoute = AppdashboardIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AppdashboardRouteRoute,
 } as any)
-const SitesProjectIdChangelogRoute = SitesProjectIdChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
-  getParentRoute: () => SitesProjectIdRouteRoute,
-} as any)
-const SitesProjectIdSplatRoute = SitesProjectIdSplatRouteImport.update({
-  id: '/$',
-  path: '/$',
-  getParentRoute: () => SitesProjectIdRouteRoute,
-} as any)
-const AppdashboardSitesRoute = AppdashboardSitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
-  getParentRoute: () => AppdashboardRouteRoute,
-} as any)
-const AppdashboardSettingsRoute = AppdashboardSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AppdashboardAnalyticsRoute = AppdashboardAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AppdashboardRouteRoute,
 } as any)
 const AppdashboardMembersRoute = AppdashboardMembersRouteImport.update({
@@ -254,9 +234,14 @@ const AppdashboardMembersRoute = AppdashboardMembersRouteImport.update({
   path: '/members',
   getParentRoute: () => AppdashboardRouteRoute,
 } as any)
-const AppdashboardAnalyticsRoute = AppdashboardAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+const AppdashboardSettingsRoute = AppdashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppdashboardRouteRoute,
+} as any)
+const AppdashboardSitesRoute = AppdashboardSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
   getParentRoute: () => AppdashboardRouteRoute,
 } as any)
 const AppProjectsProjectIdRouteRoute =
@@ -265,22 +250,31 @@ const AppProjectsProjectIdRouteRoute =
     path: '/projects/$projectId',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const SitesProjectIdIndexRoute = SitesProjectIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SitesProjectIdRouteRoute,
+} as any)
+const SitesProjectIdSplatRoute = SitesProjectIdSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => SitesProjectIdRouteRoute,
+} as any)
+const SitesProjectIdChangelogRoute = SitesProjectIdChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => SitesProjectIdRouteRoute,
+} as any)
 const AppProjectsProjectIdIndexRoute =
   AppProjectsProjectIdIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
-const AppProjectsProjectIdSettingsRoute =
-  AppProjectsProjectIdSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AppProjectsProjectIdRouteRoute,
-  } as any)
-const AppProjectsProjectIdPreviewRoute =
-  AppProjectsProjectIdPreviewRouteImport.update({
-    id: '/preview',
-    path: '/preview',
+const AppProjectsProjectIdAnalyticsRoute =
+  AppProjectsProjectIdAnalyticsRouteImport.update({
+    id: '/analytics',
+    path: '/analytics',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
 const AppProjectsProjectIdEditorRoute =
@@ -289,10 +283,16 @@ const AppProjectsProjectIdEditorRoute =
     path: '/editor',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
-const AppProjectsProjectIdAnalyticsRoute =
-  AppProjectsProjectIdAnalyticsRouteImport.update({
-    id: '/analytics',
-    path: '/analytics',
+const AppProjectsProjectIdPreviewRoute =
+  AppProjectsProjectIdPreviewRouteImport.update({
+    id: '/preview',
+    path: '/preview',
+    getParentRoute: () => AppProjectsProjectIdRouteRoute,
+  } as any)
+const AppProjectsProjectIdSettingsRoute =
+  AppProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
 
@@ -601,74 +601,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/self-hosting': {
-      id: '/self-hosting'
-      path: '/self-hosting'
-      fullPath: '/self-hosting'
-      preLoaderRoute: typeof SelfHostingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/developers': {
-      id: '/developers'
-      path: '/developers'
-      fullPath: '/developers'
-      preLoaderRoute: typeof DevelopersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cloud': {
-      id: '/cloud'
-      path: '/cloud'
-      fullPath: '/cloud'
-      preLoaderRoute: typeof CloudRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ar': {
-      id: '/ar'
-      path: '/ar'
-      fullPath: '/ar'
-      preLoaderRoute: typeof ArRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppRouteRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)': {
@@ -678,123 +615,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/': {
-      id: '/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ar/': {
-      id: '/ar/'
-      path: '/'
-      fullPath: '/ar/'
-      preLoaderRoute: typeof ArIndexRouteImport
-      parentRoute: typeof ArRouteRoute
-    }
-    '/tools/rtl-documentation-readiness': {
-      id: '/tools/rtl-documentation-readiness'
-      path: '/tools/rtl-documentation-readiness'
-      fullPath: '/tools/rtl-documentation-readiness'
-      preLoaderRoute: typeof ToolsRtlDocumentationReadinessRouteImport
+    '/ar': {
+      id: '/ar'
+      path: '/ar'
+      fullPath: '/ar'
+      preLoaderRoute: typeof ArRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/git-preview/$token': {
-      id: '/git-preview/$token'
-      path: '/git-preview/$token'
-      fullPath: '/git-preview/$token'
-      preLoaderRoute: typeof GitPreviewTokenRouteImport
+    '/cloud': {
+      id: '/cloud'
+      path: '/cloud'
+      fullPath: '/cloud'
+      preLoaderRoute: typeof CloudRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-mintlify': {
-      id: '/compare/nibleaf-vs-mintlify'
-      path: '/compare/nibleaf-vs-mintlify'
-      fullPath: '/compare/nibleaf-vs-mintlify'
-      preLoaderRoute: typeof CompareNibleafVsMintlifyRouteImport
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-gitbook': {
-      id: '/compare/nibleaf-vs-gitbook'
-      path: '/compare/nibleaf-vs-gitbook'
-      fullPath: '/compare/nibleaf-vs-gitbook'
-      preLoaderRoute: typeof CompareNibleafVsGitbookRouteImport
+    '/developers': {
+      id: '/developers'
+      path: '/developers'
+      fullPath: '/developers'
+      preLoaderRoute: typeof DevelopersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-docusaurus': {
-      id: '/compare/nibleaf-vs-docusaurus'
-      path: '/compare/nibleaf-vs-docusaurus'
-      fullPath: '/compare/nibleaf-vs-docusaurus'
-      preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog/$slug': {
-      id: '/blog/$slug'
-      path: '/blog/$slug'
-      fullPath: '/blog/$slug'
-      preLoaderRoute: typeof BlogSlugRouteImport
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ar/documentation-platforms': {
-      id: '/ar/documentation-platforms'
-      path: '/documentation-platforms'
-      fullPath: '/ar/documentation-platforms'
-      preLoaderRoute: typeof ArDocumentationPlatformsRouteImport
-      parentRoute: typeof ArRouteRoute
-    }
-    '/alternatives/readme': {
-      id: '/alternatives/readme'
-      path: '/alternatives/readme'
-      fullPath: '/alternatives/readme'
-      preLoaderRoute: typeof AlternativesReadmeRouteImport
+    '/self-hosting': {
+      id: '/self-hosting'
+      path: '/self-hosting'
+      fullPath: '/self-hosting'
+      preLoaderRoute: typeof SelfHostingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/alternatives/mintlify': {
-      id: '/alternatives/mintlify'
-      path: '/alternatives/mintlify'
-      fullPath: '/alternatives/mintlify'
-      preLoaderRoute: typeof AlternativesMintlifyRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/alternatives/gitbook': {
-      id: '/alternatives/gitbook'
-      path: '/alternatives/gitbook'
-      fullPath: '/alternatives/gitbook'
-      preLoaderRoute: typeof AlternativesGitbookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/accept-invite/$invitationId': {
-      id: '/accept-invite/$invitationId'
-      path: '/accept-invite/$invitationId'
-      fullPath: '/accept-invite/$invitationId'
-      preLoaderRoute: typeof AcceptInviteInvitationIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/verify-email': {
-      id: '/(auth)/verify-email'
-      path: '/verify-email'
-      fullPath: '/verify-email'
-      preLoaderRoute: typeof authVerifyEmailRouteImport
-      parentRoute: typeof authRouteRoute
-    }
-    '/(auth)/sign-up': {
-      id: '/(auth)/sign-up'
-      path: '/sign-up'
-      fullPath: '/sign-up'
-      preLoaderRoute: typeof authSignUpRouteImport
-      parentRoute: typeof authRouteRoute
-    }
-    '/(auth)/sign-in': {
-      id: '/(auth)/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof authSignInRouteImport
+    '/(auth)/forgot-password': {
+      id: '/(auth)/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof authForgotPasswordRouteImport
       parentRoute: typeof authRouteRoute
     }
     '/(auth)/reset-password': {
@@ -804,18 +699,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authResetPasswordRouteImport
       parentRoute: typeof authRouteRoute
     }
-    '/(auth)/forgot-password': {
-      id: '/(auth)/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof authForgotPasswordRouteImport
+    '/(auth)/sign-in': {
+      id: '/(auth)/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof authSignInRouteImport
       parentRoute: typeof authRouteRoute
     }
-    '/sites/$projectId': {
-      id: '/sites/$projectId'
-      path: '/sites/$projectId'
-      fullPath: '/sites/$projectId'
-      preLoaderRoute: typeof SitesProjectIdRouteRouteImport
+    '/(auth)/sign-up': {
+      id: '/(auth)/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof authSignUpRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/(auth)/verify-email': {
+      id: '/(auth)/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof authVerifyEmailRouteImport
+      parentRoute: typeof authRouteRoute
+    }
+    '/accept-invite/$invitationId': {
+      id: '/accept-invite/$invitationId'
+      path: '/accept-invite/$invitationId'
+      fullPath: '/accept-invite/$invitationId'
+      preLoaderRoute: typeof AcceptInviteInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/gitbook': {
+      id: '/alternatives/gitbook'
+      path: '/alternatives/gitbook'
+      fullPath: '/alternatives/gitbook'
+      preLoaderRoute: typeof AlternativesGitbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/mintlify': {
+      id: '/alternatives/mintlify'
+      path: '/alternatives/mintlify'
+      fullPath: '/alternatives/mintlify'
+      preLoaderRoute: typeof AlternativesMintlifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alternatives/readme': {
+      id: '/alternatives/readme'
+      path: '/alternatives/readme'
+      fullPath: '/alternatives/readme'
+      preLoaderRoute: typeof AlternativesReadmeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/(dashboard)': {
@@ -825,53 +755,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppdashboardRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/sites/$projectId/': {
-      id: '/sites/$projectId/'
+    '/ar/': {
+      id: '/ar/'
       path: '/'
-      fullPath: '/sites/$projectId/'
-      preLoaderRoute: typeof SitesProjectIdIndexRouteImport
-      parentRoute: typeof SitesProjectIdRouteRoute
+      fullPath: '/ar/'
+      preLoaderRoute: typeof ArIndexRouteImport
+      parentRoute: typeof ArRouteRoute
+    }
+    '/ar/documentation-platforms': {
+      id: '/ar/documentation-platforms'
+      path: '/documentation-platforms'
+      fullPath: '/ar/documentation-platforms'
+      preLoaderRoute: typeof ArDocumentationPlatformsRouteImport
+      parentRoute: typeof ArRouteRoute
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-docusaurus': {
+      id: '/compare/nibleaf-vs-docusaurus'
+      path: '/compare/nibleaf-vs-docusaurus'
+      fullPath: '/compare/nibleaf-vs-docusaurus'
+      preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-gitbook': {
+      id: '/compare/nibleaf-vs-gitbook'
+      path: '/compare/nibleaf-vs-gitbook'
+      fullPath: '/compare/nibleaf-vs-gitbook'
+      preLoaderRoute: typeof CompareNibleafVsGitbookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/nibleaf-vs-mintlify': {
+      id: '/compare/nibleaf-vs-mintlify'
+      path: '/compare/nibleaf-vs-mintlify'
+      fullPath: '/compare/nibleaf-vs-mintlify'
+      preLoaderRoute: typeof CompareNibleafVsMintlifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/git-preview/$token': {
+      id: '/git-preview/$token'
+      path: '/git-preview/$token'
+      fullPath: '/git-preview/$token'
+      preLoaderRoute: typeof GitPreviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sites/$projectId': {
+      id: '/sites/$projectId'
+      path: '/sites/$projectId'
+      fullPath: '/sites/$projectId'
+      preLoaderRoute: typeof SitesProjectIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/rtl-documentation-readiness': {
+      id: '/tools/rtl-documentation-readiness'
+      path: '/tools/rtl-documentation-readiness'
+      fullPath: '/tools/rtl-documentation-readiness'
+      preLoaderRoute: typeof ToolsRtlDocumentationReadinessRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/app/(dashboard)/': {
       id: '/app/(dashboard)/'
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppdashboardIndexRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/sites/$projectId/changelog': {
-      id: '/sites/$projectId/changelog'
-      path: '/changelog'
-      fullPath: '/sites/$projectId/changelog'
-      preLoaderRoute: typeof SitesProjectIdChangelogRouteImport
-      parentRoute: typeof SitesProjectIdRouteRoute
-    }
-    '/sites/$projectId/$': {
-      id: '/sites/$projectId/$'
-      path: '/$'
-      fullPath: '/sites/$projectId/$'
-      preLoaderRoute: typeof SitesProjectIdSplatRouteImport
-      parentRoute: typeof SitesProjectIdRouteRoute
-    }
-    '/app/(dashboard)/sites': {
-      id: '/app/(dashboard)/sites'
-      path: '/sites'
-      fullPath: '/app/sites'
-      preLoaderRoute: typeof AppdashboardSitesRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/app/(dashboard)/settings': {
-      id: '/app/(dashboard)/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppdashboardSettingsRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/app/(dashboard)/members': {
-      id: '/app/(dashboard)/members'
-      path: '/members'
-      fullPath: '/app/members'
-      preLoaderRoute: typeof AppdashboardMembersRouteImport
       parentRoute: typeof AppdashboardRouteRoute
     }
     '/app/(dashboard)/analytics': {
@@ -881,12 +839,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppdashboardAnalyticsRouteImport
       parentRoute: typeof AppdashboardRouteRoute
     }
+    '/app/(dashboard)/members': {
+      id: '/app/(dashboard)/members'
+      path: '/members'
+      fullPath: '/app/members'
+      preLoaderRoute: typeof AppdashboardMembersRouteImport
+      parentRoute: typeof AppdashboardRouteRoute
+    }
+    '/app/(dashboard)/settings': {
+      id: '/app/(dashboard)/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppdashboardSettingsRouteImport
+      parentRoute: typeof AppdashboardRouteRoute
+    }
+    '/app/(dashboard)/sites': {
+      id: '/app/(dashboard)/sites'
+      path: '/sites'
+      fullPath: '/app/sites'
+      preLoaderRoute: typeof AppdashboardSitesRouteImport
+      parentRoute: typeof AppdashboardRouteRoute
+    }
     '/app/projects/$projectId': {
       id: '/app/projects/$projectId'
       path: '/projects/$projectId'
       fullPath: '/app/projects/$projectId'
       preLoaderRoute: typeof AppProjectsProjectIdRouteRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/sites/$projectId/': {
+      id: '/sites/$projectId/'
+      path: '/'
+      fullPath: '/sites/$projectId/'
+      preLoaderRoute: typeof SitesProjectIdIndexRouteImport
+      parentRoute: typeof SitesProjectIdRouteRoute
+    }
+    '/sites/$projectId/$': {
+      id: '/sites/$projectId/$'
+      path: '/$'
+      fullPath: '/sites/$projectId/$'
+      preLoaderRoute: typeof SitesProjectIdSplatRouteImport
+      parentRoute: typeof SitesProjectIdRouteRoute
+    }
+    '/sites/$projectId/changelog': {
+      id: '/sites/$projectId/changelog'
+      path: '/changelog'
+      fullPath: '/sites/$projectId/changelog'
+      preLoaderRoute: typeof SitesProjectIdChangelogRouteImport
+      parentRoute: typeof SitesProjectIdRouteRoute
     }
     '/app/projects/$projectId/': {
       id: '/app/projects/$projectId/'
@@ -895,18 +895,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdIndexRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
-    '/app/projects/$projectId/settings': {
-      id: '/app/projects/$projectId/settings'
-      path: '/settings'
-      fullPath: '/app/projects/$projectId/settings'
-      preLoaderRoute: typeof AppProjectsProjectIdSettingsRouteImport
-      parentRoute: typeof AppProjectsProjectIdRouteRoute
-    }
-    '/app/projects/$projectId/preview': {
-      id: '/app/projects/$projectId/preview'
-      path: '/preview'
-      fullPath: '/app/projects/$projectId/preview'
-      preLoaderRoute: typeof AppProjectsProjectIdPreviewRouteImport
+    '/app/projects/$projectId/analytics': {
+      id: '/app/projects/$projectId/analytics'
+      path: '/analytics'
+      fullPath: '/app/projects/$projectId/analytics'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
     '/app/projects/$projectId/editor': {
@@ -916,11 +909,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdEditorRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
-    '/app/projects/$projectId/analytics': {
-      id: '/app/projects/$projectId/analytics'
-      path: '/analytics'
-      fullPath: '/app/projects/$projectId/analytics'
-      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsRouteImport
+    '/app/projects/$projectId/preview': {
+      id: '/app/projects/$projectId/preview'
+      path: '/preview'
+      fullPath: '/app/projects/$projectId/preview'
+      preLoaderRoute: typeof AppProjectsProjectIdPreviewRouteImport
+      parentRoute: typeof AppProjectsProjectIdRouteRoute
+    }
+    '/app/projects/$projectId/settings': {
+      id: '/app/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/app/projects/$projectId/settings'
+      preLoaderRoute: typeof AppProjectsProjectIdSettingsRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
   }

@@ -1,6 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { jwtAccessConfigBody } from '@nibleaf/validators';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
@@ -21,6 +26,26 @@ import {
 import { Field, SectionHeader, Segmented } from './shared';
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
+const READER_STATUS_KEYS: Record<string, MessageKey> = {
+  ACTIVE: 'settings.authentication.reader.status.active',
+  PENDING: 'settings.authentication.reader.status.pending',
+  REVOKED: 'settings.authentication.reader.status.revoked',
+};
+/** Audit actions emitted by apps/server/src/actions/reader-access.ts; unknown values fall back to the raw action. */
+const AUDIT_ACTION_KEYS: Record<string, MessageKey> = {
+  ACCESS_MODE_CHANGED: 'settings.authentication.reader.audit.action.accessModeChanged',
+  AUDIENCE_CREATED: 'settings.authentication.reader.audit.action.audienceCreated',
+  AUDIENCE_UPDATED: 'settings.authentication.reader.audit.action.audienceUpdated',
+  AUDIENCE_DELETED: 'settings.authentication.reader.audit.action.audienceDeleted',
+  READER_INVITED: 'settings.authentication.reader.audit.action.readerInvited',
+  READER_UPDATED: 'settings.authentication.reader.audit.action.readerUpdated',
+  READER_REVOKED: 'settings.authentication.reader.audit.action.readerRevoked',
+  EMERGENCY_REVOKE: 'settings.authentication.reader.audit.action.emergencyRevoke',
+  JWT_CONFIGURATION_UPDATED: 'settings.authentication.reader.audit.action.jwtConfigurationUpdated',
+  INVITATION_ACTIVATED: 'settings.authentication.reader.audit.action.invitationActivated',
+  JWT_REJECTED: 'settings.authentication.reader.audit.action.jwtRejected',
+  JWT_SESSION_CREATED: 'settings.authentication.reader.audit.action.jwtSessionCreated',
+};
 const Panel = ({ title, description, children }: { title: string; description: string; children: ReactNode }) => (
   <section className="mt-8 rounded-lg border border-border p-4">
     <h3 className="font-semibold text-sm">{title}</h3>
@@ -31,6 +56,7 @@ const Panel = ({ title, description, children }: { title: string; description: s
 
 export function AuthenticationSection({ project }: { project: Project }) {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const { data: pages = [] } = usePages(project.id);
   const readerAccess = useReaderAccess(project.id);
   const data = readerAccess.data;
@@ -70,7 +96,24 @@ export function AuthenticationSection({ project }: { project: Project }) {
     setGroupsClaim(data.jwt.groupsClaim);
     setClaimMapping(JSON.stringify(data.jwt.claimMapping ?? {}, null, 2));
   }, [data]);
-  const pageOptions = useMemo(() => pages.filter((page) => page.kind === 'PAGE'), [pages]);
+  const pageOptions = useMemo(
+    () =>
+      pages
+        .filter((page) => page.kind === 'PAGE')
+        .map((page) => ({
+          value: page.id,
+          label: (
+            <>
+              <span dir="auto">{page.title}</span> · <span dir="ltr">/{page.path}</span>
+            </>
+          ),
+        })),
+    [pages],
+  );
+  const audienceOptions = useMemo(
+    () => (data?.audiences ?? []).map((audience) => ({ value: audience.id, label: <span dir="auto">{audience.name}</span> })),
+    [data],
+  );
 
   const saveMode = async () => {
     await updateMode.mutateAsync({ mode });
@@ -92,6 +135,37 @@ export function AuthenticationSection({ project }: { project: Project }) {
     setReaderName('');
     if (navigator.clipboard) await navigator.clipboard.writeText(result.activationUrl).catch(() => undefined);
     toast.success(t('settings.authentication.reader.invited'));
+  };
+  const labelFor = (keys: Record<string, MessageKey>, value: string) => {
+    const key = keys[value];
+    return key ? t(key) : value;
+  };
+  const removeAudience = async (audience: { id: string; name: string }) => {
+    const ok = await confirm({ title: t('settings.authentication.reader.deleteAudienceConfirm', { name: audience.name }), destructive: true });
+    if (!ok) return;
+    await deleteAudience.mutateAsync(audience.id);
+  };
+  const revoke = async (reader: { id: string; name: string | null; email: string | null }) => {
+    const ok = await confirm({
+      title: t('settings.authentication.reader.revokeConfirm', {
+        name: reader.name || reader.email || t('settings.authentication.reader.thisReader'),
+      }),
+      confirmLabel: t('settings.authentication.reader.revoke'),
+      destructive: true,
+    });
+    if (!ok) return;
+    await revokeReader.mutateAsync(reader.id);
+  };
+  const emergency = async () => {
+    const ok = await confirm({
+      title: t('settings.authentication.reader.emergencyAction'),
+      description: t('settings.authentication.reader.emergencyConfirm'),
+      confirmLabel: t('settings.authentication.reader.emergencyAction'),
+      destructive: true,
+    });
+    if (!ok) return;
+    await emergencyRevoke.mutateAsync(undefined);
+    toast.success(t('settings.authentication.reader.emergencySuccess'));
   };
   const saveJwt = async () => {
     let mapping: Record<string, string>;
@@ -138,7 +212,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
         />
         <Button
           className="mt-3"
-          disabled={readerAccess.isPending}
+          disabled={readerAccess.isPending || mode === (data?.accessMode ?? 'PUBLIC')}
           onClick={() => void saveMode().catch((error) => toast.error(error.message))}
           type="button"
         >
@@ -155,19 +229,18 @@ export function AuthenticationSection({ project }: { project: Project }) {
                 placeholder={t('settings.authentication.reader.audiencePlaceholder')}
                 value={audienceName}
               />
-              <select
-                aria-label={t('settings.authentication.reader.audiencesTitle')}
-                className="min-h-9 rounded-md border border-input bg-background px-3 text-sm"
-                multiple
-                onChange={(event) => setAudiencePages([...event.target.selectedOptions].map((option) => option.value))}
-                value={audiencePages}
-              >
-                {pageOptions.map((page) => (
-                  <option key={page.id} value={page.id}>
-                    {page.title} · /{page.path}
-                  </option>
-                ))}
-              </select>
+              <Select items={pageOptions} multiple onValueChange={(next) => setAudiencePages(next ?? [])} value={audiencePages}>
+                <SelectTrigger aria-label={t('settings.authentication.reader.audiencesTitle')} className="w-full">
+                  <SelectValue placeholder={t('settings.authentication.reader.audienceAllPages')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageOptions.map((page) => (
+                    <SelectItem key={page.value} value={page.value}>
+                      {page.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <p className="mt-2 text-muted-foreground text-xs">{t('settings.authentication.reader.audienceAllPages')}</p>
             <Button
@@ -191,11 +264,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     </div>
                   </div>
                   <Button
-                    onClick={() =>
-                      window.confirm(t('settings.authentication.reader.deleteAudienceConfirm', { name: audience.name }))
-                        ? void deleteAudience.mutateAsync(audience.id).catch((error) => toast.error(error.message))
-                        : undefined
-                    }
+                    onClick={() => void removeAudience(audience).catch((error) => toast.error(error.message))}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -209,25 +278,30 @@ export function AuthenticationSection({ project }: { project: Project }) {
 
           <Panel title={t('settings.authentication.reader.readersTitle')} description={t('settings.authentication.reader.readersDescription')}>
             <div className="grid gap-3 md:grid-cols-3">
-              <Input onChange={(event) => setReaderEmail(event.target.value)} placeholder="reader@example.com" type="email" value={readerEmail} />
+              <Input
+                dir="ltr"
+                onChange={(event) => setReaderEmail(event.target.value)}
+                placeholder="reader@example.com"
+                type="email"
+                value={readerEmail}
+              />
               <Input
                 onChange={(event) => setReaderName(event.target.value)}
                 placeholder={t('settings.authentication.reader.nameOptional')}
                 value={readerName}
               />
-              <select
-                aria-label={t('settings.authentication.reader.readersTitle')}
-                className="min-h-9 rounded-md border border-input bg-background px-3 text-sm"
-                multiple
-                onChange={(event) => setReaderAudiences([...event.target.selectedOptions].map((option) => option.value))}
-                value={readerAudiences}
-              >
-                {(data?.audiences ?? []).map((audience) => (
-                  <option key={audience.id} value={audience.id}>
-                    {audience.name}
-                  </option>
-                ))}
-              </select>
+              <Select items={audienceOptions} multiple onValueChange={(next) => setReaderAudiences(next ?? [])} value={readerAudiences}>
+                <SelectTrigger aria-label={t('settings.authentication.reader.readersTitle')} className="w-full">
+                  <SelectValue placeholder={t('settings.authentication.reader.audiencesTitle')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {audienceOptions.map((audience) => (
+                    <SelectItem key={audience.value} value={audience.value}>
+                      {audience.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Button
               className="mt-3"
@@ -241,23 +315,17 @@ export function AuthenticationSection({ project }: { project: Project }) {
               {(data?.readers ?? []).map((reader) => (
                 <div className="flex items-center justify-between gap-3 p-3 text-sm" key={reader.id}>
                   <div>
-                    <div className="font-medium">{reader.name || reader.email || t('settings.authentication.reader.portalReader')}</div>
+                    <div className="font-medium" dir="auto">
+                      {reader.name || reader.email || t('settings.authentication.reader.portalReader')}
+                    </div>
                     <div className="text-muted-foreground text-xs">
-                      {reader.status} · {reader.audiences.map((item) => item.audience.name).join(', ')} ·{' '}
+                      {labelFor(READER_STATUS_KEYS, reader.status)} · {reader.audiences.map((item) => item.audience.name).join(', ')} ·{' '}
                       {t('settings.authentication.reader.sessionCount', { count: reader._count.sessions })}
                     </div>
                   </div>
                   <Button
                     disabled={reader.status === 'REVOKED'}
-                    onClick={() =>
-                      window.confirm(
-                        t('settings.authentication.reader.revokeConfirm', {
-                          name: reader.name || reader.email || t('settings.authentication.reader.thisReader'),
-                        }),
-                      )
-                        ? void revokeReader.mutateAsync(reader.id).catch((error) => toast.error(error.message))
-                        : undefined
-                    }
+                    onClick={() => void revoke(reader).catch((error) => toast.error(error.message))}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -279,28 +347,31 @@ export function AuthenticationSection({ project }: { project: Project }) {
             </Button>
             {showJwt ? (
               <div className="mt-4">
-                <label className="mb-3 flex items-center gap-2 text-sm">
-                  <input checked={jwtEnabled} onChange={(event) => setJwtEnabled(event.target.checked)} type="checkbox" />{' '}
-                  {t('settings.authentication.reader.jwtEnable')}
-                </label>
+                <div className="mb-3 flex items-center gap-2 text-sm">
+                  <Switch checked={jwtEnabled} id="reader-jwt-enabled" onCheckedChange={setJwtEnabled} />
+                  <Label htmlFor="reader-jwt-enabled">{t('settings.authentication.reader.jwtEnable')}</Label>
+                </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Input onChange={(event) => setIssuer(event.target.value)} placeholder="https://portal.example.com" value={issuer} />
-                  <Input onChange={(event) => setJwtAudience(event.target.value)} placeholder="nibleaf-docs" value={jwtAudience} />
+                  <Input dir="ltr" onChange={(event) => setIssuer(event.target.value)} placeholder="https://portal.example.com" value={issuer} />
+                  <Input dir="ltr" onChange={(event) => setJwtAudience(event.target.value)} placeholder="nibleaf-docs" value={jwtAudience} />
                   <Input
+                    dir="ltr"
                     onChange={(event) => setJwksUrl(event.target.value)}
                     placeholder="https://portal.example.com/.well-known/jwks.json"
                     value={jwksUrl}
                   />
-                  <Input onChange={(event) => setGroupsClaim(event.target.value)} placeholder="groups" value={groupsClaim} />
+                  <Input dir="ltr" onChange={(event) => setGroupsClaim(event.target.value)} placeholder="groups" value={groupsClaim} />
                 </div>
                 <Textarea
                   className="mt-3 font-mono text-xs"
+                  dir="ltr"
                   onChange={(event) => setPublicJwks(event.target.value)}
                   placeholder={t('settings.authentication.reader.jwksPlaceholder')}
                   value={publicJwks}
                 />
                 <Textarea
                   className="mt-3 font-mono text-xs"
+                  dir="ltr"
                   onChange={(event) => setClaimMapping(event.target.value)}
                   placeholder={'{"customer":"audience_id"}'}
                   value={claimMapping}
@@ -311,6 +382,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
                 <div className="mt-5 border-t pt-4">
                   <Textarea
                     className="font-mono text-xs"
+                    dir="ltr"
                     onChange={(event) => setTestToken(event.target.value)}
                     placeholder={t('settings.authentication.reader.jwtTestPlaceholder')}
                     value={testToken}
@@ -340,26 +412,13 @@ export function AuthenticationSection({ project }: { project: Project }) {
             </Button>
             {showAudit ? (
               <div className="mt-4">
-                <Button
-                  onClick={() =>
-                    window.confirm(t('settings.authentication.reader.emergencyConfirm'))
-                      ? void emergencyRevoke
-                          .mutateAsync(undefined)
-                          .then(() => {
-                            toast.success(t('settings.authentication.reader.emergencySuccess'));
-                          })
-                          .catch((error) => toast.error(error.message))
-                      : undefined
-                  }
-                  type="button"
-                  variant="destructive"
-                >
+                <Button onClick={() => void emergency().catch((error) => toast.error(error.message))} type="button" variant="destructive">
                   {t('settings.authentication.reader.emergencyAction')}
                 </Button>
                 <div className="mt-4 max-h-56 divide-y overflow-auto rounded-md border">
                   {(data?.audit ?? []).map((event) => (
                     <div className="flex justify-between gap-3 p-2 text-xs" key={event.id}>
-                      <span>{event.action}</span>
+                      <span>{labelFor(AUDIT_ACTION_KEYS, event.action)}</span>
                       <time className="text-muted-foreground">{new Date(event.createdAt).toLocaleString(locale)}</time>
                     </div>
                   ))}

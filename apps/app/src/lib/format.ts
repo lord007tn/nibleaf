@@ -8,9 +8,11 @@ import { useLocale } from '@nibleaf/i18n/react';
  */
 export function useFormatters() {
   const { locale } = useLocale();
-  const tag = locale === 'ar' ? 'ar-u-nu-arab' : locale;
+  const tag = localeTag(locale);
   return {
-    number: (value: number | bigint) => new Intl.NumberFormat(tag).format(value),
+    number: (value: number | bigint, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(tag, options).format(value),
+    /** A currency amount (default USD) with the locale's symbol placement and digits, e.g. “$0” / “٠ US$”. */
+    currency: (value: number, currency = 'USD') => formatCurrency(tag, value, currency),
     date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),
     /** A signed percentage like “+12.5%” / “−4%” for trend badges. `value` is
      *  already in percent units (e.g. 12.5 → “+12.5%”). `style:'percent'` lets
@@ -38,6 +40,16 @@ export function useFormatters() {
       return rtf.format(Math.round(diffMs / week), 'week');
     },
   };
+}
+
+/** The BCP-47 tag the dashboard formats with: Arabic gets Arabic-Indic digits. */
+export function localeTag(locale: string) {
+  return locale === 'ar' ? 'ar-u-nu-arab' : locale;
+}
+
+/** Whole-unit currency formatting (no trailing “.00”) so a free plan reads “$0”, not “$0.00”. */
+export function formatCurrency(tag: string, value: number, currency = 'USD') {
+  return new Intl.NumberFormat(tag, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);
 }
 
 /** Trend of a views time-series: % change of the recent half vs the older half.

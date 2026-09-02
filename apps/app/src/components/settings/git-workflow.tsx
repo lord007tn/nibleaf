@@ -319,7 +319,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               onClick={() => setConnectStep((step) => Math.max(1, step - 1) as 1 | 2 | 3)}
               variant="outline"
             >
-              <ArrowLeft className="size-4" /> {t('common.back')}
+              <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('common.back')}
             </Button>
             {connectStep < 3 ? (
               connectStep === 1 ? (
@@ -336,7 +336,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   }
                 >
                   {authorize.isPending ? t('settings.git.workflow.authorizing') : t('settings.git.workflow.authorize')}{' '}
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               ) : (
                 <Button
@@ -344,7 +344,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
                   onClick={() => setConnectStep(3)}
                 >
-                  {t('settings.git.workflow.review')} <ArrowRight className="size-4" />
+                  {t('settings.git.workflow.review')} <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               )
             ) : (

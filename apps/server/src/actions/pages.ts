@@ -1,5 +1,7 @@
 import { Prisma, prisma } from '@nibleaf/database';
-import { joinPath, slugify } from '@nibleaf/shared/utils';
+import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
+import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
@@ -55,7 +57,10 @@ const uniqueSiblingSlug = async (
   desired: string,
   excludeId?: string,
 ): Promise<string> => {
-  const base = slugify(desired) || 'page';
+  // Unicode-aware so an Arabic (or any non-Latin) title keeps its own slug; the
+  // 'page' placeholder is only reached when the title has no letters or digits
+  // at all (emoji-only, punctuation-only).
+  const base = slugifyUnicode(desired) || 'page';
   let slug = base;
   let suffix = 1;
   for (;;) {
@@ -72,7 +77,12 @@ const uniqueSiblingSlug = async (
 };
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
-const PLACEHOLDER_TITLE_RE = /^(?:Untitled|New group)$/;
+/** The dashboard creates pages/groups with a placeholder title in the author's
+ *  interface locale (`editor.untitled` / `editor.newGroup`), so "still a
+ *  placeholder" must be recognised in every locale, not only English. */
+const PLACEHOLDER_TITLES = new Set<string>(
+  INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
+);
 
 type PageTreeNode = { id: string; parentId: string | null; branchId: string; languageId: string };
 
@@ -199,7 +209,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
     body.title.trim() !== '' &&
     body.title !== page.title &&
     PLACEHOLDER_SLUG_RE.test(page.slug) &&
-    PLACEHOLDER_TITLE_RE.test(page.title);
+    PLACEHOLDER_TITLES.has(page.title);
   const structural = slugChanged || reparented || shouldAdoptTitleSlug;
   let nextSlug = page.slug;
   if (structural) {

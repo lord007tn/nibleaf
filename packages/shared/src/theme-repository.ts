@@ -1,19 +1,23 @@
 import { createHash } from 'node:crypto';
-import type { SiteSnapshot, SnapshotPage } from './site';
-import {
-  THEME_REPOSITORY_TEMPLATE_SOURCES,
-  type ThemeRepositoryTemplateSource,
-  themeMdxComponentsSource,
-  themeUtilitiesSource,
-} from './theme-repository-templates';
-import { THEME_PRESET_IDS, type ThemePresetId } from './themes';
+import { buildNavTree, type NavNode, type SiteSnapshot, type SnapshotLanguage, type SnapshotPage, type SnapshotVersion } from './site';
+import { THEME_REPOSITORY_TEMPLATE_META, type ThemeRepositoryTemplateOptions, themeRepositoryTemplateFiles } from './theme-repository-templates';
+import { type ResolvedTheme, resolveTheme, THEME_PRESET_IDS, type ThemePresetId, themeOwnedConfig } from './themes';
 
-export const THEME_REPOSITORY_SCHEMA_VERSION = 1 as const;
-export const THEME_RUNTIME_CONTRACT_VERSION = 1 as const;
+/**
+ * Git-native repository contract v2: the repository Nibleaf pushes/exports is a
+ * runnable TanStack Start + Vite + Tailwind docs app. `docs.json` (Mintlify-
+ * compatible) carries navigation and theme, `content/**` holds MDX pages, and
+ * `.nibleaf/` keeps reconciliation metadata only — no content snapshot blob.
+ */
+export const THEME_REPOSITORY_SCHEMA_VERSION = 2 as const;
+export const THEME_RUNTIME_CONTRACT_VERSION = 2 as const;
 export const THEME_REPOSITORY_KIND = 'nibleaf-theme-repository' as const;
-export const THEME_REPOSITORY_MANIFEST_PATH = 'nibleaf.theme.json' as const;
-export const THEME_REPOSITORY_SNAPSHOT_PATH = '.nibleaf/snapshot.json' as const;
+export const THEME_REPOSITORY_MANIFEST_PATH = '.nibleaf/manifest.json' as const;
+/** Schema v1 manifest location; still recognised so v1 checkouts fail closed with a clear message. */
+export const THEME_REPOSITORY_LEGACY_MANIFEST_PATH = 'nibleaf.theme.json' as const;
+export const THEME_REPOSITORY_DOCS_CONFIG_PATH = 'docs.json' as const;
 export const THEME_REPOSITORY_CONTENT_MAP_PATH = '.nibleaf/content-map.json' as const;
+export const THEME_REPOSITORY_VERSIONS_DIRECTORY = 'versions' as const;
 
 export type ThemeRepositoryOwnership = 'PLATFORM' | 'SHARED' | 'CUSTOMER';
 
@@ -23,13 +27,15 @@ export interface ThemeRepositoryFile {
   ownership: ThemeRepositoryOwnership;
 }
 
-export interface ThemeRepositoryManifestV1 {
+export interface ThemeRepositoryManifestV2 {
   kind: typeof THEME_REPOSITORY_KIND;
   schemaVersion: typeof THEME_REPOSITORY_SCHEMA_VERSION;
   project: { id: string; slug: string };
-  template: { id: ThemePresetId; version: 1 };
-  runtime: { strategy: 'vendored'; contractVersion: typeof THEME_RUNTIME_CONTRACT_VERSION; entry: 'src/nibleaf/runtime.ts' };
-  snapshot: { path: typeof THEME_REPOSITORY_SNAPSHOT_PATH; sha256: string };
+  template: { id: ThemePresetId; version: 2 };
+  runtime: { strategy: 'docs-json'; contractVersion: typeof THEME_RUNTIME_CONTRACT_VERSION; entry: 'src/lib/site.ts' };
+  docs: { path: typeof THEME_REPOSITORY_DOCS_CONFIG_PATH; sha256: string };
+  contentMap: { path: typeof THEME_REPOSITORY_CONTENT_MAP_PATH; sha256: string };
+  contentPath: string;
   ownership: { platform: readonly string[]; shared: readonly string[]; customer: readonly string[] };
 }
 
@@ -39,8 +45,29 @@ export interface ThemeRepositoryImportIssue {
   message: string;
 }
 
+export interface ThemeContentLocation {
+  versionId: string;
+  languageCode: string;
+  /** Page path segments relative to the language/version directory, without extension. */
+  relative: string;
+}
+
 const record = (value: unknown): Record<string, unknown> | undefined =>
   typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+
+const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
+const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
+
+const normalizedContentPath = (value = 'content'): string => value.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+/** Keeps Unicode letters and digits (Arabic slugs stay readable) and encodes
+ * everything else so a page path can never escape or alias another file. */
+export const safeThemePathSegment = (value: string): string => {
+  const encoded = [...value.trim()]
+    .map((character) => (/^[\p{L}\p{N}._-]$/u.test(character) ? character : `~${character.codePointAt(0)?.toString(16)}~`))
+    .join('');
+  return encoded && encoded !== '.' && encoded !== '..' ? encoded : 'untitled';
+};
 
 export const themeRepositoryTemplateId = (snapshot: SiteSnapshot, override?: ThemePresetId): ThemePresetId => {
   if (override) return override;
@@ -48,20 +75,32 @@ export const themeRepositoryTemplateId = (snapshot: SiteSnapshot, override?: The
   return typeof configured === 'string' && THEME_PRESET_IDS.includes(configured as ThemePresetId) ? (configured as ThemePresetId) : 'harbor';
 };
 
+const V1_MESSAGE =
+  'This repository uses Nibleaf repository schema v1 (nibleaf.theme.json + .nibleaf/snapshot.json), which is no longer supported. Remove those generated files and push again from Nibleaf to regenerate the docs.json layout (schema v2).';
+
 export const validateThemeRepositoryManifest = (
   manifestText: string | undefined,
   expectedProjectId?: string,
   expectedTemplateId?: ThemePresetId,
 ): ThemeRepositoryImportIssue[] => {
   const issues: ThemeRepositoryImportIssue[] = [];
-  let manifest: Partial<ThemeRepositoryManifestV1> | undefined;
+  let manifest: Partial<ThemeRepositoryManifestV2> | undefined;
   try {
-    manifest = manifestText ? (JSON.parse(manifestText) as Partial<ThemeRepositoryManifestV1>) : undefined;
+    manifest = manifestText ? (JSON.parse(manifestText) as Partial<ThemeRepositoryManifestV2>) : undefined;
   } catch {
     manifest = undefined;
   }
+  if (manifest?.kind === THEME_REPOSITORY_KIND && (manifest.schemaVersion as number | undefined) === 1) {
+    return [{ path: THEME_REPOSITORY_LEGACY_MANIFEST_PATH, code: 'MANIFEST_INVALID', message: V1_MESSAGE }];
+  }
   if (!manifest || manifest.kind !== THEME_REPOSITORY_KIND || manifest.schemaVersion !== THEME_REPOSITORY_SCHEMA_VERSION) {
-    return [{ path: THEME_REPOSITORY_MANIFEST_PATH, code: 'MANIFEST_INVALID', message: 'Use an unchanged Nibleaf theme repository manifest v1.' }];
+    return [
+      {
+        path: THEME_REPOSITORY_MANIFEST_PATH,
+        code: 'MANIFEST_INVALID',
+        message: `Use an unchanged Nibleaf repository manifest v${THEME_REPOSITORY_SCHEMA_VERSION} (${THEME_REPOSITORY_MANIFEST_PATH}).`,
+      },
+    ];
   }
   if (expectedProjectId && manifest.project?.id !== expectedProjectId) {
     issues.push({
@@ -74,11 +113,11 @@ export const validateThemeRepositoryManifest = (
     issues.push({ path: THEME_REPOSITORY_MANIFEST_PATH, code: 'UNSUPPORTED_CONTRACT', message: 'This Nibleaf runtime contract is not supported.' });
   }
   const templateId = manifest.template?.id;
-  if (!(typeof templateId === 'string' && THEME_PRESET_IDS.includes(templateId as ThemePresetId)) || manifest.template?.version !== 1) {
+  if (!(typeof templateId === 'string' && THEME_PRESET_IDS.includes(templateId as ThemePresetId)) || manifest.template?.version !== 2) {
     issues.push({
       path: THEME_REPOSITORY_MANIFEST_PATH,
       code: 'UNSUPPORTED_TEMPLATE',
-      message: 'This repository must use Harbor, Manuscript, or Signal template contract v1.',
+      message: 'This repository must use Harbor, Manuscript, or Signal template contract v2.',
     });
   } else if (expectedTemplateId && templateId !== expectedTemplateId) {
     issues.push({
@@ -90,624 +129,23 @@ export const validateThemeRepositoryManifest = (
   return issues;
 };
 
-const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`;
-const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
-const stableSnapshot = (snapshot: SiteSnapshot): SiteSnapshot => ({
-  ...snapshot,
-  generatedAt:
-    snapshot.pages
-      .map((page) => page.updatedAt)
-      .sort()
-      .at(-1) ?? '1970-01-01T00:00:00.000Z',
-});
+const defaultLanguageOf = (snapshot: SiteSnapshot): SnapshotLanguage | undefined =>
+  snapshot.project.languages.find((item) => item.isDefault) ?? snapshot.project.languages[0];
+const defaultVersionOf = (snapshot: SiteSnapshot): SnapshotVersion | undefined =>
+  snapshot.project.versions.find((item) => item.isDefault) ?? snapshot.project.versions[0];
 
-const packageJson = (templateId: ThemePresetId) =>
-  json({
-    name: `nibleaf-${templateId}-theme`,
-    private: true,
-    version: '0.1.0',
-    type: 'module',
-    engines: { node: '>=22.13.0', pnpm: '>=10.0.0' },
-    packageManager: 'pnpm@10.30.3',
-    scripts: {
-      paraglide: 'paraglide-js compile --project ./project.inlang --outdir ./src/paraglide',
-      dev: 'pnpm paraglide && vite',
-      build: 'pnpm paraglide && tsc --noEmit && vite build',
-      test: 'pnpm paraglide && vitest run',
-      check: 'pnpm paraglide && vitest run && tsc --noEmit && vite build',
-    },
-    dependencies: {
-      '@t3-oss/env-core': '^0.13.11',
-      'lucide-react': '1.21.0',
-      react: '^19.2.4',
-      'react-dom': '^19.2.4',
-      'react-markdown': '^10.1.0',
-      'rehype-raw': '^7.0.0',
-      'rehype-sanitize': '^6.0.0',
-      'remark-gfm': '^4.0.1',
-      zod: '^4.4.3',
-    },
-    devDependencies: {
-      '@inlang/paraglide-js': '2.24.1',
-      '@types/node': '^22.15.0',
-      '@types/react': '^19.2.0',
-      '@types/react-dom': '^19.2.0',
-      '@vitejs/plugin-react': '^6.1.0',
-      jsdom: '^30.0.1',
-      'oxc-transform-react': '0.145.0',
-      typescript: '^7.0.2',
-      vite: '^8.2.2',
-      vitest: '^3.2.4',
-    },
-  });
-
-const tsconfig = json({
-  compilerOptions: {
-    target: 'ES2023',
-    useDefineForClassFields: true,
-    lib: ['ES2023', 'DOM', 'DOM.Iterable'],
-    allowJs: true,
-    skipLibCheck: true,
-    esModuleInterop: true,
-    allowSyntheticDefaultImports: true,
-    strict: true,
-    forceConsistentCasingInFileNames: true,
-    module: 'ESNext',
-    moduleResolution: 'Bundler',
-    resolveJsonModule: true,
-    isolatedModules: true,
-    noEmit: true,
-    jsx: 'react-jsx',
-    types: ['vite/client', 'node'],
-  },
-  include: ['src', 'vite.config.ts'],
-});
-
-const viteConfig = `import { paraglideVitePlugin } from '@inlang/paraglide-js';
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
-
-export default defineConfig({
-  plugins: [
-    paraglideVitePlugin({ project: './project.inlang', outdir: './src/paraglide' }),
-    react({ compiler: true }),
-  ],
-});
-`;
-
-const envSource = `import { createEnv } from '@t3-oss/env-core';
-import { z } from 'zod';
-
-export const env = createEnv({
-  clientPrefix: 'VITE_',
-  client: { VITE_NIBLEAF_API_URL: z.url().optional() },
-  runtimeEnv: import.meta.env,
-  emptyStringAsUndefined: true,
-});
-`;
-
-const runtimeSource = `import { z } from 'zod';
-import snapshotJson from '../../.nibleaf/snapshot.json';
-
-export const NIBLEAF_THEME_RUNTIME_CONTRACT = 1 as const;
-
-const languageSchema = z.object({
-  code: z.string().min(1), label: z.string().min(1), direction: z.enum(['LTR', 'RTL']),
-  isDefault: z.boolean(), enabled: z.boolean().optional(), config: z.record(z.string(), z.unknown()).nullable(),
-});
-const versionSchema = z.object({ id: z.string(), name: z.string(), slug: z.string(), isDefault: z.boolean() });
-const pageSchema = z.object({
-  id: z.string(), parentId: z.string().nullable(), versionId: z.string(), languageCode: z.string(),
-  kind: z.enum(['PAGE', 'GROUP']), title: z.string(), slug: z.string(), path: z.string(),
-  icon: z.string().nullable(), description: z.string().nullable(), content: z.string(),
-  config: z.record(z.string(), z.unknown()).nullable(), translationKey: z.string().nullable(),
-  position: z.number(), hidden: z.boolean(), updatedAt: z.string(), createdAt: z.string().optional(),
-});
-export const siteSnapshotSchema = z.object({
-  project: z.object({
-    id: z.string(), name: z.string(), slug: z.string(), description: z.string().nullable(), icon: z.string().nullable(),
-    config: z.record(z.string(), z.unknown()).nullable(), languages: z.array(languageSchema).min(1), versions: z.array(versionSchema).min(1),
-  }),
-  pages: z.array(pageSchema), generatedAt: z.string(), openapi: z.record(z.string(), z.unknown()).nullable().optional(),
-});
-
-export type SiteSnapshot = z.infer<typeof siteSnapshotSchema>;
-export type SitePage = z.infer<typeof pageSchema>;
-export const loadSnapshot = (): SiteSnapshot => siteSnapshotSchema.parse(snapshotJson);
-`;
-
-const adapterSource = (contentPath = 'content') => {
-  const root = normalizedContentPath(contentPath);
-  const contentGlob = `../../${root ? `${root}/` : ''}**/*.mdx`;
-  return `import contentMapJson from '../../${THEME_REPOSITORY_CONTENT_MAP_PATH}';
-import { env } from '../env';
-import { loadSnapshot, type SiteSnapshot } from '../nibleaf/runtime';
-
-export interface ContentAdapter { load(): Promise<SiteSnapshot> }
-
-const contentMap = contentMapJson as Record<string, string>;
-const mdxFiles = import.meta.glob(${JSON.stringify(contentGlob)}, { eager: true, import: 'default', query: '?raw' }) as Record<string, string>;
-
-const repositoryPath = (modulePath: string): string => modulePath.startsWith('../../') ? modulePath.slice(6) : modulePath;
-const stripFrontMatter = (source: string): string => {
-  const normalized = source.replaceAll('\\r', '');
-  if (!normalized.startsWith('---\\n')) return normalized;
-  const boundary = normalized.indexOf('\\n---\\n', 4);
-  return boundary === -1 ? normalized : normalized.slice(boundary + 5).trimStart();
+const languageDirectory = (snapshot: SiteSnapshot, languageCode: string): string =>
+  languageCode === defaultLanguageOf(snapshot)?.code ? '' : safeThemePathSegment(languageCode);
+const versionDirectory = (snapshot: SiteSnapshot, versionId: string): string => {
+  if (versionId === defaultVersionOf(snapshot)?.id) return '';
+  const version = snapshot.project.versions.find((item) => item.id === versionId);
+  return `${THEME_REPOSITORY_VERSIONS_DIRECTORY}/${safeThemePathSegment(version?.slug ?? versionId)}`;
 };
 
-export const applyMdxFiles = (snapshot: SiteSnapshot, sources: Readonly<Record<string, string>>): SiteSnapshot => {
-  const byPath = new Map(Object.entries(sources).map(([path, source]) => [repositoryPath(path), source]));
-  return {
-    ...snapshot,
-    pages: snapshot.pages.map((page) => {
-      const path = contentMap[page.id];
-      const source = path ? byPath.get(path) : undefined;
-      return source === undefined ? page : { ...page, content: stripFrontMatter(source) };
-    }),
-  };
-};
-
-/** Local development never needs production secrets. Replace this adapter to
- * opt into a versioned Nibleaf API once an official remote SDK is available. */
-export const contentAdapter: ContentAdapter = {
-  async load() {
-    void env.VITE_NIBLEAF_API_URL;
-    return applyMdxFiles(loadSnapshot(), mdxFiles);
-  },
-};
-`;
-};
-
-const adapterTestSource = `import contentMapJson from '../../.nibleaf/content-map.json';
-import { describe, expect, it } from 'vitest';
-import { loadSnapshot } from '../nibleaf/runtime';
-import { applyMdxFiles } from './content';
-
-describe('content adapter', () => {
-  it('uses customer-edited MDX content instead of the generated snapshot body', () => {
-    const snapshot = loadSnapshot();
-    const page = snapshot.pages.find((item) => item.kind === 'PAGE');
-    expect(page).toBeDefined();
-    if (!page) return;
-    const path = (contentMapJson as Record<string, string>)[page.id];
-    expect(path).toBeDefined();
-    if (!path) return;
-    const edited = applyMdxFiles(snapshot, { [\`../../\${path}\`]: '---\\ntitle: "Edited"\\n---\\n\\n## Customer edit' });
-    expect(edited.pages.find((item) => item.id === page.id)?.content).toBe('## Customer edit');
-  });
-});
-`;
-
-const appSource = (template: ThemeRepositoryTemplateSource, templateId: ThemePresetId) => `import { useEffect, useState } from 'react';
-import * as m from './paraglide/messages.js';
-import { contentAdapter } from './adapters/content';
-import type { SiteSnapshot } from './nibleaf/runtime';
-import { ${template.componentName} } from './theme/${template.componentName}';
-import './theme/${templateId}.css';
-
-export function App() {
-  const [snapshot, setSnapshot] = useState<SiteSnapshot>();
-  useEffect(() => { void contentAdapter.load().then(setSnapshot); }, []);
-  return snapshot ? <${template.componentName} snapshot={snapshot} /> : <p className="loading">{m.loading()}</p>;
-}
-`;
-
-const mainSource = `import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import { App } from './App';
-
-createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
-`;
-
-const testSource = (template: ThemeRepositoryTemplateSource) => `// @vitest-environment jsdom
-import { act } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import * as m from '../paraglide/messages.js';
-import { loadSnapshot, type SiteSnapshot } from '../nibleaf/runtime';
-import { ${template.componentName} } from './${template.componentName}';
-import { Tooltip, nextTabIndex } from './mdx-components';
-
-declare global {
-  var IS_REACT_ACT_ENVIRONMENT: boolean;
-}
-
-let mountedRoot: Root | undefined;
-beforeAll(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true; });
-const mountTheme = async (snapshot: SiteSnapshot) => {
-  const container = document.createElement('div');
-  document.body.append(container);
-  mountedRoot = createRoot(container);
-  await act(async () => { mountedRoot?.render(<${template.componentName} snapshot={snapshot} />); });
-  return container;
-};
-const changeScope = async (container: HTMLElement, scope: 'language' | 'version', value: string) => {
-  const select = container.querySelector<HTMLSelectElement>('[data-scope="' + scope + '"]');
-  expect(select).not.toBeNull();
-  if (!select) return;
-  await act(async () => {
-    select.value = value;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-};
-const updateSearch = async (input: HTMLInputElement, value: string) => {
-  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-  expect(setValue).toBeDefined();
-  await act(async () => {
-    setValue?.call(input, value);
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-};
-const searchableSnapshot = () => {
-  const snapshot = loadSnapshot();
-  const english = snapshot.pages.find((page) => page.kind === 'PAGE' && page.languageCode === 'en');
-  const arabic = snapshot.pages.find((page) => page.kind === 'PAGE' && page.languageCode === 'ar');
-  expect(english).toBeDefined();
-  expect(arabic).toBeDefined();
-  if (!english || !arabic) return;
-  const nextVersion = { id: 'version_test_next', name: 'Test next', slug: 'test-next', isDefault: false };
-  return {
-    ...snapshot,
-    project: { ...snapshot.project, versions: [...snapshot.project.versions, nextVersion, { id: 'version_test_empty', name: 'Test empty', slug: 'test-empty', isDefault: false }] },
-    pages: [
-      ...snapshot.pages,
-      { ...english, id: 'search-target', title: 'Keyboard search target', slug: 'keyboard-target', path: '/keyboard-target', translationKey: 'keyboard-target', position: 80 },
-      { ...english, id: 'next-en', versionId: nextVersion.id, title: 'Next English guide', slug: 'next-guide', path: '/next-guide', translationKey: 'guide', position: 81 },
-      { ...arabic, id: 'next-ar', versionId: nextVersion.id, title: 'دليل الإصدار التالي', slug: 'next-guide-ar', path: '/ar/next-guide', translationKey: 'guide', position: 82 },
-    ],
-  } satisfies SiteSnapshot;
-};
-
-afterEach(async () => {
-  if (mountedRoot) await act(async () => { mountedRoot?.unmount(); });
-  mountedRoot = undefined;
-  document.body.replaceChildren();
-});
-
-describe('${template.displayName} theme', () => {
-  it('renders localized fixture content through the vendored runtime contract', () => {
-    const snapshot = loadSnapshot();
-    const english = renderToStaticMarkup(<${template.componentName} snapshot={snapshot} />);
-    expect(english).toContain(m.customerOwned({}, { locale: 'en' }));
-    expect(english).toContain(m.themeLabel({}, { locale: 'en' }));
-    expect(english).toContain('id="overview"');
-    expect(english).toContain('id="next-steps"');
-    expect(english).toContain('class="mdx-callout"');
-    expect(english).toContain('<strong>Portable callout');
-    expect(english).toContain('<ul class="mdx-file-tree">');
-    expect(english).toContain('<li class="mdx-folder">');
-    expect(english).not.toContain('<ul><p><li');
-    expect(english).toContain('role="tooltip"');
-    expect(english).toContain('aria-describedby=');
-    expect(english).toContain('aria-label="star"');
-    const arabicPage = snapshot.pages.find((page) => page.languageCode === 'ar');
-    expect(arabicPage).toBeDefined();
-    if (!arabicPage) return;
-    expect(english).not.toContain(arabicPage.title);
-    const arabic = renderToStaticMarkup(<${template.componentName} snapshot={{ ...snapshot, pages: [arabicPage] }} />);
-    expect(arabic).toContain('dir="rtl"');
-    expect(arabic).toContain(m.themeLabel({}, { locale: 'ar' }));
-    expect(arabic).not.toContain(snapshot.pages.find((item) => item.languageCode === 'en')?.title);
-  });
-
-  it('keeps navigation inside the selected language and version while preserving translation context', async () => {
-    const snapshot = searchableSnapshot();
-    if (!snapshot) return;
-    const english = snapshot.pages.find((item) => item.languageCode === 'en' && item.versionId === 'version_main');
-    const arabic = snapshot.pages.find((item) => item.languageCode === 'ar' && item.versionId === 'version_main');
-    const englishAuthentication = snapshot.pages.find(
-      (item) => item.languageCode === 'en' && item.translationKey === 'authentication',
-    );
-    const arabicAuthentication = snapshot.pages.find(
-      (item) => item.languageCode === 'ar' && item.translationKey === 'authentication',
-    );
-    const container = await mountTheme(snapshot);
-    const navigation = container.querySelector('nav');
-    expect(navigation?.textContent).toContain(english?.title);
-    expect(navigation?.textContent).not.toContain(arabic?.title);
-
-    const pageSelector = container.querySelector<HTMLSelectElement>('.mobile-page-picker select');
-    expect(englishAuthentication).toBeDefined();
-    expect(arabicAuthentication).toBeDefined();
-    expect(pageSelector).not.toBeNull();
-    if (pageSelector && englishAuthentication) {
-      await act(async () => {
-        pageSelector.value = englishAuthentication.id;
-        pageSelector.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-    }
-
-    await changeScope(container, 'language', 'ar');
-    expect(container.querySelector('.harbor,.manuscript,.signal')?.getAttribute('dir')).toBe('rtl');
-    expect(navigation?.textContent).toContain(arabic?.title);
-    expect(navigation?.textContent).not.toContain(english?.title);
-    expect(container.querySelector('h1')?.textContent).toBe(arabicAuthentication?.title);
-    const scopeSelectors = [...container.querySelectorAll<HTMLSelectElement>('.scope-controls select')];
-    expect(scopeSelectors.map((item) => item.dataset.scope)).toEqual([
-      'language',
-      'version',
-    ]);
-    scopeSelectors[0]?.focus();
-    expect(document.activeElement).toBe(scopeSelectors[0]);
-    scopeSelectors[1]?.focus();
-    expect(document.activeElement).toBe(scopeSelectors[1]);
-
-    await changeScope(container, 'version', 'version_test_next');
-    expect(navigation?.textContent).toContain('دليل الإصدار التالي');
-    expect(navigation?.textContent).not.toContain('Next English guide');
-    expect(container.querySelector('h1')?.textContent).toBe('دليل الإصدار التالي');
-  });
-
-  it('keeps selectors and mobile-capable search available for an empty scope', async () => {
-    const snapshot = searchableSnapshot();
-    if (!snapshot) return;
-    const container = await mountTheme(snapshot);
-    await changeScope(container, 'version', 'version_test_empty');
-    expect(container.querySelector('.empty-scope')?.textContent).toBe(m.noVisiblePages({}, { locale: 'en' }));
-    expect(container.querySelectorAll('.scope-controls select')).toHaveLength(2);
-    expect(container.querySelector<HTMLInputElement>('[role="search"] input[type="search"]')).not.toBeNull();
-  });
-
-  it('searches only the selected snapshot scope and moves focus to a result with the keyboard', async () => {
-    const snapshot = searchableSnapshot();
-    if (!snapshot) return;
-    const container = await mountTheme(snapshot);
-    const input = container.querySelector<HTMLInputElement>('[role="search"] input[type="search"]');
-    expect(input).not.toBeNull();
-    if (!input) return;
-    await updateSearch(input, 'Keyboard search target');
-    const result = container.querySelector<HTMLButtonElement>('[data-search-result]');
-    expect(result?.textContent).toBe('Keyboard search target');
-    expect(container.querySelector('.search-results')?.textContent).not.toContain('دليل الإصدار التالي');
-    input.focus();
-    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' })); });
-    expect(document.activeElement).toBe(result);
-    await act(async () => { result?.click(); });
-    expect(container.querySelector('h1')?.textContent).toBe('Keyboard search target');
-
-    await updateSearch(input, 'Keyboard');
-    input.focus();
-    await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' })); });
-    expect(input.value).toBe('');
-  });
-
-  it('moves tab focus predictably in LTR and RTL directions', () => {
-    expect(nextTabIndex(0, 3, 'ArrowRight', 'ltr')).toBe(1);
-    expect(nextTabIndex(0, 3, 'ArrowRight', 'rtl')).toBe(2);
-    expect(nextTabIndex(2, 3, 'Home', 'rtl')).toBe(0);
-    expect(nextTabIndex(0, 3, 'End', 'ltr')).toBe(2);
-  });
-
-  it('exposes tooltip text to keyboard and pointer users without trapping focus', () => {
-    const container = document.createElement('div');
-    container.innerHTML = renderToStaticMarkup(<Tooltip tip="Auth token">credential</Tooltip>);
-    const trigger = container.querySelector<HTMLElement>('.mdx-tooltip-trigger');
-    const tooltip = container.querySelector<HTMLElement>('[role="tooltip"]');
-    expect(trigger).not.toBeNull();
-    expect(tooltip).not.toBeNull();
-    if (!trigger || !tooltip) return;
-    expect(trigger.tabIndex).toBe(0);
-    expect(trigger.getAttribute('aria-describedby')).toBe(tooltip.id);
-    expect(tooltip.textContent).toBe('Auth token');
-    expect(tooltip.tabIndex).toBe(-1);
-  });
-});
-`;
-
-const readme = (
-  projectName: string,
-  template: ThemeRepositoryTemplateSource,
-  templateId: ThemePresetId,
-  contentPath = 'content',
-) => `# ${projectName} documentation theme
-
-This is a normal, self-contained ${template.displayName} implementation exported by Nibleaf. It uses Vite 8, React Compiler, TypeScript 7, ParaglideJS, Lucide, typed t3-env validation, and a vendored Nibleaf runtime contract. It does not need production secrets or a Nibleaf monorepo checkout.
-
-## One-command local setup
-
-\`corepack pnpm install && corepack pnpm dev\`
-
-Then open the URL printed by Vite. Run \`corepack pnpm check\` before pushing.
-
-## Extension points and ownership
-
-- Edit \`src/theme/${template.componentName}.tsx\` and \`src/theme/${templateId}.css\` for layout and presentation.
-- Edit \`src/theme/theme-utils.ts\` only when changing the shared page, locale, or document-direction behavior.
-- Edit \`messages/*.json\` for translated chrome; every visible runtime label is read through Paraglide.
-- Replace or wrap \`src/adapters/content.ts\` to change how data is loaded.
-- Put static assets in \`public/\`.
-- Edit documentation MDX under \`${normalizedContentPath(contentPath) || '.'}/\`; Nibleaf and Git reconcile it with the recorded common base.
-- Do not hand-edit \`.nibleaf/\` or \`nibleaf.theme.json\`. Nibleaf regenerates and verifies those files.
-
-Language and version selectors always scope navigation and the built-in client-side search to matching snapshot pages. Switching scope keeps the current \`translationKey\` when a matching page exists and otherwise opens the first visible page in the selected scope. The search is intentionally local and performs no network or search-provider request; replace the content adapter and search UI together if the repository later needs a remote index.
-
-The manifest is the source of truth for ownership. Customer-owned code is never overwritten after the first scaffold. Generated data and customer code are deliberately separate.
-`;
-
-const messages = (templateId: ThemePresetId) => {
-  const labels = {
-    harbor: { en: 'Harbor', ar: 'هاربور' },
-    manuscript: { en: 'Manuscript', ar: 'المخطوطة' },
-    signal: { en: 'Signal', ar: 'سيغنال' },
-  } as const;
-  return {
-    en: {
-      themeLabel: labels[templateId].en,
-      loading: 'Loading documentation',
-      search: 'Search documentation',
-      searchResults: 'Search results',
-      noSearchResults: 'No pages match this search.',
-      language: 'Language',
-      version: 'Version',
-      github: 'GitHub',
-      documentation: 'Documentation',
-      page: 'Page',
-      choosePage: 'Choose documentation page',
-      onThisPage: 'On this page',
-      overview: 'Overview',
-      nextSteps: 'Next steps',
-      chapters: 'Chapters',
-      commandIndex: 'Command index',
-      customerOwned: 'Customer-owned component',
-      edit: 'Edit',
-      syncPreserves: 'Nibleaf sync preserves it',
-      noVisiblePages: 'This snapshot has no visible pages.',
-    },
-    ar: {
-      themeLabel: labels[templateId].ar,
-      loading: 'جارٍ تحميل التوثيق',
-      search: 'ابحث في التوثيق',
-      searchResults: 'نتائج البحث',
-      noSearchResults: 'لا توجد صفحات مطابقة لهذا البحث.',
-      language: 'اللغة',
-      version: 'الإصدار',
-      github: 'GitHub',
-      documentation: 'التوثيق',
-      page: 'الصفحة',
-      choosePage: 'اختر صفحة التوثيق',
-      onThisPage: 'في هذه الصفحة',
-      overview: 'نظرة عامة',
-      nextSteps: 'الخطوات التالية',
-      chapters: 'الفصول',
-      commandIndex: 'فهرس الأوامر',
-      customerOwned: 'مكوّن يملكه العميل',
-      edit: 'عدّل',
-      syncPreserves: 'تحافظ مزامنة Nibleaf عليه',
-      noVisiblePages: 'لا تحتوي هذه اللقطة على صفحات ظاهرة.',
-    },
-  };
-};
-
-const inlangSettings = json({
-  $schema: 'https://inlang.com/schema/project-settings',
-  baseLocale: 'en',
-  locales: ['en', 'ar'],
-  modules: ['https://cdn.jsdelivr.net/npm/@inlang/plugin-message-format@4/dist/index.js'],
-  'plugin.inlang.messageFormat': { pathPattern: './messages/{locale}.json' },
-});
-
-const indexHtml = (template: ThemeRepositoryTemplateSource) => `<!doctype html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><meta name="color-scheme" content="light dark"/><link rel="icon" href="/favicon.svg"/><title>Nibleaf ${template.displayName} theme</title></head><body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body></html>
-`;
-
-const favicon = (accent: string) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="${accent}"/><path d="M17 43V21h7l16 13V21h7v22h-7L24 30v13z" fill="#fff"/></svg>\n`;
-
-const customerFiles = (templateId: ThemePresetId, contentPath = 'content'): Array<Omit<ThemeRepositoryFile, 'ownership'>> => {
-  const template = THEME_REPOSITORY_TEMPLATE_SOURCES[templateId];
-  const localized = messages(templateId);
-  return [
-    { path: 'package.json', content: packageJson(templateId) },
-    { path: 'tsconfig.json', content: tsconfig },
-    { path: 'vite.config.ts', content: viteConfig },
-    { path: 'index.html', content: indexHtml(template) },
-    { path: 'public/favicon.svg', content: favicon(template.accent) },
-    { path: '.gitignore', content: 'node_modules\ndist\nsrc/paraglide\n.env\n.env.local\n' },
-    { path: '.env.example', content: '# Optional future remote adapter; local snapshots need no secrets.\nVITE_NIBLEAF_API_URL=\n' },
-    { path: 'project.inlang/settings.json', content: inlangSettings },
-    { path: 'messages/en.json', content: json(localized.en) },
-    { path: 'messages/ar.json', content: json(localized.ar) },
-    { path: 'src/env.ts', content: envSource },
-    { path: 'src/main.tsx', content: mainSource },
-    { path: 'src/App.tsx', content: appSource(template, templateId) },
-    { path: 'src/nibleaf/runtime.ts', content: runtimeSource },
-    { path: 'src/adapters/content.ts', content: adapterSource(contentPath) },
-    { path: 'src/adapters/content.test.ts', content: adapterTestSource },
-    { path: 'src/theme/theme-utils.ts', content: themeUtilitiesSource },
-    { path: 'src/theme/mdx-components.tsx', content: themeMdxComponentsSource },
-    { path: `src/theme/${template.componentName}.tsx`, content: template.source },
-    { path: `src/theme/${template.componentName}.test.tsx`, content: testSource(template) },
-    { path: `src/theme/${templateId}.css`, content: template.style },
-  ];
-};
-
-const normalizedContentPath = (value = 'content') => {
-  let start = 0;
-  let end = value.length;
-
-  while (value[start] === '/') start += 1;
-  while (end > start && value[end - 1] === '/') end -= 1;
-
-  return value.slice(start, end);
-};
-
-export const themeRepositoryManifest = (
-  snapshot: SiteSnapshot,
-  snapshotContent = json(snapshot),
-  contentPath = 'content',
-  templateId = themeRepositoryTemplateId(snapshot),
-): ThemeRepositoryManifestV1 => ({
-  kind: THEME_REPOSITORY_KIND,
-  schemaVersion: THEME_REPOSITORY_SCHEMA_VERSION,
-  project: { id: snapshot.project.id, slug: snapshot.project.slug },
-  template: { id: templateId, version: 1 },
-  runtime: { strategy: 'vendored', contractVersion: THEME_RUNTIME_CONTRACT_VERSION, entry: 'src/nibleaf/runtime.ts' },
-  snapshot: { path: THEME_REPOSITORY_SNAPSHOT_PATH, sha256: sha256(snapshotContent) },
-  ownership: {
-    platform: ['.nibleaf/**', 'nibleaf.theme.json'],
-    shared: [`${normalizedContentPath(contentPath) ? `${normalizedContentPath(contentPath)}/` : ''}**/*.mdx`],
-    customer: [
-      'src/**',
-      'messages/**',
-      'project.inlang/**',
-      'public/**',
-      'README.md',
-      'package.json',
-      'tsconfig.json',
-      'vite.config.ts',
-      'index.html',
-      '.gitignore',
-      '.env.example',
-    ],
-  },
-});
-
-export const buildThemeRepository = (
-  snapshot: SiteSnapshot,
-  options: { contentPath?: string; template?: ThemePresetId } = {},
-): ThemeRepositoryFile[] => {
-  const templateId = themeRepositoryTemplateId(snapshot, options.template);
-  const normalizedSnapshot = stableSnapshot({
-    ...snapshot,
-    project: {
-      ...snapshot.project,
-      config: {
-        ...snapshot.project.config,
-        theme: { ...record(record(snapshot.project.config)?.theme), preset: templateId },
-      },
-    },
-  });
-  const contentMap = themeContentMap(normalizedSnapshot, options.contentPath);
-  const snapshotContent = json(normalizedSnapshot);
-  const manifest = themeRepositoryManifest(normalizedSnapshot, snapshotContent, options.contentPath, templateId);
-  return [
-    { path: THEME_REPOSITORY_MANIFEST_PATH, content: json(manifest), ownership: 'PLATFORM' },
-    { path: THEME_REPOSITORY_SNAPSHOT_PATH, content: snapshotContent, ownership: 'PLATFORM' },
-    { path: THEME_REPOSITORY_CONTENT_MAP_PATH, content: json(contentMap), ownership: 'PLATFORM' },
-    { path: '.nibleaf/README.md', content: 'Generated by Nibleaf. Manual changes fail safe import validation.\n', ownership: 'PLATFORM' },
-    {
-      path: 'README.md',
-      content: readme(snapshot.project.name, THEME_REPOSITORY_TEMPLATE_SOURCES[templateId], templateId, options.contentPath),
-      ownership: 'CUSTOMER',
-    },
-    ...customerFiles(templateId, options.contentPath).map((file) => ({ ...file, ownership: 'CUSTOMER' as const })),
-  ];
-};
-
-const safeThemePathSegment = (value: string) => {
-  const encoded = [...value.trim()]
-    .map((character) => (/^[\p{L}\p{N}._-]$/u.test(character) ? character : `~${character.codePointAt(0)?.toString(16)}~`))
-    .join('');
-  return encoded || 'untitled';
-};
-
-export const themeContentDirectory = (snapshot: SiteSnapshot, versionId: string, languageCode: string, contentPath = 'content') => {
-  const version = safeThemePathSegment(snapshot.project.versions.find((item) => item.id === versionId)?.slug ?? 'main');
-  const root = normalizedContentPath(contentPath);
-  return `${root ? `${root}/` : ''}${version}/${languageCode}`;
-};
+/** Directory holding the pages of one version/language: the content root for
+ * the defaults, `<root>/<lang>`, `<root>/versions/<slug>`, or `<root>/versions/<slug>/<lang>`. */
+export const themeContentDirectory = (snapshot: SiteSnapshot, versionId: string, languageCode: string, contentPath = 'content'): string =>
+  [normalizedContentPath(contentPath), versionDirectory(snapshot, versionId), languageDirectory(snapshot, languageCode)].filter(Boolean).join('/');
 
 export const themeContentPath = (page: SnapshotPage, snapshot: SiteSnapshot, contentPath = 'content'): string => {
   const relative =
@@ -716,7 +154,41 @@ export const themeContentPath = (page: SnapshotPage, snapshot: SiteSnapshot, con
       .filter((segment) => segment && segment !== '.' && segment !== '..')
       .map(safeThemePathSegment)
       .join('/') || 'index';
-  return `${themeContentDirectory(snapshot, page.versionId, page.languageCode, contentPath)}/${relative}.mdx`;
+  const directory = themeContentDirectory(snapshot, page.versionId, page.languageCode, contentPath);
+  return `${directory ? `${directory}/` : ''}${relative}.mdx`;
+};
+
+/** Inverse of themeContentPath: which version/language a repository file
+ * belongs to. Returns null for files outside the content root or paths that
+ * cannot be attributed unambiguously. */
+export const themeContentLocation = (path: string, snapshot: SiteSnapshot, contentPath = 'content'): ThemeContentLocation | null => {
+  const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '');
+  const root = normalizedContentPath(contentPath);
+  if (root && !normalized.startsWith(`${root}/`)) return null;
+  const inner = root ? normalized.slice(root.length + 1) : normalized;
+  if (!/\.mdx?$/i.test(inner)) return null;
+  let segments = inner
+    .replace(/\.mdx?$/i, '')
+    .split('/')
+    .filter(Boolean);
+  const defaultVersion = defaultVersionOf(snapshot);
+  const defaultLanguage = defaultLanguageOf(snapshot);
+  let versionId = defaultVersion?.id ?? '';
+  let languageCode = defaultLanguage?.code ?? '';
+  if (segments[0] === THEME_REPOSITORY_VERSIONS_DIRECTORY && segments.length > 1) {
+    const version = snapshot.project.versions.find((item) => item.id !== defaultVersion?.id && safeThemePathSegment(item.slug) === segments[1]);
+    if (version) {
+      versionId = version.id;
+      segments = segments.slice(2);
+    }
+  }
+  const language = snapshot.project.languages.find((item) => item.code !== defaultLanguage?.code && safeThemePathSegment(item.code) === segments[0]);
+  if (language) {
+    languageCode = language.code;
+    segments = segments.slice(1);
+  }
+  if (segments.length === 0 || !versionId || !languageCode) return null;
+  return { versionId, languageCode, relative: segments.join('/') };
 };
 
 export const themeContentMap = (snapshot: SiteSnapshot, contentPath = 'content'): Record<string, string> => {
@@ -729,27 +201,201 @@ export const themeContentMap = (snapshot: SiteSnapshot, contentPath = 'content')
     if (existing) {
       throw new Error(`Pages ${existing.id} and ${page.id} map to the same theme repository path: ${path}.`);
     }
+    const location = themeContentLocation(path, snapshot, contentPath);
+    if (!location || location.versionId !== page.versionId || location.languageCode !== page.languageCode) {
+      throw new Error(
+        `Page ${page.id} (${page.path}) maps to ${path}, which reads back as a different language or version. Rename the page so its path does not start with a language code or "${THEME_REPOSITORY_VERSIONS_DIRECTORY}".`,
+      );
+    }
     byPath.set(collisionKey, { id: page.id, path });
     return [[page.id, path] as const];
   });
   return Object.fromEntries(entries);
 };
 
-const customerRootFiles = new Set(['README.md', 'package.json', 'tsconfig.json', 'vite.config.ts', 'index.html', '.gitignore', '.env.example']);
+const repositoryLanguages = (snapshot: SiteSnapshot): SnapshotLanguage[] => {
+  const defaultLanguage = defaultLanguageOf(snapshot);
+  return [...snapshot.project.languages].sort((a, b) => Number(b.code === defaultLanguage?.code) - Number(a.code === defaultLanguage?.code));
+};
+const repositoryVersions = (snapshot: SiteSnapshot): SnapshotVersion[] => {
+  const defaultVersion = defaultVersionOf(snapshot);
+  return [...snapshot.project.versions].sort((a, b) => Number(b.id === defaultVersion?.id) - Number(a.id === defaultVersion?.id));
+};
+
+const resolvedRepositoryTheme = (snapshot: SiteSnapshot, templateId: ThemePresetId): ResolvedTheme => {
+  const owned = themeOwnedConfig(record(snapshot.project.config));
+  return resolveTheme({ ...owned, theme: { ...owned.theme, preset: templateId } });
+};
+
+const repositoryAppearance = (snapshot: SiteSnapshot): 'light' | 'dark' | 'system' => {
+  const configured = record(record(snapshot.project.config)?.styling)?.theme;
+  return configured === 'dark' || configured === 'system' ? configured : 'light';
+};
+
+type DocsNavEntry = string | { group: string; icon?: string; pages: DocsNavEntry[] };
+
+/** Page entries are content-root-relative paths without `.mdx`, exactly what
+ * `src/lib/site.ts` keys its page map by. */
+const contentKey = (page: SnapshotPage, snapshot: SiteSnapshot, contentPath: string): string => {
+  const path = themeContentPath(page, snapshot, contentPath);
+  const root = normalizedContentPath(contentPath);
+  return (root ? path.slice(root.length + 1) : path).replace(/\.mdx$/, '');
+};
+
+const docsNavigationPages = (nodes: NavNode[], pageById: Map<string, SnapshotPage>, snapshot: SiteSnapshot, contentPath: string): DocsNavEntry[] =>
+  nodes.flatMap((node): DocsNavEntry[] => {
+    if (node.kind === 'GROUP') {
+      const pages = docsNavigationPages(node.children, pageById, snapshot, contentPath);
+      return [{ group: node.title, ...(node.icon ? { icon: node.icon } : {}), pages }];
+    }
+    const page = pageById.get(node.id);
+    return page ? [contentKey(page, snapshot, contentPath)] : [];
+  });
+
+/** Mintlify-compatible `docs.json` plus an `x-nibleaf` block with everything
+ * the generated app needs (resolved theme, languages with direction, versions). */
+export const themeRepositoryDocsConfig = (
+  snapshot: SiteSnapshot,
+  contentPath = 'content',
+  templateId = themeRepositoryTemplateId(snapshot),
+): Record<string, unknown> => {
+  const theme = resolvedRepositoryTheme(snapshot, templateId);
+  const languages = repositoryLanguages(snapshot);
+  const versions = repositoryVersions(snapshot);
+  const defaultLanguage = defaultLanguageOf(snapshot);
+  const defaultVersion = defaultVersionOf(snapshot);
+  const pageById = new Map(snapshot.pages.map((page) => [page.id, page]));
+  const languageNavigation = (version: SnapshotVersion) =>
+    languages.map((language) => ({
+      language: language.code,
+      'x-nibleaf': { label: language.label, direction: language.direction, default: language.code === defaultLanguage?.code },
+      pages: docsNavigationPages(
+        buildNavTree(
+          snapshot.pages.filter((page) => page.versionId === version.id),
+          language.code,
+        ),
+        pageById,
+        snapshot,
+        contentPath,
+      ),
+    }));
+  const navigation =
+    versions.length > 1
+      ? {
+          versions: versions.map((version) => ({
+            version: version.name,
+            'x-nibleaf': { slug: version.slug, default: version.id === defaultVersion?.id },
+            languages: languageNavigation(version),
+          })),
+        }
+      : { languages: versions[0] ? languageNavigation(versions[0]) : [] };
+  return {
+    $schema: 'https://mintlify.com/docs.json',
+    name: snapshot.project.name,
+    ...(snapshot.project.description ? { description: snapshot.project.description } : {}),
+    colors: { primary: theme.colors.light.accent, light: theme.colors.dark.accent, dark: theme.colors.light.accent },
+    navigation,
+    'x-nibleaf': {
+      project: { id: snapshot.project.id, slug: snapshot.project.slug },
+      template: { id: templateId, version: 2 },
+      theme,
+      appearance: repositoryAppearance(snapshot),
+      languages: languages.map((language) => ({
+        code: language.code,
+        label: language.label,
+        direction: language.direction,
+        isDefault: language.code === defaultLanguage?.code,
+        enabled: language.enabled !== false,
+        directory: languageDirectory(snapshot, language.code),
+      })),
+      versions: versions.map((version) => ({
+        id: version.id,
+        name: version.name,
+        slug: version.slug,
+        isDefault: version.id === defaultVersion?.id,
+        directory: versionDirectory(snapshot, version.id),
+      })),
+      contentPath: normalizedContentPath(contentPath),
+    },
+  };
+};
+
+const CUSTOMER_ROOT_FILES = ['README.md', 'package.json', 'tsconfig.json', 'vite.config.ts', 'vitest.config.ts', '.gitignore'] as const;
+const customerRootFiles = new Set<string>(CUSTOMER_ROOT_FILES);
 const textThemeFile = /\.(?:[cm]?[jt]sx?|css|scss|json|mdx?|html|svg|txt|ya?ml)$/i;
+
+export const themeRepositoryManifest = (
+  snapshot: SiteSnapshot,
+  options: { docsContent: string; contentMapContent: string; contentPath?: string; templateId?: ThemePresetId },
+): ThemeRepositoryManifestV2 => {
+  const root = normalizedContentPath(options.contentPath);
+  return {
+    kind: THEME_REPOSITORY_KIND,
+    schemaVersion: THEME_REPOSITORY_SCHEMA_VERSION,
+    project: { id: snapshot.project.id, slug: snapshot.project.slug },
+    template: { id: options.templateId ?? themeRepositoryTemplateId(snapshot), version: 2 },
+    runtime: { strategy: 'docs-json', contractVersion: THEME_RUNTIME_CONTRACT_VERSION, entry: 'src/lib/site.ts' },
+    docs: { path: THEME_REPOSITORY_DOCS_CONFIG_PATH, sha256: sha256(options.docsContent) },
+    contentMap: { path: THEME_REPOSITORY_CONTENT_MAP_PATH, sha256: sha256(options.contentMapContent) },
+    contentPath: root,
+    ownership: {
+      platform: ['.nibleaf/**', THEME_REPOSITORY_DOCS_CONFIG_PATH],
+      shared: [`${root ? `${root}/` : ''}**/*.mdx`],
+      customer: ['src/**', 'messages/**', 'project.inlang/**', 'public/**', ...CUSTOMER_ROOT_FILES],
+    },
+  };
+};
+
+export const buildThemeRepository = (
+  snapshot: SiteSnapshot,
+  options: { contentPath?: string; template?: ThemePresetId } = {},
+): ThemeRepositoryFile[] => {
+  const templateId = themeRepositoryTemplateId(snapshot, options.template);
+  const contentMapContent = json(themeContentMap(snapshot, options.contentPath));
+  const docsContent = json(themeRepositoryDocsConfig(snapshot, options.contentPath, templateId));
+  const manifest = themeRepositoryManifest(snapshot, { docsContent, contentMapContent, contentPath: options.contentPath, templateId });
+  const defaultLanguage = defaultLanguageOf(snapshot);
+  const templateOptions: ThemeRepositoryTemplateOptions = {
+    templateId,
+    displayName: THEME_REPOSITORY_TEMPLATE_META[templateId].displayName,
+    projectName: snapshot.project.name,
+    projectDescription: snapshot.project.description,
+    contentRoot: normalizedContentPath(options.contentPath),
+    languages: repositoryLanguages(snapshot).map((language) => ({
+      code: language.code,
+      label: language.label,
+      direction: language.direction,
+      isDefault: language.code === defaultLanguage?.code,
+    })),
+    theme: resolvedRepositoryTheme(snapshot, templateId),
+    appearance: repositoryAppearance(snapshot),
+  };
+  return [
+    { path: THEME_REPOSITORY_MANIFEST_PATH, content: json(manifest), ownership: 'PLATFORM' },
+    { path: THEME_REPOSITORY_DOCS_CONFIG_PATH, content: docsContent, ownership: 'PLATFORM' },
+    { path: THEME_REPOSITORY_CONTENT_MAP_PATH, content: contentMapContent, ownership: 'PLATFORM' },
+    ...themeRepositoryTemplateFiles(templateOptions).map((file) => ({ ...file, ownership: 'CUSTOMER' as const })),
+  ];
+};
 
 export const themeRepositoryOwnershipForPath = (path: string, contentPath = 'content'): ThemeRepositoryOwnership | null => {
   const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '');
-  if (normalized === THEME_REPOSITORY_MANIFEST_PATH || normalized.startsWith('.nibleaf/')) return 'PLATFORM';
+  if (
+    normalized === THEME_REPOSITORY_LEGACY_MANIFEST_PATH ||
+    normalized === THEME_REPOSITORY_DOCS_CONFIG_PATH ||
+    normalized.startsWith('.nibleaf/')
+  ) {
+    return 'PLATFORM';
+  }
+  if (customerRootFiles.has(normalized)) return 'CUSTOMER';
   const contentRoot = normalizedContentPath(contentPath);
   if (/\.mdx?$/i.test(normalized) && (!contentRoot || normalized.startsWith(`${contentRoot}/`))) return 'SHARED';
   if (
-    customerRootFiles.has(normalized) ||
-    ((normalized.startsWith('src/') ||
+    (normalized.startsWith('src/') ||
       normalized.startsWith('messages/') ||
       normalized.startsWith('project.inlang/') ||
       normalized.startsWith('public/')) &&
-      textThemeFile.test(normalized))
+    textThemeFile.test(normalized)
   ) {
     return 'CUSTOMER';
   }
@@ -762,7 +408,7 @@ export const validateThemeRepositoryImport = (
   contentPath = 'content',
   template = themeRepositoryTemplateId(expected),
 ): ThemeRepositoryImportIssue[] => {
-  const manifestText = files.get(THEME_REPOSITORY_MANIFEST_PATH);
+  const manifestText = files.get(THEME_REPOSITORY_MANIFEST_PATH) ?? files.get(THEME_REPOSITORY_LEGACY_MANIFEST_PATH);
   const issues = validateThemeRepositoryManifest(manifestText, expected.project.id, template);
   if (issues.some((issue) => issue.code === 'MANIFEST_INVALID')) return issues;
   const expectedFiles = new Map(

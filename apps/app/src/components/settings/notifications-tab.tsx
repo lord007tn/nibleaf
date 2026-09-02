@@ -2,6 +2,7 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Bell } from 'lucide-react';
+import { useId } from 'react';
 import { toast } from 'sonner';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/services/auth-client';
@@ -11,6 +12,35 @@ interface NotifItem {
   id: string;
   labelKey: MessageKey;
   descriptionKey: MessageKey;
+}
+
+function NotificationPreference({
+  item,
+  checked,
+  disabled,
+  onCheckedChange,
+}: {
+  item: NotifItem;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: () => void;
+}) {
+  const t = useT();
+  const labelId = useId();
+  const descriptionId = useId();
+  return (
+    <div className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
+      <div className="min-w-0 flex-1 leading-snug">
+        <div className="font-medium text-sm" id={labelId}>
+          {t(item.labelKey)}
+        </div>
+        <p className="mt-0.5 text-muted-foreground text-sm" id={descriptionId}>
+          {t(item.descriptionKey)}
+        </p>
+      </div>
+      <Switch aria-describedby={descriptionId} aria-labelledby={labelId} checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
+    </div>
+  );
 }
 
 const GROUPS: Array<{ titleKey: MessageKey; items: NotifItem[] }> = [
@@ -99,7 +129,9 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
     <div className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm">
         {t('settings.notifications.introBefore')}{' '}
-        <span className="font-medium text-foreground">{session?.user?.email ?? t('settings.notifications.youFallback')}</span>
+        <span className="font-medium text-foreground" dir={session?.user?.email ? 'ltr' : undefined}>
+          {session?.user?.email ?? t('settings.notifications.youFallback')}
+        </span>
         {t('settings.notifications.introAfter')}
       </p>
       <p className="-mt-3 flex items-center gap-1.5 text-muted-foreground text-sm">
@@ -110,13 +142,13 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
         <SettingsSection key={group.titleKey} title={t(group.titleKey)}>
           <div className="-mt-2 flex flex-col divide-y divide-border">
             {group.items.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                <div className="min-w-0 flex-1 leading-snug">
-                  <div className="font-medium text-sm">{t(item.labelKey)}</div>
-                  <p className="mt-0.5 text-muted-foreground text-sm">{t(item.descriptionKey)}</p>
-                </div>
-                <Switch checked={isOn(item.id)} disabled={update.isPending} onCheckedChange={() => toggle(item.id)} />
-              </div>
+              <NotificationPreference
+                checked={isOn(item.id)}
+                disabled={update.isPending}
+                item={item}
+                key={item.id}
+                onCheckedChange={() => toggle(item.id)}
+              />
             ))}
           </div>
         </SettingsSection>

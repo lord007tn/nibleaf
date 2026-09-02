@@ -1,6 +1,9 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download, FileArchive, Play, Plus, RefreshCw } from 'lucide-react';
@@ -21,6 +24,7 @@ import {
   useRunExportSchedule,
   useUpdateExportSchedule,
 } from '@/hooks/api/exports';
+import { useFormatters } from '@/lib/format';
 import { SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
@@ -28,11 +32,16 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
   PDF: 'settings.exports.workflow.format.pdf',
   STATIC_HTML: 'settings.exports.workflow.format.html',
 };
-const sizeLabel = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
+const MEBIBYTE = 1024 * 1024;
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(locale) : '—');
 
 export function ExportsSection({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
+  const { number } = useFormatters();
+  const sizeLabel = (bytes: number) =>
+    bytes >= MEBIBYTE * 1024
+      ? t('settings.usage.unit.gb', { value: number(bytes / MEBIBYTE / 1024, { maximumFractionDigits: 1 }) })
+      : t('settings.usage.unit.mb', { value: number(bytes / MEBIBYTE, { maximumFractionDigits: bytes < MEBIBYTE ? 2 : 1 }) });
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
@@ -69,16 +78,17 @@ export function ExportsSection({ projectId }: { projectId: string }) {
             ['history', t('settings.exports.workflow.history'), t('settings.exports.workflow.historyDesc')],
           ] as const
         ).map(([value, title, description]) => (
-          <button
+          <Button
             aria-pressed={surface === value}
-            className={`rounded-lg border p-3 text-start transition-colors ${surface === value ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+            className="h-auto flex-col items-start whitespace-normal p-3 text-start aria-pressed:border-primary aria-pressed:bg-primary/5"
             key={value}
             onClick={() => setSurface(value)}
             type="button"
+            variant="outline"
           >
             <span className="block font-medium text-sm">{title}</span>
             <span className="mt-1 block text-muted-foreground text-xs">{description}</span>
-          </button>
+          </Button>
         ))}
       </nav>
       {runs.isError || schedules.isError ? (
@@ -92,9 +102,10 @@ export function ExportsSection({ projectId }: { projectId: string }) {
           <div className="rounded-lg border border-border p-4">
             <div className="flex flex-wrap gap-3">
               {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
-                  <input checked={formats.includes(format)} onChange={() => toggleFormat(format)} type="checkbox" /> {t(labelKeys[format])}
-                </label>
+                <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
+                  <Switch checked={formats.includes(format)} id={`export-format-${format}`} onCheckedChange={() => toggleFormat(format)} />
+                  <Label htmlFor={`export-format-${format}`}>{t(labelKeys[format])}</Label>
+                </div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -169,7 +180,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
                 </div>
                 {run.error ? (
                   <p className="mt-3 rounded-md bg-destructive/10 p-2 text-destructive text-xs">
-                    {t('settings.exports.workflow.attempt', { count: run.attempts })}: {run.error}
+                    {t('settings.exports.workflow.attempt', { count: run.attempts })}: <span dir="auto">{run.error}</span>
                   </p>
                 ) : null}
                 {run.artifacts.length ? (
@@ -236,6 +247,20 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
       current.includes(format) ? (current.length === 1 ? current : current.filter((item) => item !== format)) : [...current, format],
     );
   const create = useCreateExportSchedule(projectId);
+  const cadenceOptions: Array<{ value: ExportSchedule['cadence']; label: string }> = [
+    { value: 'DAILY', label: t('settings.exports.workflow.daily') },
+    { value: 'WEEKLY', label: t('settings.exports.workflow.weekly') },
+    { value: 'MONTHLY', label: t('settings.exports.workflow.monthly') },
+  ];
+  const weekdayOptions: Array<{ value: number; label: string }> = [
+    { value: 0, label: t('settings.exports.workflow.day.sunday') },
+    { value: 1, label: t('settings.exports.workflow.day.monday') },
+    { value: 2, label: t('settings.exports.workflow.day.tuesday') },
+    { value: 3, label: t('settings.exports.workflow.day.wednesday') },
+    { value: 4, label: t('settings.exports.workflow.day.thursday') },
+    { value: 5, label: t('settings.exports.workflow.day.friday') },
+    { value: 6, label: t('settings.exports.workflow.day.saturday') },
+  ];
   const createSchedule = () => {
     const [hour, minute] = time.split(':').map(Number);
     create.mutate(
@@ -263,32 +288,33 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   return (
     <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
       <Input aria-label={t('settings.exports.workflow.scheduleName')} onChange={(event) => setName(event.target.value)} value={name} />
-      <Input aria-label={t('settings.exports.workflow.timezone')} onChange={(event) => setTimezone(event.target.value)} value={timezone} />
-      <select
-        className="h-9 rounded-md border bg-background px-3 text-sm"
-        onChange={(event) => setCadence(event.target.value as ExportSchedule['cadence'])}
-        value={cadence}
-      >
-        <option value="DAILY">{t('settings.exports.workflow.daily')}</option>
-        <option value="WEEKLY">{t('settings.exports.workflow.weekly')}</option>
-        <option value="MONTHLY">{t('settings.exports.workflow.monthly')}</option>
-      </select>
+      <Input aria-label={t('settings.exports.workflow.timezone')} dir="ltr" onChange={(event) => setTimezone(event.target.value)} value={timezone} />
+      <Select items={cadenceOptions} onValueChange={(next) => setCadence(next ?? 'DAILY')} value={cadence}>
+        <SelectTrigger className="w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {cadenceOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Input aria-label={t('settings.exports.workflow.localTime')} onChange={(event) => setTime(event.target.value)} type="time" value={time} />
       {cadence === 'WEEKLY' ? (
-        <select
-          aria-label={t('settings.exports.workflow.weekday')}
-          className="h-9 rounded-md border bg-background px-3 text-sm"
-          onChange={(event) => setWeekday(Number(event.target.value))}
-          value={weekday}
-        >
-          <option value={0}>{t('settings.exports.workflow.day.sunday')}</option>
-          <option value={1}>{t('settings.exports.workflow.day.monday')}</option>
-          <option value={2}>{t('settings.exports.workflow.day.tuesday')}</option>
-          <option value={3}>{t('settings.exports.workflow.day.wednesday')}</option>
-          <option value={4}>{t('settings.exports.workflow.day.thursday')}</option>
-          <option value={5}>{t('settings.exports.workflow.day.friday')}</option>
-          <option value={6}>{t('settings.exports.workflow.day.saturday')}</option>
-        </select>
+        <Select items={weekdayOptions} onValueChange={(next) => setWeekday(next ?? 1)} value={weekday}>
+          <SelectTrigger aria-label={t('settings.exports.workflow.weekday')} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {weekdayOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       ) : null}
       {cadence === 'MONTHLY' ? (
         <Input
@@ -318,10 +344,17 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
       />
       <div className="flex flex-wrap gap-2 sm:col-span-2">
         {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
-          <label className="flex items-center gap-1.5 text-xs" key={format}>
-            <input checked={scheduleFormats.includes(format)} onChange={() => toggleScheduleFormat(format)} type="checkbox" />
-            {t(labelKeys[format])}
-          </label>
+          <div className="flex items-center gap-1.5 text-xs" key={format}>
+            <Switch
+              checked={scheduleFormats.includes(format)}
+              id={`schedule-format-${format}`}
+              onCheckedChange={() => toggleScheduleFormat(format)}
+              size="sm"
+            />
+            <Label className="text-xs" htmlFor={`schedule-format-${format}`}>
+              {t(labelKeys[format])}
+            </Label>
+          </div>
         ))}
       </div>
       <div className="flex items-center justify-end sm:col-span-2">
@@ -341,16 +374,22 @@ function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: Exp
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
       <div>
         <div className="flex items-center gap-2 font-medium text-sm">
-          {schedule.name}
+          <span dir="auto">{schedule.name}</span>
           <Badge variant="secondary">{schedule.enabled ? t('settings.exports.workflow.enabled') : t('settings.exports.workflow.disabled')}</Badge>
         </div>
         <div className="mt-1 text-muted-foreground text-xs">
           {t(`settings.exports.workflow.${schedule.cadence.toLowerCase()}` as MessageKey)} {t('settings.exports.workflow.at')}{' '}
-          {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} {schedule.timezone} ·{' '}
-          {t('settings.exports.workflow.next')} {formatDate(schedule.nextRunAt, locale)} ·{' '}
+          <span dir="ltr">
+            {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} {schedule.timezone}
+          </span>{' '}
+          · {t('settings.exports.workflow.next')} {formatDate(schedule.nextRunAt, locale)} ·{' '}
           {t('settings.exports.workflow.runCount', { count: schedule._count.jobs })}
         </div>
-        {schedule.lastError ? <div className="mt-1 text-destructive text-xs">{schedule.lastError}</div> : null}
+        {schedule.lastError ? (
+          <div className="mt-1 text-destructive text-xs" dir="auto">
+            {schedule.lastError}
+          </div>
+        ) : null}
       </div>
       <div className="flex gap-2">
         <Button

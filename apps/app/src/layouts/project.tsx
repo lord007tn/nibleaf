@@ -79,7 +79,9 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" />
           {project?.name ? (
-            <span className="truncate font-medium text-sm">{project.name}</span>
+            <span className="truncate font-medium text-sm" dir="auto">
+              {project.name}
+            </span>
           ) : (
             <span className="h-4 w-28 animate-pulse rounded bg-muted" aria-hidden />
           )}
@@ -89,10 +91,10 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               nativeButton={false}
               render={
                 previewEnabled ? (
-                  <Link aria-label="Preview draft website" params={{ projectId }} to="/app/projects/$projectId/preview" />
+                  <Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />
                 ) : (
                   // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                  <a aria-label="Preview the live website" href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
+                  <a aria-label={t('project.previewLiveAria')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
                 )
               }
               size="sm"

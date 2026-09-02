@@ -48,9 +48,9 @@ function NameForm({ initialName }: { initialName: string }) {
         )}
       </form.Field>
       <div className="mt-4 flex justify-end">
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button disabled={isSubmitting} type="submit">
+        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+          {([isSubmitting, isDirty]) => (
+            <Button disabled={isSubmitting || !isDirty} type="submit">
               {isSubmitting ? t('common.saving') : t('common.save')}
             </Button>
           )}
@@ -135,7 +135,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
 
       {stage === 'idle' ? (
         <div className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2">
-          <span className="font-medium text-sm">{email}</span>
+          <span className="font-medium text-sm" dir="ltr">
+            {email}
+          </span>
           {verified ? (
             <Badge className="bg-success/15 text-success">✓ {t('settings.account.email.verified')}</Badge>
           ) : (
@@ -163,6 +165,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
               <div className="flex flex-col gap-1.5">
                 <Input
                   autoFocus
+                  dir="ltr"
                   id="acct-email"
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
@@ -202,27 +205,29 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <span className="font-medium text-sm">{t('settings.account.email.currentVerification', { email })}</span>
           </div>
           <Label htmlFor="acct-current-email-otp">{t('auth.otp.label')}</Label>
-          <InputOTP
-            autoComplete="one-time-code"
-            autoFocus
-            containerClassName="mt-1.5"
-            disabled={isVerifying}
-            id="acct-current-email-otp"
-            inputMode="numeric"
-            maxLength={6}
-            onChange={setOtp}
-            onComplete={verifyCurrentEmail}
-            value={otp}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot className="bg-background" index={0} />
-              <InputOTPSlot className="bg-background" index={1} />
-              <InputOTPSlot className="bg-background" index={2} />
-              <InputOTPSlot className="bg-background" index={3} />
-              <InputOTPSlot className="bg-background" index={4} />
-              <InputOTPSlot className="bg-background" index={5} />
-            </InputOTPGroup>
-          </InputOTP>
+          <div dir="ltr">
+            <InputOTP
+              autoComplete="one-time-code"
+              autoFocus
+              containerClassName="mt-1.5"
+              disabled={isVerifying}
+              id="acct-current-email-otp"
+              inputMode="numeric"
+              maxLength={6}
+              onChange={setOtp}
+              onComplete={verifyCurrentEmail}
+              value={otp}
+            >
+              <InputOTPGroup>
+                <InputOTPSlot className="bg-background" index={0} />
+                <InputOTPSlot className="bg-background" index={1} />
+                <InputOTPSlot className="bg-background" index={2} />
+                <InputOTPSlot className="bg-background" index={3} />
+                <InputOTPSlot className="bg-background" index={4} />
+                <InputOTPSlot className="bg-background" index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
           <div className="mt-3 flex gap-2">
             <Button disabled={isVerifying || otp.length !== 6} type="submit">
               {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.verifyCurrent')}
@@ -247,27 +252,29 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <span className="font-medium text-sm">{t('settings.account.email.pendingVerification', { email: newEmail })}</span>
           </div>
           <Label htmlFor="acct-email-otp">{t('auth.otp.label')}</Label>
-          <InputOTP
-            autoComplete="one-time-code"
-            autoFocus
-            containerClassName="mt-1.5"
-            disabled={isVerifying}
-            id="acct-email-otp"
-            inputMode="numeric"
-            maxLength={6}
-            onChange={setOtp}
-            onComplete={verifyEmailChange}
-            value={otp}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot className="bg-background" index={0} />
-              <InputOTPSlot className="bg-background" index={1} />
-              <InputOTPSlot className="bg-background" index={2} />
-              <InputOTPSlot className="bg-background" index={3} />
-              <InputOTPSlot className="bg-background" index={4} />
-              <InputOTPSlot className="bg-background" index={5} />
-            </InputOTPGroup>
-          </InputOTP>
+          <div dir="ltr">
+            <InputOTP
+              autoComplete="one-time-code"
+              autoFocus
+              containerClassName="mt-1.5"
+              disabled={isVerifying}
+              id="acct-email-otp"
+              inputMode="numeric"
+              maxLength={6}
+              onChange={setOtp}
+              onComplete={verifyEmailChange}
+              value={otp}
+            >
+              <InputOTPGroup>
+                <InputOTPSlot className="bg-background" index={0} />
+                <InputOTPSlot className="bg-background" index={1} />
+                <InputOTPSlot className="bg-background" index={2} />
+                <InputOTPSlot className="bg-background" index={3} />
+                <InputOTPSlot className="bg-background" index={4} />
+                <InputOTPSlot className="bg-background" index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
           <div className="mt-3 flex gap-2">
             <Button disabled={isVerifying || otp.length !== 6} type="submit">
               {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.confirm')}

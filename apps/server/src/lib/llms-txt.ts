@@ -36,7 +36,9 @@ export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: st
     throw new Error(`Snapshot page ${page.id} references an unknown version.`);
   }
   const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
-  const pagePath = page.path ? `/${page.path}` : '';
+  // Slugs may be non-ASCII (Arabic titles keep Arabic slugs); encode each
+  // segment so the URL is a valid ASCII link in a Markdown list.
+  const pagePath = page.path ? `/${page.path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}` : '';
   const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
   return `${base}${versionPath}${pagePath}${langQuery}`;
 };

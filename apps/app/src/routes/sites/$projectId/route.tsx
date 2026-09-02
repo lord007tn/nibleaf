@@ -19,6 +19,7 @@ import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
+import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref } from '@/lib/site-paths';
@@ -87,6 +88,8 @@ function SiteChrome() {
   const navigate = useNavigate({ from: Route.fullPath });
   const [searchOpen, setSearchOpen] = useState(false);
   const [pageAlternates, setPageAlternates] = useState<SiteLanguageAlternate[]>([]);
+  // SSR renders the platform-neutral label; the client corrects it after hydration.
+  const searchShortcut = useSearchShortcutLabel();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
   const isChangelog = currentPath === 'changelog';
@@ -365,8 +368,12 @@ function SiteChrome() {
                     >
                       <Search className="size-3.5 shrink-0" />
                       <span className="truncate">{config?.search?.placeholder ?? t('search')}</span>
-                      <kbd className="ms-auto hidden shrink-0 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] md:inline-flex">
-                        {searchHotkey === 'slash' ? '/' : '⌘K'}
+                      {/* Keyboard shortcuts read left-to-right even inside an RTL header. */}
+                      <kbd
+                        className="ms-auto hidden shrink-0 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] md:inline-flex"
+                        dir="ltr"
+                      >
+                        {searchHotkey === 'slash' ? '/' : searchShortcut}
                       </kbd>
                     </button>
                   ) : null}
@@ -551,9 +558,7 @@ function SiteChrome() {
                   placeholder={config?.search?.placeholder}
                   hotkey={searchHotkey}
                   maxResults={config?.search?.maxResults}
-                  languages={languages}
                   versions={versions}
-                  filtersEnabled={config?.search?.filtersEnabled !== false}
                   versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
                   aiAnswers={config?.search?.aiAnswers === true}
                 />

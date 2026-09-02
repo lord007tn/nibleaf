@@ -57,7 +57,7 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
                     id="new-project-name"
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder="API Reference"
+                    placeholder={t('newSite.namePlaceholder')}
                     value={field.state.value}
                   />
                   <FieldError errors={field.state.meta.errors} />

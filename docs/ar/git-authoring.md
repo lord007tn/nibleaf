@@ -3,8 +3,8 @@ title: 'ربط مستودع للتأليف ثنائي الاتجاه عبر Git'
 description: 'اربط GitHub ببيانات اعتماد ذات أقل قدر من الصلاحيات، وانشر تعديلات المتصفح عبر طلب سحب في حالة مسودة، وتعافَ من التعارضات بأمان.'
 audience: 'مسؤولو المواقع وفرق التوثيق التي تستخدم GitHub'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/server/src/actions/git, apps/worker/src/processors/git.ts, and apps/app/src/components/settings/git-workflow.tsx'
+last_reviewed: '2026-09-02'
+verified_against: 'apps/server/src/actions/git, packages/shared/src/theme-repository.ts, apps/worker/src/processors/git.ts, and apps/app/src/components/settings/git-workflow.tsx'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'git-authoring'
@@ -44,7 +44,7 @@ openssl rand -hex 32
 
 لا حاجة إلى أي صلاحيات تخص Actions أو الإدارة أو المشكلات أو المؤسسة أو المستخدم. الصق الرمز مرة واحدة في **إعدادات الموقع ← Git**. يتحقق Nibleaf من صلاحية الكتابة، ويشفّر الرمز باستخدام AES-256-GCM، ويخزّن بصمة غير سرية للمشغّلين، ولا يعيد الرمز أو يسجّله مطلقًا.
 
-اختر فرعًا أساسيًا (عادةً `main`)، وفرع تأليف مخصصًا ومختلفًا (مثل `nibleaf/docs`)، ومسار التوثيق نسبةً إلى جذر المستودع، وفرع Nibleaf/اللغة المراد ربطهما. لا ينفّذ Nibleaf دفعًا قسريًا مطلقًا. تستخدم تحديثات الفروع دلالات المقارنة ثم التبديل وتتوقف إذا تغيّر المرجع البعيد أثناء الدفع.
+اختر فرعًا أساسيًا (عادةً `main`)، وفرع تأليف مخصصًا ومختلفًا (مثل `nibleaf/docs`)، ومسار المحتوى نسبةً إلى جذر المستودع (الافتراضي `content`)، وفرع Nibleaf/اللغة المراد ربطهما. داخل مسار المحتوى يستخدم Nibleaf تخطيط المستودع v2: تقع اللغة والإصدار الافتراضيان في جذر المحتوى (`content/guides/authentication.mdx`)، واللغات الأخرى تحت `content/<code>/` (`content/ar/المصادقة.mdx`)، والإصدارات غير الافتراضية تحت `content/versions/<slug>/` بالتخطيط اللغوي نفسه داخلها. المجلدات مجموعات تنقّل، و`index.mdx` صفحة الهبوط للمجلد؛ وتحتفظ معرّفات الروابط (slug) بالحروف العربية كي تبقى المسارات مقروءة. ملفا `docs.json` و`.nibleaf/` المولّدان مملوكان للمنصة ويُعاد توليدهما في كل مزامنة. لا ينفّذ Nibleaf دفعًا قسريًا مطلقًا. تستخدم تحديثات الفروع دلالات المقارنة ثم التبديل وتتوقف إذا تغيّر المرجع البعيد أثناء الدفع.
 
 ## إعداد Webhook
 

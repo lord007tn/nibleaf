@@ -29,7 +29,7 @@ function UploadField({
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex gap-2.5">
-      <Input className={`${FIELD_MONO} flex-1`} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} value={value} />
+      <Input className={`${FIELD_MONO} flex-1`} dir="ltr" onChange={(e) => onChange(e.target.value)} placeholder={placeholder} value={value} />
       <input
         accept="image/*"
         className="hidden"
@@ -147,6 +147,7 @@ export function BrandingSection({ project }: { project: Project }) {
           <Field hint={t('settings.branding.logoHref.hint')} label={t('settings.branding.logoHref.label')}>
             <Input
               className={FIELD_INPUT}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="https://example.com"
               value={field.state.value}
@@ -155,7 +156,9 @@ export function BrandingSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

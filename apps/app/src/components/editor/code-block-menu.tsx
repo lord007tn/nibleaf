@@ -1,3 +1,4 @@
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
@@ -49,6 +50,14 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
     }),
   });
 
+  // Preserve a language that came from imported Markdown but is not in the curated list.
+  const known = CODE_BLOCK_LANGUAGES.includes(state.language as (typeof CODE_BLOCK_LANGUAGES)[number]);
+  const items: Array<{ value: string; label: string }> = [
+    { value: '', label: t('editor.codeBlock.plain') },
+    ...(state.language && !known ? [{ value: state.language, label: state.language }] : []),
+    ...CODE_BLOCK_LANGUAGES.map((language) => ({ value: language, label: language })),
+  ];
+
   return (
     <BubbleMenu
       editor={editor}
@@ -57,27 +66,34 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
       shouldShow={({ editor: current }) => current.isEditable && current.isActive('codeBlock')}
       className="rounded-lg border border-border bg-card p-1 shadow-lg"
     >
-      <select
-        value={state.language}
-        onChange={(event) => {
-          const language = event.target.value || null;
-          editor.chain().focus().updateAttributes('codeBlock', { language }).run();
+      <Select
+        items={items}
+        onValueChange={(next) => {
+          editor
+            .chain()
+            .focus()
+            .updateAttributes('codeBlock', { language: next || null })
+            .run();
         }}
-        aria-label={t('editor.codeBlock.language')}
-        title={t('editor.codeBlock.language')}
-        className="h-7 cursor-pointer rounded-md border border-border bg-background px-1.5 font-mono text-[12px] text-foreground outline-none focus:ring-2 focus:ring-ring/40"
+        value={state.language}
       >
-        <option value="">{t('editor.codeBlock.plain')}</option>
-        {/* Preserve a language that came from imported Markdown but is not in the curated list. */}
-        {state.language && !CODE_BLOCK_LANGUAGES.includes(state.language as (typeof CODE_BLOCK_LANGUAGES)[number]) ? (
-          <option value={state.language}>{state.language}</option>
-        ) : null}
-        {CODE_BLOCK_LANGUAGES.map((language) => (
-          <option key={language} value={language}>
-            {language}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger
+          aria-label={t('editor.codeBlock.language')}
+          className="h-7 font-mono text-[12px]"
+          dir="ltr"
+          size="sm"
+          title={t('editor.codeBlock.language')}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="font-mono text-[12px]" dir="ltr">
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </BubbleMenu>
   );
 }

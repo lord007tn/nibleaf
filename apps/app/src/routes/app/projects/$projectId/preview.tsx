@@ -1,10 +1,11 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Eye, FileText } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { Markdown } from '@/components/markdown';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
@@ -60,6 +61,40 @@ function ProjectPreview() {
     navigate({ search: (prev) => ({ ...prev, ...patch }) });
   };
 
+  // Branch names are code (always LTR); a language's label reads in its own direction.
+  const branchOptions = useMemo<ScopeOption[]>(
+    () => (branches ?? []).map((branch) => ({ value: branch.id, label: <span dir="ltr">{branch.name}</span> })),
+    [branches],
+  );
+  const languageOptions = useMemo<ScopeOption[]>(
+    () =>
+      (languages ?? []).map((language) => ({
+        value: language.id,
+        label: <span dir={language.direction === 'RTL' ? 'rtl' : 'ltr'}>{language.label}</span>,
+      })),
+    [languages],
+  );
+  const scopeSelects = (
+    <>
+      {branchOptions.length > 1 ? (
+        <ScopeSelect
+          ariaLabel={t('settings.git.productionBranch')}
+          onChange={(branchId) => updateSearch({ branchId, pageId: undefined })}
+          options={branchOptions}
+          value={activeBranchId}
+        />
+      ) : null}
+      {languageOptions.length > 1 ? (
+        <ScopeSelect
+          ariaLabel={t('editor.addLanguage.languageField')}
+          onChange={(languageId) => updateSearch({ languageId, pageId: undefined })}
+          options={languageOptions}
+          value={activeLanguageId}
+        />
+      ) : null}
+    </>
+  );
+
   if (!previewEnabled) {
     return (
       <div className="mx-auto max-w-2xl px-8 py-12">
@@ -101,36 +136,7 @@ function ProjectPreview() {
             {mobileNavigationOpen ? (
               <div className="max-h-[min(55vh,28rem)] overflow-y-auto border-border border-t p-3" id="mobile-preview-navigation">
                 <p className="mb-3 text-muted-foreground text-xs">{t('preview.description')}</p>
-                <div className="mb-3 grid gap-2">
-                  {branches && branches.length > 1 ? (
-                    <select
-                      aria-label={t('settings.git.productionBranch')}
-                      className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                      onChange={(event) => updateSearch({ branchId: event.target.value, pageId: undefined })}
-                      value={activeBranchId}
-                    >
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                  {languages && languages.length > 1 ? (
-                    <select
-                      aria-label={t('editor.addLanguage.languageField')}
-                      className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                      onChange={(event) => updateSearch({ languageId: event.target.value, pageId: undefined })}
-                      value={activeLanguageId}
-                    >
-                      {languages.map((language) => (
-                        <option key={language.id} value={language.id}>
-                          {language.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
-                </div>
+                <div className="mb-3 grid gap-2">{scopeSelects}</div>
                 {pagesPending ? (
                   <div className="space-y-2 p-2">
                     <Skeleton className="h-8 w-full" />
@@ -169,36 +175,7 @@ function ProjectPreview() {
                 <Eye className="size-4 text-muted-foreground" /> {t('preview.title')}
               </div>
               <p className="mt-1 text-muted-foreground text-xs">{t('preview.description')}</p>
-              <div className="mt-4 grid gap-2">
-                {branches && branches.length > 1 ? (
-                  <select
-                    aria-label={t('settings.git.productionBranch')}
-                    className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                    onChange={(event) => updateSearch({ branchId: event.target.value, pageId: undefined })}
-                    value={activeBranchId}
-                  >
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                {languages && languages.length > 1 ? (
-                  <select
-                    aria-label={t('editor.addLanguage.languageField')}
-                    className="h-9 w-full cursor-pointer rounded-md border border-input bg-transparent px-2.5 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                    onChange={(event) => updateSearch({ languageId: event.target.value, pageId: undefined })}
-                    value={activeLanguageId}
-                  >
-                    {languages.map((language) => (
-                      <option key={language.id} value={language.id}>
-                        {language.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-              </div>
+              <div className="mt-4 grid gap-2">{scopeSelects}</div>
             </div>
 
             <ScrollArea className="min-h-0 flex-1">
@@ -263,5 +240,47 @@ function ProjectPreview() {
         }
       />
     </DocumentationThemeProvider>
+  );
+}
+
+interface ScopeOption {
+  value: string;
+  label: ReactNode;
+}
+
+/** Branch / language picker for the preview scope. `items` is passed to the root so
+ *  the trigger shows the option's label (Base UI renders the raw value otherwise). */
+function ScopeSelect({
+  ariaLabel,
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  onChange: (value: string) => void;
+  options: ScopeOption[];
+  value: string | undefined;
+}) {
+  return (
+    <Select
+      items={options}
+      onValueChange={(next) => {
+        if (next) {
+          onChange(next);
+        }
+      }}
+      value={value ?? null}
+    >
+      <SelectTrigger aria-label={ariaLabel} className="w-full">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

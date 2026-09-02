@@ -106,6 +106,7 @@ function LanguageSeoForm({ project, language, onDirtyChange }: { project: Projec
   const projectSeo = project.config?.seo ?? {};
   return (
     <SeoScopeForm
+      direction={language.direction === 'RTL' ? 'rtl' : 'ltr'}
       onDirtyChange={onDirtyChange}
       placeholders={{
         metaTitle: projectSeo.metaTitle || undefined,
@@ -150,8 +151,11 @@ function SeoScopeForm({
   onSave,
   placeholders,
   onDirtyChange,
+  direction,
 }: {
   project: Project;
+  /** Writing direction of the scoped language; text fields fall back to dir="auto" in the project scope. */
+  direction?: 'ltr' | 'rtl';
   initial: SeoValues;
   onSave: (value: SeoValues) => Promise<void>;
   /** Language scopes: the default scope's effective values, shown as
@@ -190,6 +194,7 @@ function SeoScopeForm({
           <Field hint={t('settings.seo.metaTitle.hint')} label={t('settings.seo.metaTitle.label')}>
             <Input
               className={FIELD_INPUT}
+              dir={direction ?? 'auto'}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={placeholders?.metaTitle ?? project.name}
               value={field.state.value}
@@ -203,6 +208,7 @@ function SeoScopeForm({
           <Field hint={t('settings.seo.metaDescription.hint')} label={t('settings.seo.metaDescription.label')}>
             <Textarea
               className={FIELD_TEXTAREA}
+              dir={direction ?? 'auto'}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={placeholders?.metaDescription ?? project.description ?? undefined}
               value={field.state.value}
@@ -217,6 +223,7 @@ function SeoScopeForm({
             <div className="flex gap-2.5">
               <Input
                 className={`${FIELD_MONO} flex-1`}
+                dir="ltr"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={placeholders?.socialImage ?? '/og/cover.png'}
                 value={field.state.value}
@@ -265,7 +272,9 @@ function SeoScopeForm({
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !toggleDirty} isSubmitting={isSubmitting} />}
+        </form.Subscribe>
       </div>
     </form>
   );

@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
@@ -91,9 +92,9 @@ function SearchConfigurationError({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
       <p className="font-medium text-destructive">{t('settings.search.configuration.error')}</p>
-      <button className="mt-2 font-medium text-primary text-xs hover:underline" onClick={onRetry} type="button">
+      <Button className="mt-2 h-auto p-0 text-xs" onClick={onRetry} size="sm" type="button" variant="link">
         {t('common.retry')}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -120,13 +121,11 @@ function ProjectSearchConfigurationForm({
   const update = useUpdateProjectSearchConfiguration(projectId);
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
-  const [filtersEnabled, setFiltersEnabled] = useState(configuration.filtersEnabled);
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
     hotkey !== configuration.hotkey ||
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
-    filtersEnabled !== configuration.filtersEnabled ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
 
   const form = useForm({
@@ -140,7 +139,6 @@ function ProjectSearchConfigurationForm({
           maxResults: Number.isFinite(parsedMaxResults)
             ? Math.min(maxResultsConstraint.max, Math.max(maxResultsConstraint.min, parsedMaxResults))
             : maxResultsConstraint.default,
-          filtersEnabled,
           versionFilterEnabled,
           aiAnswers: aiAnswers === 'enabled',
         });
@@ -191,20 +189,14 @@ function ProjectSearchConfigurationForm({
           className="max-w-[200px] font-mono"
           onChange={setHotkey}
           options={[
-            { value: 'cmdk', label: '⌘K' },
-            { value: 'slash', label: '/' },
+            { value: 'cmdk', label: <span dir="ltr">⌘K</span> },
+            { value: 'slash', label: <span dir="ltr">/</span> },
           ]}
           value={hotkey}
         />
       </Field>
 
       <div className="mb-6 rounded-lg border px-4">
-        <ToggleRow
-          checked={filtersEnabled}
-          hint={t('settings.search.filters.hint')}
-          onCheckedChange={setFiltersEnabled}
-          title={t('settings.search.filters.label')}
-        />
         <ToggleRow
           checked={versionFilterEnabled}
           hint={t('settings.search.versionFilters.hint')}
@@ -229,7 +221,9 @@ function ProjectSearchConfigurationForm({
         {(isDirty) => <DirtyStateReporter dirty={isDirty || controlsDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !controlsDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }
@@ -276,6 +270,7 @@ function LanguageSearchForm({
           <Field hint={t('settings.search.placeholder.hint')} label={t('settings.search.placeholder.label')}>
             <Input
               className={FIELD_INPUT}
+              dir={language.direction === 'RTL' ? 'rtl' : 'ltr'}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={projectSearch.placeholder || t('settings.search.placeholder.input')}
               value={field.state.value}
@@ -295,8 +290,8 @@ function LanguageSearchForm({
           disabled
           onChange={() => undefined}
           options={[
-            { value: 'cmdk', label: '⌘K' },
-            { value: 'slash', label: '/' },
+            { value: 'cmdk', label: <span dir="ltr">⌘K</span> },
+            { value: 'slash', label: <span dir="ltr">/</span> },
           ]}
           value={(projectSearch.hotkey as Hotkey) ?? 'cmdk'}
         />
@@ -306,7 +301,9 @@ function LanguageSearchForm({
         {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

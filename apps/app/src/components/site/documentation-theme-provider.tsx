@@ -50,6 +50,8 @@ const readerFrame = (slots: ReaderSlots, body: ReactNode) => (
   </>
 );
 
+/** Harbor — the classic three-column reference: persistent library sidebar,
+ * reading column, page outline. Everything sits directly on the canvas. */
 const HarborTemplate: DocumentationThemeTemplate = {
   id: 'harbor',
   shell: 'reference',
@@ -57,16 +59,16 @@ const HarborTemplate: DocumentationThemeTemplate = {
     readerFrame(
       slots,
       <div
-        className="mx-auto grid w-full max-w-[90rem] flex-1 grid-cols-1 px-4 sm:px-6 lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-10"
+        className="mx-auto grid w-full max-w-[90rem] flex-1 grid-cols-1 px-4 sm:px-6 lg:grid-cols-[16.5rem_minmax(0,1fr)] lg:gap-12"
         data-documentation-layout="harbor-reference"
         data-theme-region="content-shell"
       >
         <aside
-          className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-border/60 border-e lg:block"
+          className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-(--theme-border) border-e lg:block"
           data-theme-region="sidebar"
         >
           <ScrollArea className="h-full">
-            <div className="pt-7 pb-12 pe-5" data-theme-region="sidebar-content">
+            <div className="pt-6 pb-16 pe-4" data-theme-region="sidebar-content">
               {slots.navigation}
             </div>
           </ScrollArea>
@@ -118,6 +120,9 @@ const HarborTemplate: DocumentationThemeTemplate = {
   ),
 };
 
+/** Manuscript — an editorial shell: chapter deck across the top, then a single
+ * sheet of "paper" carrying a focused reading measure with the outline in the
+ * margin. */
 const ManuscriptTemplate: DocumentationThemeTemplate = {
   id: 'manuscript',
   shell: 'editorial',
@@ -125,22 +130,17 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
     <>
       {slots.banner}
       <section
-        className="documentation-manuscript-reader flex flex-1 flex-col bg-(--theme-muted)/45"
+        className="documentation-manuscript-reader flex flex-1 flex-col bg-(--theme-muted)/60"
         data-documentation-layout="manuscript-editorial"
       >
         {slots.header}
-        <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-8 sm:px-6" data-theme-region="content-shell">
-          <aside
-            className="documentation-manuscript-reader-navigation hidden border-border/70 border-y bg-(--theme-canvas) lg:block"
-            data-theme-region="sidebar"
-          >
-            <ScrollArea className="h-full">
-              <div className="documentation-manuscript-navigation py-4" data-theme-region="sidebar-content">
-                {slots.navigation}
-              </div>
-            </ScrollArea>
+        <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-10 sm:px-6" data-theme-region="content-shell">
+          <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
+            <div className="documentation-manuscript-navigation py-6" data-theme-region="sidebar-content">
+              {slots.navigation}
+            </div>
           </aside>
-          <div className="documentation-manuscript-paper min-w-0 flex-1 border-border/70 border-x bg-(--theme-canvas) shadow-[0_24px_70px_color-mix(in_oklab,var(--theme-foreground)_8%,transparent)]">
+          <div className="documentation-manuscript-paper min-w-0 flex-1 border border-(--theme-border) bg-(--theme-surface) shadow-[0_18px_50px_-20px_color-mix(in_oklab,var(--theme-foreground)_22%,transparent)] lg:mt-2">
             {slots.content}
           </div>
         </div>
@@ -163,7 +163,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         >
           {navigation}
         </aside>
-        <div className="mx-auto min-h-0 w-full max-w-[60rem] flex-1 overflow-y-auto border border-border bg-(--theme-canvas) shadow-lg">
+        <div className="mx-auto min-h-0 w-full max-w-[60rem] flex-1 overflow-y-auto border border-border bg-(--theme-surface) shadow-lg">
           {content}
         </div>
       </div>
@@ -171,7 +171,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
   ),
   StudioPreviewLayout: ({ header, navigation, content }) => (
     <div className="bg-(--theme-muted)/60 p-3" data-documentation-layout="manuscript-editorial-studio" data-theme-region="preview-shell">
-      <div className="mx-auto max-w-[44rem] border border-border bg-(--theme-canvas) shadow-lg">
+      <div className="mx-auto max-w-[44rem] border border-border bg-(--theme-surface) shadow-lg">
         {header}
         <div className="documentation-manuscript-studio-navigation border-border border-y px-3 py-2 text-xs" data-theme-region="sidebar">
           {navigation}
@@ -182,7 +182,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
   ),
   PageLayout: ({ article, tableOfContents }) => (
     <div
-      className="grid min-w-0 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-16 xl:grid-cols-[10rem_minmax(0,44rem)]"
+      className="grid min-w-0 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14 xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14"
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
     >
@@ -194,29 +194,31 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
   ),
 };
 
+/** Signal — a console: a dark library rail, a wide canvas, and an inline
+ * command index above each article. Sharp corners, compact density. */
 const SignalTemplate: DocumentationThemeTemplate = {
   id: 'signal',
   shell: 'console',
   ReaderLayout: (slots) => (
     <>
       {slots.banner}
-      <section className="documentation-signal-reader flex flex-1 flex-col bg-(--theme-code) p-0 lg:p-3" data-documentation-layout="signal-console">
+      <section className="documentation-signal-reader flex flex-1 flex-col p-0 lg:p-3" data-documentation-layout="signal-console">
         {slots.header}
         <div
-          className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 overflow-hidden bg-(--theme-canvas) lg:grid-cols-[14.5rem_minmax(0,1fr)]"
+          className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 bg-(--theme-canvas) lg:grid-cols-[15rem_minmax(0,1fr)] lg:overflow-hidden lg:border lg:border-(--theme-border) lg:border-t-0"
           data-theme-region="content-shell"
         >
           <aside
-            className="hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
+            className="documentation-signal-rail hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
             data-theme-region="sidebar"
           >
-            <ScrollArea className="sticky top-[4.75rem] h-[calc(100dvh-6.25rem)]">
-              <div className="p-3" data-theme-region="sidebar-content">
+            <ScrollArea className="sticky top-[4.25rem] h-[calc(100dvh-5.75rem)]">
+              <div className="px-3 pt-4 pb-16" data-theme-region="sidebar-content">
                 {slots.navigation}
               </div>
             </ScrollArea>
           </aside>
-          <div className="min-w-0 border-(--theme-border) lg:border-y lg:border-e">{slots.content}</div>
+          <div className="min-w-0">{slots.content}</div>
         </div>
       </section>
       {slots.footer}
@@ -232,7 +234,7 @@ const SignalTemplate: DocumentationThemeTemplate = {
         data-theme-region="preview-shell"
       >
         <aside
-          className="hidden min-h-0 flex-col border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
+          className="documentation-signal-rail hidden min-h-0 flex-col border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
@@ -245,7 +247,10 @@ const SignalTemplate: DocumentationThemeTemplate = {
     <div className="bg-(--theme-code) p-2" data-documentation-layout="signal-console-studio" data-theme-region="preview-shell">
       {header}
       <div className="grid min-h-[22rem] grid-cols-[6.5rem_minmax(0,1fr)] border border-border border-t-0 bg-(--theme-canvas)">
-        <div className="border-border border-e bg-(--theme-code) p-2 text-(--theme-code-foreground) text-xs" data-theme-region="sidebar">
+        <div
+          className="documentation-signal-rail border-border border-e bg-(--theme-code) p-2 text-(--theme-code-foreground) text-xs"
+          data-theme-region="sidebar"
+        >
           {navigation}
         </div>
         {content}
@@ -253,11 +258,20 @@ const SignalTemplate: DocumentationThemeTemplate = {
     </div>
   ),
   PageLayout: ({ article, tableOfContents }) => (
-    <div className="flex min-w-0 flex-col gap-6 p-4 sm:p-6 lg:p-8" data-documentation-layout="signal-console-page" data-theme-region="page-shell">
-      <aside className="documentation-signal-command-index hidden border border-border bg-(--theme-surface) p-3 xl:block" data-theme-region="toc">
+    <div
+      className="flex min-w-0 flex-col gap-5 px-4 py-6 sm:px-6 lg:p-8"
+      data-documentation-layout="signal-console-page"
+      data-theme-region="page-shell"
+    >
+      <aside
+        className="documentation-signal-command-index hidden border border-(--theme-border) bg-(--theme-surface) px-4 py-2.5 xl:block"
+        data-theme-region="toc"
+      >
         {tableOfContents}
       </aside>
-      <div className="min-w-0 border border-border bg-(--theme-canvas) p-4 sm:p-6">{article}</div>
+      <div className="documentation-signal-article min-w-0 lg:border lg:border-(--theme-border) lg:bg-(--theme-surface) lg:px-10 lg:py-9">
+        {article}
+      </div>
     </div>
   ),
 };
@@ -303,6 +317,7 @@ export function DocumentationThemeProvider({
         data-theme-header={theme.layout.header}
         data-theme-id={theme.id}
         data-theme-navigation={theme.layout.navigation}
+        data-theme-radius={theme.layout.radius}
         data-theme-schema={THEME_SCHEMA_VERSION}
         data-theme-shell={theme.layout.shell}
         data-theme-sidebar={theme.layout.sidebar}

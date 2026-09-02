@@ -75,6 +75,12 @@ export function PageSettingsDialog({
   const [mode, setMode] = useState<PageMode>(page.config?.mode ?? 'default');
   const [hideToc, setHideToc] = useState(page.config?.hideToc ?? false);
   const [section, setSection] = useState<PageSettingsSection>('general');
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const modeOptions = [
+    { value: 'default', label: t('editor.pageSettings.mode.default') },
+    { value: 'wide', label: t('editor.pageSettings.mode.wide') },
+    { value: 'center', label: t('editor.pageSettings.mode.center') },
+  ] as const satisfies ReadonlyArray<{ value: PageMode; label: string }>;
 
   // Re-seed the form from the page each time the dialog opens.
   useEffect(() => {
@@ -328,14 +334,16 @@ export function PageSettingsDialog({
               {section === 'behaviour' ? (
                 <div className="flex flex-col gap-4">
                   <Field label={t('editor.pageSettings.mode')} hint={t('editor.pageSettings.modeHint')} htmlFor="page-mode">
-                    <Select value={mode} onValueChange={(v) => setMode((v as PageMode) ?? 'default')}>
+                    <Select items={modeOptions} value={mode} onValueChange={(v) => setMode(v ?? 'default')}>
                       <SelectTrigger id="page-mode" className="w-full">
-                        <SelectValue />
+                        <SelectValue>{modeOptions.find((option) => option.value === mode)?.label}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default">{t('editor.pageSettings.mode.default')}</SelectItem>
-                        <SelectItem value="wide">{t('editor.pageSettings.mode.wide')}</SelectItem>
-                        <SelectItem value="center">{t('editor.pageSettings.mode.center')}</SelectItem>
+                        {modeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </Field>

@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -165,6 +166,7 @@ function LanguageNavbarForm({
   return (
     <NavbarScopeForm
       ctaLabelPlaceholder={project.config?.navbar?.ctaLabel || undefined}
+      direction={language.direction === 'RTL' ? 'rtl' : 'ltr'}
       globalPreview={{
         ctaUrl: project.config?.navbar?.ctaUrl ?? '',
         showSearch: project.config?.navbar?.showSearch ?? true,
@@ -224,8 +226,11 @@ function NavbarScopeForm({
   globalPreview,
   onDirtyChange,
   extraDirty = false,
+  direction,
 }: {
   initial: NavbarValues;
+  /** Writing direction of the scoped language; text fields fall back to dir="auto" in the project scope. */
+  direction?: 'ltr' | 'rtl';
   onSave: (value: NavbarValues) => Promise<void>;
   showGlobalFields?: boolean;
   extraToggles?: React.ReactNode;
@@ -257,6 +262,7 @@ function NavbarScopeForm({
           <Field hint={t('settings.navbar.ctaLabel.hint')} label={t('settings.navbar.ctaLabel.label')}>
             <Input
               className={FIELD_INPUT}
+              dir={direction ?? 'auto'}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={ctaLabelPlaceholder ?? t('settings.navbar.ctaLabel.placeholder')}
               value={field.state.value}
@@ -271,6 +277,7 @@ function NavbarScopeForm({
             <Field hint={t('settings.navbar.ctaUrl.hint')} label={t('settings.navbar.ctaUrl.label')}>
               <Input
                 className={FIELD_INPUT}
+                dir="ltr"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="https://example.com/demo"
                 value={field.state.value}
@@ -280,7 +287,7 @@ function NavbarScopeForm({
         </form.Field>
       ) : globalPreview ? (
         <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.navbar.ctaUrl.label')}>
-          <Input className={FIELD_INPUT} disabled placeholder="https://example.com/demo" value={globalPreview.ctaUrl} />
+          <Input className={FIELD_INPUT} dir="ltr" disabled placeholder="https://example.com/demo" value={globalPreview.ctaUrl} />
         </Field>
       ) : null}
 
@@ -297,6 +304,7 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT, 'flex-1')}
+                          dir={direction ?? 'auto'}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder={t('settings.navbar.links.labelPlaceholder')}
                           value={sub.state.value}
@@ -307,31 +315,35 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT_MONO, 'flex-1')}
+                          dir="ltr"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/docs"
                           value={sub.state.value}
                         />
                       )}
                     </form.Field>
-                    <button
+                    <Button
                       aria-label={t('settings.navbar.links.remove')}
-                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground"
                       onClick={() => field.removeValue(index)}
+                      size="icon-xs"
                       type="button"
+                      variant="ghost"
                     >
                       <X className="size-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <button
-              className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            <Button
+              className="mb-1.5 border-dashed text-muted-foreground"
               onClick={() => field.pushValue({ label: '', href: '', external: undefined })}
               type="button"
+              variant="outline"
             >
               <Plus className="size-3.5" /> {t('settings.navbar.links.add')}
-            </button>
+            </Button>
           </>
         )}
       </form.Field>
@@ -350,6 +362,7 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT, 'flex-1')}
+                          dir={direction ?? 'auto'}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder={t('settings.navbar.tabs.labelPlaceholder')}
                           value={sub.state.value}
@@ -360,31 +373,35 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT_MONO, 'flex-1')}
+                          dir="ltr"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="/guides"
                           value={sub.state.value}
                         />
                       )}
                     </form.Field>
-                    <button
+                    <Button
                       aria-label={t('settings.navbar.tabs.remove')}
-                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground"
                       onClick={() => field.removeValue(index)}
+                      size="icon-xs"
                       type="button"
+                      variant="ghost"
                     >
                       <X className="size-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <button
-              className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            <Button
+              className="mb-1.5 border-dashed text-muted-foreground"
               onClick={() => field.pushValue({ label: '', href: '', external: undefined })}
               type="button"
+              variant="outline"
             >
               <Plus className="size-3.5" /> {t('settings.navbar.tabs.add')}
-            </button>
+            </Button>
           </>
         )}
       </form.Field>
@@ -403,6 +420,7 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT, 'flex-1')}
+                          dir={direction ?? 'auto'}
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder={t('settings.navbar.anchors.labelPlaceholder')}
                           value={sub.state.value}
@@ -413,6 +431,7 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT_MONO, 'flex-1')}
+                          dir="ltr"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="https://community.example.com"
                           value={sub.state.value}
@@ -423,31 +442,35 @@ function NavbarScopeForm({
                       {(sub) => (
                         <Input
                           className={cn(FIELD_COMPACT, 'w-[104px] shrink-0')}
+                          dir="ltr"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder={t('settings.navbar.anchors.iconPlaceholder')}
                           value={sub.state.value}
                         />
                       )}
                     </form.Field>
-                    <button
+                    <Button
                       aria-label={t('settings.navbar.anchors.remove')}
-                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground"
                       onClick={() => field.removeValue(index)}
+                      size="icon-xs"
                       type="button"
+                      variant="ghost"
                     >
                       <X className="size-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <button
-              className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            <Button
+              className="mb-1.5 border-dashed text-muted-foreground"
               onClick={() => field.pushValue({ label: '', href: '', icon: '', external: undefined })}
               type="button"
+              variant="outline"
             >
               <Plus className="size-3.5" /> {t('settings.navbar.anchors.add')}
-            </button>
+            </Button>
           </>
         )}
       </form.Field>
@@ -475,7 +498,9 @@ function NavbarScopeForm({
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !extraDirty} isSubmitting={isSubmitting} />}
+        </form.Subscribe>
       </div>
     </form>
   );

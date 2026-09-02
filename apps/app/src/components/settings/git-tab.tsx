@@ -1,6 +1,8 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -197,7 +199,7 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
           action={
             latestReady ? (
               <Button nativeButton={false} size="sm" variant="outline" render={<a href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />}>
-                {t('settings.git.pipeline.viewSite')} <ArrowUpRight className="size-3.5" />
+                {t('settings.git.pipeline.viewSite')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
               </Button>
             ) : undefined
           }
@@ -292,7 +294,7 @@ function DeployOnPush({
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="git-webhook-url">{t('settings.git.webhook.url')}</Label>
                 <div className="flex gap-2">
-                  <Input className="font-mono" id="git-webhook-url" readOnly value={webhookUrl} />
+                  <Input className="font-mono" dir="ltr" id="git-webhook-url" readOnly value={webhookUrl} />
                   <Button aria-label={t('settings.git.webhook.copy')} onClick={() => copy(webhookUrl)} size="icon" type="button" variant="outline">
                     <Copy className="size-4" />
                   </Button>
@@ -302,7 +304,7 @@ function DeployOnPush({
                 <Label htmlFor="git-webhook-secret">{t('settings.git.webhook.secret')}</Label>
                 {secret ? (
                   <div className="flex gap-2">
-                    <Input className="font-mono" id="git-webhook-secret" readOnly type={revealed ? 'text' : 'password'} value={secret} />
+                    <Input className="font-mono" dir="ltr" id="git-webhook-secret" readOnly type={revealed ? 'text' : 'password'} value={secret} />
                     <Button
                       aria-label={revealed ? t('settings.git.webhook.hide') : t('settings.git.webhook.reveal')}
                       onClick={() => setRevealed((value) => !value)}
@@ -362,6 +364,14 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const importFromGit = useImportFromGit(projectId ?? '');
   const { data: branches } = useBranches(projectId);
   const { data: languages } = useLanguages(projectId);
+  const branchOptions: Array<{ value: string | null; label: string }> = [
+    { value: null, label: t('settings.git.defaultBranch') },
+    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.name })),
+  ];
+  const languageOptions: Array<{ value: string | null; label: string }> = [
+    { value: null, label: t('settings.git.defaultLanguage') },
+    ...(languages ?? []).map((language) => ({ value: language.id, label: `${language.label} (${language.code})` })),
+  ];
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
   const [provider, setProvider] = useState<GitConfig['provider']>(git.provider ?? 'github');
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && (git.provider === 'git' ? git.cloneUrl : git.repo));
@@ -481,6 +491,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
               <Label htmlFor="git-instance-url">{t('settings.git.instanceUrl')}</Label>
               <Input
                 className="font-mono"
+                dir="ltr"
                 id="git-instance-url"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="https://gitlab.com"
@@ -498,6 +509,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
               <Label htmlFor="git-clone-url">{t('settings.git.cloneUrl')}</Label>
               <Input
                 className="font-mono"
+                dir="ltr"
                 id="git-clone-url"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="https://git.example.com/acme/docs.git"
@@ -513,6 +525,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
               <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
               <Input
                 className="font-mono"
+                dir="ltr"
                 id="git-repo"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={isGitLab ? 'group/project' : 'acme-inc/docs'}
@@ -529,6 +542,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
               <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
               <Input
                 className="font-mono"
+                dir="ltr"
                 id="git-branch"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="main"
@@ -543,6 +557,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
               <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
               <Input
                 className="font-mono"
+                dir="ltr"
                 id="git-path"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="docs"
@@ -558,19 +573,18 @@ export function GitTab({ projectId }: { projectId?: string }) {
             {(field) => (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="git-import-branch">{t('settings.git.importBranch')}</Label>
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 font-mono text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-                  id="git-import-branch"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  value={field.state.value ?? ''}
-                >
-                  <option value="">{t('settings.git.defaultBranch')}</option>
-                  {(branches ?? []).map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
+                <Select items={branchOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
+                  <SelectTrigger className="w-full font-mono" dir="ltr" id="git-import-branch">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent dir="ltr">
+                    {branchOptions.map((option) => (
+                      <SelectItem key={option.value ?? ''} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </form.Field>
@@ -578,19 +592,18 @@ export function GitTab({ projectId }: { projectId?: string }) {
             {(field) => (
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="git-import-language">{t('settings.git.importLanguage')}</Label>
-                <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-2.5 font-mono text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-                  id="git-import-language"
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  value={field.state.value ?? ''}
-                >
-                  <option value="">{t('settings.git.defaultLanguage')}</option>
-                  {(languages ?? []).map((language) => (
-                    <option key={language.id} value={language.id}>
-                      {language.label} ({language.code})
-                    </option>
-                  ))}
-                </select>
+                <Select items={languageOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
+                  <SelectTrigger className="w-full" id="git-import-language">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions.map((option) => (
+                      <SelectItem key={option.value ?? ''} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </form.Field>
@@ -623,11 +636,15 @@ export function GitTab({ projectId }: { projectId?: string }) {
             <ProviderGlyph className="size-6" />
           </span>
           <div className="min-w-0 flex-1 leading-snug">
-            <div className="truncate font-mono font-semibold text-sm tracking-tight">{git.provider === 'git' ? git.cloneUrl : git.repo}</div>
+            <div className="truncate font-mono font-semibold text-sm tracking-tight" dir="ltr">
+              {git.provider === 'git' ? git.cloneUrl : git.repo}
+            </div>
             <p className="mt-0.5 flex items-center gap-1.5 text-muted-foreground text-xs">
-              <GitBranch className="size-3" /> {git.branch}
+              <GitBranch className="size-3" /> <span dir="ltr">{git.branch}</span>
               <span aria-hidden>·</span>
-              <span className="font-mono">/{git.path}</span>
+              <span className="font-mono" dir="ltr">
+                /{git.path}
+              </span>
             </p>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-4xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-700 text-xs dark:text-emerald-400">
@@ -635,7 +652,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           </span>
           {webUrl ? (
             <Button nativeButton={false} size="sm" variant="ghost" render={<a href={webUrl} rel="noreferrer" target="_blank" />}>
-              {t('settings.git.openRepo')} <ArrowUpRight className="size-3.5" />
+              {t('settings.git.openRepo')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
             </Button>
           ) : null}
         </div>
@@ -663,8 +680,8 @@ export function GitTab({ projectId }: { projectId?: string }) {
   return (
     <div className="flex flex-col gap-6">
       {projectId ? <GitWorkflow projectId={projectId} /> : null}
-      <details className="group rounded-xl border border-border bg-muted/10 open:bg-card">
-        <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-5 py-4 outline-none transition-colors hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50">
+      <Collapsible className="group rounded-xl border border-border bg-muted/10 data-[panel-open]:bg-card">
+        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-5 py-4 text-start outline-none transition-colors hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50">
           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
             <DownloadCloud className="size-4" />
           </span>
@@ -672,11 +689,11 @@ export function GitTab({ projectId }: { projectId?: string }) {
             <span className="block font-medium text-sm">{t('settings.git.publicImport.title')}</span>
             <span className="block text-muted-foreground text-xs">{t('settings.git.publicImport.description')}</span>
           </span>
-          <span className="text-muted-foreground text-xs group-open:hidden">{t('settings.git.publicImport.show')}</span>
-          <span className="hidden text-muted-foreground text-xs group-open:inline">{t('settings.git.publicImport.hide')}</span>
-        </summary>
-        <div className="border-border border-t p-5">{publicImport}</div>
-      </details>
+          <span className="text-muted-foreground text-xs group-data-[panel-open]:hidden">{t('settings.git.publicImport.show')}</span>
+          <span className="hidden text-muted-foreground text-xs group-data-[panel-open]:inline">{t('settings.git.publicImport.hide')}</span>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-border border-t p-5">{publicImport}</CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

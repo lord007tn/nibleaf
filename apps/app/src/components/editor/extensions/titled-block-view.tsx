@@ -61,6 +61,7 @@ export function TitledBlockView({ node, updateAttributes, extension }: NodeViewP
           {extraAttributes.map((extraAttribute) => (
             <input
               className="pl-card-meta-input"
+              dir={extraAttribute === 'icon' || extraAttribute === 'href' || extraAttribute === 'status' ? 'ltr' : undefined}
               key={extraAttribute}
               value={editorAttribute.parse(node.attrs[extraAttribute])}
               aria-label={t(placeholderByAttribute[extraAttribute])}

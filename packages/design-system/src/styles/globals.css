@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/noto-sans-arabic";
 @import "highlight.js/styles/github-dark.css";
 
 /* Always scan the design-system's own source for class names. This package is
@@ -19,6 +20,8 @@
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-arabic:
+    "Noto Sans Arabic Variable", "Noto Sans Arabic", Tahoma, Arial, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -159,6 +162,10 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
+  }
+  :where(:lang(ar), :lang(fa), :lang(ur)),
+  html[dir="rtl"] body {
+    font-family: var(--font-arabic);
   }
   /* Interactive elements use a pointer cursor (per project convention). */
   button:not(:disabled),

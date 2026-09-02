@@ -37,6 +37,12 @@ function MembersPage() {
   const invite = useInviteMember();
   const remove = useRemoveMember();
   const updateRole = useUpdateMemberRole();
+  // No `owner` option: invitations and role changes can never grant ownership.
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const roleOptions = [
+    { value: 'member', label: t('members.role.editor') },
+    { value: 'admin', label: t('members.role.admin') },
+  ] as const satisfies ReadonlyArray<{ value: AssignableRole; label: string }>;
 
   const form = useForm({
     defaultValues: { email: '', role: 'member' as AssignableRole },
@@ -93,14 +99,16 @@ function MembersPage() {
         <div className="flex w-full items-end gap-3 sm:w-auto">
           <form.Field name="role">
             {(field) => (
-              // No `owner` option: invitations can never carry the owner role.
-              <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
+              <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
                 <SelectTrigger className="min-w-0 flex-1 sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">{t('members.role.editor')}</SelectItem>
-                  <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -141,6 +149,7 @@ function MembersPage() {
                       <span>{t('members.role.owner')}</span>
                     ) : (
                       <Select
+                        items={roleOptions}
                         value={member.role}
                         onValueChange={(v) =>
                           updateRole.mutate(
@@ -155,10 +164,12 @@ function MembersPage() {
                         <SelectTrigger className="w-32">
                           <SelectValue />
                         </SelectTrigger>
-                        {/* No `owner` option: role changes can never grant ownership. */}
                         <SelectContent>
-                          <SelectItem value="member">{t('members.role.editor')}</SelectItem>
-                          <SelectItem value="admin">{t('members.role.admin')}</SelectItem>
+                          {roleOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     )}

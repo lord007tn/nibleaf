@@ -34,3 +34,15 @@ export const resolvePublishedSearchContext = (snapshot: SiteSnapshot, requested:
   const version = snapshot.project.versions.find((candidate) => candidate.slug === request.version) ?? defaultVersions[0];
   return { configuration: request.configuration, language, version, limit: request.limit };
 };
+
+/**
+ * Keyword search is global across the published multilingual corpus unless an
+ * API caller explicitly asks for one language. The explicit form remains for
+ * backwards-compatible integrations; the reader UI deliberately omits it.
+ */
+export const resolvePublishedSearchLanguages = (snapshot: SiteSnapshot, requestedLanguage?: string): string[] => {
+  if (requestedLanguage) {
+    return [resolvePublishedSearchContext(snapshot, { language: requestedLanguage }).language];
+  }
+  return publicLanguages(snapshot.project.languages).map((language) => language.code);
+};

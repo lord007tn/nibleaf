@@ -238,11 +238,13 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   const title = pageSeo?.metaTitle?.trim() || `${data.page.title} — ${siteName}`;
   const ogTitle = pageSeo?.metaTitle?.trim() || data.page.title;
   // An explicit page SEO override wins first. The page's own authored summary is
-  // next so a project/language default cannot stamp the same description onto
-  // every URL. Site-wide descriptions are fallbacks for pages without a summary.
+  // next, then the excerpt derived from its body, so a project/language default
+  // cannot stamp the same description onto every URL. Site-wide descriptions are
+  // fallbacks for pages with no body text at all.
   const description =
     pageSeo?.metaDescription ||
     data.page.description ||
+    data.page.excerpt ||
     langSeo?.metaDescription ||
     config?.seo?.metaDescription ||
     langCfg?.description ||
