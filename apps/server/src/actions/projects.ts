@@ -10,6 +10,11 @@ import { mutateProjectConfig } from './project-config';
 const MAX_PROJECT_SLUG_LENGTH = 63;
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
 
+/** What "pages" means wherever a site's page count is shown (workspace
+ *  overview, sites list, MCP): content pages — not navigation groups — on the
+ *  default branch, across all languages. The same set the Site Overview counts. */
+const contentPagesWhere: Prisma.PageWhereInput = { kind: 'PAGE', branch: { isDefault: true } };
+
 /** Throw unless the project exists and belongs to the organization. Returns it. */
 export const assertProjectInOrg = async (organizationId: string, projectId: string) => {
   const project = await prisma.project.findFirst({ where: { id: projectId, organizationId } });
@@ -68,7 +73,7 @@ export const listProjects = async (userId: string) => {
   return prisma.project.findMany({
     where: { organizationId: { in: organizationIds } },
     orderBy: { updatedAt: 'desc' },
-    include: { _count: { select: { pages: true, deployments: true } } },
+    include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
   });
 };
 
@@ -114,7 +119,7 @@ export const getProject = async (organizationId: string, id: string) => {
   const project = await prisma.project.findFirst({
     where: { id, organizationId },
     include: {
-      _count: { select: { pages: true, deployments: true, domains: true } },
+      _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
       languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
     },
   });
