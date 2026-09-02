@@ -1,7 +1,7 @@
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
-import { BarChart3, BookText, Plus, Settings } from 'lucide-react';
+import { BarChart3, BookOpen, BookText, Plus, Settings } from 'lucide-react';
 import { useEffect } from 'react';
 import { useProjects } from '@/hooks/api';
 
@@ -27,7 +27,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange}>
+    <CommandDialog open={open} onOpenChange={onOpenChange} title={t('command.searchPlaceholder')}>
       <CommandInput placeholder={t('command.searchPlaceholder')} />
       <CommandList>
         <CommandEmpty>{t('command.noResults')}</CommandEmpty>
@@ -39,18 +39,25 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               onSelect={() => go('/app/projects/$projectId', { projectId: project.id })}
             >
               <BookText className="size-4" />
-              {project.name}
+              <span className="truncate" dir="auto">
+                {project.name}
+              </span>
             </CommandItem>
           ))}
         </CommandGroup>
         <CommandGroup heading={t('command.group.goTo')}>
-          <CommandItem value="projects" onSelect={() => go('/app')}>
+          {/* cmdk matches the query against `value`/`keywords`, never the rendered
+              label, so the localized label must be a keyword to be searchable. */}
+          <CommandItem value="projects" keywords={[t('command.allProjects')]} onSelect={() => go('/app')}>
             <Plus className="size-4" /> {t('command.allProjects')}
           </CommandItem>
-          <CommandItem value="analytics" onSelect={() => go('/app/analytics')}>
+          <CommandItem value="sites" keywords={[t('nav.sites')]} onSelect={() => go('/app/sites')}>
+            <BookOpen className="size-4" /> {t('nav.sites')}
+          </CommandItem>
+          <CommandItem value="analytics" keywords={[t('command.analytics')]} onSelect={() => go('/app/analytics')}>
             <BarChart3 className="size-4" /> {t('command.analytics')}
           </CommandItem>
-          <CommandItem value="settings" onSelect={() => go('/app/settings')}>
+          <CommandItem value="settings" keywords={[t('command.accountSettings')]} onSelect={() => go('/app/settings')}>
             <Settings className="size-4" /> {t('command.accountSettings')}
           </CommandItem>
         </CommandGroup>
