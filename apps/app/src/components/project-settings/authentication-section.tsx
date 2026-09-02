@@ -23,6 +23,7 @@ import {
   useUpdateReaderAccessMode,
   useUpdateReaderJwt,
 } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 import { Field, SectionHeader, Segmented } from './shared';
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
@@ -419,7 +420,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   {(data?.audit ?? []).map((event) => (
                     <div className="flex justify-between gap-3 p-2 text-xs" key={event.id}>
                       <span>{labelFor(AUDIT_ACTION_KEYS, event.action)}</span>
-                      <time className="text-muted-foreground">{new Date(event.createdAt).toLocaleString(locale)}</time>
+                      <time className="text-muted-foreground">{new Date(event.createdAt).toLocaleString(localeTag(locale))}</time>
                     </div>
                   ))}
                 </div>

@@ -3,6 +3,7 @@ import { createFileRoute, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import type { ChangelogEntry } from '@/hooks/api/types';
+import { localeTag } from '@/lib/format';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
 
@@ -64,7 +65,7 @@ const parse = (value: string | null): Date | null => {
 };
 const formatDate = (value: string | null, lang?: string): string => {
   const date = parse(value);
-  return date ? date.toLocaleDateString(lang || undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 };
 const monthKey = (value: string | null): string => {
   const date = parse(value);
@@ -72,7 +73,7 @@ const monthKey = (value: string | null): string => {
 };
 const monthLabel = (value: string | null, lang?: string): string => {
   const date = parse(value);
-  return date ? date.toLocaleDateString(lang || undefined, { year: 'numeric', month: 'long' }) : '';
+  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'long' }) : '';
 };
 
 /** Group entries (already newest-first) into consecutive month sections. */

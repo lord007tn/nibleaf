@@ -4,11 +4,13 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { AlertTriangle, Braces, FileUp, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteOpenApi, useOpenApiConfiguration, useSyncOpenApi, useUpsertOpenApi } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 import { FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented } from './shared';
 
 type SourceType = 'upload' | 'url' | 'repository';
@@ -113,7 +115,8 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
           </AlertTitle>
           <AlertDescription>
             <p>
-              {t('settings.openapi.publishHint')} · <span dir="ltr">/{current.path}</span> · {new Date(current.updatedAt).toLocaleString()}
+              {t('settings.openapi.publishHint')} · <span dir="ltr">/{current.path}</span> ·{' '}
+              {new Date(current.updatedAt).toLocaleString(localeTag(getLocale()))}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => setEditing(true)} size="sm">

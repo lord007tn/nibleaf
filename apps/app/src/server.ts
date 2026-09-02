@@ -921,6 +921,9 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         return withoutHeadBody(await serveDomainSeo(url.pathname, projectId, `${proto}://${host}`), request.method);
       }
     }
+    if (isAppOwnedPath(url.pathname)) {
+      return startHandler(request, ...rest);
+    }
     if (!isAppOwnedPath(url.pathname)) {
       const projectId = await resolveHost(bare);
       if (projectId) {

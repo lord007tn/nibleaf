@@ -3,12 +3,14 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/de
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { FIELD_MONO, SectionHeader } from './shared';
 
@@ -121,7 +123,7 @@ export function DomainSection({ project }: { project: Project }) {
                 </div>
                 {d.lastCheckedAt ? (
                   <p className="mt-1.5 text-muted-foreground text-xs">
-                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString() })}
+                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString(localeTag(getLocale())) })}
                   </p>
                 ) : null}
               </div>

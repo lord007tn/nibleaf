@@ -40,8 +40,9 @@ describe('viewsTrend', () => {
 });
 
 describe('localeTag', () => {
-  it('requests Arabic-Indic digits for Arabic and passes other locales through', () => {
-    expect(localeTag('ar')).toBe('ar-u-nu-arab');
+  it('requests Western digits for Arabic and passes other locales through', () => {
+    expect(localeTag('ar')).toBe('ar-u-nu-latn');
+    expect(localeTag('ar-SA')).toBe('ar-SA-u-nu-latn');
     expect(localeTag('en')).toBe('en');
     expect(localeTag('fr')).toBe('fr');
   });
@@ -57,7 +58,8 @@ describe('formatCurrency', () => {
     expect(formatCurrency('en', 9.5)).toBe('$9.50');
   });
 
-  it('uses Arabic-Indic digits under the Arabic tag', () => {
-    expect(formatCurrency(localeTag('ar'), 0)).toContain('٠');
+  it('uses Western digits under the Arabic tag', () => {
+    expect(formatCurrency(localeTag('ar'), 0)).toContain('0');
+    expect(formatCurrency(localeTag('ar'), 0)).not.toMatch(/[٠-٩]/);
   });
 });

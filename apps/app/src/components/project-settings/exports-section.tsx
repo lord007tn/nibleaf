@@ -24,7 +24,7 @@ import {
   useRunExportSchedule,
   useUpdateExportSchedule,
 } from '@/hooks/api/exports';
-import { useFormatters } from '@/lib/format';
+import { localeTag, useFormatters } from '@/lib/format';
 import { SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
@@ -33,7 +33,7 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
   STATIC_HTML: 'settings.exports.workflow.format.html',
 };
 const MEBIBYTE = 1024 * 1024;
-const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(locale) : '—');
+const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
 export function ExportsSection({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();
