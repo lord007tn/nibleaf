@@ -3,6 +3,7 @@ import {
   acceptsHtml,
   appendVary,
   asHtmlRenderRequest,
+  isAppOwnedPath,
   isDocumentPath,
   notAcceptableHtmlResponse,
   preferredRepresentation,
@@ -70,6 +71,17 @@ describe('isDocumentPath', () => {
   it.each(['/api/public/sites/project', '/assets/app.js', '/_serverFn/handler', '/brand/logo.svg', '/favicon.ico'])('excludes %s', (pathname) => {
     expect(isDocumentPath(pathname)).toBe(false);
   });
+});
+
+describe('isAppOwnedPath', () => {
+  it.each(['/api/public/sites/project', '/assets/app.js', '/favicon.ico', '/sites/project', '/_serverFn/handler', '/_tanstack/start'])(
+    'keeps %s on the application runtime',
+    (pathname) => expect(isAppOwnedPath(pathname)).toBe(true),
+  );
+
+  it.each(['/', '/getting-started', '/ar/use-nibleaf/authoring'])('allows %s to resolve as published content', (pathname) =>
+    expect(isAppOwnedPath(pathname)).toBe(false),
+  );
 });
 
 it('returns a crawler-safe 406 response', async () => {
