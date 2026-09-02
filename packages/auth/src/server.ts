@@ -13,6 +13,7 @@ import { resolveRequestLocale } from '@nibleaf/i18n/locales';
 import { createLogger } from '@nibleaf/logger';
 import { joinPath, slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
@@ -501,8 +502,11 @@ async function createStarterProject(organizationId: string, actorUserId: string)
               name: 'Documentation',
               slug,
               description: 'Your first documentation site.',
+              // Seed the curated default preset (same as createProject in the
+              // API) so the starter site never renders the legacy accent-only
+              // palette; a stored `theme` opts the site into the theme resolver.
               config: projectConfigWithAddons(
-                {},
+                { theme: { version: THEME_SCHEMA_VERSION, preset: 'harbor', metadata: THEME_PRESETS.harbor.metadata } },
                 addonDefinitions.map((definition) => ({
                   key: definition.id,
                   enabled: definition.defaultEnabled,

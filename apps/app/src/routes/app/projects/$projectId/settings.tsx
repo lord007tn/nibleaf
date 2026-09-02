@@ -1,3 +1,5 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -111,6 +113,7 @@ function ProjectSettingsPage() {
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: project, isLoading } = useProject(projectId);
   const t = useT();
+  const sectionItems = SECTIONS.map((item) => ({ value: item.id, label: t(`settings.${item.id}` as MessageKey) }));
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-background md:flex-row">
@@ -118,23 +121,27 @@ function ProjectSettingsPage() {
         <label className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider" htmlFor="mobile-settings-section">
           {t('settings.heading')}
         </label>
-        <select
-          aria-label={t('settings.heading')}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 font-medium text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-          id="mobile-settings-section"
-          onChange={(event) => navigate({ search: { section: event.target.value as SectionId }, replace: true })}
+        <Select
+          items={sectionItems}
+          onValueChange={(next) => navigate({ search: { section: (next ?? section) as SectionId }, replace: true })}
           value={section}
         >
-          {GROUPS.map((group) => (
-            <optgroup key={group.id} label={t(group.labelKey)}>
-              {SECTIONS.filter((item) => item.group === group.id).map((item) => (
-                <option key={item.id} value={item.id}>
-                  {t(`settings.${item.id}` as MessageKey)}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+          <SelectTrigger aria-label={t('settings.heading')} className="h-10 w-full rounded-lg font-medium" id="mobile-settings-section">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {GROUPS.map((group) => (
+              <SelectGroup key={group.id}>
+                <SelectLabel>{t(group.labelKey)}</SelectLabel>
+                {SECTIONS.filter((item) => item.group === group.id).map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {t(`settings.${item.id}` as MessageKey)}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
         <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
@@ -146,18 +153,20 @@ function ProjectSettingsPage() {
                 const active = item.id === section;
                 const Icon = item.icon;
                 return (
-                  <button
+                  <Button
+                    aria-current={active ? 'page' : undefined}
                     className={cn(
-                      'flex h-9 w-full cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50',
-                      active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
+                      active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
                     )}
                     key={item.id}
                     onClick={() => navigate({ search: { section: item.id }, replace: true })}
                     type="button"
+                    variant="ghost"
                   >
                     <Icon aria-hidden className="size-4 shrink-0" />
                     {t(`settings.${item.id}` as MessageKey)}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -166,7 +175,7 @@ function ProjectSettingsPage() {
       </aside>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="w-full px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
+        <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
           {isLoading || !project ? <SectionSkeleton /> : <ActiveSection projectId={projectId} project={project} section={section} />}
         </div>
       </div>
@@ -195,7 +204,8 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     exports: <ExportsSection key={`exports-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,
   };
-  return sections[section];
+  const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';
+  return <div className={cn('w-full', wideSection ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
 }
 
 function SectionSkeleton() {

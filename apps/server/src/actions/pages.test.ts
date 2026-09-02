@@ -94,3 +94,34 @@ describe('updatePage placeholder slug adoption', () => {
     expect(database.transaction).not.toHaveBeenCalled();
   });
 });
+
+describe('updatePage non-Latin slugs', () => {
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+  });
+
+  it('gives an Arabic title an Arabic slug instead of the "page" placeholder', async () => {
+    seed(row({ title: editor_untitled(undefined, { locale: 'ar' }) }));
+
+    const updated = await updatePage('project-1', 'page-1', { title: 'المصادقة' });
+
+    expect(updated.slug).toBe('المصادقة');
+    expect(updated.path).toBe('المصادقة');
+  });
+
+  it('keeps mixed Arabic and Latin words in an explicit slug', async () => {
+    seed(row({ title: 'Overview' }));
+
+    const updated = await updatePage('project-1', 'page-1', { slug: 'API الوصول' });
+
+    expect(updated.slug).toBe('api-الوصول');
+  });
+
+  it('falls back to "page" only when the title has no letters or digits at all', async () => {
+    seed(row({ title: editor_untitled(undefined, { locale: 'en' }) }));
+
+    const updated = await updatePage('project-1', 'page-1', { title: '🚀🎉' });
+
+    expect(updated.slug).toBe('page');
+  });
+});

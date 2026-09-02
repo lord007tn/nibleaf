@@ -67,6 +67,12 @@ export function GeneralSection({ project }: { project: Project }) {
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
   const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>({});
+  const translationsDirty = extraLanguages.some((language) => {
+    const draft = translations[language.id];
+    if (!draft) return false;
+    const stored = draftOf(language);
+    return draft.name.trim() !== stored.name || draft.description.trim() !== stored.description;
+  });
   const setTranslation = (language: Language, patch: Partial<TranslationDraft>) =>
     setTranslations((prev) => ({ ...prev, [language.id]: { ...(prev[language.id] ?? draftOf(language)), ...patch } }));
 
@@ -356,7 +362,11 @@ export function GeneralSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => (
+          <SaveBar disabled={!isDirty && icon === (project.icon ?? '📘') && !translationsDirty} isSubmitting={isSubmitting} />
+        )}
+      </form.Subscribe>
     </form>
   );
 }

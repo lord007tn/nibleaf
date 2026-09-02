@@ -95,6 +95,10 @@ export function TypographySection({ project }: { project: Project }) {
   const [baseSize, setBaseSize] = useState<BaseSize>((typography.baseSize as BaseSize) ?? '16');
   const [leading, setLeading] = useState<Leading>((typography.leading as Leading) ?? '1.75');
   const [flow, setFlow] = useState<Flow>((typography.flow as Flow) ?? '1.25');
+  const rhythmDirty =
+    baseSize !== ((typography.baseSize as BaseSize) ?? '16') ||
+    leading !== ((typography.leading as Leading) ?? '1.75') ||
+    flow !== ((typography.flow as Flow) ?? '1.25');
 
   // The preset row highlights whichever preset the current triple matches (if any).
   const activePreset = (Object.keys(PRESETS) as PresetName[]).find(
@@ -225,7 +229,9 @@ export function TypographySection({ project }: { project: Project }) {
         )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !rhythmDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

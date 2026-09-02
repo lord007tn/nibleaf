@@ -42,7 +42,14 @@ function SitesPage() {
       </div>
       <div className="relative max-w-md">
         <Search className="absolute start-3 top-1/2 size-4.5 -translate-y-1/2 text-muted-foreground" />
-        <Input className="ps-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('dashboard.search.placeholder')} />
+        <Input
+          aria-label={t('dashboard.search.placeholder')}
+          className="ps-10"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={t('dashboard.search.placeholder')}
+          type="search"
+          value={query}
+        />
       </div>
       {isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

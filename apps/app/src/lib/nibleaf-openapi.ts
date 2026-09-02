@@ -146,7 +146,7 @@ export function nibleafPublicOpenApi(origin: string) {
           operationId: 'searchPublishedSite',
           tags: ['Published sites'],
           summary: 'Search a published site',
-          description: 'Runs Nibleaf full-text and fuzzy search against the selected published language and version.',
+          description: 'Runs Nibleaf full-text and fuzzy search across all published languages for the selected version.',
           parameters: [
             ...siteParameters,
             {

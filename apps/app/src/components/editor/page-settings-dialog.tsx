@@ -336,7 +336,7 @@ export function PageSettingsDialog({
                   <Field label={t('editor.pageSettings.mode')} hint={t('editor.pageSettings.modeHint')} htmlFor="page-mode">
                     <Select items={modeOptions} value={mode} onValueChange={(v) => setMode(v ?? 'default')}>
                       <SelectTrigger id="page-mode" className="w-full">
-                        <SelectValue />
+                        <SelectValue>{modeOptions.find((option) => option.value === mode)?.label}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         {modeOptions.map((option) => (

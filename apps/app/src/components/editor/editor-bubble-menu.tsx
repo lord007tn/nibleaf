@@ -1,3 +1,5 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -68,12 +70,11 @@ export function LinkEditorPanel({
   // (which always carry a scheme after normalization) are openable from here.
   const openHref =
     normalized && !normalized.startsWith('/') && !normalized.startsWith('#') && /^[a-z][a-z0-9+.-]*:/i.test(normalized) ? normalized : null;
-  const iconButton =
-    'flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40';
+  const iconButton = 'size-7 shrink-0 text-foreground/80';
 
   return (
     <div className="flex items-center gap-1 p-0.5">
-      <input
+      <Input
         autoFocus={autoFocus}
         value={draft}
         onChange={(event) => {
@@ -95,32 +96,47 @@ export function LinkEditorPanel({
         aria-label={t('editor.format.linkPrompt')}
         aria-invalid={invalid}
         title={invalid ? t('editor.link.invalid') : undefined}
-        className={cn(
-          'h-7 w-56 rounded-md border bg-background px-2 font-mono text-[12px] text-foreground outline-none placeholder:text-muted-foreground/60',
-          invalid ? 'border-destructive focus:ring-2 focus:ring-destructive/30' : 'border-border focus:ring-2 focus:ring-ring/40',
-        )}
+        className="h-7 w-56 bg-background px-2 font-mono text-[12px] placeholder:text-muted-foreground/60 md:text-[12px]"
       />
-      <button type="button" title={t('editor.link.save')} aria-label={t('editor.link.save')} onClick={save} className={iconButton}>
-        <Check className="size-4" />
-      </button>
-      <button
+      <Button
+        aria-label={t('editor.link.save')}
+        className={iconButton}
+        onClick={save}
+        size="icon-xs"
+        title={t('editor.link.save')}
         type="button"
-        title={normalized && !openHref ? t('editor.link.openRelativeHint') : t('editor.link.open')}
+        variant="ghost"
+      >
+        <Check className="size-4" />
+      </Button>
+      <Button
         aria-label={t('editor.link.open')}
+        className={iconButton}
         disabled={!openHref}
         onClick={() => {
           if (openHref) {
             window.open(openHref, '_blank', 'noopener,noreferrer');
           }
         }}
-        className={iconButton}
+        size="icon-xs"
+        title={normalized && !openHref ? t('editor.link.openRelativeHint') : t('editor.link.open')}
+        type="button"
+        variant="ghost"
       >
         <ExternalLink className="size-4" />
-      </button>
+      </Button>
       {editor.isActive('link') ? (
-        <button type="button" title={t('editor.link.remove')} aria-label={t('editor.link.remove')} onClick={remove} className={iconButton}>
+        <Button
+          aria-label={t('editor.link.remove')}
+          className={iconButton}
+          onClick={remove}
+          size="icon-xs"
+          title={t('editor.link.remove')}
+          type="button"
+          variant="ghost"
+        >
           <Unlink className="size-4" />
-        </button>
+        </Button>
       ) : null}
     </div>
   );
@@ -198,39 +214,37 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
             const Icon = button.icon;
             const label = t(button.labelKey);
             return (
-              <button
-                type="button"
-                key={button.labelKey}
-                title={label}
+              <Button
                 aria-label={label}
                 aria-pressed={button.active}
-                onMouseDown={(event) => event.preventDefault()}
+                className={cn('size-7 text-foreground/80', button.active && 'bg-muted text-foreground')}
+                key={button.labelKey}
                 onClick={button.run}
-                className={cn(
-                  'flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted',
-                  button.active && 'bg-muted text-foreground',
-                )}
+                onMouseDown={(event) => event.preventDefault()}
+                size="icon-xs"
+                title={label}
+                type="button"
+                variant="ghost"
               >
                 <Icon className="size-4" />
-              </button>
+              </Button>
             );
           })}
           <span className="mx-0.5 h-5 w-px bg-border" />
-          <button
-            type="button"
-            title={t('editor.format.link')}
+          <Button
+            aria-expanded={showLinkPanel}
             aria-label={t('editor.format.link')}
             aria-pressed={state.link}
-            aria-expanded={showLinkPanel}
-            onMouseDown={(event) => event.preventDefault()}
+            className={cn('size-7 text-foreground/80', state.link && 'bg-muted text-foreground')}
             onClick={() => setLinkOpen((open) => !open)}
-            className={cn(
-              'flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted',
-              state.link && 'bg-muted text-foreground',
-            )}
+            onMouseDown={(event) => event.preventDefault()}
+            size="icon-xs"
+            title={t('editor.format.link')}
+            type="button"
+            variant="ghost"
           >
             <LinkIcon className="size-4" />
-          </button>
+          </Button>
         </div>
       ) : null}
       {showLinkPanel ? <LinkEditorPanel editor={editor} initialUrl={state.href} onDone={() => setLinkOpen(false)} autoFocus={linkOpen} /> : null}

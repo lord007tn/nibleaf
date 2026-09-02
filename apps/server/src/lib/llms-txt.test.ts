@@ -76,6 +76,13 @@ describe('llmsPageUrl', () => {
     const snap = snapshot([page({ id: 'guide', versionId: 'v-2', languageCode: 'ar' })]);
     expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/v2/guide?lang=ar`);
   });
+
+  it('percent-encodes non-ASCII path segments so the link stays a valid ASCII URL', () => {
+    const snap = snapshot([page({ id: 'auth', path: 'الأدلة/المصادقة', languageCode: 'ar' })]);
+    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(
+      `${BASE}/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar`,
+    );
+  });
 });
 
 describe('buildLlmsTxt', () => {

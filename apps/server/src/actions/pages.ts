@@ -1,7 +1,7 @@
 import { Prisma, prisma } from '@nibleaf/database';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
-import { joinPath, slugify } from '@nibleaf/shared/utils';
+import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
@@ -57,7 +57,10 @@ const uniqueSiblingSlug = async (
   desired: string,
   excludeId?: string,
 ): Promise<string> => {
-  const base = slugify(desired) || 'page';
+  // Unicode-aware so an Arabic (or any non-Latin) title keeps its own slug; the
+  // 'page' placeholder is only reached when the title has no letters or digits
+  // at all (emoji-only, punctuation-only).
+  const base = slugifyUnicode(desired) || 'page';
   let slug = base;
   let suffix = 1;
   for (;;) {

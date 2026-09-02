@@ -138,7 +138,9 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
               <DialogTitle className="font-semibold text-base tracking-tight">
                 {done ? t('deploy.deployed') : failed ? t('deploy.failed') : t('deploy.deploying')}
               </DialogTitle>
-              <div className="truncate font-mono text-[12.5px] text-muted-foreground">{siteHref(project.id)}</div>
+              <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
+                {siteHref(project.id)}
+              </div>
             </div>
           </div>
 
@@ -163,7 +165,11 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             })}
           </ul>
 
-          {failed && deployment?.error ? <p className="-mt-1 pb-1 text-destructive text-xs">{deployment.error}</p> : null}
+          {failed && deployment?.error ? (
+            <p className="-mt-1 pb-1 text-destructive text-xs" dir="auto">
+              {deployment.error}
+            </p>
+          ) : null}
         </div>
 
         {done ? (

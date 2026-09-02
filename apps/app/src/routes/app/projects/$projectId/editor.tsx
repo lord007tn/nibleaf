@@ -11,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Code2,
-  ExternalLink,
   Eye,
   FileText,
   FolderPlus,
@@ -36,6 +35,7 @@ import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
+import { isDirty, nextHydration, type ServerSnapshot, shouldAutosave } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
@@ -197,10 +197,10 @@ function EditorPage() {
   const [settingsForId, setSettingsForId] = useState<string | null>(null);
   const [langSettings, setLangSettings] = useState<Language | null>(null);
   // What's currently in sync with the server for the open page: its id + the
-  // exact title/content we last loaded (or saved). Drives re-seeding so the
-  // editor recovers when the server copy changes — without clobbering edits.
-  const synced = useRef<{ id: string; content: string; title: string } | null>(null);
-  const hydrating = useRef<{ id: string; content: string; title: string } | null>(null);
+  // exact title/content we last loaded (or saved) and its revision stamp. Drives
+  // re-seeding so the editor recovers when the server copy changes — without
+  // clobbering edits — and pins autosaves to the page the draft was loaded from.
+  const [synced, setSynced] = useState<ServerSnapshot | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
   const [sidebarWidth, setSidebarWidth] = useState(260);
@@ -280,33 +280,21 @@ function EditorPage() {
   const activeLangDir: 'ltr' | 'rtl' = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
 
   // Load the selected page into the local draft. Re-seed when switching pages, OR
-  // when the server's copy changed while the draft is still clean (matches what we
-  // last loaded/saved) — so an external update, a branch reload, or a stale→fresh
-  // cache transition refreshes the editor without ever clobbering unsaved edits.
-  useEffect(() => {
-    if (!page) {
-      return;
-    }
-    const samePage = synced.current?.id === page.id;
-    const clean = synced.current ? content === synced.current.content && title === synced.current.title : true;
-    if (!samePage || (page.content !== synced.current?.content && clean)) {
-      hydrating.current = { id: page.id, content: page.content, title: page.title };
-      setTitle(page.title);
-      setContent(page.content);
-      setStatus('idle');
-    }
-  }, [page, content, title]);
-
-  useEffect(() => {
-    const pending = hydrating.current;
-    if (!pending) {
-      return;
-    }
-    if (page?.id === pending.id && title === pending.title && content === pending.content) {
-      synced.current = pending;
-      hydrating.current = null;
-    }
-  }, [page?.id, title, content]);
+  // when a NEWER server copy arrives while the draft is still clean (matches what
+  // we last loaded/saved) — so an external update, a branch reload, or a
+  // stale→fresh cache transition refreshes the editor without ever clobbering
+  // unsaved edits. This runs during render (React's "adjust state while
+  // rendering" pattern) rather than in an effect so no frame is ever committed
+  // with a draft that belongs to a different page than `page`: the editor below
+  // is keyed by page id and mounts straight onto the right document, and the
+  // autosave effect can never observe the previous page's body under the new id.
+  const hydration = nextHydration({ synced, draft: { title, content } }, page);
+  if (hydration) {
+    setSynced(hydration);
+    setTitle(hydration.title);
+    setContent(hydration.content);
+    setStatus('idle');
+  }
 
   // Debounced autosave: fire ~700ms after the user stops typing the title/content.
   // `onUnmount` flushes any pending save when the editor unmounts (route change /
@@ -316,12 +304,14 @@ function EditorPage() {
       updatePage.mutate(
         { pageId, body: draft },
         {
-          onSuccess: () => {
+          onSuccess: (saved) => {
             setStatus('saved');
-            // The saved draft is now the synced server state.
-            if (synced.current?.id === pageId) {
-              synced.current = { id: pageId, content: draft.content, title: draft.title };
-            }
+            // The saved draft is now the synced server state — but only while
+            // that page is still the one open; a save that lands after a page
+            // switch must not disturb the new page's draft.
+            setSynced((current) =>
+              current?.id === pageId ? { id: pageId, title: draft.title, content: draft.content, updatedAt: saved.updatedAt } : current,
+            );
           },
           onError: () => setStatus('idle'),
         },
@@ -330,23 +320,15 @@ function EditorPage() {
     { wait: 700, onUnmount: (d) => d.flush() },
   );
 
+  // Only ever saves to the page the draft was hydrated from, and never an empty
+  // body over a non-empty page (see shouldAutosave).
   useEffect(() => {
-    if (!page || synced.current?.id !== page.id || hydrating.current) {
-      return;
-    }
-    if (title === page.title && content === page.content) {
-      return;
-    }
-    // Data-loss guard: never let an AUTOMATIC save replace a page that has content
-    // with an empty body. Protects against a transient empty `content` state (e.g. a
-    // hot-reload/Fast-Refresh reset, or a load race) silently wiping the page. A real
-    // "clear the page" still persists the moment any character is typed.
-    if (content.trim() === '' && page.content.trim() !== '') {
+    if (!page || !shouldAutosave({ synced, draft: { title, content } }, page)) {
       return;
     }
     setStatus('saving');
     saveDraft(page.id, { title, content });
-  }, [title, content, page, saveDraft]);
+  }, [title, content, page, synced, saveDraft]);
 
   const openDraftPreview = async () => {
     // Open synchronously so browsers treat this as a user-initiated popup. We
@@ -365,11 +347,11 @@ function EditorPage() {
     });
 
     try {
-      const draftIsCurrent = page && synced.current?.id === page.id && synced.current.title === title && synced.current.content === content;
+      const draftIsCurrent = page && synced?.id === page.id && !isDirty({ synced, draft: { title, content } });
       if (page && !draftIsCurrent) {
         setStatus('saving');
-        await updatePage.mutateAsync({ pageId: page.id, body: { title, content } });
-        synced.current = { id: page.id, title, content };
+        const saved = await updatePage.mutateAsync({ pageId: page.id, body: { title, content } });
+        setSynced((current) => (current?.id === page.id ? { id: page.id, title, content, updatedAt: saved.updatedAt } : current));
         setStatus('saved');
       }
       previewWindow.location.replace(previewUrl);
@@ -381,15 +363,30 @@ function EditorPage() {
   };
 
   const branchScope = activeBranchId ? { branchId: activeBranchId } : {};
-  const addPage = (parentId: string | null, languageId: string) =>
+  // React Query's pending state only appears on the next render. The ref closes
+  // the same-frame double-click window immediately, so a slow request can never
+  // create two pages or groups from repeated clicks.
+  const creationInFlight = useRef(false);
+  const addPage = (parentId: string | null, languageId: string) => {
+    if (creationInFlight.current) return;
+    creationInFlight.current = true;
     createPage.mutate(
       // Localized placeholder title with a pinned 'untitled' slug: the server treats
       // that slug as a placeholder to swap for the real title's slug on first rename,
       // and deriving it from e.g. an Arabic title would strip to a broken 'page' slug.
       { title: t('editor.untitled'), slug: 'untitled', parentId, languageId, ...branchScope },
-      { onSuccess: (created) => setSelectedId(created.id), onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')) },
+      {
+        onSuccess: (created) => setSelectedId(created.id),
+        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
+        onSettled: () => {
+          creationInFlight.current = false;
+        },
+      },
     );
-  const addGroup = (languageId: string) =>
+  };
+  const addGroup = (languageId: string) => {
+    if (creationInFlight.current) return;
+    creationInFlight.current = true;
     createPage.mutate(
       // The display title is localized, but the slug is pinned: deriving it from
       // a non-Latin title (e.g. Arabic) would strip to a broken 'page' slug.
@@ -400,8 +397,12 @@ function EditorPage() {
           setSettingsForId(created.id);
         },
         onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
+        onSettled: () => {
+          creationInFlight.current = false;
+        },
       },
     );
+  };
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -455,6 +456,18 @@ function EditorPage() {
     setCommentMode(next);
   };
 
+  const pageTitleInput = (
+    <input
+      aria-label={t('editor.pageTitlePlaceholder')}
+      className="w-full min-w-0 rounded-sm border-0 bg-transparent font-semibold text-3xl leading-[1.2] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-[2.1rem]"
+      dir="auto"
+      lang={activeLanguage?.code}
+      onChange={(event) => setTitle(event.target.value)}
+      placeholder={t('editor.pageTitlePlaceholder')}
+      value={title}
+    />
+  );
+
   return (
     <div className="flex h-screen flex-col">
       {/* Top bar — workspace controls (Mintlify-style): back + branch on the left,
@@ -478,7 +491,7 @@ function EditorPage() {
           onSwitch={(id) => {
             setActiveBranchId(id);
             setSelectedId(null);
-            synced.current = null;
+            setSynced(null);
           }}
         />
         <span className="hidden items-center gap-1.5 text-muted-foreground text-xs lg:flex">
@@ -647,6 +660,7 @@ function EditorPage() {
                               }}
                               aria-label={t('editor.newGroup')}
                               title={t('editor.newGroup')}
+                              disabled={createPage.isPending}
                             >
                               <FolderPlus className="size-3" />
                             </Button>
@@ -660,6 +674,7 @@ function EditorPage() {
                               }}
                               aria-label={t('editor.newPage')}
                               title={t('editor.newPage')}
+                              disabled={createPage.isPending}
                             >
                               <Plus className="size-3" />
                             </Button>
@@ -731,9 +746,11 @@ function EditorPage() {
             <div className="border-border border-b px-6 py-3">
               <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
             </div>
-            <div className="w-full px-8 pt-7 pb-32">
+            <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
               {project ? (
-                <ConfigSection project={project} section={configSection} />
+                <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
+                  <ConfigSection project={project} section={configSection} />
+                </div>
               ) : (
                 <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
               )}
@@ -750,7 +767,7 @@ function EditorPage() {
                   <Settings2 className="size-4" /> {t('editor.pageSettings.title')}
                 </Button>
                 {selectedGroup.languageId ? (
-                  <Button onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
+                  <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
                     <Plus className="size-4" /> {t('editor.newPage')}
                   </Button>
                 ) : null}
@@ -819,23 +836,6 @@ function EditorPage() {
                 <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
               </Button>
               <Button
-                nativeButton={false}
-                render={
-                  <a
-                    aria-label={t('editor.viewOnSite')}
-                    href={`/sites/${projectId}/${page.path}${activeLanguage && !activeLanguage.isDefault ? `?lang=${activeLanguage.code}` : ''}`}
-                    rel="noreferrer"
-                    target="_blank"
-                  />
-                }
-                size="icon-sm"
-                variant="ghost"
-                className="cursor-pointer"
-                title={t('editor.viewOnSite')}
-              >
-                <ExternalLink className="size-4" />
-              </Button>
-              <Button
                 size="icon-sm"
                 variant="ghost"
                 className="cursor-pointer"
@@ -883,14 +883,18 @@ function EditorPage() {
             <div
               className={cn(
                 'min-h-0 flex-1',
-                effectiveMode === 'markdown' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
+                effectiveMode === 'markdown'
+                  ? 'flex flex-col overflow-hidden'
+                  : effectiveMode === 'wysiwyg'
+                    ? 'flex flex-col overflow-hidden'
+                    : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
               )}
             >
               {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
                 <div
                   className={cn(
                     'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
-                    'mx-auto mb-5 max-w-[720px]',
+                    effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
                   )}
                   role="status"
                 >
@@ -898,26 +902,21 @@ function EditorPage() {
                   <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
                 </div>
               ) : null}
-              {/* Title rendered as the first line of the document column (Mintlify-style),
-                aligned to the reading measure except in Markdown mode, where the
-                title and source editor use the full canvas. */}
-              <div className={cn(effectiveMode === 'markdown' ? 'w-full shrink-0 border-border border-b px-6 py-4' : 'mx-auto max-w-[720px]')}>
-                <input
-                  className="w-full rounded-sm border-0 bg-transparent font-semibold text-3xl leading-[1.15] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-[2.1rem]"
-                  dir={activeLangDir}
-                  aria-label={t('editor.pageTitlePlaceholder')}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder={t('editor.pageTitlePlaceholder')}
-                  value={title}
-                />
-              </div>
+              {/* Visual mode keeps its reading measure. Rich Text and Markdown
+                render their toolbar and title inside their full-height canvas. */}
+              {effectiveMode === 'visual' ? <div className="mx-auto max-w-[720px]">{pageTitleInput}</div> : null}
               {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
                 // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
                 // gutter for the block handle — so it is NOT wrapped in a narrow box.
+                // Keyed by page id: every page gets its own TipTap instance, so a
+                // document can never linger across a page switch.
                 <TiptapEditor
+                  key={page.id}
                   value={content}
                   onChange={setContent}
+                  className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
                   dir={activeLangDir}
+                  lang={activeLanguage?.code}
                   style={typographyVars(project?.config?.typography)}
                   onUpload={onUploadImage}
                   comments={commentMarkers}
@@ -928,15 +927,18 @@ function EditorPage() {
                     setRailOpen(true);
                     setRailTab('comments');
                   }}
+                  titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
                   variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
                 />
               ) : (
                 <MarkdownSourceEditor
+                  key={page.id}
                   dir={activeLangDir}
                   label={t('editor.markdownPlaceholder')}
                   value={content}
                   onChange={setContent}
                   placeholder={t('editor.markdownPlaceholder')}
+                  titleSlot={pageTitleInput}
                 />
               )}
             </div>
@@ -948,7 +950,7 @@ function EditorPage() {
               <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
               <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
               {defaultLanguageId ? (
-                <Button className="mt-4 cursor-pointer" onClick={() => addPage(null, defaultLanguageId)}>
+                <Button className="mt-4 cursor-pointer" disabled={createPage.isPending} onClick={() => addPage(null, defaultLanguageId)}>
                   <Plus className="size-4" /> {t('editor.newPage')}
                 </Button>
               ) : null}

@@ -22,7 +22,7 @@ interface AddLanguageDialogProps {
 
 /** Dialog for adding a project language: a searchable combobox over a curated
  *  catalog (filter by native name, English name, or code), excluding already-added
- *  languages. Picking a language adds it immediately. */
+ *  languages. Picking a language adds it immediately, labelled by its native name. */
 export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: AddLanguageDialogProps) {
   const t = useT();
   const createLanguage = useCreateLanguage(projectId);
@@ -47,7 +47,10 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
     }
     setSubmitting(true);
     try {
-      const language = await createLanguage.mutateAsync({ code: lang.code, label: lang.label, direction: lang.rtl ? 'RTL' : 'LTR' });
+      // The stored label is what readers see in the language switcher and the page
+      // tree, so it defaults to the endonym ("العربية", not "Arabic"). Authors can
+      // still rename it in the language settings.
+      const language = await createLanguage.mutateAsync({ code: lang.code, label: lang.native, direction: lang.rtl ? 'RTL' : 'LTR' });
       toast.success(t('editor.addLanguage.added', { label: language.label }));
       onCreated(language);
       onOpenChange(false);

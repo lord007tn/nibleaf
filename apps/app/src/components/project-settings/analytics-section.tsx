@@ -51,7 +51,13 @@ export function AnalyticsSection({ project }: { project: Project }) {
       >
         {(field) => (
           <Field hint={t('settings.analytics.ga4.hint')} label={t('settings.analytics.ga4.label')}>
-            <Input className={FIELD_MONO} onChange={(e) => field.handleChange(e.target.value)} placeholder="G-XXXXXXXXXX" value={field.state.value} />
+            <Input
+              className={FIELD_MONO}
+              dir="ltr"
+              onChange={(e) => field.handleChange(e.target.value)}
+              placeholder="G-XXXXXXXXXX"
+              value={field.state.value}
+            />
             <FieldError errors={field.state.meta.errors} />
           </Field>
         )}
@@ -67,6 +73,7 @@ export function AnalyticsSection({ project }: { project: Project }) {
           <Field hint={t('settings.analytics.plausible.hint')} label={t('settings.analytics.plausible.label')}>
             <Input
               className={FIELD_MONO}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="docs.yoursite.com"
               value={field.state.value}

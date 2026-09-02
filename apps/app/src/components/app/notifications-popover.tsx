@@ -21,8 +21,14 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (it
     >
       <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${unread ? 'bg-primary' : 'bg-transparent'}`} />
       <span className="min-w-0 flex-1 leading-snug">
-        <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`}>{item.title}</span>
-        {item.body ? <span className="mt-0.5 line-clamp-2 block text-muted-foreground text-xs">{item.body}</span> : null}
+        <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`} dir="auto">
+          {item.title}
+        </span>
+        {item.body ? (
+          <span className="mt-0.5 line-clamp-2 block text-muted-foreground text-xs" dir="auto">
+            {item.body}
+          </span>
+        ) : null}
         <span className="mt-1 block text-[11px] text-muted-foreground/80">{relativeTime(item.createdAt)}</span>
       </span>
     </button>

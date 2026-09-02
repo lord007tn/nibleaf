@@ -558,9 +558,7 @@ function SiteChrome() {
                   placeholder={config?.search?.placeholder}
                   hotkey={searchHotkey}
                   maxResults={config?.search?.maxResults}
-                  languages={languages}
                   versions={versions}
-                  filtersEnabled={config?.search?.filtersEnabled !== false}
                   versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
                   aiAnswers={config?.search?.aiAnswers === true}
                 />

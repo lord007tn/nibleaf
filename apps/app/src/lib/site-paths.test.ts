@@ -26,6 +26,24 @@ describe('siteHref', () => {
     expect(siteHref('p1', '', { version: 'v2' })).toBe('/sites/p1/v2');
   });
 
+  it('percent-encodes non-ASCII path segments exactly once', () => {
+    expect(siteHref('p1', 'الأدلة/المصادقة', { lang: 'ar' })).toBe(
+      '/sites/p1/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar',
+    );
+    // An authored link that is already encoded is not encoded a second time.
+    expect(siteHref('p1', '/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9', { lang: 'ar' })).toBe(
+      '/sites/p1/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar',
+    );
+    expect(siteHref('p1', 'api-الوصول', { version: 'v2' })).toBe('/sites/p1/v2/api-%D8%A7%D9%84%D9%88%D8%B5%D9%88%D9%84');
+  });
+
+  it('keeps authored anchors and query strings outside the encoded pathname', () => {
+    expect(siteHref('p1', '/guides/intro#setup', { lang: 'ar' })).toBe('/sites/p1/guides/intro?lang=ar#setup');
+    expect(siteHref('p1', '/المصادقة#الرموز')).toBe('/sites/p1/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9#الرموز');
+    expect(siteHref('p1', '/guides?tab=cli', { lang: 'ar' })).toBe('/sites/p1/guides?tab=cli&lang=ar');
+    expect(siteHref('p1', '/guides?tab=cli')).toBe('/sites/p1/guides?tab=cli');
+  });
+
   it('uses the domain root when the request arrived on a custom domain', () => {
     origin.value = 'https://docs.acme.com';
     expect(isCustomDomainSite('p1')).toBe(true);

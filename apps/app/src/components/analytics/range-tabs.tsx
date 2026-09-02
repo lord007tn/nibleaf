@@ -2,7 +2,7 @@ import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/u
 import { useT } from '@nibleaf/i18n/react';
 import type { AnalyticsRange } from '@/hooks/api';
 
-export const ANALYTICS_RANGES: readonly AnalyticsRange[] = ['24h', '7d', '30d', '90d'];
+const ANALYTICS_RANGES: readonly AnalyticsRange[] = ['24h', '7d', '30d', '90d'];
 
 /**
  * The segmented range control shared by both analytics pages and the overview

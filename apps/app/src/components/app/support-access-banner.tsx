@@ -26,7 +26,7 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
 
   return (
     <aside
-      aria-label={t('support.banner.active')}
+      aria-label={t('support.banner.sessionLabel')}
       className="fixed inset-x-0 bottom-0 z-50 flex min-h-12 flex-wrap items-center justify-center gap-x-4 gap-y-2 border-warning/30 border-t bg-warning/10 px-4 py-2 text-warning shadow-[0_-8px_24px_-18px_rgba(0,0,0,0.45)]"
     >
       <div className="flex min-w-0 items-center gap-2 text-sm">

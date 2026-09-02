@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
@@ -30,7 +31,10 @@ export function VariablesSection({ project }: { project: Project }) {
     >
       <SectionHeader icon={<span className="font-mono">{'{}'}</span>} title={t('settings.variables.title')} />
       <p className="mb-5 text-[13.5px] text-muted-foreground leading-relaxed">
-        {t('settings.variables.descriptionBefore')} <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px]">{'{{ var.name }}'}</span>
+        {t('settings.variables.descriptionBefore')}{' '}
+        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[12px]" dir="ltr">
+          {'{{ var.name }}'}
+        </span>
         {t('settings.variables.descriptionAfter')}
       </p>
 
@@ -47,6 +51,7 @@ export function VariablesSection({ project }: { project: Project }) {
                         <Input
                           className={FIELD_COMPACT_MONO}
                           aria-label={t('settings.variables.keyLabel')}
+                          dir="ltr"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="product"
                           value={sub.state.value}
@@ -58,36 +63,42 @@ export function VariablesSection({ project }: { project: Project }) {
                         <Input
                           className={FIELD_COMPACT_MONO}
                           aria-label={t('settings.variables.valueLabel')}
+                          dir="auto"
                           onChange={(e) => sub.handleChange(e.target.value)}
                           placeholder="Acme"
                           value={sub.state.value}
                         />
                       )}
                     </form.Field>
-                    <button
+                    <Button
                       aria-label={t('settings.variables.remove')}
-                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                      className="text-muted-foreground"
                       onClick={() => field.removeValue(index)}
+                      size="icon-xs"
                       type="button"
+                      variant="ghost"
                     >
                       <X className="size-4" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <button
-              className="mb-4 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+            <Button
+              className="mb-4 border-dashed text-muted-foreground"
               onClick={() => field.pushValue({ key: '', value: '' })}
               type="button"
+              variant="outline"
             >
               <Plus className="size-3.5" /> {t('settings.variables.add')}
-            </button>
+            </Button>
           </>
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

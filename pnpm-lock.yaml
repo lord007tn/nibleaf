@@ -847,6 +847,9 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: ^5.3.0
         version: 5.3.0
+      '@fontsource-variable/noto-sans-arabic':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@tanstack/react-router':
         specifier: ^1.170.31
         version: 1.170.31(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -2203,6 +2206,9 @@ packages:
 
   '@fontsource-variable/geist@5.3.0':
     resolution: {integrity: sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA==}
+
+  '@fontsource-variable/noto-sans-arabic@5.3.0':
+    resolution: {integrity: sha512-Rz8+DBzza3//cmN+DBQajJhx3x+Dx12eUgnQsTOgPWbOT0+In6APmE8z4I/QQnUWfAx+s8l93+60qDT5vJH1sA==}
 
   '@getworkbench/core@0.8.0':
     resolution: {integrity: sha512-LF3U1M8+wwBwB1wP5XjnAMmzLA1WwA+gJrLamk/Wb3FKFhgeRZSZFkzpb6BPhStoa4DyA9mbYJ95u8CA1iVj9g==}
@@ -11772,6 +11778,8 @@ snapshots:
   '@fontsource-variable/geist-mono@5.3.0': {}
 
   '@fontsource-variable/geist@5.3.0': {}
+
+  '@fontsource-variable/noto-sans-arabic@5.3.0': {}
 
   '@getworkbench/core@0.8.0(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(bullmq@5.79.0)(immer@11.1.18)(ioredis@6.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:

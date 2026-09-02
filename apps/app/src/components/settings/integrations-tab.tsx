@@ -731,7 +731,7 @@ export function IntegrationsTab({ projectId, project }: { projectId?: string; pr
             return (
               <section key={category}>
                 <h2 className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">{t(CATEGORY_KEYS[category])}</h2>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className={cn('grid gap-3', entries.length > 1 ? 'sm:grid-cols-2' : 'max-w-2xl')}>
                   {entries.map((entry) => (
                     <CatalogCard entry={entry} key={entry.id} onSelect={() => setSelectedId(entry.id)} />
                   ))}

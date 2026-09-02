@@ -2,6 +2,7 @@ import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsag
 import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { MemberRole } from '@nibleaf/shared/constants';
+import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { slugify } from '@nibleaf/shared/utils';
 import type { CreateProjectBody, ProjectConfigUpdate, UpdateProjectBody } from '@nibleaf/validators';
 import { conflict, notFound } from '@/errors';
@@ -9,6 +10,13 @@ import { mutateProjectConfig } from './project-config';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
 const isPlainObject = (value: unknown): value is Record<string, unknown> => Object.prototype.toString.call(value) === '[object Object]';
+
+/** Every new site starts on the curated default preset instead of the legacy
+ *  accent-only palette: storing a versioned `theme` object opts the project
+ *  into the theme resolver (no legacy branch in the reader). Existing projects
+ *  without a `theme` keep their palette. Mirrors `createStarterProject` in
+ *  @nibleaf/auth, which seeds the sign-up starter site the same way. */
+const starterThemeConfig = () => ({ version: THEME_SCHEMA_VERSION, preset: 'harbor' as const, metadata: THEME_PRESETS.harbor.metadata });
 
 /** What "pages" means wherever a site's page count is shown (workspace
  *  overview, sites list, MCP): content pages — not navigation groups — on the
@@ -94,7 +102,7 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
         ...(body.description ? { description: body.description } : {}),
         ...(body.icon ? { icon: body.icon } : {}),
         config: projectConfigWithAddons(
-          {},
+          { theme: starterThemeConfig() },
           addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
         ) as Prisma.InputJsonValue,
       },

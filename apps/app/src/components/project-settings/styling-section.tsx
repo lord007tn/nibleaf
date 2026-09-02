@@ -1,3 +1,4 @@
+import { useDirection } from '@nibleaf/design-system/components/ui/direction';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { cn } from '@nibleaf/design-system/lib/utils';
@@ -81,6 +82,7 @@ export function StylingSection({ project }: { project: Project }) {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(styling.theme ?? 'light');
   const [radius, setRadius] = useState<'sharp' | 'rounded' | 'pill'>(styling.radius ?? 'rounded');
   const [saving, setSaving] = useState(false);
+  const dirty = hex.toLowerCase() !== initial.toLowerCase() || theme !== (styling.theme ?? 'light') || radius !== (styling.radius ?? 'rounded');
 
   // Apply a fully-formed hex (from input / preset): updates both hex + sliders.
   const applyHex = (next: string) => {
@@ -115,8 +117,11 @@ export function StylingSection({ project }: { project: Project }) {
     );
   };
 
-  const satTrack = `linear-gradient(90deg, hsl(${hsl.h} 0% ${hsl.l}%), hsl(${hsl.h} 100% ${hsl.l}%))`;
-  const lightTrack = `linear-gradient(90deg, #000, hsl(${hsl.h} ${hsl.s}% 50%), #fff)`;
+  // Slider thumbs travel start→end, so the track gradient must follow the writing direction.
+  const angle = useDirection() === 'rtl' ? 270 : 90;
+  const hueTrack = `linear-gradient(${angle}deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)`;
+  const satTrack = `linear-gradient(${angle}deg, hsl(${hsl.h} 0% ${hsl.l}%), hsl(${hsl.h} 100% ${hsl.l}%))`;
+  const lightTrack = `linear-gradient(${angle}deg, #000, hsl(${hsl.h} ${hsl.s}% 50%), #fff)`;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -127,7 +132,7 @@ export function StylingSection({ project }: { project: Project }) {
 
       <div className="mb-4 flex items-center gap-3.5">
         <span className="size-11 shrink-0 rounded-xl" style={{ background: hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />
-        <Input className={cn(FIELD_MONO, 'w-[116px] uppercase')} maxLength={7} onChange={(e) => applyHex(e.target.value)} value={hex} />
+        <Input className={cn(FIELD_MONO, 'w-[116px] uppercase')} dir="ltr" maxLength={7} onChange={(e) => applyHex(e.target.value)} value={hex} />
         <span className="text-[12px] text-muted-foreground">{t('settings.styling.pickColor')}</span>
       </div>
 
@@ -137,7 +142,7 @@ export function StylingSection({ project }: { project: Project }) {
           max={360}
           min={0}
           onChange={(e) => applyHsl({ ...hsl, h: clamp(Number(e.target.value), 0, 360) })}
-          track="linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"
+          track={hueTrack}
           value={hsl.h}
         />
         <Slider
@@ -200,7 +205,7 @@ export function StylingSection({ project }: { project: Project }) {
         />
       </Field>
 
-      <SaveBar isSubmitting={saving} />
+      <SaveBar disabled={!dirty} isSubmitting={saving} />
     </form>
   );
 }

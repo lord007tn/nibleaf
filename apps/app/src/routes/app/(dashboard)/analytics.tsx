@@ -1,5 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Activity, AlertTriangle, BarChart3, Search, Sparkles, Users } from 'lucide-react';
@@ -10,6 +11,15 @@ import { StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
 import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
 import { useFormatters } from '@/lib/format';
+
+/** Device buckets emitted by the server (`deviceFromUserAgent`); unknown values fall back to the raw bucket. */
+const DEVICE_KEYS: Record<string, MessageKey> = {
+  desktop: 'analytics.device.desktop',
+  mobile: 'analytics.device.mobile',
+  tablet: 'analytics.device.tablet',
+  unknown: 'analytics.device.unknown',
+};
+
 import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-provider';
 
 export const Route = createFileRoute('/app/(dashboard)/analytics')({
@@ -39,6 +49,10 @@ function WorkspaceAnalyticsPage() {
   const byProject = data?.byProject ?? [];
   const maxProjectViews = Math.max(1, ...byProject.map((p) => p.views));
   const devices = data?.devices ?? [];
+  const deviceLabel = (device: string) => {
+    const key = DEVICE_KEYS[device];
+    return key ? t(key) : device;
+  };
   const totalDevices = Math.max(
     1,
     devices.reduce((sum, d) => sum + d.count, 0),
@@ -194,12 +208,7 @@ function WorkspaceAnalyticsPage() {
           ) : (
             <div className="-mx-2">
               {devices.map((d) => (
-                <BarRow
-                  key={d.device}
-                  label={<span className="capitalize">{d.device}</span>}
-                  fraction={d.count / totalDevices}
-                  value={number(d.count)}
-                />
+                <BarRow key={d.device} label={deviceLabel(d.device)} fraction={d.count / totalDevices} value={number(d.count)} />
               ))}
             </div>
           )}

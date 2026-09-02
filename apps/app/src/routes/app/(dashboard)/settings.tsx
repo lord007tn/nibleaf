@@ -33,7 +33,7 @@ function WorkspaceSettingsPage() {
   const sectionItems = SECTIONS.map((item) => ({ value: item.value, label: t(item.labelKey) }));
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
       <div>
         <h1 className="font-semibold text-3xl tracking-tight">{t('settings.title')}</h1>
         <p className="mt-1 text-muted-foreground text-sm">{t('settings.subtitle')}</p>

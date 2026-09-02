@@ -3,8 +3,8 @@ title: 'Connect a repository for bidirectional Git authoring'
 description: 'Connect GitHub with least-privilege credentials, publish browser edits through a draft pull request, and recover safely from conflicts.'
 audience: 'site administrators and documentation teams using GitHub'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/server/src/actions/git, apps/worker/src/processors/git.ts, and apps/app/src/components/settings/git-workflow.tsx'
+last_reviewed: '2026-09-02'
+verified_against: 'apps/server/src/actions/git, packages/shared/src/theme-repository.ts, apps/worker/src/processors/git.ts, and apps/app/src/components/settings/git-workflow.tsx'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'git-authoring'
@@ -44,7 +44,7 @@ Create a fine-grained personal access token or installation credential restricte
 
 No Actions, administration, issues, organization, or user scopes are required. Paste the token once in **Site settings → Git**. Nibleaf verifies write access, encrypts the token with AES-256-GCM, stores a non-secret fingerprint for operators, and never returns or logs the token.
 
-Choose a base branch (normally `main`), a distinct dedicated authoring branch (for example `nibleaf/docs`), the repository-relative documentation path, and the Nibleaf branch/language to map. Nibleaf never force-pushes. Branch updates use compare-and-swap semantics and stop if the remote ref changes during a push.
+Choose a base branch (normally `main`), a distinct dedicated authoring branch (for example `nibleaf/docs`), the repository-relative content path (default `content`), and the Nibleaf branch/language to map. Inside the content path Nibleaf uses the repository layout v2: the default language and version live at the content root (`content/guides/authentication.mdx`), other languages under `content/<code>/` (`content/ar/المصادقة.mdx`), and non-default versions under `content/versions/<slug>/` with the same language layout inside. Folders are navigation groups and `index.mdx` is a folder's landing page; page slugs keep Unicode letters, so Arabic paths stay readable. The generated `docs.json` and `.nibleaf/` files are platform-owned and regenerated on every sync. Nibleaf never force-pushes. Branch updates use compare-and-swap semantics and stop if the remote ref changes during a push.
 
 ## Webhook setup
 

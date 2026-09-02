@@ -1,9 +1,20 @@
+import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
+import { type CreateProjectBody, projectConfigSchema } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   memberFindMany: vi.fn(),
   projectFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
+  tx: {
+    organization: { create: vi.fn() },
+    member: { create: vi.fn() },
+    project: { create: vi.fn() },
+    projectAddon: { createMany: vi.fn() },
+    projectAddonAuditEvent: { createMany: vi.fn() },
+    language: { create: vi.fn() },
+    branch: { create: vi.fn() },
+  },
 }));
 
 vi.mock('@nibleaf/auth/tenant-erasure', () => ({
@@ -16,10 +27,11 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
+    $transaction: (run: (tx: typeof mocks.tx) => Promise<unknown>) => run(mocks.tx),
   },
 }));
 
-import { getProject, listProjects } from './projects';
+import { createProject, getProject, listProjects } from './projects';
 
 /** The one definition of "pages" shared by the workspace overview, the sites
  *  list and the MCP project DTO: content pages on the default branch across
@@ -72,5 +84,39 @@ describe('project page counts', () => {
     mocks.projectFindFirst.mockResolvedValue(null);
 
     await expect(getProject('org-a', 'missing')).rejects.toMatchObject({ code: 'database:not_found' });
+  });
+});
+
+/** The config handed to `tx.project.create` by the last createProject call. */
+const createdConfig = () => (mocks.tx.project.create.mock.calls[0] as [{ data: { config: Record<string, unknown> } }])[0].data.config;
+
+describe('createProject', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.projectFindFirst.mockResolvedValue(null);
+    mocks.tx.organization.create.mockResolvedValue({ id: 'org-new' });
+    mocks.tx.project.create.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({ id: 'project-new', ...data }));
+  });
+
+  it('seeds the curated Harbor preset so a new site never renders the legacy palette', async () => {
+    await createProject('user-1', { name: 'Acme Docs' } as CreateProjectBody);
+
+    const config = createdConfig();
+    expect(config.theme).toEqual({ version: 1, preset: 'harbor', metadata: THEME_PRESETS.harbor.metadata });
+    // A stored theme object is what opts the reader into the theme resolver.
+    expect(resolveTheme(config).id).toBe('harbor');
+    expect(projectConfigSchema.safeParse(config).success).toBe(true);
+  });
+
+  it('keeps add-on provisioning intact next to the seeded theme', async () => {
+    await createProject('user-1', { name: 'Acme Docs' } as CreateProjectBody);
+
+    const config = createdConfig();
+    expect(config.addons).toMatchObject({ feedback: expect.any(Boolean) });
+    expect(mocks.tx.projectAddon.createMany).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.projectAddonAuditEvent.createMany).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.language.create).toHaveBeenCalledWith({
+      data: { projectId: 'project-new', code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
+    });
   });
 });

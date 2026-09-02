@@ -3,11 +3,13 @@ import {
   buildNavTree,
   buildSnapshot,
   defaultLanguage,
+  explicitPageDescription,
   extractHeadings,
   interpolateVariables,
   isPageTranslation,
   mergeLanguageChrome,
   pageDescription,
+  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -366,6 +368,24 @@ describe('pageDescription and defaultLanguage', () => {
   it('prefers an explicit description, else derives one from content', () => {
     expect(pageDescription({ description: 'Hi', content: 'x' })).toBe('Hi');
     expect(pageDescription({ description: null, content: '# Title\n\nBody text.' })).toContain('Body text');
+  });
+  it('separates the author-written description from the derived excerpt', () => {
+    expect(explicitPageDescription({ description: '  Hi  ' })).toBe('Hi');
+    expect(explicitPageDescription({ description: '   ' })).toBeNull();
+    expect(explicitPageDescription({ description: null })).toBeNull();
+    expect(pageExcerpt({ content: '# Title\n\nBody text.' })).toBe('Title Body text.');
+  });
+  it('truncates the excerpt on a word boundary with an ellipsis', () => {
+    const content = 'Get started with the Acme API in about ten minutes, including authentication and pagination.';
+    const out = pageExcerpt({ content }, 40);
+    expect(out).toBe('Get started with the Acme API in about…');
+    expect(out.length).toBeLessThanOrEqual(40);
+    expect(pageExcerpt({ content: 'short body' }, 40)).toBe('short body');
+  });
+  it('drops dangling punctuation before the ellipsis and keeps a single long token', () => {
+    expect(pageExcerpt({ content: 'Introduction, then a very long explanation follows.' }, 14)).toBe('Introduction…');
+    expect(pageExcerpt({ content: 'x'.repeat(50) }, 10)).toBe(`${'x'.repeat(9)}…`);
+    expect(pageExcerpt({ content: 'ابدأ باستخدام واجهة أكمي البرمجية خلال عشر دقائق، مع المصادقة والترقيم.' }, 30)).toBe('ابدأ باستخدام واجهة أكمي…');
   });
   it('returns the one configured default language', () => {
     expect(defaultLanguage(proj([{ code: 'ar', label: 'ع', direction: 'RTL', isDefault: true, config: null }])).code).toBe('ar');

@@ -322,7 +322,10 @@ export interface SitePage {
     createdAt: string;
     updatedAt: string;
     title: string;
-    description: string;
+    /** Author-written summary — the visible lede. null when none was set. */
+    description: string | null;
+    /** Summary derived from the body: SEO/social fallback only, never a lede. */
+    excerpt: string;
     icon: string | null;
     path: string;
     content: string;
@@ -352,6 +355,18 @@ interface SearchCitation {
   heading?: string;
   snippet: string;
   direction: 'ltr' | 'rtl';
+}
+
+export interface SiteSearchHit {
+  id: string;
+  title: string;
+  path: string;
+  description: string;
+  icon?: string;
+  snippet: string;
+  score: number;
+  /** Language of the matched published page; used to build its localized URL. */
+  language: string;
 }
 
 export interface SearchAnswer {

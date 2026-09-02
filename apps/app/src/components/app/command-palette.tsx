@@ -27,7 +27,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={onOpenChange} title={t('command.searchPlaceholder')}>
+    <CommandDialog description={t('command.dialog.description')} onOpenChange={onOpenChange} open={open} title={t('command.dialog.title')}>
       <CommandInput placeholder={t('command.searchPlaceholder')} />
       <CommandList>
         <CommandEmpty>{t('command.noResults')}</CommandEmpty>

@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
@@ -14,11 +15,12 @@ type SourceType = 'upload' | 'url' | 'repository';
 
 export function OpenApiSection({ projectId }: { projectId: string }) {
   const t = useT();
+  const confirm = useConfirm();
   const { data: current, isPending } = useOpenApiConfiguration(projectId);
   const save = useUpsertOpenApi(projectId);
   const sync = useSyncOpenApi(projectId);
   const remove = useDeleteOpenApi(projectId);
-  const [title, setTitle] = useState('API Reference');
+  const [title, setTitle] = useState(() => t('settings.openapi'));
   const [path, setPath] = useState('api-reference');
   const [sourceType, setSourceType] = useState<SourceType>('upload');
   const [sourceValue, setSourceValue] = useState('');
@@ -85,7 +87,8 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
   };
 
   const deleteReference = async () => {
-    if (!window.confirm(t('settings.openapi.deleteConfirm'))) return;
+    const ok = await confirm({ title: t('settings.openapi.remove'), description: t('settings.openapi.deleteConfirm'), destructive: true });
+    if (!ok) return;
     try {
       await remove.mutateAsync();
       toast.success(t('settings.openapi.deleted'));
@@ -106,11 +109,11 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
         <Alert className="mb-6">
           <Braces />
           <AlertTitle className="flex items-center gap-2">
-            {t('settings.openapi.configured')} <Badge variant="secondary">{current.source.type}</Badge>
+            {t('settings.openapi.configured')} <Badge variant="secondary">{t(`settings.openapi.source.${current.source.type}`)}</Badge>
           </AlertTitle>
           <AlertDescription>
             <p>
-              {t('settings.openapi.publishHint')} · /{current.path} · {new Date(current.updatedAt).toLocaleString()}
+              {t('settings.openapi.publishHint')} · <span dir="ltr">/{current.path}</span> · {new Date(current.updatedAt).toLocaleString()}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => setEditing(true)} size="sm">
@@ -146,7 +149,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
             <Input id="openapi-title" className={FIELD_INPUT} value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} />
           </Field>
           <Field label={t('settings.openapi.path')} hint={t('settings.openapi.pathHint')} htmlFor="openapi-path">
-            <Input id="openapi-path" className={FIELD_MONO} value={path} onChange={(event) => setPath(event.target.value)} maxLength={80} />
+            <Input className={FIELD_MONO} dir="ltr" id="openapi-path" maxLength={80} onChange={(event) => setPath(event.target.value)} value={path} />
           </Field>
           <Field label={t('settings.openapi.source')} hint={t('settings.openapi.sourceHint')}>
             <Segmented
@@ -175,6 +178,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
               <p className="mt-2 text-xs text-muted-foreground">{t('settings.openapi.uploadHint')}</p>
               <Textarea
                 className="mt-3 min-h-32 font-mono text-xs"
+                dir="ltr"
                 placeholder={t('settings.openapi.pastePlaceholder')}
                 value={sourceValue}
                 onChange={(event) => {
@@ -190,6 +194,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
             >
               <Input
                 className={FIELD_MONO}
+                dir="ltr"
                 value={sourceValue}
                 onChange={(event) => setSourceValue(event.target.value)}
                 placeholder={sourceType === 'url' ? 'https://api.example.com/openapi.yaml' : 'docs/openapi.yaml'}

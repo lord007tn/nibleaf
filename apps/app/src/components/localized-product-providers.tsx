@@ -13,7 +13,7 @@ export function LocalizedProductProviders({ children }: { children: ReactNode })
     <DirectionProvider direction={isRtl(locale) ? 'rtl' : 'ltr'}>
       <LocalizedSurfaces>
         <TooltipProvider>{children}</TooltipProvider>
-        <Toaster position="bottom-right" richColors />
+        <Toaster position={isRtl(locale) ? 'bottom-left' : 'bottom-right'} richColors />
       </LocalizedSurfaces>
     </DirectionProvider>
   );

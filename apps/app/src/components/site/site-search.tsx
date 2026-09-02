@@ -57,9 +57,7 @@ export function SiteSearch({
   placeholder,
   hotkey,
   maxResults,
-  languages = [],
   versions = [],
-  filtersEnabled = true,
   versionFilterEnabled = true,
   aiAnswers,
 }: {
@@ -74,9 +72,7 @@ export function SiteSearch({
   /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
-  languages?: Array<{ code: string; label: string; direction: 'LTR' | 'RTL' }>;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
-  filtersEnabled?: boolean;
   versionFilterEnabled?: boolean;
   /** Site-level product switch. Instance/provider availability is still
    * enforced server-side and never inferred from this client flag. */
@@ -86,25 +82,16 @@ export function SiteSearch({
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<'search' | 'answer'>('search');
-  const [selectedLanguage, setSelectedLanguage] = useState(lang);
   const [selectedVersion, setSelectedVersion] = useState(version);
-  const arabic = selectedLanguage?.toLowerCase().startsWith('ar') ?? false;
-  // One array feeds both the trigger label (`items`) and the rendered options so they
-  // can't drift. A language's own name is written in that language, so it carries its
-  // own direction regardless of the site's active direction.
-  const languageOptions = languages.map((language) => ({
-    value: language.code,
-    label: (
-      <span dir={language.direction === 'RTL' ? 'rtl' : 'ltr'} lang={language.code}>
-        {language.label}
-      </span>
-    ),
-  }));
+  const arabic = lang?.toLowerCase().startsWith('ar') ?? false;
   const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), selectedLanguage, selectedVersion, maxResults, open && mode === 'search');
+  // Keyword search is intentionally language-independent. Omitting `language`
+  // asks the public endpoint to search every enabled language in the published
+  // snapshot; each hit carries its own language for correct localized routing.
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
   const hits = hitsQuery.data ?? [];
   const answer = answerMutation.isPending ? null : (answerMutation.data ?? null);
@@ -123,17 +110,18 @@ export function SiteSearch({
     answerMutation.mutate({
       projectId,
       query: q,
-      ...(selectedLanguage ? { language: selectedLanguage } : {}),
+      // Answers stay in the reader's current language even though ordinary
+      // results search the whole multilingual corpus.
+      ...(lang ? { language: lang } : {}),
       ...(selectedVersion ? { version: selectedVersion } : {}),
     });
   };
 
   useEffect(() => {
     if (open) {
-      setSelectedLanguage(lang);
       setSelectedVersion(version);
     }
-  }, [lang, open, version]);
+  }, [open, version]);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -190,40 +178,24 @@ export function SiteSearch({
             </div>
           ) : null}
           <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
-          {mode === 'search' && ((filtersEnabled && languages.length > 1) || (versionFilterEnabled && versions.length > 1)) ? (
+          {mode === 'search' && versionFilterEnabled && versions.length > 1 ? (
             <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row">
-              {filtersEnabled && languages.length > 1 ? (
-                <Select items={languageOptions} onValueChange={(value) => setSelectedLanguage(value ?? undefined)} value={selectedLanguage}>
-                  <SelectTrigger aria-label={t('searchFilterLanguage')} className="h-9 min-w-0 flex-1 sm:max-w-56">
-                    <SelectValue placeholder={t('searchFilterLanguage')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
-              {versionFilterEnabled && versions.length > 1 ? (
-                <Select
-                  items={versionOptions}
-                  onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
-                  value={selectedVersion ?? '__default'}
-                >
-                  <SelectTrigger aria-label={t('searchFilterVersion')} className="h-9 min-w-0 flex-1 sm:max-w-56">
-                    <SelectValue placeholder={t('searchFilterVersion')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {versionOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
+              <Select
+                items={versionOptions}
+                onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
+                value={selectedVersion ?? '__default'}
+              >
+                <SelectTrigger aria-label={t('searchFilterVersion')} className="h-9 min-w-0 flex-1 sm:max-w-56">
+                  <SelectValue placeholder={t('searchFilterVersion')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {versionOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           ) : null}
           {mode === 'search' ? (
@@ -240,10 +212,10 @@ export function SiteSearch({
                         path: hit.path,
                         resultId: hit.id,
                         resultPosition: index + 1,
-                        language: selectedLanguage,
+                        language: hit.language,
                       });
                       onOpenChange(false);
-                      window.location.href = siteHref(projectId, hit.path, { lang: selectedLanguage, version: selectedVersion });
+                      window.location.href = siteHref(projectId, hit.path, { lang: hit.language, version: selectedVersion });
                     }}
                   >
                     {hasIcon(hit.icon) ? (
@@ -251,7 +223,7 @@ export function SiteSearch({
                     ) : (
                       <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
                     )}
-                    <div className="min-w-0">
+                    <div className="min-w-0" dir="auto" lang={hit.language}>
                       <div className="font-medium">
                         <Highlight text={hit.title} query={debouncedQuery} />
                       </div>
@@ -289,7 +261,7 @@ export function SiteSearch({
                         <a
                           key={citation.id}
                           className="block rounded-md border p-3 text-start transition-colors hover:bg-muted/60"
-                          href={siteHref(projectId, citation.path, { lang: selectedLanguage, version: selectedVersion })}
+                          href={siteHref(projectId, citation.path, { lang, version: selectedVersion })}
                           dir={citation.direction}
                         >
                           <span className="font-medium text-sm">

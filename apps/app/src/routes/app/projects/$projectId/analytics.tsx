@@ -1,5 +1,6 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, BarChart3, Search, SearchX, Users } from 'lucide-react';
@@ -9,6 +10,19 @@ import { StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
 import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-provider';
+
+/** No-answer reasons from the ClickHouse event schema; unknown values fall back to the raw reason. */
+const NO_ANSWER_REASON_KEYS: Record<string, MessageKey> = {
+  no_match: 'analytics.noAnswerReason.no_match',
+  provider_error: 'analytics.noAnswerReason.provider_error',
+  empty_corpus: 'analytics.noAnswerReason.empty_corpus',
+  filtered: 'analytics.noAnswerReason.filtered',
+  low_confidence: 'analytics.noAnswerReason.low_confidence',
+  policy: 'analytics.noAnswerReason.policy',
+  unknown: 'analytics.noAnswerReason.unknown',
+  cancelled: 'analytics.noAnswerReason.cancelled',
+  quota: 'analytics.noAnswerReason.quota',
+};
 
 export const Route = createFileRoute('/app/projects/$projectId/analytics')({
   component: ProjectAnalyticsRoute,
@@ -27,6 +41,10 @@ function AnalyticsPage() {
   const t = useT();
   const { range, setRange, timezone } = useAnalyticsFilters();
   const { data, isPending, isError } = useProjectAnalytics(projectId, range, { timezone });
+  const reasonLabel = (reason: string) => {
+    const key = NO_ANSWER_REASON_KEYS[reason];
+    return key ? t(key) : reason.replaceAll('_', ' ');
+  };
   const unavailable = isError || data?.availability === 'unavailable';
   const partial = data?.availability === 'partial';
   const unknownOr = (empty: string) => (unavailable ? t('analytics.state.unknown') : empty);
@@ -161,7 +179,11 @@ function AnalyticsPage() {
           title={t('analytics.section.noAnswerReasons')}
           loading={isPending}
           empty={unknownOr(t('analytics.empty.noAnswers'))}
-          items={(data?.noAnswerReasons ?? []).map((item) => ({ key: item.reason, label: item.reason.replaceAll('_', ' '), value: item.count }))}
+          items={(data?.noAnswerReasons ?? []).map((item) => ({
+            key: item.reason,
+            label: reasonLabel(item.reason),
+            value: item.count,
+          }))}
         />
       </div>
 
