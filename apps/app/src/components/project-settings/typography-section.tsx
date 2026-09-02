@@ -28,15 +28,17 @@ const PRESETS = {
 type PresetName = keyof typeof PRESETS;
 
 function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
+  // Font names are their own label; `items` lets the trigger show it instead of the raw value.
+  const items = options.map((option) => ({ value: option, label: option }));
   return (
-    <Select onValueChange={(v) => onChange(v ?? options[0])} value={value}>
+    <Select items={items} onValueChange={(v) => onChange(v ?? options[0])} value={value}>
       <SelectTrigger className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option} value={option}>
-            {option}
+        {items.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
           </SelectItem>
         ))}
       </SelectContent>

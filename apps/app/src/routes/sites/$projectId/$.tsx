@@ -4,6 +4,7 @@ import { SitePageView } from '@/components/site/site-page-view';
 import { getSiteFn, getSitePageFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
+import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
@@ -17,7 +18,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   component: SitePath,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
-  loader: async ({ params, deps }) => {
+  loader: async ({ params, deps, location }) => {
     const path = params._splat ?? '';
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
@@ -31,11 +32,22 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // page, so it intentionally has no Page row. Resolve its configured path
       // from the access-gated site shell before treating the page miss as 404.
       const requested = (params._splat ?? '').replace(/^\/+|\/+$/g, '');
+      let languageRedirect: string | null = null;
       try {
         const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
         if (site.openapi && requested === site.openapi.path) {
           return { kind: 'openapi' as const, openapi: site.openapi, site, lang: deps.lang, siteOrigin: customDomainOrigin() };
         }
+        // `/ar` or `/ar/guides` is a common guess on a multilingual site, but
+        // the language lives in `?lang=`. Resolve the equivalent URL here and
+        // throw it below, outside this try, so the redirect isn't swallowed.
+        languageRedirect = resolveLanguagePathRedirect({
+          splat: path,
+          languages: site.languages,
+          projectId: params.projectId,
+          isCustomDomain: isCustomDomainSite(params.projectId),
+          search: location.searchStr,
+        });
       } catch {
         // Preserve the original page-not-found behavior (and privacy-hiding 404)
         // when the shell is unavailable or the reference is not published.
@@ -44,6 +56,11 @@ export const Route = createFileRoute('/sites/$projectId/$')({
       // falling back to the not-found state. Mark the SSR response 404 so this
       // soft-404 returns the right status (the head also carries robots noindex).
       await redirectIfConfigured(params.projectId, params._splat ?? '', deps.lang);
+      // A language-prefixed URL permanently redirects to the `?lang=` form (the
+      // default language's clean URL) once no configured redirect claimed it.
+      if (languageRedirect) {
+        throw redirect({ href: languageRedirect, statusCode: 308 });
+      }
       // The router's not-found sentinel sets the final streamed response status.
       // The earlier response-context mutation was proven to return HTTP 200 in
       // production even though the page rendered a noindex not-found shell.

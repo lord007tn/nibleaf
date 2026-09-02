@@ -74,7 +74,7 @@ export function SiteSearch({
   /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
-  languages?: Array<{ code: string; label: string }>;
+  languages?: Array<{ code: string; label: string; direction: 'LTR' | 'RTL' }>;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   filtersEnabled?: boolean;
   versionFilterEnabled?: boolean;
@@ -89,6 +89,18 @@ export function SiteSearch({
   const [selectedLanguage, setSelectedLanguage] = useState(lang);
   const [selectedVersion, setSelectedVersion] = useState(version);
   const arabic = selectedLanguage?.toLowerCase().startsWith('ar') ?? false;
+  // One array feeds both the trigger label (`items`) and the rendered options so they
+  // can't drift. A language's own name is written in that language, so it carries its
+  // own direction regardless of the site's active direction.
+  const languageOptions = languages.map((language) => ({
+    value: language.code,
+    label: (
+      <span dir={language.direction === 'RTL' ? 'rtl' : 'ltr'} lang={language.code}>
+        {language.label}
+      </span>
+    ),
+  }));
+  const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
@@ -181,14 +193,14 @@ export function SiteSearch({
           {mode === 'search' && ((filtersEnabled && languages.length > 1) || (versionFilterEnabled && versions.length > 1)) ? (
             <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row">
               {filtersEnabled && languages.length > 1 ? (
-                <Select onValueChange={(value) => setSelectedLanguage(value ?? undefined)} value={selectedLanguage}>
+                <Select items={languageOptions} onValueChange={(value) => setSelectedLanguage(value ?? undefined)} value={selectedLanguage}>
                   <SelectTrigger aria-label={t('searchFilterLanguage')} className="h-9 min-w-0 flex-1 sm:max-w-56">
                     <SelectValue placeholder={t('searchFilterLanguage')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {languages.map((language) => (
-                      <SelectItem key={language.code} value={language.code}>
-                        {language.label}
+                    {languageOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -196,6 +208,7 @@ export function SiteSearch({
               ) : null}
               {versionFilterEnabled && versions.length > 1 ? (
                 <Select
+                  items={versionOptions}
                   onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
                   value={selectedVersion ?? '__default'}
                 >
@@ -203,9 +216,9 @@ export function SiteSearch({
                     <SelectValue placeholder={t('searchFilterVersion')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {versions.map((item) => (
-                      <SelectItem key={item.id} value={item.isDefault ? '__default' : item.slug}>
-                        {item.name}
+                    {versionOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -103,7 +103,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
           {reviewing ? (
             <div className="flex items-center justify-between gap-3">
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
-                <ArrowLeft className="size-4" /> {t('publish.backToSummary')}
+                <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
               <Button size="sm" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
                 {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}

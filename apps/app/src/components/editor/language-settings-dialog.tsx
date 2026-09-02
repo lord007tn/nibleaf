@@ -56,6 +56,11 @@ export function LanguageSettingsDialog({
   const [socialImage, setSocialImage] = useState(language.config?.seo?.socialImage ?? '');
   const [allowIndex, setAllowIndex] = useState(language.config?.seo?.allowIndex ?? true);
   const [section, setSection] = useState<LangSettingsSection>('general');
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const directionOptions = [
+    { value: 'LTR', label: t('editor.addLanguage.ltr') },
+    { value: 'RTL', label: t('editor.addLanguage.rtl') },
+  ] as const satisfies ReadonlyArray<{ value: Direction; label: string }>;
 
   useEffect(() => {
     if (!open) {
@@ -138,13 +143,16 @@ export function LanguageSettingsDialog({
                     <Input id="lang-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="English" />
                   </Field>
                   <Field label={t('editor.langSettings.direction')} htmlFor="lang-dir">
-                    <Select value={direction} onValueChange={(v) => setDirection((v as Direction) ?? 'LTR')}>
+                    <Select items={directionOptions} value={direction} onValueChange={(v) => setDirection(v ?? 'LTR')}>
                       <SelectTrigger id="lang-dir" className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="LTR">{t('editor.addLanguage.ltr')}</SelectItem>
-                        <SelectItem value="RTL">{t('editor.addLanguage.rtl')}</SelectItem>
+                        {directionOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </Field>

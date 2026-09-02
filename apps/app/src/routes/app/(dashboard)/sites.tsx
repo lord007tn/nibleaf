@@ -8,6 +8,7 @@ import { ArrowUpRight, FileText, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { useProjects } from '@/hooks/api';
+import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/app/(dashboard)/sites')({
   component: SitesPage,
@@ -22,6 +23,7 @@ function SitesPage() {
   const [createOpen, setCreateOpen] = useState(Boolean(newSite));
   const navigate = useNavigate();
   const t = useT();
+  const { number } = useFormatters();
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return normalized ? (projects ?? []).filter((project) => `${project.name} ${project.slug}`.toLowerCase().includes(normalized)) : (projects ?? []);
@@ -65,10 +67,10 @@ function SitesPage() {
                   <span className="block truncate font-semibold">{project.name}</span>
                   <span className="block truncate font-mono text-muted-foreground text-xs">/{project.slug}</span>
                 </span>
-                <ArrowUpRight className="size-4.5 text-muted-foreground transition group-hover:text-primary" />
+                <ArrowUpRight className="size-4.5 text-muted-foreground transition group-hover:text-primary rtl:-scale-x-100" />
               </div>
               <div className="mt-8 flex items-center gap-2 text-muted-foreground text-sm">
-                <FileText className="size-4" /> {project._count?.pages ?? 0} {t('dashboard.stats.pages').toLowerCase()}
+                <FileText className="size-4" /> {t('dashboard.pages', { count: number(project._count?.pages ?? 0) })}
               </div>
             </button>
           ))}

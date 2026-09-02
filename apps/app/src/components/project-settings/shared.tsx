@@ -168,15 +168,18 @@ export function sortLanguagesDefaultFirst<T extends { isDefault: boolean; positi
 }
 
 /** A language's display label; disabled languages carry the muted "hidden"
- *  suffix so pickers always signal that the scope isn't live on the site. */
-export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean } }) {
+ *  suffix so pickers always signal that the scope isn't live on the site. The
+ *  label is the language's own name, so it renders in that language's
+ *  direction when known (keeps "Português (Brasil)" intact in an RTL UI). */
+export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean; direction?: 'LTR' | 'RTL' } }) {
   const t = useT();
+  const dir = language.direction ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : undefined;
   if (language.enabled !== false) {
-    return <>{language.label}</>;
+    return <span dir={dir}>{language.label}</span>;
   }
   return (
     <span className="inline-flex items-baseline gap-1.5">
-      {language.label}
+      <span dir={dir}>{language.label}</span>
       <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
     </span>
   );
@@ -204,7 +207,7 @@ export function LanguageScopePicker({
   languages: Array<{ id: string; label: string; enabled?: boolean }>;
   /** The site's default language — its label annotates the Default segment so
    *  it's clear which language the global scope actually is. */
-  defaultLanguage?: { label: string } | null;
+  defaultLanguage?: { label: string; direction?: 'LTR' | 'RTL' } | null;
   value: string;
   onChange: (value: string) => void;
   hint: string;
@@ -235,7 +238,12 @@ export function LanguageScopePicker({
             label: defaultLanguage ? (
               <span className="inline-flex items-baseline gap-1.5">
                 {t('settings.chrome.scope.default')}
-                <span className="font-normal text-[12px] text-muted-foreground">· {defaultLanguage.label}</span>
+                <span className="font-normal text-[12px] text-muted-foreground">
+                  ·{' '}
+                  <span dir={defaultLanguage.direction ? (defaultLanguage.direction === 'RTL' ? 'rtl' : 'ltr') : undefined}>
+                    {defaultLanguage.label}
+                  </span>
+                </span>
               </span>
             ) : (
               t('settings.chrome.scope.default')

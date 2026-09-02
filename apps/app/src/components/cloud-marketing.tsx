@@ -34,6 +34,7 @@ import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
 import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
+import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -979,6 +980,7 @@ function EditorMock() {
 
 /** Publish mock: version timeline with a live snapshot and search rebuild. */
 function PublishMock() {
+  const searchShortcut = useSearchShortcutLabel();
   const versions = [
     { name: 'v14', note: 'Custom domain guide', state: 'Live', live: true },
     { name: 'v13', note: 'API reference update', state: 'Archived', live: false },
@@ -1016,7 +1018,10 @@ function PublishMock() {
       </div>
       <div className="border-border border-t bg-muted/30 px-5 py-3.5">
         <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-muted-foreground text-sm">
-          <Search className="size-4" /> Search docs… <span className="ms-auto rounded bg-muted px-1.5 py-0.5 font-mono text-xs">⌘K</span>
+          <Search className="size-4" /> Search docs…{' '}
+          <span className="ms-auto rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+            <span dir="ltr">{searchShortcut}</span>
+          </span>
         </div>
       </div>
     </div>

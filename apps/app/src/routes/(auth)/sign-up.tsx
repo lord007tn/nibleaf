@@ -254,7 +254,7 @@ function SignUpPage() {
               type="button"
               variant="ghost"
             >
-              <ArrowLeft className="size-4" /> {t('auth.otp.changeDetails')}
+              <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('auth.otp.changeDetails')}
             </Button>
             <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
               {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}

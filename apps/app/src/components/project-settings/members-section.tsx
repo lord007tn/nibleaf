@@ -76,6 +76,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const currentUserId = session?.user?.id;
   const isCurrentOwner = members.some((member) => member.user.id === currentUserId && member.role === 'owner');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
+  // No `owner` option: invitations and role changes can never grant ownership.
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const roleOptions = [
+    { value: 'member', label: t('settings.members.role.member') },
+    { value: 'admin', label: t('settings.members.role.admin') },
+  ] as const satisfies ReadonlyArray<{ value: AssignableRole; label: string }>;
 
   const form = useForm({
     defaultValues: { email: '', role: 'member' as AssignableRole },
@@ -131,14 +137,16 @@ export function MembersSection({ projectId }: { projectId: string }) {
         <div className="flex w-full items-end gap-2.5 sm:w-auto">
           <form.Field name="role">
             {(field) => (
-              // No `owner` option: invitations can never carry the owner role.
-              <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
+              <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
                 <SelectTrigger className="min-w-0 flex-1 bg-background sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
-                  <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -234,6 +242,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       </Button>
                     ) : null}
                     <Select
+                      items={roleOptions}
                       value={member.role}
                       onValueChange={(v) =>
                         updateRole.mutate(
@@ -248,10 +257,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       <SelectTrigger className="w-28" size="sm">
                         <SelectValue />
                       </SelectTrigger>
-                      {/* No `owner` option: role changes can never grant ownership. */}
                       <SelectContent>
-                        <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
-                        <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                        {roleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Button

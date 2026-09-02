@@ -30,6 +30,15 @@ export function DangerSection({ project }: { project: Project }) {
     : [];
   const [targetMemberId, setTargetMemberId] = useState('');
   const selectedTarget = transferTargets.find((member) => member.id === targetMemberId);
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const transferOptions = transferTargets.map((member) => ({
+    value: member.id,
+    label: (
+      <span dir="auto">
+        {member.user.name} · {member.user.email}
+      </span>
+    ),
+  }));
 
   return (
     <div>
@@ -44,6 +53,7 @@ export function DangerSection({ project }: { project: Project }) {
         <div className="flex w-full items-center gap-2 sm:min-w-[250px] sm:w-auto">
           <Select
             disabled={!canTransferOwnership || transferTargets.length === 0 || transfer.isPending}
+            items={transferOptions}
             onValueChange={(value) => setTargetMemberId(value ?? '')}
             value={targetMemberId}
           >
@@ -51,9 +61,9 @@ export function DangerSection({ project }: { project: Project }) {
               <SelectValue placeholder={t('settings.danger.transfer.placeholder')} />
             </SelectTrigger>
             <SelectContent>
-              {transferTargets.map((member) => (
-                <SelectItem key={member.id} value={member.id}>
-                  {member.user.name} · {member.user.email}
+              {transferOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
