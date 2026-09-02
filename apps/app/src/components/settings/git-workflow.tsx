@@ -32,6 +32,7 @@ import {
   useResolveGitConflict,
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 
 type GitIdentity = { login: string; name: string | null };
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
@@ -616,7 +617,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   <span className="text-sm">
                     {item.kind} {item.commitMessage}
                   </span>
-                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString(locale)}</span>
+                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString(localeTag(locale))}</span>
                 </div>
                 {item.changedFiles?.length ? (
                   <ul className="mt-2 text-muted-foreground text-xs">

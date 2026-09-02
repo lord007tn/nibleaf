@@ -5,11 +5,12 @@ import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import { type BlogEntry, type BlogFaq, blogEntry, blogLanguage, blogReadingMinutes } from '@/lib/blog';
 import { MARKETING_ANALYTICS_CONSENT_EVENT, trackFirstPublishCta, trackFirstPublishLanding } from '@/lib/first-publish-activation';
+import { localeTag } from '@/lib/format';
 import type { FirstPublishSource } from '@/lib/marketing-events';
 import { canonicalHref } from '@/lib/marketing-seo';
 
 const dateFormatter = (entry: BlogEntry) =>
-  new Intl.DateTimeFormat(blogLanguage(entry) === 'ar' ? 'ar' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric' });
+  new Intl.DateTimeFormat(localeTag(blogLanguage(entry) === 'ar' ? 'ar' : 'en-US'), { day: 'numeric', month: 'long', year: 'numeric' });
 
 /** Deterministic soft gradient per article — no cover-art pipeline, never a broken <img>. */
 const GRADIENTS = [

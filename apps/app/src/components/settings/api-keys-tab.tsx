@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
-import { useFormatters } from '@/lib/format';
+import { localeTag, useFormatters } from '@/lib/format';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +35,7 @@ const isIssuableScope = (scope: string): scope is IssuableMcpScope => issuableSc
 const isRetainedScope = (scope: string): scope is Exclude<IssuableMcpScope, 'mcp:connect'> => scope !== 'mcp:connect' && isIssuableScope(scope);
 
 const formattedDate = (value: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  new Intl.DateTimeFormat(localeTag(locale), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export function ApiKeysTab({ projectId }: { projectId: string }) {
   const { locale, t } = useLocale();

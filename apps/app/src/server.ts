@@ -18,6 +18,7 @@ import {
   acceptsHtml,
   appendVary,
   asHtmlRenderRequest,
+  isAppOwnedPath,
   isDocumentPath,
   notAcceptableHtmlResponse,
   preferredRepresentation,
@@ -67,8 +68,6 @@ const ownHosts = new Set(
 );
 
 // Paths the app serves itself — never rewritten to a site route.
-const SKIP = /^\/(api|_|assets|favicon|sites)\b/;
-
 // The public cloud marketing brand host. Only a deployment whose configured app
 // origin IS this host serves the marketing SEO docs (robots/sitemap/llms that
 // advertise "Nibleaf Cloud" and link nibleaf.com's sitemap). A self-hoster's
@@ -922,7 +921,10 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         return withoutHeadBody(await serveDomainSeo(url.pathname, projectId, `${proto}://${host}`), request.method);
       }
     }
-    if (!SKIP.test(url.pathname)) {
+    if (isAppOwnedPath(url.pathname)) {
+      return startHandler(request, ...rest);
+    }
+    if (!isAppOwnedPath(url.pathname)) {
       const projectId = await resolveHost(bare);
       if (projectId) {
         const meta = await resolveSiteMeta(projectId);

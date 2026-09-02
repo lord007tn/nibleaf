@@ -7,6 +7,7 @@ import { DocumentationPageLayout } from '@/components/site/documentation-theme-p
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
+import { localeTag } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
@@ -163,7 +164,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     .replace(/[`#*_>[\](){}|~-]/g, ' ');
   const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
   const imageCount = (page.content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
-  const updatedLabel = new Intl.DateTimeFormat(language || 'en', { dateStyle: 'medium' }).format(new Date(page.updatedAt));
+  const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
 
   const article = (
     <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">

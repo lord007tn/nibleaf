@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Database, LoaderCircle, RefreshCw, ShieldChe
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { useCreateProjectSearchReindex, useProjectSearchIndexDiagnostics } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 
 const healthVariant = (health: string) => {
   if (health === 'ready') return 'secondary' as const;
@@ -17,7 +18,7 @@ const healthVariant = (health: string) => {
 };
 
 const formatCompletedAt = (value: string) =>
-  new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  new Intl.DateTimeFormat(localeTag(getLocale()), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
   const t = useT();

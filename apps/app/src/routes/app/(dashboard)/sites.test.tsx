@@ -70,11 +70,11 @@ describe('SitesPage', () => {
     expect(search?.getAttribute('aria-label')).toBe('Search…');
   });
 
-  it('formats the page count in Arabic-Indic digits for the Arabic interface', async () => {
+  it('formats the page count in Western digits for the Arabic interface', async () => {
     i18n.locale = 'ar';
     await render();
 
-    expect(container.textContent).toContain('٥٨ صفحة');
-    expect(container.textContent).not.toContain('58');
+    expect(container.textContent).toContain('58 صفحة');
+    expect(container.textContent).not.toMatch(/[٠-٩]/);
   });
 });
