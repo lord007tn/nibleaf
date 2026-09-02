@@ -17,11 +17,11 @@
   },
   "dependencies": {
     "@nibleaf/shared": "workspace:*",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "typescript": "^7.0.2"
   }
 }
