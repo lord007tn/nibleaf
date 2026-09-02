@@ -219,11 +219,12 @@ function SeoScopeForm({
 
       <form.Field name="socialImage">
         {(field) => (
-          <Field hint={t('settings.seo.socialImage.hint')} label={t('settings.seo.socialImage.label')}>
+          <Field htmlFor="seo-social-image" hint={t('settings.seo.socialImage.hint')} label={t('settings.seo.socialImage.label')}>
             <div className="flex gap-2.5">
               <Input
                 className={`${FIELD_MONO} flex-1`}
                 dir="ltr"
+                id="seo-social-image"
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={placeholders?.socialImage ?? '/og/cover.png'}
                 value={field.state.value}

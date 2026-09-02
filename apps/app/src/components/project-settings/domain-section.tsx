@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -72,9 +73,13 @@ export function DomainSection({ project }: { project: Project }) {
           );
         }}
       >
+        <Label className="sr-only" htmlFor="custom-domain">
+          {t('settings.domain.title')}
+        </Label>
         <Input
           className={cn(FIELD_MONO, 'flex-1')}
           dir="ltr"
+          id="custom-domain"
           onChange={(e) => setDomain(e.target.value)}
           placeholder="docs.yoursite.com"
           value={domain}

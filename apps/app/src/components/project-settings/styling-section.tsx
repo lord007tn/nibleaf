@@ -132,7 +132,14 @@ export function StylingSection({ project }: { project: Project }) {
 
       <div className="mb-4 flex items-center gap-3.5">
         <span className="size-11 shrink-0 rounded-xl" style={{ background: hex, boxShadow: 'inset 0 0 0 1px rgba(0,0,0,.08)' }} />
-        <Input className={cn(FIELD_MONO, 'w-[116px] uppercase')} dir="ltr" maxLength={7} onChange={(e) => applyHex(e.target.value)} value={hex} />
+        <Input
+          aria-label={t('settings.styling.primaryColor.label')}
+          className={cn(FIELD_MONO, 'w-[116px] uppercase')}
+          dir="ltr"
+          maxLength={7}
+          onChange={(e) => applyHex(e.target.value)}
+          value={hex}
+        />
         <span className="text-[12px] text-muted-foreground">{t('settings.styling.pickColor')}</span>
       </div>
 

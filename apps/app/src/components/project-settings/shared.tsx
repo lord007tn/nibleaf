@@ -1,11 +1,14 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfigUpdate } from '@nibleaf/validators';
-import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
 
 type ConfigMutation = {
@@ -71,13 +74,19 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  const generatedId = useId();
+  const isDirectControl = isValidElement(children) && (children.type === Input || children.type === Textarea || children.type === Slider);
+  const childId = isDirectControl ? (children as ReactElement<{ id?: string }>).props.id : undefined;
+  const controlId = htmlFor ?? childId ?? (isDirectControl ? generatedId : undefined);
+  const labelledChildren = isDirectControl ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId }) : children;
+
   return (
     <div className={cn('mb-6', className)}>
-      <label className="block font-semibold text-[13px]" htmlFor={htmlFor}>
+      <label className="block font-semibold text-[13px]" htmlFor={controlId}>
         {label}
       </label>
       {hint ? <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p> : <div className="mb-2.5" />}
-      {children}
+      {labelledChildren}
     </div>
   );
 }
