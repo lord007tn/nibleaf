@@ -57,7 +57,7 @@ export function DangerSection({ project }: { project: Project }) {
             onValueChange={(value) => setTargetMemberId(value ?? '')}
             value={targetMemberId}
           >
-            <SelectTrigger className="min-w-0 flex-1">
+            <SelectTrigger aria-label={t('settings.danger.transfer.title')} className="min-w-0 flex-1">
               <SelectValue placeholder={t('settings.danger.transfer.placeholder')} />
             </SelectTrigger>
             <SelectContent>

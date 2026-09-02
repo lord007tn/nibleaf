@@ -27,12 +27,22 @@ const PRESETS = {
 } as const satisfies Record<string, { baseSize: BaseSize; leading: Leading; flow: Flow }>;
 type PresetName = keyof typeof PRESETS;
 
-function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
+function FontSelect({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, ...string[]];
+  label: string;
+}) {
   // Font names are their own label; `items` lets the trigger show it instead of the raw value.
   const items = options.map((option) => ({ value: option, label: option }));
   return (
     <Select items={items} onValueChange={(v) => onChange(v ?? options[0])} value={value}>
-      <SelectTrigger className="w-full">
+      <SelectTrigger aria-label={label} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -155,7 +165,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="headingFont">
         {(field) => (
           <Field hint={t('settings.typography.headingFont.hint')} label={t('settings.typography.headingFont.label')}>
-            <FontSelect onChange={field.handleChange} options={HEADING_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.headingFont.label')}
+              onChange={field.handleChange}
+              options={HEADING_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -163,7 +178,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="bodyFont">
         {(field) => (
           <Field hint={t('settings.typography.bodyFont.hint')} label={t('settings.typography.bodyFont.label')}>
-            <FontSelect onChange={field.handleChange} options={BODY_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.bodyFont.label')}
+              onChange={field.handleChange}
+              options={BODY_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -171,7 +191,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="codeFont">
         {(field) => (
           <Field hint={t('settings.typography.codeFont.hint')} label={t('settings.typography.codeFont.label')}>
-            <FontSelect onChange={field.handleChange} options={CODE_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.codeFont.label')}
+              onChange={field.handleChange}
+              options={CODE_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>

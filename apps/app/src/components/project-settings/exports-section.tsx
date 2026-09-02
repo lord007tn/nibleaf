@@ -290,7 +290,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
       <Input aria-label={t('settings.exports.workflow.scheduleName')} onChange={(event) => setName(event.target.value)} value={name} />
       <Input aria-label={t('settings.exports.workflow.timezone')} dir="ltr" onChange={(event) => setTimezone(event.target.value)} value={timezone} />
       <Select items={cadenceOptions} onValueChange={(next) => setCadence(next ?? 'DAILY')} value={cadence}>
-        <SelectTrigger className="w-full">
+        <SelectTrigger aria-label={t('settings.exports.workflow.schedules')} className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
