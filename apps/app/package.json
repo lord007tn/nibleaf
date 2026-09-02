@@ -35,7 +35,7 @@
     "@tanstack/react-query": "^5.101.4",
     "@tanstack/react-router": "^1.170.31",
     "@tanstack/react-start": "^1.168.48",
-    "@tiptap/core": "3.30.2",
+    "@tiptap/core": "3.30.4",
     "@tiptap/extension-character-count": "3.30.2",
     "@tiptap/extension-code-block-lowlight": "3.30.2",
     "@tiptap/extension-drag-handle-react": "3.30.2",
