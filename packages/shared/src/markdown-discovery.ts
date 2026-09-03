@@ -2,7 +2,7 @@
  * llms.txt v2 discovery helpers.
  *
  * Human pages keep their canonical URL. Their Markdown representation uses a
- * stable `.md` sibling (`/guide` -> `/guide.md`, `/` -> `/index.md`). Both
+ * stable `.md` sibling (`/guide` -> `/guide.md`, `/` -> `/_index.md`). Both
  * representations advertise the Markdown alternate and the nearest llms.txt
  * index through standard link relations.
  */
@@ -42,12 +42,12 @@ export const decodePublishedPathname = (pathname: string): string | null => {
 
 export const markdownAliasPath = (pathname: string): string => {
   const clean = cleanPathname(pathname);
-  return clean === '/' ? '/index.md' : `${clean}.md`;
+  return clean === '/' ? '/_index.md' : `${clean}.md`;
 };
 
 export const canonicalPathFromMarkdownAlias = (pathname: string): string | null => {
   const clean = cleanPathname(pathname);
-  if (clean === '/index.md') return '/';
+  if (clean === '/_index.md') return '/';
   if (!clean.endsWith('.md') || clean.endsWith('.html.md')) return null;
   const canonical = clean.slice(0, -3);
   return canonical || '/';

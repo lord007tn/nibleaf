@@ -28,6 +28,9 @@ describe('published Markdown edge routing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.got.mockImplementation(async (url: string) => {
+      if (url.includes('/api/public/domains/resolve?host=docs-index-test.example')) {
+        return upstream({ data: { projectId: 'project-1' } });
+      }
       if (url.endsWith('/api/public/sites/project-1')) {
         return upstream({ data: { project: { config: { visibility: 'public' }, primaryDomain: null } } });
       }
@@ -51,6 +54,15 @@ describe('published Markdown edge routing', () => {
     expect(proxiedUrl.searchParams.get('lang')).toBe('ar');
     expect(response.headers.get('link')).toContain('/sites/project-1/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9.md?lang=ar');
     expect(response.headers.get('link')).not.toContain('%25D8');
+  });
+
+  it('keeps an index page distinct from the root Markdown alias', async () => {
+    await server.fetch(new Request('https://docs-index-test.example/index.md', { headers: { accept: 'text/markdown' } }));
+    await server.fetch(new Request('https://docs-index-test.example/_index.md', { headers: { accept: 'text/markdown' } }));
+
+    const markdownCalls = mocks.got.mock.calls.filter(([url]) => String(url).includes('/markdown?'));
+    expect(new URL(String(markdownCalls[0]?.[0])).searchParams.get('path')).toBe('/index');
+    expect(new URL(String(markdownCalls[1]?.[0])).searchParams.get('path')).toBe('/');
   });
 
   it.each(['noindex page', 'language indexing disabled', 'external canonical', 'hidden page', 'private site'])(

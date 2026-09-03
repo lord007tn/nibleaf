@@ -145,12 +145,72 @@ const stripMdxExpressions = (source: string): string => {
   return output;
 };
 
+interface ProtectedInlineCode {
+  source: string;
+  restore: (value: string) => string;
+}
+
+/** Replace complete CommonMark-style inline code spans with inert sentinels so
+ * MDX projection and active-markup stripping cannot interpret their literal
+ * HTML or JSON. Fenced blocks are handled separately by the outer normalizer. */
+const protectInlineCode = (source: string): ProtectedInlineCode => {
+  let marker = '\uE000';
+  while (source.includes(marker)) marker += '\uE000';
+
+  const spans: string[] = [];
+  let output = '';
+  let cursor = 0;
+  while (cursor < source.length) {
+    const opening = source.indexOf('`', cursor);
+    if (opening < 0) {
+      output += source.slice(cursor);
+      break;
+    }
+    output += source.slice(cursor, opening);
+
+    let openingEnd = opening + 1;
+    while (source[openingEnd] === '`') openingEnd += 1;
+    const delimiterLength = openingEnd - opening;
+    let search = openingEnd;
+    let closingEnd = -1;
+    while (search < source.length) {
+      const candidate = source.indexOf('`', search);
+      if (candidate < 0) break;
+      let candidateEnd = candidate + 1;
+      while (source[candidateEnd] === '`') candidateEnd += 1;
+      if (candidateEnd - candidate === delimiterLength) {
+        closingEnd = candidateEnd;
+        break;
+      }
+      search = candidateEnd;
+    }
+
+    if (closingEnd < 0) {
+      output += source.slice(opening, openingEnd);
+      cursor = openingEnd;
+      continue;
+    }
+
+    const index = spans.length;
+    spans.push(source.slice(opening, closingEnd));
+    output += `${marker}${index}\uE001`;
+    cursor = closingEnd;
+  }
+
+  return {
+    source: output,
+    restore: (value) => spans.reduce((restored, span, index) => restored.replaceAll(`${marker}${index}\uE001`, span), value),
+  };
+};
+
 const sanitizeAuthoredProse = (source: string): string => {
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(source));
-  return stripMdxExpressions(withoutActiveBlocks)
+  const protectedCode = protectInlineCode(source);
+  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.source));
+  const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
     .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
     .join('\n');
+  return protectedCode.restore(sanitized);
 };
 
 interface MarkdownFence {

@@ -55,7 +55,7 @@ describe('marketing sitemap', () => {
 
     expect(sources).toHaveLength(entries.length);
     expect(new Set(sources).size).toBe(entries.length);
-    expect(sources).toContain('https://nibleaf.com/index.md');
+    expect(sources).toContain('https://nibleaf.com/_index.md');
     expect(sources).toContain('https://nibleaf.com/ar/guides.md');
     expect(sources).toContain('https://nibleaf.com/pricing.md');
     expect(sources.every((source) => source.endsWith('.md'))).toBe(true);

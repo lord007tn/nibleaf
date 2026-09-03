@@ -25,4 +25,19 @@ import Example from './example'
     expect(normalized).not.toContain('globalThis.stolen');
     expect(normalized).not.toContain('<script>');
   });
+
+  it('preserves literal HTML and JSON in variable-length inline code spans', () => {
+    const source = [
+      'Use `<script>alert(1)</script>` with `{"mode":"safe"}` as literal examples.',
+      'A double delimiter preserves ``literal `tick`, <tag>, and {value}`` exactly.',
+      '<script>globalThis.stolen = true</script>',
+    ].join('\n');
+
+    const normalized = normalizePublicMarkdownContent(source);
+
+    expect(normalized).toContain('`<script>alert(1)</script>`');
+    expect(normalized).toContain('`{"mode":"safe"}`');
+    expect(normalized).toContain('``literal `tick`, <tag>, and {value}``');
+    expect(normalized).not.toContain('globalThis.stolen');
+  });
 });

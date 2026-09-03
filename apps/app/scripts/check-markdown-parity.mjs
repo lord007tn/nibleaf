@@ -24,7 +24,7 @@ const request = (path, accept) =>
     req.on('error', reject);
     req.end();
   });
-const markdownPath = (path) => (path === '/' ? '/index.md' : `${path.replace(/\/$/u, '')}.md`);
+const markdownPath = (path) => (path === '/' ? '/_index.md' : `${path.replace(/\/$/u, '')}.md`);
 const fail = (message) => {
   throw new Error(message);
 };
@@ -45,7 +45,7 @@ if (!conciseResponse.ok || concise.split(/\r?\n/u).length > 250 || !concise.incl
 if (!fullResponse.ok) fail(`llms-full.txt returned ${fullResponse.status}`);
 for (const canonicalUrl of canonicalUrls) {
   const url = new URL(canonicalUrl);
-  const source = `https://${host}${markdownPath(url.pathname)}${url.search}`;
+  const source = `${headers['x-forwarded-proto']}://${host}${markdownPath(url.pathname)}${url.search}`;
   if (!full.includes(source)) fail(`llms-full.txt is missing ${source}`);
 }
 

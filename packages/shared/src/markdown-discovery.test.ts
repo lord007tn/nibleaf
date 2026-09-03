@@ -11,9 +11,10 @@ import {
 describe('llms.txt v2 Markdown discovery', () => {
   it('uses stable sibling aliases and an index alias for the origin root', () => {
     expect(markdownAliasPath('/guides/migrate')).toBe('/guides/migrate.md');
-    expect(markdownAliasPath('/')).toBe('/index.md');
+    expect(markdownAliasPath('/')).toBe('/_index.md');
     expect(canonicalPathFromMarkdownAlias('/guides/migrate.md')).toBe('/guides/migrate');
-    expect(canonicalPathFromMarkdownAlias('/index.md')).toBe('/');
+    expect(canonicalPathFromMarkdownAlias('/_index.md')).toBe('/');
+    expect(canonicalPathFromMarkdownAlias('/index.md')).toBe('/index');
     expect(canonicalPathFromMarkdownAlias('/llms.txt')).toBeNull();
   });
 

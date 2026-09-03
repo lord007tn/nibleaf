@@ -30,7 +30,7 @@ When a visual editor is involved, use the [round-trip fixture](/guides/fixtures/
 
 ## Canonical HTML and alternate Markdown
 
-The HTML URL remains canonical. Give the Markdown representation a predictable `.md` sibling: `/guides/migration` can map to `/guides/migration.md`, while `/` can map to `/index.md`. Return `text/markdown; charset=utf-8` for the alternate.
+The HTML URL remains canonical. Give the Markdown representation a predictable `.md` sibling: `/guides/migration` can map to `/guides/migration.md`, while `/` can map to `/_index.md`. Return `text/markdown; charset=utf-8` for the alternate.
 
 Advertise discovery in the HTML head:
 

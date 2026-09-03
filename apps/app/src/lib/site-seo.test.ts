@@ -26,7 +26,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
     slug: 'acme',
     description: 'Site default description',
     primaryDomain: null,
-    config: { seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
+    config: { visibility: 'public', seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
   },
   activeLanguage: 'en',
   activeVersion: 'main',
@@ -175,6 +175,12 @@ describe('pageHead canonical + hreflang', () => {
     expect(noindex.links?.some((link) => link.type === 'text/markdown')).toBe(false);
     const external = pageHead(base({ page: { ...base().page, config: { seo: { canonicalUrl: 'https://example.com/source' } } } }), 'p1');
     expect(external.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+  });
+
+  it('does not advertise Markdown unless the project is explicitly public', () => {
+    const head = pageHead(base({ project: { ...base().project, config: { seo: { allowIndex: true } } } }), 'p1');
+    expect(head.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+    expect(head.links?.some((link) => link.rel === 'describedby')).toBe(false);
   });
 
   it('canonicalizes the default language to a clean (param-less) URL', () => {
