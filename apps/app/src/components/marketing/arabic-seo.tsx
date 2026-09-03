@@ -376,7 +376,12 @@ export function ArabicDocumentationPlatformsPage() {
       <article>
         <header className="border-border border-b">
           <div className="mx-auto max-w-4xl px-6 py-20">
-            <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.comparison.eyebrow')}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.comparison.eyebrow')}</p>
+              <a className="text-muted-foreground text-sm underline underline-offset-4" href="/documentation-platforms" hrefLang="en">
+                English
+              </a>
+            </div>
             <h1 className="mt-4 text-balance font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
               {t('marketing.arabicSeo.comparison.heading')}
             </h1>

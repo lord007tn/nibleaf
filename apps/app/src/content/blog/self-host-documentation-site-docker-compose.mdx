@@ -6,6 +6,7 @@ dateModified: '2026-09-03'
 tags: ['self-hosting', 'docker', 'guide']
 related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
 readingMinutes: 13
+translationOf: 'self-host-documentation-site-docker-compose-ar'
 faqs:
   - question: 'How much RAM do I need to self-host a documentation site?'
     answer: 'The project’s starting recommendation is 2 GB when pulling a prebuilt image. Measure the complete stack under your own content and traffic before choosing production capacity.'
@@ -129,6 +130,12 @@ Use a versioned image or digest. Before an upgrade:
 6. Repeat the manual-publish, search, image, canonical, sitemap, and 404 checks.
 
 Database migrations may be forward-only. “Rollback” may require restoring the pre-upgrade database and asset backups before starting the old image. Republishing an earlier content snapshot only rolls back reader content; it does not reverse schema, secrets, DNS, or infrastructure changes.
+
+## Reconcile in-flight work and the support boundary
+
+Before an upgrade or restore, inspect publish, indexing, email, webhook, and export jobs. Record whether each job is safe to resume, must be replayed with an idempotency key, or should be discarded. After recovery, validate one complete job of every critical type; a restored database and bucket do not prove the worker state was reconciled.
+
+Read the support policy and EOL status for the exact release. The public code is AGPL-3.0; how its network-use terms apply to your modifications, and whether you may use project names, logos, or domains, are legal and trademark questions outside this runbook. Obtain qualified counsel for material decisions. This guide is not legal advice and grants no trademark rights.
 
 ## Monitor the user path and size from measurements
 

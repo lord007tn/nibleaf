@@ -17,6 +17,7 @@ import { Route as ArRouteRouteImport } from './routes/ar/route'
 import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DevelopersRouteImport } from './routes/developers'
+import { Route as DocumentationPlatformsRouteImport } from './routes/documentation-platforms'
 import { Route as GuidesRouteImport } from './routes/guides'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
@@ -95,6 +96,11 @@ const ContactRoute = ContactRouteImport.update({
 const DevelopersRoute = DevelopersRouteImport.update({
   id: '/developers',
   path: '/developers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentationPlatformsRoute = DocumentationPlatformsRouteImport.update({
+  id: '/documentation-platforms',
+  path: '/documentation-platforms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuidesRoute = GuidesRouteImport.update({
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/documentation-platforms': typeof DocumentationPlatformsRoute
   '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -363,6 +370,7 @@ export interface FileRoutesByTo {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/documentation-platforms': typeof DocumentationPlatformsRoute
   '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -410,6 +418,7 @@ export interface FileRoutesById {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/documentation-platforms': typeof DocumentationPlatformsRoute
   '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
@@ -461,6 +470,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/documentation-platforms'
     | '/guides'
     | '/pricing'
     | '/privacy'
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/documentation-platforms'
     | '/guides'
     | '/pricing'
     | '/privacy'
@@ -554,6 +565,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/documentation-platforms'
     | '/guides'
     | '/pricing'
     | '/privacy'
@@ -605,6 +617,7 @@ export interface RootRouteChildren {
   CloudRoute: typeof CloudRoute
   ContactRoute: typeof ContactRoute
   DevelopersRoute: typeof DevelopersRoute
+  DocumentationPlatformsRoute: typeof DocumentationPlatformsRoute
   GuidesRoute: typeof GuidesRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -680,6 +693,13 @@ declare module '@tanstack/react-router' {
       path: '/developers'
       fullPath: '/developers'
       preLoaderRoute: typeof DevelopersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentation-platforms': {
+      id: '/documentation-platforms'
+      path: '/documentation-platforms'
+      fullPath: '/documentation-platforms'
+      preLoaderRoute: typeof DocumentationPlatformsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guides': {
@@ -1079,6 +1099,7 @@ const rootRouteChildren: RootRouteChildren = {
   CloudRoute: CloudRoute,
   ContactRoute: ContactRoute,
   DevelopersRoute: DevelopersRoute,
+  DocumentationPlatformsRoute: DocumentationPlatformsRoute,
   GuidesRoute: GuidesRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,

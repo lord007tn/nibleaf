@@ -6,6 +6,7 @@ datePublished: '2026-07-13'
 dateModified: '2026-09-03'
 tags: ['markdown', 'content-ownership']
 related: ['open-source-documentation-tools', 'introducing-nibleaf-open-source-mintlify-alternative', 'self-host-documentation-site-docker-compose']
+translationOf: 'docs-should-live-in-plain-markdown-ar'
 readingMinutes: 7
 faqs:
   - question: 'Can a WYSIWYG editor really store plain Markdown?'
@@ -111,6 +112,10 @@ The managed cloud is in [free beta](/sign-up). The public AGPL-3.0 release also 
 ## The test to run before you commit
 
 Download the deterministic [Markdown/MDX round-trip fixture](/guides/fixtures/markdown-round-trip.mdx). Import it, edit only the marked sentence in the visual mode, export it, and compare the parsed structure. The test includes frontmatter, mixed Arabic/English direction, code, a table, a relative link, and a supported component. A serializer may normalize insignificant whitespace; it must preserve meaning, links, code, and component attributes.
+
+Add a semantic-loss manifest to the test output. For every unsupported block or MDX component, record its source location, intended meaning, target representation, severity, and owner. Do the same for embedded files, generated diagrams, and large binaries stored through Git LFS: an exported pointer without its object is not a portable asset. Resolve relative asset paths from the exported file and confirm every required LFS object can be fetched from a clean account.
+
+Make warnings publish-blocking when the transform would drop executable examples, security notices, link targets, component attributes, language metadata, or an asset required to understand the page. Cosmetic normalization may remain a reviewed warning. A green export count that silently substitutes an empty box for an unsupported block is failure, not graceful degradation.
 
 Record which representation is authoritative, how conflicts are surfaced, and which release produced the export. For GitBook, Mintlify, Docusaurus, Starlight, or Nibleaf, test the current product rather than relying on category assumptions. Browser editing is valuable only when its output remains reviewable and recoverable.
 

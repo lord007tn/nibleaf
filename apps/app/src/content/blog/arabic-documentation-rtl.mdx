@@ -125,6 +125,18 @@ Build a small font specimen with:
 
 Open it on the operating systems and phones your readers use. Set line height from that test rather than copying a fixed ratio. Remove `letter-spacing` and `text-transform` from Arabic headings because tracking can break the visual connection between letters.
 
+## Test the failure modes around language, URLs, and mobile
+
+Create explicit query judgments rather than declaring that Arabic search “works.” For each reader task, list exact, acceptable, and irrelevant document IDs. Include prefixes and attached pronouns, duals and plurals, spelling variants, diacritics, Arabic-Indic and Western digits, error codes, and mixed identifiers such as `API_v2` or `user_id`. Compare exact-token and morphology-assisted results so normalization gains do not hide precision regressions.
+
+Privacy-safe no-result analysis should aggregate bounded query categories or reviewed redacted terms. Do not store raw queries that can contain names, tokens, customer data, or incident details merely to improve recall. Missing telemetry is unknown, not evidence of a zero no-result rate.
+
+Round-trip Arabic slugs through authoring, URL encoding, routing, canonical generation, sitemap output, clipboard copy, redirects, and server logs. Assert that decoding produces the intended Unicode string once—not mojibake and not a double-decoded path. Pair translations by a stable content key, not by assuming identical slugs.
+
+Define stale-translation behavior. A materially changed English page may keep an older Arabic version visible with a dated warning, fall back to English with an explicit language change, or become unavailable until reviewed. It must not silently present stale Arabic as current or advertise a missing sibling through `hreflang`.
+
+On mobile, test 200% zoom, reflow, menu and language-switch focus, touch targets, headings, landmarks, screen-reader language changes, code scrolling, long URLs, and reduced motion. Directionally correct pixels do not prove accessible order or announcements.
+
 ## A release checklist
 
 Use the checked-in [Arabic search corpus](/guides/fixtures/arabic-search-corpus.json) with its [labeled queries](/guides/fixtures/arabic-search-queries.json) before adding project-specific cases. The expected document IDs are relevance judgments, not published benchmark scores. Add your ten highest-value reader queries, preserve mixed Arabic/Latin product names and error codes, then report the tokenizer, configuration, corpus revision, and evaluation date.

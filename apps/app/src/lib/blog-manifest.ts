@@ -5,6 +5,289 @@ import type { BlogEntry } from './blog';
  * Article bodies remain in the lazy blog route chunk instead of the homepage. */
 export const BLOG_MANIFEST = [
   {
+    slug: 'ai-ready-documentation-ar',
+    title: 'توثيق جاهز لمساعدات AI من دون مصدر حقيقة ثانٍ',
+    metaTitle: 'توثيق جاهز لـAI: HTML وMarkdown وllms.txt',
+    description: 'اجعل التوثيق العام قابلاً للاكتشاف عبر HTML وMarkdown متكافئين وفهارس llms موجزة وجرد كامل واختبارات منع التسريب.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['الذكاء الاصطناعي', 'llms.txt', 'Markdown'],
+    related: ['ai-ready-documentation', 'docs-should-live-in-plain-markdown-ar', 'arabic-technical-documentation-rtl-checklist'],
+    translationOf: 'ai-ready-documentation',
+    readingMinutes: 13,
+  },
+  {
+    slug: 'coolify-documentation-502-503-recovery-ar',
+    title: 'استعادة نشر توثيق من أخطاء Coolify 502 و503',
+    metaTitle: 'دليل استعادة 502 و503 على Coolify لمنصات التوثيق',
+    description: 'شخّص أعطال الوكيل والحاوية والجاهزية والترحيل والتبعيات ونافذة الاستبدال في منصة توثيق على Coolify من دون تخمين.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['Coolify', 'استكشاف الأعطال', 'الاستضافة الذاتية'],
+    related: [
+      'coolify-documentation-502-503-recovery',
+      'self-host-documentation-site-docker-compose-ar',
+      'documentation-production-readiness-decision-ar',
+    ],
+    translationOf: 'coolify-documentation-502-503-recovery',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'docs-should-live-in-plain-markdown-ar',
+    title: 'يجب أن يعيش توثيقك في Markdown صريح، حتى مع محرر مرئي',
+    metaTitle: 'لماذا يجب أن يُحفظ التوثيق بصيغة Markdown؟',
+    description: 'دليل عملي لجعل Markdown عقد ملكية قابلًا للبحث والمراجعة والذكاء الاصطناعي، مع تجربة تحرير مرئية واختبار ذهاب وعودة.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['Markdown', 'ملكية المحتوى', 'المحرر المرئي'],
+    related: ['docs-should-live-in-plain-markdown', 'open-source-documentation-tools-ar', 'self-host-documentation-site-docker-compose-ar'],
+    translationOf: 'docs-should-live-in-plain-markdown',
+    readingMinutes: 9,
+    faqs: [
+      {
+        question: 'هل يستطيع محرر WYSIWYG حفظ Markdown فعلاً؟',
+        answer:
+          'نعم. يحلل المحرر Markdown إلى نموذج مؤقت للتحرير ثم يعيده إلى Markdown عند الحفظ. يبقى العقد سليماً ما دام النموذج الداخلي لا يُحفظ كمصدر الحقيقة.',
+      },
+      {
+        question: 'هل Markdown كافٍ لموقع توثيق حقيقي؟',
+        answer: 'يغطي Markdown معظم المحتوى. يمكن لمفردات MDX موثقة ومحدودة أن تضيف التخطيطات الغنية من دون تحويل المحتوى إلى صيغة مغلقة.',
+      },
+      {
+        question: 'لماذا يفيد Markdown أدوات الذكاء الاصطناعي؟',
+        answer: 'تستهلك أدوات كثيرة Markdown مباشرة، وتوفر العناوين حدوداً مفيدة للتقسيم والاسترجاع من دون طبقة استخراج خاصة بالمورد.',
+      },
+    ],
+  },
+  {
+    slug: 'documentation-information-architecture-collaboration-ar',
+    title: 'مختبر بنية معلومات التوثيق والتعاون',
+    metaTitle: 'تصميم بنية معلومات التوثيق وسير التعاون',
+    description: 'صمم شجرة التوثيق من مهام القراء وأنواع الصفحات والملكية وحالات المراجعة وقابلية العثور قبل نقل المحتوى كله.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['بنية المعلومات', 'التعاون', 'النشر'],
+    related: [
+      'documentation-information-architecture-collaboration',
+      'documentation-migration-seo-cutover-lab-ar',
+      'docs-should-live-in-plain-markdown-ar',
+    ],
+    translationOf: 'documentation-information-architecture-collaboration',
+    readingMinutes: 11,
+  },
+  {
+    slug: 'documentation-migration-seo-cutover-lab-ar',
+    title: 'مختبر ترحيل التوثيق وتحويل SEO',
+    metaTitle: 'دليل ترحيل التوثيق وتحويل SEO مع تراجع',
+    description: 'مختبر قابل للعكس لحصر روابط التوثيق وتحويل المحتوى والبيانات الوصفية وتجربة التحويلات وتنفيذ الانتقال وتعريف شروط التراجع.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['الترحيل', 'SEO', 'العمليات'],
+    related: [
+      'documentation-migration-seo-cutover-lab',
+      'documentation-production-readiness-decision-ar',
+      'documentation-information-architecture-collaboration-ar',
+    ],
+    translationOf: 'documentation-migration-seo-cutover-lab',
+    readingMinutes: 13,
+  },
+  {
+    slug: 'documentation-production-readiness-decision-ar',
+    title: 'هل منظومة التوثيق جاهزة للإنتاج؟ سجل قرار go/no-go',
+    metaTitle: 'جاهزية التوثيق للإنتاج: سجل قرار عملي',
+    description: 'قالب أدلة لاتخاذ قرار جاهزية منظومة التوثيق عبر الملكية والوصول والتعافي وهوية الإصدار والبحث والعمليات.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['جاهزية الإنتاج', 'الحوكمة', 'العمليات'],
+    related: [
+      'documentation-production-readiness-decision',
+      'documentation-migration-seo-cutover-lab-ar',
+      'coolify-documentation-502-503-recovery-ar',
+    ],
+    translationOf: 'documentation-production-readiness-decision',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'open-source-documentation-tools-ar',
+    title: 'أدوات التوثيق مفتوحة المصدر في 2026: كيف تختار؟',
+    metaTitle: 'مقارنة 7 أدوات توثيق مفتوحة المصدر في 2026',
+    description: 'قارن Docusaurus وMkDocs Material وStarlight وFumadocs وBookStack وWiki.js وNibleaf وفق نموذج التأليف والبحث والعربية والاستضافة.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['مقارنة', 'مفتوح المصدر', 'منصات التوثيق'],
+    related: ['open-source-documentation-tools', 'self-host-documentation-site-docker-compose-ar', 'docs-should-live-in-plain-markdown-ar'],
+    translationOf: 'open-source-documentation-tools',
+    readingMinutes: 9,
+    faqs: [
+      {
+        question: 'ما أفضل أداة توثيق مفتوحة المصدر؟',
+        answer:
+          'يعتمد الاختيار على سير الكتابة. تناسب Docusaurus وStarlight فرق الهندسة التي تعتمد Git، بينما تستحق BookStack وWiki.js وNibleaf التقييم عندما يحتاج الفريق إلى محرر في المتصفح.',
+      },
+      {
+        question: 'أي الأدوات تدعم العربية وRTL؟',
+        answer:
+          'يدعم Docusaurus وStarlight اللغات ذات الاتجاه من اليمين إلى اليسار، ويضيف Nibleaf أشجار صفحات لكل لغة وواجهة عربية وبحثاً واعياً بالعربية. اختبر البحث والشيفرة ثنائية الاتجاه والخطوط عملياً.',
+      },
+      {
+        question: 'هل يستطيع غير المطورين المساهمة في أدوات docs-as-code؟',
+        answer: 'نعم عبر واجهة Git أو طبقة CMS، لكن المراجعة والبناء يظلان قائمين على Git. منصات المحرر المرئي تزيل هذا الشرط من التعديلات اليومية.',
+      },
+    ],
+  },
+  {
+    slug: 'self-host-documentation-site-docker-compose-ar',
+    title: 'استضافة منصة توثيق ذاتياً باستخدام Docker Compose',
+    metaTitle: 'دليل استضافة Nibleaf ذاتياً عبر Docker Compose',
+    description:
+      'مسار موثق من التثبيت إلى أول نشر يدوي في Nibleaf، مع سلامة الإصدار والنسخ والاستعادة والترقية والتراجع والأمان والمراقبة وتحديد الموارد.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['الاستضافة الذاتية', 'Docker', 'دليل'],
+    related: ['self-host-documentation-site-docker-compose', 'coolify-documentation-502-503-recovery-ar', 'open-source-documentation-tools-ar'],
+    translationOf: 'self-host-documentation-site-docker-compose',
+    readingMinutes: 15,
+    faqs: [
+      {
+        question: 'كم ذاكرة أحتاج لاستضافة منصة توثيق؟',
+        answer:
+          'توصية المشروع الابتدائية 2 GB عند سحب صورة مبنية مسبقاً، وليست benchmark للإنتاج. قس المنظومة كاملة مع محتواك وحركتك وذروة النشر قبل اختيار السعة.',
+      },
+      {
+        question: 'ما الذي يجب نسخه احتياطياً؟',
+        answer:
+          'انسخ PostgreSQL ومخزن الأصول والأسرار والإعدادات الخارجية اللازمة للاستعادة. حالة cache والطابور قابلة لإعادة البناء عادة، لكن تحقق من jobs الجارية قبل القطع.',
+      },
+      {
+        question: 'هل يحقق Docker Compose انعدام التوقف؟',
+        answer:
+          'لا يثبت ذلك بمفرده. قد توجد نافذة استبدال 503 على مضيف واحد. يلزم تداخل نسخ جاهزة وتوجيه واعٍ بالصحة ومجسات خارجية مستمرة لإثبات عدم الانقطاع.',
+      },
+    ],
+  },
+  {
+    slug: 'versioned-documentation-release-lifecycle',
+    title: 'Versioned documentation: design the release lifecycle before the URL scheme',
+    metaTitle: 'Versioned documentation release lifecycle guide',
+    description:
+      'Choose branch, path, domain, and snapshot models; label stable, beta, and EOL releases; and keep search, AI, OpenAPI, citations, and translations version-safe.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['versioning', 'release-lifecycle', 'governance'],
+    related: [
+      'versioned-documentation-release-lifecycle-ar',
+      'documentation-production-readiness-decision',
+      'documentation-migration-seo-cutover-lab',
+    ],
+    translationOf: 'versioned-documentation-release-lifecycle-ar',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'versioned-documentation-release-lifecycle-ar',
+    title: 'التوثيق متعدد الإصدارات: صمم دورة الإصدار قبل بنية الروابط',
+    metaTitle: 'دليل دورة إصدار التوثيق متعدد الإصدارات',
+    description:
+      'اختر نموذج الفرع أو المسار أو النطاق أو اللقطة، واضبط stable وbeta وEOL، واجعل البحث وAI وOpenAPI والاستشهادات والترجمات واعية بالإصدار.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['الإصدارات', 'دورة الإصدار', 'الحوكمة'],
+    related: [
+      'versioned-documentation-release-lifecycle',
+      'documentation-production-readiness-decision-ar',
+      'documentation-migration-seo-cutover-lab-ar',
+    ],
+    translationOf: 'versioned-documentation-release-lifecycle',
+    readingMinutes: 13,
+  },
+  {
+    slug: 'private-documentation-ai-access-verification',
+    title: 'Private documentation and AI access: verify every delivery surface',
+    metaTitle: 'Private documentation AI access verification guide',
+    description:
+      'Prove authorization parity across HTML, Markdown, llms files, search, exports, assets, caches, and AI retrieval; robots and noindex are not access controls.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['private-docs', 'authorization', 'ai-security'],
+    related: ['private-documentation-ai-access-verification-ar', 'mcp-documentation-security-threat-model', 'ai-ready-documentation'],
+    translationOf: 'private-documentation-ai-access-verification-ar',
+    readingMinutes: 11,
+  },
+  {
+    slug: 'private-documentation-ai-access-verification-ar',
+    title: 'التوثيق الخاص ووصول AI: تحقق من كل سطح تسليم',
+    metaTitle: 'دليل التحقق من وصول AI إلى التوثيق الخاص',
+    description: 'أثبت تكافؤ الصلاحيات عبر HTML وMarkdown وllms والبحث والتصدير والأصول والcache والاسترجاع؛ robots وnoindex ليسا تحكم وصول.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['التوثيق الخاص', 'الصلاحيات', 'أمان AI'],
+    related: ['private-documentation-ai-access-verification', 'mcp-documentation-security-threat-model-ar', 'ai-ready-documentation-ar'],
+    translationOf: 'private-documentation-ai-access-verification',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'mcp-documentation-security-threat-model',
+    title: 'MCP documentation security: a threat model for scoped, read-only access',
+    metaTitle: 'MCP documentation security threat model',
+    description:
+      'Threat-model documentation MCP access across authorization scope, prompt injection, SSRF, replay, tool poisoning, schema changes, audit logs, and bilingual corpora.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['mcp', 'security', 'ai-governance'],
+    related: ['mcp-documentation-security-threat-model-ar', 'private-documentation-ai-access-verification', 'ai-ready-documentation'],
+    translationOf: 'mcp-documentation-security-threat-model-ar',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'mcp-documentation-security-threat-model-ar',
+    title: 'أمان MCP للتوثيق: نموذج تهديد للوصول المقيد للقراءة فقط',
+    metaTitle: 'نموذج تهديد أمان MCP للتوثيق',
+    description:
+      'نمذج تهديد وصول MCP إلى التوثيق عبر نطاق الصلاحيات وحقن الموجهات وSSRF وإعادة الطلب وتسميم الأدوات وتغيّر المخطط وسجلات التدقيق والمحتوى ثنائي اللغة.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['MCP', 'الأمان', 'حوكمة الذكاء الاصطناعي'],
+    related: ['mcp-documentation-security-threat-model', 'private-documentation-ai-access-verification-ar', 'ai-ready-documentation-ar'],
+    translationOf: 'mcp-documentation-security-threat-model',
+    readingMinutes: 13,
+  },
+  {
+    slug: 'openapi-try-it-security-versioning',
+    title: 'OpenAPI Try it safely: credentials, CORS, versions, and external references',
+    metaTitle: 'OpenAPI Try it security and versioning guide',
+    description:
+      'Ship an OpenAPI Try it console with test-only credentials, correct browser and CORS behavior, aligned versions and servers, safe external references, and RTL checks.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['openapi', 'api-docs', 'security'],
+    related: ['openapi-try-it-security-versioning-ar', 'versioned-documentation-release-lifecycle', 'documentation-production-readiness-decision'],
+    translationOf: 'openapi-try-it-security-versioning-ar',
+    readingMinutes: 12,
+  },
+  {
+    slug: 'openapi-try-it-security-versioning-ar',
+    title: 'تشغيل Try it في OpenAPI بأمان: الاعتمادات وCORS والإصدارات والمراجع الخارجية',
+    metaTitle: 'دليل أمان وإصدارات OpenAPI Try it',
+    description: 'انشر وحدة Try it بمفاتيح اختبار فقط وسلوك صحيح للمتصفح وCORS وتوافق للإصدارات والخوادم ومراجع خارجية آمنة واختبارات RTL.',
+    language: 'ar',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['OpenAPI', 'توثيق API', 'الأمان'],
+    related: ['openapi-try-it-security-versioning', 'versioned-documentation-release-lifecycle-ar', 'documentation-production-readiness-decision-ar'],
+    translationOf: 'openapi-try-it-security-versioning',
+    readingMinutes: 13,
+  },
+  {
     slug: 'ai-ready-documentation',
     title: 'AI-ready documentation without creating a second source of truth',
     metaTitle: 'AI-ready documentation: HTML, Markdown, and llms.txt',
@@ -14,6 +297,7 @@ export const BLOG_MANIFEST = [
     dateModified: '2026-09-03',
     tags: ['ai', 'llms-txt', 'markdown'],
     related: ['docs-should-live-in-plain-markdown', 'documentation-production-readiness-decision', 'arabic-documentation-rtl'],
+    translationOf: 'ai-ready-documentation-ar',
     readingMinutes: 12,
   },
   {
@@ -30,6 +314,7 @@ export const BLOG_MANIFEST = [
       'self-host-documentation-site-docker-compose',
       'documentation-migration-seo-cutover-lab',
     ],
+    translationOf: 'coolify-documentation-502-503-recovery-ar',
     readingMinutes: 11,
   },
   {
@@ -42,6 +327,7 @@ export const BLOG_MANIFEST = [
     dateModified: '2026-09-03',
     tags: ['information-architecture', 'collaboration', 'publishing'],
     related: ['documentation-migration-seo-cutover-lab', 'docs-should-live-in-plain-markdown', 'choosing-documentation-template'],
+    translationOf: 'documentation-information-architecture-collaboration-ar',
     readingMinutes: 10,
   },
   {
@@ -54,6 +340,7 @@ export const BLOG_MANIFEST = [
     dateModified: '2026-09-03',
     tags: ['migration', 'seo', 'operations'],
     related: ['documentation-production-readiness-decision', 'documentation-information-architecture-collaboration', 'ai-ready-documentation'],
+    translationOf: 'documentation-migration-seo-cutover-lab-ar',
     readingMinutes: 12,
   },
   {
@@ -66,6 +353,7 @@ export const BLOG_MANIFEST = [
     dateModified: '2026-09-03',
     tags: ['production-readiness', 'governance', 'operations'],
     related: ['documentation-migration-seo-cutover-lab', 'coolify-documentation-502-503-recovery', 'open-source-documentation-tools'],
+    translationOf: 'documentation-production-readiness-decision-ar',
     readingMinutes: 11,
   },
   {
@@ -342,6 +630,7 @@ export const BLOG_MANIFEST = [
       'introducing-nibleaf-open-source-mintlify-alternative',
       'self-host-documentation-site-docker-compose',
     ],
+    translationOf: 'docs-should-live-in-plain-markdown-ar',
     readingMinutes: 7,
     faqs: [
       {
@@ -408,6 +697,7 @@ export const BLOG_MANIFEST = [
       'docs-should-live-in-plain-markdown',
       'introducing-nibleaf-open-source-mintlify-alternative',
     ],
+    translationOf: 'open-source-documentation-tools-ar',
     readingMinutes: 7,
     faqs: [
       {
@@ -436,6 +726,7 @@ export const BLOG_MANIFEST = [
     dateModified: '2026-09-03',
     tags: ['self-hosting', 'docker', 'guide'],
     related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
+    translationOf: 'self-host-documentation-site-docker-compose-ar',
     readingMinutes: 13,
     faqs: [
       {

@@ -13,6 +13,7 @@ related:
   - self-host-documentation-site-docker-compose
   - documentation-migration-seo-cutover-lab
 readingMinutes: 11
+translationOf: 'coolify-documentation-502-503-recovery-ar'
 ---
 
 A 502 or 503 is an edge symptom, not a root cause. The fastest safe recovery is to identify the first failing layer, preserve the exact deployment identity and logs, and change one thing at a time. Restarting until the page happens to load can erase evidence and repeat the failure on the next release.
@@ -120,6 +121,12 @@ To claim uninterrupted availability, collect continuous external probes, contain
 8. Open a follow-up for the recurring class: migration compatibility, missing health separation, artifact build order, capacity, or replacement topology.
 
 If rollback is safe and faster, route back to the exact last known good artifact. Do not rebuild an old tag and call it the same release. If database writes make rollback unsafe, stop changes and execute the forward-repair plan.
+
+## Close the data and support boundary
+
+Before routing traffic, confirm the database and asset restore is complete and test any in-flight publish, indexing, email, webhook, or export jobs. Decide whether queued work is resumed, replayed with idempotency, or deliberately discarded. A healthy web container beside a lost job queue is not a complete recovery.
+
+Record the exact artifact, schema, content snapshot, supported release window, and EOL path. The repository is AGPL-3.0, but license compliance and use of project names or logos are separate questions. Obtain counsel for obligations material to your deployment; this runbook is not legal advice and does not grant trademark rights.
 
 ## When another deployment model is better
 

@@ -8,7 +8,8 @@ describe('marketing sitemap', () => {
     expect(lastmodByPath).toEqual({
       '/': '2026-08-24',
       '/ar': '2026-08-22',
-      '/ar/documentation-platforms': '2026-08-22',
+      '/documentation-platforms': '2026-09-03',
+      '/ar/documentation-platforms': '2026-09-03',
       '/ar/guides': '2026-09-03',
       '/cloud': '2026-07-13',
       '/pricing': '2026-08-24',

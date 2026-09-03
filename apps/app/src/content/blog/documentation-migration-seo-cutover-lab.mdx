@@ -13,6 +13,7 @@ related:
   - documentation-information-architecture-collaboration
   - ai-ready-documentation
 readingMinutes: 12
+translationOf: 'documentation-migration-seo-cutover-lab-ar'
 ---
 
 A safe documentation migration preserves reader tasks, not merely page files. The target must serve the right content at stable URLs, retain language and canonical relationships, keep assets reachable, and provide a measured route back if the cutover fails.
@@ -69,6 +70,10 @@ Include difficult cases:
 - a private page that must remain private.
 
 If the target is a visual editor, run the [round-trip fixture](/guides/fixtures/markdown-round-trip.mdx) through import, edit, and export. The source may normalize formatting, but the tested semantics must remain.
+
+Produce a machine-readable semantic-loss manifest for unsupported blocks, component attributes, embeds, diagrams, and frontmatter. Each entry needs the source URL, location, intended meaning, chosen replacement, severity, and owner. A transform warning must block publication when meaning, a security notice, code behavior, navigation, or an essential asset would disappear.
+
+Inventory assets separately from pages. Resolve relative paths, preserve alt text and MIME type, and copy the underlying objects for Git LFS rather than only its pointer files. Build an explicit multilingual URL map with source locale, target locale, old URL, new URL, canonical, translation sibling, and redirect result. Arabic slugs must survive encoding and decoding round trips; do not force translations to share the English slug.
 
 ## Phase 3: design redirects and canonical URLs
 
@@ -136,6 +141,8 @@ Watch support reports, internal search no-results, and high-value task completio
 Define triggers before the cutover. Examples include sustained public errors, failed authorization boundaries, missing high-value routes, invalid certificates, irreversible write errors, or an unbounded queue. Assign a duration and threshold only when you can measure it.
 
 Rollback may mean switching routing to the old read-only system, restoring DNS, or rolling forward with a configuration fix. If writes have entered a new incompatible schema, application rollback can corrupt data. State the safe point and the forward-repair plan.
+
+Also state how the two systems diverge after the freeze. If a rollback returns traffic to the old site after new comments, uploads, translations, redirects, or analytics configuration reached the target, list which changes are discarded, replayed, or reconciled and by whom. A route rollback without a content-divergence plan is incomplete.
 
 After rollback, preserve logs and artifacts. Do not immediately repeat the same deployment without identifying the failing layer. Update the rehearsal so the same class of failure is caught next time.
 

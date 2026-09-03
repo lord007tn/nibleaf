@@ -12,7 +12,8 @@ export interface MarketingSitemapEntry {
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/', lastmod: '2026-08-24' },
   { path: '/ar', lastmod: '2026-08-22' },
-  { path: '/ar/documentation-platforms', lastmod: '2026-08-22' },
+  { path: '/documentation-platforms', lastmod: '2026-09-03' },
+  { path: '/ar/documentation-platforms', lastmod: '2026-09-03' },
   { path: '/guides', lastmod: '2026-09-03' },
   { path: '/ar/guides', lastmod: '2026-09-03' },
   { path: '/cloud', lastmod: '2026-07-13' },

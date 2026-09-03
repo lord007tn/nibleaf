@@ -599,6 +599,7 @@ Last reviewed: 2026-09-03
 
 - [Home](${markdownAlternateUrl(`${origin}/`)}): overview and features
 - [Arabic home](${markdownAlternateUrl(`${origin}/ar`)}): Arabic product overview and RTL-first workflow
+- [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/documentation-platforms`)}): English source-backed platform evaluation
 - [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/ar/documentation-platforms`)}): source-backed Arabic buyer guide
 - [Nibleaf Cloud](${markdownAlternateUrl(`${origin}/cloud`)}): hosted documentation sites, free during beta
 - [Pricing](${markdownAlternateUrl(`${origin}/pricing`)}): free cloud beta and self-hosting requirements
@@ -702,6 +703,7 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 
 - Home: ${origin}/
 - Arabic home: ${origin}/ar
+- English platform comparison: ${origin}/documentation-platforms
 - Arabic platform comparison: ${origin}/ar/documentation-platforms
 - Cloud: ${origin}/cloud
 - Pricing: ${origin}/pricing

@@ -13,6 +13,7 @@ related:
   - coolify-documentation-502-503-recovery
   - open-source-documentation-tools
 readingMinutes: 11
+translationOf: 'documentation-production-readiness-decision-ar'
 ---
 
 A documentation stack is production-ready when the team can prove that readers receive the intended revision, authorized people can change it safely, failures are visible, and recovery has been rehearsed. A successful demo is useful, but it is not a release decision. The decision should be a dated record with evidence, owners, explicit unknowns, and rollback triggers.
@@ -101,6 +102,12 @@ Leave headroom for failure modes: a retry storm, a cold cache, an overlapping re
 For every indexable page, check one canonical URL, title, description, language, direction, and appropriate hreflang relationships. Ensure noindex pages are absent from sitemaps. Verify redirects do not chain or loop. Render the result in a browser at desktop and mobile widths because correct raw HTML does not prove readable navigation, usable tables, or correct RTL ordering.
 
 Machine clients deserve equivalent rigor: correct content types, content negotiation, stable Markdown aliases, recovery links, and explicit handling of missing paths. Test with credentials removed so an internal session cannot accidentally make a machine endpoint appear public.
+
+## Gate 10: support, end of life, and legal boundaries
+
+Name the exact application release, image digest, schema revision, and content snapshot covered by the decision. Record who supplies security fixes, how long the release is supported, the end-of-life signal, the upgrade route, and the emergency contact. “Open source” does not guarantee a response time; a commercial plan does not guarantee the behavior outside its written terms.
+
+For AGPL-licensed deployments, document how the team will satisfy the license for the way it modifies and offers the network service. Separate copyright license obligations from names, logos, domains, and other trademark questions. Have qualified counsel review obligations material to the organization; this operational guide is not legal advice and cannot grant trademark rights.
 
 ## When a different stack is the better answer
 

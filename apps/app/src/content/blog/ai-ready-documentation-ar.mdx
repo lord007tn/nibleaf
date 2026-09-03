@@ -1,0 +1,104 @@
+---
+title: 'توثيق جاهز لمساعدات AI من دون مصدر حقيقة ثانٍ'
+metaTitle: 'توثيق جاهز لـAI: HTML وMarkdown وllms.txt'
+description: 'اجعل التوثيق العام قابلاً للاكتشاف عبر HTML وMarkdown متكافئين وفهارس llms موجزة وجرد كامل واختبارات منع التسريب.'
+language: 'ar'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['الذكاء الاصطناعي', 'llms.txt', 'Markdown']
+related: ['ai-ready-documentation', 'docs-should-live-in-plain-markdown-ar', 'arabic-technical-documentation-rtl-checklist']
+translationOf: 'ai-ready-documentation'
+readingMinutes: 13
+---
+
+التوثيق الجاهز لمساعدات الذكاء الاصطناعي هو توثيق عام يملك تمثيلاً نصياً موثوقاً، واكتشافاً ثابتاً، وهوية مصدر واضحة، وحد الوصول نفسه الذي يطبقه الموقع البشري. ليس نسخة AI منفصلة، ولا وعداً بأن كل نموذج سيزحف إلى الموقع، ولا إذناً بكشف المسودات.
+
+التصميم الأكثر أماناً يبقي HTML هو canonical، ويشتق Markdown من لقطة النشر نفسها، ويعلن alternate بعلاقات معيارية. يوجه `llms.txt` الموجز إلى الموارد المهمة، بينما يوفر جرد كامل طريقاً لتعداد كل المصادر العامة.
+
+## احتفظ بمصدر محتوى واحد
+
+اختر المصدر المعتمد: ملفات Git أو لقطة قاعدة بيانات أو تمثيلاً ذا إصدارات. ولّد HTML وMarkdown وsitemap وملفات llms منه. الملخصات اليدوية الخاصة بـAI تنحرف سريعاً عن الحدود والأسعار والإصدارات.
+
+يمكن أن يضيف Markdown العنوان والوصف من metadata، لكنه يجب أن يحافظ على المتن. أزل التنقل والواجهات الزخرفية، واحتفظ بالعناوين والقوائم والجداول والشيفرة والروابط وalt والمخرجات النصية لمكونات MDX.
+
+## HTML أساسي وMarkdown بديل
+
+يبقى رابط HTML canonical. استخدم alias متوقعاً: `/guides/migration.md` مقابل `/guides/migration`، و`/index.md` للجذر. أعد `text/markdown; charset=utf-8`.
+
+```html
+<link rel="alternate" type="text/markdown" href="https://docs.example.test/ar/guides/migration.md" />
+<link rel="describedby" href="https://docs.example.test/llms.txt" />
+```
+
+وعبر HTTP:
+
+```http
+Link: <https://docs.example.test/ar/guides/migration.md>; rel="alternate"; type="text/markdown"
+Vary: Accept
+```
+
+يجب أن يعيد `Accept: text/markdown` المستند نفسه الذي يعيده alias. استخدم `Content-Location`، وأعد 406 للتفضيل غير المدعوم بدلاً من shell لا علاقة له.
+
+## اجعل `llms.txt` موجزاً
+
+دوره التوجيه، لا نسخ الموقع. أدرج اسم المنتج ووصفاً بسيطاً وحقائق وحدوداً وروابط hubs وsitemap والجرد الكامل وOpenAPI العام والمصدر. أضف تاريخ مراجعة للادعاءات الحساسة للزمن.
+
+لا يضمن الملف ingestion أو citation. افصل دعم المصدر `main` عن artifact المنشور، واترك المجهول مجهولاً.
+
+## وفر جرداً كاملاً
+
+يمكن لـ`llms-full.txt` أن يسرد كل مصدر Markdown عام. ولّده من registry نفسها التي تولد sitemap. إذا دخلت صفحة إلى sitemap وغابت عن الجرد، يجب أن يفشل الاختبار.
+
+في المواقع الكبيرة، لا يلزم جمع gigabytes في response واحد؛ المطلوب أن تكون كل صفحة قابلة للتعداد والجلب. حدث artifacts مع لقطة النشر بصورة ذرية حتى لا يختلط index جديد بأجسام قديمة.
+
+## افشل بصورة مغلقة للمحتوى المستبعد
+
+Markdown سطح تصدير. طبّق authorization قبل توليده. لا تجعل cookie أو preview token أو عضوية workspace endpoint الزاحف عاماً.
+
+استبعد المشاريع الخاصة، والمسودات والصفحات المخفية، واللغات noindex، والcanonical الخارجي، والترجمات المعطلة. طبق القاعدة نفسها على sitemap وllms والبحث والتصدير وOpenAPI وأزرار العرض والنسخ.
+
+اختبر الطلبات العامة بعد إزالة cookies وAuthorization. النتيجة الصحيحة لمسار خاص 404 غير كاشف، لا متن خاص مع noindex.
+
+## أضف عرض ونسخ Markdown بوضوح
+
+اعرض **عرض Markdown** و**نسخ Markdown** فقط للصفحة العامة القابلة للفهرسة. يجب أن يجلب النسخ الاستجابة المنشورة، لا buffer المحرر. استخدم تسميات عربية وحالة نجاح وخطأ معلنة لقارئ الشاشة وتحكماً بلوحة المفاتيح.
+
+## تحقق من التكافؤ عبر sitemap
+
+لكل URL وبلا جلسة:
+
+1. اطلب HTML وتحقق من 200 وcanonical وalternate و`describedby`.
+2. اطلب `Accept: text/markdown` وتحقق من النوع و`Vary` وهوية المصدر.
+3. اطلب alias وقارن الجسم.
+4. تحقق من عنوان ونص وروابط وشيفرة ومن غياب chrome.
+5. اطلب `.md` غير موجود وتحقق من 404 مفيد بلا أسرار.
+
+قارن مجموعة sitemap بالجرد الكامل، واختبر noindex والخاص صراحة. في التصدير الثابت، يجب أن يظهر `.md` بجانب كل `index.html` مؤهل فقط.
+
+## احفظ القصد متعدد اللغات
+
+يجب أن يحدد HTML اللغة والاتجاه، وأن يعيد Markdown محتوى اللغة المطلوبة لا fallback صامتاً. لا تصدر hreflang إلا لترجمة موجودة وقابلة للفهرسة.
+
+اختبر التطبيع العربي والهمزات والياء والألف المقصورة والبادئات واللواحق والمصطلحات اللاتينية وأرقام الأخطاء. احتفظ بالشيفرة LTR داخل RTL، وافحص النسخ على الهاتف. لا تعتبر corpus التجريبي benchmark لمنتجك؛ أضف أحكام استعلامات من مجال القراء.
+
+## اربط الإجابات بالمصادر العامة
+
+طبق tenant والvisibility واللغة والإصدار قبل model call. يجب أن تحمل citations صفحة ورابطاً ثابتاً. احتفظ بالبحث الحتمي كتراجع. سجل provider وmodel والإعدادات وcorpus عند التقييم.
+
+لا تعلن دقة من prompts منتقاة. انشر المنهج وحجم العينة وفئات الفشل والتاريخ. غياب quota قياس محجوب، لا درجة صفر.
+
+## راقب من دون توسيع الموافقة
+
+لا يحتاج Markdown العام إلى tracking جديد. إذا قست حركة المساعدات لاحقاً، راجع الغرض والاحتفاظ وتقليل البيانات والإفصاح. User-Agent قابل للتزوير ولا يثبت هويةً تسمح بالوصول.
+
+## متى يكون حل آخر أفضل؟
+
+Docusaurus وStarlight يبدأان من ملفات ثابتة، ما يبسط alternates للفرق المعتمدة على Git. قد يناسب GitBook التعاون المُدار، وMintlify توثيق المطورين. قيّم التصدير والاكتشاف والخصوصية عملياً.
+
+## تطبيق التصميم على Nibleaf
+
+يخزن مصدر Nibleaf Markdown في لقطات نشر، ويولّد HTML وMarkdown وaliases وdiscovery وتصديراً ثابتاً. هذه ادعاءات source-tree حتى تدخل إصداراً. لا تثبت أن نطاقاً عاماً يشغّل revision أو أن crawler استهلك الملفات.
+
+## المراجع وتاريخ المراجعة
+
+رُوجعت المراجع في 2026-09-03: [مقترح llms.txt](https://llmstxt.org/)، [التفاوض على المحتوى في MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Content_negotiation)، [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html)، [Google للنسخ المحلية](https://developers.google.com/search/docs/specialty/international/localized-versions)، و[OWASP Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html).
