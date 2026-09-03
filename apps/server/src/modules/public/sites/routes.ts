@@ -7,6 +7,12 @@ const passthrough = (_: unknown, next: () => Promise<void>) => next();
 const sitesRoutes = {
   site: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'Published site shell (branding + navigation).', responses: ok }),
   page: createRouteConfig({ guard: passthrough, tags: ['public'], description: 'A published page with TOC and neighbours.', responses: ok }),
+  markdown: createRouteConfig({
+    guard: passthrough,
+    tags: ['public'],
+    description: 'Public, indexable Markdown representation of one published page. Private and noindex content returns not found.',
+    responses: ok,
+  }),
   openapi: createRouteConfig({
     guard: passthrough,
     tags: ['public'],

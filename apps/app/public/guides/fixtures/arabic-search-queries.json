@@ -1,0 +1,8 @@
+[
+  { "query": "مفتاح API", "expectedDocumentIds": ["auth"] },
+  { "query": "مفاتيح الواجهة", "expectedDocumentIds": ["auth"] },
+  { "query": "فاتورتي", "expectedDocumentIds": ["billing"] },
+  { "query": "توقيع webhook", "expectedDocumentIds": ["webhooks"] },
+  { "query": "خطأ 401", "expectedDocumentIds": ["errors", "auth"] },
+  { "query": "تجاوز الحد", "expectedDocumentIds": ["errors"] }
+]

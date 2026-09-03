@@ -8,6 +8,8 @@ describe('published-site reader localization', () => {
     expect(t('changeLanguage')).toBe('تغيير اللغة');
     expect(t('toggleTheme')).toBe('تبديل السمة');
     expect(t('articleDetails')).toBe('تفاصيل المقالة');
+    expect(t('viewMarkdown')).toBe('عرض Markdown');
+    expect(t('copyMarkdown')).toBe('نسخ Markdown');
     expect(t('copyCode')).toBe('نسخ الشيفرة');
     expect(t('copied')).toBe('تم النسخ');
     expect(t('details')).toBe('التفاصيل');

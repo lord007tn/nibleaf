@@ -17,7 +17,7 @@ const meta = (head: ReturnType<typeof pageHead>, key: string): string | undefine
 const title = (head: ReturnType<typeof pageHead>): string | undefined => head.meta?.find((m) => 'title' in m)?.title;
 const canonical = (head: ReturnType<typeof pageHead>): string | undefined => head.links?.find((l) => l.rel === 'canonical')?.href;
 const hreflangs = (head: ReturnType<typeof pageHead>): Record<string, string> =>
-  Object.fromEntries((head.links ?? []).filter((l) => l.rel === 'alternate').map((l) => [l.hrefLang, l.href]));
+  Object.fromEntries((head.links ?? []).filter((l) => l.rel === 'alternate' && l.hrefLang).map((l) => [l.hrefLang, l.href]));
 
 const base = (over: Partial<SitePage> = {}): SitePage => ({
   project: {
@@ -26,7 +26,7 @@ const base = (over: Partial<SitePage> = {}): SitePage => ({
     slug: 'acme',
     description: 'Site default description',
     primaryDomain: null,
-    config: { seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
+    config: { visibility: 'public', seo: { metaTitle: 'Acme', metaDescription: 'Site SEO desc', socialImage: 'https://cdn/site-og.png' } },
   },
   activeLanguage: 'en',
   activeVersion: 'main',
@@ -164,6 +164,25 @@ describe('pageHead SEO cascade', () => {
 });
 
 describe('pageHead canonical + hreflang', () => {
+  it('advertises the stable Markdown alternate and covering llms.txt index', () => {
+    const head = pageHead(base(), 'p1');
+    expect(head.links).toContainEqual({ rel: 'alternate', type: 'text/markdown', href: 'http://localhost:4310/sites/p1/quickstart.md' });
+    expect(head.links).toContainEqual({ rel: 'describedby', href: 'http://localhost:4310/sites/p1/llms.txt' });
+  });
+
+  it('does not advertise Markdown for noindex or externally canonicalized pages', () => {
+    const noindex = pageHead(base({ page: { ...base().page, config: { seo: { noindex: true } } } }), 'p1');
+    expect(noindex.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+    const external = pageHead(base({ page: { ...base().page, config: { seo: { canonicalUrl: 'https://example.com/source' } } } }), 'p1');
+    expect(external.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+  });
+
+  it('does not advertise Markdown unless the project is explicitly public', () => {
+    const head = pageHead(base({ project: { ...base().project, config: { seo: { allowIndex: true } } } }), 'p1');
+    expect(head.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+    expect(head.links?.some((link) => link.rel === 'describedby')).toBe(false);
+  });
+
   it('canonicalizes the default language to a clean (param-less) URL', () => {
     const head = pageHead(base({ activeLanguage: 'en' }), 'p1', 'en');
     expect(canonical(head)).toBe('http://localhost:4310/sites/p1/quickstart');

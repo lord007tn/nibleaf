@@ -3,11 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
-const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn(), answerSite: vi.fn() }));
+const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn(), getSitePageMarkdown: vi.fn(), answerSite: vi.fn() }));
 
 vi.mock('@/actions/sites', () => ({
   getSite: vi.fn(),
   getSitePage: vi.fn(),
+  getSitePageMarkdown: mocks.getSitePageMarkdown,
   getSiteOpenApi: mocks.getSiteOpenApi,
   searchSite: vi.fn(),
   answerSite: mocks.answerSite,
@@ -71,6 +72,18 @@ describe('published changelog RSS endpoint', () => {
     expect(response.headers.get('content-type')).toContain('application/rss+xml');
     expect(response.headers.get('cache-control')).toContain('public');
     expect(await response.text()).toContain('<rss');
+  });
+});
+
+describe('published page Markdown endpoint', () => {
+  it('serves public snapshot Markdown without making it credential-dependent', async () => {
+    mocks.getSitePageMarkdown.mockResolvedValueOnce({ body: '# Introduction\n\nStart here.\n', isPrivate: false });
+    const response = await app.request('/sites/project/markdown?path=getting-started%2Fintroduction&lang=en');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/markdown');
+    expect(response.headers.get('cache-control')).toContain('public');
+    expect(await response.text()).toContain('# Introduction');
+    expect(mocks.getSitePageMarkdown).toHaveBeenCalledWith('project', 'getting-started/introduction', 'en', undefined);
   });
 });
 

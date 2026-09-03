@@ -1,3 +1,4 @@
+import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 
 /**
@@ -27,8 +28,8 @@ export const llmsIndexablePages = (snapshot: SiteSnapshot): SnapshotPage[] => {
   );
 };
 
-/** Absolute URL of a page, matching the sitemap's shape: default language gets
- *  the clean (param-less) canonical URL, non-default versions get a path prefix. */
+/** Absolute URL of a page's Markdown alternate. Its path mirrors the sitemap's
+ * canonical HTML URL and appends `.md`; query parameters remain intact. */
 export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: string): string => {
   const defaultCode = defaultLanguage(snapshot.project).code;
   const pageVersion = snapshot.project.versions.find((version) => version.id === page.versionId);
@@ -40,7 +41,7 @@ export const llmsPageUrl = (snapshot: SiteSnapshot, page: SnapshotPage, base: st
   // segment so the URL is a valid ASCII link in a Markdown list.
   const pagePath = page.path ? `/${page.path.split('/').filter(Boolean).map(encodeURIComponent).join('/')}` : '';
   const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-  return `${base}${versionPath}${pagePath}${langQuery}`;
+  return markdownAlternateUrl(`${base}${versionPath}${pagePath}${langQuery}`);
 };
 
 /** Collapse a description to a single Markdown-safe line. */

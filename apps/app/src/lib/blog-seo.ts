@@ -32,7 +32,7 @@ export function articleHead(entry: BlogEntry, translation?: BlogEntry) {
       }),
     },
     breadcrumbLd([
-      { name: t('home'), path: '/' },
+      { name: t('home'), path: arabic ? '/ar' : '/' },
       { name: t('blog'), path: '/blog' },
       { name: entry.title, path },
     ]),

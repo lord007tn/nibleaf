@@ -1,6 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["apps/docs/.source/**"],
+  "ignore": [
+    "apps/docs/.source/**",
+    "apps/app/public/guides/fixtures/markdown-round-trip.mdx"
+  ],
   "workspaces": {
     ".": {
       "entry": [

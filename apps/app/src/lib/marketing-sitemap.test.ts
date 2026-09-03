@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARKETING_SITEMAP, marketingSitemap, marketingSitemapEntries } from './marketing-sitemap';
+import { MARKETING_SITEMAP, marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from './marketing-sitemap';
 
 describe('marketing sitemap', () => {
   it('uses each route material-change date', () => {
@@ -8,13 +8,16 @@ describe('marketing sitemap', () => {
     expect(lastmodByPath).toEqual({
       '/': '2026-08-24',
       '/ar': '2026-08-22',
-      '/ar/documentation-platforms': '2026-08-22',
+      '/documentation-platforms': '2026-09-03',
+      '/ar/documentation-platforms': '2026-09-03',
+      '/ar/guides': '2026-09-03',
       '/cloud': '2026-07-13',
       '/pricing': '2026-08-24',
       '/self-hosting': '2026-08-15',
       '/about': '2026-08-24',
       '/contact': '2026-08-15',
       '/developers': '2026-08-24',
+      '/guides': '2026-09-03',
       '/tools/rtl-documentation-readiness': '2026-08-19',
       '/compare/nibleaf-vs-mintlify': '2026-08-17',
       '/compare/nibleaf-vs-gitbook': '2026-08-17',
@@ -44,5 +47,17 @@ describe('marketing sitemap', () => {
     expect(paths).not.toContain('/sites/$projectId');
     expect(paths.some((path) => path === '/app' || path.startsWith('/app/'))).toBe(false);
     expect(paths).not.toContain('/sign-up');
+  });
+
+  it('maps every sitemap document to one stable Markdown source URL', () => {
+    const entries = marketingSitemapEntries();
+    const sources = marketingMarkdownSourceUrls('https://nibleaf.com');
+
+    expect(sources).toHaveLength(entries.length);
+    expect(new Set(sources).size).toBe(entries.length);
+    expect(sources).toContain('https://nibleaf.com/_index.md');
+    expect(sources).toContain('https://nibleaf.com/ar/guides.md');
+    expect(sources).toContain('https://nibleaf.com/pricing.md');
+    expect(sources.every((source) => source.endsWith('.md'))).toBe(true);
   });
 });

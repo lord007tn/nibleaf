@@ -30,7 +30,7 @@ vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn() }));
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
-import { getSitePage, searchSite } from './sites';
+import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
   parentId: null,
@@ -107,6 +107,131 @@ describe('getSitePage lede vs excerpt', () => {
       'Getting started Get started with the Acme API in about ten minutes. This guide walks you through creating an API key, making your first request, and…',
     );
     expect(result.page.excerpt.length).toBeLessThanOrEqual(160);
+  });
+
+  it('serves a public page as title, summary, and authored Markdown', async () => {
+    const result = await getSitePageMarkdown('project-1', 'authentication');
+    expect(result).toEqual({
+      body: `# Authentication\n\n> How tokens work.\n\n${body}\n`,
+      isPrivate: false,
+    });
+  });
+
+  it('serves an exact Arabic path and rejects a requested locale that fell back to English', async () => {
+    const languages = [
+      { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, config: null },
+      { code: 'ar', label: 'Arabic', direction: 'RTL' as const, isDefault: false, config: null },
+    ];
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select
+        ? {
+            name: 'Docs',
+            description: null,
+            icon: null,
+            config: {},
+            accessMode: 'PUBLIC',
+            takedownAt: null,
+            domains: [],
+            languages: languages.map((language) => ({ code: language.code, enabled: true, config: null, projectTranslations: [] })),
+            addons: [],
+            organization: { usagePlan: null },
+          }
+        : { id: 'project-1' },
+    );
+    invalidatePublishedSiteConfig('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: `deployment-ar-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValue({
+      snapshot: {
+        ...snapshot,
+        project: { ...snapshot.project, languages },
+        pages: [snapshot.pages[0], page({ id: 'page-ar', path: 'المقدمة', position: 1, languageCode: 'ar', title: 'المقدمة', content: 'ابدأ هنا.' })],
+      },
+    });
+
+    await expect(getSitePageMarkdown('project-1', 'المقدمة', 'ar')).resolves.toMatchObject({ body: '# المقدمة\n\nابدأ هنا.\n' });
+    await expect(getSitePageMarkdown('project-1', 'authentication', 'ar')).rejects.toMatchObject({
+      status: 404,
+      details: { language: 'ar', reason: 'language_fallback' },
+    });
+  });
+
+  it('fails closed for noindex and private-reader content even when the viewer is authorized', async () => {
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-noindex-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: {
+        ...snapshot,
+        pages: [{ ...snapshot.pages[0], config: { seo: { noindex: true } } }],
+      },
+    });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-canonical-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: {
+        ...snapshot,
+        pages: [{ ...snapshot.pages[0], config: { seo: { canonicalUrl: 'https://origin.example/authentication' } } }],
+      },
+    });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-hidden-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: { ...snapshot, pages: [{ ...snapshot.pages[0], hidden: true }] },
+    });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select
+        ? {
+            name: 'Docs',
+            description: null,
+            icon: null,
+            config: {},
+            accessMode: 'READERS',
+            takedownAt: null,
+            domains: [],
+            languages: [{ code: 'en', enabled: true, config: null, projectTranslations: [] }],
+            addons: [],
+            organization: { usagePlan: null },
+          }
+        : { id: 'project-1' },
+    );
+    invalidatePublishedSiteConfig('project-1');
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-private-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({ snapshot });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('fails closed when the resolved language disables indexing', async () => {
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select
+        ? {
+            name: 'Docs',
+            description: null,
+            icon: null,
+            config: {},
+            accessMode: 'PUBLIC',
+            takedownAt: null,
+            domains: [],
+            languages: [{ code: 'en', enabled: true, config: { seo: { allowIndex: false } }, projectTranslations: [] }],
+            addons: [],
+            organization: { usagePlan: null },
+          }
+        : { id: 'project-1' },
+    );
+    invalidatePublishedSiteConfig('project-1');
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-language-noindex-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: {
+        ...snapshot,
+        project: {
+          ...snapshot.project,
+          languages: [{ ...snapshot.project.languages[0], config: { seo: { allowIndex: false } } }],
+        },
+      },
+    });
+
+    await expect(getSitePageMarkdown('project-1', 'authentication', 'en')).rejects.toMatchObject({ status: 404 });
   });
 });
 

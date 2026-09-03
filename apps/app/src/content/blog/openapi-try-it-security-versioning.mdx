@@ -1,0 +1,89 @@
+---
+title: 'OpenAPI Try it safely: credentials, CORS, versions, and external references'
+metaTitle: 'OpenAPI Try it security and versioning guide'
+description: 'Ship an OpenAPI Try it console with test-only credentials, correct browser and CORS behavior, aligned versions and servers, safe external references, and RTL checks.'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['openapi', 'api-docs', 'security']
+related: ['openapi-try-it-security-versioning-ar', 'versioned-documentation-release-lifecycle', 'documentation-production-readiness-decision']
+translationOf: 'openapi-try-it-security-versioning-ar'
+readingMinutes: 12
+---
+
+An API console turns documentation into an active client. That is valuable only when the browser request, credential model, selected server, schema version, and rendered response all match the promise around the button.
+
+A successful `curl` command does not prove Try it works: browsers enforce origin and cookie rules that command-line clients do not. Likewise, a successful browser call can still be unsafe if it sends production credentials or follows an unreviewed external reference.
+
+## Separate browser proof from curl proof
+
+Keep both checks. `curl` verifies DNS, TLS, routing, server authentication, and the API contract without browser policy. A real browser verifies the documentation origin, preflight behavior, allowed methods and headers, credential mode, cookie attributes, redirects, and response visibility.
+
+Record the exact docs URL, API server URL, operation, request headers excluding secrets, status, relevant CORS headers, and response shape. Label the evidence browser or command line. Do not use one as a substitute for the other.
+
+## Use test-only credentials and data
+
+The console should target a sandbox or a narrowly isolated test tenant. Issue short-lived credentials limited to documented test operations and synthetic data. Never embed a production API key in HTML, JavaScript, OpenAPI examples, screenshots, logs, or shared browser storage.
+
+For operations with side effects, provide a disposable fixture and visible warning. Prefer idempotency keys and bounded quotas. Disable dangerous production operations in the public console even if the underlying specification describes them.
+
+## Model each authentication scheme honestly
+
+For API keys, state the header or query location and use a revocable test key. Avoid query credentials because URLs leak through history and logs. For OAuth, use authorization code with PKCE where appropriate, exact redirect URIs, narrow scopes, and a documented sign-out and revocation path.
+
+Cookie-authenticated APIs require a deliberate credential mode, compatible `SameSite` and `Secure` attributes, CSRF protection for state changes, and an origin policy that does not combine wildcard origins with credentials. Do not make the console appear signed out while an old first-party cookie silently authorizes requests.
+
+## Verify preflight and CORS
+
+Browsers can send an `OPTIONS` preflight before the documented request. Test it from the real documentation origin for every method and non-simple header the console uses. The server should allow the exact origin, methods, and headers needed, vary caches by `Origin` when responses differ, and expose only the response headers the UI reads.
+
+Follow redirects during the test. A redirect to another hostname needs its own CORS behavior, and an authorization header must not leak to an unintended origin. Validate errors as well as 2xx responses; unreadable 401 or 422 bodies produce a misleading console.
+
+## Bind the console to a version and server
+
+Each docs version should load the matching OpenAPI snapshot. Display the API version and selected server near Try it, then include them in copied examples. The `latest`, `stable`, `beta`, and end-of-life labels should agree with the documentation release policy and changelog.
+
+Do not let an old docs page silently execute against the newest production server. If an API version is retired, disable execution or route to a safe compatibility sandbox and explain the limitation. Test deep links and cached pages after changing the default server.
+
+## Keep specification, server, and changelog aligned
+
+Gate publishing on three comparisons: operations and schemas in the rendered reference versus the pinned OpenAPI artifact; configured servers versus the deployment inventory; and breaking changes versus the changelog and migration guide.
+
+Record an artifact digest and deployment or release identifier. A mutable specification URL can make yesterday's docs render tomorrow's schema without a content review.
+
+## Treat external `$ref` as a fetch boundary
+
+An external reference can trigger server-side or build-time network access. Allow only reviewed schemes and origins, pin immutable revisions or digests, and resolve references in a sandbox with time, recursion, depth, and byte limits.
+
+Defend against SSRF by blocking loopback, private, link-local, metadata, and internal service addresses after DNS resolution. Revalidate every redirect, cap redirect count, reject credential-bearing URLs, and do not forward repository or API credentials to a new origin.
+
+Store a resolved artifact for release so a remote file cannot change independently. Fail publishing on cycles, oversized documents, ambiguous base URLs, unapproved redirects, or digest drift.
+
+## Render requests and responses safely
+
+Escape response bodies and schema descriptions before display. Treat HTML, SVG, Markdown, example values, and error messages as untrusted. Cap body size, truncate with an explicit notice, and never render returned script in the documentation origin.
+
+Redact credentials from copied curl examples, browser devtools captures, analytics, and support bundles. Privacy-safe telemetry can record operation ID, status class, latency bucket, docs version, and error category without bodies or tokens.
+
+## Test RTL and mixed-direction API content
+
+For Arabic pages, verify that the interface uses RTL while HTTP methods, paths, JSON, code, UUIDs, and timestamps retain readable LTR isolation. Test long endpoints, nested schemas, enum tables, tabs, request editors, copied code, validation errors, and mobile horizontal scrolling.
+
+Arabic labels must not reverse punctuation inside a path or alter the bytes copied to the clipboard. Compare the copied request from English and Arabic pages; locale may change explanatory prose, not method, URL, header names, or payload semantics.
+
+## Publish with an executable gate
+
+Before release, run representative read, validation-error, authenticated, expired-credential, preflight, redirected, rate-limited, and side-effect calls from both desktop and mobile browser contexts. Repeat for every supported version and locale, plus command-line contract checks.
+
+Block release on a production secret in client assets, broad credential scope, wildcard credentialed CORS, a version/server mismatch, unsafe external reference, unescaped response, or Arabic copy corruption. If Try it cannot be safely enabled for an operation, keep the reference and disable execution with a precise reason.
+
+## What to verify next
+
+Choose one harmless and one state-changing operation. Capture browser and curl results against the test tenant, rotate the credential, switch docs version, invalidate a cache, and repeat in English and Arabic. The resulting evidence is the minimum useful acceptance record for the console.
+
+## Sources and review date
+
+Sources reviewed 2026-09-03:
+
+- [Latest published OpenAPI Specification](https://spec.openapis.org/oas/latest.html)
+- [MDN guide to Cross-Origin Resource Sharing](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS)
+- [OWASP server-side request forgery prevention guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)

@@ -3,6 +3,7 @@ import { prisma } from '@nibleaf/database';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
   defaultLanguage,
@@ -33,6 +34,7 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
 import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
+import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
 import { resolvePublishedSearchContext, resolvePublishedSearchLanguages } from '@/lib/search-configuration';
@@ -497,6 +499,25 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
   };
 };
 
+/**
+ * Canonical public Markdown representation for one published page.
+ *
+ * This deliberately fails closed for every credentialed/private surface. A
+ * workspace member or invited reader may render HTML, but cannot turn private
+ * or audience-restricted content into a crawlable Markdown response.
+ */
+export const getSitePageMarkdown = async (identifier: string, path: string, lang?: string, version?: string): Promise<SiteTextDocument> => {
+  const data = await getSitePage(identifier, path, lang, version);
+  const requestedLanguage = lang?.trim();
+  if (requestedLanguage && data.activeLanguage !== requestedLanguage) {
+    throw notFound('page', { path, language: requestedLanguage, reason: 'language_fallback' });
+  }
+  if (!isPublicMarkdownPage(data)) {
+    throw notFound('page', { path, reason: 'not_public_markdown' });
+  }
+  return { body: buildPublishedPageMarkdown(data), isPrivate: false };
+};
+
 const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
   const first = flattenNav(buildNavTree(pages, languageCode))[0];
   return first ? pages.find((p) => p.path === first.path) : undefined;
@@ -835,7 +856,10 @@ export const getSiteRobots = async (identifier: string): Promise<SiteTextDocumen
   if (isPrivate || config?.seo?.allowIndex === false) {
     return { body: 'User-agent: *\nDisallow: /\n', isPrivate };
   }
-  return { body: `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`, isPrivate };
+  return {
+    body: `User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`,
+    isPrivate,
+  };
 };
 
 /** llms.txt for a published site (llmstxt.org): title, description and a

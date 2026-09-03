@@ -1,0 +1,171 @@
+---
+title: Documentation migration and SEO cutover lab
+metaTitle: Documentation migration and SEO cutover runbook
+description: A reversible lab for inventorying documentation URLs, validating content and metadata, rehearsing redirects, cutting over, and defining rollback triggers.
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags:
+  - migration
+  - seo
+  - operations
+related:
+  - documentation-production-readiness-decision
+  - documentation-information-architecture-collaboration
+  - ai-ready-documentation
+readingMinutes: 12
+translationOf: 'documentation-migration-seo-cutover-lab-ar'
+---
+
+A safe documentation migration preserves reader tasks, not merely page files. The target must serve the right content at stable URLs, retain language and canonical relationships, keep assets reachable, and provide a measured route back if the cutover fails.
+
+This lab separates preparation, rehearsal, cutover, and observation. Run it against a non-production host first. The included URL map uses example paths only; replace every row with your own inventory before it influences a real redirect or DNS change.
+
+## Define success and authority
+
+Name the source system, target system, migration owner, DNS owner, search owner, and decision maker. Record the exact source export and target revision. Decide when the source becomes read-only and which system is authoritative if an editor changes a page during the migration.
+
+Define measurable acceptance criteria. Examples include:
+
+- every legacy indexable URL resolves in one hop to its approved target;
+- every target page returns the expected status, canonical, language, and title;
+- all required images, downloads, and code samples render;
+- private or retired content remains unavailable;
+- a labeled search query set meets its agreed relevance threshold;
+- the team can restore the old route within the stated rollback window.
+
+Do not use “traffic did not drop” as the only criterion. Analytics may be delayed, incomplete, consent-dependent, or unavailable. Technical parity and rendered-browser checks can be proved immediately; search performance needs a longer observation window.
+
+## Phase 1: build the URL and content inventory
+
+Export URLs from the current sitemap, navigation, analytics if legitimately available, backlink tools if available, and server logs under the applicable retention policy. These sources answer different questions. A sitemap shows intended indexable pages; logs show requests; backlinks show external dependencies. Missing access to one source is an unknown, not evidence of zero use.
+
+For each URL, record:
+
+- current path and final target path;
+- status and indexability;
+- language and equivalent translations;
+- canonical URL and any external canonical;
+- page owner and reader job;
+- content type, attachments, and embedded assets;
+- inbound internal links and known external importance;
+- disposition: migrate, consolidate, retire with replacement, or intentionally remove.
+
+Use [the example redirect map](/guides/fixtures/migration-url-map.csv) for its column shape. It deliberately contains no production hosts. Store full URLs only when cross-domain behavior matters; path-only maps are easier to review and reuse across rehearsal hosts.
+
+Do not redirect every removed URL to the home page. That hides missing content and can be treated as a soft 404. Consolidate only when the destination genuinely satisfies the same task. An intentionally removed page can return 404 or 410 according to your policy.
+
+## Phase 2: transform content deterministically
+
+Keep the raw export immutable. Transformation should be scripted or at least repeatable from a documented mapping. Record conversions for frontmatter, heading levels, links, code fences, tabs, callouts, images, and custom components. Unsupported constructs need an explicit fallback; silent deletion is not acceptable.
+
+Compare structure before visual polish. Count pages, headings, links, code blocks, and assets. Parse Markdown and MDX rather than diffing only bytes, because serializers can normalize whitespace while preserving meaning. Then inspect representative pages in the target editor and rendered site.
+
+Include difficult cases:
+
+- a long reference page with deep headings;
+- a page containing tables and multiple code languages;
+- a mixed Arabic/English page with commands and numbers;
+- a page with relative images and downloads;
+- a page with redirects and historical anchors;
+- a private page that must remain private.
+
+If the target is a visual editor, run the [round-trip fixture](/guides/fixtures/markdown-round-trip.mdx) through import, edit, and export. The source may normalize formatting, but the tested semantics must remain.
+
+Produce a machine-readable semantic-loss manifest for unsupported blocks, component attributes, embeds, diagrams, and frontmatter. Each entry needs the source URL, location, intended meaning, chosen replacement, severity, and owner. A transform warning must block publication when meaning, a security notice, code behavior, navigation, or an essential asset would disappear.
+
+Inventory assets separately from pages. Resolve relative paths, preserve alt text and MIME type, and copy the underlying objects for Git LFS rather than only its pointer files. Build an explicit multilingual URL map with source locale, target locale, old URL, new URL, canonical, translation sibling, and redirect result. Arabic slugs must survive encoding and decoding round trips; do not force translations to share the English slug.
+
+## Phase 3: design redirects and canonical URLs
+
+Create one direct redirect from each moved source to its final destination. Avoid chains such as old → intermediate → new. Preserve query parameters only when the target uses them safely; drop tracking parameters when policy permits. Keep fragments in mind: HTTP does not send the fragment to the server, so anchor compatibility depends on the target page’s heading IDs or client behavior.
+
+Choose the permanent status your infrastructure supports consistently. Google documents 301 and 308 as permanent redirects; temporary rehearsals can use a temporary status, but the production mapping must be reviewed explicitly. Verify actual responses with redirects disabled in the client so a friendly final page cannot hide a loop or extra hop.
+
+Each target page should have one self-referencing canonical unless it intentionally points to another source. Translated pages need reciprocal hreflang only where equivalent pages exist. Do not fabricate an Arabic alternate that resolves to English content. Noindex pages must stay out of sitemaps and machine-readable source indexes.
+
+## Phase 4: rehearse on a disposable hostname
+
+Deploy the target revision to a hostname that cannot be mistaken for production. Block indexing through authentication or a clear noindex/robots policy appropriate to the environment. Do not copy production analytics credentials into the rehearsal just to make dashboards light up.
+
+Run the inventory twice:
+
+1. Request each target URL without following redirects. Record status, `Location`, canonical, content type, language, and robots metadata.
+2. Render representative pages in a browser at desktop and mobile widths. Exercise navigation, search, theme, copy buttons, code overflow, tables, and RTL behavior.
+
+Compare screenshots for layout, not pixel identity. A new platform may intentionally change typography. The acceptance question is whether the reader can complete the task and whether meaning, order, focus, and interactive affordances remain correct.
+
+Test machine representations separately. For a site that supports Markdown negotiation, request the canonical URL with `Accept: text/markdown`, request its `.md` alias, and compare the substantive content. Verify that HTML advertises the alternate and an `llms.txt` recovery index. Repeat anonymously to ensure authenticated browser state does not expose private content.
+
+## Phase 5: prepare a cutover packet
+
+The packet should be executable by someone other than the author. Include:
+
+- approved URL map and checksum or commit;
+- exact source export and target deployment identity;
+- DNS records and current TTLs;
+- certificate and custom-domain readiness;
+- database migration order if applicable;
+- write-freeze start and exception process;
+- smoke-test URLs in every language;
+- rollback command or provider action;
+- decision authority and communication channel;
+- observation window and stop conditions.
+
+Lower DNS TTLs early enough for caches to observe the change, but remember that TTL does not guarantee every resolver expires at the same instant. Confirm the target can obtain or already has a valid certificate for the final hostname. A health check on an internal container port does not prove the public TLS path works.
+
+## Phase 6: freeze, export, and cut over
+
+At the freeze, stop ordinary writes in the source or enforce a documented exception log. Take the final export and rerun the deterministic transform. Compare its manifest with the rehearsal artifact so unexpected late content is visible.
+
+Apply compatible schema migrations before new application instances depend on them. Bring up the target, check readiness, then change routing or DNS. If the platform replaces containers in place, expect that a replacement window can produce 502 or 503 responses unless the provider proves overlap and healthy traffic switching. Do not describe such a deployment as zero downtime based only on configuration intent.
+
+Run smoke tests from outside the host:
+
+- home, deep guide, reference, asset, and search routes;
+- English and Arabic pages on desktop and mobile;
+- legacy redirects with redirect following disabled;
+- sitemap, robots, `llms.txt`, and Markdown alternates;
+- one deliberately private route, which must remain inaccessible;
+- the exact deployed revision marker.
+
+## Phase 7: observe and decide
+
+Use continuous probes through the replacement window and the agreed observation period. Capture status, latency, response identity, and timestamps. Separate edge errors from application logs and provider state. A provider dashboard saying “running” does not override a public 503.
+
+Inspect crawl errors and search indexing over time through authenticated tools when access exists. Do not request indexing or change production merely because the local rehearsal passes. Search systems recrawl on their own schedules, and a technically correct move can still take time to stabilize.
+
+Watch support reports, internal search no-results, and high-value task completions where privacy-safe measurements already exist. Do not add analytics or consent behavior as an incidental migration step; that is a separately reviewed product change.
+
+## Rollback triggers and mechanics
+
+Define triggers before the cutover. Examples include sustained public errors, failed authorization boundaries, missing high-value routes, invalid certificates, irreversible write errors, or an unbounded queue. Assign a duration and threshold only when you can measure it.
+
+Rollback may mean switching routing to the old read-only system, restoring DNS, or rolling forward with a configuration fix. If writes have entered a new incompatible schema, application rollback can corrupt data. State the safe point and the forward-repair plan.
+
+Also state how the two systems diverge after the freeze. If a rollback returns traffic to the old site after new comments, uploads, translations, redirects, or analytics configuration reached the target, list which changes are discarded, replayed, or reconciled and by whom. A route rollback without a content-divergence plan is incomplete.
+
+After rollback, preserve logs and artifacts. Do not immediately repeat the same deployment without identifying the failing layer. Update the rehearsal so the same class of failure is caught next time.
+
+## When GitBook, Mintlify, Docusaurus, or Starlight is a better destination
+
+GitBook may be the better destination when browser-first collaboration and vendor-operated hosting are the dominant requirements. Mintlify may fit a developer-facing, Git-centered workflow with integrated API documentation. Docusaurus or Starlight may be better when Git is already the content authority and static output reduces the infrastructure you want to own.
+
+The migration method stays the same: verify export fidelity, build explicit redirects, retain source identity, and prove rendered and machine-readable behavior. Product selection does not remove cutover risk.
+
+## Applying the lab to Nibleaf
+
+Nibleaf stores authored pages as Markdown in published snapshots and supports database-backed visual editing. Its exact migration path depends on the source adapter and the deployed revision. Source `main` can differ from the pinned public container release, so the cutover packet must identify both the code revision tested and the artifact actually run.
+
+Use Nibleaf’s export and import checks for content, its sitemap and page metadata for discovery, and its public health and release evidence for runtime verification. These features reduce manual work; they do not prove DNS, TLS, provider overlap, backup restoration, or third-party search recrawl in your environment.
+
+## Primary references and review date
+
+References reviewed 2026-09-03:
+
+- [Google Search Central: site moves with URL changes](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes)
+- [Google Search Central: redirects and Google Search](https://developers.google.com/search/docs/crawling-indexing/301-redirects)
+- [RFC 9110: HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
+- [Docusaurus deployment documentation](https://docusaurus.io/docs/deployment)
+- [Starlight internationalization guide](https://starlight.astro.build/guides/i18n/)
+
+Keep the final evidence package: URL inventory, transform revision, redirect results, browser captures, public probes, and the go/no-go record. The migration is complete only when ownership transfers, the observation period closes, and the rollback state is deliberately retired—not when the first page returns 200.

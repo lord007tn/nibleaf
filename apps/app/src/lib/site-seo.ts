@@ -1,3 +1,5 @@
+import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 
 /**
@@ -292,6 +294,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
 
   // A page may pin its own canonical URL (e.g. when content is syndicated).
   const links: Tag[] = [{ rel: 'canonical', href: pageSeo?.canonicalUrl?.trim() || url }];
+  if (isPublicMarkdownPage(data)) {
+    links.push(
+      { rel: 'alternate', type: 'text/markdown', href: markdownAlternateUrl(url) },
+      { rel: 'describedby', href: `${canonicalSiteBase(projectId, urlOptions)}/llms.txt` },
+    );
+  }
   // hreflang alternates so search engines associate the per-language versions.
   // Only emit alternates for languages that actually have this page (path set),
   // using the clean URL for the default language. Skip when there's only the one

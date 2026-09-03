@@ -1,0 +1,93 @@
+---
+title: 'MCP documentation security: a threat model for scoped, read-only access'
+metaTitle: 'MCP documentation security threat model'
+description: 'Threat-model documentation MCP access across authorization scope, prompt injection, SSRF, replay, tool poisoning, schema changes, audit logs, and bilingual corpora.'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['mcp', 'security', 'ai-governance']
+related: ['mcp-documentation-security-threat-model-ar', 'private-documentation-ai-access-verification', 'ai-ready-documentation']
+translationOf: 'mcp-documentation-security-threat-model-ar'
+readingMinutes: 12
+---
+
+A read-only documentation tool can still disclose private pages, fetch an attacker-controlled URL, poison an assistant's instructions, or make a stale authorization decision repeatable. “It cannot write” reduces one class of impact; it is not a complete security boundary.
+
+This threat model treats the MCP server, its data connectors, the host application, and the documentation corpus as separate trust zones. Adapt it to the actual transport and identity provider you run, then test the resulting controls rather than assuming protocol compliance proves safety.
+
+## Define assets, actors, and trust boundaries
+
+Protect page bodies, drafts, source links, search queries, membership data, API keys, signed URLs, audit records, and deployment metadata. Actors include anonymous users, invited readers, authors, administrators, a compromised client, a malicious page author, and an operator with access to logs.
+
+Draw every boundary: client to MCP server, server to authorization service, server to search index, server to repository or object store, and server to external URL. Record which principal is propagated and which component can change tenant, project, deployment, language, version, or visibility scope.
+
+## Scope before retrieval
+
+Derive scope from authenticated server-side claims. A request should resolve a bounded tuple such as:
+
+```text
+tenant + project + deployment + language + version + visibility + allowed tools
+```
+
+Apply that tuple in the storage or search query, not after a broad result set returns. Reject mixed identifiers before provider access. A page ID from tenant B must not become readable because the caller supplied tenant A in one field and tenant B in another.
+
+Use bilingual fixtures with matching and intentionally mismatched English and Arabic pages. Verify that a permitted English page does not implicitly authorize its Arabic translation, an older private version, or an unpublished deployment.
+
+## Treat documentation as untrusted input
+
+A page can contain text that tells an assistant to ignore policy, call another tool, reveal credentials, or fetch a URL. Keep content in a clearly delimited data channel and state that embedded instructions have no authority. Do not interpolate page text into system or developer instructions.
+
+Test direct and indirect prompt injection in titles, headings, code blocks, alt text, frontmatter, OpenAPI descriptions, translated text, and retrieved snippets. Include obfuscated Unicode and mixed-direction content. The expected result is useful citation of the content without a policy or tool-scope change.
+
+## Constrain tools and outbound requests
+
+Prefer narrow tools such as `search_pages` and `get_page` over a general URL fetcher. Validate inputs against a strict schema, cap result count and response size, and ignore unknown fields.
+
+If external references are necessary, defend against SSRF: allow approved schemes and destinations, resolve and re-check redirects, block loopback, link-local, private, metadata, and internal service addresses, and enforce connect/read timeouts and byte limits. Revalidate after DNS resolution and at every redirect. Never return authorization headers to a redirected origin.
+
+## Prevent replay and confused authority
+
+Bind short-lived credentials to audience, scope, and client where the transport supports it. Rotate secrets, invalidate them on membership or visibility changes, and reject expired or reused nonces for sensitive exchanges. Do not place tokens, signed URLs, or complete queries in logs.
+
+Test a captured request after sign-out, key rotation, role downgrade, project transfer, deployment replacement, and version retirement. A cache must not extend access beyond revocation merely because the underlying tool is read-only.
+
+## Defend against tool poisoning
+
+Tool names, descriptions, schemas, and server instructions are executable influence over a model. Pin the expected server identity and schema digest. Review descriptions for requests to exfiltrate context, weaken confirmation, or call unrelated tools.
+
+On a schema or permission change, fail closed and require reapproval before the client exposes the changed capability. Add contract tests for removed constraints, broadened enums, new URL fields, larger response limits, and write-like operations disguised as reads.
+
+## Make key lifecycle explicit
+
+Issue separate credentials per environment and integration. Grant the minimum project, deployment, language, version, and visibility scope. Document owner, creation time, allowed audience, rotation interval, revocation procedure, and emergency kill switch.
+
+Prove rotation by running the old and new keys during a bounded overlap, then confirm the old key fails across direct calls, caches, and long-lived sessions. A key removed from the dashboard but accepted by a cache is not revoked.
+
+## Keep audits useful and privacy-safe
+
+Record time, bounded actor or service identity, tenant/project identifiers, tool name, authorization outcome, result count, policy version, request correlation ID, and latency. Avoid page bodies, secrets, signed URLs, and raw queries that may contain personal or confidential data.
+
+Define access, retention, deletion, and incident-review rules for the logs themselves. Sample or hash high-cardinality values only when investigators can still reconstruct the security decision without recovering content.
+
+## Run an adversarial verification matrix
+
+Test each tool with authorized, unauthorized, expired, cross-tenant, cross-project, wrong-language, wrong-version, unpublished, and removed-page fixtures. Repeat through cold and warm caches. Include oversized responses, redirect chains, DNS changes, malformed Unicode, repeated calls, and changed tool schemas.
+
+For bilingual corpora, compare retrieval and citations separately by locale. Record parity gaps as defects; do not silently fall back from missing Arabic content to a private or stale English version.
+
+## Set release gates
+
+Block release when any tool can retrieve outside its server-derived scope, content can alter tool policy, outbound fetching reaches an unapproved network target, revocation fails through a warm cache, or a schema broadening bypasses reapproval. Also block when a cited page cannot be opened under the same authorization decision.
+
+Residual risk should name an owner, review date, affected surface, and compensating control. “Read-only” and “behind authentication” are descriptions, not evidence.
+
+## What to verify next
+
+Run the matrix against a disposable tenant pair, one English/Arabic content pair, a retired version, and a replaced deployment. Save sanitized request/response evidence, policy and schema digests, cache state, and revocation timestamps so the result can be repeated after every server or client change.
+
+## Sources and review date
+
+Sources reviewed 2026-09-03:
+
+- [Current Model Context Protocol specification](https://modelcontextprotocol.io/specification/latest)
+- [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization)
+- [OWASP server-side request forgery prevention guidance](https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html)

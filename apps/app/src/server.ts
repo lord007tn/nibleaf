@@ -2,6 +2,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { translateFn } from '@nibleaf/i18n';
+import {
+  canonicalPathFromMarkdownAlias,
+  decodePublishedPathname,
+  documentUrlForBase,
+  markdownAlternateUrl,
+  markdownDiscoveryLinkHeader,
+} from '@nibleaf/shared/markdown-discovery';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import got from 'got';
@@ -11,7 +18,7 @@ import { BLOG_ENTRIES } from '@/lib/blog';
 import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
-import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
+import { marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
 import {
@@ -256,6 +263,15 @@ const internalRequestHeaders = () => {
   };
 };
 
+/** Public machine documents intentionally never inherit reader credentials. */
+const publicMachineRequestHeaders = () => {
+  const requestAuth = publishedRequestAuth.getStore();
+  return {
+    ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
+    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+  };
+};
+
 // ─── Custom-domain host → project resolution ─────────────────────────────────
 
 const cache = new Map<string, { projectId: string | null; at: number }>();
@@ -405,6 +421,56 @@ async function proxySeoDocument(projectId: string, file: string, origin?: string
   }
 }
 
+async function proxyPublishedMarkdown(projectId: string, path: string, search: URLSearchParams): Promise<SeoProxyResult | null> {
+  try {
+    const query = new URLSearchParams({ path });
+    const language = search.get('lang');
+    if (language) query.set('lang', language);
+    const version = path.replace(/^\/+|\/+$/gu, '').split('/')[0];
+    if (version) query.set('version', version);
+    const response = await got(`${SELF}/api/public/sites/${projectId}/markdown?${query}`, {
+      headers: publicMachineRequestHeaders(),
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    if (!response.ok) return { ok: false, status: response.statusCode };
+    const headers: Record<string, string> = { 'content-type': 'text/markdown; charset=utf-8' };
+    const cacheControl = response.headers['cache-control'];
+    if (cacheControl) headers['cache-control'] = cacheControl;
+    return { ok: true, response: new Response(response.body, { status: 200, headers }) };
+  } catch {
+    return null;
+  }
+}
+
+const siteMarkdownUnavailableResponse = (origin: string): Response => {
+  const response = new Response(
+    `# Page not found\n\nThe requested page has no public Markdown representation. Recover from [llms.txt](${origin}/llms.txt).\n`,
+    {
+      status: 404,
+      headers: {
+        'cache-control': 'no-store',
+        'content-type': 'text/markdown; charset=utf-8',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    },
+  );
+  appendVary(response.headers, 'Accept');
+  return response;
+};
+
+const addMarkdownDiscovery = (response: Response, canonicalUrl: string, llmsUrl: string): Response => {
+  const decorated = new Response(response.body, response);
+  decorated.headers.set('Link', markdownDiscoveryLinkHeader(canonicalUrl, llmsUrl));
+  appendVary(decorated.headers, 'Accept');
+  if (decorated.headers.get('content-type')?.startsWith('text/markdown')) {
+    decorated.headers.set('Content-Location', markdownAlternateUrl(canonicalUrl));
+  }
+  return decorated;
+};
+
+const llmsUrlForBase = (base: string): string => `${base.replace(/\/+$/u, '')}/llms.txt`;
+
 /** Response for a site whose SEO doc the API refused (private/unpublished/taken
  *  down) or could not deliver (unreachable). We cannot prove the site is public,
  *  so robots.txt gets a restrictive `Disallow: /` (never the permissive
@@ -476,6 +542,11 @@ const SELF_HOST_ROBOTS = 'User-agent: *\nDisallow: /app/\nDisallow: /app$\nDisal
  *  surfaces (incl. token-bearing auth utility pages), and point at the sitemap. */
 function marketingRobots(origin: string): string {
   return [
+    'User-agent: OAI-SearchBot',
+    'Allow: /',
+    'Disallow: /app/',
+    'Disallow: /api/',
+    '',
     'User-agent: *',
     'Allow: /',
     'Disallow: /app/',
@@ -499,7 +570,7 @@ function marketingLlms(origin: string): string {
 
 > Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
-Last reviewed: 2026-08-24
+Last reviewed: 2026-09-03
 
 ## Key facts
 
@@ -519,26 +590,32 @@ Last reviewed: 2026-08-24
 - Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
 - Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta
 
+## Guide academy
+
+- [English guide hub](${markdownAlternateUrl(`${origin}/guides`)}): practical decision labs, migration runbooks, operations recovery, Arabic evaluation, and AI-ready documentation
+- [Arabic guide hub](${markdownAlternateUrl(`${origin}/ar/guides`)}): Arabic-first routing to the same evidence, with every card's available language stated explicitly
+
 ## Pages
 
-- [Home](${origin}/): overview and features
-- [Arabic home](${origin}/ar): Arabic product overview and RTL-first workflow
-- [Documentation platforms for Arabic teams](${origin}/ar/documentation-platforms): source-backed Arabic buyer guide
-- [Nibleaf Cloud](${origin}/cloud): hosted documentation sites, free during beta
-- [Pricing](${origin}/pricing): free cloud beta and self-hosting requirements
-- [Self-hosting](${origin}/self-hosting): guided installer and deployment architecture
-- [About](${origin}/about): mission and stack
-- [Contact](${origin}/contact): product support, privacy, security, abuse, and editorial corrections
-- [Nibleaf developer resources](${origin}/developers): public API contract, agent access, authentication boundaries, and CLI status
-- [RTL documentation readiness grader](${origin}/tools/rtl-documentation-readiness): browser-only static HTML checks with transparent unknowns
-- [Nibleaf vs Mintlify](${origin}/compare/nibleaf-vs-mintlify)
-- [Nibleaf vs GitBook](${origin}/compare/nibleaf-vs-gitbook)
-- [Nibleaf vs Docusaurus](${origin}/compare/nibleaf-vs-docusaurus)
-- [Mintlify alternatives](${origin}/alternatives/mintlify)
-- [GitBook alternatives](${origin}/alternatives/gitbook)
-- [ReadMe alternatives](${origin}/alternatives/readme)
-- [Terms of Service](${origin}/terms)
-- [Privacy Policy](${origin}/privacy)
+- [Home](${markdownAlternateUrl(`${origin}/`)}): overview and features
+- [Arabic home](${markdownAlternateUrl(`${origin}/ar`)}): Arabic product overview and RTL-first workflow
+- [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/documentation-platforms`)}): English source-backed platform evaluation
+- [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/ar/documentation-platforms`)}): source-backed Arabic buyer guide
+- [Nibleaf Cloud](${markdownAlternateUrl(`${origin}/cloud`)}): hosted documentation sites, free during beta
+- [Pricing](${markdownAlternateUrl(`${origin}/pricing`)}): free cloud beta and self-hosting requirements
+- [Self-hosting](${markdownAlternateUrl(`${origin}/self-hosting`)}): guided installer and deployment architecture
+- [About](${markdownAlternateUrl(`${origin}/about`)}): mission and stack
+- [Contact](${markdownAlternateUrl(`${origin}/contact`)}): product support, privacy, security, abuse, and editorial corrections
+- [Nibleaf developer resources](${markdownAlternateUrl(`${origin}/developers`)}): public API contract, agent access, authentication boundaries, and CLI status
+- [RTL documentation readiness grader](${markdownAlternateUrl(`${origin}/tools/rtl-documentation-readiness`)}): browser-only static HTML checks with transparent unknowns
+- [Nibleaf vs Mintlify](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-mintlify`)})
+- [Nibleaf vs GitBook](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-gitbook`)})
+- [Nibleaf vs Docusaurus](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-docusaurus`)})
+- [Mintlify alternatives](${markdownAlternateUrl(`${origin}/alternatives/mintlify`)})
+- [GitBook alternatives](${markdownAlternateUrl(`${origin}/alternatives/gitbook`)})
+- [ReadMe alternatives](${markdownAlternateUrl(`${origin}/alternatives/readme`)})
+- [Terms of Service](${markdownAlternateUrl(`${origin}/terms`)})
+- [Privacy Policy](${markdownAlternateUrl(`${origin}/privacy`)})
 
 ## Product truth and source
 
@@ -568,7 +645,7 @@ ${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
 
 ## Blog
 
-${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${origin}/blog/${entry.slug}): ${entry.description}`).join('\n')}
+${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${markdownAlternateUrl(`${origin}/blog/${entry.slug}`)}): ${entry.description}`).join('\n')}
 
 ## Full details
 
@@ -626,6 +703,7 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 
 - Home: ${origin}/
 - Arabic home: ${origin}/ar
+- English platform comparison: ${origin}/documentation-platforms
 - Arabic platform comparison: ${origin}/ar/documentation-platforms
 - Cloud: ${origin}/cloud
 - Pricing: ${origin}/pricing
@@ -642,9 +720,17 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Product documentation: https://docs.nibleaf.com
 - Integrated release notes: https://docs.nibleaf.com/releases/august-2026-capabilities
 - Ordered migration and rollback guide: https://docs.nibleaf.com/self-hosting/combined-release-migration
-- Add-ons reference: https://docs.nibleaf.com/product/add-ons
+- Add-ons reference: https://docs.nibleaf.com/use-nibleaf/add-ons
 - MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
 - Public source: https://github.com/lord007tn/nibleaf
+
+## Public Markdown source inventory
+
+Every URL in the public marketing sitemap has a clean Markdown sibling. This list is generated from the same sitemap registry, so additions cannot silently disappear from llms-full.txt.
+
+${marketingMarkdownSourceUrls(origin)
+  .map((url) => `- ${url}`)
+  .join('\n')}
 `;
 }
 
@@ -834,21 +920,77 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
     return Response.redirect(`${proto}://${host}${url.pathname.replace(/\/+$/, '')}${url.search}`, 308);
   }
 
+  // Stable `.md` aliases render the same published/marketing document as the
+  // canonical HTML path. `/pricing.md` remains its dedicated product artifact.
+  const markdownAliasCanonical = isGetLike && url.pathname !== '/pricing.md' ? canonicalPathFromMarkdownAlias(url.pathname) : null;
+  let routedRequest = request;
+  if (markdownAliasCanonical) {
+    url.pathname = markdownAliasCanonical;
+    routedRequest = new Request(url, request);
+    routedRequest.headers.set('accept', 'text/markdown');
+    routedRequest.headers.set('x-nibleaf-markdown-alias', '1');
+  }
+
   const isMarketingOrigin = IS_CLOUD_MARKETING && (bare === MARKETING_HOST || host === MARKETING_HOST);
   const marketingMarkdownPaths = new Set(marketingSitemapEntries().map((entry) => entry.path));
   const renderHtml = async (documentRequest: Request): Promise<Response> => {
     const documentUrl = new URL(documentRequest.url);
     if (!(isGetLike && isDocumentPath(documentUrl.pathname))) return startHandler(documentRequest, ...rest);
 
-    if (!isMarketingOrigin) {
-      if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
-      return startHandler(documentRequest, ...rest);
-    }
-
     const preferred = preferredRepresentation(documentRequest.headers.get('accept'));
     if (!preferred) return notAcceptableHtmlResponse();
 
+    if (!isMarketingOrigin) {
+      const siteMatch = /^\/sites\/([^/]+)(\/.*)?$/.exec(documentUrl.pathname);
+      if (preferred === 'text/markdown') {
+        if (!siteMatch?.[1]) return notAcceptableHtmlResponse();
+        const projectId = siteMatch[1];
+        const routedPath = siteMatch[2] || '/';
+        const publicPath = decodePublishedPathname(routedPath);
+        const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
+        const meta = await resolveSiteMeta(projectId);
+        const base = meta?.primaryDomain
+          ? `https://${meta.primaryDomain}`
+          : requestOrigin
+            ? requestOrigin
+            : `${documentUrl.origin}/sites/${projectId}`;
+        if (publicPath === null) return siteMarkdownUnavailableResponse(base);
+        const proxied = await proxyPublishedMarkdown(projectId, publicPath, documentUrl.searchParams);
+        if (!proxied?.ok) return siteMarkdownUnavailableResponse(base);
+        const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
+        return withoutHeadBody(addMarkdownDiscovery(proxied.response, canonicalUrl, llmsUrlForBase(base)), documentRequest.method);
+      }
+      if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
+      const rendered = await startHandler(documentRequest, ...rest);
+      if (rendered.status >= 400 || !siteMatch?.[1]) return rendered;
+      const meta = await resolveSiteMeta(siteMatch[1]);
+      if (!meta || meta.isPrivate) return rendered;
+      const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
+      const base = meta.primaryDomain
+        ? `https://${meta.primaryDomain}`
+        : requestOrigin
+          ? requestOrigin
+          : `${documentUrl.origin}/sites/${siteMatch[1]}`;
+      const routedPath = siteMatch[2] || '/';
+      const publicPath = decodePublishedPathname(routedPath);
+      if (publicPath === null) return rendered;
+      // The public Markdown action owns the complete project/language/page
+      // eligibility contract. Only advertise an alternate that it confirms.
+      const markdown = await proxyPublishedMarkdown(siteMatch[1], publicPath, documentUrl.searchParams);
+      if (!markdown?.ok) return rendered;
+      const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
+      return addMarkdownDiscovery(rendered, canonicalUrl, llmsUrlForBase(base));
+    }
+
     const isMarkdownCandidate = marketingMarkdownPaths.has(documentUrl.pathname);
+    if (preferred === 'text/markdown' && documentUrl.pathname === '/pricing') {
+      const protocol = documentRequest.headers.get('x-forwarded-proto') || documentUrl.protocol.replace(':', '') || 'https';
+      const origin = `${protocol}://${documentUrl.host}`;
+      const response = new Response(marketingPricingMarkdown(origin), {
+        headers: { 'cache-control': 'public, max-age=300', 'content-type': 'text/markdown; charset=utf-8' },
+      });
+      return withoutHeadBody(addMarkdownDiscovery(response, `${origin}/pricing`, `${origin}/llms.txt`), documentRequest.method);
+    }
     const renderRequest = preferred === 'text/markdown' ? asHtmlRenderRequest(documentRequest) : documentRequest;
     const rendered = await startHandler(renderRequest, ...rest);
 
@@ -863,11 +1005,17 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
         return rendered;
       }
-      return withoutHeadBody(await marketingMarkdownResponse(rendered, documentUrl.toString()), documentRequest.method);
+      const markdown = await marketingMarkdownResponse(rendered, documentUrl.toString());
+      return withoutHeadBody(
+        addMarkdownDiscovery(markdown, documentUrl.toString(), new URL('/llms.txt', documentUrl.origin).toString()),
+        documentRequest.method,
+      );
     }
 
     const response = new Response(rendered.body, rendered);
-    if (isMarkdownCandidate) appendVary(response.headers, 'Accept');
+    if (isMarkdownCandidate) {
+      return addMarkdownDiscovery(response, documentUrl.toString(), new URL('/llms.txt', documentUrl.origin).toString());
+    }
     return response;
   };
 
@@ -903,10 +1051,10 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
           if (meta?.primaryDomain && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
           }
-          return renderHtml(request);
+          return renderHtml(routedRequest);
         }
       }
-      return renderHtml(request);
+      return renderHtml(routedRequest);
     }
 
     // robots/sitemap/llms are served at the domain root (they are not in SKIP,
@@ -922,7 +1070,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
       }
     }
     if (isAppOwnedPath(url.pathname)) {
-      return startHandler(request, ...rest);
+      return startHandler(routedRequest, ...rest);
     }
     if (!isAppOwnedPath(url.pathname)) {
       const projectId = await resolveHost(bare);
@@ -937,7 +1085,7 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;
         // Stamp the real domain origin so the SSR head builds canonical/og/hreflang
         // against the custom domain root, not the internal /sites/:id origin.
-        const rewritten = new Request(url, request);
+        const rewritten = new Request(url, routedRequest);
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         rewritten.headers.set('x-nibleaf-site-origin', `${proto}://${host}`);
         return renderHtml(rewritten);

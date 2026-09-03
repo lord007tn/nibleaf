@@ -103,10 +103,10 @@ function getPlatforms(t: T): Platform[] {
   ];
 }
 
-function ArabicShell({ children }: { children: ReactNode }) {
+export function ArabicShell({ children, englishHref = '/' }: { children: ReactNode; englishHref?: string }) {
   const t = useArabicT();
   return (
-    <div className="min-h-screen bg-background text-foreground" dir="rtl">
+    <div className="min-h-screen bg-background text-foreground" dir="rtl" lang="ar">
       <div className="border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs">
         {t('marketing.arabicSeo.shell.notice')}
       </div>
@@ -135,7 +135,11 @@ function ArabicShell({ children }: { children: ReactNode }) {
             </a>
           </nav>
           <div className="ms-auto flex items-center gap-2">
-            <a className="hidden h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-muted sm:inline-flex" href="/" hrefLang="en">
+            <a
+              className="hidden h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-muted sm:inline-flex"
+              href={englishHref}
+              hrefLang="en"
+            >
               English
             </a>
             <a
@@ -376,7 +380,12 @@ export function ArabicDocumentationPlatformsPage() {
       <article>
         <header className="border-border border-b">
           <div className="mx-auto max-w-4xl px-6 py-20">
-            <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.comparison.eyebrow')}</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-medium text-primary text-sm">{t('marketing.arabicSeo.comparison.eyebrow')}</p>
+              <a className="text-muted-foreground text-sm underline underline-offset-4" href="/documentation-platforms" hrefLang="en">
+                English
+              </a>
+            </div>
             <h1 className="mt-4 text-balance font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
               {t('marketing.arabicSeo.comparison.heading')}
             </h1>

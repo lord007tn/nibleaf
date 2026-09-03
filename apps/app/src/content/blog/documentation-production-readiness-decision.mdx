@@ -1,0 +1,134 @@
+---
+title: Is your documentation stack production-ready? A go/no-go decision record
+metaTitle: 'Documentation production readiness: a go/no-go record'
+description: A practical evidence template for deciding whether a documentation stack is ready across ownership, access, recovery, releases, search, and operations.
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags:
+  - production-readiness
+  - governance
+  - operations
+related:
+  - documentation-migration-seo-cutover-lab
+  - coolify-documentation-502-503-recovery
+  - open-source-documentation-tools
+readingMinutes: 11
+translationOf: 'documentation-production-readiness-decision-ar'
+---
+
+A documentation stack is production-ready when the team can prove that readers receive the intended revision, authorized people can change it safely, failures are visible, and recovery has been rehearsed. A successful demo is useful, but it is not a release decision. The decision should be a dated record with evidence, owners, explicit unknowns, and rollback triggers.
+
+This guide is platform-neutral. It applies to a static-site generator in Git, a managed documentation service, or a self-hosted editor backed by a database. The implementation changes; the evidence categories do not.
+
+## Start with a one-page decision record
+
+Write the decision before the final rehearsal. The document should name the proposed release, the exact source revision or image digest, the decision date, the approvers, the reader populations, and the domains in scope. Then give each gate one of four states: **proved**, **failed**, **unknown**, or **not applicable with a reason**.
+
+Avoid a percentage score. Ten easy green checks must not outweigh one unknown backup restore or one failed authorization boundary. A go decision means every critical gate is proved. An unknown remains unknown until there is evidence; it is never a zero, a pass, or a reason to silently reduce scope.
+
+For every failed or unknown item, record:
+
+- the accountable owner, not merely a team name;
+- the artifact that would prove closure;
+- the due date or release gate;
+- the rollback or stop condition if it remains unresolved.
+
+## Gate 1: content ownership and portability
+
+Identify the authoritative source. It may be a Git commit, a database snapshot, or an export artifact. “The editor” is not precise enough. Ask which representation wins if the visual editor, Markdown file, and deployed page disagree.
+
+Export a representative set containing headings, tables, code, images, internal links, redirects, and any supported MDX components. Import it into a clean environment and compare meaning, not only byte equality. Formatting normalization can be harmless; dropped component attributes, rewritten links, or lost bidirectional text are not.
+
+Use the checked-in [round-trip fixture](/guides/fixtures/markdown-round-trip.mdx) as a baseline, then add your own most difficult page. Confirm the export is readable without the vendor application. If leaving the product requires a private API, document the credentials, rate limits, and recovery owner.
+
+## Gate 2: identity, roles, and private content
+
+List every access mode: public, workspace-only, invited reader, preview, and administrative. Test each with an anonymous browser, an ordinary member, and an administrator. A private page must not appear through search, sitemap, feeds, machine-readable Markdown, an AI endpoint, an asset proxy, or cached HTML.
+
+Verify invite expiry, member removal, role changes, and session revocation. If a reverse proxy or CDN caches responses, prove that cache keys vary on the attributes that affect access. Test direct URLs rather than relying on hidden navigation. A 200 response containing a client-side “not authorized” shell is still a leak if the protected content is in the response.
+
+Record where secrets live, who can rotate them, and how an operator distinguishes an expired credential from an application outage. Do not put production tokens or customer identifiers in the decision record.
+
+## Gate 3: release identity and change control
+
+The deployed revision must be inspectable. For a static site, retain the Git SHA and build artifact identifier. For a container, record an immutable digest in addition to a human-friendly tag. For a managed platform, capture the platform’s deployment ID and the source revision if it exposes one.
+
+Prove the public page matches that identity. CI being green shows that a candidate passed checks; it does not prove which candidate serves traffic. Fetch a release marker or compare a deliberately unique, non-sensitive change in the rendered browser. Keep source-main claims separate from released-artifact claims when features have merged but no public release contains them.
+
+Require review for navigation, redirect, access-control, and schema changes. These are high-blast-radius changes even when the prose diff is small. A normal typo can use a lighter path.
+
+## Gate 4: migration and rollback behavior
+
+Database migrations should be compatible with the old and new application during the replacement window, or the deployment plan must explicitly stop traffic. Test the upgrade from the currently deployed schema, not only a blank database. Test the rollback that the team actually intends to use.
+
+Some migrations cannot be rolled back safely after new data is written. In that case, state the forward-repair plan and the precise point after which application rollback is unsafe. “Restore the backup” is not a plan until restore time, data-loss window, credentials, and validation queries have been rehearsed.
+
+For content migrations, use the separate [SEO cutover lab](/blog/documentation-migration-seo-cutover-lab). It covers URL inventory, redirects, canonical metadata, write freeze, and post-cutover comparison.
+
+## Gate 5: health, observability, and alerts
+
+Separate liveness from readiness. Liveness answers whether a process should be restarted. Readiness answers whether it should receive traffic. A process can be alive while its database is unavailable or a migration is incomplete.
+
+Monitor the whole reader path: DNS, TLS, edge or proxy, application, database, cache, object storage, and search dependencies. Record which failures cause a degraded experience and which make the site unavailable. Logs should include a request or correlation ID but exclude page bodies, secrets, and unnecessary personal data.
+
+Test alert delivery and ownership during the hours the documentation is expected to serve readers. An alert configured in a dashboard but never delivered to a person is an unknown. Retain enough history to compare a publish spike with ordinary reader traffic.
+
+## Gate 6: backups and recovery
+
+A backup is proved only after a restore. Rehearse restoration into an isolated destination, validate row or object counts, open representative pages, and confirm search can be rebuilt. Record the recovery point achieved and the elapsed recovery time; do not claim an RPO or RTO that was never measured.
+
+Back up every authoritative store. Database dumps without uploaded assets are incomplete. Object storage without page metadata is incomplete. If Git is the source of truth, protect repository access and build configuration as well as content.
+
+Keep the restore procedure accessible during an identity-provider or primary-region outage. At least two people should be able to execute it, but access should remain auditable and revocable.
+
+## Gate 7: search and AI retrieval
+
+Build a labeled query set from real reader jobs. Include exact terms, synonyms, product names, error codes, and every supported language. Measure top-result relevance and no-result behavior against a fixed corpus. Do not convert missing analytics into a claim that nobody searches for a topic.
+
+If semantic search or generated answers are optional, retain an immediate deterministic rollback such as full-text search. Tenant filters must be applied before results reach a model or caller. Citations should resolve to public, canonical pages and must not expose hidden or noindex content.
+
+For public AI access, confirm that each public HTML page has an equivalent Markdown representation, that `llms.txt` is concise, and that the complete source inventory is recoverable. The [AI-ready documentation guide](/blog/ai-ready-documentation) provides a sitemap-wide parity procedure.
+
+## Gate 8: performance and capacity
+
+Measure the public reader path on representative desktop and mobile connections. Capture field data when available and label lab measurements as synthetic. Test long pages, code-heavy pages, search, images, and navigation—not only the home page.
+
+Capacity limits should come from observation. Measure steady state, publish and indexing peaks, queue depth, database connections, memory, and recovery time. The [resource observation worksheet](/guides/fixtures/resource-sizing-observations.csv) demonstrates the columns, but its values are illustrative and are not product requirements.
+
+Leave headroom for failure modes: a retry storm, a cold cache, an overlapping replacement, or a search rebuild. A single successful load test does not prove indefinite capacity.
+
+## Gate 9: metadata, discovery, and browser rendering
+
+For every indexable page, check one canonical URL, title, description, language, direction, and appropriate hreflang relationships. Ensure noindex pages are absent from sitemaps. Verify redirects do not chain or loop. Render the result in a browser at desktop and mobile widths because correct raw HTML does not prove readable navigation, usable tables, or correct RTL ordering.
+
+Machine clients deserve equivalent rigor: correct content types, content negotiation, stable Markdown aliases, recovery links, and explicit handling of missing paths. Test with credentials removed so an internal session cannot accidentally make a machine endpoint appear public.
+
+## Gate 10: support, end of life, and legal boundaries
+
+Name the exact application release, image digest, schema revision, and content snapshot covered by the decision. Record who supplies security fixes, how long the release is supported, the end-of-life signal, the upgrade route, and the emergency contact. “Open source” does not guarantee a response time; a commercial plan does not guarantee the behavior outside its written terms.
+
+For AGPL-licensed deployments, document how the team will satisfy the license for the way it modifies and offers the network service. Separate copyright license obligations from names, logos, domains, and other trademark questions. Have qualified counsel review obligations material to the organization; this operational guide is not legal advice and cannot grant trademark rights.
+
+## When a different stack is the better answer
+
+A Git-native generator such as Docusaurus or Starlight is often the better choice when engineers own nearly every change, pull requests are the established review boundary, and static hosting minimizes operational burden. A managed platform such as GitBook can be the better choice when non-technical collaboration and vendor-operated infrastructure matter more than self-hosting. Mintlify can be a strong fit for teams centered on Git-backed developer documentation and integrated API experiences.
+
+Do not choose a database-backed visual platform merely to avoid teaching two writers Git, and do not choose docs-as-code if it excludes the people responsible for keeping support and policy content accurate. Production readiness includes organizational fit.
+
+## Applying the record to Nibleaf
+
+Nibleaf’s source tree provides explicit roles, immutable publish snapshots, Markdown export, public robots and sitemap generation, Orama search as the default rollback path, and self-host deployment assets. Source `main` also contains capabilities that may not exist in the pinned public container release. A Nibleaf go/no-go record must therefore name the exact commit or image digest and verify the configured database, cache, storage, proxy, domain, and search providers.
+
+The repository’s automated checks are evidence about source behavior. They are not evidence that a particular public domain runs that source, that a backup restored, or that a provider delivered an alert. Those remain environment-specific gates.
+
+## Primary references and review date
+
+References reviewed 2026-09-03:
+
+- [Google Search Central: site moves with URL changes](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes)
+- [OWASP Application Security Verification Standard](https://owasp.org/www-project-application-security-verification-standard/)
+- [Docker Compose production guidance](https://docs.docker.com/compose/how-tos/production/)
+- [Docusaurus documentation](https://docusaurus.io/docs)
+- [Starlight documentation](https://starlight.astro.build/)
+
+Treat vendor documentation as a description of supported behavior, then prove the behavior in your own configuration. The final record should fit on one page, with linked evidence stored elsewhere. If any critical row still says unknown, the honest decision is “not yet,” followed by the smallest rehearsal that can resolve it.
