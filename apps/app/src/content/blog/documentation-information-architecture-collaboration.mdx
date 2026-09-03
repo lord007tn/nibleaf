@@ -1,0 +1,137 @@
+---
+title: Documentation information architecture and collaboration lab
+metaTitle: Documentation information architecture and collaboration
+description: Design a documentation tree from reader jobs, page types, ownership, review states, and measured findability before moving an entire content set.
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags:
+  - information-architecture
+  - collaboration
+  - publishing
+related:
+  - documentation-migration-seo-cutover-lab
+  - docs-should-live-in-plain-markdown
+  - choosing-documentation-template
+readingMinutes: 10
+---
+
+Good documentation architecture helps a reader predict where an answer lives. It also gives a team a predictable way to propose, review, publish, and retire that answer. Navigation alone cannot fix unclear ownership, and a collaboration tool cannot fix a tree organized around an internal org chart.
+
+This lab begins with reader jobs, then maps page types, paths, owners, and review states. It is independent of any platform. Run it on one learning path before reorganizing a full site.
+
+## Collect reader jobs, not requested page titles
+
+Interview support, product, engineering, sales engineering, and a small set of readers. Ask what the reader is trying to accomplish, what they know at the start, what result confirms success, and which errors interrupt them. A request for an “authentication page” may represent several jobs: choose an auth method, create a key, rotate a secret, debug a 401, or satisfy a security review.
+
+Write each job as a verb and outcome:
+
+- evaluate whether the product supports an integration;
+- complete a first successful request;
+- understand a concept before choosing a configuration;
+- look up a field or error code;
+- recover from a failed operation;
+- confirm a policy, limit, or support boundary.
+
+Rank jobs by evidence you actually have. Existing search data, support volume, interviews, and task research are different sources. If analytics access is missing, label demand unknown rather than assigning zero. Do not introduce new tracking simply to complete this exercise.
+
+## Choose page types with distinct promises
+
+A compact system often needs four page types:
+
+1. **Tutorial** — a controlled learning experience for a newcomer.
+2. **How-to guide** — steps toward a specific outcome, assuming some context.
+3. **Explanation** — concepts, tradeoffs, and mental models.
+4. **Reference** — accurate facts organized for lookup.
+
+Troubleshooting can be a fifth type when incident recovery is frequent enough to deserve its own pattern. Release notes are chronological records and should not replace current reference. Marketing comparison pages answer selection questions and need dated sources; they are not substitutes for operational documentation.
+
+Give every page one primary type. A tutorial overloaded with every possible parameter becomes difficult to follow, while a reference page full of unexplained narrative becomes difficult to scan. Link between types at the point the reader’s job changes.
+
+## Map a single path end to end
+
+Choose one high-value journey, such as first API request. Create a simple map:
+
+| Stage | Reader question | Page type | Completion signal | Owner |
+| --- | --- | --- | --- | --- |
+| Evaluate | Can I use my language and auth model? | Explanation | constraint understood | product |
+| Prepare | What do I need before starting? | How-to | prerequisites ready | developer education |
+| Execute | How do I make the first call? | Tutorial | successful response | API team |
+| Expand | Which fields and errors exist? | Reference | value found | API team |
+| Recover | Why did this request fail? | Troubleshooting | fault isolated | support + API |
+
+The table exposes gaps without designing navigation prematurely. It also prevents five teams from creating five pages called “Getting started.”
+
+## Design navigation around stable reader concepts
+
+Top-level groups should survive an org restructure. “Platform,” “SDKs,” “Administration,” and “Security” are usually more stable than squad names. Keep labels concrete, short, and distinct. Avoid a miscellaneous group that becomes the default destination for uncertain ownership.
+
+Limit depth where possible, but do not flatten purely to hit a number. Two clear levels can be easier than one list of sixty links; four well-labeled levels can be easier than ambiguous duplication. Test whether readers can predict the next label without seeing the destination.
+
+Use landing pages when a section serves multiple jobs. A useful landing page explains who the section is for, presents the main paths, names prerequisites, and offers the most common recovery route. It should not repeat the full sidebar as decorative cards.
+
+Paths should be readable, durable, lowercase, and independent of transient campaigns. If you change them, preserve explicit redirects. Keep translated paths consistent with your localization policy; do not force every language to mirror an English taxonomy when its readers need a different entry point.
+
+## Define ownership at page and system levels
+
+Every page needs a content owner who can judge correctness and a maintenance trigger that prompts review. Triggers are stronger than arbitrary expiry dates: an API version change, UI rename, policy revision, or incident can require immediate work.
+
+System-level owners cover navigation, terminology, redirects, build health, search, localization, and accessibility. Without these roles, individual pages can be correct while the site becomes incoherent.
+
+Use ownership metadata that can be queried or exported. A spreadsheet can work for a pilot; frontmatter or a content registry scales better. Avoid exposing internal names or email addresses in public output unless that disclosure is intentional.
+
+## Make review states explicit
+
+Define a small workflow such as draft → in review → approved → published → superseded. Each state should have an allowed audience and a clear transition owner. “Saved” is not the same as “published,” and a preview URL is not automatically private.
+
+High-risk changes deserve stronger checks:
+
+- authentication, authorization, security, and legal content;
+- redirects, canonicals, and navigation;
+- executable commands that can modify or delete data;
+- migration order and rollback instructions;
+- translated policy pages;
+- claims about pricing, releases, availability, or performance.
+
+Review the rendered page as well as the source. A Markdown diff cannot show mobile overflow, hidden focus, broken tabs, incorrect RTL ordering, or a link intercepted by the wrong route.
+
+## Choose the collaboration boundary deliberately
+
+Git pull requests are excellent when contributors already use Git and the source tree is authoritative. They provide precise diffs, review, status checks, and history. They can be a poor fit for support specialists or localization teams if routine changes require unfamiliar developer tooling.
+
+A browser editor can broaden participation, but it needs its own review, version, export, and recovery model. Ask whether drafts are isolated, comments are anchored, approvals are auditable, and Markdown can be exported without proprietary fragments.
+
+Hybrid workflows require a conflict rule. If a visual editor and Git can both write the same page, define which system owns the latest version, how conflicts surface, and whether import is preview-only or can overwrite live content. “Two-way sync” is not enough without failure and conflict behavior.
+
+GitBook can be a strong choice when browser-first collaboration and managed operations are the priority. Mintlify may fit a Git-centered developer-docs team that values integrated API experiences. Docusaurus and Starlight are often the cleanest answer when engineers own the content, static generation is desirable, and the team wants the repository to remain the direct source of truth.
+
+## Test findability before moving everything
+
+Recruit people who were not part of the taxonomy workshop. Give them realistic tasks without telling them which page to open. Observe the first label they choose, backtracking, search queries, and whether they can recognize success.
+
+Test desktop and mobile. Mobile navigation often reveals excessive depth and indistinguishable labels faster than a large sidebar. Test screen-reader landmarks, focus order, headings, and skip links. For Arabic, test a full RTL viewport plus mixed-direction code and numbers.
+
+Use a fixed task set before and after the change. Report sample size and method. A handful of moderated sessions can reveal confusion, but it is not a statistically representative conversion study. Keep qualitative findings separate from measured product analytics.
+
+## Plan the reorganization as a migration
+
+Create an old-to-new map for every moved page. Decide whether a page is retained, merged, split, or retired. Preserve anchors where they have inbound use, or document their replacement. Update internal links at the source rather than relying indefinitely on redirects.
+
+Rehearse the tree in a non-indexed environment. Compare sitemap membership, canonical URLs, hreflang, search results, breadcrumbs, previous/next links, and machine-readable Markdown. Then use the [migration and SEO cutover lab](/blog/documentation-migration-seo-cutover-lab) for the release.
+
+## Apply the lab to Nibleaf
+
+Nibleaf supports nested navigation, per-language page trees, browser authoring, Markdown source mode, branches, anchored comments, and immutable publish snapshots in the current source tree. Those capabilities can implement the workflow above, but they do not decide the taxonomy or assign accountable owners.
+
+Source `main` and the pinned self-host release can differ. Record which revision supplies the editor, theme, search, and integration behaviors you evaluate. Nibleaf’s public themes—Harbor, Manuscript, and Signal—change structural presentation, but switching a theme should follow the same representative-page and bilingual review as a navigation change.
+
+## Primary references and review date
+
+References reviewed 2026-09-03:
+
+- [Diátaxis documentation framework](https://diataxis.fr/)
+- [Docusaurus docs introduction](https://docusaurus.io/docs)
+- [Starlight guides](https://starlight.astro.build/guides/)
+- [GitBook Git Sync documentation](https://gitbook.com/docs/getting-started/git-sync)
+- [Google Search Central: redirects and site moves](https://developers.google.com/search/docs/crawling-indexing/site-move-with-url-changes)
+
+Finish the pilot with a dated decision: keep, revise, or reject the proposed path. Attach the task script, notes, redirect map, screenshots, and unresolved questions. Only then expand the pattern to the rest of the site.

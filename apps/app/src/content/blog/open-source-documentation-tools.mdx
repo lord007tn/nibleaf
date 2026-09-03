@@ -3,7 +3,7 @@ title: 'Open-source documentation tools in 2026: how to choose'
 metaTitle: '7 open-source documentation tools compared (2026)'
 description: 'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-24'
+dateModified: '2026-09-03'
 tags: ['comparison', 'open-source']
 related: ['self-host-documentation-site-docker-compose', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative']
 readingMinutes: 7
@@ -19,6 +19,22 @@ faqs:
 There are more good open-source documentation tools today than at any point in the last decade, and most comparison posts do you the disservice of pretending they compete head-to-head. They mostly don't. The real decision is upstream of any feature checklist: **who writes your docs, and where do they live?**
 
 Answer that, and the field of seven splits cleanly in two.
+
+## Make the platform-or-generator decision explicit
+
+Before comparing products, write down the operating model you are willing to own. Choose a **static-site generator** when Git is the content authority, contributors can use pull requests, and the team wants static output with minimal runtime state. Choose a **documentation platform** when browser authoring, comments, roles, previews, and managed workflows let the people closest to the answers update them safely.
+
+Neither choice eliminates work. A generator shifts collaboration, hosting, search, and release assembly to your team. A platform shifts more of that work to an application or vendor but introduces export, authorization, backup, and service-boundary questions. Score the model before individual features:
+
+| Decision evidence | Prefer a generator | Prefer a platform |
+| --- | --- | --- |
+| Primary contributors | engineers in Git | writers, support, product, and engineers |
+| Review boundary | pull request and CI | browser draft, comment, and approval |
+| Content authority | repository files | versioned database plus tested export |
+| Operations | static build and hosting | application or vendor service |
+| Escape path | clone the repository | export and restore rehearsal |
+
+GitBook can be the better answer when managed browser collaboration matters most. Mintlify can be a strong answer for Git-centered developer documentation and API experiences. Docusaurus or Starlight are usually better than a database-backed platform when engineers own the workflow and static output is a goal. Evaluate Nibleaf when browser contribution, self-hosting, Markdown portability, or Arabic/RTL are material requirements—not simply because it has a visual editor.
 
 ## The fork in the road: git files vs. a web editor
 
@@ -88,6 +104,8 @@ The deployment design includes the app, API, worker, PostgreSQL, a Redis-compati
 - **You need an internal team wiki, not public product docs** → **BookStack**.
 - **You're already running Wiki.js** → keep it patched, but don't start there today.
 - **Non-developers need to contribute or you're shipping Arabic/RTL docs** → evaluate **Nibleaf Cloud** or follow the [self-hosting guide](/self-hosting). If you're coming from a hosted platform, our [Mintlify alternatives guide](/alternatives/mintlify) covers that migration path, and you can [try the cloud beta](/sign-up) without a card.
+
+Sources reviewed 2026-09-03: [Docusaurus documentation](https://docusaurus.io/docs), [Starlight documentation](https://starlight.astro.build/), [GitBook Git Sync](https://gitbook.com/docs/getting-started/git-sync), and [Mintlify documentation](https://mintlify.com/docs). Product behavior and pricing can change; verify the current source and release you intend to use.
 
 <Note>
 Competitor claims were checked against official documentation and release announcements, with the page re-reviewed on August 17, 2026. Corrections can be sent to support@nibleaf.com.

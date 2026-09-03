@@ -1,0 +1,36 @@
+---
+title: Round-trip fixture
+description: Deterministic Markdown and MDX used to compare source before and after visual editing.
+---
+
+# Round-trip fixture
+
+Preserve **strong text**, _emphasis_, `inline code`, and [a relative link](/guides).
+
+## Mixed direction
+
+English before العربية بعد English. Keep the command left-to-right: `curl -H "Accept: text/markdown" https://docs.example.test/guide`.
+
+## Structured content
+
+| Field | Required | Meaning |
+| --- | ---: | --- |
+| `id` | yes | Stable identifier |
+| `label` | no | Reader-facing name |
+
+```json
+{
+  "id": "fixture-1",
+  "enabled": true
+}
+```
+
+<Callout title="Round-trip assertion">
+The editor may normalize insignificant whitespace, but it must preserve meaning, links, code, and supported component attributes.
+</Callout>
+
+1. Import this file.
+2. Change the sentence below in the visual editor.
+3. Export it and compare the parsed document structure.
+
+Fixture sentence: change only this sentence.

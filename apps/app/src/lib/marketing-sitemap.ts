@@ -1,3 +1,4 @@
+import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { BLOG_ENTRIES } from '@/lib/blog';
 
 export interface MarketingSitemapEntry {
@@ -12,6 +13,8 @@ export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/', lastmod: '2026-08-24' },
   { path: '/ar', lastmod: '2026-08-22' },
   { path: '/ar/documentation-platforms', lastmod: '2026-08-22' },
+  { path: '/guides', lastmod: '2026-09-02' },
+  { path: '/ar/guides', lastmod: '2026-09-02' },
   { path: '/cloud', lastmod: '2026-07-13' },
   { path: '/pricing', lastmod: '2026-08-24' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
@@ -44,4 +47,9 @@ export function marketingSitemap(origin: string): string {
     .map((entry) => `  <url>\n    <loc>${origin}${entry.path}</loc>\n    <lastmod>${entry.lastmod}</lastmod>\n  </url>`)
     .join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+}
+
+/** Sitemap-wide Markdown aliases used by llms-full.txt and parity checks. */
+export function marketingMarkdownSourceUrls(origin: string): string[] {
+  return marketingSitemapEntries().map((entry) => markdownAlternateUrl(`${origin}${entry.path}`));
 }

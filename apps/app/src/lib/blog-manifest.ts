@@ -5,6 +5,70 @@ import type { BlogEntry } from './blog';
  * Article bodies remain in the lazy blog route chunk instead of the homepage. */
 export const BLOG_MANIFEST = [
   {
+    slug: 'ai-ready-documentation',
+    title: 'AI-ready documentation without creating a second source of truth',
+    metaTitle: 'AI-ready documentation: HTML, Markdown, and llms.txt',
+    description:
+      'Make public documentation reliably discoverable by assistants through equivalent HTML and Markdown, concise llms indexes, complete inventories, and leakage tests.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['ai', 'llms-txt', 'markdown'],
+    related: ['docs-should-live-in-plain-markdown', 'documentation-production-readiness-decision', 'arabic-documentation-rtl'],
+    readingMinutes: 12,
+  },
+  {
+    slug: 'coolify-documentation-502-503-recovery',
+    title: 'Recover a documentation deployment from Coolify 502 and 503 errors',
+    metaTitle: 'Coolify 502 and 503 recovery for documentation stacks',
+    description:
+      'Diagnose proxy, container, readiness, migration, dependency, and replacement-window failures in a Coolify-hosted documentation stack without guessing.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['coolify', 'troubleshooting', 'self-hosting'],
+    related: [
+      'documentation-production-readiness-decision',
+      'self-host-documentation-site-docker-compose',
+      'documentation-migration-seo-cutover-lab',
+    ],
+    readingMinutes: 11,
+  },
+  {
+    slug: 'documentation-information-architecture-collaboration',
+    title: 'Documentation information architecture and collaboration lab',
+    metaTitle: 'Documentation information architecture and collaboration',
+    description:
+      'Design a documentation tree from reader jobs, page types, ownership, review states, and measured findability before moving an entire content set.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['information-architecture', 'collaboration', 'publishing'],
+    related: ['documentation-migration-seo-cutover-lab', 'docs-should-live-in-plain-markdown', 'choosing-documentation-template'],
+    readingMinutes: 10,
+  },
+  {
+    slug: 'documentation-migration-seo-cutover-lab',
+    title: 'Documentation migration and SEO cutover lab',
+    metaTitle: 'Documentation migration and SEO cutover runbook',
+    description:
+      'A reversible lab for inventorying documentation URLs, validating content and metadata, rehearsing redirects, cutting over, and defining rollback triggers.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['migration', 'seo', 'operations'],
+    related: ['documentation-production-readiness-decision', 'documentation-information-architecture-collaboration', 'ai-ready-documentation'],
+    readingMinutes: 12,
+  },
+  {
+    slug: 'documentation-production-readiness-decision',
+    title: 'Is your documentation stack production-ready? A go/no-go decision record',
+    metaTitle: 'Documentation production readiness: a go/no-go record',
+    description:
+      'A practical evidence template for deciding whether a documentation stack is ready across ownership, access, recovery, releases, search, and operations.',
+    datePublished: '2026-09-03',
+    dateModified: '2026-09-03',
+    tags: ['production-readiness', 'governance', 'operations'],
+    related: ['documentation-migration-seo-cutover-lab', 'coolify-documentation-502-503-recovery', 'open-source-documentation-tools'],
+    readingMinutes: 11,
+  },
+  {
     slug: 'choosing-documentation-template-ar',
     title: 'كيف تختار قالب التوثيق: مرجعي أم تحريري أم موجه للشيفرة؟',
     metaTitle: 'كيف تختار قالب التوثيق المناسب لمحتواك؟',
@@ -167,7 +231,7 @@ export const BLOG_MANIFEST = [
     description: translateFn('blog.arabicChecklist.description', undefined, 'ar'),
     language: 'ar',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-19',
+    dateModified: '2026-09-03',
     tags: [
       translateFn('blog.arabicChecklist.tagArabic', undefined, 'ar'),
       'RTL',
@@ -236,7 +300,7 @@ export const BLOG_MANIFEST = [
     description:
       'A practical guide to RTL layout, bidirectional code, Arabic search, language trees, hreflang, and typography for product documentation.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-19',
+    dateModified: '2026-09-03',
     tags: ['arabic', 'rtl', 'i18n'],
     related: ['arabic-technical-documentation-rtl-checklist', 'open-source-documentation-tools', 'self-host-documentation-site-docker-compose'],
     translationOf: 'arabic-technical-documentation-rtl-checklist',
@@ -271,7 +335,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-24',
+    dateModified: '2026-09-03',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
@@ -337,7 +401,7 @@ export const BLOG_MANIFEST = [
     description:
       'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-24',
+    dateModified: '2026-09-03',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',
@@ -369,7 +433,7 @@ export const BLOG_MANIFEST = [
     description:
       'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-31',
+    dateModified: '2026-09-03',
     tags: ['self-hosting', 'docker', 'guide'],
     related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
     readingMinutes: 13,

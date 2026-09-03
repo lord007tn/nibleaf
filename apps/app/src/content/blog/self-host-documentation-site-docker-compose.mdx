@@ -2,7 +2,7 @@
 title: 'Self-Host a Documentation Site with Docker Compose'
 description: 'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-31'
+dateModified: '2026-09-03'
 tags: ['self-hosting', 'docker', 'guide']
 related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
 readingMinutes: 13
@@ -133,6 +133,14 @@ Database migrations may be forward-only. “Rollback” may require restoring th
 ## Monitor the user path and size from measurements
 
 The project's 2 GB recommendation is a starting point for pulling a prebuilt image, not a production benchmark. Observe idle memory, peak memory during publish and indexing, database and bucket growth, disk after a backup cycle, queue depth, migration status, and latency from an external probe. Leave upgrade headroom.
+
+## Size from observations, not a guess
+
+Use the [resource-sizing observation worksheet](/guides/fixtures/resource-sizing-observations.csv) as a column template. Its three rows and values are illustrative, not Nibleaf requirements or benchmark results. Replace them with at least seven representative days that include ordinary reads, a publish, search indexing, backup activity, and one recovery rehearsal.
+
+For each service, compare steady-state and peak resident memory, CPU saturation, queue depth, database connections, publish duration, and external p95 latency. Set a limit only after observing the peak and leaving explicit headroom for a cold cache, retry burst, overlapping replacement, and restore. Record the host, revision, content size, traffic shape, and measurement tool so another operator can reproduce the decision.
+
+If the evidence window is missing, the production capacity remains unknown. Do not convert the 2 GB install starting point into an SLA or universal minimum.
 
 Monitor at least the dashboard, server health, worker failures, PostgreSQL, object-store reads/writes, certificate expiry, disk, and a public published page. Container health alone cannot prove DNS, TLS, canonical output, wildcard subdomains, or the reader path.
 

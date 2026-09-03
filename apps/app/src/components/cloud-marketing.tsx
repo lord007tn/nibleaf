@@ -53,6 +53,7 @@ const navLinks = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: 'https://docs.nibleaf.com', label: 'Docs' },
+  { href: '/guides', label: 'Guides' },
   { href: '/blog', label: 'Blog' },
   { href: '/tools/rtl-documentation-readiness', label: 'RTL grader' },
   { href: '/self-hosting', label: 'Self-hosting' },

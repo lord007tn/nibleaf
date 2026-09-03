@@ -12,6 +12,8 @@
     "./ids": "./src/ids.ts",
     "./integrations": "./src/integrations.ts",
     "./mcp": "./src/mcp.ts",
+    "./markdown-discovery": "./src/markdown-discovery.ts",
+    "./public-markdown": "./src/public-markdown.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",

@@ -1,0 +1,5 @@
+source_path,target_path,expected_status,owner,rollback_trigger
+/docs/getting-started,/guides/getting-started,308,docs,"target is not 200"
+/docs/api/authentication,/reference/authentication,308,api,"code samples differ"
+/docs/ar/start,/ar/guides/start,308,localization,"Arabic canonical or direction differs"
+/docs/removed-feature,/guides/replacement,308,product,"replacement omits required task"

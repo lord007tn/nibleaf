@@ -17,6 +17,7 @@ import { Route as ArRouteRouteImport } from './routes/ar/route'
 import { Route as CloudRouteImport } from './routes/cloud'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DevelopersRouteImport } from './routes/developers'
+import { Route as GuidesRouteImport } from './routes/guides'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SelfHostingRouteImport } from './routes/self-hosting'
@@ -33,6 +34,7 @@ import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/re
 import { Route as AppdashboardRouteRouteImport } from './routes/app/(dashboard)/route'
 import { Route as ArIndexRouteImport } from './routes/ar/index'
 import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
+import { Route as ArGuidesRouteImport } from './routes/ar/guides'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
@@ -93,6 +95,11 @@ const ContactRoute = ContactRouteImport.update({
 const DevelopersRoute = DevelopersRouteImport.update({
   id: '/developers',
   path: '/developers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuidesRoute = GuidesRouteImport.update({
+  id: '/guides',
+  path: '/guides',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -176,6 +183,11 @@ const ArDocumentationPlatformsRoute =
     path: '/documentation-platforms',
     getParentRoute: () => ArRouteRoute,
   } as any)
+const ArGuidesRoute = ArGuidesRouteImport.update({
+  id: '/guides',
+  path: '/guides',
+  getParentRoute: () => ArRouteRoute,
+} as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -304,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -319,6 +332,7 @@ export interface FileRoutesByFullPath {
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
+  '/ar/guides': typeof ArGuidesRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
@@ -349,6 +363,7 @@ export interface FileRoutesByTo {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -363,6 +378,7 @@ export interface FileRoutesByTo {
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
+  '/ar/guides': typeof ArGuidesRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
@@ -394,6 +410,7 @@ export interface FileRoutesById {
   '/cloud': typeof CloudRoute
   '/contact': typeof ContactRoute
   '/developers': typeof DevelopersRoute
+  '/guides': typeof GuidesRoute
   '/pricing': typeof PricingRoute
   '/privacy': typeof PrivacyRoute
   '/self-hosting': typeof SelfHostingRoute
@@ -410,6 +427,7 @@ export interface FileRoutesById {
   '/alternatives/mintlify': typeof AlternativesMintlifyRoute
   '/alternatives/readme': typeof AlternativesReadmeRoute
   '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
+  '/ar/guides': typeof ArGuidesRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
@@ -443,6 +461,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/guides'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -458,6 +477,7 @@ export interface FileRouteTypes {
     | '/alternatives/mintlify'
     | '/alternatives/readme'
     | '/ar/documentation-platforms'
+    | '/ar/guides'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
@@ -488,6 +508,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/guides'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -502,6 +523,7 @@ export interface FileRouteTypes {
     | '/alternatives/mintlify'
     | '/alternatives/readme'
     | '/ar/documentation-platforms'
+    | '/ar/guides'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
@@ -532,6 +554,7 @@ export interface FileRouteTypes {
     | '/cloud'
     | '/contact'
     | '/developers'
+    | '/guides'
     | '/pricing'
     | '/privacy'
     | '/self-hosting'
@@ -548,6 +571,7 @@ export interface FileRouteTypes {
     | '/alternatives/mintlify'
     | '/alternatives/readme'
     | '/ar/documentation-platforms'
+    | '/ar/guides'
     | '/blog/$slug'
     | '/compare/nibleaf-vs-docusaurus'
     | '/compare/nibleaf-vs-gitbook'
@@ -581,6 +605,7 @@ export interface RootRouteChildren {
   CloudRoute: typeof CloudRoute
   ContactRoute: typeof ContactRoute
   DevelopersRoute: typeof DevelopersRoute
+  GuidesRoute: typeof GuidesRoute
   PricingRoute: typeof PricingRoute
   PrivacyRoute: typeof PrivacyRoute
   SelfHostingRoute: typeof SelfHostingRoute
@@ -655,6 +680,13 @@ declare module '@tanstack/react-router' {
       path: '/developers'
       fullPath: '/developers'
       preLoaderRoute: typeof DevelopersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guides': {
+      id: '/guides'
+      path: '/guides'
+      fullPath: '/guides'
+      preLoaderRoute: typeof GuidesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -767,6 +799,13 @@ declare module '@tanstack/react-router' {
       path: '/documentation-platforms'
       fullPath: '/ar/documentation-platforms'
       preLoaderRoute: typeof ArDocumentationPlatformsRouteImport
+      parentRoute: typeof ArRouteRoute
+    }
+    '/ar/guides': {
+      id: '/ar/guides'
+      path: '/guides'
+      fullPath: '/ar/guides'
+      preLoaderRoute: typeof ArGuidesRouteImport
       parentRoute: typeof ArRouteRoute
     }
     '/blog/': {
@@ -1003,11 +1042,13 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
 
 interface ArRouteRouteChildren {
   ArDocumentationPlatformsRoute: typeof ArDocumentationPlatformsRoute
+  ArGuidesRoute: typeof ArGuidesRoute
   ArIndexRoute: typeof ArIndexRoute
 }
 
 const ArRouteRouteChildren: ArRouteRouteChildren = {
   ArDocumentationPlatformsRoute: ArDocumentationPlatformsRoute,
+  ArGuidesRoute: ArGuidesRoute,
   ArIndexRoute: ArIndexRoute,
 }
 
@@ -1038,6 +1079,7 @@ const rootRouteChildren: RootRouteChildren = {
   CloudRoute: CloudRoute,
   ContactRoute: ContactRoute,
   DevelopersRoute: DevelopersRoute,
+  GuidesRoute: GuidesRoute,
   PricingRoute: PricingRoute,
   PrivacyRoute: PrivacyRoute,
   SelfHostingRoute: SelfHostingRoute,

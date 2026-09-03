@@ -1,0 +1,153 @@
+---
+title: AI-ready documentation without creating a second source of truth
+metaTitle: 'AI-ready documentation: HTML, Markdown, and llms.txt'
+description: Make public documentation reliably discoverable by assistants through equivalent HTML and Markdown, concise llms indexes, complete inventories, and leakage tests.
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags:
+  - ai
+  - llms-txt
+  - markdown
+related:
+  - docs-should-live-in-plain-markdown
+  - documentation-production-readiness-decision
+  - arabic-documentation-rtl
+readingMinutes: 12
+---
+
+AI-ready documentation is public documentation with a reliable text representation, stable discovery, clear source identity, and the same authorization boundary as the human site. It is not a separate AI copy, a promise that every model will ingest the site, or permission to expose drafts and private pages.
+
+The safest design keeps canonical HTML for people and search engines, derives clean Markdown from the same published content, and advertises that alternate through standard link relations. A concise `llms.txt` routes an assistant to important resources. A more complete inventory lets retrieval systems enumerate the available public sources.
+
+## Keep one content authority
+
+Choose the authoritative page source: Git Markdown, a database snapshot, or another versioned representation. Generate HTML, Markdown, sitemaps, and llms files from that same source. Hand-maintained “AI summaries” drift quickly and can contradict current limits, pricing, or release behavior.
+
+The clean Markdown representation may add a title and summary from page metadata, but it should preserve the authored body. Remove navigation chrome, cookie interfaces, decorative footers, and unrelated page recommendations. Preserve headings, lists, tables, code, links, image alt text, and meaningful MDX output.
+
+When a visual editor is involved, use the [round-trip fixture](/guides/fixtures/markdown-round-trip.mdx) to prove content survives editing and export. AI accessibility cannot compensate for a lossy authoring format.
+
+## Canonical HTML and alternate Markdown
+
+The HTML URL remains canonical. Give the Markdown representation a predictable `.md` sibling: `/guides/migration` can map to `/guides/migration.md`, while `/` can map to `/index.md`. Return `text/markdown; charset=utf-8` for the alternate.
+
+Advertise discovery in the HTML head:
+
+```html
+<link rel="alternate" type="text/markdown" href="https://docs.example.test/guides/migration.md" />
+<link rel="describedby" href="https://docs.example.test/llms.txt" />
+```
+
+The HTTP `Link` header can express the same relationships:
+
+```http
+Link: <https://docs.example.test/guides/migration.md>; rel="alternate"; type="text/markdown", <https://docs.example.test/llms.txt>; rel="describedby"
+Vary: Accept
+```
+
+If the canonical URL supports content negotiation, a request with `Accept: text/markdown` should return the same substantive document as the `.md` alias. Keep the alias stable and use `Content-Location` to identify it. Unsupported media preferences should receive a clear 406 rather than silently returning an unrelated application shell.
+
+Do not make the Markdown URL canonical. Human HTML carries visual navigation, structured metadata, accessibility behavior, and the expected browser experience. The alternate exists for clients that prefer structured text.
+
+## Make `llms.txt` concise
+
+Place `llms.txt` at the site root. Its job is routing, not duplicating the entire site. Include:
+
+- the product or documentation set name;
+- one plain description;
+- key facts and current limitations;
+- links to main hubs and high-value references;
+- links to the sitemap, complete inventory, OpenAPI description where public, and source repository where relevant;
+- a review date for time-sensitive claims.
+
+Link to Markdown alternates when the client is expected to consume Markdown. Avoid marketing adjectives that cannot be tested. Separate source `main` capabilities from the currently released artifact. State when pricing, availability, or provider behavior remains unknown.
+
+An `llms.txt` file does not guarantee ingestion or citation by any AI product. It is a proposal for predictable discovery. Treat crawler support and downstream behavior as external evidence, not an implementation claim.
+
+## Provide a complete inventory
+
+A fuller file such as `llms-full.txt` can describe the product in detail and list every public Markdown source. Generate that list from the same registry as the sitemap. If a page is added to the sitemap but absent from the AI inventory, an automated test should fail.
+
+For a large documentation site, “full” does not have to mean concatenating gigabytes into one response. It must mean complete discoverability: every public page can be enumerated and fetched. The sitemap remains useful because it carries canonical HTML URLs and modification dates. The full inventory can map each to its Markdown sibling.
+
+Keep machine files cacheable but refresh them atomically with a publish. A new immutable snapshot should produce a coherent set of HTML, Markdown, sitemap, and llms artifacts. Do not mix a new index with old page bodies during a long build.
+
+## Fail closed for private and excluded content
+
+Public Markdown is an export surface. Apply authorization before generating it. A logged-in browser session, preview token, workspace membership, or invited-reader credential must not make a crawler-facing endpoint appear public.
+
+Exclude:
+
+- private, workspace-only, and invited-reader projects;
+- draft, hidden, or audience-restricted pages;
+- pages or languages marked noindex;
+- syndicated pages whose canonical points to an external source, unless the owner explicitly approves duplication;
+- disabled translations and unpublished versions.
+
+Apply the same exclusions to sitemap, `llms.txt`, `llms-full.txt`, search indexes, OpenAPI discovery, static exports, and visible View/Copy Markdown controls. A hidden link is not an access control.
+
+Use public machine requests with cookies and authorization headers removed. Test direct endpoint calls while an authorized private-reader session exists. The correct outcome is a non-disclosing 404 or equivalent, not a private Markdown body labeled noindex.
+
+## Add visible View and Copy Markdown actions
+
+Human readers and maintainers benefit from the same source representation. On public, indexable pages, provide a visible **View Markdown** link and **Copy Markdown** action near page metadata. The link should open the `.md` representation, while copy should fetch it and write the returned text to the clipboard.
+
+Use localized labels, keyboard-accessible controls, a clear copied state, and an error message announced to assistive technology. Hide the actions when the page has no public Markdown representation. Fetch the published response rather than copying the raw editor buffer, because the action should reflect what an external assistant can actually retrieve.
+
+## Verify sitemap-wide parity
+
+For every sitemap URL, run the following anonymously:
+
+1. Fetch the canonical URL with an HTML preference. Confirm 200, an HTML content type, one canonical, the Markdown alternate, and `describedby` link.
+2. Fetch the canonical URL with `Accept: text/markdown`. Confirm 200, Markdown content type, `Vary: Accept`, and source identity.
+3. Fetch the `.md` alias. Confirm it matches the negotiated Markdown after allowed URL normalization.
+4. Parse the body. Confirm the title, meaningful text, links, and code are present and that navigation chrome is absent.
+5. Fetch an unknown `.md` path. Confirm a helpful Markdown 404 links back to `llms.txt` and carries no application secrets.
+
+Then compare the sitemap with the complete inventory. The sets should match according to a documented rule. Test noindex and private fixtures explicitly; absence from one file alone is not enough.
+
+Static exports need the same coverage. Generate an `.md` file beside every indexable `index.html`, update llms links, and omit private or external-canonical pages. Inspect the archive entries in a unit test before treating the export as safe.
+
+## Preserve multilingual intent
+
+Each language representation should identify its language and direction in HTML. Markdown should contain the correct language’s page, not silently fall back while claiming a translated URL. Emit hreflang only for translations that exist and are indexable.
+
+Arabic retrieval needs more than RTL layout. Test Unicode normalization, common spelling variants, prefixes, attached pronouns, Arabic and Latin product terms, error codes, and mixed-direction queries. The included [Arabic corpus](/guides/fixtures/arabic-search-corpus.json) and [query judgments](/guides/fixtures/arabic-search-queries.json) are deterministic examples, not benchmark scores. Add domain-specific judgments before evaluating a product.
+
+Keep code blocks and commands left-to-right inside RTL pages. Confirm copied Markdown preserves the sequence readers and tools need. Render at mobile widths because direction bugs often appear in drawers, breadcrumbs, tables, and inline code.
+
+## Ground generated answers in public sources
+
+If a site adds generated answers, retrieval should return tenant-filtered, public chunks before any model call. Citations must name the page and stable URL. Record provider, model, configuration, and evaluation corpus when comparing results. Do not send private page text to a model because a later filter intends to remove it.
+
+Retain deterministic search as an immediate fallback. Generated answers can be unavailable, rate-limited, or wrong while full-text search still helps the reader reach the source. Present uncertainty and make the underlying document easy to open.
+
+Do not claim answer accuracy from a few hand-picked prompts. Publish the evaluation method, sample size, relevance judgments, failure classes, and date. Missing provider access or quota is a blocked measurement, not a zero score.
+
+## Observe without expanding consent
+
+AI accessibility can be implemented without new user tracking. Server access logs may already record machine requests under an existing policy, but do not add identifiers, new analytics events, or consent behavior as an incidental part of Markdown delivery.
+
+If the team later measures assistant traffic, review purpose, retention, data minimization, crawler identification reliability, and public disclosures separately. Crawler user-agent strings can be spoofed and should not be treated as identity proof for authorization.
+
+## When another platform is a better fit
+
+Docusaurus or Starlight already start from Markdown files and static output, making alternate generation straightforward for Git-native teams. GitBook can be a better fit when browser collaboration and managed operations outweigh direct repository ownership. Mintlify can suit Git-centered developer documentation and API workflows. Evaluate each product’s current export, discovery, and privacy behavior against the parity procedure rather than assuming a category-wide result.
+
+## Applying the design to Nibleaf
+
+Nibleaf’s current source stores page content as Markdown in immutable publish snapshots and renders public sites through a shared access boundary. The guide-academy tranche adds negotiated Markdown, stable `.md` aliases, HTML and HTTP discovery links, generated static-export Markdown, sitemap-derived marketing inventory, and localized View/Copy actions for eligible public pages.
+
+These are source-tree claims until they ship in a release. They do not prove that nibleaf.com or a self-hosted instance runs the revision, that external crawlers consume the files, or that generated answers improve a business metric. Production validation requires the exact deployed identity, anonymous HTTP probes, and rendered browser evidence after a separately authorized release.
+
+## Primary references and review date
+
+References reviewed 2026-09-03:
+
+- [llms.txt v2 proposal](https://llmstxt.org/)
+- [MDN: HTTP content negotiation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Content_negotiation)
+- [RFC 9110: HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
+- [Google Search Central: localized versions](https://developers.google.com/search/docs/specialty/international/localized-versions)
+- [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+
+The review is complete when every public sitemap page has equivalent anonymous HTML and Markdown, every excluded fixture remains absent, the visible controls work in English and Arabic, and the full inventory is generated from the same public registry. Everything downstream—crawler adoption, citations, rankings, and answer quality—requires separate, dated evidence.

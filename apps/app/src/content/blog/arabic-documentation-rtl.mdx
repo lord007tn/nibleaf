@@ -3,7 +3,7 @@ title: 'Arabic documentation and RTL: a practical implementation guide'
 metaTitle: 'Arabic documentation and RTL: a practical guide | Nibleaf'
 description: 'A practical guide to RTL layout, bidirectional code, Arabic search, language trees, hreflang, and typography for product documentation.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-19'
+dateModified: '2026-09-03'
 tags: ['arabic', 'rtl', 'i18n']
 related: ['arabic-technical-documentation-rtl-checklist', 'open-source-documentation-tools', 'self-host-documentation-site-docker-compose']
 translationOf: 'arabic-technical-documentation-rtl-checklist'
@@ -126,6 +126,10 @@ Build a small font specimen with:
 Open it on the operating systems and phones your readers use. Set line height from that test rather than copying a fixed ratio. Remove `letter-spacing` and `text-transform` from Arabic headings because tracking can break the visual connection between letters.
 
 ## A release checklist
+
+Use the checked-in [Arabic search corpus](/guides/fixtures/arabic-search-corpus.json) with its [labeled queries](/guides/fixtures/arabic-search-queries.json) before adding project-specific cases. The expected document IDs are relevance judgments, not published benchmark scores. Add your ten highest-value reader queries, preserve mixed Arabic/Latin product names and error codes, then report the tokenizer, configuration, corpus revision, and evaluation date.
+
+Repeat the query set after every tokenizer or ranking change. A missing provider, metric, or production sample stays unknown; it is not a zero-result rate.
 
 Before shipping an Arabic documentation section, verify:
 

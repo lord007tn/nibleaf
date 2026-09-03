@@ -1,0 +1,4 @@
+timestamp,window,request_rate_per_min,p95_ms,app_rss_mb,worker_rss_mb,db_connections,queue_depth,publish_duration_s,notes
+2026-01-05T09:00:00Z,illustrative-steady,30,180,420,260,8,0,0,"example only"
+2026-01-05T09:15:00Z,illustrative-publish,42,260,510,640,14,18,76,"example only"
+2026-01-05T09:30:00Z,illustrative-recovery,20,210,430,300,9,0,0,"example only"
