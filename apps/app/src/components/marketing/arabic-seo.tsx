@@ -103,10 +103,10 @@ function getPlatforms(t: T): Platform[] {
   ];
 }
 
-function ArabicShell({ children }: { children: ReactNode }) {
+export function ArabicShell({ children, englishHref = '/' }: { children: ReactNode; englishHref?: string }) {
   const t = useArabicT();
   return (
-    <div className="min-h-screen bg-background text-foreground" dir="rtl">
+    <div className="min-h-screen bg-background text-foreground" dir="rtl" lang="ar">
       <div className="border-border/70 border-b bg-muted/60 px-4 py-2 text-center text-muted-foreground text-xs">
         {t('marketing.arabicSeo.shell.notice')}
       </div>
@@ -135,7 +135,11 @@ function ArabicShell({ children }: { children: ReactNode }) {
             </a>
           </nav>
           <div className="ms-auto flex items-center gap-2">
-            <a className="hidden h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-muted sm:inline-flex" href="/" hrefLang="en">
+            <a
+              className="hidden h-9 items-center rounded-md border border-border px-3 text-sm hover:bg-muted sm:inline-flex"
+              href={englishHref}
+              hrefLang="en"
+            >
               English
             </a>
             <a

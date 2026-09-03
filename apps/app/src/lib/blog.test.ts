@@ -58,6 +58,58 @@ describe('blog metadata manifest', () => {
     }
   });
 
+  it('uses the Arabic homepage owner in Arabic article breadcrumbs', () => {
+    const entry = BLOG_ENTRIES.find((candidate) => candidate.language === 'ar');
+    expect(entry).toBeDefined();
+    const breadcrumb = JSON.parse(articleHead(entry as BlogEntry).scripts[1]?.children ?? '{}') as {
+      itemListElement: { item: string }[];
+    };
+
+    expect(new URL(breadcrumb.itemListElement[0]?.item ?? '').pathname).toBe('/ar');
+  });
+
+  it('keeps the Arabic RTL checklist linked to the Arabic Markdown guide owner', () => {
+    const source = sourceBySlug.get('arabic-technical-documentation-rtl-checklist') ?? '';
+
+    expect(source).toContain('/blog/docs-should-live-in-plain-markdown-ar');
+    expect(source).not.toMatch(/\/blog\/docs-should-live-in-plain-markdown\)/u);
+  });
+
+  it('keeps dated primary sources on the MCP and OpenAPI academy pairs', () => {
+    const expectedSources = {
+      'mcp-documentation-security-threat-model': [
+        'https://modelcontextprotocol.io/specification/latest',
+        'https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization',
+        'https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html',
+      ],
+      'openapi-try-it-security-versioning': [
+        'https://spec.openapis.org/oas/latest.html',
+        'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS',
+        'https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html',
+      ],
+    } as const;
+
+    for (const [englishSlug, urls] of Object.entries(expectedSources)) {
+      const english = BLOG_ENTRIES.find((candidate) => candidate.slug === englishSlug);
+      expect(english?.translationOf).toBeDefined();
+      for (const slug of [englishSlug, english?.translationOf]) {
+        const source = sourceBySlug.get(slug ?? '') ?? '';
+        expect(source).toContain('2026-09-03');
+        for (const url of urls) expect(source).toContain(url);
+      }
+    }
+  });
+
+  it('uses the current live information-architecture references', () => {
+    const english = sourceBySlug.get('documentation-information-architecture-collaboration') ?? '';
+    const arabic = sourceBySlug.get('documentation-information-architecture-collaboration-ar') ?? '';
+
+    expect(english).toContain('https://starlight.astro.build/guides/sidebar/');
+    expect(english).not.toContain('](https://starlight.astro.build/guides/)');
+    expect(arabic).toContain('https://developers.google.com/search/docs/crawling-indexing/url-structure');
+    expect(arabic).not.toContain('https://developers.google.com/search/docs/crawling-indexing/site-structure');
+  });
+
   it('keeps the corrective bilingual owners substantive rather than summary translations', () => {
     const slugs = [
       'ai-ready-documentation',

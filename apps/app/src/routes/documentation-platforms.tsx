@@ -19,6 +19,22 @@ export const documentationPlatformsHead = () => ({
       { name: 'Home', path: '/' },
       { name: 'Documentation platforms', path: '/documentation-platforms' },
     ]),
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Documentation platforms for Arabic and multilingual teams',
+        inLanguage: 'en',
+        numberOfItems: 6,
+        itemListOrder: 'https://schema.org/ItemListOrderAscending',
+        itemListElement: ['Nibleaf', 'Mintlify', 'GitBook', 'Docusaurus', 'Material for MkDocs', 'Apidog'].map((name, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name,
+        })),
+      }),
+    },
   ],
 });
 

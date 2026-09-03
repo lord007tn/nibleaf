@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, CheckCircle2, Compass, Languages } from 'lucide-react';
 import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { ArabicShell } from '@/components/marketing/arabic-seo';
 import { GUIDE_PILLARS, GUIDES, type GuideLocale, guidePillar } from '@/lib/guides';
 
 const copy = {
@@ -57,8 +58,8 @@ export function GuidesHub({ locale, stars = 0 }: { locale: GuideLocale; stars?: 
   const featured = GUIDES.filter((guide) => guide.featured);
   const visible = job === 'all' ? GUIDES : GUIDES.filter((guide) => guide.job === job);
 
-  return (
-    <MarketingShell stars={stars}>
+  const content = (
+    <>
       <section className="border-border border-b bg-muted/20">
         <div className="mx-auto max-w-6xl px-6 py-16 sm:py-20">
           <Eyebrow>{t.eyebrow}</Eyebrow>
@@ -167,6 +168,8 @@ export function GuidesHub({ locale, stars = 0 }: { locale: GuideLocale; stars?: 
           </div>
         </div>
       </section>
-    </MarketingShell>
+    </>
   );
+
+  return locale === 'ar' ? <ArabicShell englishHref="/guides">{content}</ArabicShell> : <MarketingShell stars={stars}>{content}</MarketingShell>;
 }
