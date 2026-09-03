@@ -37,7 +37,7 @@
     "@nibleaf/storage": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@nibleaf/validators": "workspace:*",
-    "@openrouter/sdk": "0.13.20",
+    "@openrouter/sdk": "1.2.85",
     "@scalar/hono-api-reference": "^0.11.16",
     "@scalar/json-magic": "0.13.2",
     "@scalar/openapi-parser": "^0.28.16",
