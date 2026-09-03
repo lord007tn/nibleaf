@@ -70,17 +70,17 @@ describe('llmsIndexablePages', () => {
 describe('llmsPageUrl', () => {
   it('gives default-language default-version pages the clean canonical URL', () => {
     const snap = snapshot([page({ id: 'intro', versionId: 'v-main' })]);
-    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/intro`);
+    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/intro.md`);
   });
   it('adds a version prefix for non-default versions and ?lang for non-default languages', () => {
     const snap = snapshot([page({ id: 'guide', versionId: 'v-2', languageCode: 'ar' })]);
-    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/v2/guide?lang=ar`);
+    expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(`${BASE}/v2/guide.md?lang=ar`);
   });
 
   it('percent-encodes non-ASCII path segments so the link stays a valid ASCII URL', () => {
     const snap = snapshot([page({ id: 'auth', path: 'الأدلة/المصادقة', languageCode: 'ar' })]);
     expect(llmsPageUrl(snap, snap.pages[0] as SnapshotPage, BASE)).toBe(
-      `${BASE}/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar`,
+      `${BASE}/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9.md?lang=ar`,
     );
   });
 });
@@ -96,8 +96,8 @@ describe('buildLlmsTxt', () => {
     expect(txt).toContain('> How to use Acme.');
     expect(txt).toContain('## Docs (English)');
     expect(txt).toContain('## Docs (العربية)');
-    expect(txt).toContain(`- [Introduction](${BASE}/intro): Start here.`);
-    expect(txt).toContain(`- [مقدمة](${BASE}/intro-ar?lang=ar)`);
+    expect(txt).toContain(`- [Introduction](${BASE}/intro.md): Start here.`);
+    expect(txt).toContain(`- [مقدمة](${BASE}/intro-ar.md?lang=ar)`);
   });
   it('uses a single Docs section for single-language sites and omits excluded pages', () => {
     const snap = snapshot([page({ id: 'intro' }), page({ id: 'secret', hidden: true })], {
@@ -125,10 +125,10 @@ describe('buildLlmsFullTxt', () => {
     const txt = buildLlmsFullTxt(snap, BASE);
     expect(txt).toContain('# Acme Docs');
     expect(txt).toContain('# Introduction');
-    expect(txt).toContain(`Source: ${BASE}/intro`);
+    expect(txt).toContain(`Source: ${BASE}/intro.md`);
     expect(txt).toContain('Hello.');
     expect(txt).toContain('---');
-    expect(txt).toContain(`Source: ${BASE}/setup`);
+    expect(txt).toContain(`Source: ${BASE}/setup.md`);
     expect(txt).toContain('Run the installer.');
   });
   it('excludes hidden and noindex pages from the full dump', () => {

@@ -9,6 +9,7 @@
     "build": "vite build",
     "bundle:check": "node ./scripts/check-bundle-budget.mjs --check",
     "bundle:report": "node ./scripts/check-bundle-budget.mjs",
+    "docs:markdown-check": "node ./scripts/check-markdown-parity.mjs",
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",

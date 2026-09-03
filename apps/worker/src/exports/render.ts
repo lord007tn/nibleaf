@@ -183,6 +183,7 @@ const portableMdxMarkdown = (source: string): string => {
 const versionFor = (snapshot: SiteSnapshot, page: SnapshotPage) => snapshot.project.versions.find((version) => version.id === page.versionId);
 const outputPath = (snapshot: SiteSnapshot, page: SnapshotPage): string =>
   `${safeSegment(versionFor(snapshot, page)?.slug ?? 'main')}/${safeSegment(page.languageCode)}/${safePath(page.path)}/index.html`;
+const outputMarkdownPath = (snapshot: SiteSnapshot, page: SnapshotPage): string => outputPath(snapshot, page).replace(/index\.html$/u, 'index.md');
 
 const splitSuffix = (href: string): [string, string] => {
   const index = href.search(/[?#]/);
@@ -433,6 +434,7 @@ const pagerHtml = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
  * into a portable export. Hosts that require absolute sitemap loc values can
  * rebase the leading slash while preserving the generated route inventory. */
 const pageArchiveHref = (snapshot: SiteSnapshot, page: SnapshotPage): string => `/${outputPath(snapshot, page)}`;
+const pageArchiveMarkdownHref = (snapshot: SiteSnapshot, page: SnapshotPage): string => `/${outputMarkdownPath(snapshot, page)}`;
 
 const variantHomeHref = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   const first = visibleVariantPages(snapshot, page)[0] ?? page;
@@ -523,7 +525,11 @@ const seoHead = (snapshot: SiteSnapshot, page: SnapshotPage): string => {
   };
   const jsonLd = JSON.stringify(structuredData).replaceAll('<', '\\u003c').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
   const variantDirectory = `${safeSegment(versionFor(snapshot, page)?.slug ?? 'main')}/${safeSegment(page.languageCode)}`;
-  return `<meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="${robots}"><meta property="og:type" content="article"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:site_name" content="${escapeHtml(siteName)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:locale" content="${escapeHtml(page.languageCode.replace('-', '_'))}"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}">${image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta name="twitter:image" content="${escapeHtml(image)}">` : ''}<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><link rel="canonical" href="${escapeHtml(canonical)}"><link rel="sitemap" type="application/xml" href="/sitemap.xml"><link rel="alternate" type="text/plain" href="/${variantDirectory}/llms.txt" title="llms.txt"><link rel="alternate" type="text/plain" href="/${variantDirectory}/llms-full.txt" title="llms-full.txt">${alternateLinks}<script type="application/ld+json">${jsonLd}</script><title>${escapeHtml(title)}</title>`;
+  const markdownDiscovery =
+    pageIndexable(snapshot, page) && !externalCanonical
+      ? `<link rel="alternate" type="text/markdown" href="${escapeHtml(pageArchiveMarkdownHref(snapshot, page))}"><link rel="describedby" href="/${variantDirectory}/llms.txt">`
+      : '';
+  return `<meta name="description" content="${escapeHtml(description)}"><meta name="robots" content="${robots}"><meta property="og:type" content="article"><meta property="og:title" content="${escapeHtml(title)}"><meta property="og:description" content="${escapeHtml(description)}"><meta property="og:site_name" content="${escapeHtml(siteName)}"><meta property="og:url" content="${escapeHtml(canonical)}"><meta property="og:locale" content="${escapeHtml(page.languageCode.replace('-', '_'))}"><meta name="twitter:title" content="${escapeHtml(title)}"><meta name="twitter:description" content="${escapeHtml(description)}">${image ? `<meta property="og:image" content="${escapeHtml(image)}"><meta name="twitter:image" content="${escapeHtml(image)}">` : ''}<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}"><link rel="canonical" href="${escapeHtml(canonical)}"><link rel="sitemap" type="application/xml" href="/sitemap.xml"><link rel="alternate" type="text/plain" href="/${variantDirectory}/llms.txt" title="llms.txt"><link rel="alternate" type="text/plain" href="/${variantDirectory}/llms-full.txt" title="llms-full.txt">${markdownDiscovery}${alternateLinks}<script type="application/ld+json">${jsonLd}</script><title>${escapeHtml(title)}</title>`;
 };
 
 const articleHtml = (snapshot: SiteSnapshot, page: SnapshotPage, assets: ExportAsset[]): string =>
@@ -692,7 +698,7 @@ const llmsTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = 
     if (matching.length === 0) continue;
     lines.push('', `## ${oneLine(version.name)} · ${oneLine(language.label)}`, '');
     for (const page of matching) {
-      const href = path.posix.relative(fromDirectory || '.', outputPath(snapshot, page)) || './';
+      const href = path.posix.relative(fromDirectory || '.', outputMarkdownPath(snapshot, page)) || './';
       const description = machinePageDescription(page);
       lines.push(`- [${oneLine(page.title)}](${href})${description ? `: ${description}` : ''}`);
     }
@@ -702,7 +708,7 @@ const llmsTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = 
 
 const llmsFullTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirectory = ''): string => {
   const sections = pages.map((page) => {
-    const href = path.posix.relative(fromDirectory || '.', outputPath(snapshot, page)) || './';
+    const href = path.posix.relative(fromDirectory || '.', outputMarkdownPath(snapshot, page)) || './';
     const header = [`# ${oneLine(page.title)}`, '', `Source: ${href}`];
     if (page.description?.trim()) header.push('', `> ${oneLine(page.description)}`);
     return `${header.join('\n')}\n\n${sanitizeAuthoredMarkdown(page.content)}\n`;
@@ -735,7 +741,7 @@ const sitemapXml = (snapshot: SiteSnapshot, pages: SnapshotPage[]): string => {
 const robotsTxt = (snapshot: SiteSnapshot): string => {
   const config = exportConfigOf(snapshot);
   if (config.visibility === 'private' || config.seo?.allowIndex === false) return 'User-agent: *\nDisallow: /\n';
-  return 'User-agent: *\nAllow: /\nSitemap: /sitemap.xml\n';
+  return 'User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\nSitemap: /sitemap.xml\n';
 };
 
 export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): RenderedArtifact => {
@@ -765,6 +771,11 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   }));
   files['theme/theme.js'] = strToU8(themeJs(searchEntries));
   const indexablePages = machineIndexablePages(snapshot);
+  for (const page of indexablePages) {
+    const description = page.description?.trim();
+    const parts = [`# ${oneLine(page.title)}`, ...(description ? [`> ${oneLine(description)}`] : []), sanitizeAuthoredMarkdown(page.content)];
+    files[outputMarkdownPath(snapshot, page)] = strToU8(`${parts.filter(Boolean).join('\n\n')}\n`);
+  }
   const machineFilesEnabled = exportConfigOf(snapshot).visibility !== 'private' && exportConfigOf(snapshot).seo?.allowIndex !== false;
   files['robots.txt'] = strToU8(robotsTxt(snapshot));
   files['sitemap.xml'] = strToU8(sitemapXml(snapshot, indexablePages));

@@ -30,7 +30,7 @@ vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn() }));
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
-import { getSitePage, searchSite } from './sites';
+import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
   parentId: null,
@@ -107,6 +107,46 @@ describe('getSitePage lede vs excerpt', () => {
       'Getting started Get started with the Acme API in about ten minutes. This guide walks you through creating an API key, making your first request, and…',
     );
     expect(result.page.excerpt.length).toBeLessThanOrEqual(160);
+  });
+
+  it('serves a public page as title, summary, and authored Markdown', async () => {
+    const result = await getSitePageMarkdown('project-1', 'authentication');
+    expect(result).toEqual({
+      body: `# Authentication\n\n> How tokens work.\n\n${body}\n`,
+      isPrivate: false,
+    });
+  });
+
+  it('fails closed for noindex and private-reader content even when the viewer is authorized', async () => {
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-noindex-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({
+      snapshot: {
+        ...snapshot,
+        pages: [{ ...snapshot.pages[0], config: { seo: { noindex: true } } }],
+      },
+    });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+
+    mocks.projectFindUnique.mockImplementation(async ({ select }: { select: Record<string, unknown> }) =>
+      'name' in select
+        ? {
+            name: 'Docs',
+            description: null,
+            icon: null,
+            config: {},
+            accessMode: 'READERS',
+            takedownAt: null,
+            domains: [],
+            languages: [{ code: 'en', enabled: true, config: null, projectTranslations: [] }],
+            addons: [],
+            organization: { usagePlan: null },
+          }
+        : { id: 'project-1' },
+    );
+    invalidatePublishedSiteConfig('project-1');
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-private-${Math.random()}`, version: 1 });
+    mocks.deploymentFindUnique.mockResolvedValueOnce({ snapshot });
+    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
   });
 });
 

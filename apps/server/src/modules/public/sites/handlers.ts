@@ -11,6 +11,7 @@ import {
   getSiteLlmsTxt,
   getSiteOpenApi,
   getSitePage,
+  getSitePageMarkdown,
   getSiteRobots,
   getSiteSitemap,
   recordSiteEvent,
@@ -58,6 +59,10 @@ const app = new Hono<HonoEnv>()
     const data = await getSitePage(ctx.req.param('id'), path, lang, version);
     setSiteCache(ctx, data.project);
     return ctx.json({ data }, 200);
+  })
+  .get('/:id/markdown', ...sitesRoutes.markdown, validator('query', pageQuery), async (ctx) => {
+    const { path, lang, version } = ctx.req.valid('query');
+    return textDocument(ctx, await getSitePageMarkdown(ctx.req.param('id'), path, lang, version), 'text/markdown; charset=utf-8');
   })
   .get('/:id/openapi.json', ...sitesRoutes.openapi, async (ctx) => {
     const data = await getSiteOpenApi(ctx.req.param('id'));
