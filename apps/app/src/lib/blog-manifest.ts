@@ -525,7 +525,7 @@ export const BLOG_MANIFEST = [
       'RTL',
       translateFn('blog.arabicChecklist.tagProductDocs', undefined, 'ar'),
     ],
-    related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose'],
+    related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown-ar', 'self-host-documentation-site-docker-compose-ar'],
     translationOf: 'arabic-documentation-rtl',
     readingMinutes: 8,
     faqs: [

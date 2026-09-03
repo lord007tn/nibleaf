@@ -75,6 +75,15 @@ describe('blog metadata manifest', () => {
     expect(source).not.toMatch(/\/blog\/docs-should-live-in-plain-markdown\)/u);
   });
 
+  it('keeps the Arabic RTL checklist Read Next cards on Arabic paired owners', () => {
+    const entry = BLOG_ENTRIES.find((candidate) => candidate.slug === 'arabic-technical-documentation-rtl-checklist');
+    const bySlug = new Map(BLOG_ENTRIES.map((candidate) => [candidate.slug, candidate]));
+    const relatedOwners = entry?.related?.filter((slug) => slug !== entry.translationOf) ?? [];
+
+    expect(relatedOwners).toEqual(['docs-should-live-in-plain-markdown-ar', 'self-host-documentation-site-docker-compose-ar']);
+    for (const slug of relatedOwners) expect(bySlug.get(slug)?.language).toBe('ar');
+  });
+
   it('keeps dated primary sources on the MCP and OpenAPI academy pairs', () => {
     const expectedSources = {
       'mcp-documentation-security-threat-model': [
