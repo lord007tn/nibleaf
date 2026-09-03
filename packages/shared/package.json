@@ -14,6 +14,7 @@
     "./mcp": "./src/mcp.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
     "./public-markdown": "./src/public-markdown.ts",
+    "./public-markdown-content": "./src/public-markdown-content.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",

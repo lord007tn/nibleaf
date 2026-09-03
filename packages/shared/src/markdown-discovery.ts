@@ -12,6 +12,20 @@ const cleanPathname = (pathname: string): string => {
   return withLeadingSlash.length > 1 ? withLeadingSlash.replace(/\/+$/u, '') : withLeadingSlash;
 };
 
+/** Decode each routed path segment exactly once before passing it to a page
+ * lookup. A malformed escape is rejected instead of being forwarded as a
+ * different literal path. */
+export const decodePublishedPathname = (pathname: string): string | null => {
+  try {
+    return pathname
+      .split('/')
+      .map((segment) => decodeURIComponent(segment))
+      .join('/');
+  } catch {
+    return null;
+  }
+};
+
 export const markdownAliasPath = (pathname: string): string => {
   const clean = cleanPathname(pathname);
   return clean === '/' ? '/index.md' : `${clean}.md`;

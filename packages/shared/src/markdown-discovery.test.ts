@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canonicalPathFromMarkdownAlias,
+  decodePublishedPathname,
   documentUrlForBase,
   markdownAliasPath,
   markdownAlternateUrl,
@@ -31,5 +32,11 @@ describe('llms.txt v2 Markdown discovery', () => {
       'https://app.example.com/sites/project-1/getting-started?lang=ar',
     );
     expect(documentUrlForBase('https://docs.example.com/', '/')).toBe('https://docs.example.com');
+  });
+
+  it('decodes Unicode path segments once and rejects malformed escapes', () => {
+    expect(decodePublishedPathname('/ar/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9')).toBe('/ar/المقدمة');
+    expect(decodePublishedPathname('/docs/%252F')).toBe('/docs/%2F');
+    expect(decodePublishedPathname('/docs/%E0%A4%A')).toBeNull();
   });
 });

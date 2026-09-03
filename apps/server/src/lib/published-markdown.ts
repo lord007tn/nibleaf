@@ -1,4 +1,5 @@
 import type { PublicMarkdownPage } from '@nibleaf/shared/public-markdown';
+import { normalizePublicMarkdownContent } from '@nibleaf/shared/public-markdown-content';
 
 interface PublishedPage extends PublicMarkdownPage {
   project: { config?: { visibility?: string; seo?: { allowIndex?: boolean } } | null };
@@ -15,6 +16,7 @@ interface PublishedPage extends PublicMarkdownPage {
 export const buildPublishedPageMarkdown = (data: PublishedPage): string => {
   const parts = [`# ${data.page.title.trim()}`];
   if (data.page.description?.trim()) parts.push(`> ${data.page.description.trim().replace(/\s+/gu, ' ')}`);
-  if (data.page.content.trim()) parts.push(data.page.content.trim());
+  const content = normalizePublicMarkdownContent(data.page.content);
+  if (content) parts.push(content);
   return `${parts.join('\n\n')}\n`;
 };

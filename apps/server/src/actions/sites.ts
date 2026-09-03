@@ -508,6 +508,10 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
  */
 export const getSitePageMarkdown = async (identifier: string, path: string, lang?: string, version?: string): Promise<SiteTextDocument> => {
   const data = await getSitePage(identifier, path, lang, version);
+  const requestedLanguage = lang?.trim();
+  if (requestedLanguage && data.activeLanguage !== requestedLanguage) {
+    throw notFound('page', { path, language: requestedLanguage, reason: 'language_fallback' });
+  }
   if (!isPublicMarkdownPage(data)) {
     throw notFound('page', { path, reason: 'not_public_markdown' });
   }

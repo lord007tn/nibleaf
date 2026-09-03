@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { translateFn } from '@nibleaf/i18n';
 import {
   canonicalPathFromMarkdownAlias,
+  decodePublishedPathname,
   documentUrlForBase,
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
@@ -942,17 +943,19 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
       if (preferred === 'text/markdown') {
         if (!siteMatch?.[1]) return notAcceptableHtmlResponse();
         const projectId = siteMatch[1];
-        const publicPath = siteMatch[2] || '/';
+        const routedPath = siteMatch[2] || '/';
+        const publicPath = decodePublishedPathname(routedPath);
         const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
-        const proxied = await proxyPublishedMarkdown(projectId, publicPath, documentUrl.searchParams);
         const meta = await resolveSiteMeta(projectId);
         const base = meta?.primaryDomain
           ? `https://${meta.primaryDomain}`
           : requestOrigin
             ? requestOrigin
             : `${documentUrl.origin}/sites/${projectId}`;
+        if (publicPath === null) return siteMarkdownUnavailableResponse(base);
+        const proxied = await proxyPublishedMarkdown(projectId, publicPath, documentUrl.searchParams);
         if (!proxied?.ok) return siteMarkdownUnavailableResponse(base);
-        const canonicalUrl = documentUrlForBase(base, publicPath, documentUrl.search);
+        const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
         return withoutHeadBody(addMarkdownDiscovery(proxied.response, canonicalUrl, llmsUrlForBase(base)), documentRequest.method);
       }
       if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
@@ -966,8 +969,14 @@ const handleRequestInner: RequestHandler<Register> = async (request, ...rest) =>
         : requestOrigin
           ? requestOrigin
           : `${documentUrl.origin}/sites/${siteMatch[1]}`;
-      const publicPath = siteMatch[2] || '/';
-      const canonicalUrl = documentUrlForBase(base, publicPath, documentUrl.search);
+      const routedPath = siteMatch[2] || '/';
+      const publicPath = decodePublishedPathname(routedPath);
+      if (publicPath === null) return rendered;
+      // The public Markdown action owns the complete project/language/page
+      // eligibility contract. Only advertise an alternate that it confirms.
+      const markdown = await proxyPublishedMarkdown(siteMatch[1], publicPath, documentUrl.searchParams);
+      if (!markdown?.ok) return rendered;
+      const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
       return addMarkdownDiscovery(rendered, canonicalUrl, llmsUrlForBase(base));
     }
 
