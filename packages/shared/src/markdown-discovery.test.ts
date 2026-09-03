@@ -34,6 +34,13 @@ describe('llms.txt v2 Markdown discovery', () => {
     expect(documentUrlForBase('https://docs.example.com/', '/')).toBe('https://docs.example.com');
   });
 
+  it('normalizes long runs of boundary slashes in linear time', () => {
+    const slashes = '/'.repeat(10_000);
+
+    expect(markdownAliasPath(`/guides${slashes}`)).toBe('/guides.md');
+    expect(documentUrlForBase(`https://docs.example.com${slashes}`, `${slashes}guide${slashes}`)).toBe('https://docs.example.com/guide');
+  });
+
   it('decodes Unicode path segments once and rejects malformed escapes', () => {
     expect(decodePublishedPathname('/ar/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9')).toBe('/ar/المقدمة');
     expect(decodePublishedPathname('/docs/%252F')).toBe('/docs/%2F');
