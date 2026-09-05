@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
     deploymentUpdate: vi.fn(),
     projectFindUnique: vi.fn(),
     recordPublishReady: vi.fn(),
+    notifyDeployment: vi.fn(),
     DurableUsageEnqueueError,
   };
 });
@@ -37,7 +38,7 @@ vi.mock('@nibleaf/database', () => ({
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(async () => undefined), QueueNames: { SEARCH: 'search' } }));
 vi.mock('../lib/publish-activation', () => ({ recordPublishReady: mocks.recordPublishReady }));
 vi.mock('../env', () => ({ env: { APP_URL: 'https://nibleaf.test' } }));
-vi.mock('../lib/notify', () => ({ notifyDeployment: vi.fn() }));
+vi.mock('../lib/notify', () => ({ notifyDeployment: mocks.notifyDeployment }));
 vi.mock('../lib/usage-ingest', () => ({
   DurableUsageEnqueueError: mocks.DurableUsageEnqueueError,
   enqueueAnalyticsEvent: mocks.enqueueAnalyticsEvent,
@@ -94,6 +95,17 @@ describe('publish usage queue isolation', () => {
     const job = { data: { deploymentId: 'deployment-a', projectId: 'project-a', auto: false } } as Job<PublishDeploymentJobData>;
     await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 3 });
     expect(mocks.recordPublishReady).toHaveBeenCalledWith(job.data, ready);
+    expect(mocks.deploymentUpdate).not.toHaveBeenCalled();
+  });
+
+  it('retries partial notification delivery after READY independently of activation receipt persistence', async () => {
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'READY', pagesCount: 3, createdById: 'author-a', version: 2, completedAt: new Date() });
+    mocks.notifyDeployment.mockRejectedValueOnce(new Error('notification delivery incomplete')).mockResolvedValueOnce(undefined);
+    const job = { data: { deploymentId: 'deployment-a', projectId: 'project-a', auto: false } } as Job<PublishDeploymentJobData>;
+    await expect(handlePublishJobs(job)).rejects.toThrow('notification delivery incomplete');
+    await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 3 });
+    expect(mocks.notifyDeployment).toHaveBeenCalledTimes(2);
+    expect(mocks.notifyDeployment).toHaveBeenLastCalledWith(expect.objectContaining({ deploymentId: 'deployment-a', outcome: 'ready' }));
     expect(mocks.deploymentUpdate).not.toHaveBeenCalled();
   });
 });

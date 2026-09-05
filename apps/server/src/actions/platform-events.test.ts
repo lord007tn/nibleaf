@@ -93,6 +93,7 @@ describe('first-publish platform events', () => {
     expect(result.sourceJourneys).toEqual([
       { source: 'docker_compose_guide', landingViews: 0, ctaClicks: 0, projectEntered: 0, editorEntered: 1, ready: 0 },
       { source: 'mintlify_introduction', landingViews: 1, ctaClicks: 1, projectEntered: 1, editorEntered: 1, ready: 1 },
+      { source: 'rtl_readiness_grader', landingViews: 0, ctaClicks: 0, projectEntered: 0, editorEntered: 0, ready: 0 },
     ]);
   });
 });

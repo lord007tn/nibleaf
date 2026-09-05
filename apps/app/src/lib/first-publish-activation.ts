@@ -2,13 +2,13 @@ import { FIRST_PUBLISH_CONTEXT_KEY as CONTEXT_KEY, MARKETING_ANALYTICS_CONSENT_E
 import { type FirstPublishSource, trackMarketingEvent } from './marketing-events';
 
 const MAX_CONTEXT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
-const SOURCES = new Set<FirstPublishSource>(['docker_compose_guide', 'mintlify_introduction']);
+const SOURCES = new Set<FirstPublishSource>(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']);
 
 export type FirstPublishStage = 'editor_entered' | 'project_entered';
 
 type FirstPublishContext = {
   capturedAt: number;
-  entry_point: 'organic_content';
+  entry_point: 'organic_content' | 'free_tool';
   intent: 'first_publish';
   source: FirstPublishSource;
 };
@@ -16,7 +16,7 @@ type FirstPublishContext = {
 export type FirstPublishAttribution = Pick<FirstPublishContext, 'entry_point' | 'intent' | 'source'>;
 
 const baseProperties = (source: FirstPublishSource) => ({
-  entry_point: 'organic_content' as const,
+  entry_point: source === 'rtl_readiness_grader' ? ('free_tool' as const) : ('organic_content' as const),
   intent: 'first_publish' as const,
   source,
 });
@@ -32,7 +32,7 @@ function parseContext(raw: string | null, now = Date.now()): FirstPublishContext
       !Number.isFinite(value.capturedAt) ||
       value.capturedAt > now ||
       now - value.capturedAt > MAX_CONTEXT_AGE_MS ||
-      value.entry_point !== 'organic_content' ||
+      value.entry_point !== (value.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') ||
       value.intent !== 'first_publish' ||
       !SOURCES.has(value.source as FirstPublishSource)
     ) {
@@ -64,7 +64,7 @@ export function trackFirstPublishCta(source: FirstPublishSource): boolean {
   trackMarketingEvent('first_publish_cta_clicked', {
     ...baseProperties(source),
     destination: 'signup',
-    placement: 'article_bridge',
+    placement: source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge',
   });
   return true;
 }

@@ -42,13 +42,13 @@ export function logFirstContentEdit(userId: string, projectId: string): void {
   })().catch(() => undefined);
 }
 
-const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction'] as const;
+const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader'] as const;
 type FirstPublishSource = (typeof FIRST_PUBLISH_SOURCES)[number];
 type FirstPublishStage = 'editor_entered' | 'project_entered' | 'publish_ready';
 
 export async function recordFirstPublishStage(input: {
   stage: FirstPublishStage;
-  properties: { entry_point: 'organic_content'; intent: 'first_publish'; source: FirstPublishSource };
+  properties: { entry_point: 'organic_content' | 'free_tool'; intent: 'first_publish'; source: FirstPublishSource };
 }): Promise<void> {
   await prisma.platformEvent.create({
     data: {

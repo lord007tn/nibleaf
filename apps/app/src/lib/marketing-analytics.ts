@@ -88,19 +88,19 @@ function isApprovedMarketingAnalyticsEvent(event: string, properties: Record<str
   if (event === 'first_publish_landing_viewed') {
     return (
       exactKeys(properties, ['entry_point', 'intent', 'source']) &&
-      properties.entry_point === 'organic_content' &&
+      properties.entry_point === (properties.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') &&
       properties.intent === 'first_publish' &&
-      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction')
+      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction' || properties.source === 'rtl_readiness_grader')
     );
   }
   if (event === 'first_publish_cta_clicked') {
     return (
       exactKeys(properties, ['destination', 'entry_point', 'intent', 'placement', 'source']) &&
       properties.destination === 'signup' &&
-      properties.entry_point === 'organic_content' &&
+      properties.entry_point === (properties.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') &&
       properties.intent === 'first_publish' &&
-      properties.placement === 'article_bridge' &&
-      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction')
+      properties.placement === (properties.source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge') &&
+      (properties.source === 'docker_compose_guide' || properties.source === 'mintlify_introduction' || properties.source === 'rtl_readiness_grader')
     );
   }
   if (event === 'cta_clicked') {

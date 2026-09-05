@@ -39,6 +39,12 @@ describe('manual publish receipts', () => {
     });
   });
 
+  it('preserves finite grader attribution on manual READY without adding identifiers', async () => {
+    const attribution = { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' } as const;
+    await recordPublishReady({ ...job, firstPublishAttribution: attribution }, ready);
+    expect(database.create).toHaveBeenCalledExactlyOnceWith({ data: { type: 'publish_ready', metadata: attribution, createdAt: ready.completedAt } });
+  });
+
   it.each([true, undefined])('excludes non-explicit manual jobs (auto=%s)', async (auto) => {
     await recordPublishReady({ ...job, auto }, ready);
     expect(database.createMany).toHaveBeenCalledTimes(1);

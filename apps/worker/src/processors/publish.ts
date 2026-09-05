@@ -320,6 +320,7 @@ async function completePublish(
   ).catch((error) => log.warn({ projectId: job.projectId, deploymentId: job.deploymentId, error }, 'could not enqueue hybrid search indexing'));
   await recordPublishReady(job, ready);
   await notifyDeployment({
+    deploymentId: job.deploymentId,
     projectId: job.projectId,
     projectName: project.name,
     version: ready.version,
@@ -467,6 +468,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       metadata: { auto: auto === true, version: failed.version, checksFailed: error instanceof PublishChecksError },
     });
     await notifyDeployment({
+      deploymentId,
       projectId,
       projectName: proj?.name ?? 'Your site',
       version: failed.version,
