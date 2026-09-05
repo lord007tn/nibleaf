@@ -22,15 +22,15 @@ describe('marketing calls to action', () => {
 });
 
 describe('GitHubStarLink', () => {
-  it('shows an authoritative zero count instead of hiding it', () => {
+  it('keeps the repository link without presenting a cold or failed lookup as zero stars', () => {
     const html = renderToStaticMarkup(<GitHubStarLink stars={0} />);
     const fractionalHtml = renderToStaticMarkup(<GitHubStarLink stars={0.5} />);
 
     expect(html).toContain('href="https://github.com/lord007tn/nibleaf"');
-    expect(html).toContain('aria-label="Star Nibleaf on GitHub — 0 stars"');
+    expect(html).toContain('aria-label="Star Nibleaf on GitHub"');
     expect(html).toContain('Star on GitHub');
-    expect(html).toContain('data-github-stars="0"');
-    expect(fractionalHtml).toContain('data-github-stars="0"');
+    expect(html).not.toContain('data-github-stars');
+    expect(fractionalHtml).not.toContain('data-github-stars');
   });
 
   it('rounds large counts like GitHub while retaining the exact accessible label', () => {

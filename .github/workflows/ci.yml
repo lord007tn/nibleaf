@@ -76,6 +76,12 @@ jobs:
           pnpm --filter @nibleaf/database smoke:integrations-migration
           pnpm --filter @nibleaf/database smoke:mcp-migration
 
+      - name: Verify concurrent manual-publish receipts
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ACTIVATION_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

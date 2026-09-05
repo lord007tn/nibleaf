@@ -2,6 +2,22 @@ import { describe, expect, it } from 'vitest';
 import { marketingEventBody } from './schema';
 
 describe('marketing event privacy boundary', () => {
+  it('accepts grader result attribution without relabeling it as an article', () => {
+    const properties = {
+      destination: 'signup',
+      entry_point: 'free_tool',
+      intent: 'first_publish',
+      placement: 'result_bridge',
+      source: 'rtl_readiness_grader',
+    };
+    expect(marketingEventBody.safeParse({ event: 'first_publish_cta_clicked', properties }).success).toBe(true);
+    expect(
+      marketingEventBody.safeParse({ event: 'first_publish_cta_clicked', properties: { ...properties, placement: 'article_bridge' } }).success,
+    ).toBe(false);
+    expect(marketingEventBody.safeParse({ event: 'first_publish_cta_clicked', properties: { ...properties, source: 'untrusted' } }).success).toBe(
+      false,
+    );
+  });
   it('accepts only fixed first-publish attribution dimensions', () => {
     expect(
       marketingEventBody.safeParse({

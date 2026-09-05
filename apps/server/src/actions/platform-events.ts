@@ -29,36 +29,26 @@ export function logPlatformEvent(type: string, input: PlatformEventInput = {}): 
     .catch(() => undefined);
 }
 
-// The editor autosaves on every pause, so a naive `page_edited` per save would
-// explode the table. One event per (user, project) is all the funnel needs; the
-// in-process set skips the existence query on repeat saves.
-const seenContentEdits = new Set<string>();
-
 /** Record the FIRST content edit a user makes in a project (create or update). */
 export function logFirstContentEdit(userId: string, projectId: string): void {
-  const key = `${userId}:${projectId}`;
-  if (seenContentEdits.has(key)) {
-    return;
-  }
-  seenContentEdits.add(key);
   void (async () => {
-    const existing = await prisma.platformEvent.findFirst({
-      where: { type: 'page_edited', userId, projectId },
-      select: { id: true },
+    // Preserve receipts written before deterministic IDs were introduced.
+    const existing = await prisma.platformEvent.findFirst({ where: { type: 'page_edited', userId, projectId }, select: { id: true } });
+    if (existing) return;
+    await prisma.platformEvent.createMany({
+      data: { id: `page-edited:${userId}:${projectId}`, type: 'page_edited', userId, projectId },
+      skipDuplicates: true,
     });
-    if (!existing) {
-      await prisma.platformEvent.create({ data: { type: 'page_edited', userId, projectId } });
-    }
   })().catch(() => undefined);
 }
 
-const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction'] as const;
+const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader'] as const;
 type FirstPublishSource = (typeof FIRST_PUBLISH_SOURCES)[number];
 type FirstPublishStage = 'editor_entered' | 'project_entered' | 'publish_ready';
 
 export async function recordFirstPublishStage(input: {
   stage: FirstPublishStage;
-  properties: { entry_point: 'organic_content'; intent: 'first_publish'; source: FirstPublishSource };
+  properties: { entry_point: 'organic_content' | 'free_tool'; intent: 'first_publish'; source: FirstPublishSource };
 }): Promise<void> {
   await prisma.platformEvent.create({
     data: {

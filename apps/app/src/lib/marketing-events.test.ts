@@ -7,7 +7,7 @@ describe('trackMarketingEvent', () => {
   beforeEach(() => {
     request.mockClear();
     vi.stubGlobal('fetch', request);
-    vi.stubGlobal('window', {});
+    vi.stubGlobal('window', { location: new URL('https://nibleaf.test/tools/rtl-documentation-readiness') });
   });
 
   it('sends an exact allowlisted payload', () => {

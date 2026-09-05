@@ -141,7 +141,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             <NibleafMark aria-hidden="true" className="size-8" />
             <NibleafWordmark aria-hidden="true" />
           </a>
-          <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
+          <nav className="ms-8 hidden items-center gap-5 text-muted-foreground text-sm xl:flex">
             {navLinks.map((link) => (
               <a key={link.href} className="transition-colors hover:text-foreground" href={link.href}>
                 {link.label}
@@ -446,7 +446,7 @@ function HowItWorks() {
       <div className="mx-auto max-w-6xl px-6 py-24">
         <div className="max-w-2xl">
           <Eyebrow>How it works</Eyebrow>
-          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">From blank page to published in minutes</h2>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Write, preview, and publish your documentation</h2>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
             A calm, predictable workflow — write in Markdown, publish a versioned snapshot, share a fast site.
           </p>
@@ -535,16 +535,14 @@ function ChooseYourPath() {
           <p className="mt-4 font-semibold text-4xl tracking-tight">Free during beta</p>
           <p className="mt-1.5 text-muted-foreground text-sm">Managed hosting: database, storage, deploys, and upgrades handled for you.</p>
           <ul className="mt-6 space-y-3 text-sm">
-            {[
-              'Live in 60 seconds — sign up and write',
-              'Custom domains and analytics included',
-              'Beta workspaces get preferential treatment later',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                {item}
-              </li>
-            ))}
+            {['Sign up and start writing', 'Custom domains and analytics included', 'Beta workspaces get preferential treatment later'].map(
+              (item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                  {item}
+                </li>
+              ),
+            )}
           </ul>
           <a className={`${primaryButton} mt-7 w-full`} href="/sign-up">
             Create free account <ArrowRight className="size-4" />
@@ -775,7 +773,7 @@ export function GitHubStarLink({
 
   return (
     <a
-      aria-label={`Star Nibleaf on GitHub — ${starLabel}`}
+      aria-label={count > 0 ? `Star Nibleaf on GitHub — ${starLabel}` : 'Star Nibleaf on GitHub'}
       className={cn(outlineButton, 'group px-3', className)}
       href={GITHUB_URL}
       rel="noreferrer"
@@ -783,10 +781,12 @@ export function GitHubStarLink({
     >
       <GitHubGlyph aria-hidden="true" className="size-4" />
       <span className={cn(compact && 'hidden lg:inline')}>{label}</span>
-      <Star aria-hidden="true" className={cn('size-3.5', !compact && 'hidden sm:block')} />
-      <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
-        {displayCount}
-      </span>
+      {count > 0 && <Star aria-hidden="true" className="hidden size-3.5 sm:block" />}
+      {count > 0 && (
+        <span className="hidden min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums sm:inline" data-github-stars={count}>
+          {displayCount}
+        </span>
+      )}
     </a>
   );
 }

@@ -4,6 +4,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, CheckCircle2, Clipboard, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { trackFirstPublishCta } from '@/lib/first-publish-activation';
 import { trackMarketingEvent } from '@/lib/marketing-events';
 import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION, type RtlReadinessResult } from '@/lib/rtl-readiness';
@@ -219,8 +220,11 @@ function RtlDocumentationReadinessPage() {
           <div className="mt-7 flex flex-wrap gap-3">
             <a
               className={`${primaryButton} group`}
-              href="/sign-up?utm_source=rtl_grader&utm_medium=free_tool&utm_campaign=rtl_readiness"
-              onClick={() => trackCta('sample_project_signup', 'result_bridge')}
+              href="/sign-up?intent=first-publish&utm_source=rtl_grader&utm_medium=free_tool&utm_campaign=rtl_readiness"
+              onClick={() => {
+                trackFirstPublishCta('rtl_readiness_grader');
+                trackCta('sample_project_signup', 'result_bridge');
+              }}
             >
               Create a sample project <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>

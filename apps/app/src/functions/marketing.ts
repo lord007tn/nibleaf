@@ -15,7 +15,7 @@ export const getGithubStars = async () => {
   }
   if (!inFlight) {
     inFlight = github.rest.repos
-      .get({ owner: 'Nibleaf', repo: 'open-mintlify' })
+      .get({ owner: 'lord007tn', repo: 'nibleaf' })
       .then((response) => {
         const value = response.data.stargazers_count;
         starsCache = { value, fetchedAt: Date.now() };

@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   create: vi.fn(),
   findMany: vi.fn(),
+  findFirst: vi.fn(),
+  createMany: vi.fn(),
 }));
 
 vi.mock('@nibleaf/database', () => ({
@@ -12,16 +14,37 @@ vi.mock('@nibleaf/database', () => ({
       count: mocks.count,
       create: mocks.create,
       findMany: mocks.findMany,
+      findFirst: mocks.findFirst,
+      createMany: mocks.createMany,
     },
   },
 }));
 
-import { getActivationFunnel, recordFirstPublishStage } from './platform-events';
+import { getActivationFunnel, logFirstContentEdit, recordFirstPublishStage } from './platform-events';
 
 describe('first-publish platform events', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.create.mockResolvedValue({ id: 'event' });
+    mocks.findFirst.mockResolvedValue(null);
+    mocks.createMany.mockResolvedValue({ count: 1 });
+  });
+
+  it('preserves historical edit receipts and retries after a failed write', async () => {
+    mocks.findFirst.mockResolvedValueOnce({ id: 'legacy-random-id' });
+    logFirstContentEdit('author', 'project');
+    await vi.waitFor(() => expect(mocks.findFirst).toHaveBeenCalledOnce());
+    expect(mocks.createMany).not.toHaveBeenCalled();
+
+    mocks.createMany.mockRejectedValueOnce(new Error('temporary failure'));
+    logFirstContentEdit('author', 'new-project');
+    await vi.waitFor(() => expect(mocks.createMany).toHaveBeenCalledOnce());
+    logFirstContentEdit('author', 'new-project');
+    await vi.waitFor(() => expect(mocks.createMany).toHaveBeenCalledTimes(2));
+    expect(mocks.createMany).toHaveBeenLastCalledWith({
+      data: { id: 'page-edited:author:new-project', type: 'page_edited', userId: 'author', projectId: 'new-project' },
+      skipDuplicates: true,
+    });
   });
 
   it('stores no user, project, or tenant identifier', async () => {
@@ -70,6 +93,7 @@ describe('first-publish platform events', () => {
     expect(result.sourceJourneys).toEqual([
       { source: 'docker_compose_guide', landingViews: 0, ctaClicks: 0, projectEntered: 0, editorEntered: 1, ready: 0 },
       { source: 'mintlify_introduction', landingViews: 1, ctaClicks: 1, projectEntered: 1, editorEntered: 1, ready: 1 },
+      { source: 'rtl_readiness_grader', landingViews: 0, ctaClicks: 0, projectEntered: 0, editorEntered: 0, ready: 0 },
     ]);
   });
 });

@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { firstPublishActivationBody } from './schema';
 
 describe('authenticated activation-event privacy boundary', () => {
+  it('accepts the finite grader source only as a free tool and rejects mislabeled or identifying fields', () => {
+    const properties = { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' };
+    expect(firstPublishActivationBody.safeParse({ stage: 'project_entered', properties }).success).toBe(true);
+    expect(
+      firstPublishActivationBody.safeParse({ stage: 'editor_entered', properties: { ...properties, entry_point: 'organic_content' } }).success,
+    ).toBe(false);
+    expect(firstPublishActivationBody.safeParse({ stage: 'editor_entered', properties: { ...properties, submitted_html: 'private' } }).success).toBe(
+      false,
+    );
+  });
   it('accepts an allowlisted stage without a client-supplied identity or tenant', () => {
     expect(
       firstPublishActivationBody.safeParse({

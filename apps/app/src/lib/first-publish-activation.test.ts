@@ -29,6 +29,14 @@ describe('first-publish attribution privacy boundary', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
+  it('withdraws stored attribution so accepting again cannot resurrect the earlier journey', () => {
+    persistMarketingAnalyticsConsent('accepted');
+    trackFirstPublishCta('mintlify_introduction');
+    persistMarketingAnalyticsConsent('declined');
+    persistMarketingAnalyticsConsent('accepted');
+    expect(readFirstPublishAttribution()).toBeNull();
+  });
+
   it('sends exact allowlisted landing, CTA, and product-stage payloads after consent', async () => {
     persistMarketingAnalyticsConsent('accepted');
 

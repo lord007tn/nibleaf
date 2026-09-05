@@ -1,9 +1,9 @@
 export type PublishJobName = 'publish-deployment';
 
 export interface FirstPublishAttribution {
-  entry_point: 'organic_content';
+  entry_point: 'organic_content' | 'free_tool';
   intent: 'first_publish';
-  source: 'docker_compose_guide' | 'mintlify_introduction';
+  source: 'docker_compose_guide' | 'mintlify_introduction' | 'rtl_readiness_grader';
 }
 
 export interface PublishDeploymentJobData {
