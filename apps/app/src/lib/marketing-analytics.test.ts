@@ -209,6 +209,14 @@ describe('marketing analytics', () => {
     expect(window['ga-disable-G-ABC123']).toBe(true);
   });
 
+  it('does not reenable a previous direct destination when switching to a configured GTM destination', () => {
+    initializeMarketingAnalytics(GA4_TARGET);
+    initializeMarketingAnalytics({ ...GTM_TARGET, ga4MeasurementId: 'G-NEW123' });
+    expect(window['ga-disable-G-ABC123']).toBe(true);
+    expect(window['ga-disable-G-NEW123']).toBe(false);
+    Reflect.deleteProperty(window, 'ga-disable-G-NEW123');
+  });
+
   it('sets query-free global page context before Google initializes, for native engagement events', () => {
     window.history.replaceState({}, '', '/sign-up?email=private@example.com#private');
     vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://example.com/guide?token=private#private');

@@ -234,11 +234,13 @@ const validTarget = (target: MarketingAnalyticsTarget): boolean =>
  * Script IDs cover older metadata responses that omitted the destination. */
 function setDestinationDisabled(target: MarketingAnalyticsTarget, disabled: boolean): void {
   const ids = new Set([target.provider === 'ga4' ? target.id : target.ga4MeasurementId]);
-  for (const script of document.querySelectorAll<HTMLScriptElement>('script[src]')) {
-    const url = new URL(script.src, window.location.origin);
-    if (url.hostname === 'www.googletagmanager.com' && (url.pathname === '/gtag/js' || url.pathname === '/gtag/destination')) {
-      const id = url.searchParams.get('id');
-      if (isGa4MeasurementId(id)) ids.add(id);
+  if (target.provider === 'gtm' && !isGa4MeasurementId(target.ga4MeasurementId)) {
+    for (const script of document.querySelectorAll<HTMLScriptElement>('script[src]')) {
+      const url = new URL(script.src, window.location.origin);
+      if (url.hostname === 'www.googletagmanager.com' && (url.pathname === '/gtag/js' || url.pathname === '/gtag/destination')) {
+        const id = url.searchParams.get('id');
+        if (isGa4MeasurementId(id)) ids.add(id);
+      }
     }
   }
   for (const id of ids) if (isGa4MeasurementId(id)) window[`ga-disable-${id}`] = disabled;
