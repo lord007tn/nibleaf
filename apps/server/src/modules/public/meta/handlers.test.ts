@@ -48,13 +48,13 @@ describe('public instance metadata', () => {
     expect(JSON.stringify(body)).not.toContain('clientId');
   });
 
-  it('prefers GTM and suppresses the direct GA4 fallback when both are configured', async () => {
+  it('exposes the GTM destination for opt-out while the client retains GTM loader ownership', async () => {
     mocks.extras.MARKETING_GA4_ID = 'G-ABC123';
     mocks.extras.MARKETING_GTM_ID = 'GTM-ABC123';
     const body = (await (await app.request('/meta')).json()) as {
       data: { marketingAnalytics: { ga4MeasurementId: string | null; gtmContainerId: string | null } };
     };
 
-    expect(body.data.marketingAnalytics).toEqual({ consentRequired: true, ga4MeasurementId: null, gtmContainerId: 'GTM-ABC123' });
+    expect(body.data.marketingAnalytics).toEqual({ consentRequired: true, ga4MeasurementId: 'G-ABC123', gtmContainerId: 'GTM-ABC123' });
   });
 });

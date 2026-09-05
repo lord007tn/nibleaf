@@ -219,7 +219,7 @@ function RtlDocumentationReadinessPage() {
           <div className="mt-7 flex flex-wrap gap-3">
             <a
               className={`${primaryButton} group`}
-              href="/sign-up?utm_source=rtl_grader&utm_medium=free_tool&utm_campaign=rtl_readiness"
+              href="/sign-up?intent=first-publish&utm_source=rtl_grader&utm_medium=free_tool&utm_campaign=rtl_readiness"
               onClick={() => trackCta('sample_project_signup', 'result_bridge')}
             >
               Create a sample project <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />

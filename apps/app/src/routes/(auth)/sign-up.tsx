@@ -12,7 +12,6 @@ import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
-import { sendMarketingAnalyticsEvent } from '@/lib/marketing-analytics';
 import { authClient, signIn } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-up')({
@@ -86,7 +85,6 @@ function SignUpPage() {
         setError(result.error.message ?? t('auth.otp.invalid'));
         return;
       }
-      sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
       await finishSignUp();
     } catch {
       setError(t('auth.otp.invalid'));

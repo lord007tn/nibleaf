@@ -5,6 +5,8 @@ import { useGetPublicMeta } from '@/hooks/api/public';
 import {
   declineMarketingAnalytics,
   initializeMarketingAnalytics,
+  MARKETING_ANALYTICS_CONSENT_EVENT,
+  MARKETING_ANALYTICS_CONSENT_KEY,
   type MarketingAnalyticsConsent as MarketingAnalyticsChoice,
   type MarketingAnalyticsLanguage,
   type MarketingAnalyticsTarget,
@@ -15,12 +17,7 @@ import {
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
 
-export function marketingAnalyticsEnabled(pathname: string, siteProjectId?: string): boolean {
-  if (siteProjectId) return false;
-  return !['/app', '/sign-in', '/forgot-password', '/reset-password', '/verify-email', '/accept-invite', '/git-preview'].some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
+export { marketingAnalyticsEnabled } from '@/lib/marketing-analytics';
 
 export function MarketingAnalyticsConsent({ enabled, language }: { enabled: boolean; language: MarketingAnalyticsLanguage }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -37,12 +34,30 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   }, [enabled, publicMeta]);
 
   useEffect(() => {
+    const syncChoice = () => setChoice(readMarketingAnalyticsConsent());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === MARKETING_ANALYTICS_CONSENT_KEY || event.key === null) syncChoice();
+    };
+    window.addEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, syncChoice);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(MARKETING_ANALYTICS_CONSENT_EVENT, syncChoice);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!target) return;
-    if (!enabled) {
+    return () => suspendMarketingAnalytics(target);
+  }, [target]);
+
+  useEffect(() => {
+    if (!target) return;
+    if (!enabled || choice !== 'accepted') {
       suspendMarketingAnalytics(target);
       return;
     }
-    if (choice !== 'accepted' || !initializeMarketingAnalytics(target)) return;
+    if (!initializeMarketingAnalytics(target)) return;
     const pageKey = `${target.provider}:${target.id}:${pathname}:${language}`;
     if (lastPageView.current === pageKey) return;
     lastPageView.current = pageKey;

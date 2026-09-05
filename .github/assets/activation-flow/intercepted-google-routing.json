@@ -1,0 +1,244 @@
+{
+  "scope": "Local production build with public Google scripts; all collector and first-party writes intercepted. Transport attempts are not processed events.",
+  "phases": {
+    "pending": {
+      "googleScripts": 0,
+      "receipts": 0
+    },
+    "declined": {
+      "googleScripts": 0,
+      "receipts": 0
+    },
+    "accepted": {
+      "scripts": [
+        {
+          "id": "",
+          "src": "https://www.googletagmanager.com/gtag/js?id=G-S1HY418MM8&cx=c&gtm=4e6921"
+        },
+        {
+          "id": "nibleaf-marketing-gtm",
+          "src": "https://www.googletagmanager.com/gtm.js?id=GTM-K4FKZFK8"
+        }
+      ],
+      "consentCommands": [
+        {
+          "command": "default",
+          "analytics": "denied",
+          "ads": "denied"
+        },
+        {
+          "command": "update",
+          "analytics": "granted",
+          "ads": "denied"
+        }
+      ]
+    },
+    "signup": {
+      "pathname": "/sign-up",
+      "search": "?intent=first-publish&utm_source=rtl_grader&utm_medium=free_tool&utm_campaign=rtl_readiness"
+    },
+    "reload": {
+      "clientCookiePreserved": true
+    },
+    "privateSpa": {
+      "pathname": "/sign-in",
+      "spa": true,
+      "consentCommands": [
+        {
+          "command": "default",
+          "analytics": "denied"
+        },
+        {
+          "command": "update",
+          "analytics": "granted"
+        },
+        {
+          "command": "update",
+          "analytics": "denied"
+        }
+      ]
+    },
+    "withdrawn": {
+      "googleScripts": 0,
+      "googleCookies": 0
+    },
+    "regrant": {
+      "googleScripts": 2
+    }
+  },
+  "collectors": [
+    {
+      "phase": "accepted",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_started",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_completed",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_cta_clicked",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_started",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_completed",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "destination": "G-S1HY418MM8",
+      "event": "free_tool_cta_clicked",
+      "location": "http://localhost:4317/tools/rtl-documentation-readiness",
+      "containsCanary": false
+    },
+    {
+      "phase": "reload",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "reload",
+      "destination": "G-S1HY418MM8",
+      "event": "user_engagement",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "reload",
+      "destination": "G-S1HY418MM8",
+      "event": "user_engagement",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "reload",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "returnForWithdrawal",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "returnForWithdrawal",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/sign-up",
+      "containsCanary": false
+    },
+    {
+      "phase": "regrant",
+      "destination": "G-S1HY418MM8",
+      "event": "page_view",
+      "location": "http://localhost:4317/pricing",
+      "containsCanary": false
+    }
+  ],
+  "firstParty": [
+    {
+      "phase": "pending",
+      "body": {
+        "event": "free_tool_started",
+        "properties": {
+          "input_mode": "html",
+          "page_path": "/tools/rtl-documentation-readiness",
+          "product": "nibleaf",
+          "rubric_version": "0.1.0",
+          "tool_slug": "rtl-documentation-readiness"
+        }
+      },
+      "containsCanary": false
+    },
+    {
+      "phase": "pending",
+      "body": {
+        "event": "free_tool_completed",
+        "properties": {
+          "category_count": 8,
+          "checks_run": 10,
+          "checks_unknown": 17,
+          "product": "nibleaf",
+          "result_type": "insufficient_evidence",
+          "rubric_version": "0.1.0",
+          "tool_slug": "rtl-documentation-readiness"
+        }
+      },
+      "containsCanary": false
+    },
+    {
+      "phase": "accepted",
+      "body": {
+        "event": "free_tool_started",
+        "properties": {
+          "input_mode": "html",
+          "page_path": "/tools/rtl-documentation-readiness",
+          "product": "nibleaf",
+          "rubric_version": "0.1.0",
+          "tool_slug": "rtl-documentation-readiness"
+        }
+      },
+      "containsCanary": false
+    },
+    {
+      "phase": "accepted",
+      "body": {
+        "event": "free_tool_completed",
+        "properties": {
+          "category_count": 8,
+          "checks_run": 10,
+          "checks_unknown": 17,
+          "product": "nibleaf",
+          "result_type": "insufficient_evidence",
+          "rubric_version": "0.1.0",
+          "tool_slug": "rtl-documentation-readiness"
+        }
+      },
+      "containsCanary": false
+    },
+    {
+      "phase": "signup",
+      "body": {
+        "event": "free_tool_cta_clicked",
+        "properties": {
+          "destination": "sample_project_signup",
+          "placement": "result_bridge",
+          "product": "nibleaf",
+          "tool_slug": "rtl-documentation-readiness"
+        }
+      },
+      "containsCanary": false
+    }
+  ]
+}

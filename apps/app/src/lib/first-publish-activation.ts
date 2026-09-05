@@ -1,7 +1,6 @@
-import { MARKETING_ANALYTICS_CONSENT_EVENT, readMarketingAnalyticsConsent } from './marketing-analytics';
+import { FIRST_PUBLISH_CONTEXT_KEY as CONTEXT_KEY, MARKETING_ANALYTICS_CONSENT_EVENT, readMarketingAnalyticsConsent } from './marketing-analytics';
 import { type FirstPublishSource, trackMarketingEvent } from './marketing-events';
 
-const CONTEXT_KEY = 'nibleaf.first-publish-attribution.v1';
 const MAX_CONTEXT_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const SOURCES = new Set<FirstPublishSource>(['docker_compose_guide', 'mintlify_introduction']);
 

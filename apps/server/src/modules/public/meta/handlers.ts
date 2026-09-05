@@ -14,7 +14,8 @@ const app = new Hono<HonoEnv>().get('/', ...metaRoutes.meta, (ctx) =>
       data: {
         marketingAnalytics: {
           consentRequired: true as const,
-          ga4MeasurementId: envExtras.MARKETING_GTM_ID ? null : (envExtras.MARKETING_GA4_ID ?? null),
+          // GTM owns loading; its destination ID also enables browser opt-out.
+          ga4MeasurementId: envExtras.MARKETING_GA4_ID ?? null,
           gtmContainerId: envExtras.MARKETING_GTM_ID ?? null,
         },
         providers: { google: googleOAuthEnabled(env) },
