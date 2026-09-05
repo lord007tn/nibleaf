@@ -23,6 +23,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [target, setTarget] = useState<MarketingAnalyticsTarget | null>(null);
   const [choice, setChoice] = useState<MarketingAnalyticsChoice>('pending');
+  const [preferencesOpen, setPreferencesOpen] = useState(false);
   const lastPageView = useRef<string | null>(null);
   const t = siteT(language);
   const { data: publicMeta } = useGetPublicMeta({ enabled });
@@ -54,6 +55,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
   useEffect(() => {
     if (!target) return;
     if (!enabled || choice !== 'accepted') {
+      lastPageView.current = null;
       suspendMarketingAnalytics(target);
       return;
     }
@@ -66,11 +68,11 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
 
   if (!enabled || !target) return null;
 
-  if (choice !== 'pending') {
+  if (choice !== 'pending' && !preferencesOpen) {
     return (
       <button
         className="fixed end-3 bottom-3 z-50 cursor-pointer rounded-full border border-border bg-background/95 px-3 py-1.5 text-muted-foreground text-xs shadow-sm backdrop-blur hover:text-foreground"
-        onClick={() => setChoice('pending')}
+        onClick={() => setPreferencesOpen(true)}
         type="button"
       >
         {t('analyticsConsentManage')}
@@ -96,6 +98,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
           onClick={() => {
             declineMarketingAnalytics(target);
             setChoice('declined');
+            setPreferencesOpen(false);
           }}
           type="button"
         >
@@ -106,6 +109,7 @@ export function MarketingAnalyticsConsent({ enabled, language }: { enabled: bool
           onClick={() => {
             persistMarketingAnalyticsConsent('accepted');
             setChoice('accepted');
+            setPreferencesOpen(false);
           }}
           type="button"
         >

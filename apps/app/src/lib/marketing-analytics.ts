@@ -251,7 +251,7 @@ function setPublicPageContext(pathname = window.location.pathname): void {
   let referrer = '';
   try {
     const url = new URL(document.referrer);
-    referrer = `${url.origin}${url.pathname}`;
+    referrer = url.origin;
   } catch {
     // An absent referrer is normal for direct navigation.
   }

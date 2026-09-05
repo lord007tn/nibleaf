@@ -1,0 +1,147 @@
+{
+  "scope": "Synthetic local production builds before and after the bounded final consent review. Actual Google scripts; every collector write intercepted. No navigation or reload between grants. Transport attempts are not processed event counts.",
+  "before": {
+    "states": {
+      "firstGrant": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "preferencesOpen": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": true,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "preferencesClosed": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "declined": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": true,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "regrant": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      }
+    },
+    "globalReferrers": [
+      "https://source.example/private-canary-path",
+      "https://source.example/private-canary-path",
+      "https://source.example/private-canary-path",
+      "https://source.example/private-canary-path"
+    ],
+    "collectorAttempts": [
+      {
+        "phase": "initial",
+        "event": "page_view",
+        "destination": "G-S1HY418MM8",
+        "location": "http://localhost:4317/",
+        "referrer": "https://source.example/private-canary-path",
+        "containsPrivateMarker": true
+      },
+      {
+        "phase": "regrant",
+        "event": "user_engagement",
+        "destination": "G-S1HY418MM8",
+        "location": "http://localhost:4317/",
+        "referrer": "https://source.example/private-canary-path",
+        "containsPrivateMarker": true
+      }
+    ]
+  },
+  "after": {
+    "states": {
+      "firstGrant": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "preferencesOpen": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "preferencesClosed": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "declined": {
+        "sameDocument": true,
+        "pageViews": 1,
+        "googleDisabled": true,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      },
+      "regrant": {
+        "sameDocument": true,
+        "pageViews": 2,
+        "googleDisabled": false,
+        "gtmScripts": 1,
+        "directGaScripts": 0,
+        "referrerMarkerSupplied": true
+      }
+    },
+    "globalReferrers": [
+      "https://source.example",
+      "https://source.example",
+      "https://source.example",
+      "https://source.example"
+    ],
+    "collectorAttempts": [
+      {
+        "phase": "initial",
+        "event": "page_view",
+        "destination": "G-S1HY418MM8",
+        "location": "http://localhost:4317/",
+        "referrer": "https://source.example",
+        "containsPrivateMarker": false
+      },
+      {
+        "phase": "regrant",
+        "event": "page_view",
+        "destination": "G-S1HY418MM8",
+        "location": "http://localhost:4317/",
+        "referrer": "https://source.example",
+        "containsPrivateMarker": false
+      },
+      {
+        "phase": "regrant",
+        "event": "user_engagement",
+        "destination": "G-S1HY418MM8",
+        "location": "http://localhost:4317/",
+        "referrer": "https://source.example",
+        "containsPrivateMarker": false
+      }
+    ]
+  }
+}

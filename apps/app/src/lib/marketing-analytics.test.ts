@@ -219,9 +219,9 @@ describe('marketing analytics', () => {
 
   it('sets query-free global page context before Google initializes, for native engagement events', () => {
     window.history.replaceState({}, '', '/sign-up?email=private@example.com#private');
-    vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://example.com/guide?token=private#private');
+    vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://example.com/private-personal-path?token=private#private');
     initializeMarketingAnalytics(GTM_TARGET);
-    expect(gtagCommandValues()[0]).toEqual(['set', { page_location: 'http://localhost:3000/sign-up', page_referrer: 'https://example.com/guide' }]);
+    expect(gtagCommandValues()[0]).toEqual(['set', { page_location: 'http://localhost:3000/sign-up', page_referrer: 'https://example.com' }]);
     expect(JSON.stringify(window.dataLayer)).not.toContain('private');
   });
 

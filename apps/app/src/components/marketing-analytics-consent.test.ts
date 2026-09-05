@@ -110,6 +110,36 @@ describe('MarketingAnalyticsConsent', () => {
     expect(window.dataLayer).toHaveLength(before ?? 0);
   });
 
+  it('counts same-page regrant once without counting preference reopening or ordinary rerenders', async () => {
+    const render = () =>
+      root.render(
+        createElement(QueryClientProvider, { client: queryClient }, createElement(MarketingAnalyticsConsent, { enabled: true, language: 'en' })),
+      );
+    const click = async (label: string) => {
+      const button = [...container.querySelectorAll('button')].find((item) => item.textContent === label);
+      expect(button).toBeDefined();
+      await act(async () => button?.click());
+    };
+    const views = () =>
+      (window.dataLayer ?? []).filter((entry) => entry instanceof Object && 'event_name' in entry && entry.event_name === 'page_view');
+    await act(async () => render());
+    await click('Accept analytics');
+    expect(views()).toHaveLength(1);
+    const commandsBeforePreferences = window.dataLayer?.length;
+    await click('Privacy choices');
+    expect(window.dataLayer).toHaveLength(commandsBeforePreferences ?? 0);
+    await click('Accept analytics');
+    await act(async () => render());
+    expect(views()).toHaveLength(1);
+    await click('Privacy choices');
+    await click('Decline');
+    await click('Privacy choices');
+    await click('Accept analytics');
+    expect(views()).toHaveLength(2);
+    await act(async () => render());
+    expect(views()).toHaveLength(2);
+  });
+
   it('tracks SPA path changes once and stops after withdrawal in another tab', async () => {
     window.localStorage.setItem(MARKETING_ANALYTICS_CONSENT_KEY, 'accepted');
     const render = () =>
