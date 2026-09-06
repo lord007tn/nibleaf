@@ -58,6 +58,9 @@ jobs:
           node-version: 22.13.0
           cache: pnpm
 
+      - name: Test immutable image verification
+        run: node --test scripts/verify-published-image.test.mjs
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
