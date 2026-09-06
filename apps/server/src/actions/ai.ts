@@ -51,6 +51,7 @@ const callOpenRouter = async (body: AiDraftBody) => {
       stream: false,
     },
   });
+  if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
   const text = String(completion.choices[0]?.message.content ?? '').trim();
   if (!text) throw new Error('OpenRouter returned an empty completion.');
   return { text, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
