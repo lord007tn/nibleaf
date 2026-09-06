@@ -1,7 +1,6 @@
 import { createPageBody, listPagesQuery, reorderPagesBody, updatePageBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { createPage, deletePage, getPage, listPages, reorderPages, updatePage } from '@/actions/pages';
-import { logFirstContentEdit } from '@/actions/platform-events';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -22,9 +21,7 @@ const app = new Hono<HonoEnv>()
   })
   .post('/', ...pagesRoutes.create, validator('json', createPageBody), async (ctx) => {
     const projectId = await projectScope(ctx);
-    const page = await createPage(projectId, ctx.req.valid('json'));
-    // Activation funnel: first content edit per (user, project). Fire-and-forget.
-    logFirstContentEdit(getContextUserOrThrow().id, projectId);
+    const page = await createPage(projectId, ctx.req.valid('json'), getContextUserOrThrow().id);
     return ctx.json({ data: page }, 201);
   })
   .post('/reorder', ...pagesRoutes.reorder, validator('json', reorderPagesBody), async (ctx) => {
@@ -37,8 +34,7 @@ const app = new Hono<HonoEnv>()
   })
   .patch('/:id', ...pagesRoutes.update, validator('json', updatePageBody), async (ctx) => {
     const projectId = await projectScope(ctx);
-    const page = await updatePage(projectId, ctx.req.param('id'), ctx.req.valid('json'));
-    logFirstContentEdit(getContextUserOrThrow().id, projectId);
+    const page = await updatePage(projectId, ctx.req.param('id'), ctx.req.valid('json'), getContextUserOrThrow().id);
     return ctx.json({ data: page }, 200);
   })
   .delete('/:id', ...pagesRoutes.remove, async (ctx) => {

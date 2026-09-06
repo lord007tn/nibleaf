@@ -1,0 +1,37 @@
+{
+  "environment": "Local production build; public metadata and all writes intercepted; Google scripts and collectors intercepted in this attribution-only fixture",
+  "states": [
+    {
+      "consent": "declined",
+      "pathname": "/sign-up",
+      "firstPublishIntent": "first-publish",
+      "contextAfterReload": null
+    },
+    {
+      "consent": "accepted",
+      "pathname": "/sign-up",
+      "firstPublishIntent": "first-publish",
+      "contextAfterReload": {
+        "entry_point": "free_tool",
+        "intent": "first_publish",
+        "source": "rtl_readiness_grader"
+      }
+    }
+  ],
+  "withdrawalClearedContext": true,
+  "firstPublishEvents": [
+    {
+      "event": "first_publish_cta_clicked",
+      "properties": {
+        "entry_point": "free_tool",
+        "intent": "first_publish",
+        "source": "rtl_readiness_grader",
+        "destination": "signup",
+        "placement": "result_bridge"
+      }
+    }
+  ],
+  "allPayloadsExcludeSyntheticHtmlMarker": true,
+  "errors": [],
+  "limits": "No OTP, authenticated editor or real publish. Component tests cover project/editor requests; worker and CI PostgreSQL tests cover trusted READY attribution. Existing grader screenshots and recording still describe the unchanged UI."
+}

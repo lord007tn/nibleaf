@@ -118,7 +118,7 @@ describe('createDeployment redirect preflight', () => {
     await expect(
       createDeployment('org-1', 'project-1', 'user-1', {
         message: 'Redirect cleanup',
-        firstPublishAttribution: { entry_point: 'organic_content', intent: 'first_publish', source: 'mintlify_introduction' },
+        firstPublishAttribution: { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' },
       }),
     ).resolves.toMatchObject({ id: 'deployment-3', version: 3 });
     expect(mocks.deploymentCreate).toHaveBeenCalledTimes(1);
@@ -129,7 +129,7 @@ describe('createDeployment redirect preflight', () => {
         projectId: 'project-1',
         skipGrammarChecks: false,
         auto: false,
-        firstPublishAttribution: { entry_point: 'organic_content', intent: 'first_publish', source: 'mintlify_introduction' },
+        firstPublishAttribution: { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' },
       },
     });
   });

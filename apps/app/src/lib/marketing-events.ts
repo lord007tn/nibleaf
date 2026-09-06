@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { sendMarketingAnalyticsEvent } from './marketing-analytics';
 
-export type FirstPublishSource = 'docker_compose_guide' | 'mintlify_introduction';
+export type FirstPublishSource = 'docker_compose_guide' | 'mintlify_introduction' | 'rtl_readiness_grader';
 export type MarketingEventName =
   | 'first_publish_cta_clicked'
   | 'first_publish_landing_viewed'
@@ -11,15 +11,15 @@ export type MarketingEventName =
 
 type MarketingEventProperties = {
   first_publish_landing_viewed: {
-    entry_point: 'organic_content';
+    entry_point: 'organic_content' | 'free_tool';
     intent: 'first_publish';
     source: FirstPublishSource;
   };
   first_publish_cta_clicked: {
     destination: 'signup';
-    entry_point: 'organic_content';
+    entry_point: 'organic_content' | 'free_tool';
     intent: 'first_publish';
-    placement: 'article_bridge';
+    placement: 'article_bridge' | 'result_bridge';
     source: FirstPublishSource;
   };
   free_tool_started: {
@@ -50,21 +50,27 @@ function allowlistedProperties<E extends MarketingEventName>(event: E, value: Ma
   if (event === 'first_publish_landing_viewed') {
     return z
       .strictObject({
-        entry_point: z.literal('organic_content'),
+        entry_point: z.enum(['organic_content', 'free_tool']),
         intent: z.literal('first_publish'),
-        source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+        source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
       })
+      .refine((p) => p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content'))
       .safeParse(value).success;
   }
   if (event === 'first_publish_cta_clicked') {
     return z
       .strictObject({
         destination: z.literal('signup'),
-        entry_point: z.literal('organic_content'),
+        entry_point: z.enum(['organic_content', 'free_tool']),
         intent: z.literal('first_publish'),
-        placement: z.literal('article_bridge'),
-        source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+        placement: z.enum(['article_bridge', 'result_bridge']),
+        source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
       })
+      .refine(
+        (p) =>
+          p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') &&
+          p.placement === (p.source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge'),
+      )
       .safeParse(value).success;
   }
   if (event === 'free_tool_started') {
