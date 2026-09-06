@@ -1,4 +1,5 @@
 import { getDomain } from 'tldts';
+import { marketingAnalyticsEnabled } from './marketing-analytics-route';
 
 export const MARKETING_ANALYTICS_CONSENT_KEY = 'nibleaf.marketing.analytics.consent.v1';
 export const MARKETING_ANALYTICS_CONSENT_EVENT = 'nibleaf:marketing-analytics-consent';
@@ -41,12 +42,6 @@ const CTA_DESTINATIONS = new Set<MarketingCtaDestination>([
 const CTA_PLACEMENTS = new Set<MarketingCtaPlacement>(['final', 'header', 'hero', 'resource_bridge']);
 const TOOL_RESULTS = new Set(['insufficient_evidence', 'material_gaps', 'strong_evidence', 'work_remaining']);
 
-export function marketingAnalyticsEnabled(pathname: string, siteProjectId?: string): boolean {
-  if (siteProjectId) return false;
-  return !['/app', '/sites', '/sign-in', '/forgot-password', '/reset-password', '/verify-email', '/accept-invite', '/git-preview'].some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
 const GTM_MARKETING_EVENT_NAMES = new Set([
   'cta_clicked',
   'first_publish_cta_clicked',
