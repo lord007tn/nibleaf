@@ -337,7 +337,7 @@ function SiteChrome() {
           header={
             // Header block (main row + optional tab row) sticks as one unit.
             <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md" data-theme-region="header-shell">
-              <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-3 px-4 sm:px-6" data-theme-region="header">
+              <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-2 px-4 sm:gap-3 sm:px-6" data-theme-region="header">
                 <MobileNav
                   nodes={site?.nav ?? []}
                   projectId={projectId}
@@ -349,17 +349,17 @@ function SiteChrome() {
                   links={headerLinks}
                 />
                 {logoHref ? (
-                  <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
+                  <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-7 items-center gap-2.5 font-semibold tracking-tight">
                     {brandInner}
                   </a>
                 ) : (
-                  <a href={sitePath()} className="flex min-w-0 items-center gap-2.5 font-semibold tracking-tight">
+                  <a href={sitePath()} className="flex min-w-7 items-center gap-2.5 font-semibold tracking-tight">
                     {brandInner}
                   </a>
                 )}
 
                 {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
-                <div className="flex min-w-0 flex-1 justify-center px-2">
+                <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex">
                   {showSearch ? (
                     <button
                       className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted sm:flex"
@@ -381,7 +381,7 @@ function SiteChrome() {
 
                 {showSearch ? (
                   <button
-                    className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+                    className="ms-auto grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
                     onClick={() => setSearchOpen(true)}
                     type="button"
                     aria-label={t('search')}
