@@ -17,7 +17,7 @@ import {
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
 
-export { marketingAnalyticsEnabled } from '@/lib/marketing-analytics';
+export { marketingAnalyticsEnabled } from '@/lib/marketing-analytics-route';
 
 export function MarketingAnalyticsConsent({ enabled, language }: { enabled: boolean; language: MarketingAnalyticsLanguage }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
