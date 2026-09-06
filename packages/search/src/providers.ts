@@ -119,6 +119,7 @@ export class OpenRouterChatProvider {
       },
       { signal },
     );
+    if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
     const value = answerOutputSchema.parse(JSON.parse(nonEmptyProviderTextSchema.parse(completion.choices[0]?.message.content)));
     return {
       value,
