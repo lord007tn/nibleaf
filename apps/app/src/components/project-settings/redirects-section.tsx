@@ -1,8 +1,9 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { useForm } from '@tanstack/react-form';
-import { Plus, Route, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, Plus, Route, TriangleAlert, X } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
 import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
@@ -57,33 +58,37 @@ export function RedirectsSection({ project }: { project: Project }) {
                                 className={FIELD_COMPACT_MONO}
                                 aria-invalid={invalidRows.has(index)}
                                 aria-label={t('settings.redirects.fromLabel')}
+                                dir="ltr"
                                 onChange={(e) => sub.handleChange(e.target.value)}
                                 placeholder="/intro"
                                 value={sub.state.value}
                               />
                             )}
                           </form.Field>
-                          <span className="text-center text-muted-foreground">→</span>
+                          <ArrowRight aria-hidden className="mx-auto size-4 text-muted-foreground rtl:-scale-x-100" />
                           <form.Field name={`redirects[${index}].to`}>
                             {(sub) => (
                               <Input
                                 className={FIELD_COMPACT_MONO}
                                 aria-invalid={invalidRows.has(index)}
                                 aria-label={t('settings.redirects.toLabel')}
+                                dir="ltr"
                                 onChange={(e) => sub.handleChange(e.target.value)}
                                 placeholder="/get-started/introduction"
                                 value={sub.state.value}
                               />
                             )}
                           </form.Field>
-                          <button
+                          <Button
                             aria-label={t('settings.redirects.remove')}
-                            className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+                            className="text-muted-foreground"
                             onClick={() => field.removeValue(index)}
+                            size="icon-xs"
                             type="button"
+                            variant="ghost"
                           >
                             <X className="size-4" />
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -100,13 +105,14 @@ export function RedirectsSection({ project }: { project: Project }) {
                       </ul>
                     </div>
                   ) : null}
-                  <button
-                    className="mb-4 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+                  <Button
+                    className="mb-4 border-dashed text-muted-foreground"
                     onClick={() => field.pushValue({ from: '', to: '' })}
                     type="button"
+                    variant="outline"
                   >
                     <Plus className="size-3.5" /> {t('settings.redirects.add')}
-                  </button>
+                  </Button>
                 </>
               );
             }}
@@ -114,8 +120,10 @@ export function RedirectsSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.values.redirects] as const}>
-        {([isSubmitting, redirects]) => <SaveBar isSubmitting={isSubmitting} disabled={validateRedirectGraph(redirects).issues.length > 0} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty, state.values.redirects] as const}>
+        {([isSubmitting, isDirty, redirects]) => (
+          <SaveBar isSubmitting={isSubmitting} disabled={!isDirty || validateRedirectGraph(redirects).issues.length > 0} />
+        )}
       </form.Subscribe>
     </form>
   );

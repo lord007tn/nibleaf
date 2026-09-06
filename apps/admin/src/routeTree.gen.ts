@@ -9,37 +9,32 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as dashboardRouteRouteImport } from './routes/(dashboard)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
-import { Route as dashboardIndexRouteImport } from './routes/(dashboard)/index'
-import { Route as dashboardUsersRouteImport } from './routes/(dashboard)/users'
-import { Route as dashboardSitesRouteImport } from './routes/(dashboard)/sites'
-import { Route as dashboardOperationsRouteImport } from './routes/(dashboard)/operations'
+import { Route as dashboardRouteRouteImport } from './routes/(dashboard)/route'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
-import { Route as dashboardUsersUserIdRouteImport } from './routes/(dashboard)/users.$userId'
+import { Route as dashboardIndexRouteImport } from './routes/(dashboard)/index'
+import { Route as dashboardOperationsRouteImport } from './routes/(dashboard)/operations'
+import { Route as dashboardSitesRouteImport } from './routes/(dashboard)/sites'
+import { Route as dashboardUsersRouteImport } from './routes/(dashboard)/users'
 import { Route as dashboardSitesSiteIdRouteImport } from './routes/(dashboard)/sites.$siteId'
+import { Route as dashboardUsersUserIdRouteImport } from './routes/(dashboard)/users.$userId'
 
-const dashboardRouteRoute = dashboardRouteRouteImport.update({
-  id: '/(dashboard)',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const authRouteRoute = authRouteRouteImport.update({
   id: '/(auth)',
   getParentRoute: () => rootRouteImport,
 } as any)
+const dashboardRouteRoute = dashboardRouteRouteImport.update({
+  id: '/(dashboard)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authSignInRoute = authSignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => authRouteRoute,
+} as any)
 const dashboardIndexRoute = dashboardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => dashboardRouteRoute,
-} as any)
-const dashboardUsersRoute = dashboardUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => dashboardRouteRoute,
-} as any)
-const dashboardSitesRoute = dashboardSitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
   getParentRoute: () => dashboardRouteRoute,
 } as any)
 const dashboardOperationsRoute = dashboardOperationsRouteImport.update({
@@ -47,20 +42,25 @@ const dashboardOperationsRoute = dashboardOperationsRouteImport.update({
   path: '/operations',
   getParentRoute: () => dashboardRouteRoute,
 } as any)
-const authSignInRoute = authSignInRouteImport.update({
-  id: '/sign-in',
-  path: '/sign-in',
-  getParentRoute: () => authRouteRoute,
+const dashboardSitesRoute = dashboardSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => dashboardRouteRoute,
 } as any)
-const dashboardUsersUserIdRoute = dashboardUsersUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => dashboardUsersRoute,
+const dashboardUsersRoute = dashboardUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => dashboardRouteRoute,
 } as any)
 const dashboardSitesSiteIdRoute = dashboardSitesSiteIdRouteImport.update({
   id: '/$siteId',
   path: '/$siteId',
   getParentRoute: () => dashboardSitesRoute,
+} as any)
+const dashboardUsersUserIdRoute = dashboardUsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => dashboardUsersRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -132,13 +132,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/(dashboard)': {
-      id: '/(dashboard)'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof dashboardRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/(auth)': {
       id: '/(auth)'
       path: ''
@@ -146,25 +139,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(dashboard)': {
+      id: '/(dashboard)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof dashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/sign-in': {
+      id: '/(auth)/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof authSignInRouteImport
+      parentRoute: typeof authRouteRoute
+    }
     '/(dashboard)/': {
       id: '/(dashboard)/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof dashboardIndexRouteImport
-      parentRoute: typeof dashboardRouteRoute
-    }
-    '/(dashboard)/users': {
-      id: '/(dashboard)/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof dashboardUsersRouteImport
-      parentRoute: typeof dashboardRouteRoute
-    }
-    '/(dashboard)/sites': {
-      id: '/(dashboard)/sites'
-      path: '/sites'
-      fullPath: '/sites'
-      preLoaderRoute: typeof dashboardSitesRouteImport
       parentRoute: typeof dashboardRouteRoute
     }
     '/(dashboard)/operations': {
@@ -174,19 +167,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof dashboardOperationsRouteImport
       parentRoute: typeof dashboardRouteRoute
     }
-    '/(auth)/sign-in': {
-      id: '/(auth)/sign-in'
-      path: '/sign-in'
-      fullPath: '/sign-in'
-      preLoaderRoute: typeof authSignInRouteImport
-      parentRoute: typeof authRouteRoute
+    '/(dashboard)/sites': {
+      id: '/(dashboard)/sites'
+      path: '/sites'
+      fullPath: '/sites'
+      preLoaderRoute: typeof dashboardSitesRouteImport
+      parentRoute: typeof dashboardRouteRoute
     }
-    '/(dashboard)/users/$userId': {
-      id: '/(dashboard)/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof dashboardUsersUserIdRouteImport
-      parentRoute: typeof dashboardUsersRoute
+    '/(dashboard)/users': {
+      id: '/(dashboard)/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof dashboardUsersRouteImport
+      parentRoute: typeof dashboardRouteRoute
     }
     '/(dashboard)/sites/$siteId': {
       id: '/(dashboard)/sites/$siteId'
@@ -194,6 +187,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sites/$siteId'
       preLoaderRoute: typeof dashboardSitesSiteIdRouteImport
       parentRoute: typeof dashboardSitesRoute
+    }
+    '/(dashboard)/users/$userId': {
+      id: '/(dashboard)/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof dashboardUsersUserIdRouteImport
+      parentRoute: typeof dashboardUsersRoute
     }
   }
 }

@@ -13,6 +13,7 @@ import {
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextLocale, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
+import { firstPublishAttribution } from '../activation-events/schema';
 import deploymentsRoutes from './routes';
 
 const scope = async (ctx: { req: { param: (k: string) => string } }) => {
@@ -24,7 +25,10 @@ const scope = async (ctx: { req: { param: (k: string) => string } }) => {
 
 // Dashboard-only publish option on top of the shared createDeploymentBody:
 // `skipGrammarChecks` publishes past the grammar linter (broken links still block).
-const publishDeploymentBody = createDeploymentBody.extend({ skipGrammarChecks: z.boolean().optional() });
+const publishDeploymentBody = createDeploymentBody.extend({
+  firstPublishAttribution: firstPublishAttribution.optional(),
+  skipGrammarChecks: z.boolean().optional(),
+});
 
 const app = new Hono<HonoEnv>()
   .get('/', ...deploymentsRoutes.list, async (ctx) => {

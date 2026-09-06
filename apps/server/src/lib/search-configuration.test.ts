@@ -1,6 +1,6 @@
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { describe, expect, it } from 'vitest';
-import { resolvePublishedSearchContext, resolvePublishedSearchRequest } from './search-configuration';
+import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from './search-configuration';
 
 const snapshot = (search: Record<string, unknown>): SiteSnapshot => ({
   project: {
@@ -55,5 +55,14 @@ describe('published search configuration', () => {
   it('falls back unknown language and version values to published defaults', () => {
     const context = resolvePublishedSearchContext(snapshot({}), { language: 'unknown', version: 'unknown' });
     expect(context).toMatchObject({ language: 'en', version: { id: 'version-main', slug: 'main' } });
+  });
+
+  it('searches every enabled published language when no language is requested', () => {
+    expect(resolvePublishedSearchLanguages(snapshot({}))).toEqual(['en', 'ar']);
+  });
+
+  it('keeps the backwards-compatible single-language API scope when requested', () => {
+    expect(resolvePublishedSearchLanguages(snapshot({}), 'ar')).toEqual(['ar']);
+    expect(resolvePublishedSearchLanguages(snapshot({}), 'unknown')).toEqual(['en']);
   });
 });

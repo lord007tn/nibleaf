@@ -34,6 +34,7 @@ import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
 import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
+import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 const buttonBase =
   'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
@@ -52,6 +53,7 @@ const navLinks = [
   { href: '/#features', label: 'Features' },
   { href: '/pricing', label: 'Pricing' },
   { href: 'https://docs.nibleaf.com', label: 'Docs' },
+  { href: '/guides', label: 'Guides' },
   { href: '/blog', label: 'Blog' },
   { href: '/tools/rtl-documentation-readiness', label: 'RTL grader' },
   { href: '/self-hosting', label: 'Self-hosting' },
@@ -139,7 +141,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             <NibleafMark aria-hidden="true" className="size-8" />
             <NibleafWordmark aria-hidden="true" />
           </a>
-          <nav className="ms-8 hidden items-center gap-7 text-muted-foreground text-sm md:flex">
+          <nav className="ms-8 hidden items-center gap-5 text-muted-foreground text-sm xl:flex">
             {navLinks.map((link) => (
               <a key={link.href} className="transition-colors hover:text-foreground" href={link.href}>
                 {link.label}
@@ -444,7 +446,7 @@ function HowItWorks() {
       <div className="mx-auto max-w-6xl px-6 py-24">
         <div className="max-w-2xl">
           <Eyebrow>How it works</Eyebrow>
-          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">From blank page to published in minutes</h2>
+          <h2 className="mt-4 font-semibold text-3xl tracking-tight sm:text-4xl">Write, preview, and publish your documentation</h2>
           <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
             A calm, predictable workflow — write in Markdown, publish a versioned snapshot, share a fast site.
           </p>
@@ -533,16 +535,14 @@ function ChooseYourPath() {
           <p className="mt-4 font-semibold text-4xl tracking-tight">Free during beta</p>
           <p className="mt-1.5 text-muted-foreground text-sm">Managed hosting: database, storage, deploys, and upgrades handled for you.</p>
           <ul className="mt-6 space-y-3 text-sm">
-            {[
-              'Live in 60 seconds — sign up and write',
-              'Custom domains and analytics included',
-              'Beta workspaces get preferential treatment later',
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2.5">
-                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                {item}
-              </li>
-            ))}
+            {['Sign up and start writing', 'Custom domains and analytics included', 'Beta workspaces get preferential treatment later'].map(
+              (item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                  {item}
+                </li>
+              ),
+            )}
           </ul>
           <a className={`${primaryButton} mt-7 w-full`} href="/sign-up">
             Create free account <ArrowRight className="size-4" />
@@ -773,7 +773,7 @@ export function GitHubStarLink({
 
   return (
     <a
-      aria-label={`Star Nibleaf on GitHub — ${starLabel}`}
+      aria-label={count > 0 ? `Star Nibleaf on GitHub — ${starLabel}` : 'Star Nibleaf on GitHub'}
       className={cn(outlineButton, 'group px-3', className)}
       href={GITHUB_URL}
       rel="noreferrer"
@@ -781,10 +781,12 @@ export function GitHubStarLink({
     >
       <GitHubGlyph aria-hidden="true" className="size-4" />
       <span className={cn(compact && 'hidden lg:inline')}>{label}</span>
-      <Star aria-hidden="true" className={cn('size-3.5', !compact && 'hidden sm:block')} />
-      <span className="min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums" data-github-stars={count}>
-        {displayCount}
-      </span>
+      {count > 0 && <Star aria-hidden="true" className="hidden size-3.5 sm:block" />}
+      {count > 0 && (
+        <span className="hidden min-w-7 border-border border-s ps-2 text-muted-foreground tabular-nums sm:inline" data-github-stars={count}>
+          {displayCount}
+        </span>
+      )}
     </a>
   );
 }
@@ -979,6 +981,7 @@ function EditorMock() {
 
 /** Publish mock: version timeline with a live snapshot and search rebuild. */
 function PublishMock() {
+  const searchShortcut = useSearchShortcutLabel();
   const versions = [
     { name: 'v14', note: 'Custom domain guide', state: 'Live', live: true },
     { name: 'v13', note: 'API reference update', state: 'Archived', live: false },
@@ -1016,7 +1019,10 @@ function PublishMock() {
       </div>
       <div className="border-border border-t bg-muted/30 px-5 py-3.5">
         <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-muted-foreground text-sm">
-          <Search className="size-4" /> Search docs… <span className="ms-auto rounded bg-muted px-1.5 py-0.5 font-mono text-xs">⌘K</span>
+          <Search className="size-4" /> Search docs…{' '}
+          <span className="ms-auto rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+            <span dir="ltr">{searchShortcut}</span>
+          </span>
         </div>
       </div>
     </div>

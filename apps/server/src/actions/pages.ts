@@ -1,9 +1,12 @@
 import { Prisma, prisma } from '@nibleaf/database';
-import { joinPath, slugify } from '@nibleaf/shared/utils';
+import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
+import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
+import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
+import { logFirstContentEdit } from './platform-events';
 
 /** Flat list of a project's pages on one branch (the default branch when none is
  *  given), ordered for tree assembly on the client. Scoped to a single language
@@ -55,7 +58,10 @@ const uniqueSiblingSlug = async (
   desired: string,
   excludeId?: string,
 ): Promise<string> => {
-  const base = slugify(desired) || 'page';
+  // Unicode-aware so an Arabic (or any non-Latin) title keeps its own slug; the
+  // 'page' placeholder is only reached when the title has no letters or digits
+  // at all (emoji-only, punctuation-only).
+  const base = slugifyUnicode(desired) || 'page';
   let slug = base;
   let suffix = 1;
   for (;;) {
@@ -72,7 +78,12 @@ const uniqueSiblingSlug = async (
 };
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
-const PLACEHOLDER_TITLE_RE = /^(?:Untitled|New group)$/;
+/** The dashboard creates pages/groups with a placeholder title in the author's
+ *  interface locale (`editor.untitled` / `editor.newGroup`), so "still a
+ *  placeholder" must be recognised in every locale, not only English. */
+const PLACEHOLDER_TITLES = new Set<string>(
+  INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
+);
 
 type PageTreeNode = { id: string; parentId: string | null; branchId: string; languageId: string };
 
@@ -126,7 +137,7 @@ const recomputeProjectPaths = async (projectId: string): Promise<void> => {
   await prisma.$transaction(updates.map((u) => prisma.page.update({ where: { id: u.id }, data: { path: u.path } })));
 };
 
-export const createPage = async (projectId: string, body: CreatePageBody) => {
+export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const parentId = body.parentId ?? null;
   const parent = await parentInfo(projectId, parentId);
   // A child inherits its parent's branch + language; otherwise use the requested
@@ -138,7 +149,7 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
     (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await getDefaultLanguage(projectId)).id);
   const slug = await uniqueSiblingSlug(projectId, languageId, branchId, parentId, body.slug || body.title);
   const maxPosition = await prisma.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
-  return prisma.page.create({
+  const page = await prisma.page.create({
     data: {
       projectId,
       branchId,
@@ -156,6 +167,8 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
       position: body.position ?? (maxPosition._max.position ?? -1) + 1,
     },
   });
+  if (userId && page.kind === 'PAGE' && page.content.trim()) logFirstContentEdit(userId, projectId);
+  return page;
 };
 
 /** Deep-merge a page-config patch over the stored config: the `seo` object is
@@ -173,7 +186,7 @@ const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): ob
   return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
 };
 
-export const updatePage = async (projectId: string, id: string, body: UpdatePageBody) => {
+export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string) => {
   const page = await prisma.page.findFirst({ where: { id, projectId } });
   if (!page) {
     throw notFound('page', { id });
@@ -199,7 +212,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
     body.title.trim() !== '' &&
     body.title !== page.title &&
     PLACEHOLDER_SLUG_RE.test(page.slug) &&
-    PLACEHOLDER_TITLE_RE.test(page.title);
+    PLACEHOLDER_TITLES.has(page.title);
   const structural = slugChanged || reparented || shouldAdoptTitleSlug;
   let nextSlug = page.slug;
   if (structural) {
@@ -221,6 +234,9 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
       ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
     },
   });
+  if (userId && page.kind === 'PAGE' && body.content !== undefined && body.content.trim() !== page.content.trim()) {
+    logFirstContentEdit(userId, projectId);
+  }
   if (structural) {
     await recomputeProjectPaths(projectId);
     return getPage(projectId, id);

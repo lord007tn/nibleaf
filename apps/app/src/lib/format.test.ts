@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { viewsTrend } from './format';
+import { formatCurrency, localeTag, viewsTrend } from './format';
 
 const series = (...views: number[]) => views.map((v, i) => ({ date: `d${i}`, views: v }));
 
@@ -36,5 +36,30 @@ describe('viewsTrend', () => {
 
   it('returns null when there is no traffic at all', () => {
     expect(viewsTrend(series(0, 0, 0, 0))).toBeNull();
+  });
+});
+
+describe('localeTag', () => {
+  it('requests Western digits for Arabic and passes other locales through', () => {
+    expect(localeTag('ar')).toBe('ar-u-nu-latn');
+    expect(localeTag('ar-SA')).toBe('ar-SA-u-nu-latn');
+    expect(localeTag('en')).toBe('en');
+    expect(localeTag('fr')).toBe('fr');
+  });
+});
+
+describe('formatCurrency', () => {
+  it('formats a whole amount without trailing cents', () => {
+    expect(formatCurrency('en', 0)).toBe('$0');
+    expect(formatCurrency('en', 12)).toBe('$12');
+  });
+
+  it('keeps cents for fractional amounts', () => {
+    expect(formatCurrency('en', 9.5)).toBe('$9.50');
+  });
+
+  it('uses Western digits under the Arabic tag', () => {
+    expect(formatCurrency(localeTag('ar'), 0)).toContain('0');
+    expect(formatCurrency(localeTag('ar'), 0)).not.toMatch(/[٠-٩]/);
   });
 });

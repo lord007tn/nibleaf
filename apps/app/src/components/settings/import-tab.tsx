@@ -1,6 +1,8 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ghostImportBody } from '@nibleaf/validators';
@@ -73,18 +75,23 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
         ) : null}
         {warnings.length > 0 ? (
           <>
-            <button
-              className="mt-3 flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground"
+            <Button
+              aria-expanded={showWarnings}
+              className="mt-3 h-auto gap-1 p-0 text-muted-foreground text-xs hover:text-foreground"
               onClick={() => setShowWarnings((value) => !value)}
+              size="sm"
               type="button"
+              variant="link"
             >
               <ChevronDown className={cn('size-3.5 transition-transform', !showWarnings && '-rotate-90 rtl:rotate-90')} />
               {showWarnings ? t('settings.import.warnings.hide') : t('settings.import.warnings.show', { count: warnings.length })}
-            </button>
+            </Button>
             {showWarnings ? (
               <ul className="mt-2 list-disc space-y-1 ps-5 text-muted-foreground text-xs">
                 {warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
+                  <li dir="auto" key={warning}>
+                    {warning}
+                  </li>
                 ))}
               </ul>
             ) : null}
@@ -109,17 +116,17 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
 
 function SourceChip({ active, icon, label, onClick }: { active?: boolean; icon: ReactNode; label: string; onClick: () => void }) {
   return (
-    <button
-      className={cn(
-        'flex h-8 cursor-pointer items-center gap-1.5 rounded-lg px-2.5 font-medium text-xs transition-colors',
-        active ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground',
-      )}
+    <Button
+      aria-pressed={active}
+      className={cn('rounded-lg text-xs', active ? 'shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground')}
       onClick={onClick}
+      size="sm"
       type="button"
+      variant={active ? 'default' : 'secondary'}
     >
       {icon}
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -132,6 +139,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('');
+  const [replaceExisting, setReplaceExisting] = useState(false);
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
@@ -168,7 +176,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       }
       const trimmedBranch = branch.trim();
       mintlify.mutate(
-        { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}) },
+        { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}), replaceExisting },
         { onSuccess: handleSuccess, onError: handleError },
       );
       return;
@@ -241,6 +249,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                       <Label htmlFor="import-mintlify-repo">{t('settings.import.mintlify.repo')}</Label>
                       <Input
                         className="bg-background font-mono"
+                        dir="ltr"
                         id="import-mintlify-repo"
                         onChange={(event) => setRepo(event.target.value)}
                         placeholder="github.com/acme/docs"
@@ -251,12 +260,19 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                       <Label htmlFor="import-mintlify-branch">{t('settings.import.mintlify.branch')}</Label>
                       <Input
                         className="bg-background font-mono"
+                        dir="ltr"
                         id="import-mintlify-branch"
                         onChange={(event) => setBranch(event.target.value)}
                         placeholder="main"
                         value={branch}
                       />
                     </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-3 py-2.5">
+                    <Label className="leading-snug" htmlFor="import-mintlify-replace">
+                      {t('settings.import.mintlify.replaceExisting')}
+                    </Label>
+                    <Switch checked={replaceExisting} id="import-mintlify-replace" onCheckedChange={setReplaceExisting} />
                   </div>
                 </div>
               ) : null}
@@ -276,6 +292,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                     <Label htmlFor="import-ghost-url">{t('settings.import.ghost.url')}</Label>
                     <Input
                       className="bg-background"
+                      dir="ltr"
                       id="import-ghost-url"
                       onChange={(event) => setGhostUrl(event.target.value)}
                       placeholder="https://ghost.example.com"
@@ -293,10 +310,11 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                     ref={fileInputRef}
                     type="file"
                   />
-                  <button
-                    className="flex min-h-14 items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-start hover:bg-muted/35"
+                  <Button
+                    className="h-auto min-h-14 w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-2.5 text-start font-normal"
                     onClick={() => fileInputRef.current?.click()}
                     type="button"
+                    variant="outline"
                   >
                     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
                       <Upload className="size-4" />
@@ -305,11 +323,15 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                       <span className="block truncate font-medium text-sm">{ghostFile?.name ?? t('settings.import.ghost.file')}</span>
                       <span className="block text-muted-foreground text-xs">{t('settings.import.ghost.fileHint')}</span>
                     </span>
-                  </button>
-                  <details className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs leading-relaxed">
-                    <summary className="cursor-pointer font-medium text-foreground">{t('settings.import.ghost.languageTitle')}</summary>
-                    <p className="mt-2 text-muted-foreground">{t('settings.import.ghost.languageTutorial')}</p>
-                  </details>
+                  </Button>
+                  <Collapsible className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs leading-relaxed">
+                    <CollapsibleTrigger className="cursor-pointer font-medium text-foreground">
+                      {t('settings.import.ghost.languageTitle')}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <p className="mt-2 text-muted-foreground">{t('settings.import.ghost.languageTutorial')}</p>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               ) : null}
             </div>

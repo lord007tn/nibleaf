@@ -52,10 +52,7 @@ function AppGuard() {
         <Outlet />
       </ProjectProvider>
       {impersonatedBy && supportSession.user?.id ? (
-        <SupportAccessBanner
-          customerId={supportSession.user.id}
-          customerName={supportSession.user.name || supportSession.user.email || 'this customer'}
-        />
+        <SupportAccessBanner customerId={supportSession.user.id} customerName={supportSession.user.name || supportSession.user.email} />
       ) : null}
     </div>
   );

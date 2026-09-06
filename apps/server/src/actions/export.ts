@@ -102,8 +102,10 @@ export const exportProjectMarkdown = async (projectId: string): Promise<ProjectE
   return { fileName: `${safeSegment(project.slug || 'project')}-docs-export.zip`, data };
 };
 
-/** Build the project's standalone theme repository: customer code is real
- * source code, while generated snapshot data is isolated under `.nibleaf/`. */
+/** Build the project's standalone docs repository (contract v2): a runnable
+ * TanStack Start app whose navigation/theme live in `docs.json`, pages under
+ * `content/` (default language at the root, `<lang>/` and `versions/<slug>/`
+ * for the rest), and reconciliation metadata only under `.nibleaf/`. */
 export const exportProjectThemeRepository = async (projectId: string): Promise<ProjectExportResult> => {
   const snapshot = await getCurrentSnapshot(projectId);
   const templateId = themeRepositoryTemplateId(snapshot);

@@ -32,6 +32,7 @@ import {
   useResolveGitConflict,
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 
 type GitIdentity = { login: string; name: string | null };
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
@@ -319,7 +320,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               onClick={() => setConnectStep((step) => Math.max(1, step - 1) as 1 | 2 | 3)}
               variant="outline"
             >
-              <ArrowLeft className="size-4" /> {t('common.back')}
+              <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('common.back')}
             </Button>
             {connectStep < 3 ? (
               connectStep === 1 ? (
@@ -336,7 +337,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   }
                 >
                   {authorize.isPending ? t('settings.git.workflow.authorizing') : t('settings.git.workflow.authorize')}{' '}
-                  <ArrowRight className="size-4" />
+                  <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               ) : (
                 <Button
@@ -344,7 +345,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   disabled={!authorizedAccount || !repository.trim() || !baseBranch.trim() || !headBranch.trim()}
                   onClick={() => setConnectStep(3)}
                 >
-                  {t('settings.git.workflow.review')} <ArrowRight className="size-4" />
+                  {t('settings.git.workflow.review')} <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               )
             ) : (
@@ -616,7 +617,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                   <span className="text-sm">
                     {item.kind} {item.commitMessage}
                   </span>
-                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString(locale)}</span>
+                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString(localeTag(locale))}</span>
                 </div>
                 {item.changedFiles?.length ? (
                   <ul className="mt-2 text-muted-foreground text-xs">

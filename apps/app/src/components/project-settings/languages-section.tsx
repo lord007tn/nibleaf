@@ -82,8 +82,12 @@ export function LanguagesSection({ project }: { project: Project }) {
               <div className="flex items-center gap-3 border-border border-b p-3.5 last:border-b-0" key={language.id}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-[13.5px]">{language.label}</span>
-                    <span className="font-mono text-[11px] text-muted-foreground">{language.code}</span>
+                    <span className="font-medium text-[13.5px]" dir={language.direction === 'RTL' ? 'rtl' : 'ltr'}>
+                      {language.label}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-foreground" dir="ltr">
+                      {language.code}
+                    </span>
                     <Chip>{language.direction === 'RTL' ? t('settings.languages.direction.rtl') : t('settings.languages.direction.ltr')}</Chip>
                     {language.isDefault ? <Chip tone="primary">{t('settings.languages.defaultBadge')}</Chip> : null}
                     {!enabled ? <Chip tone="warning">{t('settings.languages.hiddenBadge')}</Chip> : null}
@@ -141,14 +145,16 @@ export function LanguagesSection({ project }: { project: Project }) {
                   onCheckedChange={(checked) => void save(language.id, { enabled: checked })}
                 />
                 {!language.isDefault ? (
-                  <button
+                  <Button
                     aria-label={t('settings.languages.delete')}
-                    className="cursor-pointer text-muted-foreground transition-colors hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive"
                     onClick={() => void onDelete(language)}
+                    size="icon-xs"
                     type="button"
+                    variant="ghost"
                   >
                     <Trash2 className="size-4" />
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             );
@@ -156,13 +162,9 @@ export function LanguagesSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      <button
-        className="mb-1.5 flex h-9 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border border-dashed px-3.5 font-medium text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-        onClick={() => setAddOpen(true)}
-        type="button"
-      >
+      <Button className="mb-1.5 border-dashed text-muted-foreground" onClick={() => setAddOpen(true)} type="button" variant="outline">
         <Plus className="size-3.5" /> {t('settings.languages.add')}
-      </button>
+      </Button>
       <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('settings.languages.hint')}</p>
 
       <AddLanguageDialog onCreated={() => setAddOpen(false)} onOpenChange={setAddOpen} open={addOpen} projectId={project.id} />

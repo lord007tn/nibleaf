@@ -3,6 +3,8 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
@@ -31,6 +33,13 @@ function UsersPage() {
   const confirm = useConfirm();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<UserFilter>('all');
+  const filterOptions = [
+    { value: 'all', label: t('admin.users.all') },
+    { value: 'active', label: t('admin.status.active') },
+    { value: 'unverified', label: t('admin.status.unverified') },
+    { value: 'suspended', label: t('admin.status.suspended') },
+    { value: 'admin', label: t('admin.users.platformAdmins') },
+  ] satisfies { value: UserFilter; label: string }[];
 
   const users = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -86,21 +95,23 @@ function UsersPage() {
             value={search}
           />
         </label>
-        <label htmlFor="customer-filter">
-          <span className="sr-only">{t('admin.users.filter')}</span>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            id="customer-filter"
-            onChange={(event) => setFilter(event.target.value as UserFilter)}
-            value={filter}
-          >
-            <option value="all">{t('admin.users.all')}</option>
-            <option value="active">{t('admin.status.active')}</option>
-            <option value="unverified">{t('admin.status.unverified')}</option>
-            <option value="suspended">{t('admin.status.suspended')}</option>
-            <option value="admin">{t('admin.users.platformAdmins')}</option>
-          </select>
-        </label>
+        <div>
+          <Label className="sr-only" htmlFor="customer-filter">
+            {t('admin.users.filter')}
+          </Label>
+          <Select items={filterOptions} onValueChange={(value) => setFilter(value ?? 'all')} value={filter}>
+            <SelectTrigger className="w-full bg-background" id="customer-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {query.isPending ? (

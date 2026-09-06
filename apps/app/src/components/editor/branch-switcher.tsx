@@ -97,7 +97,9 @@ export function BranchSwitcher({
           render={
             <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5">
               <GitBranch className="size-3.5" />
-              <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]">{active?.name ?? 'main'}</span>
+              <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]" dir="ltr">
+                {active?.name ?? 'main'}
+              </span>
             </Button>
           }
         />
@@ -105,7 +107,9 @@ export function BranchSwitcher({
           {branches.map((b) => (
             <DropdownMenuItem key={b.id} onClick={() => onSwitch(b.id)}>
               <GitBranch className="size-3.5 text-muted-foreground" />
-              <span className="flex-1 truncate">{b.name}</span>
+              <span className="flex-1 truncate" dir="ltr">
+                {b.name}
+              </span>
               {b.isDefault ? <span className="text-[10px] text-muted-foreground">{t('editor.branch.default')}</span> : null}
               {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
             </DropdownMenuItem>
@@ -133,6 +137,7 @@ export function BranchSwitcher({
             <Input
               id="branch-name"
               autoFocus
+              dir="ltr"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="v2"

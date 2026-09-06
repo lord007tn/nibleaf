@@ -46,6 +46,11 @@ const draftOf = (language: Language): TranslationDraft => ({
   description: language.translation?.description ?? '',
 });
 
+/** The `dir` for an input that holds text written in `language` — the CONTENT
+ *  language, independent of the interface locale, so an Arabic site name edits
+ *  RTL inside an English dashboard and vice versa. */
+const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : undefined);
+
 export function GeneralSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProject(project.id);
@@ -62,6 +67,12 @@ export function GeneralSection({ project }: { project: Project }) {
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
   const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
   const [translations, setTranslations] = useState<Record<string, TranslationDraft>>({});
+  const translationsDirty = extraLanguages.some((language) => {
+    const draft = translations[language.id];
+    if (!draft) return false;
+    const stored = draftOf(language);
+    return draft.name.trim() !== stored.name || draft.description.trim() !== stored.description;
+  });
   const setTranslation = (language: Language, patch: Partial<TranslationDraft>) =>
     setTranslations((prev) => ({ ...prev, [language.id]: { ...(prev[language.id] ?? draftOf(language)), ...patch } }));
 
@@ -158,7 +169,17 @@ export function GeneralSection({ project }: { project: Project }) {
             <p className="mt-1 text-[12.5px] text-muted-foreground leading-snug">{t('settings.general.translations.hint')}</p>
           </div>
 
-          {extraLanguages.length <= 3 ? (
+          {/* Language chooser: a single extra language needs no control at all
+              (a one-option segmented bar reads as a mystery button), a few get
+              the segmented pills, many get a select. */}
+          {extraLanguages.length === 1 ? (
+            <div className="mb-4 flex items-center gap-2 text-[13px]">
+              <span className="text-muted-foreground">{t('settings.general.translations.language')}</span>
+              <span className="font-medium">
+                <LanguageOptionLabel language={selectedLanguage} />
+              </span>
+            </div>
+          ) : extraLanguages.length <= 3 ? (
             <Segmented
               className="mb-4"
               onChange={setSelectedLanguageId}
@@ -167,8 +188,12 @@ export function GeneralSection({ project }: { project: Project }) {
             />
           ) : (
             <div className="mb-4">
-              <Select onValueChange={(value) => setSelectedLanguageId((value as string) ?? undefined)} value={selectedLanguage.id}>
-                <SelectTrigger aria-label={t('settings.chrome.scope.label')} className="w-full bg-background sm:w-64">
+              <Select
+                items={extraLanguages.map((language) => ({ value: language.id, label: <LanguageOptionLabel language={language} /> }))}
+                onValueChange={(value) => setSelectedLanguageId((value as string) ?? undefined)}
+                value={selectedLanguage.id}
+              >
+                <SelectTrigger aria-label={t('settings.general.translations.language')} className="w-full bg-background sm:w-64">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -185,7 +210,9 @@ export function GeneralSection({ project }: { project: Project }) {
           <div className="overflow-hidden rounded-xl border border-border bg-card">
             <div className="grid grid-cols-1 border-border border-b bg-muted/35 sm:grid-cols-2 sm:divide-x sm:divide-border rtl:sm:divide-x-reverse">
               <div className="flex min-h-11 items-center gap-2 px-4 py-2.5">
-                <span className="font-semibold text-[13px]">{defaultLanguage?.label ?? t('settings.chrome.scope.default')}</span>
+                <span className="font-semibold text-[13px]" dir={dirOf(defaultLanguage)} lang={defaultLanguage?.code}>
+                  {defaultLanguage?.label ?? t('settings.chrome.scope.default')}
+                </span>
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
                   {t('settings.languages.defaultBadge')}
                 </span>
@@ -203,17 +230,21 @@ export function GeneralSection({ project }: { project: Project }) {
                     <Field className="mb-0" hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
                       <Input
                         className={FIELD_INPUT}
+                        dir={dirOf(defaultLanguage)}
                         id="set-name"
+                        lang={defaultLanguage?.code}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
                         value={field.state.value}
                       />
                       <FieldError errors={field.state.meta.errors} />
                     </Field>
-                    <Field className="mb-0" htmlFor="set-lang-name" label={t('settings.general.translations.name.label')}>
+                    <Field className="mb-0" htmlFor="set-lang-name" label={t('settings.general.name.label')}>
                       <Input
                         className={FIELD_INPUT}
+                        dir={dirOf(selectedLanguage)}
                         id="set-lang-name"
+                        lang={selectedLanguage.code}
                         onChange={(e) => setTranslation(selectedLanguage, { name: e.target.value })}
                         placeholder={field.state.value}
                         value={draft.name}
@@ -238,16 +269,20 @@ export function GeneralSection({ project }: { project: Project }) {
                       >
                         <Textarea
                           className={FIELD_TEXTAREA}
+                          dir={dirOf(defaultLanguage)}
                           id="set-desc"
+                          lang={defaultLanguage?.code}
                           onBlur={field.handleBlur}
                           onChange={(e) => field.handleChange(e.target.value)}
                           value={field.state.value}
                         />
                       </Field>
-                      <Field className="mb-0" htmlFor="set-lang-desc" label={t('settings.general.translations.description.label')}>
+                      <Field className="mb-0" htmlFor="set-lang-desc" label={t('settings.general.description.label')}>
                         <Textarea
                           className={FIELD_TEXTAREA}
+                          dir={dirOf(selectedLanguage)}
                           id="set-lang-desc"
+                          lang={selectedLanguage.code}
                           onChange={(e) => setTranslation(selectedLanguage, { description: e.target.value })}
                           placeholder={field.state.value || undefined}
                           value={draft.description}
@@ -267,7 +302,9 @@ export function GeneralSection({ project }: { project: Project }) {
               <Field hint={t('settings.general.name.hint')} htmlFor="set-name" label={t('settings.general.name.label')}>
                 <Input
                   className={FIELD_INPUT}
+                  dir={dirOf(defaultLanguage)}
                   id="set-name"
+                  lang={defaultLanguage?.code}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   value={field.state.value}
@@ -281,7 +318,9 @@ export function GeneralSection({ project }: { project: Project }) {
               <Field hint={t('settings.general.description.hint')} htmlFor="set-desc" label={t('settings.general.description.label')}>
                 <Textarea
                   className={FIELD_TEXTAREA}
+                  dir={dirOf(defaultLanguage)}
                   id="set-desc"
+                  lang={defaultLanguage?.code}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   value={field.state.value}
@@ -295,7 +334,13 @@ export function GeneralSection({ project }: { project: Project }) {
       <form.Field name="slug" validators={{ onChange: ({ value }) => deploymentNameError(value, t('settings.general.url.error')) }}>
         {(field) => (
           <Field hint={t('settings.general.url.hint')} htmlFor="set-slug" label={t('settings.general.url.label')}>
-            <div className="flex h-9 overflow-hidden rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
+            {/* Hostnames are always LTR: pin the group so the ".<base>" suffix
+                trails the name in an RTL dashboard too (the logical border-s
+                then resolves against the group's own direction). */}
+            <div
+              className="flex h-9 overflow-hidden rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
+              dir="ltr"
+            >
               <Input
                 className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-2.5 font-mono text-[13px] focus-visible:ring-0"
                 id="set-slug"
@@ -310,14 +355,18 @@ export function GeneralSection({ project }: { project: Project }) {
               ) : null}
             </div>
             <FieldError errors={field.state.meta.errors} />
-            <div className="mt-1.5 font-mono text-[12px] text-muted-foreground">
+            <div className="mt-1.5 font-mono text-[12px] text-muted-foreground rtl:text-end" dir="ltr">
               {siteBaseDomain ? (field.state.value ? `${field.state.value}.${siteBaseDomain}` : `.${siteBaseDomain}`) : `/sites/${project.id}`}
             </div>
           </Field>
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => (
+          <SaveBar disabled={!isDirty && icon === (project.icon ?? '📘') && !translationsDirty} isSubmitting={isSubmitting} />
+        )}
+      </form.Subscribe>
     </form>
   );
 }

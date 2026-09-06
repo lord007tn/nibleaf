@@ -5,6 +5,41 @@
   width: 100%;
 }
 
+/* Rich text fills the available workspace: controls stay in a single top bar
+   and the document canvas scrolls directly beneath it. */
+.pl-editor-document {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--color-card);
+}
+
+.pl-editor-document .pl-document-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  background: var(--color-card);
+}
+
+.pl-editor-document .pl-document-page {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  background: var(--color-card);
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 4vw, 3.5rem) 7.5rem;
+}
+
+.pl-editor-document .pl-document-title {
+  margin-bottom: 2rem;
+}
+
+.pl-editor.pl-editor-document .ProseMirror {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
 /* Comment anchors (Figma-style): the commented text is highlighted; the focused
    comment is stronger. In comment mode the canvas shows a comment cursor. */
 .pl-editor .ProseMirror .pl-comment-highlight {
@@ -40,6 +75,25 @@
   font-size: var(--typeset-size, 16px);
   line-height: var(--typeset-leading, 1.7);
   -webkit-font-smoothing: antialiased;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.pl-editor .ProseMirror > * {
+  max-width: 100%;
+}
+
+.pl-editor:lang(ar) .ProseMirror,
+.pl-editor:lang(fa) .ProseMirror,
+.pl-editor:lang(ur) .ProseMirror {
+  font-family: var(
+    --font-arabic,
+    "Noto Sans Arabic Variable",
+    "Noto Sans Arabic",
+    Tahoma,
+    Arial,
+    sans-serif
+  );
 }
 
 .pl-editor .ProseMirror > * + * {
@@ -571,6 +625,9 @@
   margin: 1.25rem 0;
 }
 @media (max-width: 720px) {
+  .pl-editor-document .pl-document-page {
+    padding: 1.75rem 1.25rem 6rem;
+  }
   .pl-editor .pl-cardgroup {
     grid-template-columns: minmax(0, 1fr);
   }

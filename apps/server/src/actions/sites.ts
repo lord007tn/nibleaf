@@ -1,16 +1,18 @@
 import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
-import type { SearchScope } from '@nibleaf/search';
+import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
   defaultLanguage,
+  explicitPageDescription,
   extractHeadings,
   isPageTranslation,
   mergeLanguageChrome,
   type NavNode,
-  pageDescription,
+  pageExcerpt,
   projectSlugFromSubdomainHost,
   publicLanguages,
   publicSiteSnapshot,
@@ -32,9 +34,10 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
 import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
+import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
-import { resolvePublishedSearchContext } from '@/lib/search-configuration';
+import { resolvePublishedSearchContext, resolvePublishedSearchLanguages } from '@/lib/search-configuration';
 import { trackProjectEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
@@ -474,7 +477,11 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
       createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
       title: page.title,
-      description: pageDescription(page),
+      // Only an author-written summary is a visible lede. The derived excerpt
+      // travels separately for SEO/social fallbacks, so the reader never renders
+      // the page's own first paragraph twice.
+      description: explicitPageDescription(page),
+      excerpt: pageExcerpt(page),
       icon: page.icon,
       path: page.path,
       content: page.content,
@@ -490,6 +497,25 @@ export const getSitePage = async (identifier: string, path: string, lang?: strin
     prev: index > 0 ? neighbour(order[index - 1]) : null,
     next: index >= 0 && index < order.length - 1 ? neighbour(order[index + 1]) : null,
   };
+};
+
+/**
+ * Canonical public Markdown representation for one published page.
+ *
+ * This deliberately fails closed for every credentialed/private surface. A
+ * workspace member or invited reader may render HTML, but cannot turn private
+ * or audience-restricted content into a crawlable Markdown response.
+ */
+export const getSitePageMarkdown = async (identifier: string, path: string, lang?: string, version?: string): Promise<SiteTextDocument> => {
+  const data = await getSitePage(identifier, path, lang, version);
+  const requestedLanguage = lang?.trim();
+  if (requestedLanguage && data.activeLanguage !== requestedLanguage) {
+    throw notFound('page', { path, language: requestedLanguage, reason: 'language_fallback' });
+  }
+  if (!isPublicMarkdownPage(data)) {
+    throw notFound('page', { path, reason: 'not_public_markdown' });
+  }
+  return { body: buildPublishedPageMarkdown(data), isPrivate: false };
 };
 
 const firstPage = (pages: SnapshotPage[], languageCode?: string): SnapshotPage | undefined => {
@@ -519,64 +545,84 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
   return trail;
 };
 
+type LocalizedSearchHit = SearchHit & { language: string };
+
 /** Full-text + fuzzy search over a published site; records a search analytics event.
- *  Scoped to the active language so each language has its own index. */
+ *  The reader UI searches every published language. An explicit `lang` remains
+ *  supported for API clients that intentionally want a single-language scope. */
 export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
   const analyticsStartedAt = performance.now();
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const request = resolvePublishedSearchContext(snapshot, { language: lang, version, limit });
-  const activeLanguage = request.language;
   const docsVersion = request.version;
   const versionPages = pagesForVersion(snapshot, docsVersion);
   const resultLimit = request.limit;
-  const scope: SearchScope = {
-    projectId: snapshot.project.id,
-    deploymentId,
-    versionSlug: docsVersion.slug,
-    language: activeLanguage,
-    visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
-    allowedPageIds: viewer.allowedPageIds,
-  };
-  const result = await runPublishedSearch(
-    scope,
-    query,
-    resultLimit,
-    async () => {
-      const index = await getCachedIndex(
-        snapshot.project.id,
-        `${deploymentId}:${docsVersion.slug}`,
-        activeLanguage,
-        versionPages,
-        viewer.allowedPageIds,
+  const requestedLanguages = resolvePublishedSearchLanguages(snapshot, lang);
+  const perLanguage = await Promise.all(
+    requestedLanguages.map(async (language) => {
+      const scope: SearchScope = {
+        projectId: snapshot.project.id,
+        deploymentId,
+        versionSlug: docsVersion.slug,
+        language,
+        visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
+        allowedPageIds: viewer.allowedPageIds,
+      };
+      const result = await runPublishedSearch(
+        scope,
+        query,
+        resultLimit,
+        async () => {
+          const index = await getCachedIndex(
+            snapshot.project.id,
+            `${deploymentId}:${docsVersion.slug}`,
+            language,
+            versionPages,
+            viewer.allowedPageIds,
+          );
+          return searchDocs(index, query, { limit: resultLimit });
+        },
+        getContext<HonoEnv>().req.raw.signal,
       );
-      return searchDocs(index, query, { limit: resultLimit });
-    },
-    getContext<HonoEnv>().req.raw.signal,
+      return { language, result };
+    }),
   );
+  const hits: LocalizedSearchHit[] = perLanguage
+    .flatMap(({ language, result }) => result.hits.map((hit) => ({ ...hit, language })))
+    .sort((left, right) => right.score - left.score || left.title.localeCompare(right.title) || left.id.localeCompare(right.id))
+    .slice(0, resultLimit);
+  const runtime = perLanguage.some(({ result }) => result.runtime === 'legacy-fallback')
+    ? 'legacy-fallback'
+    : perLanguage.some(({ result }) => result.runtime === 'hybrid')
+      ? 'hybrid'
+      : perLanguage.some(({ result }) => result.runtime === 'shadow')
+        ? 'shadow'
+        : 'legacy';
+  const analyticsLanguage = lang ? request.language : 'all';
   // Only track queries of a meaningful length so the search-terms analytics
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
   if (query.trim().length >= 3) {
     const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
     const base = { source: 'public_site' as const, consentState: 'unknown' as const };
     void Promise.allSettled([
-      trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: activeLanguage }, base),
+      trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: analyticsLanguage }, base),
       trackProjectEvent(
         snapshot.project.id,
-        { name: 'search_results_returned', resultCount: result.hits.length, latencyMs, cacheStatus: 'unknown', language: activeLanguage },
+        { name: 'search_results_returned', resultCount: hits.length, latencyMs, cacheStatus: 'unknown', language: analyticsLanguage },
         base,
       ),
-      ...(result.hits.length === 0
+      ...(hits.length === 0
         ? [
             trackProjectEvent(
               snapshot.project.id,
-              { name: 'search_zero_result', resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: activeLanguage },
+              { name: 'search_zero_result', resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: analyticsLanguage },
               base,
             ),
           ]
         : []),
     ]);
   }
-  return { hits: result.hits, runtime: result.runtime, capabilities: { answer: request.configuration.aiAnswers && answerSearchAvailable() } };
+  return { hits, runtime, capabilities: { answer: request.configuration.aiAnswers && answerSearchAvailable() } };
 };
 
 /** Grounded answer mode uses the exact same server-derived publication and
@@ -810,7 +856,10 @@ export const getSiteRobots = async (identifier: string): Promise<SiteTextDocumen
   if (isPrivate || config?.seo?.allowIndex === false) {
     return { body: 'User-agent: *\nDisallow: /\n', isPrivate };
   }
-  return { body: `User-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`, isPrivate };
+  return {
+    body: `User-agent: OAI-SearchBot\nAllow: /\n\nUser-agent: *\nAllow: /\nSitemap: ${env.APP_URL}/api/public/sites/${projectId}/sitemap.xml\n`,
+    isPrivate,
+  };
 };
 
 /** llms.txt for a published site (llmstxt.org): title, description and a

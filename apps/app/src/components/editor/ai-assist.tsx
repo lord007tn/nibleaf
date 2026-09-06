@@ -93,14 +93,32 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
             <Button className="w-full justify-start" disabled={pending} onClick={() => run('continue')}>
               <Sparkles className="size-4" /> {t('editor.ai.continue')}
             </Button>
-            <div className="grid grid-cols-3 gap-2">
-              <Button disabled={pending} onClick={() => run('rephrase')} size="sm" variant="outline">
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                className="w-full justify-start whitespace-normal text-start leading-snug"
+                disabled={pending}
+                onClick={() => run('rephrase')}
+                size="sm"
+                variant="outline"
+              >
                 {t('editor.ai.rephrase')}
               </Button>
-              <Button disabled={pending} onClick={() => run('outline')} size="sm" variant="outline">
+              <Button
+                className="w-full justify-start whitespace-normal text-start leading-snug"
+                disabled={pending}
+                onClick={() => run('outline')}
+                size="sm"
+                variant="outline"
+              >
                 {t('editor.ai.outline')}
               </Button>
-              <Button disabled={pending} onClick={() => run('summarize')} size="sm" variant="outline">
+              <Button
+                className="w-full justify-start whitespace-normal text-start leading-snug"
+                disabled={pending}
+                onClick={() => run('summarize')}
+                size="sm"
+                variant="outline"
+              >
                 {t('editor.ai.summarize')}
               </Button>
             </div>
@@ -113,10 +131,12 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
               <Wand2 className="size-3" />
               {preview.mode === 'summarize' ? t('editor.ai.summaryLabel') : t('editor.ai.suggestionLabel')}
             </div>
-            <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed">{preview.text}</p>
-            <div className="flex gap-2">
+            <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed" dir="auto">
+              {preview.text}
+            </p>
+            <div className="grid grid-cols-1 gap-2">
               <Button
-                className="flex-1"
+                className="w-full justify-start whitespace-normal text-start"
                 onClick={() => {
                   onContentChange(preview.text.trim());
                   setPreview(null);
@@ -127,7 +147,7 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
                 <Replace className="size-3.5" /> {t('editor.ai.replace')}
               </Button>
               <Button
-                className="flex-1"
+                className="w-full justify-start whitespace-normal text-start"
                 onClick={() => {
                   appendToDoc(preview.text);
                   setPreview(null);

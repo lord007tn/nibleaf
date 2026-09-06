@@ -1,3 +1,4 @@
+import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
@@ -30,6 +31,7 @@ import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import { useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
+import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
@@ -126,15 +128,22 @@ function SiteOverviewPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-sm">{t('overview.activity.title')}</h2>
             {latestDeployment ? (
-              <span className="rounded-full bg-primary/10 px-2.5 py-1 font-semibold text-primary text-xs">{latestDeployment.status}</span>
+              <Badge variant={deploymentStatusVariant(latestDeployment.status)}>{deploymentStatusLabel(latestDeployment.status, t)}</Badge>
             ) : null}
           </div>
           <div className="flex flex-col gap-2">
             {(deployments ?? []).slice(0, 3).map((deployment) => (
               <div className="flex items-center justify-between gap-3 text-sm" key={deployment.id}>
-                <div className="min-w-0 truncate">
-                  <span className="font-medium">v{deployment.version}</span>
-                  <span className="ms-2 text-muted-foreground">{deployment.commitMessage || t('overview.activity.publish')}</span>
+                {/* The version tag is code (always LTR); commit messages are free
+                    text in whatever language the author wrote, so they resolve
+                    their own direction and truncate on their own end. */}
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <span className="shrink-0 font-medium" dir="ltr">
+                    v{deployment.version}
+                  </span>
+                  <span className="min-w-0 truncate text-muted-foreground" dir="auto">
+                    {deployment.commitMessage || t('overview.activity.publish')}
+                  </span>
                 </div>
                 <span className="shrink-0 text-muted-foreground text-xs">{date(deployment.completedAt ?? deployment.createdAt)}</span>
               </div>

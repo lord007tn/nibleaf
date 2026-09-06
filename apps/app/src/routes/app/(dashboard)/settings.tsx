@@ -1,3 +1,5 @@
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -28,30 +30,43 @@ function WorkspaceSettingsPage() {
   const t = useT();
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
+  const sectionItems = SECTIONS.map((item) => ({ value: item.value, label: t(item.labelKey) }));
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
       <div>
         <h1 className="font-semibold text-3xl tracking-tight">{t('settings.title')}</h1>
         <p className="mt-1 text-muted-foreground text-sm">{t('settings.subtitle')}</p>
       </div>
 
       <div className="flex min-w-0 flex-col gap-6 sm:flex-row sm:gap-8">
-        <label className="sm:hidden">
-          <span className="sr-only">{t('settings.title')}</span>
-          <select
-            aria-label={t('settings.title')}
-            className="h-10 w-full cursor-pointer rounded-lg border border-input bg-background px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            onChange={(event) => navigate({ search: { tab: event.target.value as TabValue }, replace: true })}
+        <div className="sm:hidden">
+          <Label className="sr-only" htmlFor="settings-section">
+            {t('settings.title')}
+          </Label>
+          <Select
+            items={sectionItems}
+            onValueChange={(value) => {
+              if (value) navigate({ search: { tab: value }, replace: true });
+            }}
             value={tab}
           >
-            {SECTIONS.map((item) => (
-              <option key={item.value} value={item.value}>
-                {t(item.labelKey)}
-              </option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger className="w-full" id="settings-section">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SECTIONS.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SelectItem key={item.value} value={item.value}>
+                    <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                    {t(item.labelKey)}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
 
         {/* Left settings sidebar */}
         <nav className="hidden w-48 shrink-0 flex-col gap-0.5 sm:flex">

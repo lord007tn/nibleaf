@@ -14,6 +14,7 @@ import {
 } from '@nibleaf/design-system/components/ui/dialog';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
@@ -35,6 +36,8 @@ export const Route = createFileRoute('/(dashboard)/sites')({
 
 /** Matches the server's `z.string().max(500)` on the takedown reason. */
 const TAKEDOWN_REASON_MAX = 500;
+
+type SiteFilter = 'all' | 'healthy' | 'attention' | 'unpublished' | 'taken-down';
 
 function SitesRoute() {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
@@ -252,7 +255,14 @@ function SitesPage() {
   const confirm = useConfirm();
   const prompt = usePrompt();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'healthy' | 'attention' | 'unpublished' | 'taken-down'>('all');
+  const [filter, setFilter] = useState<SiteFilter>('all');
+  const filterOptions = [
+    { value: 'all', label: t('admin.sites.all') },
+    { value: 'healthy', label: t('admin.status.healthy') },
+    { value: 'attention', label: t('admin.status.attention') },
+    { value: 'unpublished', label: t('admin.status.unpublished') },
+    { value: 'taken-down', label: t('admin.status.takenDown') },
+  ] satisfies { value: SiteFilter; label: string }[];
 
   const sites = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -348,21 +358,23 @@ function SitesPage() {
             value={search}
           />
         </label>
-        <label htmlFor="site-filter">
-          <span className="sr-only">{t('admin.sites.filter')}</span>
-          <select
-            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            id="site-filter"
-            onChange={(event) => setFilter(event.target.value as typeof filter)}
-            value={filter}
-          >
-            <option value="all">{t('admin.sites.all')}</option>
-            <option value="healthy">{t('admin.status.healthy')}</option>
-            <option value="attention">{t('admin.status.attention')}</option>
-            <option value="unpublished">{t('admin.status.unpublished')}</option>
-            <option value="taken-down">{t('admin.status.takenDown')}</option>
-          </select>
-        </label>
+        <div>
+          <Label className="sr-only" htmlFor="site-filter">
+            {t('admin.sites.filter')}
+          </Label>
+          <Select items={filterOptions} onValueChange={(value) => setFilter(value ?? 'all')} value={filter}>
+            <SelectTrigger className="w-full bg-background" id="site-filter">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {query.isPending ? (

@@ -1,0 +1,150 @@
+---
+title: Recover a documentation deployment from Coolify 502 and 503 errors
+metaTitle: Coolify 502 and 503 recovery for documentation stacks
+description: Diagnose proxy, container, readiness, migration, dependency, and replacement-window failures in a Coolify-hosted documentation stack without guessing.
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags:
+  - coolify
+  - troubleshooting
+  - self-hosting
+related:
+  - documentation-production-readiness-decision
+  - self-host-documentation-site-docker-compose
+  - documentation-migration-seo-cutover-lab
+readingMinutes: 11
+translationOf: 'coolify-documentation-502-503-recovery-ar'
+---
+
+A 502 or 503 is an edge symptom, not a root cause. The fastest safe recovery is to identify the first failing layer, preserve the exact deployment identity and logs, and change one thing at a time. Restarting until the page happens to load can erase evidence and repeat the failure on the next release.
+
+This runbook applies to documentation applications deployed through Coolify with containers or Docker Compose. Commands and service names vary. Use the provider UI and the repository’s own operations guide as authoritative for your installation.
+
+## First, distinguish the status codes
+
+An HTTP 502 generally means a gateway received an invalid response from its upstream. The application may be stopped, listening on another port, closing connections, or returning a protocol the proxy did not expect. A 503 generally means the service is unavailable: no healthy upstream is selected, the proxy is intentionally draining or replacing it, or the application itself returns 503 while a dependency is not ready.
+
+These are tendencies, not diagnoses. Capture the response headers, body, timestamp, hostname, and request path. A branded proxy error page, an application JSON response, and a CDN error document indicate different layers.
+
+## Establish deployment identity before changing state
+
+Record:
+
+- public hostname and affected paths;
+- Coolify application or service ID;
+- Git commit, image tag, and immutable image digest if available;
+- deployment start and finish timestamps;
+- container names and creation times;
+- migration revision;
+- the last known good identity.
+
+Compare the running container, the deployment record, and the intended source. A green build cannot prove that the proxy routes to the new container. A mutable tag such as `latest` cannot prove which bytes run. If identity is unknown, say so and gather it before attributing the fault to a code change.
+
+## Probe from outside and inside
+
+Run an external request with redirects disabled and headers visible. Then probe the service from the host or its container network using the same port and path configured as the upstream. Finally, run the application’s liveness and readiness checks directly if they are distinct.
+
+This creates a useful matrix:
+
+| External | Internal upstream | Meaning to investigate |
+| --- | --- | --- |
+| fails | fails | application, container, port, or dependency |
+| fails | succeeds | proxy route, network, TLS, host rule, or health selection |
+| succeeds intermittently | mixed | replacement overlap, multiple replicas, cold start, or dependency saturation |
+| succeeds | succeeds | incident may have ended; preserve continuous evidence before declaring recovery |
+
+Do not rely on a single successful request. Use a short continuous probe through startup and replacement. Record every status and the revision marker returned. A brief 503 matters even if a dashboard later reports “healthy.”
+
+## Layer 1: proxy and domain routing
+
+Check that the hostname is attached to the intended Coolify resource, DNS resolves to the expected edge, the certificate covers the hostname, and the proxy points to the container’s listening port. Verify the application listens on `0.0.0.0`, not only loopback inside the container.
+
+Inspect provider and proxy logs at the failure timestamp. Look for connection refused, timeout, no available server, TLS handshake failure, or upstream reset. These messages narrow the layer; they do not yet explain why the upstream failed.
+
+If multiple domains or services share a proxy, test the exact `Host` header. A default route can make a raw IP check pass while the production hostname reaches another application.
+
+## Layer 2: container lifecycle and command
+
+Inspect container state, exit code, restart count, health status, and recent logs. Confirm the command in the running container matches the intended image. Common failures include a missing built artifact, wrong working directory, incompatible runtime version, read-only path, or a process that exits after performing setup.
+
+Out-of-memory termination, disk pressure, and inode exhaustion can look like application crashes. Check host resources and container limits before increasing memory blindly. A higher limit can delay the next incident without fixing a leak or oversized concurrency.
+
+Keep the first crash log. Repeated automatic restarts can rotate it away. Redact secrets before sharing evidence, but do not redact error types, timestamps, revisions, or service names needed to correlate the event.
+
+## Layer 3: liveness and readiness
+
+A liveness endpoint should answer whether the process can continue. A readiness endpoint should include only dependencies required to serve traffic. If readiness checks a slow optional provider, one external outage can remove every healthy application instance. If it checks nothing, traffic can reach an instance before migrations or required connections finish.
+
+Confirm the configured health-check path, port, scheme, interval, timeout, retries, and start period. Test the same request from the same network context as the proxy. An endpoint reachable from your laptop may not be reachable from the container network.
+
+Avoid using a content-heavy page as a liveness check. Rendering the home page can depend on the database, storage, cache, and templates and may trigger a restart loop during a transient dependency failure.
+
+## Layer 4: database and migration order
+
+Look for connection refusal, authentication errors, exhausted connection pools, missing relations, incompatible columns, or migration locks. Confirm the application uses the intended database hostname and TLS settings inside the runtime; build-time variables do not guarantee runtime configuration.
+
+Run migrations as an explicit, observable step. If old and new application versions overlap, migrations must be backward compatible during that window. Adding a nullable column before code uses it is safer than renaming or dropping a column in the same replacement. Destructive changes need a staged expand/migrate/contract plan.
+
+Never run a schema reset or destructive migration as a recovery guess. First capture the schema revision, backup state, and failed statement. If rollback after new writes is unsafe, prefer a forward repair and document the point of no return.
+
+## Layer 5: cache, queue, and object storage
+
+Documentation stacks often need a cache or queue for publishing and object storage for assets. A reader site may be able to degrade when a queue is unavailable, but a publish worker cannot. Decide which dependency belongs in readiness for each service.
+
+Check DNS, credentials, network policy, bucket or container name, and timeouts. A signed URL clock skew can appear as an asset failure while HTML remains healthy. A full queue can make publish operations stall without affecting existing snapshots.
+
+Do not log storage secrets or full signed URLs. Use provider request IDs, sanitized endpoints, and controlled test objects for diagnosis.
+
+## Layer 6: build and artifact completeness
+
+If the process reports missing modules or server bundles, compare the Docker build stages with workspace package exports. Monorepos often require dependent packages to be built before the application package. A local dev server can resolve TypeScript source while a production image expects generated `dist` files.
+
+Verify lockfile fidelity, generated database clients, route manifests, and copied assets. Do not “fix” production by installing dependencies interactively inside a running container; the change disappears on replacement and the artifact remains unreproducible.
+
+Pull-request CI should test source behavior without automatically publishing Docker images. Build images through an explicit manual release action, then record their digest. That boundary prevents an ordinary review event from silently changing a release artifact.
+
+## Replacement windows and honest availability claims
+
+Docker Compose and a single-instance Coolify deployment do not inherently prove zero downtime. If the provider stops the old container before the new one is ready, public requests can receive 502 or 503 during replacement. A health check describes desired selection behavior; it does not prove overlap occurred.
+
+To claim uninterrupted availability, collect continuous external probes, container overlap timestamps, proxy selection evidence, and exact revisions across the deployment. Without that evidence, report the observed replacement window plainly and decide whether the product needs multiple replicas or a different rollout topology.
+
+## Safe recovery sequence
+
+1. Preserve public response evidence, deployment identity, and first-failure logs.
+2. Find the first layer where a direct probe fails.
+3. Compare runtime configuration with the last known good deployment without exposing secrets.
+4. Apply the smallest reversible correction at that layer.
+5. Re-probe internally and externally, continuously through the change.
+6. Verify deep documentation routes, assets, search, and one private route—not only `/`.
+7. Record the final running digest and the evidence window.
+8. Open a follow-up for the recurring class: migration compatibility, missing health separation, artifact build order, capacity, or replacement topology.
+
+If rollback is safe and faster, route back to the exact last known good artifact. Do not rebuild an old tag and call it the same release. If database writes make rollback unsafe, stop changes and execute the forward-repair plan.
+
+## Close the data and support boundary
+
+Before routing traffic, confirm the database and asset restore is complete and test any in-flight publish, indexing, email, webhook, or export jobs. Decide whether queued work is resumed, replayed with idempotency, or deliberately discarded. A healthy web container beside a lost job queue is not a complete recovery.
+
+Record the exact artifact, schema, content snapshot, supported release window, and EOL path. The repository is AGPL-3.0, but license compliance and use of project names or logos are separate questions. Obtain counsel for obligations material to your deployment; this runbook is not legal advice and does not grant trademark rights.
+
+## When another deployment model is better
+
+Docusaurus or Starlight on static hosting can be a better choice when Git-based authoring fits and minimizing runtime dependencies is the priority. GitBook or Mintlify can be better when the team prefers a managed platform and accepts the vendor’s operational boundary. Self-hosting through Coolify is valuable when infrastructure ownership matters, but it makes proxy, database, backup, upgrade, and incident responsibilities yours.
+
+## Applying the runbook to Nibleaf
+
+Nibleaf’s self-host topology includes an app, API, worker, PostgreSQL, a Redis-compatible cache, and S3-compatible storage. The repository contains health surfaces and Docker Compose assets, but the exact behavior depends on the deployed release and Coolify configuration. Source `main` may include fixes or capabilities absent from the pinned public image.
+
+Record the Nibleaf commit and image digest, validate the public page and health routes, and check migration compatibility before rollout. Existing source tests prove code contracts; they do not prove a specific Coolify instance, DNS record, certificate, backup, or zero-downtime topology.
+
+## Primary references and review date
+
+References reviewed 2026-09-03:
+
+- [Coolify health checks](https://coolify.io/docs/knowledge-base/health-checks)
+- [Docker Compose production guidance](https://docs.docker.com/compose/how-tos/production/)
+- [Docker healthcheck reference](https://docs.docker.com/reference/dockerfile/#healthcheck)
+- [RFC 9110 HTTP status semantics](https://www.rfc-editor.org/rfc/rfc9110.html)
+
+Provider interfaces and defaults can change. Verify the current Coolify documentation and the saved resource configuration during the incident. A complete incident record ends with the failed layer, exact fix, validation window, and prevention work—not simply “redeployed successfully.”

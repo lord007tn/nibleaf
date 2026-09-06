@@ -431,6 +431,7 @@ async function createWithNextVersion<T>(projectId: string, build: (version: numb
 /** Dashboard publish options. `skipGrammarChecks` lets the user publish past the
  *  grammar linter after reviewing its findings — broken links still block. */
 export interface PublishDeploymentBody extends CreateDeploymentBody {
+  firstPublishAttribution?: PublishDeploymentJobData['firstPublishAttribution'];
   skipGrammarChecks?: boolean;
 }
 
@@ -463,6 +464,7 @@ export const createDeployment = async (organizationId: string, projectId: string
     projectId,
     skipGrammarChecks: body.skipGrammarChecks === true,
     auto: false,
+    ...(body.firstPublishAttribution ? { firstPublishAttribution: body.firstPublishAttribution } : {}),
     locale,
   };
   await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });

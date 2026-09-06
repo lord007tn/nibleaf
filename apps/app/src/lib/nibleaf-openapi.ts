@@ -141,12 +141,33 @@ export function nibleafPublicOpenApi(origin: string) {
           },
         },
       },
+      '/api/public/sites/{siteId}/markdown': {
+        get: {
+          operationId: 'getPublishedPageMarkdown',
+          tags: ['Published sites'],
+          summary: 'Get one public page as Markdown',
+          description:
+            'Returns the clean Markdown alternate for one indexable published page. Private, audience-restricted, hidden, noindex, and externally canonicalized pages return not found.',
+          parameters: [
+            ...siteParameters,
+            {
+              name: 'path',
+              in: 'query',
+              required: false,
+              description: 'Slash-delimited page path. An empty value resolves to the first public page.',
+              schema: { type: 'string', maxLength: 512, default: '' },
+            },
+            ...languageAndVersionParameters,
+          ],
+          responses: { 200: textResponse('Public page Markdown.', 'text/markdown'), ...publicErrors },
+        },
+      },
       '/api/public/sites/{siteId}/search': {
         get: {
           operationId: 'searchPublishedSite',
           tags: ['Published sites'],
           summary: 'Search a published site',
-          description: 'Runs Nibleaf full-text and fuzzy search against the selected published language and version.',
+          description: 'Runs Nibleaf full-text and fuzzy search across all published languages for the selected version.',
           parameters: [
             ...siteParameters,
             {

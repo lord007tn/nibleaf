@@ -97,6 +97,14 @@ export function isDocumentPath(pathname: string): boolean {
   return !/\.[a-z0-9]{1,12}$/i.test(lastSegment);
 }
 
+/** Paths owned by the application runtime must never be rewritten beneath a
+ * published site's custom-domain route. In particular, TanStack server
+ * functions use `/_serverFn/*`; `_` and the following letter are both regex
+ * word characters, so a shared trailing `\b` does not match that prefix. */
+export function isAppOwnedPath(pathname: string): boolean {
+  return /^\/(?:(?:api|assets|favicon|sites)\b|_)/.test(pathname);
+}
+
 export function notAcceptableHtmlResponse(): Response {
   const response = new Response('Not Acceptable\n\nAvailable representations: text/html, text/markdown.\n', {
     status: 406,

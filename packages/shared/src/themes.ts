@@ -145,118 +145,123 @@ export interface ThemePreset extends ResolvedTheme {
   rationale: string;
 }
 
+// Palette notes: every preset keeps a dark code surface in both modes so the
+// code chrome (copy button, language label) never has to flip, surfaces layer
+// canvas < surface < surfaceRaised, and dark modes are re-tuned rather than
+// inverted (cooler shadows for Harbor, warm ink for Manuscript, near-black for
+// Signal). themeContrastIssues() guards the AA pairs in themes.test.ts.
 const HARBOR_LIGHT: ThemeColorTokens = {
-  canvas: '#f8fafc',
-  foreground: '#172033',
+  canvas: '#fbfcfd',
+  foreground: '#141c2b',
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
-  muted: '#eef3f7',
-  mutedForeground: '#536176',
-  border: '#d7e0e9',
-  accent: '#2368c4',
+  muted: '#eff3f7',
+  mutedForeground: '#5b6577',
+  border: '#e1e7ee',
+  accent: '#1f63c4',
   accentForeground: '#ffffff',
-  focus: '#2368c4',
-  code: '#111827',
-  codeForeground: '#e8eef8',
-  info: '#2368c4',
-  success: '#157347',
-  warning: '#9a5b08',
-  danger: '#b42336',
+  focus: '#1f63c4',
+  code: '#0f172a',
+  codeForeground: '#e2e8f0',
+  info: '#1f63c4',
+  success: '#12744a',
+  warning: '#96560a',
+  danger: '#b3243a',
 };
 
 const HARBOR_DARK: ThemeColorTokens = {
-  canvas: '#0c111b',
-  foreground: '#edf3fb',
-  surface: '#121a27',
-  surfaceRaised: '#172131',
-  muted: '#1c2738',
-  mutedForeground: '#a9b7c9',
-  border: '#2c3a4d',
-  accent: '#74aef4',
-  accentForeground: '#07111f',
-  focus: '#8bc0ff',
-  code: '#080d15',
-  codeForeground: '#e7eef9',
-  info: '#74aef4',
-  success: '#62c995',
-  warning: '#f0bd66',
-  danger: '#ff8b98',
+  canvas: '#0b1120',
+  foreground: '#e8eef7',
+  surface: '#111a2b',
+  surfaceRaised: '#172236',
+  muted: '#1a2436',
+  mutedForeground: '#a3b1c4',
+  border: '#25324a',
+  accent: '#79b2f5',
+  accentForeground: '#071224',
+  focus: '#8fc1ff',
+  code: '#070c16',
+  codeForeground: '#e2e9f5',
+  info: '#79b2f5',
+  success: '#6ccb9a',
+  warning: '#f2c06a',
+  danger: '#ff8d9a',
 };
 
 const MANUSCRIPT_LIGHT: ThemeColorTokens = {
-  canvas: '#fbf8f1',
-  foreground: '#29251f',
-  surface: '#fffdf8',
+  canvas: '#f9f5ec',
+  foreground: '#2a251f',
+  surface: '#fffcf6',
   surfaceRaised: '#ffffff',
-  muted: '#f2ede2',
-  mutedForeground: '#665f55',
-  border: '#ded5c6',
-  accent: '#8a472f',
+  muted: '#f0e9dc',
+  mutedForeground: '#6a6157',
+  border: '#e2d9c9',
+  accent: '#9a4a2c',
   accentForeground: '#ffffff',
-  focus: '#8a472f',
-  code: '#25211d',
-  codeForeground: '#f8f0e5',
-  info: '#486c8c',
-  success: '#3f704d',
-  warning: '#94600f',
-  danger: '#a53b3b',
+  focus: '#9a4a2c',
+  code: '#2b2521',
+  codeForeground: '#f3eadb',
+  info: '#42667f',
+  success: '#3c6d49',
+  warning: '#8f5b0c',
+  danger: '#a53a3a',
 };
 
 const MANUSCRIPT_DARK: ThemeColorTokens = {
-  canvas: '#181511',
-  foreground: '#f5eee3',
-  surface: '#201c17',
-  surfaceRaised: '#29231d',
-  muted: '#302921',
-  mutedForeground: '#c6b9a7',
-  border: '#463b30',
-  accent: '#e19a7e',
-  accentForeground: '#22100a',
-  focus: '#f1ad91',
-  code: '#100e0c',
-  codeForeground: '#f4eadc',
-  info: '#8db9da',
-  success: '#86c895',
-  warning: '#e8bf72',
-  danger: '#ef9292',
+  canvas: '#17140f',
+  foreground: '#f3ecdf',
+  surface: '#1f1b15',
+  surfaceRaised: '#28221b',
+  muted: '#2d261e',
+  mutedForeground: '#c3b6a3',
+  border: '#40362b',
+  accent: '#e39b7d',
+  accentForeground: '#24110a',
+  focus: '#f2ae91',
+  code: '#0f0d0b',
+  codeForeground: '#f2e8d9',
+  info: '#8fbadb',
+  success: '#8bc898',
+  warning: '#e8c073',
+  danger: '#ef9494',
 };
 
 const SIGNAL_LIGHT: ThemeColorTokens = {
-  canvas: '#f7f8fa',
-  foreground: '#111318',
+  canvas: '#f6f7fb',
+  foreground: '#12141b',
   surface: '#ffffff',
   surfaceRaised: '#ffffff',
-  muted: '#e9ecf1',
-  mutedForeground: '#4f5968',
-  border: '#cbd1db',
+  muted: '#e9ecf3',
+  mutedForeground: '#535c6c',
+  border: '#d8dde7',
   accent: '#5b35d5',
   accentForeground: '#ffffff',
   focus: '#5b35d5',
-  code: '#101019',
-  codeForeground: '#f0efff',
-  info: '#285cc4',
-  success: '#087a55',
-  warning: '#8e5c00',
-  danger: '#b21f42',
+  code: '#0e0f1a',
+  codeForeground: '#eeedff',
+  info: '#2b5fc7',
+  success: '#0b7a55',
+  warning: '#8a5a00',
+  danger: '#b41f44',
 };
 
 const SIGNAL_DARK: ThemeColorTokens = {
-  canvas: '#090a0f',
-  foreground: '#f3f4f8',
-  surface: '#11131a',
-  surfaceRaised: '#181b24',
-  muted: '#1e222d',
-  mutedForeground: '#b0b6c3',
-  border: '#303645',
-  accent: '#a996ff',
-  accentForeground: '#110a2d',
-  focus: '#bdadff',
-  code: '#050509',
-  codeForeground: '#f2efff',
-  info: '#83aaff',
-  success: '#68d6ad',
-  warning: '#f1c263',
-  danger: '#ff83a0',
+  canvas: '#0a0b11',
+  foreground: '#f1f2f7',
+  surface: '#12141d',
+  surfaceRaised: '#191c27',
+  muted: '#1e2230',
+  mutedForeground: '#aab1bf',
+  border: '#2a2f3e',
+  accent: '#ab99ff',
+  accentForeground: '#120a2f',
+  focus: '#c0b1ff',
+  code: '#050609',
+  codeForeground: '#f0eeff',
+  info: '#86adff',
+  success: '#6bd8b0',
+  warning: '#f2c467',
+  danger: '#ff86a2',
 };
 
 export const THEME_PRESETS: Record<ThemePresetId, ThemePreset> = {
@@ -363,15 +368,21 @@ const mixHex = (first: string, second: string, weight: number): string => {
   return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
 };
 
-const readableAccent = (accent: string, canvas: string): string => {
-  if (contrastRatio(accent, canvas) >= 3) return accent;
-  const target = relativeLuminance(canvas) < 0.35 ? '#ffffff' : '#000000';
-  for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7]) {
-    const mixed = mixHex(accent, target, weight);
-    if (contrastRatio(mixed, canvas) >= 3) return mixed;
+/** Nudge `color` towards white or black until it reads against `background`.
+ * Used for accents on the canvas (3:1, large UI) and for accent text drawn on
+ * the always-dark code surface (4.5:1). Returns the input untouched when it
+ * already passes so preset palettes stay exactly as authored. */
+export const readableOnBackground = (color: string, background: string, required = 4.5): string => {
+  if (contrastRatio(color, background) >= required) return color;
+  const target = relativeLuminance(background) < 0.35 ? '#ffffff' : '#000000';
+  for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7, 0.85]) {
+    const mixed = mixHex(color, target, weight);
+    if (contrastRatio(mixed, background) >= required) return mixed;
   }
   return target;
 };
+
+const readableAccent = (accent: string, canvas: string): string => readableOnBackground(accent, canvas, 3);
 
 export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedTheme => {
   const id = config?.theme?.preset && THEME_PRESET_IDS.includes(config.theme.preset) ? config.theme.preset : 'harbor';

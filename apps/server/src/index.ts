@@ -1,7 +1,7 @@
 import './lib/serialize-bigint';
 
 import { type ServerType, serve } from '@hono/node-server';
-import { scheduleAnalyticsRollup } from '@nibleaf/bullmq';
+import { closeQueues, scheduleAnalyticsRollup } from '@nibleaf/bullmq';
 import { clickHouseHealth, closeClickHouseClients, initializeClickHouseFn } from '@nibleaf/clickhouse';
 import { logger } from '@nibleaf/logger';
 import { configureUploadCors, ensureBucket } from '@nibleaf/storage';
@@ -22,6 +22,7 @@ process.on('uncaughtException', (error) => {
 
 let server: ServerType | null = null;
 let shuttingDown = false;
+let ready = false;
 
 app.get(
   '/openapi.json',
@@ -37,7 +38,11 @@ app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', ti
 
 app.get('/health', async (ctx) => {
   const analytics = await clickHouseHealth();
-  return ctx.json({ status: shuttingDown ? 'shutting_down' : 'ok', service: env.SERVICE_NAME, analytics }, shuttingDown ? 503 : 200);
+  const status = shuttingDown ? 'shutting_down' : ready ? 'ok' : 'starting';
+  return ctx.json(
+    { status, service: env.SERVICE_NAME, revision: process.env.NIBLEAF_REVISION ?? 'development', analytics },
+    ready && !shuttingDown ? 200 : 503,
+  );
 });
 
 async function main() {
@@ -56,8 +61,12 @@ async function main() {
       .catch((error) => logger.warn({ error }, 'bucket CORS apply failed (browser uploads may be blocked)'));
   }
 
-  // Register the repeatable analytics rollup (idempotent).
-  await scheduleAnalyticsRollup().catch((error) => logger.warn({ error }, 'could not schedule analytics rollup'));
+  // Redis is a required deployment dependency. Scheduling is idempotent and
+  // doubles as the producer readiness gate; do not route traffic to an API
+  // whose publish/email/export jobs would only fail after accepting requests.
+  await scheduleAnalyticsRollup();
+  ready = true;
+  logger.info({ revision: process.env.NIBLEAF_REVISION ?? 'development' }, 'API ready');
 }
 
 async function shutdown(signal: string) {
@@ -65,6 +74,7 @@ async function shutdown(signal: string) {
     return;
   }
   shuttingDown = true;
+  ready = false;
   logger.info({ signal }, 'shutting down API');
 
   const activeServer = server;
@@ -88,7 +98,7 @@ async function shutdown(signal: string) {
       }
     });
   }
-  await closeClickHouseClients();
+  await Promise.allSettled([closeQueues(), closeClickHouseClients()]);
   process.exit(0);
 }
 

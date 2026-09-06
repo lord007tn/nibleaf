@@ -464,8 +464,29 @@ export const extractHeadings = (markdown: string): Heading[] => {
   return headings;
 };
 
+/** The author-written summary of a page, or null when none was set. This is
+ *  the ONLY source for a visible lede: a derived excerpt must never be shown as
+ *  one, or a page without a description repeats its own first paragraph. */
+export const explicitPageDescription = (page: Pick<SnapshotPage, 'description'>): string | null => page.description?.trim() || null;
+
+/** A summary derived from the page body for machine surfaces (SEO/social meta,
+ *  llms.txt, exports). Truncation lands on a word boundary and ends with an
+ *  ellipsis so a cut summary never stops mid-word ("…in about t…"). */
+export const pageExcerpt = (page: Pick<SnapshotPage, 'content'>, max = 160): string => {
+  const text = excerpt(page.content, Number.POSITIVE_INFINITY);
+  if (text.length <= max) {
+    return text;
+  }
+  const cut = text.slice(0, max - 1);
+  const boundary = cut.lastIndexOf(' ');
+  // Only back up to the previous word when that keeps a useful amount of text;
+  // a single very long token is cut as-is rather than reduced to nothing.
+  const head = boundary >= Math.floor(max / 2) ? cut.slice(0, boundary) : cut;
+  return `${head.replace(/[\s,;:،؛]+$/u, '')}…`;
+};
+
 /** Build a one-line description for a page (its own, or derived from content). */
-export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'>): string => page.description?.trim() || excerpt(page.content);
+export const pageDescription = (page: Pick<SnapshotPage, 'description' | 'content'>): string => explicitPageDescription(page) ?? pageExcerpt(page);
 
 /** Replace Mintlify-style `{{ key }}` content variables with their configured
  *  values at snapshot-build time. Tokens whose key isn't defined are left intact

@@ -1,7 +1,8 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import type { Editor } from '@tiptap/core';
+import { type Editor, Extension } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { DragHandle, type DragHandleProps } from '@tiptap/extension-drag-handle-react';
@@ -47,7 +48,7 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
-import { type ComponentType, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
@@ -84,6 +85,20 @@ const replaceFenceLanguage = (opening: string, language: string): string => {
 export function getMarkdown(editor: Editor): string {
   const storage = editor.storage as { markdown?: { getMarkdown(): string } };
   return storage.markdown?.getMarkdown() ?? '';
+}
+
+/**
+ * Replace the whole document with `markdown` without emitting `update`. An empty
+ * source always clears the document explicitly (never relies on how an empty
+ * string parses) so a page switch to a blank page can never leave the previous
+ * document behind.
+ */
+export function seedMarkdown(editor: Editor, markdown: string): void {
+  if (markdown.trim() === '') {
+    editor.commands.clearContent(false);
+    return;
+  }
+  editor.commands.setContent(markdown, { emitUpdate: false });
 }
 
 /** Typed accessor for the CharacterCount storage (not part of the core Storage type). */
@@ -181,6 +196,27 @@ interface BuildExtensionsOptions {
   dir?: 'ltr' | 'rtl';
 }
 
+/** Let every prose block choose LTR/RTL from its own content. This keeps an
+ * English installation section LTR inside an Arabic page while Arabic blocks
+ * remain RTL, without persisting presentation-only attributes to Markdown. */
+const AutomaticBlockDirection = Extension.create({
+  name: 'automaticBlockDirection',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'taskList', 'taskItem', 'tableCell', 'tableHeader'],
+        attributes: {
+          dir: {
+            default: null,
+            parseHTML: () => null,
+            renderHTML: () => ({ dir: 'auto' }),
+          },
+        },
+      },
+    ];
+  },
+});
+
 /**
  * The full editor extension set — exported so the markdown round-trip tests
  * exercise the exact configuration the app ships (any extension whose content
@@ -197,6 +233,7 @@ export function buildEditorExtensions({ onUpload, getComments, getActiveId, dir 
       codeBlock: false,
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
+    AutomaticBlockDirection,
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
@@ -449,29 +486,28 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
     },
   ];
   return (
-    <div ref={containerRef} className="sticky top-0 z-10 mb-5">
-      <div className="flex min-h-11 items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-background/95 p-1.5 shadow-sm backdrop-blur">
+    <div ref={containerRef} className="relative z-20 shrink-0 border-border border-b bg-background/95 px-2 py-1.5 backdrop-blur">
+      <div aria-label={t('editor.mode.wysiwyg')} className="flex min-h-10 items-center gap-0.5 overflow-x-auto [scrollbar-width:thin]" role="toolbar">
         {actions.map(({ labelKey, icon: Icon, active = false, run, disabled, separatorBefore, expanded }) => {
           const label = t(labelKey);
           return (
             <span key={labelKey} className="flex shrink-0 items-center gap-0.5">
               {separatorBefore ? <span className="ms-1 me-0.5 h-5 w-px bg-border" /> : null}
-              <button
-                type="button"
-                title={label}
+              <Button
+                aria-expanded={expanded}
                 aria-label={label}
                 aria-pressed={active}
-                aria-expanded={expanded}
+                className="shrink-0"
                 disabled={disabled}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={run}
-                className={cn(
-                  'grid size-8 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40',
-                  active && 'bg-muted text-foreground',
-                )}
+                size="icon-sm"
+                title={label}
+                type="button"
+                variant={active ? 'secondary' : 'ghost'}
               >
                 <Icon className="size-4" />
-              </button>
+              </Button>
             </span>
           );
         })}
@@ -488,11 +524,16 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
 }
 
 /** Word + character count, pinned to the corner of the editor viewport. */
-function EditorFooter({ editor }: { editor: Editor }) {
+function EditorFooter({ editor, documentMode = false }: { editor: Editor; documentMode?: boolean }) {
   const t = useT();
   const counts = useEditorState({ editor, selector: ({ editor: current }) => getCounts(current) });
   return (
-    <div className="pointer-events-none sticky bottom-3 z-10 flex justify-end">
+    <div
+      className={cn(
+        'pointer-events-none z-10 flex justify-end',
+        documentMode ? 'shrink-0 border-border border-t bg-background/95 px-3 py-1.5' : 'sticky bottom-3',
+      )}
+    >
       <span className="rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
         {t('editor.wordCount', { words: counts.words, characters: counts.characters })}
       </span>
@@ -508,6 +549,8 @@ interface TiptapEditorProps {
   /** Upload a pasted/dropped/picked image, returning its hosted URL (or null). */
   onUpload?: (file: File) => Promise<string | null>;
   dir?: 'ltr' | 'rtl';
+  /** BCP 47 language tag used to select the correct script font. */
+  lang?: string;
   editable?: boolean;
   className?: string;
   /** Typography variables (typeset.css contract) so the editor mirrors the
@@ -523,6 +566,8 @@ interface TiptapEditorProps {
   onAddComment?: (anchor: { quote: string; from: number; to: number }) => void;
   /** Notion-like block controls or a persistent document toolbar. */
   variant?: 'visual' | 'wysiwyg';
+  /** Page title rendered inside the document sheet in rich-text mode. */
+  titleSlot?: ReactNode;
 }
 
 /**
@@ -539,6 +584,7 @@ export function TiptapEditor({
   onChange,
   onUpload,
   dir = 'ltr',
+  lang,
   editable = true,
   className,
   style,
@@ -547,8 +593,12 @@ export function TiptapEditor({
   commentMode = false,
   onAddComment,
   variant = 'visual',
+  titleSlot,
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
+  // Latest `value`, read inside deferred seeding so a re-seed queued before a
+  // newer value arrived never re-applies the stale one.
+  const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
   const onUploadRef = useRef(onUpload);
   const editorRef = useRef<Editor | null>(null);
@@ -558,13 +608,14 @@ export function TiptapEditor({
   const commentModeRef = useRef(commentMode);
   const onAddCommentRef = useRef(onAddComment);
   useEffect(() => {
+    valueRef.current = value;
     onChangeRef.current = onChange;
     onUploadRef.current = onUpload;
     commentsRef.current = comments ?? [];
     activeCommentRef.current = activeCommentId ?? null;
     commentModeRef.current = commentMode;
     onAddCommentRef.current = onAddComment;
-  }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload]);
+  }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload, value]);
 
   // Upload an image file and insert it at the current selection.
   const insertUploadedImage = (file: File) => {
@@ -601,7 +652,7 @@ export function TiptapEditor({
           if (editor.isDestroyed) {
             return;
           }
-          editor.commands.setContent(value, { emitUpdate: false });
+          seedMarkdown(editor, valueRef.current);
           lastEmitted.current = getMarkdown(editor);
         });
       },
@@ -613,6 +664,7 @@ export function TiptapEditor({
       editorProps: {
         attributes: {
           class: 'focus:outline-none',
+          dir,
         },
         handleTextInput: () => commentModeRef.current,
         handleKeyDown: (_view, event) => {
@@ -652,7 +704,7 @@ export function TiptapEditor({
     },
     // Rebuild the editor (and its extension set) when the page direction flips —
     // table resizability is baked into the Table extension configuration.
-    [dir],
+    [dir, variant],
   );
 
   // Re-seed when `value` changes externally (differs from what the editor last emitted).
@@ -664,9 +716,10 @@ export function TiptapEditor({
       lastEmitted.current = value;
       // `emitUpdate: false` so re-seeding doesn't bounce back through onChange. Deferred
       // to a microtask so NodeView remounts don't flushSync inside React's commit.
+      // Reads the latest value so an earlier queued re-seed can't win over a newer one.
       queueMicrotask(() => {
         if (!editor.isDestroyed) {
-          editor.commands.setContent(value, { emitUpdate: false });
+          seedMarkdown(editor, valueRef.current);
         }
       });
     }
@@ -698,15 +751,30 @@ export function TiptapEditor({
   }, [comments, activeCommentId, editor]);
 
   return (
-    <div className={cn('pl-editor', commentMode && 'is-comment-mode', className)} dir={dir} style={style}>
+    <div
+      className={cn('pl-editor', variant === 'wysiwyg' && 'pl-editor-document', commentMode && 'is-comment-mode', className)}
+      data-editor-variant={variant}
+      dir={dir}
+      lang={lang}
+      style={style}
+    >
       {editor && variant === 'wysiwyg' && !commentMode ? <DocumentToolbar editor={editor} /> : null}
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <TableBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
       {editor && !commentMode && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
-      <EditorContent editor={editor} />
-      {editor && editable && !commentMode ? <EditorFooter editor={editor} /> : null}
+      {variant === 'wysiwyg' ? (
+        <div className="pl-document-scroll">
+          <div className="pl-document-page">
+            {titleSlot ? <div className="pl-document-title">{titleSlot}</div> : null}
+            <EditorContent editor={editor} />
+          </div>
+        </div>
+      ) : (
+        <EditorContent editor={editor} />
+      )}
+      {editor && editable && !commentMode ? <EditorFooter documentMode={variant === 'wysiwyg'} editor={editor} /> : null}
     </div>
   );
 }

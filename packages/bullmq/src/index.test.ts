@@ -9,10 +9,7 @@ const { queueMocks } = vi.hoisted(() => ({
 }));
 
 vi.mock('./queues/index', () => ({
-  queues: {
-    [QueueNames.ANALYTICS]: queueMocks.analytics,
-    [QueueNames.EXPORT]: queueMocks.export,
-  },
+  getQueue: (name: string) => (name === QueueNames.ANALYTICS ? queueMocks.analytics : queueMocks.export),
 }));
 
 vi.mock('./utils/logger', () => ({

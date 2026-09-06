@@ -12,12 +12,17 @@ import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
-import { sendMarketingAnalyticsEvent } from '@/lib/marketing-analytics';
 import { authClient, signIn } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-up')({
   validateSearch: (search) =>
-    z.object({ invite: z.string().optional().catch(undefined), email: z.string().optional().catch(undefined) }).parse(search),
+    z
+      .object({
+        invite: z.string().optional().catch(undefined),
+        email: z.string().optional().catch(undefined),
+        intent: z.literal('first-publish').optional().catch(undefined),
+      })
+      .parse(search),
   head: () => ({ meta: [{ title: 'Sign up — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignUpPage,
 });
@@ -42,13 +47,14 @@ function SignUpPage() {
 
   const normalizedEmail = email.trim().toLowerCase();
   const invitationId = search.invite ?? readPendingInvitation() ?? undefined;
-  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : '/app';
+  const firstPublish = search.intent === 'first-publish';
+  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : firstPublish ? '/app?firstPublish=true' : '/app';
 
   const finishSignUp = async () => {
     if (invitationId) {
       await navigate({ to: '/accept-invite/$invitationId', params: { invitationId } });
     } else {
-      await navigate({ to: '/app' });
+      await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
     }
   };
 
@@ -79,7 +85,6 @@ function SignUpPage() {
         setError(result.error.message ?? t('auth.otp.invalid'));
         return;
       }
-      sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
       await finishSignUp();
     } catch {
       setError(t('auth.otp.invalid'));
@@ -247,7 +252,7 @@ function SignUpPage() {
               type="button"
               variant="ghost"
             >
-              <ArrowLeft className="size-4" /> {t('auth.otp.changeDetails')}
+              <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('auth.otp.changeDetails')}
             </Button>
             <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
               {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}

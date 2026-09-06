@@ -1,11 +1,14 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfigUpdate } from '@nibleaf/validators';
-import { type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
+import { cloneElement, isValidElement, type ReactElement, type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
 import { toast } from 'sonner';
 
 type ConfigMutation = {
@@ -71,13 +74,19 @@ export function Field({
   children: ReactNode;
   className?: string;
 }) {
+  const generatedId = useId();
+  const isDirectControl = isValidElement(children) && (children.type === Input || children.type === Textarea || children.type === Slider);
+  const childId = isDirectControl ? (children as ReactElement<{ id?: string }>).props.id : undefined;
+  const controlId = htmlFor ?? childId ?? (isDirectControl ? generatedId : undefined);
+  const labelledChildren = isDirectControl ? cloneElement(children as ReactElement<{ id?: string }>, { id: controlId }) : children;
+
   return (
     <div className={cn('mb-6', className)}>
-      <label className="block font-semibold text-[13px]" htmlFor={htmlFor}>
+      <label className="block font-semibold text-[13px]" htmlFor={controlId}>
         {label}
       </label>
       {hint ? <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p> : <div className="mb-2.5" />}
-      {children}
+      {labelledChildren}
     </div>
   );
 }
@@ -168,15 +177,18 @@ export function sortLanguagesDefaultFirst<T extends { isDefault: boolean; positi
 }
 
 /** A language's display label; disabled languages carry the muted "hidden"
- *  suffix so pickers always signal that the scope isn't live on the site. */
-export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean } }) {
+ *  suffix so pickers always signal that the scope isn't live on the site. The
+ *  label is the language's own name, so it renders in that language's
+ *  direction when known (keeps "Português (Brasil)" intact in an RTL UI). */
+export function LanguageOptionLabel({ language }: { language: { label: string; enabled?: boolean; direction?: 'LTR' | 'RTL' } }) {
   const t = useT();
+  const dir = language.direction ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : undefined;
   if (language.enabled !== false) {
-    return <>{language.label}</>;
+    return <span dir={dir}>{language.label}</span>;
   }
   return (
     <span className="inline-flex items-baseline gap-1.5">
-      {language.label}
+      <span dir={dir}>{language.label}</span>
       <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
     </span>
   );
@@ -204,7 +216,7 @@ export function LanguageScopePicker({
   languages: Array<{ id: string; label: string; enabled?: boolean }>;
   /** The site's default language — its label annotates the Default segment so
    *  it's clear which language the global scope actually is. */
-  defaultLanguage?: { label: string } | null;
+  defaultLanguage?: { label: string; direction?: 'LTR' | 'RTL' } | null;
   value: string;
   onChange: (value: string) => void;
   hint: string;
@@ -235,7 +247,12 @@ export function LanguageScopePicker({
             label: defaultLanguage ? (
               <span className="inline-flex items-baseline gap-1.5">
                 {t('settings.chrome.scope.default')}
-                <span className="font-normal text-[12px] text-muted-foreground">· {defaultLanguage.label}</span>
+                <span className="font-normal text-[12px] text-muted-foreground">
+                  ·{' '}
+                  <span dir={defaultLanguage.direction ? (defaultLanguage.direction === 'RTL' ? 'rtl' : 'ltr') : undefined}>
+                    {defaultLanguage.label}
+                  </span>
+                </span>
               </span>
             ) : (
               t('settings.chrome.scope.default')

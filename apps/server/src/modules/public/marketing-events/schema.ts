@@ -8,6 +8,38 @@ const common = {
 export const marketingEventBody = z.discriminatedUnion('event', [
   z
     .object({
+      event: z.literal('first_publish_landing_viewed'),
+      properties: z
+        .object({
+          entry_point: z.enum(['organic_content', 'free_tool']),
+          intent: z.literal('first_publish'),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
+        })
+        .strict()
+        .refine((p) => p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content')),
+    })
+    .strict(),
+  z
+    .object({
+      event: z.literal('first_publish_cta_clicked'),
+      properties: z
+        .object({
+          destination: z.literal('signup'),
+          entry_point: z.enum(['organic_content', 'free_tool']),
+          intent: z.literal('first_publish'),
+          placement: z.enum(['article_bridge', 'result_bridge']),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
+        })
+        .strict()
+        .refine(
+          (p) =>
+            p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') &&
+            p.placement === (p.source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge'),
+        ),
+    })
+    .strict(),
+  z
+    .object({
       event: z.literal('free_tool_started'),
       properties: z
         .object({

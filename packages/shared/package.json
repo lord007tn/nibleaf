@@ -12,6 +12,9 @@
     "./ids": "./src/ids.ts",
     "./integrations": "./src/integrations.ts",
     "./mcp": "./src/mcp.ts",
+    "./markdown-discovery": "./src/markdown-discovery.ts",
+    "./public-markdown": "./src/public-markdown.ts",
+    "./public-markdown-content": "./src/public-markdown-content.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./site": "./src/site.ts",
@@ -33,7 +36,7 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^22.15.0",
+    "@types/node": "^26.2.0",
     "typescript": "^7.0.2"
   }
 }

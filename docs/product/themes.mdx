@@ -3,8 +3,8 @@ title: 'Choose, customize, and share a documentation theme'
 description: 'Use Nibleaf themes safely across previews and published documentation, then export or import a validated, versioned theme template.'
 audience: 'documentation owners, designers, and self-hosted operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/shared/src/themes.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
+last_reviewed: '2026-09-02'
+verified_against: 'packages/shared/src/themes.ts, packages/shared/src/theme-repository.ts, packages/validators/src/themes.ts, apps/server/src/actions/themes.ts, apps/app/src/components/site/documentation-theme-provider.tsx, and apps/app/src/components/project-settings/theme-section.tsx'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/themes'
@@ -163,10 +163,35 @@ Theme templates are small design interchange files, not project backups.
 
 ## Run and edit the Git-native repository
 
-The repository export keeps theme/runtime/schema IDs at version 1 and requires
-no migration from the existing Git-native contract. Each export is a standalone
-Vite application with Paraglide, a validated vendored snapshot adapter, safe MDX
-renderers, tests, and a production build. Harbor, Manuscript, and Signal ship
-different customer-owned React and CSS layout files. Nibleaf-owned manifest,
-snapshot, and content-map files remain the reconciliation boundary; edit theme
-source and documentation content, not `.nibleaf/`.
+Repository contract v2 exports a recognisable docs project: a TanStack Start +
+Vite + Tailwind CSS v4 application with fumadocs/Mintlify-style content
+conventions. `corepack pnpm install && corepack pnpm dev` runs it, and
+`corepack pnpm build` prerenders every reachable page into a static site
+(`.output/public`) that deploys to any static host. No `workspace:` dependency,
+secret, or network request is required.
+
+- `docs.json` is a Mintlify-compatible manifest (`name`, `colors`,
+  `navigation.languages[].pages`, `navigation.versions[]` when a project has
+  several versions) plus an `x-nibleaf` block with the resolved theme tokens,
+  languages with their direction, versions, and the content path. Nibleaf
+  regenerates it on every sync; do not hand-edit it.
+- `content/` holds the MDX pages with the same frontmatter Git sync writes
+  (`title`, `description`, `icon`, optional `hidden`). The default language sits
+  at the content root, other languages under `content/<code>/`, and non-default
+  versions under `content/versions/<slug>/`. Folders are navigation groups; a
+  file that `docs.json` does not list yet is appended to its group so the site
+  keeps working while Nibleaf catches up.
+- `src/components/layout/` contains the Harbor, Manuscript, and Signal shells
+  built with Tailwind utilities and the `docs.json` tokens (light and dark,
+  logical properties for RTL). `src/styles.css` maps the tokens to utilities,
+  `src/components/mdx/` renders the authoring components through the same
+  sanitize allow-list as the platform, and `messages/{en,ar}.json` keep the
+  bilingual chrome. Everything under `src/`, `messages/`, `public/`, and the
+  tooling files is customer-owned and never overwritten after the first push.
+- `.nibleaf/` keeps reconciliation metadata only: `manifest.json` (schema
+  version 2, project, template, `docs.json` and content-map hashes) and
+  `content-map.json`. There is no content snapshot blob.
+
+Schema v1 repositories (`nibleaf.theme.json` + `.nibleaf/snapshot.json`) fail
+closed with an explicit message. Remove those generated files and push again
+from Nibleaf to regenerate the v2 layout; customer-owned files are not touched.

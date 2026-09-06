@@ -27,16 +27,28 @@ const PRESETS = {
 } as const satisfies Record<string, { baseSize: BaseSize; leading: Leading; flow: Flow }>;
 type PresetName = keyof typeof PRESETS;
 
-function FontSelect({ value, onChange, options }: { value: string; onChange: (value: string) => void; options: [string, ...string[]] }) {
+function FontSelect({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: [string, ...string[]];
+  label: string;
+}) {
+  // Font names are their own label; `items` lets the trigger show it instead of the raw value.
+  const items = options.map((option) => ({ value: option, label: option }));
   return (
-    <Select onValueChange={(v) => onChange(v ?? options[0])} value={value}>
-      <SelectTrigger className="w-full">
+    <Select items={items} onValueChange={(v) => onChange(v ?? options[0])} value={value}>
+      <SelectTrigger aria-label={label} className="w-full">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option} value={option}>
-            {option}
+        {items.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
           </SelectItem>
         ))}
       </SelectContent>
@@ -93,6 +105,10 @@ export function TypographySection({ project }: { project: Project }) {
   const [baseSize, setBaseSize] = useState<BaseSize>((typography.baseSize as BaseSize) ?? '16');
   const [leading, setLeading] = useState<Leading>((typography.leading as Leading) ?? '1.75');
   const [flow, setFlow] = useState<Flow>((typography.flow as Flow) ?? '1.25');
+  const rhythmDirty =
+    baseSize !== ((typography.baseSize as BaseSize) ?? '16') ||
+    leading !== ((typography.leading as Leading) ?? '1.75') ||
+    flow !== ((typography.flow as Flow) ?? '1.25');
 
   // The preset row highlights whichever preset the current triple matches (if any).
   const activePreset = (Object.keys(PRESETS) as PresetName[]).find(
@@ -149,7 +165,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="headingFont">
         {(field) => (
           <Field hint={t('settings.typography.headingFont.hint')} label={t('settings.typography.headingFont.label')}>
-            <FontSelect onChange={field.handleChange} options={HEADING_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.headingFont.label')}
+              onChange={field.handleChange}
+              options={HEADING_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -157,7 +178,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="bodyFont">
         {(field) => (
           <Field hint={t('settings.typography.bodyFont.hint')} label={t('settings.typography.bodyFont.label')}>
-            <FontSelect onChange={field.handleChange} options={BODY_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.bodyFont.label')}
+              onChange={field.handleChange}
+              options={BODY_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -165,7 +191,12 @@ export function TypographySection({ project }: { project: Project }) {
       <form.Field name="codeFont">
         {(field) => (
           <Field hint={t('settings.typography.codeFont.hint')} label={t('settings.typography.codeFont.label')}>
-            <FontSelect onChange={field.handleChange} options={CODE_FONTS} value={field.state.value} />
+            <FontSelect
+              label={t('settings.typography.codeFont.label')}
+              onChange={field.handleChange}
+              options={CODE_FONTS}
+              value={field.state.value}
+            />
           </Field>
         )}
       </form.Field>
@@ -223,7 +254,9 @@ export function TypographySection({ project }: { project: Project }) {
         )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !rhythmDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

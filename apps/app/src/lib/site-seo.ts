@@ -1,3 +1,5 @@
+import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
+import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
 
 /**
@@ -238,11 +240,13 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
   const title = pageSeo?.metaTitle?.trim() || `${data.page.title} — ${siteName}`;
   const ogTitle = pageSeo?.metaTitle?.trim() || data.page.title;
   // An explicit page SEO override wins first. The page's own authored summary is
-  // next so a project/language default cannot stamp the same description onto
-  // every URL. Site-wide descriptions are fallbacks for pages without a summary.
+  // next, then the excerpt derived from its body, so a project/language default
+  // cannot stamp the same description onto every URL. Site-wide descriptions are
+  // fallbacks for pages with no body text at all.
   const description =
     pageSeo?.metaDescription ||
     data.page.description ||
+    data.page.excerpt ||
     langSeo?.metaDescription ||
     config?.seo?.metaDescription ||
     langCfg?.description ||
@@ -290,6 +294,12 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, _
 
   // A page may pin its own canonical URL (e.g. when content is syndicated).
   const links: Tag[] = [{ rel: 'canonical', href: pageSeo?.canonicalUrl?.trim() || url }];
+  if (isPublicMarkdownPage(data)) {
+    links.push(
+      { rel: 'alternate', type: 'text/markdown', href: markdownAlternateUrl(url) },
+      { rel: 'describedby', href: `${canonicalSiteBase(projectId, urlOptions)}/llms.txt` },
+    );
+  }
   // hreflang alternates so search engines associate the per-language versions.
   // Only emit alternates for languages that actually have this page (path set),
   // using the clean URL for the default language. Skip when there's only the one

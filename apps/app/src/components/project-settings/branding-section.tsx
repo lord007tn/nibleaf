@@ -18,18 +18,27 @@ function UploadField({
   onUploaded,
   uploading,
   placeholder,
+  id,
 }: {
   value: string;
   onChange: (value: string) => void;
   onUploaded: (file: File) => void;
   uploading: boolean;
   placeholder?: string;
+  id: string;
 }) {
   const t = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex gap-2.5">
-      <Input className={`${FIELD_MONO} flex-1`} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} value={value} />
+      <Input
+        className={`${FIELD_MONO} flex-1`}
+        dir="ltr"
+        id={id}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        value={value}
+      />
       <input
         accept="image/*"
         className="hidden"
@@ -102,8 +111,9 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="logoLight">
         {(field) => (
-          <Field hint={t('settings.branding.logoLight.hint')} label={t('settings.branding.logoLight.label')}>
+          <Field htmlFor="branding-logo-light" hint={t('settings.branding.logoLight.hint')} label={t('settings.branding.logoLight.label')}>
             <UploadField
+              id="branding-logo-light"
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('logoLight', file)}
               placeholder="/logo/light.svg"
@@ -116,8 +126,9 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="logoDark">
         {(field) => (
-          <Field hint={t('settings.branding.logoDark.hint')} label={t('settings.branding.logoDark.label')}>
+          <Field htmlFor="branding-logo-dark" hint={t('settings.branding.logoDark.hint')} label={t('settings.branding.logoDark.label')}>
             <UploadField
+              id="branding-logo-dark"
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('logoDark', file)}
               placeholder="/logo/dark.svg"
@@ -130,8 +141,9 @@ export function BrandingSection({ project }: { project: Project }) {
 
       <form.Field name="favicon">
         {(field) => (
-          <Field hint={t('settings.branding.favicon.hint')} label={t('settings.branding.favicon.label')}>
+          <Field htmlFor="branding-favicon" hint={t('settings.branding.favicon.hint')} label={t('settings.branding.favicon.label')}>
             <UploadField
+              id="branding-favicon"
               onChange={field.handleChange}
               onUploaded={(file) => handleUpload('favicon', file)}
               placeholder="/favicon.svg"
@@ -147,6 +159,7 @@ export function BrandingSection({ project }: { project: Project }) {
           <Field hint={t('settings.branding.logoHref.hint')} label={t('settings.branding.logoHref.label')}>
             <Input
               className={FIELD_INPUT}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="https://example.com"
               value={field.state.value}
@@ -155,7 +168,9 @@ export function BrandingSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
-import { SidebarFooter, SidebarMenu, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
+import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
 import { useTheme } from '@nibleaf/design-system/theme';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
@@ -50,24 +50,25 @@ export function SidebarAccountFooter() {
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <button
-                    className="flex h-12 w-full cursor-pointer items-center gap-2 overflow-hidden rounded-md p-2 text-start text-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground data-[popup-open]:bg-sidebar-accent [&_svg]:size-4 [&_svg]:shrink-0"
-                    type="button"
-                  >
-                    <Avatar className="size-9 rounded-lg">
-                      {visibleSession?.user?.image ? <AvatarImage alt={visibleSession.user.name} src={visibleSession.user.image} /> : null}
-                      <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-start leading-tight">
-                      <span className="truncate font-medium text-sm">{visibleSession?.user?.name ?? t('nav.account')}</span>
-                      <span className="truncate text-muted-foreground text-xs">{visibleSession?.user?.email ?? ''}</span>
-                    </div>
-                    <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
-                  </button>
+                  <SidebarMenuButton className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground" size="lg" />
                 }
-              />
+              >
+                <Avatar className="size-9 rounded-lg">
+                  {visibleSession?.user?.image ? <AvatarImage alt={visibleSession.user.name} src={visibleSession.user.image} /> : null}
+                  <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/60 font-semibold text-primary-foreground text-xs">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="grid flex-1 text-start leading-tight">
+                  <span className="truncate font-medium text-sm" dir="auto">
+                    {visibleSession?.user?.name ?? t('nav.account')}
+                  </span>
+                  <span className="truncate text-muted-foreground text-xs" dir="ltr">
+                    {visibleSession?.user?.email ?? ''}
+                  </span>
+                </div>
+                <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
+              </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64" side="top">
                 <DropdownMenuLabel className="flex items-center gap-3 py-2">
                   <Avatar className="size-9 rounded-lg">

@@ -1,0 +1,91 @@
+---
+title: 'التوثيق الخاص ووصول AI: تحقق من كل سطح تسليم'
+metaTitle: 'دليل التحقق من وصول AI إلى التوثيق الخاص'
+description: 'أثبت تكافؤ الصلاحيات عبر HTML وMarkdown وllms والبحث والتصدير والأصول والcache والاسترجاع؛ robots وnoindex ليسا تحكم وصول.'
+language: 'ar'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['التوثيق الخاص', 'الصلاحيات', 'أمان AI']
+related: ['private-documentation-ai-access-verification', 'mcp-documentation-security-threat-model-ar', 'ai-ready-documentation-ar']
+translationOf: 'private-documentation-ai-access-verification'
+readingMinutes: 12
+---
+
+لا يصبح التوثيق خاصاً إلا عندما يطبق كل سطح تسليم قرار الصلاحية نفسه. جدار الدخول حول HTML لا يكفي إذا كان Markdown أو البحث أو export أو asset أو endpoint للذكاء الاصطناعي يعيد المتن مباشرة.
+
+`robots.txt` و`noindex` تعليمات للزواحف، وليسا حاجز وصول. لا يمنعان إنساناً أو script أو proxy أو أداة model من جلب URL.
+
+## احصر كل تمثيل
+
+ارسم HTML وPreview وMarkdown و`.md` وllms وsitemap وRSS وOpenAPI والبحث النصي والدلالي والإجابات وPDF وZIP وGit sync والأصول وCDN وكل cache.
+
+لكل سطح سجل آلية authentication ونطاق authorization وسياسة cache وطريقة الإبطال والنتيجة المجهولة المتوقعة. غياب المالك حاجز إصدار.
+
+## اشتق مدخل صلاحية واحداً
+
+اشتق tenant وproject وdeployment واللغة والإصدار وvisibility ومعرفات الصفحات المسموحة على الخادم. لا تثق بمعرف tenant من العميل، ولا تطبق المرشح بعد الاسترجاع.
+
+قد تسمح دعوة قارئ ببعض الصفحات، وتسمح عضوية workspace بالمسودات، بينما الجمهور يرى snapshot منشورة فقط. أعد استخدام action أو policy مشتركة عبر HTML والبحث وMarkdown وAI؛ النسخ المتشابهة تنحرف عند hidden وdisabled language وold version وexternal canonical.
+
+## أزل credentials من طلب الآلة العام
+
+قيّم الاكتشاف العام كمستخدم مجهول حتى لو كان المتصفح يحمل جلسة محرر. وإلا قد تجعل SSR endpoint خاصاً يبدو عاماً.
+
+إذا أعلن HTML عن Markdown alternate، فأثبت أن الرابط يعمل بلا cookie أو Authorization. إذا لم يعمل، لا تعلن عنه. يجب أن يعيد المسار الخاص 404 غير كاشف أو ما يكافئه، لا متناً خاصاً يحمل noindex.
+
+## طبق التكافؤ على البحث وAI
+
+رشح المستندات قبل الترتيب والمقاطع قبل model call. يجب أن يتضمن vector scope وcache key tenant وdeployment واللغة والإصدار. لا تسترجع corpus واسعاً ثم تطلب من model تجاهل الأسرار.
+
+الاستشهاد سطح تسليم أيضاً. فتحه يعيد فحص الصلاحية، والرابط الموقع يحتاج expiry وaudience. قد تعيد الإجابة صياغة سر حتى لو رفض رابط citation لاحقاً؛ لذلك يكون الحد قبل النموذج.
+
+## احم التصدير والأصول
+
+قد يحتوي export على corpus كامل. اطلب role مناسباً، واربط رابط التنزيل بالمستخدم أو مدة قصيرة، ودقق الإنشاء والتنزيل منفصلين. احذف artifact وفق retention المعلن.
+
+المسار غير القابل للتخمين ليس صلاحية. اختبر الأصل والصور المصغرة والتحويلات وobject store وCDN بعد warm cache. افصل namespaces الخاصة والعامة.
+
+## صمم إبطال cache
+
+يجب أن يتغير المفتاح مع كل صفة تؤثر في الرؤية. لا تضع HTML خاصاً ذا credentials في shared cache. عند إزالة صفحة أو دعوة أو تغيير visibility أو deployment، أبطل entry أو استخدم هوية version جديدة.
+
+قِس الإبطال: امنح الوصول، سخن caches، ألغ الوصول، ثم كرر الطلب من الجلسة نفسها وجلسة جديدة ومجهول. سجل أطول نافذة stale. TTL حد خطر، لا دليل eviction.
+
+## اختبر التباس الجلسات
+
+استخدم profiles أو clients منفصلة لـ:
+
+1. مجهول؛
+2. قارئ مدعو مسموح؛
+3. قارئ لا يملك الصفحة؛
+4. عضو workspace؛
+5. عضو محذوف يحمل cookie قديمة؛
+6. مدير؛
+7. طلب آلة عام أزيلت منه credentials.
+
+اختبر URL المباشر، ثم كرر بعد sign-out وتغيير role وانتهاء الدعوة وتدوير المفتاح واستبدال النشر. افحص status والجسم والheaders وcache.
+
+## أثبت عزل tenants
+
+أنشئ tenantين بصفحات متشابهة. حاول طلب محتوى B بجلسة A ومعرف project وcursor وexport ID وasset key وcitation. اختبر معرفات مختلطة ومشوهة. يجب أن يرفض الخادم قبل storage أو provider.
+
+احتفظ في logs بمعرفات محدودة أو hashes عند الحاجة، من دون أجسام محتوى أو queries سرية أو tokens أو signed URLs.
+
+## ابن مصفوفة قبول مغلقة
+
+| السطح | صفحة عامة | خاصة مسموحة | خاصة ممنوعة |
+| --- | --- | --- | --- |
+| HTML | 200 | 200 | رفض غير كاشف |
+| Markdown | 200 إذا كانت indexable | فقط إذا صُمم صراحة | رفض |
+| llms وsitemap | مدرجة | غائبة | غائبة |
+| البحث وAI | نتيجة مؤهلة | نتيجة scoped | غائبة قبل النموذج |
+| التصدير | role-gated | role-gated | رفض |
+| الأصل | cache عام | تسليم خاص | رفض بعد warm-cache |
+
+احفظ fixtures بلا بيانات عملاء، وشغلها عند تغيير أي تمثيل أو cache layer.
+
+## تطبيق التحقق على Nibleaf
+
+لدى Nibleaf مسارات عامة وworkspace وقارئ، إضافة إلى HTML وMarkdown والبحث والتصدير والأصول وAI اختياري. يعيد التنفيذ الآمن استخدام scope المنشور، ويزيل credentials من فحص الآلة العام، ويفشل مغلقاً للمحتوى الخاص وnoindex وhidden. تحقق من revision المصدر وartifact المنشور منفصلين.
+
+رُوجعت المراجع في 2026-09-03: [OWASP Authorization](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)، [OWASP IDOR](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html)، [MDN Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control)، و[Google robots](https://developers.google.com/search/docs/crawling-indexing/robots/intro).

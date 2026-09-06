@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -127,20 +128,19 @@ export function TableBubbleMenu({ editor }: { editor: Editor }) {
         return (
           <span key={action.labelKey} className="flex items-center gap-0.5">
             {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
-            <button
-              type="button"
-              title={label}
+            <Button
               aria-label={label}
+              className={cn('size-7 text-foreground/80', action.destructive && 'hover:bg-destructive/10 hover:text-destructive')}
               disabled={!action.enabled}
-              onMouseDown={(event) => event.preventDefault()}
               onClick={action.run}
-              className={cn(
-                'flex size-7 cursor-pointer items-center justify-center rounded-md text-foreground/80 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40',
-                action.destructive && 'hover:bg-destructive/10 hover:text-destructive',
-              )}
+              onMouseDown={(event) => event.preventDefault()}
+              size="icon-xs"
+              title={label}
+              type="button"
+              variant="ghost"
             >
               {action.content}
-            </button>
+            </Button>
           </span>
         );
       })}

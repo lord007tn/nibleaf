@@ -39,6 +39,32 @@ const stringConfig = (config: Record<string, unknown>, key: string, fallback = '
   return value.success ? value.data : fallback;
 };
 
+/** Options for the configurable add-on selects. The values mirror the shared
+ *  add-on config enums; one array feeds both the trigger label (`items`) and the
+ *  rendered options so the two can't drift. */
+type ConfigOption = { value: string; labelKey: MessageKey };
+const FEEDBACK_PLACEMENT_OPTIONS = [
+  { value: 'after-content', labelKey: 'settings.addons.feedback.placement.afterContent' },
+  { value: 'after-navigation', labelKey: 'settings.addons.feedback.placement.afterNavigation' },
+] as const satisfies ReadonlyArray<ConfigOption>;
+const FEEDBACK_PRESENTATION_OPTIONS = [
+  { value: 'compact', labelKey: 'settings.addons.feedback.presentation.compact' },
+  { value: 'card', labelKey: 'settings.addons.feedback.presentation.card' },
+] as const satisfies ReadonlyArray<ConfigOption>;
+const CONSENT_PLACEMENT_OPTIONS = [
+  { value: 'bottom-start', labelKey: 'settings.addons.consent.placement.start' },
+  { value: 'bottom-center', labelKey: 'settings.addons.consent.placement.center' },
+  { value: 'bottom-end', labelKey: 'settings.addons.consent.placement.end' },
+] as const satisfies ReadonlyArray<ConfigOption>;
+const CONSENT_PRESENTATION_OPTIONS = [
+  { value: 'compact', labelKey: 'settings.addons.consent.presentation.compact' },
+  { value: 'comfortable', labelKey: 'settings.addons.consent.presentation.comfortable' },
+] as const satisfies ReadonlyArray<ConfigOption>;
+const CONSENT_BUTTON_LAYOUT_OPTIONS = [
+  { value: 'inline', labelKey: 'settings.addons.consent.buttons.inline' },
+  { value: 'stacked', labelKey: 'settings.addons.consent.buttons.stacked' },
+] as const satisfies ReadonlyArray<ConfigOption>;
+
 function StatusBadge({ addon }: { addon: ProjectAddon }) {
   const t = useT();
   const statusKey = `settings.addons.status.${addon.status.replace('_', '')}` as MessageKey;
@@ -56,6 +82,37 @@ function ConfigurationField({ label, children }: { label: string; children: Reac
       <span className="font-medium">{label}</span>
       {children}
     </div>
+  );
+}
+
+function ConfigSelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: ReadonlyArray<ConfigOption>;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const t = useT();
+  const items = options.map((option) => ({ value: option.value, label: t(option.labelKey) }));
+  return (
+    <ConfigurationField label={label}>
+      <Select items={items} onValueChange={(next) => onChange(next ?? value)} value={value}>
+        <SelectTrigger aria-label={label} className="h-9 w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </ConfigurationField>
   );
 }
 
@@ -121,46 +178,18 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
         <div className="mt-4 grid gap-4 border-border border-t pt-4">
           {addon.id === 'feedback' ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <ConfigurationField label={t('settings.addons.feedback.placement')}>
-                <Select
-                  value={stringConfig(config, 'placement', 'after-content')}
-                  onValueChange={(placement) => setDraftConfig({ ...config, placement })}
-                >
-                  <SelectTrigger aria-label={t('settings.addons.feedback.placement')} className="h-9 w-full">
-                    <SelectValue>
-                      {t(
-                        stringConfig(config, 'placement', 'after-content') === 'after-navigation'
-                          ? 'settings.addons.feedback.placement.afterNavigation'
-                          : 'settings.addons.feedback.placement.afterContent',
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="after-content">{t('settings.addons.feedback.placement.afterContent')}</SelectItem>
-                    <SelectItem value="after-navigation">{t('settings.addons.feedback.placement.afterNavigation')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </ConfigurationField>
-              <ConfigurationField label={t('settings.addons.feedback.presentation')}>
-                <Select
-                  value={stringConfig(config, 'presentation', 'compact')}
-                  onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
-                >
-                  <SelectTrigger aria-label={t('settings.addons.feedback.presentation')} className="h-9 w-full">
-                    <SelectValue>
-                      {t(
-                        stringConfig(config, 'presentation', 'compact') === 'card'
-                          ? 'settings.addons.feedback.presentation.card'
-                          : 'settings.addons.feedback.presentation.compact',
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="compact">{t('settings.addons.feedback.presentation.compact')}</SelectItem>
-                    <SelectItem value="card">{t('settings.addons.feedback.presentation.card')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </ConfigurationField>
+              <ConfigSelect
+                label={t('settings.addons.feedback.placement')}
+                onChange={(placement) => setDraftConfig({ ...config, placement })}
+                options={FEEDBACK_PLACEMENT_OPTIONS}
+                value={stringConfig(config, 'placement', 'after-content')}
+              />
+              <ConfigSelect
+                label={t('settings.addons.feedback.presentation')}
+                onChange={(presentation) => setDraftConfig({ ...config, presentation })}
+                options={FEEDBACK_PRESENTATION_OPTIONS}
+                value={stringConfig(config, 'presentation', 'compact')}
+              />
             </div>
           ) : null}
 
@@ -183,69 +212,24 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
           {addon.id === 'consent-banner' ? (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
-                <ConfigurationField label={t('settings.addons.consent.placement')}>
-                  <Select
-                    value={stringConfig(config, 'placement', 'bottom-end')}
-                    onValueChange={(placement) => setDraftConfig({ ...config, placement })}
-                  >
-                    <SelectTrigger aria-label={t('settings.addons.consent.placement')} className="h-9 w-full">
-                      <SelectValue>
-                        {t(
-                          stringConfig(config, 'placement', 'bottom-end') === 'bottom-start'
-                            ? 'settings.addons.consent.placement.start'
-                            : stringConfig(config, 'placement', 'bottom-end') === 'bottom-center'
-                              ? 'settings.addons.consent.placement.center'
-                              : 'settings.addons.consent.placement.end',
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bottom-start">{t('settings.addons.consent.placement.start')}</SelectItem>
-                      <SelectItem value="bottom-center">{t('settings.addons.consent.placement.center')}</SelectItem>
-                      <SelectItem value="bottom-end">{t('settings.addons.consent.placement.end')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </ConfigurationField>
-                <ConfigurationField label={t('settings.addons.consent.presentation')}>
-                  <Select
-                    value={stringConfig(config, 'presentation', 'comfortable')}
-                    onValueChange={(presentation) => setDraftConfig({ ...config, presentation })}
-                  >
-                    <SelectTrigger aria-label={t('settings.addons.consent.presentation')} className="h-9 w-full">
-                      <SelectValue>
-                        {t(
-                          stringConfig(config, 'presentation', 'comfortable') === 'compact'
-                            ? 'settings.addons.consent.presentation.compact'
-                            : 'settings.addons.consent.presentation.comfortable',
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="compact">{t('settings.addons.consent.presentation.compact')}</SelectItem>
-                      <SelectItem value="comfortable">{t('settings.addons.consent.presentation.comfortable')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </ConfigurationField>
-                <ConfigurationField label={t('settings.addons.consent.buttons')}>
-                  <Select
-                    value={stringConfig(config, 'buttonLayout', 'inline')}
-                    onValueChange={(buttonLayout) => setDraftConfig({ ...config, buttonLayout })}
-                  >
-                    <SelectTrigger aria-label={t('settings.addons.consent.buttons')} className="h-9 w-full">
-                      <SelectValue>
-                        {t(
-                          stringConfig(config, 'buttonLayout', 'inline') === 'stacked'
-                            ? 'settings.addons.consent.buttons.stacked'
-                            : 'settings.addons.consent.buttons.inline',
-                        )}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inline">{t('settings.addons.consent.buttons.inline')}</SelectItem>
-                      <SelectItem value="stacked">{t('settings.addons.consent.buttons.stacked')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </ConfigurationField>
+                <ConfigSelect
+                  label={t('settings.addons.consent.placement')}
+                  onChange={(placement) => setDraftConfig({ ...config, placement })}
+                  options={CONSENT_PLACEMENT_OPTIONS}
+                  value={stringConfig(config, 'placement', 'bottom-end')}
+                />
+                <ConfigSelect
+                  label={t('settings.addons.consent.presentation')}
+                  onChange={(presentation) => setDraftConfig({ ...config, presentation })}
+                  options={CONSENT_PRESENTATION_OPTIONS}
+                  value={stringConfig(config, 'presentation', 'comfortable')}
+                />
+                <ConfigSelect
+                  label={t('settings.addons.consent.buttons')}
+                  onChange={(buttonLayout) => setDraftConfig({ ...config, buttonLayout })}
+                  options={CONSENT_BUTTON_LAYOUT_OPTIONS}
+                  value={stringConfig(config, 'buttonLayout', 'inline')}
+                />
               </div>
               <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
                 <div className="font-medium text-xs uppercase tracking-wide">{t('settings.addons.consent.preview')}</div>

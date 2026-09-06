@@ -5,7 +5,7 @@ import { slugify } from '@nibleaf/shared';
 import {
   buildThemeRepository,
   type ThemeRepositoryOwnership,
-  themeContentDirectory,
+  themeContentLocation,
   themeContentMap,
   themeRepositoryOwnershipForPath,
   themeRepositoryTemplateId,
@@ -438,13 +438,13 @@ const applyContentToNibleaf = async (
     }
   }
   const { branch, language } = await authoringContext(connection);
-  const prefix = `${themeContentDirectory(snapshot, branch.id, language.code, connection.contentPath)}/`;
-  if (!path.startsWith(prefix)) {
+  // Repository layout v2: the default language/version lives at the content
+  // root, other languages under `<lang>/`, other versions under `versions/<slug>/`.
+  const location = themeContentLocation(path, snapshot, connection.contentPath);
+  if (!location || location.versionId !== branch.id || location.languageCode !== language.code) {
     throw new Error(`Git content path ${path} is outside the configured ${branch.name}/${language.code} content directory.`);
   }
-  const relative = path.slice(prefix.length);
-  const withoutExt = relative.replace(/\.mdx?$/i, '');
-  const segments = withoutExt.split('/').filter(Boolean);
+  const segments = location.relative.split('/').filter(Boolean);
   const fileName = segments.pop() ?? 'index';
   const isIndex = /^(index|readme)$/i.test(fileName);
   const leafName = isIndex ? (segments.pop() ?? 'index') : fileName;

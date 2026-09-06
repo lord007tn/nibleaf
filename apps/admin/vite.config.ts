@@ -37,6 +37,9 @@ export default defineConfig(({ mode }) => {
       // Same-origin /api proxy: the browser only talks to the admin origin, so the
       // better-auth session cookie stays first-party. All /api/** → the Nibleaf API.
       nitro({
+        // Rolldown can otherwise split the SSR service into mutually importing
+        // chunks and evaluate runtime helpers before they are initialized.
+        inlineDynamicImports: true,
         routeRules: {
           '/**': { headers: SECURITY_HEADERS },
           '/api/**': { proxy: `${apiTarget}/api/**` },

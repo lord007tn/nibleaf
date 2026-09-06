@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
+import { type Locale, type MessageKey, type MessageVariables, resolveLocale } from '@nibleaf/i18n';
 import { translateFn, useLocale } from '@nibleaf/i18n/react';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
@@ -47,37 +47,62 @@ import {
 import type { ComponentType, Ref } from 'react';
 import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
 
-interface SlashItem {
+interface SlashCommandProps {
+  editor: Editor;
+  range: Range;
+  /** Language of the page being edited — inserted scaffold text follows it, not the dashboard locale. */
+  locale: Locale;
+}
+
+export interface SlashItem {
   titleKey: MessageKey;
   descKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   /** Short mono glyph shown in the 32px tile (matches the design's monospace tiles). */
   glyph: string;
   keywords?: string[];
-  command: (props: { editor: Editor; range: Range }) => void;
+  command: (props: SlashCommandProps) => void;
 }
 
 /** Uploads a picked image and returns its hosted URL (or null on failure). */
 type UploadFn = (file: File) => Promise<string | null>;
 
-const cardContent = (count: number) =>
+/** Default text for an inserted block, written in the page language (an Arabic
+ *  page gets Arabic placeholders whatever the dashboard locale is). */
+const scaffoldText = (key: MessageKey, locale: Locale, variables?: MessageVariables): string => translateFn(key, variables, locale);
+
+/** The page language scaffolds are written in: an explicit extension option wins,
+ *  then a `lang` on the editor's direction scope (the host's `dir` wrapper), then
+ *  that scope's direction — a right-to-left page defaults to Arabic. */
+export const scaffoldLocaleOf = (scope: { lang?: string; dir?: string } | null | undefined, explicit?: Locale): Locale => {
+  if (explicit) return explicit;
+  const fromLang = scope?.lang ? resolveLocale(scope.lang) : null;
+  if (fromLang) return fromLang;
+  return scope?.dir === 'rtl' ? 'ar' : 'en';
+};
+
+/** Resolve the page language for a running editor from its nearest `dir` scope. */
+export const slashPageLocale = (editor: Pick<Editor, 'view'>, explicit?: Locale): Locale =>
+  scaffoldLocaleOf(editor.view.dom.closest<HTMLElement>('[dir]'), explicit);
+
+const cardContent = (count: number, locale: Locale) =>
   Array.from({ length: count }, (_, index) => ({
     type: 'mdxCard',
-    attrs: { title: `Card ${index + 1}` },
+    attrs: { title: scaffoldText('editor.slash.default.cardN', locale, { n: index + 1 }) },
     content: [{ type: 'paragraph' }],
   }));
 
-const columnContent = (count: number) =>
+const columnContent = (count: number, locale: Locale) =>
   Array.from({ length: count }, (_, index) => ({
     type: 'mdxColumn',
-    content: [{ type: 'paragraph', content: [{ type: 'text', text: `Column ${index + 1}` }] }],
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: scaffoldText('editor.slash.default.columnN', locale, { n: index + 1 }) }] }],
   }));
 
 /** Open a native file picker, upload the chosen image, and insert it. Falls back
  *  to a URL prompt when no uploader is wired. */
 function insertImage(editor: Editor, onUpload?: UploadFn) {
   if (!onUpload) {
-    const url = window.prompt('Image URL');
+    const url = window.prompt(translateFn('editor.slash.imageUrlPrompt'));
     if (url) {
       editor.chain().focus().setImage({ src: url }).run();
     }
@@ -102,7 +127,7 @@ function insertImage(editor: Editor, onUpload?: UploadFn) {
   input.click();
 }
 
-const createItems = (onUpload?: UploadFn): SlashItem[] => [
+export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => [
   {
     titleKey: 'editor.slash.text.title',
     descKey: 'editor.slash.text.desc',
@@ -239,7 +264,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: ListChecks,
     glyph: '№',
     keywords: ['steps', 'guide', 'procedure', 'tutorial', 'how-to'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
@@ -247,8 +272,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxSteps',
           content: [
-            { type: 'mdxStep', attrs: { title: 'First step' }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxStep', attrs: { title: 'Second step' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxStep', attrs: { title: scaffoldText('editor.slash.default.firstStep', locale) }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxStep', attrs: { title: scaffoldText('editor.slash.default.secondStep', locale) }, content: [{ type: 'paragraph' }] },
           ],
         })
         .run(),
@@ -259,12 +284,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: LayoutGrid,
     glyph: '□',
     keywords: ['card', 'link', 'resource'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mdxCard', attrs: { title: 'Card title', href: '' }, content: [{ type: 'paragraph' }] })
+        .insertContent({
+          type: 'mdxCard',
+          attrs: { title: scaffoldText('editor.slash.default.cardTitle', locale), href: '' },
+          content: [{ type: 'paragraph' }],
+        })
         .run(),
   },
   {
@@ -273,7 +302,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: LayoutGrid,
     glyph: '▦',
     keywords: ['card', 'cards', 'grid', 'tiles'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
@@ -281,7 +310,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxCardGroup',
           attrs: { cols: '2' },
-          content: cardContent(2),
+          content: cardContent(2, locale),
         })
         .run(),
   },
@@ -292,12 +321,12 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
       icon: LayoutGrid,
       glyph: `▦${count}`,
       keywords: ['card', 'cards', 'grid', 'tiles'],
-      command: ({ editor, range }) =>
+      command: ({ editor, range, locale }) =>
         editor
           .chain()
           .focus()
           .deleteRange(range)
-          .insertContent({ type: 'mdxCardGroup', attrs: { cols: String(count) }, content: cardContent(count) })
+          .insertContent({ type: 'mdxCardGroup', attrs: { cols: String(count) }, content: cardContent(count, locale) })
           .run(),
     }),
   ),
@@ -307,7 +336,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: AppWindow,
     glyph: '⊟',
     keywords: ['tab', 'tabs', 'panes'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
@@ -315,8 +344,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxTabs',
           content: [
-            { type: 'mdxTab', attrs: { title: 'First tab' }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxTab', attrs: { title: 'Second tab' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxTab', attrs: { title: scaffoldText('editor.slash.default.firstTab', locale) }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxTab', attrs: { title: scaffoldText('editor.slash.default.secondTab', locale) }, content: [{ type: 'paragraph' }] },
           ],
         })
         .run(),
@@ -327,7 +356,7 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: ListCollapse,
     glyph: '▾',
     keywords: ['accordion', 'collapse', 'expand', 'faq', 'toggle'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
@@ -335,8 +364,8 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxAccordionGroup',
           content: [
-            { type: 'mdxAccordion', attrs: { title: 'First section' }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxAccordion', attrs: { title: 'Second section' }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxAccordion', attrs: { title: scaffoldText('editor.slash.default.firstSection', locale) }, content: [{ type: 'paragraph' }] },
+            { type: 'mdxAccordion', attrs: { title: scaffoldText('editor.slash.default.secondSection', locale) }, content: [{ type: 'paragraph' }] },
           ],
         })
         .run(),
@@ -361,12 +390,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: ListCollapse,
     glyph: '⊕',
     keywords: ['expandable', 'collapse', 'disclosure', 'details'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mdxExpandable', attrs: { title: 'Show details' }, content: [{ type: 'paragraph' }] })
+        .insertContent({
+          type: 'mdxExpandable',
+          attrs: { title: scaffoldText('editor.slash.default.showDetails', locale) },
+          content: [{ type: 'paragraph' }],
+        })
         .run(),
   },
   {
@@ -376,12 +409,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     glyph: '?',
     keywords: ['tooltip', 'hint', 'hover', 'inline'],
     // An inline Tooltip wrapping the current selection (or placeholder text).
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mdxTooltip', attrs: { tip: 'Tooltip text' }, content: [{ type: 'text', text: 'term' }] })
+        .insertContent({
+          type: 'mdxTooltip',
+          attrs: { tip: scaffoldText('editor.slash.default.tooltipText', locale) },
+          content: [{ type: 'text', text: scaffoldText('editor.slash.default.term', locale) }],
+        })
         .run(),
   },
   {
@@ -597,14 +634,14 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: Columns3,
     glyph: '▥',
     keywords: ['columns', 'layout', 'grid'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
         .insertContent({
           type: 'mdxColumns',
-          content: columnContent(2),
+          content: columnContent(2, locale),
         })
         .run(),
   },
@@ -615,12 +652,12 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
       icon: Columns3,
       glyph: `▥${count}`,
       keywords: ['columns', 'layout', 'grid'],
-      command: ({ editor, range }) =>
+      command: ({ editor, range, locale }) =>
         editor
           .chain()
           .focus()
           .deleteRange(range)
-          .insertContent({ type: 'mdxColumns', content: columnContent(count) })
+          .insertContent({ type: 'mdxColumns', content: columnContent(count, locale) })
           .run(),
     }),
   ),
@@ -644,12 +681,12 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: BadgeIcon,
     glyph: '●',
     keywords: ['badge', 'label', 'status'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mdxBadge', content: [{ type: 'text', text: 'New' }] })
+        .insertContent({ type: 'mdxBadge', content: [{ type: 'text', text: scaffoldText('editor.slash.default.badge', locale) }] })
         .run(),
   },
   {
@@ -658,12 +695,16 @@ const createItems = (onUpload?: UploadFn): SlashItem[] => [
     icon: MousePointerClick,
     glyph: '↗',
     keywords: ['button', 'cta', 'link', 'action'],
-    command: ({ editor, range }) =>
+    command: ({ editor, range, locale }) =>
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContent({ type: 'mdxButton', attrs: { href: '', variant: 'default' }, content: [{ type: 'text', text: 'Button' }] })
+        .insertContent({
+          type: 'mdxButton',
+          attrs: { href: '', variant: 'default' },
+          content: [{ type: 'text', text: scaffoldText('editor.slash.default.button', locale) }],
+        })
         .run(),
   },
   {
@@ -847,8 +888,8 @@ const SlashList = ({ items, command, ref }: SlashListProps) => {
   );
 };
 
-const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
-  const items = createItems(onUpload);
+const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
+  const items = createSlashItems(onUpload);
   return {
     pluginKey: slashSuggestionKey,
     char: '/',
@@ -862,7 +903,7 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
       return items.filter((item) => haystackOf(item).includes(q));
     },
     command: ({ editor, range, props }) => {
-      props.command({ editor, range });
+      props.command({ editor, range, locale: slashPageLocale(editor, locale) });
     },
     render: () => {
       let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
@@ -966,13 +1007,15 @@ const createSuggestion = (onUpload?: UploadFn): Omit<SuggestionOptions<SlashItem
 
 const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
 
-/** Slash-command extension: type `/` to open the Basic blocks menu. */
-export const SlashCommand = Extension.create<{ onUpload?: UploadFn }>({
+/** Slash-command extension: type `/` to open the Basic blocks menu. `locale` is
+ *  the page language for inserted scaffold text; when omitted it is derived from
+ *  the host's `dir` wrapper (see `slashPageLocale`). */
+export const SlashCommand = Extension.create<{ onUpload?: UploadFn; locale?: Locale }>({
   name: 'slashCommand',
   addOptions() {
-    return { onUpload: undefined };
+    return { onUpload: undefined, locale: undefined };
   },
   addProseMirrorPlugins() {
-    return [Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload) })];
+    return [Suggestion({ editor: this.editor, ...createSuggestion(this.options.onUpload, this.options.locale) })];
   },
 });

@@ -29,27 +29,44 @@ export function logPlatformEvent(type: string, input: PlatformEventInput = {}): 
     .catch(() => undefined);
 }
 
-// The editor autosaves on every pause, so a naive `page_edited` per save would
-// explode the table. One event per (user, project) is all the funnel needs; the
-// in-process set skips the existence query on repeat saves.
-const seenContentEdits = new Set<string>();
-
 /** Record the FIRST content edit a user makes in a project (create or update). */
 export function logFirstContentEdit(userId: string, projectId: string): void {
-  const key = `${userId}:${projectId}`;
-  if (seenContentEdits.has(key)) {
-    return;
-  }
-  seenContentEdits.add(key);
   void (async () => {
-    const existing = await prisma.platformEvent.findFirst({
-      where: { type: 'page_edited', userId, projectId },
-      select: { id: true },
+    // Preserve receipts written before deterministic IDs were introduced.
+    const existing = await prisma.platformEvent.findFirst({ where: { type: 'page_edited', userId, projectId }, select: { id: true } });
+    if (existing) return;
+    await prisma.platformEvent.createMany({
+      data: { id: `page-edited:${userId}:${projectId}`, type: 'page_edited', userId, projectId },
+      skipDuplicates: true,
     });
-    if (!existing) {
-      await prisma.platformEvent.create({ data: { type: 'page_edited', userId, projectId } });
-    }
   })().catch(() => undefined);
+}
+
+const FIRST_PUBLISH_SOURCES = ['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader'] as const;
+type FirstPublishSource = (typeof FIRST_PUBLISH_SOURCES)[number];
+type FirstPublishStage = 'editor_entered' | 'project_entered' | 'publish_ready';
+
+export async function recordFirstPublishStage(input: {
+  stage: FirstPublishStage;
+  properties: { entry_point: 'organic_content' | 'free_tool'; intent: 'first_publish'; source: FirstPublishSource };
+}): Promise<void> {
+  await prisma.platformEvent.create({
+    data: {
+      type: input.stage,
+      userId: null,
+      projectId: null,
+      metadata: input.properties,
+    },
+  });
+}
+
+interface FirstPublishSourceJourney {
+  source: FirstPublishSource;
+  landingViews: number;
+  ctaClicks: number;
+  projectEntered: number;
+  editorEntered: number;
+  ready: number;
 }
 
 export interface ActivationFunnel {
@@ -66,6 +83,8 @@ export interface ActivationFunnel {
   readyWithin24Hours: number;
   /** Median sign-up -> first user-initiated READY publish in hours, among converters. */
   medianHoursToReady: number | null;
+  /** Consent-gated, source-level event receipts. They never store users or projects. */
+  sourceJourneys: FirstPublishSourceJourney[];
 }
 
 /** Activation funnel counts for the admin overview (last `days` days). All four
@@ -85,7 +104,7 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       distinct: ['userId'],
       select: { userId: true },
     });
-  const [signups, edited, published, ready, signupEvents, readyEvents] = await Promise.all([
+  const [signups, edited, published, ready, signupEvents, readyEvents, sourceEvents] = await Promise.all([
     prisma.platformEvent.count({ where: { type: 'signup_completed', createdAt: { gte: since } } }),
     distinctUsers('page_edited', false),
     distinctUsers('publish_clicked', true),
@@ -98,6 +117,37 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       where: { type: 'publish_ready', createdAt: { gte: since }, userId: { not: null }, metadata: { path: ['auto'], equals: false } },
       select: { userId: true, createdAt: true },
     }),
+    prisma.platformEvent.findMany({
+      where: {
+        type: { in: ['first_publish_landing_viewed', 'first_publish_cta_clicked', 'project_entered', 'editor_entered', 'publish_ready'] },
+        createdAt: { gte: since },
+      },
+      select: { type: true, metadata: true },
+    }),
   ]);
-  return { days, signups, edited: edited.length, published: published.length, ready: ready.length, ...activationTiming(signupEvents, readyEvents) };
+
+  const sourceJourneys = FIRST_PUBLISH_SOURCES.map((source) => {
+    const attributed = sourceEvents.filter((event) => {
+      const metadata = event.metadata as Record<string, unknown> | null;
+      return metadata?.source === source;
+    });
+    return {
+      source,
+      landingViews: attributed.filter((event) => event.type === 'first_publish_landing_viewed').length,
+      ctaClicks: attributed.filter((event) => event.type === 'first_publish_cta_clicked').length,
+      projectEntered: attributed.filter((event) => event.type === 'project_entered').length,
+      editorEntered: attributed.filter((event) => event.type === 'editor_entered').length,
+      ready: attributed.filter((event) => event.type === 'publish_ready').length,
+    };
+  });
+
+  return {
+    days,
+    signups,
+    edited: edited.length,
+    published: published.length,
+    ready: ready.length,
+    ...activationTiming(signupEvents, readyEvents),
+    sourceJourneys,
+  };
 }

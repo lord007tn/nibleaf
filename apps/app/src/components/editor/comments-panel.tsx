@@ -109,7 +109,9 @@ export function CommentsPanel({
       {/* Anchored composer — appears when highlighted text is submitted. */}
       {pendingAnchor ? (
         <div className="mb-3 rounded-xl border border-primary/40 bg-primary/5 p-3">
-          <p className="mb-2 line-clamp-2 border-amber-400 border-s-2 ps-2 text-muted-foreground text-xs italic">“{pendingAnchor.quote}”</p>
+          <p className="mb-2 line-clamp-2 border-amber-400 border-s-2 ps-2 text-muted-foreground text-xs italic" dir="auto">
+            “{pendingAnchor.quote}”
+          </p>
           <Textarea
             className="min-h-[56px] resize-none text-sm"
             onChange={(e) => setDraft(e.target.value)}
@@ -165,7 +167,7 @@ export function CommentsPanel({
                   className="block w-full text-start"
                 >
                   {comment.anchor?.quote ? (
-                    <p className="mb-2 line-clamp-1 border-amber-400/70 border-s-2 ps-2 text-[11.5px] text-muted-foreground italic">
+                    <p className="mb-2 line-clamp-1 border-amber-400/70 border-s-2 ps-2 text-[11.5px] text-muted-foreground italic" dir="auto">
                       “{comment.anchor.quote}”
                     </p>
                   ) : null}
@@ -178,10 +180,15 @@ export function CommentsPanel({
                     >
                       {initials(comment.user.name)}
                     </span>
-                    <span className="min-w-0 truncate font-semibold text-sm">{comment.user.name}</span>
+                    <span className="min-w-0 truncate font-semibold text-sm" dir="auto">
+                      {comment.user.name}
+                    </span>
                     <span className="ms-auto shrink-0 text-muted-foreground text-xs">{relativeTime(comment.createdAt)}</span>
                   </div>
-                  <p className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}>
+                  <p
+                    className={cn('mt-2 whitespace-pre-wrap text-foreground/90 text-sm leading-relaxed', comment.resolved && 'line-through')}
+                    dir="auto"
+                  >
                     {comment.body}
                   </p>
                 </button>

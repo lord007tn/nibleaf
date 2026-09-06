@@ -1,0 +1,95 @@
+---
+title: 'Versioned documentation: design the release lifecycle before the URL scheme'
+metaTitle: 'Versioned documentation release lifecycle guide'
+description: 'Choose branch, path, domain, and snapshot models; label stable, beta, and EOL releases; and keep search, AI, OpenAPI, citations, and translations version-safe.'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['versioning', 'release-lifecycle', 'governance']
+related: ['versioned-documentation-release-lifecycle-ar', 'documentation-production-readiness-decision', 'documentation-migration-seo-cutover-lab']
+translationOf: 'versioned-documentation-release-lifecycle-ar'
+readingMinutes: 12
+---
+
+Versioned documentation is a release policy expressed through content, routes, and retrieval. Adding `/v2/` to a path does not answer which release is stable, how long old pages remain supported, or whether search can mix incompatible instructions.
+
+Start with the lifecycle and evidence model. Choose URLs only after the team agrees on authority, labels, retention, and what happens when a version reaches end of life.
+
+## Choose the version authority
+
+Common models are:
+
+- **branch:** each maintained product line has a documentation branch;
+- **path:** one published corpus contains `/v1/`, `/v2/`, and other variants;
+- **domain:** versions live on separate hosts;
+- **snapshot:** a publication record freezes content for a release while editors continue on drafts.
+
+A branch supports code-linked review but can accumulate backport work. Paths are easy to discover but demand strict version filters. Domains isolate deployment but multiply TLS, analytics, and canonical governance. Snapshots give stable reader output but require explicit promotion and retention rules. A team can combine them, but it must name one authority for each published release.
+
+## Label latest, stable, beta, and EOL precisely
+
+Use labels as policy, not decoration:
+
+| Label | Meaning to prove |
+| --- | --- |
+| Latest | newest published docs, which may not be recommended |
+| Stable | supported default for ordinary users |
+| Beta | incomplete or changeable behavior with a stated audience |
+| EOL | no longer supported, with migration target and date |
+
+Do not silently move a `stable` alias without release evidence. Show the product version, documentation revision, publication date, and support status on the page. A beta page should not outrank stable guidance for an unqualified query.
+
+## Decide how old versions are indexed
+
+Keeping old documentation public can help users running supported releases. It can also send new users to obsolete commands. For each version, choose index, noindex, redirect, or removal from a dated policy.
+
+Index a maintained old release when it has distinct user demand and an accurate support label. Use noindex when the content remains reachable for direct users but should not compete in search. Redirect only when the target is substantively equivalent; never redirect a removed API behavior to an incompatible latest page.
+
+Canonicals should normally be self-referencing for genuinely different versions. Pointing every old page at latest tells crawlers the content is duplicate even when its instructions differ.
+
+## Make navigation version-aware
+
+Changing versions should preserve the current page when an equivalent exists and explain when it does not. Do not drop the reader at a homepage with no notice. Display a persistent warning for EOL and beta states, keyboard-accessible version controls, and the active version in mobile navigation.
+
+Internal links must either stay within the active version or deliberately identify a cross-version destination. Validate every link after a release; a relative path can accidentally jump from `/v1/` into latest.
+
+## Scope search and AI retrieval
+
+Every search record and retrieval chunk needs project, deployment or snapshot, language, version, visibility, and canonical path. Filter before ranking or model calls. A user reading v1 should not receive a v2-only parameter because its chunk scored higher.
+
+Generated answers must cite the same version used for retrieval. Include version identity in the citation label and URL. Keep a deterministic search fallback, and test ambiguous queries such as “authentication” against stable, beta, and EOL corpora.
+
+## Align OpenAPI, examples, and changelogs
+
+An API reference must identify the OpenAPI document version and servers it represents. Code samples, “Try it” requests, changelog entries, and prose should agree. If one OpenAPI file spans releases, document how paths and schemas are gated.
+
+Never attach a latest schema to an old prose route. Validate `$ref` resolution and server URLs per release. Link each breaking change to the last valid old page and first valid new page.
+
+## Preserve citation and deep-link stability
+
+External articles, support tickets, and generated answers may cite a heading. Avoid changing stable anchors during copy edits. When a page moves, redirect path and fragment where possible. Retain a route manifest so a migration can prove every prior public URL has an outcome.
+
+## Maintain language parity per version
+
+Hreflang connects equivalent language pages within the same product version. It must not connect Arabic v1 to English v2 because an Arabic page is missing. A missing translation should be explicit; do not silently render English while retaining an Arabic URL.
+
+Track parity as a matrix of version × language × page. Include title, description, section structure, examples, warnings, modification date, and support label. Stale translations need a visible workflow and may need noindex or removal from alternates until corrected.
+
+## Test the release graph
+
+For every supported version and language:
+
+1. Fetch canonical HTML and Markdown anonymously.
+2. Verify self-canonical and reciprocal language alternates.
+3. Confirm the active version in page chrome and machine output.
+4. Search for a version-specific term and reject cross-version results.
+5. Open citations and code examples.
+6. Probe old links and EOL warnings.
+7. Compare sitemap, llms inventory, and public route manifest.
+
+Record gaps as missing evidence, not zero usage. The release is ready when the graph is coherent, not when the newest homepage looks correct.
+
+## Applying the lifecycle to Nibleaf
+
+Nibleaf publishes immutable snapshots and models product versions separately from language trees. A production implementation must scope navigation, search, Markdown, sitemap, llms files, OpenAPI, and citations to the same snapshot/version identity. Source behavior remains distinct from the currently published container release.
+
+References reviewed 2026-09-03: [Google on duplicate URLs](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls), [Google localized versions](https://developers.google.com/search/docs/specialty/international/localized-versions), [Semantic Versioning](https://semver.org/), and [OpenAPI Specification](https://spec.openapis.org/oas/latest.html).

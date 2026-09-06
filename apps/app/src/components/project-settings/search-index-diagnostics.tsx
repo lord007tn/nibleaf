@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Database, LoaderCircle, RefreshCw, ShieldChe
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { useCreateProjectSearchReindex, useProjectSearchIndexDiagnostics } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 
 const healthVariant = (health: string) => {
   if (health === 'ready') return 'secondary' as const;
@@ -17,7 +18,7 @@ const healthVariant = (health: string) => {
 };
 
 const formatCompletedAt = (value: string) =>
-  new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
+  new Intl.DateTimeFormat(localeTag(getLocale()), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
   const t = useT();
@@ -64,9 +65,9 @@ export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
           <AlertTitle>{t('settings.search.diagnostics.errorTitle')}</AlertTitle>
           <AlertDescription>
             {t('settings.search.diagnostics.errorBody')}
-            <button className="ms-2 font-medium underline underline-offset-2" onClick={() => diagnostics.refetch()} type="button">
+            <Button className="ms-2 h-auto p-0" onClick={() => diagnostics.refetch()} type="button" variant="link">
               {t('common.retry')}
-            </button>
+            </Button>
           </AlertDescription>
         </Alert>
       ) : null}
@@ -180,10 +181,12 @@ function DiagnosticsContent({
                 key={`${item.pageId}-${item.ordinal}-${item.status}`}
               >
                 <div className="min-w-0">
-                  <p className="truncate font-mono font-medium">{item.pageId}</p>
+                  <p className="truncate font-mono font-medium" dir="ltr">
+                    {item.pageId}
+                  </p>
                   <p className="mt-0.5 text-muted-foreground">{t('settings.search.diagnostics.ordinal', { ordinal: item.ordinal })}</p>
                 </div>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground" dir="ltr">
                   {item.language} · {item.versionSlug}
                 </span>
                 <Badge variant={item.status === 'failed' ? 'destructive' : 'outline'}>
@@ -211,11 +214,17 @@ function DiagnosticsContent({
             {data.samples.items.map((item) => (
               <div className="grid gap-1 px-4 py-3 text-xs sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4" key={item.pointId}>
                 <div className="min-w-0">
-                  <p className="truncate font-mono font-medium">{item.pageId}</p>
+                  <p className="truncate font-mono font-medium" dir="ltr">
+                    {item.pageId}
+                  </p>
                   <p className="mt-0.5 text-muted-foreground">{t('settings.search.diagnostics.ordinal', { ordinal: item.ordinal })}</p>
                 </div>
-                <span className="text-muted-foreground">{item.language}</span>
-                <Badge variant="outline">{item.versionSlug}</Badge>
+                <span className="text-muted-foreground" dir="ltr">
+                  {item.language}
+                </span>
+                <Badge dir="ltr" variant="outline">
+                  {item.versionSlug}
+                </Badge>
               </div>
             ))}
           </div>
@@ -272,7 +281,9 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid grid-cols-[minmax(7rem,auto)_minmax(0,1fr)] gap-3 text-xs">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="break-all text-end font-mono">{value}</dd>
+      <dd className="break-all text-end font-mono" dir="ltr">
+        {value}
+      </dd>
     </div>
   );
 }

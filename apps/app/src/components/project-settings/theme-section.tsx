@@ -1,3 +1,7 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
@@ -18,7 +22,7 @@ import {
 } from '@nibleaf/shared/themes';
 import type { ProjectConfig } from '@nibleaf/validators';
 import { Download, FileJson, LayoutTemplate, RotateCcw, Undo2, Upload } from 'lucide-react';
-import { type ChangeEvent, type CSSProperties, useMemo, useRef, useState } from 'react';
+import { type ChangeEvent, type CSSProperties, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { type Project, type ProjectThemeImportResult, useExportProjectTheme, useImportProjectTheme, useUpdateProjectConfig } from '@/hooks/api';
@@ -175,7 +179,9 @@ const THEME_OPTION_MESSAGE_KEYS = {
 
 type ThemeOption = ThemeLayout[keyof ThemeLayout] | ThemeComponents[keyof ThemeComponents];
 
-function NativeSelect<T extends ThemeOption>({
+/** One layout/component option picker. `items` is built from the same option
+ *  array as the menu so the trigger label can never drift from the options. */
+function ThemeOptionSelect<T extends ThemeOption>({
   label,
   value,
   options,
@@ -187,21 +193,32 @@ function NativeSelect<T extends ThemeOption>({
   onChange: (value: T) => void;
 }) {
   const t = useT();
+  const id = useId();
+  const items = options.map((option) => ({ value: option, label: t(THEME_OPTION_MESSAGE_KEYS[option]) }));
   return (
-    <label className="grid gap-1.5 text-[12.5px]">
-      <span className="font-medium">{label}</span>
-      <select
-        className="h-9 rounded-md border border-input bg-background px-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        onChange={(event) => onChange(event.target.value as T)}
+    <div className="grid gap-1.5">
+      <Label className="text-[12.5px]" htmlFor={id}>
+        {label}
+      </Label>
+      <Select
+        items={items}
+        onValueChange={(next) => {
+          if (next) onChange(next);
+        }}
         value={value}
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {t(THEME_OPTION_MESSAGE_KEYS[option])}
-          </option>
-        ))}
-      </select>
-    </label>
+        <SelectTrigger className="w-full" id={id}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -448,43 +465,43 @@ export function ThemeSection({ project }: { project: Project }) {
 
       <Field hint={t('settings.theme.layoutHint')} label={t('settings.theme.layout')}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.shell')}
             onChange={(v) => setThemePart('layout', 'shell', v)}
             options={['reference', 'editorial', 'console']}
             value={resolved.layout.shell}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.density')}
             onChange={(v) => setThemePart('layout', 'density', v)}
             options={['compact', 'comfortable', 'relaxed']}
             value={resolved.layout.density}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.contentWidth')}
             onChange={(v) => setThemePart('layout', 'contentWidth', v)}
             options={['focused', 'balanced', 'wide']}
             value={resolved.layout.contentWidth}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.header')}
             onChange={(v) => setThemePart('layout', 'header', v)}
             options={['inline', 'stacked', 'floating']}
             value={resolved.layout.header}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.sidebar')}
             onChange={(v) => setThemePart('layout', 'sidebar', v)}
             options={['bordered', 'soft', 'rail']}
             value={resolved.layout.sidebar}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.navigation')}
             onChange={(v) => setThemePart('layout', 'navigation', v)}
             options={['tree', 'sectioned', 'compact']}
             value={resolved.layout.navigation}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.styling.radius.label')}
             onChange={(v) => setThemePart('layout', 'radius', v)}
             options={['sharp', 'rounded', 'pill']}
@@ -495,31 +512,31 @@ export function ThemeSection({ project }: { project: Project }) {
 
       <Field hint={t('settings.theme.componentsHint')} label={t('settings.theme.components')}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.code')}
             onChange={(v) => setThemePart('components', 'codeBlocks', v)}
             options={['system', 'dim', 'vivid']}
             value={resolved.components.codeBlocks}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.callouts')}
             onChange={(v) => setThemePart('components', 'callouts', v)}
             options={['soft', 'outline', 'solid']}
             value={resolved.components.callouts}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.cards')}
             onChange={(v) => setThemePart('components', 'cards', v)}
             options={['bordered', 'lifted', 'flat']}
             value={resolved.components.cards}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.tabs')}
             onChange={(v) => setThemePart('components', 'tabs', v)}
             options={['underline', 'pills', 'boxed']}
             value={resolved.components.tabs}
           />
-          <NativeSelect
+          <ThemeOptionSelect
             label={t('settings.theme.tables')}
             onChange={(v) => setThemePart('components', 'tables', v)}
             options={['lines', 'rows', 'cards']}
@@ -550,7 +567,9 @@ export function ThemeSection({ project }: { project: Project }) {
                   type="color"
                   value={resolved.colors[colorMode][key]}
                 />
-                <code className="text-xs">{resolved.colors[colorMode][key]}</code>
+                <code className="text-xs" dir="ltr">
+                  {resolved.colors[colorMode][key]}
+                </code>
               </span>
             </label>
           ))}
@@ -560,7 +579,9 @@ export function ThemeSection({ project }: { project: Project }) {
             <strong>{t('settings.theme.contrastTitle')}</strong>
             <ul className="mt-1 list-disc ps-5">
               {contrastIssues.map((issue) => (
-                <li key={`${issue.mode}-${issue.pair}`}>{`${issue.mode}: ${issue.pair} ${issue.ratio.toFixed(2)}:1 < ${issue.required}:1`}</li>
+                <li key={`${issue.mode}-${issue.pair}`}>
+                  <span dir="ltr">{`${issue.mode}: ${issue.pair} ${issue.ratio.toFixed(2)}:1 < ${issue.required}:1`}</span>
+                </li>
               ))}
             </ul>
           </div>
@@ -580,22 +601,23 @@ export function ThemeSection({ project }: { project: Project }) {
             ]}
             value={previewMode}
           />
-          <button
-            className="h-9 cursor-pointer rounded-md border border-border px-3 text-sm"
+          <Button
+            dir={previewArabic ? 'ltr' : 'rtl'}
+            lang={previewArabic ? 'en' : 'ar'}
             onClick={() => setPreviewArabic((value) => !value)}
             type="button"
+            variant="outline"
           >
             {previewArabic
               ? translateFn('settings.theme.preview.switchEnglish', undefined, 'en')
               : translateFn('settings.theme.preview.switchArabic', undefined, 'ar')}
-          </button>
+          </Button>
         </div>
         <ThemePreview arabic={previewArabic} config={config} mode={previewMode} />
       </Field>
 
       <div className="mb-8 flex flex-wrap items-center gap-2 border-border border-y py-4">
-        <button
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        <Button
           disabled={history.length === 0}
           onClick={() => {
             const previous = history.at(-1);
@@ -605,27 +627,24 @@ export function ThemeSection({ project }: { project: Project }) {
             }
           }}
           type="button"
+          variant="outline"
         >
           <Undo2 className="size-4" /> {t('settings.theme.undo')}
-        </button>
-        <button
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        </Button>
+        <Button
           disabled={!hasChanges}
           onClick={() => {
             setDraft(saved);
             setHistory([]);
           }}
           type="button"
+          variant="outline"
         >
           {t('common.cancel')}
-        </button>
-        <button
-          className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm"
-          onClick={() => change({ theme: fullPresetTheme(resolved.id), appearance: draft.appearance })}
-          type="button"
-        >
+        </Button>
+        <Button onClick={() => change({ theme: fullPresetTheme(resolved.id), appearance: draft.appearance })} type="button" variant="outline">
           <RotateCcw className="size-4" /> {t('settings.theme.reset')}
-        </button>
+        </Button>
       </div>
 
       <Field hint={t('settings.theme.exchangeHint')} label={t('settings.theme.exchange')}>
@@ -634,32 +653,24 @@ export function ThemeSection({ project }: { project: Project }) {
             <FileJson className="size-5 text-primary" />
             <h3 className="mt-3 font-semibold">{t('settings.theme.exportTitle')}</h3>
             <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.exportHint')}</p>
-            <button
-              className="mt-4 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm disabled:opacity-50"
-              disabled={exportProjectTheme.isPending}
-              onClick={exportTheme}
-              type="button"
-            >
+            <Button className="mt-4" disabled={exportProjectTheme.isPending} onClick={exportTheme} type="button">
               <Download className="size-4" /> {t('settings.theme.export')}
-            </button>
+            </Button>
           </div>
           <div className="rounded-xl border border-border p-4">
             <Upload className="size-5 text-primary" />
             <h3 className="mt-3 font-semibold">{t('settings.theme.importTitle')}</h3>
             <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.importHint')}</p>
             <input accept="application/json,.json" className="sr-only" onChange={handleFile} ref={fileInput} type="file" />
-            <button
-              className="mt-3 h-9 cursor-pointer rounded-md border border-border px-3 text-sm"
-              onClick={() => fileInput.current?.click()}
-              type="button"
-            >
+            <Button className="mt-3" onClick={() => fileInput.current?.click()} type="button" variant="outline">
               {t('settings.theme.chooseFile')}
-            </button>
+            </Button>
           </div>
         </div>
-        <textarea
+        <Textarea
           aria-label={t('settings.theme.importJson')}
-          className="mt-4 min-h-32 w-full rounded-lg border border-input bg-background p-3 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="mt-4 min-h-32 font-mono text-xs md:text-xs"
+          dir="ltr"
           onChange={(event) => {
             setImportText(event.target.value);
             setImportTemplate(undefined);
@@ -681,20 +692,19 @@ export function ThemeSection({ project }: { project: Project }) {
             ]}
             value={importMode}
           />
-          <button
-            className="h-9 cursor-pointer rounded-md border border-border px-3 text-sm disabled:opacity-50"
-            disabled={!importText.trim() || importProjectTheme.isPending}
-            onClick={parseImportText}
-            type="button"
-          >
+          <Button disabled={!importText.trim() || importProjectTheme.isPending} onClick={parseImportText} type="button" variant="outline">
             {t('settings.theme.previewImport')}
-          </button>
+          </Button>
         </div>
         {importPreview ? (
           <div className="mt-4 rounded-xl border border-border bg-muted/25 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <strong>{t('settings.theme.importChanges', { count: importPreview.changes.length })}</strong>
-              {importPreview.migratedFrom === 0 ? <span className="rounded-full bg-primary/10 px-2 py-1 text-primary text-xs">v0 → v1</span> : null}
+              {importPreview.migratedFrom === 0 ? (
+                <span className="rounded-full bg-primary/10 px-2 py-1 text-primary text-xs" dir="ltr">
+                  v0 → v1
+                </span>
+              ) : null}
             </div>
             <div className="mt-3 max-h-56 overflow-auto rounded-lg border border-border bg-background">
               {importPreview.changes.length === 0 ? (
@@ -703,8 +713,10 @@ export function ThemeSection({ project }: { project: Project }) {
                 <ul className="divide-y divide-border text-xs">
                   {importPreview.changes.slice(0, 100).map((item) => (
                     <li className="grid gap-1 p-3" key={item.path}>
-                      <code className="font-semibold text-primary">{item.path}</code>
-                      <span className="break-all text-muted-foreground">
+                      <code className="font-semibold text-primary" dir="ltr">
+                        {item.path}
+                      </code>
+                      <span className="break-all text-muted-foreground" dir="ltr">
                         {JSON.stringify(item.before) ?? '—'} → {JSON.stringify(item.after) ?? '—'}
                       </span>
                     </li>
@@ -712,19 +724,19 @@ export function ThemeSection({ project }: { project: Project }) {
                 </ul>
               )}
             </div>
-            <button
-              className="mt-3 h-9 cursor-pointer rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm disabled:opacity-50"
+            <Button
+              className="mt-3"
               disabled={!importTemplate || importPreview.changes.length === 0 || importProjectTheme.isPending}
               onClick={() => importTemplate && importTheme(importTemplate, true)}
               type="button"
             >
               {t('settings.theme.applyImport')}
-            </button>
+            </Button>
           </div>
         ) : null}
       </Field>
 
-      <SaveBar isSubmitting={updateConfig.isPending} />
+      <SaveBar disabled={JSON.stringify(draft) === JSON.stringify(saved)} isSubmitting={updateConfig.isPending} />
     </form>
   );
 }

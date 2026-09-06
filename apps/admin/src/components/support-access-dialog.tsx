@@ -1,6 +1,8 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
+import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useT } from '@nibleaf/i18n/react';
 import { Eye, ShieldAlert } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -26,6 +28,15 @@ export function SupportAccessDialog({ targets, subject }: { targets: SupportAcce
   }, [selected, targets]);
 
   const target = targets.find((item) => `${item.userId}:${item.organizationId}` === selected);
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const targetOptions = targets.map((item) => ({
+    value: `${item.userId}:${item.organizationId}`,
+    label: (
+      <span dir="auto">
+        {item.label} — {item.detail}
+      </span>
+    ),
+  }));
 
   return (
     <Dialog onOpenChange={setOpen} open={open}>
@@ -39,21 +50,21 @@ export function SupportAccessDialog({ targets, subject }: { targets: SupportAcce
         </DialogHeader>
 
         {targets.length > 1 ? (
-          <label className="grid gap-2 text-sm" htmlFor="support-access-target">
-            <span className="font-medium">{t('admin.support.target')}</span>
-            <select
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              id="support-access-target"
-              onChange={(event) => setSelected(event.target.value)}
-              value={selected}
-            >
-              {targets.map((item) => (
-                <option key={`${item.userId}:${item.organizationId}`} value={`${item.userId}:${item.organizationId}`}>
-                  {item.label} — {item.detail}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-2 text-sm">
+            <Label htmlFor="support-access-target">{t('admin.support.target')}</Label>
+            <Select items={targetOptions} onValueChange={(value) => setSelected(value ?? '')} value={selected}>
+              <SelectTrigger className="w-full" id="support-access-target">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {targetOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ) : target ? (
           <div className="rounded-lg border p-3 text-sm">
             <p className="font-medium">{target.label}</p>

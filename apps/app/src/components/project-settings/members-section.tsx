@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -76,6 +77,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const currentUserId = session?.user?.id;
   const isCurrentOwner = members.some((member) => member.user.id === currentUserId && member.role === 'owner');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
+  // No `owner` option: invitations and role changes can never grant ownership.
+  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
+  const roleOptions = [
+    { value: 'member', label: t('settings.members.role.member') },
+    { value: 'admin', label: t('settings.members.role.admin') },
+  ] as const satisfies ReadonlyArray<{ value: AssignableRole; label: string }>;
 
   const form = useForm({
     defaultValues: { email: '', role: 'member' as AssignableRole },
@@ -115,9 +122,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
         <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
           {(field) => (
             <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <span className="font-medium text-[13px]">{t('settings.members.inviteByEmail')}</span>
+              <Label className="font-medium text-[13px]" htmlFor="project-member-email">
+                {t('settings.members.inviteByEmail')}
+              </Label>
               <Input
                 className="bg-background"
+                id="project-member-email"
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder="teammate@company.com"
@@ -131,14 +141,16 @@ export function MembersSection({ projectId }: { projectId: string }) {
         <div className="flex w-full items-end gap-2.5 sm:w-auto">
           <form.Field name="role">
             {(field) => (
-              // No `owner` option: invitations can never carry the owner role.
-              <Select onValueChange={(v) => field.handleChange((v ?? 'member') as AssignableRole)} value={field.state.value}>
-                <SelectTrigger className="min-w-0 flex-1 bg-background sm:w-32">
+              <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
+                <SelectTrigger aria-label={t('settings.members.roleLabel')} className="min-w-0 flex-1 bg-background sm:w-32">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
-                  <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                  {roleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             )}
@@ -162,7 +174,13 @@ export function MembersSection({ projectId }: { projectId: string }) {
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            <Input className="flex-1 font-mono text-sm" onFocus={(event) => event.currentTarget.select()} readOnly value={lastInvite.link} />
+            <Input
+              aria-label={t('settings.members.copyLink')}
+              className="flex-1 font-mono text-sm"
+              onFocus={(event) => event.currentTarget.select()}
+              readOnly
+              value={lastInvite.link}
+            />
             <Button
               onClick={async () => {
                 const ok = await copyToClipboard(lastInvite.link);
@@ -234,6 +252,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       </Button>
                     ) : null}
                     <Select
+                      items={roleOptions}
                       value={member.role}
                       onValueChange={(v) =>
                         updateRole.mutate(
@@ -245,13 +264,15 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         )
                       }
                     >
-                      <SelectTrigger className="w-28" size="sm">
+                      <SelectTrigger aria-label={t('settings.members.roleLabel')} className="w-28" size="sm">
                         <SelectValue />
                       </SelectTrigger>
-                      {/* No `owner` option: role changes can never grant ownership. */}
                       <SelectContent>
-                        <SelectItem value="member">{t('settings.members.role.member')}</SelectItem>
-                        <SelectItem value="admin">{t('settings.members.role.admin')}</SelectItem>
+                        {roleOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Button

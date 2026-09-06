@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import type { SiteSnapshot } from '../packages/shared/src/site';
+import type { SiteSnapshot, SnapshotPage } from '../packages/shared/src/site';
 import { buildThemeRepository, themeContentPath } from '../packages/shared/src/theme-repository';
 import { THEME_PRESET_IDS, type ThemePresetId } from '../packages/shared/src/themes';
 
@@ -19,7 +19,7 @@ const snapshot: SiteSnapshot = {
     slug: 'northstar-docs',
     description: 'Ship reliable integrations with a documentation repository your team owns.',
     icon: null,
-    config: { theme: { preset: template } },
+    config: { theme: { preset: template }, styling: { theme: 'system' } },
     languages: [
       { code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null },
       { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, enabled: true, config: null },
@@ -98,8 +98,8 @@ curl https://api.northstar.example/v1/projects
 ## Next steps
 
 <RelatedContent title="Continue building">
-  <RelatedCard title="Authentication" description="Keep credentials server-side." href="/authentication" />
-  <RelatedCard title="Production checklist" description="Review rollout and rollback guidance." href="/production" />
+  <RelatedCard title="Authentication" description="Keep credentials server-side." href="/guides/authentication" />
+  <RelatedCard title="Next release guide" description="Preview the next API version." href="/versions/next/next-release" />
 </RelatedContent>`,
       config: null,
       translationKey: 'welcome',
@@ -107,8 +107,27 @@ curl https://api.northstar.example/v1/projects
       hidden: false,
     },
     {
-      id: 'auth-en',
+      id: 'guides-en',
       parentId: null,
+      versionId: 'version_main',
+      createdAt: '2026-08-23T00:00:00.000Z',
+      updatedAt: '2026-08-23T00:00:00.000Z',
+      languageCode: 'en',
+      kind: 'GROUP',
+      title: 'Guides',
+      slug: 'guides',
+      path: '/guides',
+      icon: null,
+      description: null,
+      content: '',
+      config: null,
+      translationKey: 'guides',
+      position: 1,
+      hidden: false,
+    },
+    {
+      id: 'auth-en',
+      parentId: 'guides-en',
       versionId: 'version_main',
       createdAt: '2026-08-23T00:00:00.000Z',
       updatedAt: '2026-08-23T00:00:00.000Z',
@@ -116,13 +135,14 @@ curl https://api.northstar.example/v1/projects
       kind: 'PAGE',
       title: 'Authentication',
       slug: 'authentication',
-      path: '/authentication',
+      path: '/guides/authentication',
       icon: null,
       description: 'Keep credentials server-side and rotate them safely.',
-      content: '## API keys\n\nUse a separate key for every environment.',
+      content:
+        '## API keys\n\nUse a separate key for every environment.\n\n<Steps>\n  <Step title="Create a key">\n\nOpen the dashboard and create a scoped key.\n\n  </Step>\n  <Step title="Store it server-side">\n\nNever ship it to a browser bundle.\n\n  </Step>\n</Steps>',
       config: null,
       translationKey: 'authentication',
-      position: 1,
+      position: 0,
       hidden: false,
     },
     {
@@ -134,8 +154,8 @@ curl https://api.northstar.example/v1/projects
       languageCode: 'ar',
       kind: 'PAGE',
       title: 'ابدأ مع نورث ستار',
-      slug: 'welcome-ar',
-      path: '/ar/welcome',
+      slug: 'welcome',
+      path: '/welcome',
       icon: null,
       description: 'كل ما تحتاجه للمصادقة وإرسال طلبك الأول بثقة.',
       content: `## نظرة عامة
@@ -157,11 +177,30 @@ curl https://api.northstar.example/v1/projects
 </FileTree>
 
 <RelatedContent title="تابع البناء">
-  <RelatedCard title="المصادقة" description="احتفظ ببيانات الاعتماد في الخادم." href="/ar/authentication" />
+  <RelatedCard title="المصادقة" description="احتفظ ببيانات الاعتماد في الخادم." href="/ar/المصادقة" />
 </RelatedContent>`,
       config: null,
       translationKey: 'welcome',
-      position: 2,
+      position: 0,
+      hidden: false,
+    },
+    {
+      id: 'auth-ar',
+      parentId: null,
+      versionId: 'version_main',
+      createdAt: '2026-08-23T00:00:00.000Z',
+      updatedAt: '2026-08-23T00:00:00.000Z',
+      languageCode: 'ar',
+      kind: 'PAGE',
+      title: 'المصادقة',
+      slug: 'المصادقة',
+      path: '/المصادقة',
+      icon: null,
+      description: 'احتفظ ببيانات الاعتماد في الخادم.',
+      content: '## نظرة عامة\n\nاستخدم رمز وصول قصير العمر لكل طلب.\n\n## الخطوات التالية\n\nتحقق من الصلاحيات قبل استدعاء الواجهة.',
+      config: null,
+      translationKey: 'authentication',
+      position: 1,
       hidden: false,
     },
     {
@@ -181,26 +220,7 @@ curl https://api.northstar.example/v1/projects
         '## Overview\n\nThis page belongs only to the Next version.\n\n## Next steps\n\nSwitch back to Main when you need the stable reference.',
       config: null,
       translationKey: 'next-release',
-      position: 3,
-      hidden: false,
-    },
-    {
-      id: 'auth-ar',
-      parentId: null,
-      versionId: 'version_main',
-      createdAt: '2026-08-23T00:00:00.000Z',
-      updatedAt: '2026-08-23T00:00:00.000Z',
-      languageCode: 'ar',
-      kind: 'PAGE',
-      title: 'المصادقة',
-      slug: 'authentication-ar',
-      path: '/ar/authentication',
-      icon: null,
-      description: 'احتفظ ببيانات الاعتماد في الخادم.',
-      content: '## نظرة عامة\n\nاستخدم رمز وصول قصير العمر لكل طلب.\n\n## الخطوات التالية\n\nتحقق من الصلاحيات قبل استدعاء الواجهة.',
-      config: null,
-      translationKey: 'authentication',
-      position: 3,
+      position: 0,
       hidden: false,
     },
     {
@@ -212,19 +232,29 @@ curl https://api.northstar.example/v1/projects
       languageCode: 'ar',
       kind: 'PAGE',
       title: 'دليل الإصدار التالي',
-      slug: 'next-release-ar',
-      path: '/ar/next-release',
+      slug: 'next-release',
+      path: '/next-release',
       icon: null,
       description: 'عاين الإصدار التالي من الواجهة دون خلطه مع شجرة التوثيق الحالية.',
       content:
         '## نظرة عامة\n\nتنتمي هذه الصفحة إلى الإصدار التالي فقط.\n\n## الخطوات التالية\n\nارجع إلى الإصدار الرئيسي عند الحاجة إلى المرجع المستقر.',
       config: null,
       translationKey: 'next-release',
-      position: 5,
+      position: 0,
       hidden: false,
     },
   ],
   generatedAt: '2026-08-23T00:00:00.000Z',
+};
+
+/** Same frontmatter shape the Git sync and the zip export write. */
+const frontMatter = (page: SnapshotPage): string => {
+  const lines = ['---', `title: ${JSON.stringify(page.title)}`];
+  if (page.description) lines.push(`description: ${JSON.stringify(page.description)}`);
+  if (page.icon) lines.push(`icon: ${JSON.stringify(page.icon)}`);
+  if (page.hidden) lines.push('hidden: true');
+  lines.push('---', '');
+  return lines.join('\n');
 };
 
 await mkdir(target);
@@ -234,8 +264,9 @@ for (const file of buildThemeRepository(snapshot)) {
   await writeFile(path, file.content, 'utf8');
 }
 for (const page of snapshot.pages) {
+  if (page.kind !== 'PAGE') continue;
   const path = resolve(target, themeContentPath(page, snapshot));
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, `---\ntitle: ${JSON.stringify(page.title)}\n---\n\n${page.content}\n`, 'utf8');
+  await writeFile(path, `${frontMatter(page)}\n${page.content}\n`, 'utf8');
 }
 process.stdout.write(`${target}\n`);

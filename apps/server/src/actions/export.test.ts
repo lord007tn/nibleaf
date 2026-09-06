@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ getCurrentSnapshot: vi.fn() }));
 const templates = [
-  ['harbor', 'HarborTheme'],
-  ['manuscript', 'ManuscriptTheme'],
-  ['signal', 'SignalTheme'],
+  ['harbor', 'HarborLayout'],
+  ['manuscript', 'ManuscriptLayout'],
+  ['signal', 'SignalLayout'],
 ] as const;
 
 vi.mock('@nibleaf/database', () => ({ prisma: {} }));
@@ -61,26 +61,27 @@ describe('theme repository export', () => {
     expect(result.fileName).toBe(`acme-docs-${template}-theme.zip`);
     expect(Object.keys(archive)).toEqual(
       expect.arrayContaining([
-        'nibleaf.theme.json',
+        '.nibleaf/manifest.json',
         '.nibleaf/content-map.json',
-        '.nibleaf/snapshot.json',
-        'src/nibleaf/runtime.ts',
-        'src/adapters/content.ts',
-        `src/theme/${componentName}.tsx`,
-        `src/theme/${template}.css`,
-        'src/theme/theme-utils.ts',
+        'docs.json',
+        'src/lib/site.ts',
+        'src/routes/$.tsx',
+        `src/components/layout/${componentName}.tsx`,
+        'src/styles.css',
         'messages/en.json',
         'messages/ar.json',
-        'content/main/en/welcome.mdx',
+        'content/welcome.mdx',
         'package.json',
         'README.md',
       ]),
     );
+    expect(Object.keys(archive)).not.toContain('.nibleaf/snapshot.json');
     expect(strFromU8(archive['package.json'] ?? new Uint8Array())).not.toContain('workspace:');
-    expect(strFromU8(archive['package.json'] ?? new Uint8Array())).toContain('lucide-react');
-    expect(strFromU8(archive[`src/theme/${componentName}.tsx`] ?? new Uint8Array())).toContain('../paraglide/messages.js');
-    expect(strFromU8(archive['src/adapters/content.ts'] ?? new Uint8Array())).toContain('import.meta.glob');
-    expect(strFromU8(archive['content/main/en/welcome.mdx'] ?? new Uint8Array())).toContain('Runnable fixture content.');
+    expect(strFromU8(archive['package.json'] ?? new Uint8Array())).toContain('@tanstack/react-start');
+    expect(strFromU8(archive[`src/components/layout/${componentName}.tsx`] ?? new Uint8Array())).toContain('../../paraglide/messages.js');
+    expect(strFromU8(archive['src/lib/site.ts'] ?? new Uint8Array())).toContain('import.meta.glob');
+    expect(JSON.parse(strFromU8(archive['docs.json'] ?? new Uint8Array()))['x-nibleaf'].template).toEqual({ id: template, version: 2 });
+    expect(strFromU8(archive['content/welcome.mdx'] ?? new Uint8Array())).toContain('Runnable fixture content.');
   });
 
   it('rejects colliding generated content paths before writing the archive', async () => {

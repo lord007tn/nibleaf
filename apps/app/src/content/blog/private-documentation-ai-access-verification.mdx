@@ -1,0 +1,98 @@
+---
+title: 'Private documentation and AI access: verify every delivery surface'
+metaTitle: 'Private documentation AI access verification guide'
+description: 'Prove authorization parity across HTML, Markdown, llms files, search, exports, assets, caches, and AI retrieval; robots and noindex are not access controls.'
+datePublished: '2026-09-03'
+dateModified: '2026-09-03'
+tags: ['private-docs', 'authorization', 'ai-security']
+related: ['private-documentation-ai-access-verification-ar', 'mcp-documentation-security-threat-model', 'ai-ready-documentation']
+translationOf: 'private-documentation-ai-access-verification-ar'
+readingMinutes: 11
+---
+
+Private documentation is private only when every delivery surface enforces the same authorization decision. A login wall around HTML is insufficient if Markdown, search, exports, assets, caches, or an AI endpoint can return the body directly.
+
+`robots.txt` and `noindex` are crawler instructions. They do not stop a person, script, proxy, or model tool from fetching a URL. Treat them as discovery controls, never access controls.
+
+## Inventory every representation
+
+Map the human and machine surfaces before testing:
+
+- canonical HTML and preview HTML;
+- negotiated Markdown and `.md` aliases;
+- `llms.txt`, full inventories, sitemap, RSS, and OpenAPI;
+- full-text, semantic search, and generated answers;
+- PDF, ZIP, static exports, and Git sync;
+- uploaded assets and transformed image URLs;
+- CDN, reverse-proxy, browser, and application caches.
+
+For each surface record the authentication mechanism, authorization scope, cache policy, revocation path, and expected anonymous response. A missing owner is a release blocker.
+
+## Define one authorization input
+
+Derive tenant, project, deployment, language, version, visibility, and allowed page IDs on the server. Do not trust client-supplied tenant IDs or filter only after retrieval. A reader invite may allow a subset of pages; workspace membership may allow drafts; public access should include only a published snapshot.
+
+Use a shared action or policy contract across HTML, search, Markdown, and AI rather than recreating similar queries. Similar code drifts at the exact edge cases—hidden pages, disabled languages, old versions, and external canonicals.
+
+## Strip credentials from public machine requests
+
+Public discovery should be evaluated anonymously even when the browser holds a workspace session. Otherwise an authorized editor can make a private endpoint appear publicly available during SSR.
+
+When HTML advertises a Markdown alternate, prove the alternate succeeds without cookies or Authorization. If it does not, omit the discovery link. A private page should return a non-disclosing 404 or equivalent, not a body with `X-Robots-Tag: noindex`.
+
+## Apply parity to search and AI
+
+Filter documents before ranking and chunks before model calls. The vector database and cache key must include tenant and deployment scope. Do not retrieve broadly and ask the model to ignore unauthorized passages.
+
+Citations are another delivery surface. Opening a citation must repeat authorization; a signed URL needs bounded expiry and audience. Generated text can paraphrase a secret even when the citation link later returns 403, so the pre-model boundary is critical.
+
+## Protect exports and assets
+
+Exports can contain the entire corpus. Require the same project role used by the export action, bind download URLs to the requesting principal or a short expiry, and audit creation and download separately. Delete or expire artifacts after their stated retention.
+
+Asset paths often look unguessable but are not authorization. Test original uploads, thumbnails, transformed URLs, object-store endpoints, and CDN cache hits. Keep private and public cache namespaces separate.
+
+## Design cache revocation
+
+Cache keys must vary on every attribute affecting visibility. Never place credentialed private HTML in a shared public cache. On page removal, invite revocation, project visibility change, or deployment replacement, invalidate or version cache entries.
+
+Measure revocation: grant access, warm each cache, revoke, then repeat every request from the same session, a new session, and anonymously. Record the longest stale window. A TTL is a maximum risk window, not proof that eviction happened.
+
+## Test session confusion
+
+Use separate browser profiles or clean HTTP clients for:
+
+1. anonymous visitor;
+2. authorized invited reader;
+3. invited reader without access to the target page;
+4. workspace member;
+5. removed member with an old cookie;
+6. administrator;
+7. public machine request with credentials deliberately stripped.
+
+Test direct URLs, not navigation visibility. Repeat after sign-out, role change, invite expiry, password or key rotation, and deployment replacement. Confirm response bodies, status, headers, and cache behavior.
+
+## Prove tenant isolation
+
+Create two tenants with similar page IDs and titles. Attempt to request tenant B content using tenant A session, project ID, search cursor, export ID, asset key, and citation. Include malformed and mixed identifiers. The server must derive the scope and reject mismatches before storage or provider access.
+
+Logs should use bounded identifiers and hashes where appropriate, without content bodies, queries containing secrets, session tokens, or signed URLs.
+
+## Build a fail-closed acceptance matrix
+
+| Surface | Public page | Allowed private page | Disallowed private page |
+| --- | --- | --- | --- |
+| HTML | 200 | 200 | non-disclosing denial |
+| Markdown | 200 if indexable | only if explicitly designed | denial |
+| llms/sitemap | listed | absent | absent |
+| Search/AI | eligible result | scoped result | absent before model call |
+| Export | role-gated | role-gated | denial |
+| Asset | public cache | private delivery | denial after warm-cache test |
+
+Store request/response fixtures without customer data. Rerun them whenever a representation or cache layer changes.
+
+## Applying the verification to Nibleaf
+
+Nibleaf has public, workspace, and reader paths plus HTML, Markdown, search, exports, assets, and optional AI retrieval. The safe implementation reuses published access scope, strips credentials for public machine checks, and fails closed for private/noindex/hidden content. Verify the exact source revision and deployed artifact independently.
+
+References reviewed 2026-09-03: [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html), [OWASP IDOR guidance](https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html), [MDN Cache-Control](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cache-Control), and [Google robots documentation](https://developers.google.com/search/docs/crawling-indexing/robots/intro).

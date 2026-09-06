@@ -18,7 +18,8 @@ import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Roc
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
-import type { PendingChange, Project } from '@/hooks/api/types';
+import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
+import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
 import { siteHref } from '@/lib/links';
 
 interface PublishModalProps {
@@ -26,7 +27,7 @@ interface PublishModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after the publish mutation is fired, to hand off to the deploy pipeline. */
-  onPublished: () => void;
+  onPublished: (deployment: Deployment, attribution: FirstPublishAttribution | null) => void;
 }
 
 /** Visual treatment per change status. */
@@ -62,14 +63,18 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
       return;
     }
     const trimmed = message.trim();
-    publish.mutate(trimmed || undefined, {
-      onSuccess: () => {
-        setMessage('');
-        onOpenChange(false);
-        onPublished();
+    const firstPublishAttribution = readFirstPublishAttribution();
+    publish.mutate(
+      { ...(trimmed ? { message: trimmed } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
+      {
+        onSuccess: (deployment) => {
+          setMessage('');
+          onOpenChange(false);
+          onPublished(deployment, firstPublishAttribution);
+        },
+        onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
-    });
+    );
   };
 
   const count = sorted.length;
@@ -98,7 +103,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
           {reviewing ? (
             <div className="flex items-center justify-between gap-3">
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
-                <ArrowLeft className="size-4" /> {t('publish.backToSummary')}
+                <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
               <Button size="sm" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
                 {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}

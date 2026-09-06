@@ -114,6 +114,7 @@ function LanguageBannerForm({
 
   return (
     <BannerScopeForm
+      direction={language.direction === 'RTL' ? 'rtl' : 'ltr'}
       onDirtyChange={onDirtyChange}
       initial={{
         enabled: override.enabled ?? projectBanner.enabled ?? false,
@@ -162,8 +163,11 @@ function BannerScopeForm({
   onSave,
   placeholders,
   onDirtyChange,
+  direction,
 }: {
   initial: BannerValues;
+  /** Writing direction of the scoped language; text fields fall back to dir="auto" in the project scope. */
+  direction?: 'ltr' | 'rtl';
   onSave: (value: BannerValues) => Promise<void>;
   placeholders?: { message?: string; linkLabel?: string; linkUrl?: string };
   onDirtyChange?: (dirty: boolean) => void;
@@ -194,61 +198,70 @@ function BannerScopeForm({
     >
       <ToggleRow checked={enabled} hint={t('settings.banner.enable.hint')} onCheckedChange={setEnabled} title={t('settings.banner.enable.title')} />
 
-      <div className="mt-5">
-        <form.Field name="message">
-          {(field) => (
-            <Field hint={t('settings.banner.message.hint')} label={t('settings.banner.message.label')}>
-              <Input
-                className={FIELD_INPUT}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder={placeholders?.message ?? t('settings.banner.message.placeholder')}
-                value={field.state.value}
-              />
-            </Field>
-          )}
-        </form.Field>
+      {enabled ? (
+        <div className="mt-5">
+          <form.Field name="message">
+            {(field) => (
+              <Field hint={t('settings.banner.message.hint')} label={t('settings.banner.message.label')}>
+                <Input
+                  className={FIELD_INPUT}
+                  dir={direction ?? 'auto'}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder={placeholders?.message ?? t('settings.banner.message.placeholder')}
+                  value={field.state.value}
+                />
+              </Field>
+            )}
+          </form.Field>
 
-        <form.Field name="linkLabel">
-          {(field) => (
-            <Field hint={t('settings.banner.linkLabel.hint')} label={t('settings.banner.linkLabel.label')}>
-              <Input
-                className={FIELD_INPUT}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder={placeholders?.linkLabel ?? t('settings.banner.linkLabel.placeholder')}
-                value={field.state.value}
-              />
-            </Field>
-          )}
-        </form.Field>
+          <form.Field name="linkLabel">
+            {(field) => (
+              <Field hint={t('settings.banner.linkLabel.hint')} label={t('settings.banner.linkLabel.label')}>
+                <Input
+                  className={FIELD_INPUT}
+                  dir={direction ?? 'auto'}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder={placeholders?.linkLabel ?? t('settings.banner.linkLabel.placeholder')}
+                  value={field.state.value}
+                />
+              </Field>
+            )}
+          </form.Field>
 
-        <form.Field name="linkUrl">
-          {(field) => (
-            <Field hint={t('settings.banner.linkUrl.hint')} label={t('settings.banner.linkUrl.label')}>
-              <Input
-                className={FIELD_INPUT}
-                type="url"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder={placeholders?.linkUrl ?? t('settings.banner.linkUrl.placeholder')}
-                value={field.state.value}
-              />
-            </Field>
-          )}
-        </form.Field>
-      </div>
+          <form.Field name="linkUrl">
+            {(field) => (
+              <Field hint={t('settings.banner.linkUrl.hint')} label={t('settings.banner.linkUrl.label')}>
+                <Input
+                  className={FIELD_INPUT}
+                  dir="ltr"
+                  type="url"
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder={placeholders?.linkUrl ?? t('settings.banner.linkUrl.placeholder')}
+                  value={field.state.value}
+                />
+              </Field>
+            )}
+          </form.Field>
+        </div>
+      ) : null}
 
-      <ToggleRow
-        checked={dismissible}
-        hint={t('settings.banner.dismissible.hint')}
-        onCheckedChange={setDismissible}
-        title={t('settings.banner.dismissible.title')}
-      />
+      {enabled ? (
+        <ToggleRow
+          checked={dismissible}
+          hint={t('settings.banner.dismissible.hint')}
+          onCheckedChange={setDismissible}
+          title={t('settings.banner.dismissible.title')}
+        />
+      ) : null}
 
       <form.Subscribe selector={(state) => state.isDirty}>
         {(isDirty) => <DirtyStateReporter dirty={isDirty || togglesDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !togglesDirty} isSubmitting={isSubmitting} />}
+        </form.Subscribe>
       </div>
     </form>
   );

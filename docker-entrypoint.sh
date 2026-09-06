@@ -68,11 +68,11 @@ case "$cmd" in
     ;;
   app)
     echo "[nibleaf] starting dashboard on :${PORT:-4310}"
-    exec node apps/app/.output/server/index.mjs
+    exec node scripts/graceful-web-service.mjs apps/app/.output/server/index.mjs
     ;;
   admin)
     echo "[nibleaf] starting admin panel on :${PORT:-4315}"
-    exec node apps/admin/.output/server/index.mjs
+    exec node scripts/graceful-web-service.mjs apps/admin/.output/server/index.mjs
     ;;
   *)
     exec "$@"

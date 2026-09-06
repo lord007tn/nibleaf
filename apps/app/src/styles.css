@@ -5,15 +5,107 @@
 
 /* Published documentation theme contract. Components use semantic variables;
  * preset/layout choices are expressed with data attributes so search and future
- * AI surfaces can share tokens without depending on the renderer DOM shape. */
+ * AI surfaces can share tokens without depending on the renderer DOM shape.
+ *
+ * Reading order: base chrome → header → sidebar/navigation → outline → article
+ * components (callouts, cards, tabs, tables, code) → utilities-layer overrides. */
 @layer components {
   .nibleaf-site-chrome {
+    /* Pill radius for search, CTA, switchers, and tags. Sharp presets square
+     * these off so every corner in the chrome agrees. */
+    --theme-pill: 9999px;
+    /* Arabic (and other RTL) copy renders in a dedicated stack with a slightly
+     * taller leading; Latin presets keep the configured sans. */
+    --theme-font-arabic:
+      "Noto Sans Arabic Variable", "Noto Sans Arabic", "Noto Naskh Arabic",
+      "Segoe UI", "Geeza Pro", "Sakkal Majalla", Tahoma, system-ui, sans-serif;
     color: var(--theme-foreground);
     background: var(--theme-canvas);
+    -webkit-font-smoothing: antialiased;
   }
 
+  .nibleaf-site-chrome[data-theme-radius="sharp"] {
+    --theme-pill: 0.375rem;
+  }
+
+  .nibleaf-site-chrome[dir="rtl"],
+  .nibleaf-site-chrome :lang(ar),
+  .nibleaf-site-chrome :lang(fa),
+  .nibleaf-site-chrome :lang(ur) {
+    font-family: var(--theme-font-arabic);
+  }
+
+  .nibleaf-site-chrome[dir="rtl"] .typeset {
+    line-height: calc(var(--typeset-leading) * 1.08);
+  }
+
+  /* Density scales the reading size: compact consoles sit at 15px, relaxed
+   * editorial shells at 17px, everything else at the configured base. */
+  .nibleaf-site-chrome[data-theme-density="compact"] .typeset {
+    --typeset-size: 0.9375em;
+  }
+
+  .nibleaf-site-chrome[data-theme-density="relaxed"] .typeset {
+    --typeset-size: 1.0625em;
+  }
+
+  /* Manuscript reads editorial: a humanist serif for display, with a naskh
+   * fallback so Arabic titles keep the same voice. */
+  .nibleaf-site-chrome[data-theme-id="manuscript"] {
+    --font-heading:
+      "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+      "Noto Naskh Arabic", "Sakkal Majalla", "Traditional Arabic", serif;
+  }
+
+  /* Article title + lede live outside .typeset (site-page-view); give them the
+   * same optical tuning as the prose headings. */
+  .nibleaf-site-chrome [data-theme-region="article"] > h1 {
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .nibleaf-site-chrome[data-theme-id="manuscript"]
+    [data-theme-region="article"]
+    > h1 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .nibleaf-site-chrome[dir="rtl"] [data-theme-region="article"] > h1 {
+    letter-spacing: 0;
+    line-height: 1.3;
+  }
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+@layer components {
   .nibleaf-site-chrome [data-theme-region="header-shell"] {
-    background: color-mix(in oklab, var(--theme-canvas) 88%, transparent);
+    background: color-mix(in oklab, var(--theme-canvas) 86%, transparent);
+    border-color: var(--theme-border);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="search-trigger"] {
+    color: var(--theme-muted-foreground);
+    background: var(--theme-surface);
+    border-color: var(--theme-border);
+    box-shadow: 0 1px 2px
+      color-mix(in oklab, var(--theme-foreground) 5%, transparent);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="search-trigger"]:hover {
+    border-color: color-mix(
+      in oklab,
+      var(--theme-foreground) 22%,
+      var(--theme-border)
+    );
+    color: var(--theme-foreground);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="search-trigger"] kbd {
+    color: var(--theme-muted-foreground);
+    background: var(--theme-muted);
     border-color: var(--theme-border);
   }
 
@@ -33,57 +125,22 @@
       color-mix(in oklab, var(--theme-foreground) 9%, transparent);
   }
 
-  .nibleaf-site-chrome[data-theme-sidebar="soft"]
-    [data-theme-region="sidebar"] {
-    background: var(--theme-muted);
-    border-inline-end-color: transparent;
-    padding-inline: 0.5rem;
-  }
-
-  .nibleaf-site-chrome[data-theme-sidebar="rail"]
-    [data-theme-region="sidebar"] {
-    border-inline-end-width: 2px;
-  }
-}
-
-@layer components {
-  .nibleaf-site-chrome[data-theme-navigation="compact"]
-    [data-theme-region="sidebar"]
-    nav
-    :is(a, button) {
-    min-height: 1.75rem;
-    padding-block: 0.2rem;
-    font-size: 0.8125rem;
-  }
-
-  .nibleaf-site-chrome[data-theme-navigation="tree"]
-    [data-theme-region="sidebar"]
-    nav
-    ul
-    ul {
-    border-inline-start: 1px solid var(--theme-border);
-  }
-
-  .documentation-manuscript-studio-navigation nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 0.5rem;
-  }
-
+  /* Manuscript: a tall, quiet masthead on the muted band; the chapter deck
+   * below it does the wayfinding. */
   .nibleaf-site-chrome[data-documentation-template="manuscript"]
-    [data-theme-region="header-shell"] {
+  [data-theme-region="header-shell"] {
     position: static;
-    border-bottom: 0;
-    background: var(--theme-muted);
+    border-bottom: 1px solid var(--theme-border);
+    background: var(--theme-canvas);
     backdrop-filter: none;
   }
 
   .nibleaf-site-chrome[data-documentation-template="manuscript"]
     [data-theme-region="header"] {
-    min-height: 5rem;
+    min-height: 4.5rem;
     height: auto;
     max-width: 82rem;
-    padding-block: 1rem;
+    padding-block: 0.75rem;
   }
 
   .nibleaf-site-chrome[data-documentation-template="manuscript"]
@@ -92,8 +149,9 @@
     border-top: 1px solid var(--theme-border);
   }
 
+  /* Signal: a flat, sticky toolbar that fuses with the console frame. */
   .nibleaf-site-chrome[data-documentation-template="signal"]
-    [data-theme-region="header-shell"] {
+  [data-theme-region="header-shell"] {
     position: sticky;
     top: 0;
     margin: 0;
@@ -106,22 +164,125 @@
 
   .nibleaf-site-chrome[data-documentation-template="signal"]
     [data-theme-region="header"] {
-    min-height: 3.75rem;
+    min-height: 3.5rem;
     height: auto;
     max-width: 100rem;
-    padding-block: 0.5rem;
+    padding-block: 0.375rem;
+  }
+
+  .nibleaf-site-chrome[data-documentation-template="signal"]
+    [data-theme-region="search-trigger"] {
+    background: var(--theme-canvas);
+    box-shadow: none;
+    font-size: 0.8125rem;
   }
 
   @media (min-width: 64rem) {
-    /* biome-ignore lint/style/noDescendingSpecificity: template-owned navigation intentionally overrides the generic tree treatment above. */
+    .documentation-signal-reader {
+      background: color-mix(
+        in oklab,
+        var(--theme-code) 7%,
+        var(--theme-canvas)
+      );
+    }
+
+    .dark .documentation-signal-reader,
+    .documentation-signal-reader:where(.dark *) {
+      background: var(--theme-code);
+    }
+
+    .documentation-signal-reader [data-theme-region="content-shell"] {
+      min-height: calc(100dvh - 5.75rem);
+    }
+  }
+}
+
+/* ─── Sidebar & navigation ───────────────────────────────────────────────── */
+@layer components {
+  .nibleaf-site-chrome [data-theme-region="nav-group"] {
+    color: var(--theme-foreground);
+  }
+
+  .nibleaf-site-chrome[data-theme-sidebar="soft"]
+    [data-theme-region="sidebar"] {
+    background: transparent;
+    border-inline-end-color: transparent;
+  }
+
+  /* Rail sidebars are always drawn on the code surface, whatever the mode, so
+   * they remap the design-system aliases to the on-code derived tokens. */
+  .documentation-signal-rail {
+    --foreground: var(--theme-code-foreground);
+    --muted-foreground: var(--theme-code-muted);
+    --primary: var(--theme-code-accent);
+    --muted: color-mix(in oklab, var(--theme-code-foreground) 9%, transparent);
+    --border: color-mix(
+      in oklab,
+      var(--theme-code-foreground) 14%,
+      transparent
+    );
+    --theme-border: var(--border);
+  }
+
+  .documentation-manuscript-studio-navigation nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.5rem;
+  }
+
+  /* Manuscript's chapter deck: every top-level group becomes a column with a
+   * small-caps running head; entries are quiet text links. */
+  .documentation-manuscript-navigation [data-theme-region="nav-group"] {
+    padding-inline: 0;
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--theme-muted-foreground);
+  }
+
+  .documentation-manuscript-navigation
+    :is([data-theme-region="nav-link"], [data-theme-region="nav-subgroup"]) {
+    padding-inline: 0;
+    padding-block: 0.25rem;
+    background: transparent;
+    color: var(--theme-muted-foreground);
+  }
+
+  .documentation-manuscript-navigation
+    :is(
+      [data-theme-region="nav-link"],
+      [data-theme-region="nav-subgroup"]
+    ):hover {
+    background: transparent;
+    color: var(--theme-foreground);
+  }
+
+  .documentation-manuscript-navigation
+    [data-theme-region="nav-link"][data-active] {
+    color: var(--theme-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 0.35em;
+  }
+
+  @media (min-width: 64rem) {
     .documentation-manuscript-navigation > nav > ul {
-      display: grid;
-      grid-auto-flow: column;
-      grid-template-rows: repeat(2, minmax(2.25rem, auto));
-      grid-auto-columns: minmax(13rem, 1fr);
-      gap: 0.25rem 1rem;
-      max-height: 8rem;
-      overflow-x: auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 3rem;
+    }
+
+    .documentation-manuscript-navigation > nav > ul > li {
+      flex: 1 1 12rem;
+      max-width: 22rem;
+    }
+
+    .documentation-manuscript-navigation nav ul ul {
+      border-inline-start: 0;
+      margin-inline-start: 0;
+      padding-inline-start: 0;
     }
 
     .documentation-manuscript-preview-navigation
@@ -132,39 +293,218 @@
     }
   }
 
+  .nibleaf-site-chrome[data-theme-navigation="compact"]
+    [data-theme-region="sidebar"]
+    [data-theme-region="nav-group"] {
+    margin-block-start: 0.25rem;
+    padding-block: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .nibleaf-site-chrome[data-theme-navigation="compact"]
+    [data-theme-region="sidebar"]
+    :is([data-theme-region="nav-link"], [data-theme-region="nav-subgroup"]) {
+    min-height: 1.75rem;
+    padding-block: 0.25rem;
+    font-size: 0.8125rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-navigation="compact"]
+    [data-theme-region="sidebar"]
+    [data-theme-region="nav-link"][data-active] {
+    background: color-mix(in oklab, var(--primary) 14%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+  }
+
+  .nibleaf-site-chrome[dir="rtl"][data-theme-navigation="compact"]
+    [data-theme-region="sidebar"]
+    [data-theme-region="nav-link"][data-active] {
+    box-shadow: inset -2px 0 0 var(--primary);
+  }
+
+  .nibleaf-site-chrome[data-theme-navigation="tree"]
+    [data-theme-region="sidebar"]
+    nav
+    ul
+    ul {
+    border-inline-start: 1px solid var(--theme-border);
+  }
+}
+
+/* ─── Page outline ───────────────────────────────────────────────────────── */
+@layer components {
+  .nibleaf-site-chrome [data-theme-region="toc-label"] {
+    color: var(--theme-foreground);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="toc-list"] {
+    border-inline-start: 1px solid var(--theme-border);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="toc-link"] {
+    display: block;
+    margin-inline-start: -1px;
+    padding-block: 0.3rem;
+    padding-inline-start: calc(0.875rem + var(--toc-depth, 0) * 0.75rem);
+    border-inline-start: 2px solid transparent;
+    color: var(--theme-muted-foreground);
+    line-height: 1.35;
+    transition:
+      color 120ms ease,
+      border-color 120ms ease;
+  }
+
+  .nibleaf-site-chrome [data-theme-region="toc-link"]:hover {
+    color: var(--theme-foreground);
+  }
+
+  .nibleaf-site-chrome [data-theme-region="toc-link"][data-active] {
+    border-color: var(--theme-accent);
+    color: var(--theme-accent);
+    font-weight: 500;
+  }
+
+  .nibleaf-site-chrome[data-theme-id="manuscript"]
+    [data-theme-region="toc-label"] {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--theme-muted-foreground);
+  }
+
+  /* Signal's command index: the outline flattened into a row of chips. */
   @media (min-width: 80rem) {
-    .documentation-signal-command-index > div {
+    .documentation-signal-command-index [data-theme-component="toc"] {
       position: static;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem 1rem;
       max-height: none;
       overflow: visible;
     }
 
-    /* biome-ignore lint/style/noDescendingSpecificity: the Signal command index intentionally flattens the generic nested tree. */
-    .documentation-signal-command-index ul {
+    .documentation-signal-command-index [data-theme-region="toc-label"] {
+      margin-block-end: 0;
+      white-space: nowrap;
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--theme-muted-foreground);
+    }
+
+    .documentation-signal-command-index [data-theme-region="toc-list"] {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.25rem 1.25rem;
+      gap: 0.25rem;
+      border: 0;
     }
-  }
 
-  @media (min-width: 64rem) {
-    .documentation-signal-reader [data-theme-region="content-shell"] {
-      min-height: calc(100dvh - 5.75rem);
+    .documentation-signal-command-index [data-theme-region="toc-link"] {
+      margin: 0;
+      padding: 0.25rem 0.625rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+    }
+
+    .documentation-signal-command-index [data-theme-region="toc-link"]:hover {
+      background: var(--theme-muted);
+    }
+
+    .documentation-signal-command-index
+      [data-theme-region="toc-link"][data-active] {
+      background: color-mix(in oklab, var(--theme-accent) 12%, transparent);
+      border-color: color-mix(in oklab, var(--theme-accent) 35%, transparent);
     }
   }
 }
 
+/* ─── Article components ─────────────────────────────────────────────────── */
 @layer components {
+  /* Callouts: soft (tinted panel), outline (paper with an ink bar), solid (a
+   * console panel on the code surface). --callout-color is set per variant by
+   * the component. */
   .nibleaf-site-chrome [data-theme-component="callout"] {
-    border-color: var(--callout-border);
-    background: var(--callout-bg);
+    background: color-mix(
+      in oklab,
+      var(--callout-color) 9%,
+      var(--theme-surface)
+    );
+    border-color: color-mix(in oklab, var(--callout-color) 26%, transparent);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="callout"] > svg {
+    color: var(--callout-color);
+  }
+
+  .nibleaf-site-chrome[data-theme-callouts="outline"]
+    [data-theme-component="callout"] {
+    background: transparent;
+    border-color: var(--theme-border);
+    border-inline-start: 3px solid var(--callout-color);
+  }
+
+  .nibleaf-site-chrome[data-theme-callouts="solid"]
+    [data-theme-component="callout"] {
+    --primary: var(--theme-code-accent);
+    color: var(--theme-code-foreground);
+    background: color-mix(
+      in oklab,
+      var(--callout-color) 14%,
+      var(--theme-code)
+    );
+    border-color: color-mix(in oklab, var(--callout-color) 45%, transparent);
+    border-inline-start: 3px solid var(--callout-color);
+  }
+
+  .nibleaf-site-chrome[data-theme-callouts="solid"]
+    [data-theme-component="callout"]
+    :not(pre)
+    > code {
+    color: var(--theme-code-foreground);
+    background: color-mix(
+      in oklab,
+      var(--theme-code-foreground) 12%,
+      transparent
+    );
+    border-color: color-mix(
+      in oklab,
+      var(--theme-code-foreground) 18%,
+      transparent
+    );
+  }
+
+  /* Cards */
+  .nibleaf-site-chrome [data-theme-component="card"] {
+    background: var(--theme-surface);
+    border-color: var(--theme-border);
+  }
+
+  .nibleaf-site-chrome a[data-theme-component="card"]:hover {
+    border-color: color-mix(
+      in oklab,
+      var(--theme-accent) 45%,
+      var(--theme-border)
+    );
+    box-shadow: 0 6px 20px -8px
+      color-mix(in oklab, var(--theme-foreground) 20%, transparent);
   }
 
   .nibleaf-site-chrome[data-theme-cards="lifted"]
     [data-theme-component="card"] {
-    border-color: transparent;
-    box-shadow: 0 10px 30px
-      color-mix(in oklab, var(--theme-foreground) 10%, transparent);
+    background: var(--theme-surface-raised);
+    border-color: color-mix(in oklab, var(--theme-foreground) 8%, transparent);
+    box-shadow: 0 10px 30px -12px
+      color-mix(in oklab, var(--theme-foreground) 22%, transparent);
   }
 
   .nibleaf-site-chrome[data-theme-cards="flat"] [data-theme-component="card"] {
@@ -172,16 +512,36 @@
     background: var(--theme-muted);
   }
 
-  .nibleaf-site-chrome[data-theme-callouts="outline"]
-    [data-theme-component="callout"] {
-    background: transparent;
+  .nibleaf-site-chrome[data-theme-cards="flat"]
+    a[data-theme-component="card"]:hover {
+    background: color-mix(in oklab, var(--theme-accent) 8%, var(--theme-muted));
+    box-shadow: none;
   }
 
-  .nibleaf-site-chrome[data-theme-callouts="solid"]
-    [data-theme-component="callout"] {
-    color: var(--theme-canvas);
-    background: var(--callout-color);
-    border-color: var(--callout-color);
+  /* Tabs */
+  .nibleaf-site-chrome [data-theme-component="tabs-list"] {
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--theme-border);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="tab"] {
+    margin-block-end: -1px;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid transparent;
+    color: var(--theme-muted-foreground);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="tab"]:hover {
+    color: var(--theme-foreground);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="tab"][data-state="active"] {
+    color: var(--theme-accent);
+    border-bottom-color: var(--theme-accent);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="tab-panel"] {
+    padding-block-start: 0.875rem;
   }
 
   .nibleaf-site-chrome[data-theme-tabs="pills"]
@@ -189,38 +549,141 @@
     display: inline-flex;
     padding: 0.25rem;
     border: 0;
-    border-radius: var(--radius);
+    border-radius: calc(var(--radius) + 0.125rem);
     background: var(--theme-muted);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="pills"] [data-theme-component="tab"] {
+    margin: 0;
+    padding: 0.375rem 0.875rem;
+    border: 0;
+    border-radius: var(--radius);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="pills"]
+    [data-theme-component="tab"][data-state="active"] {
+    color: var(--theme-foreground);
+    background: var(--theme-surface);
+    box-shadow: 0 1px 2px
+      color-mix(in oklab, var(--theme-foreground) 12%, transparent);
   }
 
   .nibleaf-site-chrome[data-theme-tabs="boxed"]
     [data-theme-component="tabs-list"] {
+    gap: 0.125rem;
+    padding: 0.25rem 0.25rem 0;
     border: 1px solid var(--theme-border);
-    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 0;
+    background: var(--theme-muted);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="boxed"] [data-theme-component="tab"] {
+    margin: 0;
+    padding: 0.45rem 0.875rem;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="boxed"]
+    [data-theme-component="tab"][data-state="active"] {
+    color: var(--theme-accent);
     background: var(--theme-surface);
+    border-color: var(--theme-border);
+    box-shadow: inset 0 2px 0 var(--theme-accent);
+  }
+
+  .nibleaf-site-chrome[data-theme-tabs="boxed"]
+    [data-theme-component="tab-panel"] {
+    padding: 0.875rem 1rem 1rem;
+    border: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+  }
+
+  /* Steps */
+  .nibleaf-site-chrome [data-theme-component="step-marker"] {
+    color: var(--theme-accent);
+    background: color-mix(
+      in oklab,
+      var(--theme-accent) 12%,
+      var(--theme-surface)
+    );
+    border-color: color-mix(in oklab, var(--theme-accent) 35%, transparent);
+  }
+
+  /* Tables: lines (rules), rows (zebra), cards (each row a raised strip). */
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table {
+    border-collapse: separate;
+    border-spacing: 0 0.375rem;
+    border-block-end: 0;
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table :is(th, td) {
+    padding-inline: 0.85em;
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table thead th {
+    padding-block: 0.25em 0.5em;
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"]
+    .typeset
+    table
+    :is(tbody, tfoot)
+    :is(td, th) {
+    background: var(--theme-surface);
+    border-block: 1px solid var(--theme-border);
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"]
+    .typeset
+    table
+    :is(tbody, tfoot)
+    :is(td, th):first-child {
+    border-inline-start: 1px solid var(--theme-border);
+    border-start-start-radius: var(--radius);
+    border-end-start-radius: var(--radius);
+  }
+
+  .nibleaf-site-chrome[data-theme-tables="cards"]
+    .typeset
+    table
+    :is(tbody, tfoot)
+    :is(td, th):last-child {
+    border-inline-end: 1px solid var(--theme-border);
+    border-start-end-radius: var(--radius);
+    border-end-end-radius: var(--radius);
   }
 
   .nibleaf-site-chrome[data-theme-tables="rows"] .typeset table :is(th, td) {
     border-inline: 0;
+    padding-inline: 0.85em;
   }
 
-  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table {
-    border-collapse: separate;
-    border-spacing: 0 0.35rem;
+  .nibleaf-site-chrome[data-theme-tables="rows"]
+    .typeset
+    table
+    tbody
+    tr:nth-child(even)
+    :is(td, th) {
+    background: color-mix(in oklab, var(--theme-muted) 60%, transparent);
   }
 
-  .nibleaf-site-chrome[data-theme-tables="cards"] .typeset table :is(th, td) {
+  /* Accordions, frames, file trees, and the API panels share one surface. */
+  .nibleaf-site-chrome
+  :is(
+    [data-theme-component="accordion-group"],
+    [data-theme-component="frame"],
+    [data-theme-component="file-tree"],
+    [data-theme-component="api-example"]
+  ) {
     background: var(--theme-surface);
+    border-color: var(--theme-border);
   }
 
-  .nibleaf-site-chrome[data-theme-code="dim"] [data-theme-component="code"] {
-    background: color-mix(in oklab, var(--theme-code) 86%, var(--theme-canvas));
-  }
-
-  .nibleaf-site-chrome[data-theme-code="vivid"] [data-theme-component="code"] {
-    box-shadow:
-      inset 0 2px 0 var(--theme-accent),
-      0 10px 28px color-mix(in oklab, var(--theme-foreground) 12%, transparent);
+  .nibleaf-site-chrome [data-theme-component="accordion-trigger"]:hover {
+    background: color-mix(in oklab, var(--theme-muted) 70%, transparent);
   }
 
   [data-theme-surface="search"],
@@ -232,7 +695,8 @@
 }
 
 /* These rules must live in Tailwind's utilities layer so theme mode wins over
- * generated max-width, transition, and animation utilities on the same nodes. */
+ * generated max-width, color, transition, and animation utilities on the same
+ * nodes (the code block's hardcoded panel colour, the deck's list margins). */
 @layer utilities {
   /* biome-ignore lint/style/noDescendingSpecificity: utilities-layer width tokens intentionally override template component layout. */
   .nibleaf-site-chrome [data-theme-region="header"],
@@ -255,6 +719,41 @@
 
   .nibleaf-site-chrome[data-theme-width="wide"] [data-theme-region="article"] {
     max-width: 54rem;
+  }
+
+  /* Code blocks draw on the preset's code surface in both modes. */
+  .nibleaf-site-chrome [data-theme-component="code"] {
+    color: var(--theme-code-foreground);
+    background: var(--theme-code);
+    border-color: color-mix(
+      in oklab,
+      var(--theme-code-foreground) 12%,
+      var(--theme-code)
+    );
+    box-shadow: 0 1px 2px
+      color-mix(in oklab, var(--theme-foreground) 6%, transparent);
+  }
+
+  .nibleaf-site-chrome [data-theme-component="code"] pre {
+    font-family: var(--font-mono);
+  }
+
+  .nibleaf-site-chrome[data-theme-code="dim"] [data-theme-component="code"] {
+    background: color-mix(in oklab, var(--theme-code) 88%, var(--theme-canvas));
+    box-shadow: none;
+  }
+
+  .nibleaf-site-chrome[data-theme-code="vivid"] [data-theme-component="code"] {
+    box-shadow:
+      inset 0 2px 0 var(--theme-code-accent),
+      0 12px 30px -14px
+      color-mix(in oklab, var(--theme-foreground) 35%, transparent);
+  }
+
+  @media (min-width: 64rem) {
+    .nibleaf-site-chrome .documentation-manuscript-navigation > nav > ul > li {
+      margin-block-start: 0;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

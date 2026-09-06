@@ -95,6 +95,7 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
           <Field hint={t('settings.footer.copyright.hint')} label={t('settings.footer.copyright.label')}>
             <Input
               className={FIELD_INPUT}
+              dir="auto"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={t('settings.footer.copyright.placeholder')}
               value={field.state.value}
@@ -108,6 +109,7 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
           <Field hint={t('settings.footer.github.hint')} label={t('settings.footer.github.label')}>
             <Input
               className={FIELD_MONO}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="https://github.com/acme"
               value={field.state.value}
@@ -121,6 +123,7 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
           <Field hint={t('settings.footer.x.hint')} label={t('settings.footer.x.label')}>
             <Input
               className={FIELD_MONO}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="https://x.com/acme"
               value={field.state.value}
@@ -134,6 +137,7 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
           <Field hint={t('settings.footer.linkedin.hint')} label={t('settings.footer.linkedin.label')}>
             <Input
               className={FIELD_MONO}
+              dir="ltr"
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder="https://linkedin.com/company/acme"
               value={field.state.value}
@@ -157,7 +161,9 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
         {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }
@@ -204,6 +210,7 @@ function LanguageFooterForm({
           <Field hint={t('settings.footer.copyright.hint')} label={t('settings.footer.copyright.label')}>
             <Input
               className={FIELD_INPUT}
+              dir={language.direction === 'RTL' ? 'rtl' : 'ltr'}
               onChange={(e) => field.handleChange(e.target.value)}
               placeholder={projectFooter.copyright || t('settings.footer.copyright.placeholder')}
               value={field.state.value}
@@ -215,13 +222,13 @@ function LanguageFooterForm({
       {/* Global-only fields: visible but disabled so the language scope still
           reads as the complete footer form. */}
       <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.github.label')}>
-        <Input className={FIELD_MONO} disabled placeholder="https://github.com/acme" value={projectFooter.github ?? ''} />
+        <Input className={FIELD_MONO} dir="ltr" disabled placeholder="https://github.com/acme" value={projectFooter.github ?? ''} />
       </Field>
       <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.x.label')}>
-        <Input className={FIELD_MONO} disabled placeholder="https://x.com/acme" value={projectFooter.x ?? ''} />
+        <Input className={FIELD_MONO} dir="ltr" disabled placeholder="https://x.com/acme" value={projectFooter.x ?? ''} />
       </Field>
       <Field hint={t('settings.chrome.scope.globalField')} label={t('settings.footer.linkedin.label')}>
-        <Input className={FIELD_MONO} disabled placeholder="https://linkedin.com/company/acme" value={projectFooter.linkedin ?? ''} />
+        <Input className={FIELD_MONO} dir="ltr" disabled placeholder="https://linkedin.com/company/acme" value={projectFooter.linkedin ?? ''} />
       </Field>
       <ToggleRow
         checked={projectFooter.madeWithBadge !== false}
@@ -234,7 +241,9 @@ function LanguageFooterForm({
         {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <SaveBar isSubmitting={isSubmitting} />}</form.Subscribe>
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      </form.Subscribe>
     </form>
   );
 }

@@ -1,10 +1,23 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
-import { INTERFACE_LOCALES, type Locale } from '@nibleaf/i18n';
+import { INTERFACE_LOCALES, type InterfaceLocale, type Locale } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Check, Languages } from 'lucide-react';
 import { useState } from 'react';
+
+/** Two-line locale option: the language's own name (in its own script and
+ * direction) over the muted English name. Shared by the picker surfaces. */
+export function InterfaceLocaleLabel({ option }: { option: InterfaceLocale }) {
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block truncate font-medium" lang={option.code} dir={option.direction}>
+        {option.native}
+      </span>
+      <span className="block truncate text-muted-foreground text-xs">{option.label}</span>
+    </span>
+  );
+}
 
 export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const { locale, setLocale, t } = useLocale();
@@ -33,12 +46,7 @@ export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean;
                   onSelect={() => choose(option.code)}
                   className="min-h-11"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium" lang={option.code} dir={option.direction}>
-                      {option.native}
-                    </span>
-                    <span className="block truncate text-muted-foreground text-xs">{option.label}</span>
-                  </span>
+                  <InterfaceLocaleLabel option={option} />
                   <span className="font-mono text-[11px] text-muted-foreground">{option.code}</span>
                   {option.code === locale ? <Check aria-hidden className="size-4 text-primary" /> : <span className="size-4" />}
                 </CommandItem>

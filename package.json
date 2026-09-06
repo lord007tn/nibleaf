@@ -10,7 +10,13 @@
   "packageManager": "pnpm@10.30.3",
   "pnpm": {
     "overrides": {
+      "@tiptap/extension-bubble-menu": "3.30.4",
+      "@tiptap/extension-floating-menu": "3.30.4",
+      "@tiptap/y-tiptap": "3.0.7",
       "deepmerge-ts": "8.0.2",
+      "fast-uri": "3.1.6",
+      "mysql2": "3.23.1",
+      "qs": "6.16.0",
       "sharp": "0.35.3",
       "undici": "7.29.0"
     }
@@ -30,10 +36,11 @@
     "lint": "ultracite check",
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "test": "node --test scripts/email-runtime.test.mjs scripts/ui-primitives.test.mjs && turbo run test",
     "check:dead-code": "knip --include files,dependencies,exports,types,duplicates --no-config-hints",
     "check:react": "react-doctor --project @nibleaf/app,@nibleaf/admin --no-dead-code --no-supply-chain --no-score --blocking error",
     "release:notes": "pnpm dlx changelogithub@14.0.0",
+    "release:check": "node --test scripts/coolify-release-probes.test.mjs scripts/coolify-env-literal.test.mjs && node scripts/check-release-contract.mjs",
     "self-host:check": "node scripts/self-host-release.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "theme-repository:fixture": "tsx scripts/theme-repository-fixture.ts",

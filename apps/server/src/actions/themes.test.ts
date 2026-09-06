@@ -62,8 +62,8 @@ describe('theme template actions', () => {
 
     expect(catalog).toMatchObject({
       schemaVersion: 1,
-      repositorySchemaVersion: 1,
-      runtimeContractVersion: 1,
+      repositorySchemaVersion: 2,
+      runtimeContractVersion: 2,
       componentSchemaVersion: 1,
       current: { id: 'harbor' },
     });

@@ -1,3 +1,4 @@
+import { translateFn } from '@nibleaf/i18n';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -532,7 +533,7 @@ const opaqueHtml = (node: PMNode, inline: boolean): DOMOutputSpec => {
       class: inline ? 'pl-mdx-opaque-inline' : 'pl-mdx-opaque-block',
       'data-mdx-opaque': inline ? 'inline' : 'block',
       'data-name': name,
-      title: `${name}: source preserved; edit in Markdown mode`,
+      title: translateFn('editor.opaqueMdx.tooltip', { name }),
       contenteditable: 'false',
     }),
     source.length > 180 ? `${source.slice(0, 177)}…` : source,

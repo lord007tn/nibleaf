@@ -1065,6 +1065,7 @@ export const mintlifyImportBody = z
       .max(120)
       .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
     branch: z.string().max(120).optional(),
+    replaceExisting: z.boolean().optional(),
   })
   .strict();
 export type MintlifyImportBody = z.infer<typeof mintlifyImportBody>;

@@ -2,13 +2,16 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
+import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { FIELD_MONO, SectionHeader } from './shared';
 
@@ -70,8 +73,18 @@ export function DomainSection({ project }: { project: Project }) {
           );
         }}
       >
-        <Input className={cn(FIELD_MONO, 'flex-1')} onChange={(e) => setDomain(e.target.value)} placeholder="docs.yoursite.com" value={domain} />
-        <Button className="cursor-pointer rounded-[10px]" disabled={add.isPending} type="submit">
+        <Label className="sr-only" htmlFor="custom-domain">
+          {t('settings.domain.title')}
+        </Label>
+        <Input
+          className={cn(FIELD_MONO, 'flex-1')}
+          dir="ltr"
+          id="custom-domain"
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder="docs.yoursite.com"
+          value={domain}
+        />
+        <Button className="cursor-pointer rounded-[10px]" disabled={add.isPending || !domain.trim()} type="submit">
           {t('settings.domain.add')}
         </Button>
       </form>
@@ -88,6 +101,7 @@ export function DomainSection({ project }: { project: Project }) {
                 <div className="flex flex-wrap items-center gap-2.5">
                   <a
                     className="inline-flex items-center gap-1.5 truncate font-medium font-mono text-sm hover:text-primary"
+                    dir="ltr"
                     href={`https://${d.domain}`}
                     rel="noreferrer"
                     target="_blank"
@@ -114,13 +128,13 @@ export function DomainSection({ project }: { project: Project }) {
                 </div>
                 {d.lastCheckedAt ? (
                   <p className="mt-1.5 text-muted-foreground text-xs">
-                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString() })}
+                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString(localeTag(getLocale())) })}
                   </p>
                 ) : null}
               </div>
               <div className="flex gap-1.5">
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
-                  <CollapsibleTrigger className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 font-medium text-muted-foreground text-xs hover:bg-muted hover:text-foreground">
+                  <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
                     {t('settings.domain.configuration')}
                     <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
                   </CollapsibleTrigger>
@@ -161,7 +175,9 @@ export function DomainSection({ project }: { project: Project }) {
 
             <CollapsibleContent>
               {d.lastError ? (
-                <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm">{d.lastError}</div>
+                <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm" dir="ltr">
+                  {d.lastError}
+                </div>
               ) : null}
 
               {d.records?.length ? (
@@ -169,7 +185,7 @@ export function DomainSection({ project }: { project: Project }) {
                   <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
                     {t('settings.domain.dns.heading')}
                   </div>
-                  <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]">
+                  <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]" dir="ltr">
                     <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
                       <span>{t('settings.domain.dns.type')}</span>
                       <span>{t('settings.domain.dns.name')}</span>

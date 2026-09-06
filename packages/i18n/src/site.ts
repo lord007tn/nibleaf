@@ -30,6 +30,7 @@ import { site_changeversion } from './paraglide/messages/site_changeversion.js';
 import { site_checking } from './paraglide/messages/site_checking.js';
 import { site_copied } from './paraglide/messages/site_copied.js';
 import { site_copycode } from './paraglide/messages/site_copycode.js';
+import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
 import { site_defaultvalue } from './paraglide/messages/site_defaultvalue.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
 import { site_deprecated } from './paraglide/messages/site_deprecated.js';
@@ -49,6 +50,7 @@ import { site_importblog } from './paraglide/messages/site_importblog.js';
 import { site_importpages } from './paraglide/messages/site_importpages.js';
 import { site_loading } from './paraglide/messages/site_loading.js';
 import { site_madewith } from './paraglide/messages/site_madewith.js';
+import { site_markdowncopyfailed } from './paraglide/messages/site_markdowncopyfailed.js';
 import { site_minread } from './paraglide/messages/site_minread.js';
 import { site_next } from './paraglide/messages/site_next.js';
 import { site_noanswer } from './paraglide/messages/site_noanswer.js';
@@ -82,6 +84,7 @@ import { site_tags } from './paraglide/messages/site_tags.js';
 import { site_toggletheme } from './paraglide/messages/site_toggletheme.js';
 import { site_updated } from './paraglide/messages/site_updated.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
+import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
 const siteMessages = {
   docs: site_docs,
@@ -154,6 +157,9 @@ const siteMessages = {
   articleDetails: site_articledetails,
   copyCode: site_copycode,
   copied: site_copied,
+  viewMarkdown: site_viewmarkdown,
+  copyMarkdown: site_copymarkdown,
+  markdownCopyFailed: site_markdowncopyfailed,
   details: site_details,
   tab: site_tab,
   required: site_required,

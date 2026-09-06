@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -66,18 +67,20 @@ export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionI
   return (
     <div className="space-y-0.5">
       {EDITOR_CONFIG_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
-        <button
-          key={id}
-          type="button"
-          onClick={() => onSelect(id)}
+        <Button
+          aria-current={active === id ? 'page' : undefined}
           className={cn(
-            'flex h-9 w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
-            active === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            'h-9 w-full justify-start gap-2 px-2.5 text-[13.5px]',
+            active === id ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
           )}
+          key={id}
+          onClick={() => onSelect(id)}
+          type="button"
+          variant="ghost"
         >
           <Icon aria-hidden className="size-4 shrink-0" />
           {t(labelKey)}
-        </button>
+        </Button>
       ))}
     </div>
   );

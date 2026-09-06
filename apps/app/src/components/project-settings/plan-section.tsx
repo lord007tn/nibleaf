@@ -17,7 +17,7 @@ const FEATURES: MessageKey[] = [
 
 export function PlanSection({ project }: { project: Project }) {
   const t = useT();
-  const { number: formatNumber } = useFormatters();
+  const { number: formatNumber, currency } = useFormatters();
   // The pages feature quotes the shared beta limit so Plan and Usage never drift.
   const featureText = (key: MessageKey) =>
     key === 'settings.plan.selfHosted.feature.pages' ? t(key, { count: formatNumber(BETA_LIMITS.pages) }) : t(key);
@@ -26,7 +26,10 @@ export function PlanSection({ project }: { project: Project }) {
       <div>
         <h2 className="font-semibold text-xl tracking-tight">{t('settings.plan.title')}</h2>
         <p className="mt-1 text-muted-foreground text-sm">
-          {t('settings.plan.descriptionBefore')} <span className="font-medium text-foreground">{project.name}</span>
+          {t('settings.plan.descriptionBefore')}{' '}
+          <span className="font-medium text-foreground" dir="auto">
+            {project.name}
+          </span>
           {t('settings.plan.descriptionAfter')}
         </p>
       </div>
@@ -52,7 +55,7 @@ export function PlanSection({ project }: { project: Project }) {
             <p className="mt-1 text-muted-foreground text-sm">{t('settings.plan.selfHosted.description')}</p>
           </div>
           <div className="text-end">
-            <div className="font-semibold text-3xl">$0</div>
+            <div className="font-semibold text-3xl">{currency(0)}</div>
             <div className="text-muted-foreground text-sm">{t('settings.plan.selfHosted.price')}</div>
           </div>
         </div>

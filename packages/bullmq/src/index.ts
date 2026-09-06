@@ -1,6 +1,6 @@
 import type { JobsOptions, RepeatOptions } from 'bullmq';
 import { QueueNames } from './constants';
-import { queues } from './queues/index';
+import { getQueue } from './queues/index';
 import type { CreateJobOptions, QueueJobMap } from './types';
 import { queueLogger } from './utils/logger';
 import { sanitizeJobId } from './utils/queue';
@@ -11,7 +11,7 @@ export async function createJob<Q extends QueueNames>(
   payload: { name: QueueJobMap[Q]['name']; data: QueueJobMap[Q]['data'] },
   options: CreateJobOptions = {},
 ) {
-  const queue = queues[queueName];
+  const queue = getQueue(queueName);
   const finalOptions: JobsOptions = { ...options };
   if (finalOptions.jobId) {
     finalOptions.jobId = sanitizeJobId(finalOptions.jobId);
@@ -26,16 +26,16 @@ async function upsertScheduledJob<Q extends QueueNames>(
   schedule: Omit<RepeatOptions, 'key'>,
   payload: { name: QueueJobMap[Q]['name']; data: QueueJobMap[Q]['data'] },
 ): Promise<void> {
-  const queue = queues[queueName];
+  const queue = getQueue(queueName);
   await queue.upsertJobScheduler(schedulerId, schedule.tz ? schedule : { ...schedule, tz: 'UTC' }, { name: payload.name, data: payload.data });
 }
 
 export async function getJob<Q extends QueueNames>(queueName: Q, jobId: string) {
-  return await queues[queueName].getJob(sanitizeJobId(jobId));
+  return await getQueue(queueName).getJob(sanitizeJobId(jobId));
 }
 
 export async function removeJob<Q extends QueueNames>(queueName: Q, jobId: string): Promise<boolean> {
-  const job = await queues[queueName].getJob(sanitizeJobId(jobId));
+  const job = await getQueue(queueName).getJob(sanitizeJobId(jobId));
   if (job) {
     await job.remove();
     return true;
@@ -84,6 +84,7 @@ export {
   closeQueues,
   drainAllQueues,
   getAllQueueEvents,
+  getQueue,
   getQueueEvents,
   pauseAllQueues,
   queues,
