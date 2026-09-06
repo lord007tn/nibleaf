@@ -222,23 +222,7 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
           IMAGE: ghcr.io/${{ github.repository }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        run: |
-          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "::error::Build did not return a registry digest"
-            exit 1
-          fi
-          docker buildx imagetools inspect "$IMAGE@$DIGEST" >/dev/null
-          tag_digest=$(docker buildx imagetools inspect "$IMAGE:sha-$SOURCE_SHA" | awk '$1 == "Digest:" { print $2; exit }')
-          if [[ "$tag_digest" != "$DIGEST" ]]; then
-            echo "::error::Immutable tag resolved to $tag_digest, expected build digest $DIGEST"
-            exit 1
-          fi
-          {
-            echo "### Published image"
-            echo "- Source: \`$SOURCE_SHA\`"
-            echo "- Immutable tag: \`sha-$SOURCE_SHA\`"
-            echo "- Digest: \`$DIGEST\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/verify-published-image.mjs
 
       - name: Attest published image provenance
         if: inputs.publish
