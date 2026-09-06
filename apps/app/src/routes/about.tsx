@@ -1,4 +1,4 @@
-import { useT } from '@nibleaf/i18n/react';
+import { translateFn } from '@nibleaf/i18n/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, BookOpen, Globe, Server, Unlock } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/about')({
       ]),
     ],
   }),
-  component: AboutPage,
+  component: AboutRoute,
 });
 
 const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
@@ -36,9 +36,12 @@ const VALUES: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; bod
   },
 ];
 
-function AboutPage() {
+function AboutRoute() {
   const { stars } = Route.useLoaderData();
-  const t = useT();
+  return <AboutPage stars={stars} />;
+}
+
+export function AboutPage({ stars = 0 }: { stars?: number }) {
   return (
     <MarketingShell stars={stars}>
       {/* Header */}
@@ -88,7 +91,7 @@ function AboutPage() {
       {/* Stack */}
       <section className="mx-auto max-w-3xl px-6 py-20">
         <h2 className="font-semibold text-3xl tracking-tight">Built on a stack you can trust</h2>
-        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{t('marketing.release.stack')}</p>
+        <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{translateFn('marketing.release.stack', undefined, 'en')}</p>
         <p className="mt-4 text-lg text-muted-foreground leading-relaxed">
           We document those boundaries plainly. Product pages should distinguish shipped behavior from planned work, comparisons should point to
           current primary sources, and technical articles should describe what the code and tests support today. When a claim changes, we correct the

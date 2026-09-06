@@ -1,4 +1,4 @@
-import { useLocale } from '@nibleaf/i18n/react';
+import { translateFn } from '@nibleaf/i18n/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Bot, Braces, ShieldCheck, Terminal } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -30,7 +30,6 @@ function DeveloperRoute() {
 }
 
 export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
-  const { locale, t } = useLocale();
   const resources = [
     {
       icon: Braces,
@@ -48,10 +47,10 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
     },
     {
       icon: ShieldCheck,
-      title: t('marketing.release.mcpTitle'),
-      body: t('marketing.release.mcpBody'),
-      href: locale === 'ar' ? 'https://docs.nibleaf.com/ar/self-hosting/mcp' : 'https://docs.nibleaf.com/self-hosting/mcp',
-      label: t('marketing.release.mcpLabel'),
+      title: translateFn('marketing.release.mcpTitle', undefined, 'en'),
+      body: translateFn('marketing.release.mcpBody', undefined, 'en'),
+      href: 'https://docs.nibleaf.com/self-hosting/mcp',
+      label: translateFn('marketing.release.mcpLabel', undefined, 'en'),
     },
     {
       icon: Terminal,
@@ -129,7 +128,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
           <p className="mt-3 text-muted-foreground leading-relaxed">
             Public published sites require no credentials. Private reader sites use their configured reader session and intentionally return 404 to
             unauthorized callers. Dashboard endpoints use an authenticated browser session and are not a supported third-party write API. Do not send
-            session cookies or secrets to the CLI. {t('marketing.release.mcpBoundary')}
+            session cookies or secrets to the CLI. {translateFn('marketing.release.mcpBoundary', undefined, 'en')}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a className={primaryButton} href="https://docs.nibleaf.com/reference/api">
