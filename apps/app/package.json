@@ -57,7 +57,7 @@
     "@tiptap/react": "3.30.4",
     "@tiptap/starter-kit": "3.30.4",
     "@tiptap/suggestion": "3.30.4",
-    "got": "15.1.0",
+    "got": "16.0.0",
     "katex": "^0.18.4",
     "linkedom": "^0.18.13",
     "lowlight": "3.3.0",
