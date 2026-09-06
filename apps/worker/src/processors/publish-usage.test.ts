@@ -77,7 +77,7 @@ describe('cross-language publish link checks', () => {
     ).toEqual([]);
   });
 
-  it.each(['zz', 'ar&lang=en', ''])('rejects an unknown or ambiguous target language %s', (language) => {
+  it.each(['zz', 'AR', 'ar&lang=en', ''])('rejects an unknown or ambiguous target language %s', (language) => {
     const changed = [{ ...english, content: `[Target](/group-9e4c82a8/intro?lang=${language})` }, arabic];
     expect(collectPublishIssues({ config: null }, changed)).toEqual(
       expect.arrayContaining([expect.objectContaining({ type: 'broken-link', pagePath: 'guides/intro' })]),

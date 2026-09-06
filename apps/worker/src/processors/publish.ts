@@ -207,7 +207,7 @@ export function collectPublishIssues(
       if (page.kind !== 'PAGE' || page.hidden) {
         continue;
       }
-      const scope = `${page.languageCode.toLowerCase()}:${page.branchId}`;
+      const scope = `${page.languageCode}:${page.branchId}`;
       const set = pathsByScope.get(scope) ?? new Set<string>();
       set.add(normalizedPagePath(page.path));
       pathsByScope.set(scope, set);
@@ -227,7 +227,7 @@ export function collectPublishIssues(
         const targetLanguage = languages.length === 0 ? page.languageCode : languages.length === 1 ? languages[0] : '';
         // Only an existing visible target in this same project/branch can
         // satisfy a locale switch. Unknown/ambiguous locales remain broken.
-        const scopePaths = pathsByScope.get(`${targetLanguage?.toLowerCase()}:${page.branchId}`) ?? new Set<string>();
+        const scopePaths = pathsByScope.get(`${targetLanguage}:${page.branchId}`) ?? new Set<string>();
         if (!scopePaths.has(target)) {
           issues.push({
             type: 'broken-link',
