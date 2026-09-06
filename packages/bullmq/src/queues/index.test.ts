@@ -24,6 +24,7 @@ vi.mock('bullmq', () => ({
 }));
 
 import { closeQueues, getQueue, queues } from './index';
+import '../index';
 
 describe('producer queue lifecycle', () => {
   beforeEach(async () => {
