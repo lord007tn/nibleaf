@@ -40,7 +40,7 @@
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@nibleaf/validators": "workspace:*",
-    "@types/node": "^26.2.0",
+    "@types/node": "^22.20.1",
     "dotenv-cli": "^11.0.0",
     "prisma": "7.9.1",
     "tsx": "4.23.12",
