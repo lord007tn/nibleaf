@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -783,7 +784,7 @@ function EditorPage() {
           <section className="flex min-h-0 min-w-0 flex-col">
             {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
-            <div className="flex min-h-12 items-center gap-1 overflow-x-auto border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+            <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
               {markdownFocused ? (
                 // The focused layout hides the tree; this floats it over the canvas so
                 // the author can still switch pages without leaving Markdown mode.
@@ -813,7 +814,7 @@ function EditorPage() {
                   <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
                 </Button>
               ) : null}
-              <div className="ms-auto flex items-center gap-0.5 rounded-lg bg-muted p-0.5">
+              <SegmentedControl density="compact" className="ms-auto">
                 <SegButton active={effectiveMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
                   {t('editor.mode.visual')}
                 </SegButton>
@@ -823,7 +824,7 @@ function EditorPage() {
                 <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
                   {t('editor.mode.markdown')}
                 </SegButton>
-              </div>
+              </SegmentedControl>
               <Button
                 size="sm"
                 variant={commentMode ? 'secondary' : 'ghost'}
@@ -1006,21 +1007,17 @@ function SegButton({
   title?: string;
 }) {
   return (
-    <button
+    <SegmentedControlItem
+      active={active}
       aria-label={typeof children === 'string' ? children : title}
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={cn(
-        'flex cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-[13px] transition-colors',
-        active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-        disabled && 'cursor-not-allowed opacity-50 hover:text-muted-foreground',
-      )}
     >
       {icon}
       <span className="hidden sm:inline">{children}</span>
-    </button>
+    </SegmentedControlItem>
   );
 }
 

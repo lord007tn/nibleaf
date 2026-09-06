@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useTheme } from '@nibleaf/design-system/theme';
 import { useT } from '@nibleaf/i18n/react';
 import { Monitor, Moon, Sun } from 'lucide-react';
@@ -17,13 +18,15 @@ export function ThemeToggle() {
   const Icon = !mounted || theme === 'system' ? Monitor : theme === 'light' ? Sun : Moon;
 
   return (
-    <button
+    <Button
+      size="icon-sm"
+      variant="outline"
       aria-label={mounted ? t('admin.theme.switch', { theme: nextLabel }) : t('site.toggleTheme')}
-      className="inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground"
+      className="text-muted-foreground"
       onClick={() => setTheme(next)}
       type="button"
     >
       <Icon className="size-4" />
-    </button>
+    </Button>
   );
 }

@@ -117,7 +117,7 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
               aria-label={t('settings.apiKeys.namePlaceholder')}
-              className="h-9 flex-1"
+              className="flex-1"
               maxLength={80}
               onChange={(event) => setName(event.target.value)}
               placeholder={t('settings.apiKeys.namePlaceholder')}
@@ -131,7 +131,7 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
               }}
               value={String(expiryDays)}
             >
-              <SelectTrigger aria-label={t('settings.apiKeys.expiry')} className="h-9 w-full sm:w-40">
+              <SelectTrigger aria-label={t('settings.apiKeys.expiry')} className="w-full sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -142,7 +142,7 @@ export function ApiKeysTab({ projectId }: { projectId: string }) {
                 ))}
               </SelectContent>
             </Select>
-            <Button className="h-9" disabled={!name.trim() || create.isPending} onClick={submit} type="button">
+            <Button disabled={!name.trim() || create.isPending} onClick={submit} type="button">
               <KeyRound aria-hidden />
               {t('settings.apiKeys.create')}
             </Button>

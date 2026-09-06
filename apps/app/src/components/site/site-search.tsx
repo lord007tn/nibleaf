@@ -185,7 +185,7 @@ export function SiteSearch({
                 onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
                 value={selectedVersion ?? '__default'}
               >
-                <SelectTrigger aria-label={t('searchFilterVersion')} className="h-9 min-w-0 flex-1 sm:max-w-56">
+                <SelectTrigger aria-label={t('searchFilterVersion')} className="min-w-0 flex-1 sm:max-w-56">
                   <SelectValue placeholder={t('searchFilterVersion')} />
                 </SelectTrigger>
                 <SelectContent>

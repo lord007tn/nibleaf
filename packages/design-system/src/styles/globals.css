@@ -71,6 +71,13 @@
    links, focus ring, active states, one chart series). Everything else stays grey;
    semantic status colors are reserved for actionable product feedback. */
 :root {
+  /* Outer border-box control sizes shared by app and admin. */
+  --control-size-default: 2.25rem;
+  --control-size-compact: 2rem;
+  --control-size-large: 2.5rem;
+  --control-group-inset: 0.125rem;
+  --control-tabs-inset: 0.1875rem;
+
   --radius: 0.625rem;
   --background: #fafafa;
   --foreground: #171717;
@@ -176,5 +183,16 @@
   [data-slot="select-trigger"],
   [data-slot="sidebar-menu-button"] {
     cursor: pointer;
+  }
+}
+
+/* Increase a whole control family together on touch-first devices. */
+@media (pointer: coarse) {
+  :root {
+    --control-size-default: 2.75rem;
+    --control-size-compact: 2.75rem;
+    --control-size-large: 2.75rem;
+    --control-group-inset: 0px;
+    --control-tabs-inset: 0px;
   }
 }
