@@ -1,173 +1,86 @@
+import assert from 'node:assert/strict';
 import { describe, expect, it, vi } from 'vitest';
 import { QueueNames } from './constants';
-import { ensurePlatformSchedules, legacyScheduleKey, migratePlatformSchedules, PLATFORM_SCHEDULES, type ScheduleQueue } from './schedules';
+import { ensurePlatformSchedules, PLATFORM_SCHEDULES, type ScheduleQueue } from './schedules';
 import { QUEUE_CONFIGS } from './utils/queue';
 
-function fixture(legacy = true) {
-  const calls: string[] = [];
-  const make = (queueName: 'analytics' | 'export') => {
-    const entries = new Map<string, Record<string, unknown>>();
-    const jobs = new Map<string, Record<string, unknown>>();
-    const queue = {
-      getJobSchedulers: vi.fn(async () => [...entries.values()]),
-      getRepeatableJobs: vi.fn(async () => [...entries.values()]),
-      getJob: vi.fn(async (id: string) => jobs.get(id)),
-      isPaused: vi.fn(async () => true),
-      getActiveCount: vi.fn(async () => 0),
-      getWaitingCount: vi.fn(async () => 0),
-      upsertJobScheduler: vi.fn(async (id: string, repeat: object, template: { name: string; data: object; opts: object }) => {
-        calls.push(`upsert:${id}`);
-        entries.set(id, { key: id, name: template.name, ...repeat, template: { data: template.data, opts: template.opts } });
-      }),
-      removeRepeatableByKey: vi.fn(async (key: string) => {
-        calls.push(`remove-legacy:${key}`);
-        return entries.delete(key);
-      }),
-      removeJobScheduler: vi.fn(async (id: string) => {
-        calls.push(`remove-scheduler:${id}`);
-        return entries.delete(id);
-      }),
-      add: vi.fn(async (name: string, data: object, opts: { jobId: string; repeat: object }) => {
-        calls.push(`add:${opts.jobId}`);
-        const schedule = PLATFORM_SCHEDULES.find((item) => item.id === opts.jobId);
-        if (!schedule) throw new Error('Unexpected fixture job');
-        const key = legacyScheduleKey(schedule);
-        entries.set(key, { key, name, ...opts.repeat, next: 100 });
-        jobs.set(`repeat:${key}:100`, {
-          name,
-          data,
-          opts: { ...QUEUE_CONFIGS[queueName].defaultJobOptions, repeat: { ...opts.repeat, jobId: opts.jobId, count: 1 } },
-        });
-      }),
-    };
-    if (legacy) {
-      for (const schedule of PLATFORM_SCHEDULES.filter((item) => item.queue === queueName)) {
-        const key = legacyScheduleKey(schedule);
-        const repeat = { pattern: schedule.pattern, tz: 'UTC', jobId: schedule.id, count: 1 };
-        entries.set(key, { key, name: schedule.name, pattern: schedule.pattern, tz: 'UTC', next: 100 });
-        jobs.set(`repeat:${key}:100`, {
-          name: schedule.name,
+function fixture(queueName: 'analytics' | 'export' = 'analytics', migrated = true) {
+  const entries = new Map<string, Record<string, unknown>>();
+  if (migrated) {
+    for (const schedule of PLATFORM_SCHEDULES.filter((item) => item.queue === queueName)) {
+      entries.set(schedule.id, {
+        key: schedule.id,
+        name: schedule.name,
+        pattern: schedule.pattern,
+        tz: 'UTC',
+        template: {
           data: queueName === 'export' ? { requestedAt: '2026-01-01T00:00:00.000Z' } : {},
-          opts: { ...QUEUE_CONFIGS[queueName].defaultJobOptions, repeat },
-        });
-      }
+          opts: QUEUE_CONFIGS[queueName].defaultJobOptions,
+        },
+      });
     }
-    return { queue, entries, jobs };
+  }
+  const queue = {
+    getJobSchedulers: vi.fn(async () => [...entries.values()]),
+    upsertJobScheduler: vi.fn(async (id: string, repeat: object, template: { name: string; data: object; opts: object }) => {
+      entries.set(id, { key: id, name: template.name, ...repeat, template: { data: template.data, opts: template.opts } });
+    }),
   };
-  const analytics = make('analytics');
-  const exports = make('export');
-  return {
-    calls,
-    analytics,
-    exports,
-    queues: { analytics: analytics.queue as unknown as ScheduleQueue, export: exports.queue as unknown as ScheduleQueue },
-  };
+  return { entries, queue, client: queue as unknown as ScheduleQueue };
 }
 
-describe('staged platform scheduler migration', () => {
-  it('keeps a dry-run read-only', async () => {
+describe('BullMQ 6 platform schedulers', () => {
+  it.each([QueueNames.ANALYTICS, QueueNames.EXPORT])('preserves migrated %s IDs, cron and retry/retention options across startup', async (name) => {
+    const state = fixture(name);
+    const before = [...state.entries.values()].map(({ template: _template, ...entry }) => entry);
+    await ensurePlatformSchedules(state.client, name);
+    await ensurePlatformSchedules(state.client, name);
+    expect([...state.entries.values()].map(({ template: _template, ...entry }) => entry)).toEqual(before);
+    for (const call of state.queue.upsertJobScheduler.mock.calls) expect(call[2].opts).toEqual(QUEUE_CONFIGS[name].defaultJobOptions);
+    expect(state.entries.size).toBe(2);
+  });
+
+  it('creates stable schedulers on a fresh queue without duplicates', async () => {
+    const state = fixture('analytics', false);
+    await ensurePlatformSchedules(state.client, QueueNames.ANALYTICS);
+    await ensurePlatformSchedules(state.client, QueueNames.ANALYTICS);
+    expect([...state.entries.keys()]).toEqual(['rollup-analytics-daily', 'reconcile-usage-periods']);
+  });
+
+  it.each(['c17471239c4ca8e84f5a9539f52deaca', 'unknown-scheduler'])('refuses unmigrated or unknown entry %s before writes', async (key) => {
     const state = fixture();
-    const result = await migratePlatformSchedules(state.queues);
-    expect(result.applied).toBe(false);
-    expect(result.schedules).toHaveLength(4);
-    expect(state.calls).toEqual([]);
+    state.entries.set(key, { key, name: 'rollup-analytics', pattern: '10 0 * * *', tz: 'UTC' });
+    await expect(ensurePlatformSchedules(state.client, QueueNames.ANALYTICS)).rejects.toThrow('retained staged v5 image');
+    expect(state.queue.upsertJobScheduler).not.toHaveBeenCalled();
   });
 
-  it('does not create schedulers on startup alongside legacy jobs', async () => {
+  it.each([{ pattern: '* * * * *' }, { tz: 'Europe/Paris' }, { limit: 1 }, { every: 1000 }, { offset: 1 }])(
+    'refuses modified schedule %j',
+    async (change) => {
+      const state = fixture();
+      const entry = state.entries.get('reconcile-usage-periods');
+      assert.ok(entry);
+      Object.assign(entry, change);
+      await expect(ensurePlatformSchedules(state.client, QueueNames.ANALYTICS)).rejects.toThrow('configuration');
+      expect(state.queue.upsertJobScheduler).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses unexpected migrated job options before any scheduler update', async () => {
     const state = fixture();
-    await ensurePlatformSchedules(state.queues.analytics, QueueNames.ANALYTICS);
-    expect(state.calls).toEqual([]);
+    const entry = state.entries.get('reconcile-usage-periods');
+    assert.ok(entry);
+    entry.template = { data: {}, opts: { ...QUEUE_CONFIGS.analytics.defaultJobOptions, attempts: 99 } };
+    await expect(ensurePlatformSchedules(state.client, QueueNames.ANALYTICS)).rejects.toThrow('job options');
+    expect(state.queue.upsertJobScheduler).not.toHaveBeenCalled();
   });
 
-  it('uses stable IDs on fresh and repeated startup', async () => {
-    const state = fixture(false);
-    await ensurePlatformSchedules(state.queues.analytics, QueueNames.ANALYTICS);
-    await ensurePlatformSchedules(state.queues.analytics, QueueNames.ANALYTICS);
-    expect([...state.analytics.entries.keys()]).toEqual(['rollup-analytics-daily', 'reconcile-usage-periods']);
-  });
-
-  it('refuses startup in partial migration state', async () => {
-    const state = fixture();
-    state.analytics.entries.set('rollup-analytics-daily', {
-      key: 'rollup-analytics-daily',
-      name: 'rollup-analytics',
-      pattern: '10 0 * * *',
-      tz: 'UTC',
-      template: { data: {}, opts: QUEUE_CONFIGS.analytics.defaultJobOptions },
-    });
-    await expect(ensurePlatformSchedules(state.queues.analytics, QueueNames.ANALYTICS)).rejects.toThrow('Mixed legacy');
-    expect(state.calls).toEqual([]);
-  });
-
-  it('creates and verifies all destinations before any removal, and reruns safely', async () => {
-    const state = fixture();
-    const first = await migratePlatformSchedules(state.queues, { apply: true });
-    expect(state.calls.slice(0, 4).every((call) => call.startsWith('upsert:'))).toBe(true);
-    expect(first.schedules.every((entry) => entry.scheduler && !entry.legacy)).toBe(true);
-    const second = await migratePlatformSchedules(state.queues, { apply: true });
-    expect(second.schedules).toEqual(first.schedules);
-  });
-
-  it('restores known legacy schedules before removing schedulers for rollback', async () => {
-    const state = fixture();
-    await migratePlatformSchedules(state.queues, { apply: true });
-    state.calls.length = 0;
-    const result = await migratePlatformSchedules(state.queues, { apply: true, rollback: true });
-    expect(state.calls.slice(0, 4).every((call) => call.startsWith('add:'))).toBe(true);
-    expect(result.schedules.every((entry) => entry.legacy && !entry.scheduler)).toBe(true);
-    await migratePlatformSchedules(state.queues, { apply: true, rollback: true });
-    await ensurePlatformSchedules(state.queues.analytics, QueueNames.ANALYTICS);
-    expect([...state.analytics.entries.keys()]).not.toContain('rollup-analytics-daily');
-  });
-
-  it('rejects unknown entries across both queues before writes', async () => {
-    const state = fixture();
-    state.exports.entries.set('unknown', { key: 'unknown', name: 'unknown' });
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('Unknown recurring');
-    expect(state.calls).toEqual([]);
-  });
-
-  it('rejects mismatched cron or legacy options without deletion', async () => {
-    const state = fixture();
-    for (const job of state.exports.jobs.values()) job.opts = { repeat: { limit: 1 } };
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('Unexpected legacy');
-    expect(state.calls).toEqual([]);
-  });
-
-  it.each(['running', 'active', 'waiting'])('refuses an unsafe %s queue', async (condition) => {
-    const state = fixture();
-    if (condition === 'running') state.analytics.queue.isPaused.mockResolvedValue(false);
-    if (condition === 'active') state.analytics.queue.getActiveCount.mockResolvedValue(1);
-    if (condition === 'waiting') state.analytics.queue.getWaitingCount.mockResolvedValue(1);
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('paused');
-    expect(state.calls).toEqual([]);
-  });
-
-  it('retains all legacy definitions if destination verification fails', async () => {
-    const state = fixture();
-    state.exports.queue.upsertJobScheduler.mockImplementation(async () => undefined);
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('verification');
-    expect(state.calls.some((call) => call.startsWith('remove'))).toBe(false);
-  });
-
-  it('resumes safely after a partial removal failure', async () => {
-    const state = fixture();
-    state.exports.queue.removeRepeatableByKey.mockRejectedValueOnce(new Error('Disconnected'));
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('Disconnected');
-    const result = await migratePlatformSchedules(state.queues, { apply: true });
-    expect(result.schedules.every((entry) => entry.scheduler && !entry.legacy)).toBe(true);
-  });
-
-  it('does not overwrite unexpected existing scheduler templates', async () => {
-    const state = fixture(false);
-    state.analytics.entries.set('rollup-analytics-daily', {
-      key: 'rollup-analytics-daily',
-      name: 'rollup-analytics',
-      pattern: '10 0 * * *',
-      tz: 'UTC',
-      template: { data: {}, opts: { ...QUEUE_CONFIGS.analytics.defaultJobOptions, attempts: 99 } },
-    });
-    await expect(migratePlatformSchedules(state.queues, { apply: true })).rejects.toThrow('job options');
-    expect(state.calls).toEqual([]);
+  it('refuses malformed export data', async () => {
+    const state = fixture('export');
+    const entry = state.entries.get('cleanup-exports');
+    assert.ok(entry);
+    entry.template = { data: { requestedAt: 'invalid' }, opts: QUEUE_CONFIGS.export.defaultJobOptions };
+    await expect(ensurePlatformSchedules(state.client, QueueNames.EXPORT)).rejects.toThrow('schedule data');
+    expect(state.queue.upsertJobScheduler).not.toHaveBeenCalled();
   });
 });

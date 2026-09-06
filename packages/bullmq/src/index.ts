@@ -14,9 +14,6 @@ export async function createJob<Q extends QueueNames>(
 ) {
   const queue = getQueue(queueName);
   const finalOptions: JobsOptions = { ...options };
-  if (finalOptions.repeat && !finalOptions.repeat.tz) {
-    finalOptions.repeat = { ...finalOptions.repeat, tz: 'UTC' };
-  }
   if (finalOptions.jobId) {
     finalOptions.jobId = sanitizeJobId(finalOptions.jobId);
   }
@@ -37,7 +34,7 @@ export async function removeJob<Q extends QueueNames>(queueName: Q, jobId: strin
   return false;
 }
 
-/** Preserve existing legacy schedules until the explicit v5 migration. */
+/** Maintain the verified scheduler definitions after the staged v5 migration. */
 export async function scheduleAnalyticsRollup(): Promise<void> {
   await ensurePlatformSchedules(getQueue(QueueNames.ANALYTICS), QueueNames.ANALYTICS);
   queueLogger.info('Scheduled daily analytics rollup job');

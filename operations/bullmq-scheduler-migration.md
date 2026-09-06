@@ -1,4 +1,14 @@
-# BullMQ v5 scheduler migration
+# BullMQ v5 scheduler migration and v6 release
+
+The v5 migration executables are intentionally absent from this v6 source tree.
+Run every v5 command below only from the retained staged-v5 checkout/image with
+its original BullMQ 5 dependencies. Never copy or run that operator with v6.
+Before deploying v6, require the v5 dry-run to confirm all four schedulers and
+no legacy definitions, then verify actual scheduled execution on staged v5.
+The v6 application validates existing IDs, cron, UTC, data and job options
+before upserting; an unknown or unmigrated definition blocks that startup path.
+Fresh installations create the same four stable scheduler IDs.
+
 
 Perform this transition while every producer and worker still uses BullMQ v5.
 The staged application recognizes existing platform repeats and leaves them
@@ -30,7 +40,7 @@ pauses, resumes, drains, or deletes arbitrary jobs.
 
 ## Rollback
 
-The preferred rollback image is this staged v5 release, which understands Job
+The preferred rollback image is the retained staged v5 release, which understands Job
 Schedulers. Rolling back to an older image that still creates legacy repeats
 requires restoring legacy definitions first: stop scheduling processes, pause
 the affected queues, wait for no active/ready jobs, then run the same command

@@ -15,7 +15,7 @@ function makeQueue<Q extends QueueNames>(name: Q): Queue<QueueJobMap[Q]['data'],
   });
 }
 
-const queueCache: Partial<Record<QueueNames, Queue<unknown, unknown, string>>> = {};
+const queueCache: Partial<Record<QueueNames, Queue>> = {};
 
 /**
  * Return an owned producer queue, creating its Redis connection on first use.
@@ -26,18 +26,18 @@ const queueCache: Partial<Record<QueueNames, Queue<unknown, unknown, string>>> =
  * beyond Vitest environment teardown. Lazy ownership also gives each process a
  * finite set of clients that `closeQueues()` can deterministically release.
  */
-export function getQueue(name: QueueNames): Queue<unknown, unknown, string> {
+export function getQueue(name: QueueNames): Queue {
   const existing = queueCache[name];
   if (existing) {
     return existing;
   }
-  const queue = makeQueue(name) as Queue<unknown, unknown, string>;
+  const queue = makeQueue(name) as Queue;
   queueCache[name] = queue;
   return queue;
 }
 
 /** Backwards-compatible lazy registry for dashboards and worker maintenance. */
-export const queues = {} as Record<QueueNames, Queue<unknown, unknown, string>>;
+export const queues = {} as Record<QueueNames, Queue>;
 for (const name of Object.values(QueueNames)) {
   Object.defineProperty(queues, name, {
     configurable: false,
