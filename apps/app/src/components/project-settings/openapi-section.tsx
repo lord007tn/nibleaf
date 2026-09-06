@@ -235,7 +235,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
                   !title.trim() ||
                   !path.trim() ||
                   (!current && !sourceValue.trim()) ||
-                  (current && sourceType !== current.source.type && !sourceValue.trim())
+                  (!!current && sourceType !== current.source.type && !sourceValue.trim())
                 }
                 onClick={() => void submit()}
               >
