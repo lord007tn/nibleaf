@@ -46,4 +46,11 @@ queue names, never flushes a database, and deletes only its own test queues.
 It exercises dry-run, both startup paths, migration/retry, rollback/retry, and
 remigration against real v5 storage.
 
+With the same isolated endpoint, run
+`pnpm exec tsx packages/bullmq/scripts/verify-schedule-dry-run.ts` to compare all
+keys, serialized values, and TTLs before and after the actual default operator
+command. TTL comparison accounts for elapsed time; only its own expiring
+synthetic key is created and cleaned. Operator Queue clients disable BullMQ's
+automatic metadata write during construction.
+
 See the [official BullMQ upgrade sequence](https://docs.bullmq.io/guide/migrations/migrate-from-v5-to-v6).
