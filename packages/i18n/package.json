@@ -21,7 +21,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.24.1"
+    "@inlang/paraglide-js": "2.25.0"
   },
   "peerDependencies": {
     "react": "^19.2.8"
