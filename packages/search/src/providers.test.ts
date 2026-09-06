@@ -64,6 +64,13 @@ describe('OpenRouter SDK embeddings', () => {
 });
 
 describe('OpenRouter SDK answers', () => {
+  it('rejects an unexpected event stream from a non-streaming request', async () => {
+    const request = vi.fn<Fetcher>(async () => new Response('data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } }));
+    const provider = new OpenRouterChatProvider({ apiKey: 'secret', fetch: request, model: 'test/model' });
+    await expect(provider.complete([{ role: 'user', content: 'question' }])).rejects.toThrow('unexpected streaming completion');
+    expect(request).toHaveBeenCalledOnce();
+  });
+
   it('requests strict structured output and reports provider usage', async () => {
     const request = vi.fn<Fetcher>(async () =>
       Response.json({
