@@ -30,6 +30,12 @@ it('loads consent with a query provider only when navigation reaches a marketing
     expect(loadConsent).not.toHaveBeenCalled();
 
     await act(async () => {
+      root.render(<RootMarketingAnalytics pathname="/sites/synthetic/missing" language="en" />);
+    });
+    expect(container.innerHTML).toBe('');
+    expect(loadConsent).not.toHaveBeenCalled();
+
+    await act(async () => {
       root.render(<RootMarketingAnalytics pathname="/ar" language="ar" />);
       await vi.dynamicImportSettled();
     });

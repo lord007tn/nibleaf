@@ -11,11 +11,12 @@ export const marketingEventBody = z.discriminatedUnion('event', [
       event: z.literal('first_publish_landing_viewed'),
       properties: z
         .object({
-          entry_point: z.literal('organic_content'),
+          entry_point: z.enum(['organic_content', 'free_tool']),
           intent: z.literal('first_publish'),
-          source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
         })
-        .strict(),
+        .strict()
+        .refine((p) => p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content')),
     })
     .strict(),
   z
@@ -24,12 +25,17 @@ export const marketingEventBody = z.discriminatedUnion('event', [
       properties: z
         .object({
           destination: z.literal('signup'),
-          entry_point: z.literal('organic_content'),
+          entry_point: z.enum(['organic_content', 'free_tool']),
           intent: z.literal('first_publish'),
-          placement: z.literal('article_bridge'),
-          source: z.enum(['docker_compose_guide', 'mintlify_introduction']),
+          placement: z.enum(['article_bridge', 'result_bridge']),
+          source: z.enum(['docker_compose_guide', 'mintlify_introduction', 'rtl_readiness_grader']),
         })
-        .strict(),
+        .strict()
+        .refine(
+          (p) =>
+            p.entry_point === (p.source === 'rtl_readiness_grader' ? 'free_tool' : 'organic_content') &&
+            p.placement === (p.source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge'),
+        ),
     })
     .strict(),
   z

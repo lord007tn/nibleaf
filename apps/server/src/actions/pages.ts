@@ -6,6 +6,7 @@ import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/
 import { badRequest, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
+import { logFirstContentEdit } from './platform-events';
 
 /** Flat list of a project's pages on one branch (the default branch when none is
  *  given), ordered for tree assembly on the client. Scoped to a single language
@@ -136,7 +137,7 @@ const recomputeProjectPaths = async (projectId: string): Promise<void> => {
   await prisma.$transaction(updates.map((u) => prisma.page.update({ where: { id: u.id }, data: { path: u.path } })));
 };
 
-export const createPage = async (projectId: string, body: CreatePageBody) => {
+export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const parentId = body.parentId ?? null;
   const parent = await parentInfo(projectId, parentId);
   // A child inherits its parent's branch + language; otherwise use the requested
@@ -148,7 +149,7 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
     (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await getDefaultLanguage(projectId)).id);
   const slug = await uniqueSiblingSlug(projectId, languageId, branchId, parentId, body.slug || body.title);
   const maxPosition = await prisma.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
-  return prisma.page.create({
+  const page = await prisma.page.create({
     data: {
       projectId,
       branchId,
@@ -166,6 +167,8 @@ export const createPage = async (projectId: string, body: CreatePageBody) => {
       position: body.position ?? (maxPosition._max.position ?? -1) + 1,
     },
   });
+  if (userId && page.kind === 'PAGE' && page.content.trim()) logFirstContentEdit(userId, projectId);
+  return page;
 };
 
 /** Deep-merge a page-config patch over the stored config: the `seo` object is
@@ -183,7 +186,7 @@ const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): ob
   return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
 };
 
-export const updatePage = async (projectId: string, id: string, body: UpdatePageBody) => {
+export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string) => {
   const page = await prisma.page.findFirst({ where: { id, projectId } });
   if (!page) {
     throw notFound('page', { id });
@@ -231,6 +234,9 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
       ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
     },
   });
+  if (userId && page.kind === 'PAGE' && body.content !== undefined && body.content.trim() !== page.content.trim()) {
+    logFirstContentEdit(userId, projectId);
+  }
   if (structural) {
     await recomputeProjectPaths(projectId);
     return getPage(projectId, id);

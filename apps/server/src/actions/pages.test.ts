@@ -7,6 +7,8 @@ const database = vi.hoisted(() => ({
   update: vi.fn(),
   transaction: vi.fn(),
 }));
+const recordEdit = vi.hoisted(() => vi.fn());
+vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
 
 vi.mock('@nibleaf/database', () => ({
   Prisma: { JsonNull: null },
@@ -29,6 +31,7 @@ type Row = {
   slug: string;
   path: string;
   config: null;
+  content: string;
 };
 
 const row = (overrides: Partial<Row> = {}): Row => ({
@@ -42,6 +45,7 @@ const row = (overrides: Partial<Row> = {}): Row => ({
   slug: 'untitled',
   path: 'untitled',
   config: null,
+  content: 'Existing documentation',
   ...overrides,
 });
 
@@ -60,6 +64,24 @@ const seed = (page: Row) => {
 describe('updatePage placeholder slug adoption', () => {
   beforeEach(() => {
     for (const mock of Object.values(database)) mock.mockReset();
+    recordEdit.mockClear();
+  });
+
+  it('counts a saved content change, not metadata, identical autosave, or surrounding whitespace', async () => {
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await updatePage('project-1', 'page-1', { hidden: true }, 'author-1');
+    await updatePage('project-1', 'page-1', { content: 'Existing documentation' }, 'author-1');
+    await updatePage('project-1', 'page-1', { content: '  Existing documentation\n' }, 'author-1');
+    expect(recordEdit).not.toHaveBeenCalled();
+    await updatePage('project-1', 'page-1', { content: 'A useful new instruction' }, 'author-1');
+    expect(recordEdit).toHaveBeenCalledExactlyOnceWith('author-1', 'project-1');
+  });
+
+  it('does not record an edit when the project-scoped update fails', async () => {
+    seed(row());
+    database.findFirst.mockResolvedValue(null);
+    await expect(updatePage('other-project', 'page-1', { content: 'new' }, 'author-1')).rejects.toThrow();
+    expect(recordEdit).not.toHaveBeenCalled();
   });
 
   it.each([
