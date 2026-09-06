@@ -349,11 +349,11 @@ function SiteChrome() {
                   links={headerLinks}
                 />
                 {logoHref ? (
-                  <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-7 items-center gap-2.5 font-semibold tracking-tight">
+                  <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial">
                     {brandInner}
                   </a>
                 ) : (
-                  <a href={sitePath()} className="flex min-w-7 items-center gap-2.5 font-semibold tracking-tight">
+                  <a href={sitePath()} className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial">
                     {brandInner}
                   </a>
                 )}
@@ -381,7 +381,7 @@ function SiteChrome() {
 
                 {showSearch ? (
                   <button
-                    className="ms-auto grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+                    className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
                     onClick={() => setSearchOpen(true)}
                     type="button"
                     aria-label={t('search')}
