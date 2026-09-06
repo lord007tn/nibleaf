@@ -2,24 +2,16 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Separator } from '@nibleaf/design-system/components/ui/separator';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, Navigate, Outlet, redirect, useRouterState } from '@tanstack/react-router';
+import { createFileRoute, Navigate, Outlet, useRouterState } from '@tanstack/react-router';
 import { AlertCircle, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin-sidebar';
 import { PageLoader } from '@/components/page-loader';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { getSessionFn } from '@/functions/session';
 import { AdminApiError, useAdminOverview } from '@/hooks/api/queries';
 import { signOut, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(dashboard)')({
-  beforeLoad: async () => {
-    const routeSession = await getSessionFn();
-    if (!routeSession) {
-      throw redirect({ to: '/sign-in' });
-    }
-    return { routeSession };
-  },
   component: DashboardRoute,
 });
 
@@ -28,14 +20,13 @@ function FullScreen({ children }: { children: ReactNode }) {
 }
 
 function DashboardRoute() {
-  const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
-  const resolvedSession = session ?? (isPending ? routeSession : null);
-
-  if (isPending && !resolvedSession) {
+  // The host-only session belongs to APP_URL, not the admin SSR origin.
+  // Resolve it through the shared auth client before deciding where to route.
+  if (isPending && !session) {
     return <PageLoader />;
   }
-  if (!resolvedSession) return <Navigate to="/sign-in" />;
+  if (!session) return <Navigate to="/sign-in" />;
   return <AdminGate />;
 }
 
