@@ -3,7 +3,7 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { DocumentationReaderLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
@@ -88,6 +88,17 @@ function SiteChrome() {
   const navigate = useNavigate({ from: Route.fullPath });
   const [searchOpen, setSearchOpen] = useState(false);
   const [pageAlternates, setPageAlternates] = useState<SiteLanguageAlternate[]>([]);
+  const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState<number>();
+  const observeHeader = useCallback((node: HTMLDivElement | null) => {
+    if (!node) {
+      return;
+    }
+    const measure = () => setMeasuredHeaderHeight(node.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   // SSR renders the platform-neutral label; the client corrects it after hydration.
   const searchShortcut = useSearchShortcutLabel();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -247,8 +258,8 @@ function SiteChrome() {
   const logoHref = branding?.logoHref?.trim() || undefined;
 
   // --site-header-h drives every sticky offset (sidebar, TOC, heading scroll
-  // margins) so they stay correct whether or not the tab row renders.
-  const headerHeight = navTabs.length > 0 ? '6.75rem' : '4rem';
+  // margins), including wrapped mobile controls and the optional tab row.
+  const headerHeight = measuredHeaderHeight === undefined ? (navTabs.length > 0 ? '6.75rem' : '4rem') : `${measuredHeaderHeight}px`;
   const chromeStyle = {
     ...projectThemeStyle(config),
     '--site-header-h': headerHeight,
@@ -336,7 +347,11 @@ function SiteChrome() {
           banner={<SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} />}
           header={
             // Header block (main row + optional tab row) sticks as one unit.
-            <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md" data-theme-region="header-shell">
+            <div
+              ref={observeHeader}
+              className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md"
+              data-theme-region="header-shell"
+            >
               <header
                 className="mx-auto flex min-h-16 max-w-[90rem] flex-wrap items-center gap-2 px-4 py-3 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0"
                 data-theme-region="header"
@@ -352,7 +367,12 @@ function SiteChrome() {
                   links={headerLinks}
                 />
                 {logoHref ? (
-                  <a href={logoHref} target="_blank" rel="noreferrer" className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial">
+                  <a
+                    href={logoHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial"
+                  >
                     {brandInner}
                   </a>
                 ) : (
