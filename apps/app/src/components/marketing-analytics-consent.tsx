@@ -15,12 +15,7 @@ import {
   suspendMarketingAnalytics,
 } from '@/lib/marketing-analytics';
 
-export function marketingAnalyticsEnabled(pathname: string, siteProjectId?: string): boolean {
-  if (siteProjectId) return false;
-  return !['/app', '/sign-in', '/forgot-password', '/reset-password', '/verify-email', '/accept-invite', '/git-preview'].some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
+export { marketingAnalyticsEnabled } from '@/lib/marketing-analytics-route';
 
 export function MarketingAnalyticsConsent({ enabled, language }: { enabled: boolean; language: MarketingAnalyticsLanguage }) {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
