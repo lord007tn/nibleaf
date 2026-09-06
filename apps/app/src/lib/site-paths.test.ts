@@ -18,6 +18,14 @@ describe('siteBasePath', () => {
 });
 
 describe('siteHref', () => {
+  it('preserves an explicit target language on cross-language links', () => {
+    expect(siteHref('p1', '/arabic/intro?lang=ar&tab=cli#install', { lang: 'en', version: 'v2' })).toBe(
+      '/sites/p1/v2/arabic/intro?lang=ar&tab=cli#install',
+    );
+    origin.value = 'https://docs.acme.com';
+    expect(siteHref('p1', '/guides/intro?lang=en', { lang: 'ar' })).toBe('/guides/intro?lang=en');
+  });
+
   it('builds app-origin hrefs with the language and version carried along', () => {
     expect(siteHref('p1')).toBe('/sites/p1');
     expect(siteHref('p1', '/guides/intro/')).toBe('/sites/p1/guides/intro');

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import type { MintlifyImportBody } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMPORT_FILES } from './content';
@@ -19,6 +20,7 @@ const mem = vi.hoisted(() => ({
     parentId: string | null;
     slug: string;
     title: string;
+    content?: string;
     translationKey?: string;
   }>,
   languages: new Map([['en', { id: 'lang-en', code: 'en' }]]),
@@ -97,12 +99,16 @@ vi.mock('./persistence', () => ({
     mem.rows.push(row);
     return row.id;
   },
-  upsertLeafPage: async (target: { languageId: string }, page: { parentId: string | null; slug: string; title: string; translationKey?: string }) => {
+  upsertLeafPage: async (
+    target: { languageId: string },
+    page: { parentId: string | null; slug: string; title: string; content: string; translationKey?: string },
+  ) => {
     const found = mem.rows.find(
       (row) => row.languageId === target.languageId && row.kind === 'PAGE' && row.parentId === page.parentId && row.slug === page.slug,
     );
     if (found) {
       found.title = page.title;
+      found.content = page.content;
       found.translationKey = page.translationKey;
       return 'updated' as const;
     }
@@ -113,6 +119,7 @@ vi.mock('./persistence', () => ({
       parentId: page.parentId,
       slug: page.slug,
       title: page.title,
+      content: page.content,
       translationKey: page.translationKey,
     });
     return 'imported' as const;
@@ -229,6 +236,47 @@ describe('mintlify importNodes slug collisions', () => {
 });
 
 describe('mintlify language import', () => {
+  it('does not duplicate cross-linked English and Arabic documentation into the opposite language', async () => {
+    for (const file of ['docs.json', 'intro.mdx', 'ar/intro.mdx']) {
+      mem.repoFiles.set(file, readFileSync(new URL(`./fixtures/multilingual-linked-pages/${file}`, import.meta.url), 'utf8'));
+    }
+    const summary = await runImport();
+    expect(summary.imported).toBe(2);
+    expect(mem.rows.filter((row) => row.kind === 'PAGE').map(({ languageId, translationKey }) => ({ languageId, translationKey }))).toEqual([
+      { languageId: 'lang-en', translationKey: 'intro' },
+      { languageId: 'lang-ar', translationKey: 'intro' },
+    ]);
+    expect(summary.warnings.some((warning) => warning.includes('declares lang'))).toBe(false);
+    expect(summary.warnings.some((warning) => warning.includes('linked page'))).toBe(false);
+    const english = mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-en');
+    const arabic = mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-ar');
+    const arabicGroup = mem.rows.find((row) => row.id === arabic?.parentId);
+    expect(english?.content).toContain(`[Arabic guide](/${arabicGroup?.slug}/intro?lang=ar)`);
+    expect(arabic?.content).toContain('[English guide](/guides/intro?lang=en)');
+  });
+
+  it('keeps recursive same-language and undeclared linked pages while excluding a different declared language', async () => {
+    setNavigation({ languages: [{ language: 'en', default: true, pages: ['intro'] }] });
+    mem.repoFiles.set('intro.mdx', '---\nlang: en\n---\n[More](./more)');
+    mem.repoFiles.set('more.mdx', '---\nlang: EN\n---\n[Next](./next)');
+    mem.repoFiles.set('next.mdx', '[Arabic](./arabic)');
+    mem.repoFiles.set('arabic.mdx', '---\nlang: ar\n---\n# مقدمة');
+
+    const summary = await runImport();
+    expect(summary.imported).toBe(3);
+    expect(mem.rows.filter((row) => row.kind === 'PAGE').map((row) => row.slug)).toEqual(['intro', 'more', 'next']);
+  });
+
+  it('retains explicit navigation even when frontmatter declares a different language', async () => {
+    setNavigation({ languages: [{ language: 'en', default: true, pages: ['intro'] }] });
+    mem.repoFiles.set('intro.mdx', '---\nlang: ar\ntranslation_key: intro\n---\n# مقدمة');
+
+    const summary = await runImport();
+    expect(summary.imported).toBe(1);
+    expect(summary.warnings.some((warning) => warning.includes('declares lang'))).toBe(true);
+    expect(mem.rows.find((row) => row.kind === 'PAGE')).toMatchObject({ languageId: 'lang-en', translationKey: 'intro' });
+  });
+
   it('imports language trees into separate targets with explicit page pairing', async () => {
     setNavigation({
       languages: [

@@ -44,7 +44,51 @@ vi.mock('../lib/usage-ingest', () => ({
   enqueueAnalyticsEvent: mocks.enqueueAnalyticsEvent,
 }));
 
-import { handlePublishJobs, trackPublishLifecycle } from './publish';
+import { collectPublishIssues, handlePublishJobs, trackPublishLifecycle } from './publish';
+
+describe('cross-language publish link checks', () => {
+  const english = {
+    id: 'en',
+    title: 'Synthetic quickstart',
+    kind: 'PAGE',
+    path: 'guides/intro',
+    content: '[Arabic guide](/group-9e4c82a8/intro?lang=ar)',
+    languageCode: 'en',
+    branchId: 'draft',
+  };
+  const arabic = {
+    id: 'ar',
+    title: 'دليل تجريبي',
+    kind: 'PAGE',
+    path: 'group-9e4c82a8/intro',
+    content: '[English guide](/guides/intro?lang=en)',
+    languageCode: 'ar',
+    branchId: 'draft',
+  };
+  const pages = [english, arabic];
+
+  it('accepts both translated destinations in the initial and updated snapshot', () => {
+    expect(collectPublishIssues({ config: null }, pages)).toEqual([]);
+    expect(
+      collectPublishIssues(
+        { config: null },
+        pages.map((page) => ({ ...page, content: `${page.content}\n\nUpdated documentation.` })),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each(['zz', 'ar&lang=en', ''])('rejects an unknown or ambiguous target language %s', (language) => {
+    const changed = [{ ...english, content: `[Target](/group-9e4c82a8/intro?lang=${language})` }, arabic];
+    expect(collectPublishIssues({ config: null }, changed)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'broken-link', pagePath: 'guides/intro' })]),
+    );
+  });
+
+  it('does not use a destination from another branch or a hidden page', () => {
+    expect(collectPublishIssues({ config: null }, [english, { ...arabic, branchId: 'other' }])).not.toEqual([]);
+    expect(collectPublishIssues({ config: null }, [english, { ...arabic, hidden: true }])).not.toEqual([]);
+  });
+});
 
 describe('publish usage queue isolation', () => {
   beforeEach(() => {

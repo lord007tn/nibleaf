@@ -10,7 +10,7 @@ import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './c
 import { RemoteAssetMigrator } from './ghost-assets';
 import { getGitHubDefaultBranch, getGitHubTextFile, githubRawUrl, listGitHubFiles } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
-import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import { buildMintlifyLanguageRouteMap, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import {
   findMintlifyConfigPath,
   type MintlifyLanguageNavigation,
@@ -108,6 +108,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
             assets,
             summary,
             state,
+            languageResult.languages,
           );
         }
       } else {
@@ -197,11 +198,12 @@ const importNavigation = async (
   assets: RemoteAssetMigrator,
   summary: ImportSummary,
   state: { pages: number; capWarned: boolean; versions: Set<string> },
+  languageNavigation: readonly MintlifyLanguageNavigation[] = [],
 ) => {
   const { unversioned, versions } = partitionMintlifyVersions(sourceNodes);
   const partitions =
     versions.length === 0
-      ? [{ nodes: [...unversioned], target: defaultTarget }]
+      ? [{ nodes: [...unversioned], target: defaultTarget, versionName: undefined }]
       : await Promise.all(
           [...versions]
             .sort((left, right) => Number(right.isDefault) - Number(left.isDefault))
@@ -210,6 +212,7 @@ const importNavigation = async (
               return {
                 nodes: version.isDefault ? [...unversioned, ...version.nodes] : [...version.nodes],
                 target: await ensureVersionTarget(defaultTarget.projectId, defaultTarget, version, summary),
+                versionName: version.name,
               };
             }),
         );
@@ -229,7 +232,7 @@ const importNavigation = async (
       blobs,
       partition.target,
       assets,
-      buildMintlifyRouteMap(partition.nodes),
+      new Map([...buildMintlifyLanguageRouteMap(languageNavigation, languageCode, partition.versionName), ...buildMintlifyRouteMap(partition.nodes)]),
       summary,
       state,
       languageCode,
@@ -306,7 +309,7 @@ const addLinkedPages = async (
   blobs: ReadonlySet<string>,
   summary: ImportSummary,
 ): Promise<void> => {
-  const linkedPages = await discoverLinkedPages(nodes, repo, baseDir, blobs);
+  const linkedPages = await discoverLinkedPages(nodes, repo, baseDir, blobs, languageCode);
   if (linkedPages.length === 0) return;
   nodes.push({
     kind: 'group',
@@ -321,7 +324,13 @@ const addLinkedPages = async (
 
 /** Mintlify allows linked pages to remain outside navigation. Follow internal
  * links recursively and add only real repo pages, keeping partials/assets out. */
-const discoverLinkedPages = async (nodes: readonly NavNode[], repo: RepoRef, baseDir: string, blobs: ReadonlySet<string>): Promise<string[]> => {
+const discoverLinkedPages = async (
+  nodes: readonly NavNode[],
+  repo: RepoRef,
+  baseDir: string,
+  blobs: ReadonlySet<string>,
+  languageCode?: string,
+): Promise<string[]> => {
   const known = navPagePaths(nodes);
   const queue = [...known];
   const additional: string[] = [];
@@ -336,8 +345,15 @@ const discoverLinkedPages = async (nodes: readonly NavNode[], repo: RepoRef, bas
     const { body } = parseFrontmatter(raw);
     for (const target of mintlifyInternalLinkTargets(body, sourcePath)) {
       if (known.has(target)) continue;
-      const targetExists = blobs.has(`${baseDir}${target}.mdx`) || blobs.has(`${baseDir}${target}.md`);
-      if (!targetExists) continue;
+      const targetFile = [`${baseDir}${target}.mdx`, `${baseDir}${target}.md`].find((candidate) => blobs.has(candidate));
+      if (!targetFile) continue;
+      if (languageCode) {
+        const targetRaw = await repo.loadText(targetFile);
+        const targetLanguage = targetRaw === null ? undefined : parseFrontmatter(targetRaw).meta.lang;
+        // A translation link is not an instruction to copy that page into this
+        // language. Explicit navigation remains authoritative in importNodes.
+        if (targetLanguage && targetLanguage.toLowerCase() !== languageCode.toLowerCase()) continue;
+      }
       known.add(target);
       additional.push(target);
       queue.push(target);
