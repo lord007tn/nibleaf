@@ -1,0 +1,16 @@
+{
+  "name": "Synthetic QA Docs",
+  "navigation": {
+    "languages": [
+      {
+        "language": "en",
+        "default": true,
+        "groups": [{ "group": "Guides", "pages": ["intro"] }]
+      },
+      {
+        "language": "ar",
+        "groups": [{ "group": "الأدلة", "pages": ["ar/intro"] }]
+      }
+    ]
+  }
+}

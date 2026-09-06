@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { stableHash } from './content';
-import type { NavNode } from './mintlify-mapping';
+import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const MARKDOWN_LINK = /(?<!!)\[([^\]]+)\]\(([^\s)]+)((?:\s+["'][^)]*["'])?)\)/g;
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
@@ -37,6 +37,26 @@ export const buildMintlifyRouteMap = (nodes: readonly NavNode[]): ReadonlyMap<st
     }
   };
   visit(nodes, []);
+  return routes;
+};
+
+/** Foreign navigation supplies destinations without copying translated pages
+ * into the current language. Keep version partitions aligned by name. */
+export const buildMintlifyLanguageRouteMap = (
+  languages: readonly MintlifyLanguageNavigation[],
+  currentLanguage: string | undefined,
+  versionName: string | undefined,
+): ReadonlyMap<string, string> => {
+  const routes = new Map<string, string>();
+  for (const language of languages) {
+    if (language.code.toLowerCase() === currentLanguage?.toLowerCase()) continue;
+    const { unversioned, versions } = partitionMintlifyVersions(language.nodes);
+    const version = versions.find((candidate) => (versionName ? candidate.name === versionName : candidate.isDefault));
+    const nodes = versions.length === 0 ? unversioned : version ? [...(version.isDefault ? unversioned : []), ...version.nodes] : [];
+    for (const [source, destination] of buildMintlifyRouteMap(nodes)) {
+      routes.set(source, `${destination}?lang=${encodeURIComponent(language.code)}`);
+    }
+  }
   return routes;
 };
 
@@ -80,7 +100,13 @@ export const rewriteMintlifyInternalLinks = (content: string, sourcePage: string
     const key = internalReferenceKey(reference, sourcePage);
     if (!key) return reference;
     const target = routes.get(key);
-    return target ? `${target}${suffix}` : reference;
+    if (!target) return reference;
+    if (!target.includes('?')) return `${target}${suffix}`;
+    const destination = new URL(target, 'https://import.invalid');
+    const original = new URL(suffix || '/', 'https://import.invalid');
+    const params = new URLSearchParams(original.search);
+    for (const [name, value] of destination.searchParams) params.set(name, value);
+    return `${destination.pathname}?${params}${original.hash}`;
   };
   const markdown = content.replace(
     MARKDOWN_LINK,

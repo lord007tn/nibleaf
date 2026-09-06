@@ -190,7 +190,11 @@ const grammarIssues = (content: string): string[] => {
  * as `Deployment.errorDetails`. Broken links ALWAYS block (when enabled);
  * `skipGrammarChecks` lets a user publish past the grammar linter only.
  */
-function collectPublishIssues(project: ProjectWithConfig, pages: PublishPage[], options: { skipGrammarChecks?: boolean } = {}): PublishIssue[] {
+export function collectPublishIssues(
+  project: ProjectWithConfig,
+  pages: PublishPage[],
+  options: { skipGrammarChecks?: boolean } = {},
+): PublishIssue[] {
   const addons = objectValue(objectValue(project.config).addons);
   if (addons.ciChecks === false) {
     return [];
@@ -214,13 +218,16 @@ function collectPublishIssues(project: ProjectWithConfig, pages: PublishPage[], 
         continue;
       }
       const currentPath = normalizedPagePath(page.path);
-      const scope = `${page.languageCode}:${page.branchId}`;
-      const scopePaths = pathsByScope.get(scope) ?? new Set<string>();
       for (const href of markdownLinks(page.content)) {
         const target = internalLinkTarget(href, currentPath);
         if (!target || target === 'changelog') {
           continue;
         }
+        const languages = new URLSearchParams(href.split('#')[0]?.split('?')[1] ?? '').getAll('lang');
+        const targetLanguage = languages.length === 0 ? page.languageCode : languages.length === 1 ? languages[0] : '';
+        // Only an existing visible target in this same project/branch can
+        // satisfy a locale switch. Unknown/ambiguous locales remain broken.
+        const scopePaths = pathsByScope.get(`${targetLanguage}:${page.branchId}`) ?? new Set<string>();
         if (!scopePaths.has(target)) {
           issues.push({
             type: 'broken-link',
