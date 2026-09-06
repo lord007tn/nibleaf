@@ -41,7 +41,7 @@ test('only four fixed GETs; credentials remain on trusted origin; no follow-ups 
   assert.equal(result.success, true);
   assert.deepEqual(
     calls.map(({ url }) => url.pathname + url.search),
-    ['/api/v1/applications/synthetic-app', '/api/v1/servers', '/api/v1/deployments', '/api/v1/deployments/applications/synthetic-app?skip=0&take=20'],
+    ['/api/v1/applications/synthetic-app', '/api/v1/servers', '/api/v1/deployments', '/api/v1/deployments/applications/synthetic-app?skip=0&take=1'],
   );
   for (const { url, options } of calls) {
     assert.equal(url.origin, 'https://provider.invalid');
@@ -65,6 +65,34 @@ test('all response metadata, IDs, credentials and nested values stay out of seri
     assert.equal(output.includes(secret), false, secret);
   }
   assert.equal(result.requests[1].expectedServerUuidPresent, true);
+});
+
+test('application server match uses only a valid explicit nested UUID and emits no relation metadata', async () => {
+  for (const [destination, expected] of [
+    [{ server: { uuid: 'synthetic-server', name: 'private-nested-name' } }, true],
+    [{ server: { uuid: 'different-private-server' } }, false],
+    [undefined, 'unknown'],
+    [null, 'unknown'],
+    [[], 'unknown'],
+    [{ server: 'synthetic-server' }, 'unknown'],
+    [{ server: { uuid: '../private-invalid' } }, 'unknown'],
+    [{ server: { uuid: 101 } }, 'unknown'],
+    [{ server: { id: 101 } }, 'unknown'],
+  ]) {
+    const values = defaults();
+    values[0] = { ...values[0], destination_id: 101, destination };
+    const { result } = await fixture(values);
+    assert.equal(result.requests[0].applicationServerMatch, expected);
+    assert.equal(result.applicationServerMatch, expected);
+    if (expected === false) assert.equal(result.success, false);
+    assert.equal(result.visibility, 'unknown');
+    assert.equal(result.serverIdle, 'unknown');
+    assert.doesNotMatch(JSON.stringify(result), /synthetic-server|different-private-server|private-nested-name|private-invalid|destination_id/);
+  }
+  const values = defaults();
+  values[0].destination = { server: { uuid: 'synthetic-server' } };
+  const missing = await fixture(values, { ...env, NIBLEAF_COOLIFY_EXPECTED_SERVER_UUID: undefined });
+  assert.equal(missing.result.applicationServerMatch, 'unknown');
 });
 
 test('missing expected server and valid nonmatching server fail closed without host adoption', async () => {
@@ -224,7 +252,7 @@ test('row caps, history totals and mismatched application identity fail closed',
     [0, { id: 42, uuid: 'another-app', status: 'running' }, 'unrecognized_shape'],
     [1, Array.from({ length: 201 }, (_, id) => ({ uuid: `server-${id}` })), 'row_limit'],
     [2, Array.from({ length: 201 }, (_, id) => ({ ...deployment(), deployment_uuid: `row-${id}` })), 'row_limit'],
-    [3, { count: 21, deployments: Array.from({ length: 21 }, (_, id) => ({ ...deployment(), deployment_uuid: `row-${id}` })) }, 'row_limit'],
+    [3, { count: 2, deployments: Array.from({ length: 2 }, (_, id) => ({ ...deployment(), deployment_uuid: `row-${id}` })) }, 'row_limit'],
     [3, { count: 0, deployments: [deployment()] }, 'invalid_rows'],
   ];
   for (const [index, value, outcome] of fixtures) {
