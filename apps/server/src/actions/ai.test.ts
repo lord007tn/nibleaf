@@ -56,4 +56,18 @@ describe('AI drafting through OpenRouter', () => {
       outcome: 'fallback',
     });
   });
+
+  it('falls back if the provider unexpectedly returns a stream', async () => {
+    mocks.send.mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield { choices: [] };
+      },
+    });
+
+    await expect(draftContentWithTelemetry({ mode: 'outline', content: 'API guide' })).resolves.toMatchObject({
+      provider: 'nibleaf_offline',
+      model: 'deterministic-fallback',
+      outcome: 'fallback',
+    });
+  });
 });

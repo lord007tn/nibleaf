@@ -480,8 +480,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/validators
       '@openrouter/sdk':
-        specifier: 0.13.20
-        version: 0.13.20
+        specifier: 1.2.85
+        version: 1.2.85
       '@scalar/hono-api-reference':
         specifier: ^0.11.16
         version: 0.11.16(hono@4.13.3)
@@ -1028,8 +1028,8 @@ importers:
         specifier: workspace:*
         version: link:../i18n
       '@openrouter/sdk':
-        specifier: 0.13.20
-        version: 0.13.20
+        specifier: 1.2.85
+        version: 1.2.85
       '@orama/orama':
         specifier: ^3.1.18
         version: 3.1.18
@@ -2888,8 +2888,8 @@ packages:
     resolution: {integrity: sha512-hAX0pT/73190NLqBPPWSdBVGtbY6VOhWYK3qqHqtXQ1gK7kS2yz4+ivsN07hpJ6I3aeMtKP6J6npsEKOAzuTLA==}
     engines: {node: '>=20.0'}
 
-  '@openrouter/sdk@0.13.20':
-    resolution: {integrity: sha512-fx4o19FHgadEldfrSOgSbXAi32hCE3O708q1nxcoxYrW6fP6/WggX3o5PmnlnObzmxrqLMkZpqg188K+Twguhg==}
+  '@openrouter/sdk@1.2.85':
+    resolution: {integrity: sha512-OfsLSUovea+V4OLdZ44TaQzLzobpKcao3rIp3mOOCSy22XPad+zFRdXdKYPFvF0QvUWl/l/AaVVVrptvxOPZ0A==}
 
   '@opentelemetry/api-logs@0.220.0':
     resolution: {integrity: sha512-CmVa4ImJ+ynfrPMNaAXHET6Bhb44SwzmfyVJFq9ni2jgXJR/l7C6gfVFddNmHP+ZOkP9cf4f9DBe68qVLTHc9w==}
@@ -12490,7 +12490,7 @@ snapshots:
 
   '@oozcitak/util@10.0.0': {}
 
-  '@openrouter/sdk@0.13.20':
+  '@openrouter/sdk@1.2.85':
     dependencies:
       zod: 4.4.3
 

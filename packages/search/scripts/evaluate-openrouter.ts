@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OpenRouter } from '@openrouter/sdk';
+import type { Model } from '@openrouter/sdk/models';
 import { generateGroundedAnswer, type SearchChunk } from '../src/index';
 import { OpenRouterChatProvider } from '../src/providers';
 
@@ -40,7 +41,8 @@ const models = (process.env.OPENROUTER_EVAL_MODELS ?? 'openai/gpt-5.6-luna,deeps
 
 const fixtures = JSON.parse(await readFile(resolve(here, '../eval/rag-answer-fixtures.json'), 'utf8')) as Fixture[];
 const openRouter = new OpenRouter({ apiKey, timeoutMs: 30_000 });
-const catalog = (await openRouter.models.list()).data;
+const catalog: Model[] = [];
+for await (const page of await openRouter.models.list()) catalog.push(...page.result.data);
 
 for (const model of models) {
   if (!catalog.some((candidate) => candidate.id === model)) throw new Error(`Configured evaluation model is not currently available: ${model}`);
