@@ -7,6 +7,8 @@ const statuses = ['queued', 'in_progress', 'finished', 'failed', 'cancelled-by-u
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const identifier = (value) => typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 const numericId = (value) => Number.isSafeInteger(value) && value >= 0;
+// Coolify stores application_id as a string and does not cast it when serializing.
+const applicationId = (value) => numericId(value) || (typeof value === 'string' && /^(0|[1-9]\d*)$/.test(value) && numericId(Number(value)));
 const fail = (code) => {
   throw new DiagnosticError(code);
 };
@@ -104,7 +106,7 @@ function deployments(value, limit, expectedServerId) {
       !identifier(row.deployment_uuid) ||
       seen.has(row.deployment_uuid) ||
       !numericId(row.server_id) ||
-      !numericId(row.application_id) ||
+      !applicationId(row.application_id) ||
       typeof row.status !== 'string' ||
       !row.status ||
       row.status.length > 64

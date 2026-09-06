@@ -123,6 +123,60 @@ test('target queue count uses the masked numeric mapping only after UUID visibil
   assert.equal(denied.result.requests[2].targetQueueCount, null);
 });
 
+test('application IDs accept source-supported canonical decimal strings in queue and history', async () => {
+  for (const id of ['0', '42', String(Number.MAX_SAFE_INTEGER), 42]) {
+    const values = defaults();
+    values[2] = [{ ...deployment(), application_id: id }];
+    values[3].deployments[0].application_id = id;
+    const { result } = await fixture(values);
+    assert.equal(result.success, true);
+    assert.equal(result.requests[2].targetQueueCount, 1);
+    assert.equal(result.requests[3].outcome, 'ok');
+    assert.equal(result.visibility, 'unknown');
+    assert.equal(result.serverIdle, 'unknown');
+    assert.doesNotMatch(JSON.stringify(result), /application_id|9007199254740991|synthetic-deployment/);
+  }
+});
+
+test('malformed application IDs and nullable or string server IDs remain rejected', async () => {
+  const malformed = [
+    null,
+    undefined,
+    true,
+    {},
+    [],
+    '',
+    ' 42',
+    '42 ',
+    '+42',
+    '-1',
+    '01',
+    '1.0',
+    '1e2',
+    '0x2a',
+    '9007199254740992',
+    -1,
+    1.5,
+    Number.MAX_SAFE_INTEGER + 1,
+  ];
+  for (const [field, ids] of [
+    ['application_id', malformed],
+    ['server_id', [null, undefined, '101']],
+  ]) {
+    for (const id of ids) {
+      for (const index of [2, 3]) {
+        const values = defaults();
+        const row = { ...deployment(), [field]: id };
+        values[index] = index === 2 ? [row] : { count: 1, deployments: [row] };
+        const { result } = await fixture(values);
+        assert.equal(result.requests[index].outcome, 'invalid_rows');
+        assert.equal(result.success, false);
+        assert.equal(result.serverIdle, 'unknown');
+      }
+    }
+  }
+});
+
 test('installed API hides numeric IDs: UUID-only rows work and numeric-ID-only servers are rejected', async () => {
   const valid = await fixture();
   assert.equal(valid.result.requests[0].outcome, 'ok');
