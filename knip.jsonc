@@ -17,9 +17,6 @@
       "entry": ["src/scripts/grant-admin.ts"],
       "ignoreDependencies": ["quansync"]
     },
-    "packages/bullmq": {
-      "entry": ["scripts/*.ts"]
-    },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]
     },

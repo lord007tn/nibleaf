@@ -1,4 +1,4 @@
-import type { RedisOptions } from 'ioredis';
+import type { ConnectionOptions } from 'bullmq';
 import { keys } from './keys';
 
 const env = keys();
@@ -8,7 +8,7 @@ const env = keys();
  * `maxRetriesPerRequest: null` is REQUIRED by BullMQ — blocking commands must
  * never give up, otherwise the worker silently stops picking up jobs.
  */
-export const redisConnectionConfig: RedisOptions = {
+export const redisConnectionConfig = {
   host: env.REDIS_HOST,
   port: env.REDIS_PORT,
   db: env.REDIS_DB,
@@ -16,9 +16,9 @@ export const redisConnectionConfig: RedisOptions = {
   // Keep the v5 RESP2 wire contract for Dragonfly and self-hosted Redis.
   // ioredis 6 defaults to RESP3; switching protocol is a separate migration.
   protocol: 2,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
+  retryStrategy: (times: number) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: null,
-};
+} satisfies ConnectionOptions;
 
 /**
  * Producer (Queue) connections must FAIL FAST rather than buffer.
@@ -32,7 +32,7 @@ export const redisConnectionConfig: RedisOptions = {
  * Workers keep the offline queue: their blocking commands MUST survive a
  * reconnect or they stop picking up jobs.
  */
-export const producerConnectionConfig: RedisOptions = {
+export const producerConnectionConfig = {
   ...redisConnectionConfig,
   enableOfflineQueue: false,
-};
+} satisfies ConnectionOptions;
