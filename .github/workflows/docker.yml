@@ -114,6 +114,11 @@ jobs:
             exit 1
           fi
 
+          if [[ "$TAG" == sha-* && "$TAG" != "sha-$SOURCE_SHA" ]]; then
+            echo "::error::SHA image tag must match the source revision"
+            exit 1
+          fi
+
           if [[ "$DEPLOY" == "true" && "$PUBLISH" != "true" ]]; then
             echo "Coolify deployment requires publishing the image"
             exit 1
@@ -170,17 +175,9 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
           TAG: ${{ inputs.image_tag }}
-        run: |
-          candidates=("sha-$SOURCE_SHA")
-          if [[ "$TAG" == v* ]]; then
-            candidates+=("$TAG")
-          fi
-          for candidate in "${candidates[@]}"; do
-            if docker buildx imagetools inspect "$IMAGE:$candidate" >/dev/null 2>&1; then
-              echo "::error::Immutable image tag $IMAGE:$candidate already exists"
-              exit 1
-            fi
-          done
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/reject-existing-immutable-tags.mjs
 
       - name: Docker metadata
         id: meta

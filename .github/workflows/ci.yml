@@ -59,7 +59,7 @@ jobs:
           cache: pnpm
 
       - name: Test immutable image verification
-        run: node --test scripts/verify-published-image.test.mjs
+        run: node --test scripts/verify-published-image.test.mjs scripts/reject-existing-immutable-tags.test.mjs
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
