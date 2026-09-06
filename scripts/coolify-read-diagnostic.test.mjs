@@ -126,6 +126,28 @@ test('invalid trusted configuration makes no requests and cannot leak parser err
   }
 });
 
+test('network-path webhook bases are rejected before fetch and never expose credentials', async () => {
+  for (const path of ['//attacker.invalid/deploy', '///attacker.invalid/deploy', '/\\attacker.invalid/deploy']) {
+    const { result, calls } = await fixture([], { ...env, COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: `https://provider.invalid${path}?uuid=synthetic-app` });
+    assert.equal(calls.length, 0);
+    assert.equal(result.configuration, 'invalid');
+    const output = JSON.stringify(result);
+    assert.equal(output.includes('attacker.invalid'), false);
+    for (const secret of Object.values(env)) assert.equal(output.includes(secret), false);
+  }
+});
+
+test('a root-level deploy webhook keeps every GET on its configured origin', async () => {
+  const { result, calls } = await fixture(defaults(), {
+    ...env,
+    COOLIFY_NIBLEAF_DEPLOY_WEBHOOK: 'https://provider.invalid/deploy?uuid=synthetic-app',
+  });
+  assert.equal(result.success, true);
+  assert.equal(calls.length, 4);
+  for (const { url } of calls) assert.equal(url.origin, 'https://provider.invalid');
+  assert.equal(calls[0].url.pathname, '/applications/synthetic-app');
+});
+
 test('queue supports arrays and sparse numeric-keyed objects, but not ambiguous envelopes or bad rows', async () => {
   for (const queue of [[deployment()], { 4: deployment() }]) {
     const values = defaults();

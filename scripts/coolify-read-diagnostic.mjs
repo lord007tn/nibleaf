@@ -21,7 +21,14 @@ function configuration(env) {
   } catch {
     fail('invalid_configuration');
   }
-  if (webhook.protocol !== 'https:' || webhook.username || webhook.password || webhook.hash || !webhook.pathname.endsWith('/deploy'))
+  if (
+    webhook.protocol !== 'https:' ||
+    webhook.username ||
+    webhook.password ||
+    webhook.hash ||
+    webhook.pathname.startsWith('//') ||
+    !webhook.pathname.endsWith('/deploy')
+  )
     fail('invalid_configuration');
   const uuid = webhook.searchParams.get('uuid');
   if (webhook.searchParams.getAll('uuid').length !== 1 || !identifier(uuid)) fail('invalid_configuration');
@@ -154,7 +161,9 @@ export async function diagnose(env, fetchImpl = fetch) {
     const report = { kind };
     let response;
     try {
-      response = await fetchImpl(new URL(`${config.base.pathname}${path}`, config.base), {
+      const requestUrl = new URL(`${config.base.pathname.replace(/\/$/, '')}${path}`, config.base);
+      if (requestUrl.origin !== config.base.origin) fail('origin_rejected');
+      response = await fetchImpl(requestUrl, {
         method: 'GET',
         headers: config.headers,
         redirect: 'error',
