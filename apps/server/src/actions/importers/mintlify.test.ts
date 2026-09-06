@@ -255,6 +255,19 @@ describe('mintlify language import', () => {
     expect(arabic?.content).toContain('[English guide](/guides/intro?lang=en)');
   });
 
+  it.each([
+    ['ar', 'AR'],
+    ['AR', 'ar'],
+  ])('uses stored locale %s when navigation declares %s', async (storedCode, navigationCode) => {
+    mem.languages.set(storedCode, { id: 'lang-ar', code: storedCode });
+    for (const file of ['docs.json', 'intro.mdx', 'ar/intro.mdx']) {
+      const content = readFileSync(new URL(`./fixtures/multilingual-linked-pages/${file}`, import.meta.url), 'utf8');
+      mem.repoFiles.set(file, file === 'docs.json' ? content.replace('"language": "ar"', `"language": "${navigationCode}"`) : content);
+    }
+    expect((await runImport()).imported).toBe(2);
+    expect(mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-en')?.content).toContain(`?lang=${storedCode})`);
+    expect(mem.rows.find((row) => row.kind === 'PAGE' && row.languageId === 'lang-ar')?.content).toContain('?lang=en)');
+  });
   it('keeps recursive same-language and undeclared linked pages while excluding a different declared language', async () => {
     setNavigation({ languages: [{ language: 'en', default: true, pages: ['intro'] }] });
     mem.repoFiles.set('intro.mdx', '---\nlang: en\n---\n[More](./more)');

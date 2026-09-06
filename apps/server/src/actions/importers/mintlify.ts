@@ -95,8 +95,13 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         const orderedLanguages = languageResult.languages
           .map((language, position) => ({ language, position }))
           .sort((left, right) => Number(right.language.isDefault) - Number(left.language.isDefault));
+        const resolvedLanguages: Array<{ language: MintlifyLanguageNavigation; target: ImportTarget }> = [];
         for (const { language, position } of orderedLanguages) {
           const target = await ensureLanguageTarget(projectId, defaultTarget, language, position);
+          resolvedLanguages.push({ language: { ...language, code: target.languageCode }, target });
+        }
+        const resolvedNavigation = resolvedLanguages.map(({ language }) => language);
+        for (const { language, target } of resolvedLanguages) {
           await importNavigation(
             language.nodes,
             target,
@@ -108,7 +113,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
             assets,
             summary,
             state,
-            languageResult.languages,
+            resolvedNavigation,
           );
         }
       } else {
@@ -245,7 +250,7 @@ const ensureLanguageTarget = async (
   defaultTarget: ImportTarget,
   language: MintlifyLanguageNavigation,
   position: number,
-): Promise<ImportTarget> => {
+): Promise<ImportTarget & { languageCode: string }> => {
   const existing = await prisma.language.findFirst({
     where: { projectId, code: { equals: language.code, mode: 'insensitive' } },
   });
@@ -274,7 +279,7 @@ const ensureLanguageTarget = async (
       position,
     });
   }
-  return { projectId, branchId: defaultTarget.branchId, languageId: persisted.id };
+  return { projectId, branchId: defaultTarget.branchId, languageId: persisted.id, languageCode: persisted.code };
 };
 
 interface RepoRef {
