@@ -124,8 +124,10 @@ function deployments(value, limit, expectedServerId) {
 function summarize(kind, data, config, serverUuidVisible) {
   if (kind === 'application') {
     if (!record(data) || data.uuid !== config.uuid || typeof data.status !== 'string') fail('unrecognized_shape');
-    // Application destination/server relations vary by API version. No guessed mapping.
-    return { shape: 'application_object', applicationServerMatch: 'unknown' };
+    // Only the explicit nested relation identifies a server. Destination IDs do not.
+    const serverUuid = record(data.destination) && record(data.destination.server) ? data.destination.server.uuid : undefined;
+    const applicationServerMatch = config.expectedServer !== undefined && identifier(serverUuid) ? serverUuid === config.expectedServer : 'unknown';
+    return { shape: 'application_object', applicationServerMatch };
   }
   if (kind === 'servers') {
     const { result, shape } = rows(data);
@@ -138,7 +140,7 @@ function summarize(kind, data, config, serverUuidVisible) {
   }
   if (kind === 'queue') return { targetQueueCount: null, ...deployments(data, MAX_ROWS, serverUuidVisible ? config.expectedServerId : undefined) };
   if (!record(data) || !numericId(data.count) || !Object.hasOwn(data, 'deployments')) fail('unrecognized_shape');
-  const summary = deployments(data.deployments, 20);
+  const summary = deployments(data.deployments, 1);
   if (data.count < summary.count) fail('invalid_rows');
   return { ...summary, shape: 'history_object', returnedShape: summary.shape, totalCount: data.count };
 }
@@ -155,7 +157,7 @@ export async function diagnose(env, fetchImpl = fetch) {
     ['application', `/applications/${config.uuid}`],
     ['servers', '/servers'],
     ['queue', '/deployments'],
-    ['history', `/deployments/applications/${config.uuid}?skip=0&take=20`],
+    ['history', `/deployments/applications/${config.uuid}?skip=0&take=1`],
   ];
   for (const [kind, path] of endpoints) {
     const report = { kind };
@@ -181,10 +183,12 @@ export async function diagnose(env, fetchImpl = fetch) {
       await response?.body?.cancel().catch(() => undefined);
     }
     output.requests.push(report);
+    if (kind === 'application' && report.outcome === 'ok') output.applicationServerMatch = report.applicationServerMatch;
   }
   // A successful diagnostic is not authorization to deploy or a claim of idle servers.
   output.success =
     output.requests.every((item) => item.outcome === 'ok') &&
+    output.applicationServerMatch !== false &&
     output.requests.find((item) => item.kind === 'servers').expectedServerUuidPresent === true &&
     typeof output.requests.find((item) => item.kind === 'queue').targetQueueCount === 'number';
   return output;
