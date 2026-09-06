@@ -337,7 +337,10 @@ function SiteChrome() {
           header={
             // Header block (main row + optional tab row) sticks as one unit.
             <div className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md" data-theme-region="header-shell">
-              <header className="mx-auto flex h-16 max-w-[90rem] items-center gap-2 px-4 sm:gap-3 sm:px-6" data-theme-region="header">
+              <header
+                className="mx-auto flex min-h-16 max-w-[90rem] flex-wrap items-center gap-2 px-4 py-3 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0"
+                data-theme-region="header"
+              >
                 <MobileNav
                   nodes={site?.nav ?? []}
                   projectId={projectId}
@@ -409,7 +412,7 @@ function SiteChrome() {
                   ))}
                 </nav>
 
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex-nowrap">
                   <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
                   <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} lang={activeLanguage?.code} />
                   <button
