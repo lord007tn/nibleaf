@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   declineMarketingAnalytics,
   GTM_MARKETING_EVENT,
@@ -35,10 +35,10 @@ const GTM_MARKETING_EVENT_NAMES_FOR_TEST = new Set([
   'free_tool_cta_clicked',
   'free_tool_started',
   'page_view',
-  'sign_up',
 ]);
 
 describe('marketing analytics', () => {
+  beforeEach(() => persistMarketingAnalyticsConsent('accepted'));
   afterEach(() => {
     suspendMarketingAnalytics(GA4_TARGET);
     suspendMarketingAnalytics(GTM_TARGET);
@@ -55,9 +55,68 @@ describe('marketing analytics', () => {
     const unrelatedGtag = vi.fn();
     window.gtag = unrelatedGtag;
 
-    sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
 
     expect(unrelatedGtag).not.toHaveBeenCalled();
+  });
+
+  it('delivers a consented landing that arrives before metadata initialization, once', () => {
+    sendMarketingAnalyticsEvent('first_publish_landing_viewed', {
+      entry_point: 'organic_content',
+      intent: 'first_publish',
+      source: 'docker_compose_guide',
+    });
+    expect(window.dataLayer).toBeUndefined();
+    initializeMarketingAnalytics(GTM_TARGET);
+    initializeMarketingAnalytics(GTM_TARGET);
+    expect(gtmMarketingEvents().map((event) => event.event_name)).toEqual(['first_publish_landing_viewed']);
+  });
+
+  it('never replays denied activity or events withdrawn before target initialization', () => {
+    persistMarketingAnalyticsConsent('declined');
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
+    persistMarketingAnalyticsConsent('accepted');
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
+    persistMarketingAnalyticsConsent('declined');
+    persistMarketingAnalyticsConsent('accepted');
+    initializeMarketingAnalytics(GTM_TARGET);
+    expect(gtmMarketingEvents()).toEqual([]);
+  });
+
+  it('clears optional GTM dimensions between events and keeps private paths out', () => {
+    initializeMarketingAnalytics(GTM_TARGET);
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
+    sendMarketingPageView('/pricing', 'en');
+    expect(gtmMarketingEvents().at(-1)).toMatchObject({ event_name: 'page_view', method: null, destination: null, source: null });
+    window.history.replaceState({}, '', '/app/projects/private-project');
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
+    sendMarketingPageView('/app/projects/private-project', 'en');
+    expect(gtmMarketingEvents()).toHaveLength(2);
   });
 
   it('rejects unapproved events and extra properties at the final GA boundary', () => {
@@ -80,7 +139,10 @@ describe('marketing analytics', () => {
     expect(isGtmContainerId('GTM-ABC123')).toBe(true);
     expect(isGtmContainerId('GTM-XXXXXXX')).toBe(false);
     expect(isGtmContainerId('GTM-ABC123&l=private')).toBe(false);
-    expect(selectMarketingAnalyticsTarget({ ga4MeasurementId: 'G-ABC123', gtmContainerId: 'GTM-ABC123' })).toEqual(GTM_TARGET);
+    expect(selectMarketingAnalyticsTarget({ ga4MeasurementId: 'G-ABC123', gtmContainerId: 'GTM-ABC123' })).toEqual({
+      ...GTM_TARGET,
+      ga4MeasurementId: 'G-ABC123',
+    });
   });
 
   it('loads one nonced GA script only after initialization and disables automatic pageviews', () => {
@@ -121,6 +183,48 @@ describe('marketing analytics', () => {
     expect(gtagCommandValues()).not.toContainEqual(expect.arrayContaining(['config']));
   });
 
+  it('opts the GTM destination out before denied consent and resumes it without a second loader', () => {
+    const target = { ...GTM_TARGET, ga4MeasurementId: 'G-ABC123' };
+    initializeMarketingAnalytics(target);
+    const optedOutAtDenial: boolean[] = [];
+    window.gtag = (...args) => {
+      if (args[0] === 'consent' && args[1] === 'update' && (args[2] as { analytics_storage: string }).analytics_storage === 'denied') {
+        optedOutAtDenial.push(window['ga-disable-G-ABC123'] === true);
+      }
+    };
+    declineMarketingAnalytics(target);
+    expect(optedOutAtDenial).toEqual([true]);
+    persistMarketingAnalyticsConsent('accepted');
+    initializeMarketingAnalytics(target);
+    expect(window['ga-disable-G-ABC123']).toBe(false);
+    expect(document.querySelectorAll('#nibleaf-marketing-gtm')).toHaveLength(1);
+    expect(document.querySelector('#nibleaf-marketing-ga4')).toBeNull();
+  });
+
+  it('uses the Google-owned destination script when older GTM metadata omitted its ID', () => {
+    const script = document.createElement('script');
+    script.src = 'https://www.googletagmanager.com/gtag/js?id=G-ABC123';
+    document.head.appendChild(script);
+    suspendMarketingAnalytics(GTM_TARGET);
+    expect(window['ga-disable-G-ABC123']).toBe(true);
+  });
+
+  it('does not reenable a previous direct destination when switching to a configured GTM destination', () => {
+    initializeMarketingAnalytics(GA4_TARGET);
+    initializeMarketingAnalytics({ ...GTM_TARGET, ga4MeasurementId: 'G-NEW123' });
+    expect(window['ga-disable-G-ABC123']).toBe(true);
+    expect(window['ga-disable-G-NEW123']).toBe(false);
+    Reflect.deleteProperty(window, 'ga-disable-G-NEW123');
+  });
+
+  it('sets query-free global page context before Google initializes, for native engagement events', () => {
+    window.history.replaceState({}, '', '/sign-up?email=private@example.com#private');
+    vi.spyOn(document, 'referrer', 'get').mockReturnValue('https://example.com/private-personal-path?token=private#private');
+    initializeMarketingAnalytics(GTM_TARGET);
+    expect(gtagCommandValues()[0]).toEqual(['set', { page_location: 'http://localhost:3000/sign-up', page_referrer: 'https://example.com' }]);
+    expect(JSON.stringify(window.dataLayer)).not.toContain('private');
+  });
+
   it('sends a query-free pageview and allowlisted Arabic CTA dimensions', () => {
     window.history.replaceState({}, '', '/ar');
     initializeMarketingAnalytics(GA4_TARGET);
@@ -145,7 +249,6 @@ describe('marketing analytics', () => {
     initializeMarketingAnalytics(GTM_TARGET);
     sendMarketingPageView('/ar?email=private@example.com', 'ar');
     sendMarketingCtaEvent({ destination: 'signup', language: 'ar', placement: 'hero' });
-    sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
     sendMarketingAnalyticsEvent('first_publish_landing_viewed', {
       entry_point: 'organic_content',
       intent: 'first_publish',
@@ -184,11 +287,10 @@ describe('marketing analytics', () => {
     sendMarketingAnalyticsEvent('sign_up', { email: 'private@example.com', method: 'email_otp' });
 
     const events = gtmMarketingEvents();
-    expect(events).toHaveLength(8);
+    expect(events).toHaveLength(7);
     expect(events.map(({ event_name }) => event_name)).toEqual([
       'page_view',
       'cta_clicked',
-      'sign_up',
       'first_publish_landing_viewed',
       'first_publish_cta_clicked',
       'free_tool_started',
@@ -273,7 +375,12 @@ describe('marketing analytics', () => {
     const before = window.dataLayer?.length;
 
     sendMarketingPageView('/ar', 'ar');
-    sendMarketingAnalyticsEvent('sign_up', { method: 'email_otp' });
+    sendMarketingAnalyticsEvent('free_tool_cta_clicked', {
+      product: 'nibleaf',
+      tool_slug: 'rtl-documentation-readiness',
+      destination: 'sample_project_signup',
+      placement: 'result_bridge',
+    });
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window.dataLayer).toHaveLength(before ?? 0);

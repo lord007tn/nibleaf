@@ -220,8 +220,8 @@ export function ArabicLandingPage() {
             maskImage: 'linear-gradient(to bottom, black, transparent 80%)',
           }}
         />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-[1fr_0.82fr] lg:py-28">
-          <div>
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] lg:py-28">
+          <div className="min-w-0">
             <p className="inline-flex rounded-full border border-border bg-card px-3 py-1 font-medium text-primary text-xs">
               {t('marketing.arabicSeo.landing.eyebrow')}
             </p>
@@ -257,7 +257,7 @@ export function ArabicLandingPage() {
               </span>
             </div>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/5">
+          <div className="min-w-0 rounded-2xl border border-border bg-card p-6 shadow-2xl shadow-black/5">
             <div className="flex items-center justify-between border-border border-b pb-4 text-sm">
               <span className="font-medium">{t('marketing.arabicSeo.landing.demoTitle')}</span>
               <span className="rounded-md bg-primary/10 px-2 py-1 text-primary">{t('marketing.arabicSeo.landing.demoBadge')}</span>
@@ -278,7 +278,7 @@ export function ArabicLandingPage() {
                 </code>
                 {t('marketing.arabicSeo.landing.demoPeriod')}
               </p>
-              <div className="rounded-xl border border-border bg-background p-4" dir="ltr">
+              <div className="overflow-x-auto rounded-xl border border-border bg-background p-4" dir="ltr">
                 <code>
                   curl -H "Authorization: Bearer $API_KEY" \<br />
                   &nbsp;&nbsp;https://api.example.com/v1/projects

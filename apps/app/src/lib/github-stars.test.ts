@@ -24,6 +24,7 @@ describe('getGithubStars', () => {
 
     await expect(getGithubStars()).resolves.toBe(0);
     expect(getRepository).toHaveBeenCalledTimes(1);
+    expect(getRepository).toHaveBeenCalledWith({ owner: 'lord007tn', repo: 'nibleaf' });
 
     finishRequest?.({ data: { stargazers_count: 12 } });
     await vi.waitFor(async () => {

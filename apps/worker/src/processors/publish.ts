@@ -7,7 +7,7 @@ import {
   clickHouseWritesEnabled,
   deterministicAnalyticsEventId,
 } from '@nibleaf/clickhouse';
-import { Prisma, prisma } from '@nibleaf/database';
+import { type Deployment, Prisma, type Project, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
@@ -15,6 +15,7 @@ import { buildSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
+import { recordPublishReady } from '../lib/publish-activation';
 import { DurableUsageEnqueueError, enqueueAnalyticsEvent } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'publish' });
@@ -69,16 +70,6 @@ const logPlatformEvent = (type: string, data: { userId?: string | null; projectI
       },
     })
     .catch(() => undefined);
-
-/** Write the privacy-minimized article receipt only for a user-initiated job
- *  whose immutable snapshot has already reached READY. */
-export const recordAttributedFirstPublishReady = async (
-  attribution: PublishDeploymentJobData['firstPublishAttribution'],
-  auto: boolean | undefined,
-): Promise<void> => {
-  if (auto === true || !attribution) return;
-  await logPlatformEvent('publish_ready', { metadata: { ...attribution } });
-};
 
 type ProjectWithConfig = { config: unknown };
 type PublishPage = {
@@ -305,13 +296,60 @@ const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
  * Build an immutable snapshot of the project's docs and mark the deployment
  * READY. The live site and search index are served from this snapshot.
  */
+async function completePublish(
+  job: PublishDeploymentJobData,
+  ready: Pick<Deployment, 'createdById' | 'version' | 'completedAt' | 'pagesCount'>,
+  project: Pick<Project, 'id' | 'name' | 'organizationId' | 'accessMode' | 'config'>,
+  occurredAt: string,
+) {
+  await trackPublishLifecycle(
+    project,
+    job.deploymentId,
+    {
+      name: 'publish_completed',
+      operationId: job.deploymentId,
+      sourceType: job.auto ? 'api' : 'ui',
+      itemCount: ready.pagesCount,
+    },
+    occurredAt,
+  );
+  await createJob(
+    QueueNames.SEARCH,
+    { name: 'index-deployment', data: { projectId: job.projectId, deploymentId: job.deploymentId } },
+    { jobId: `search-${job.deploymentId}` },
+  ).catch((error) => log.warn({ projectId: job.projectId, deploymentId: job.deploymentId, error }, 'could not enqueue hybrid search indexing'));
+  await recordPublishReady(job, ready);
+  await notifyDeployment({
+    deploymentId: job.deploymentId,
+    projectId: job.projectId,
+    projectName: project.name,
+    version: ready.version,
+    outcome: 'ready',
+    siteUrl: siteUrlFor(job.projectId),
+    locale: job.locale,
+  });
+  return { pages: ready.pagesCount };
+}
+
 export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Promise<{ pages: number }> {
-  const { deploymentId, projectId, skipGrammarChecks, auto, firstPublishAttribution, locale } = job.data;
+  const { deploymentId, projectId, skipGrammarChecks, auto, locale } = job.data;
   const lifecycleOccurredAt = new Date(job.timestamp ?? Date.now()).toISOString();
   log.info({ deploymentId, projectId }, 'building deployment');
 
-  await prisma.deployment.update({ where: { id: deploymentId }, data: { status: 'BUILDING' } });
-
+  const deployment = await prisma.deployment.findFirst({ where: { id: deploymentId, projectId } });
+  if (!deployment) throw new Error('Deployment does not belong to the requested project');
+  // A retry after READY repairs event delivery without rebuilding a snapshot
+  // from a newer draft or emitting another activation.
+  if (deployment.status === 'READY') {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, name: true, organizationId: true, accessMode: true, config: true },
+    });
+    if (!project) throw new Error('Published project no longer exists');
+    return completePublish(job.data, deployment, project, lifecycleOccurredAt);
+  }
+  await prisma.deployment.update({ where: { id: deploymentId, projectId }, data: { status: 'BUILDING' } });
+  let snapshotReady = false;
   try {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
@@ -385,42 +423,18 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({
-      where: { id: deploymentId },
+      where: { id: deploymentId, projectId },
       data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, errorDetails: Prisma.DbNull, completedAt: new Date() },
     });
-    await trackPublishLifecycle(
-      project,
-      deploymentId,
-      {
-        name: 'publish_completed',
-        operationId: deploymentId,
-        sourceType: auto ? 'api' : 'ui',
-        itemCount: pageCount,
-      },
-      lifecycleOccurredAt,
-    );
+    snapshotReady = true;
     log.info({ deploymentId, pageCount }, 'deployment ready');
-    await createJob(QueueNames.SEARCH, { name: 'index-deployment', data: { projectId, deploymentId } }, { jobId: `search-${deploymentId}` }).catch(
-      (error) => log.warn({ projectId, deploymentId, error }, 'could not enqueue hybrid search indexing'),
-    );
-    await logPlatformEvent('publish_ready', {
-      userId: ready.createdById,
-      projectId,
-      metadata: { auto: auto === true, version: ready.version },
-    });
-    await recordAttributedFirstPublishReady(firstPublishAttribution, auto);
-    await notifyDeployment({
-      projectId,
-      projectName: project.name,
-      version: ready.version,
-      outcome: 'ready',
-      siteUrl: siteUrlFor(projectId),
-      locale,
-    });
-    return { pages: pages.length };
+    return await completePublish(job.data, ready, project, lifecycleOccurredAt);
   } catch (error) {
+    // A delivery failure after READY must not revoke the published snapshot.
+    // Let the job retry the durable receipt using the READY fast path above.
+    if (snapshotReady) throw error;
     const failed = await prisma.deployment.update({
-      where: { id: deploymentId },
+      where: { id: deploymentId, projectId },
       data: {
         status: 'FAILED',
         error: error instanceof Error ? error.message : String(error),
@@ -454,6 +468,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       metadata: { auto: auto === true, version: failed.version, checksFailed: error instanceof PublishChecksError },
     });
     await notifyDeployment({
+      deploymentId,
       projectId,
       projectName: proj?.name ?? 'Your site',
       version: failed.version,
