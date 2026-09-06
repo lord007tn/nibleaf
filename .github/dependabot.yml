@@ -7,6 +7,10 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    ignore:
+      # Coordinate Node typings majors with the runtime migration in #51.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # Batch routine bumps into a single PR; majors stay individual so
       # breaking changes get their own review.
