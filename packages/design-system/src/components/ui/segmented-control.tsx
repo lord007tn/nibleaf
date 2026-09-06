@@ -23,7 +23,7 @@ function SegmentedControlItem({ className, active, ...props }: ComponentProps<'b
       data-slot="segmented-control-item"
       aria-pressed={active}
       className={cn(
-        'inline-flex min-h-[calc(var(--segmented-height)-2*var(--control-group-inset))] min-w-[calc(var(--segmented-height)-2*var(--control-group-inset))] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-center font-medium text-[13px] whitespace-normal transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:shrink-0',
+        'inline-flex min-h-[calc(var(--segmented-height)-2*var(--control-group-inset))] min-w-[calc(var(--segmented-height)-2*var(--control-group-inset))] flex-auto cursor-pointer items-center justify-center gap-1.5 rounded-md px-2 py-1 text-center font-medium text-[13px] whitespace-normal transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60 [&_svg]:shrink-0',
         active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
         className,
       )}
