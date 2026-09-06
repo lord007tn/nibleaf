@@ -261,12 +261,12 @@ function SiteChrome() {
     <>
       {logo ? (
         <>
-          <img src={logo.src} alt={siteName ?? 'Logo'} className={cn('object-contain', logo.markOnly ? 'size-7' : 'h-6 w-auto')} />
+          <img src={logo.src} alt={siteName ?? 'Logo'} className={cn('object-contain', logo.markOnly ? 'size-7 shrink-0' : 'h-6 w-auto')} />
           {logo.markOnly ? null : <span className="truncate">{siteName ?? 'Documentation'}</span>}
         </>
       ) : (
         <>
-          <span className="grid size-7 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
             {siteName?.[0] ?? 'D'}
           </span>
           <span className="truncate">{siteName ?? 'Documentation'}</span>
