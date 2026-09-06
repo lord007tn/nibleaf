@@ -116,7 +116,7 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <SegmentedControl className={cn('w-full', disabled && 'opacity-60', className)}>
+    <SegmentedControl className={cn('w-full', className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
