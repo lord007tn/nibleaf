@@ -14,13 +14,13 @@
     "@nibleaf/email": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-email": "^6.9.2"
+    "react-email": "^6.9.3"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@react-email/ui": "6.9.2",
+    "@react-email/ui": "6.9.3",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.5",
     "typescript": "^7.0.2"
   }
 }
