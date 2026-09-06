@@ -168,7 +168,7 @@ describe('ThemeSection controls', () => {
   });
 
   it('switches the preview to a preset and to Arabic without native controls', async () => {
-    const gallery = [...container.querySelectorAll<HTMLButtonElement>('button[aria-pressed]')];
+    const gallery = [...container.querySelectorAll<HTMLButtonElement>('button[aria-pressed]:has(strong)')];
     expect(gallery).toHaveLength(3);
     const signal = gallery[2];
     if (!signal) throw new Error('missing preset button');

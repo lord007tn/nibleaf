@@ -338,18 +338,18 @@ export function GeneralSection({ project }: { project: Project }) {
                 trails the name in an RTL dashboard too (the logical border-s
                 then resolves against the group's own direction). */}
             <div
-              className="flex h-9 overflow-hidden rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
+              className="flex h-(--control-size-default) rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50"
               dir="ltr"
             >
               <Input
-                className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-2.5 font-mono text-[13px] focus-visible:ring-0"
+                className="h-full min-h-0 min-w-0 flex-1 rounded-s-md rounded-e-none border-0 bg-transparent px-2.5 font-mono text-[13px] focus-visible:ring-0"
                 id="set-slug"
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(slugify(e.target.value))}
                 value={field.state.value}
               />
               {siteBaseDomain ? (
-                <span className="flex shrink-0 items-center border-border border-s bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
+                <span className="flex shrink-0 items-center rounded-e-md border-border border-s bg-muted/40 px-3 font-mono text-[13px] text-muted-foreground">
                   .{siteBaseDomain}
                 </span>
               ) : null}

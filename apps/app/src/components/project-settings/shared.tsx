@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
@@ -115,26 +116,23 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className={cn('inline-flex w-full gap-0.5 rounded-lg bg-muted p-0.5', disabled && 'opacity-60', className)}>
+    <SegmentedControl className={cn('w-full', className)}>
       {options.map((option) => {
         const active = option.value === value;
         return (
-          <button
-            className={cn(
-              'h-8 flex-1 rounded-md px-3 font-medium text-[13px] transition-colors',
-              active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
-              disabled ? 'cursor-not-allowed' : cn('cursor-pointer', !active && 'hover:text-foreground'),
-            )}
+          <SegmentedControlItem
+            active={active}
+            className="px-3"
             disabled={disabled}
             key={option.value}
             onClick={() => onChange(option.value)}
             type="button"
           >
             {option.label}
-          </button>
+          </SegmentedControlItem>
         );
       })}
-    </div>
+    </SegmentedControl>
   );
 }
 
@@ -324,7 +322,7 @@ export function SaveBar({ isSubmitting, disabled = false }: { isSubmitting: bool
 }
 
 /** Shared input styling tokens. These layer on top of the base `Input`/`Textarea`
- *  spec (height 36px / h-9, rounded-md, focus ring) — callers inherit that, so the
+ *  spec (shared standard density, rounded-md, focus ring) — callers inherit that, so the
  *  tokens only carry the font and, for textareas, the taller min-height. */
 export const FIELD_INPUT = 'text-sm';
 export const FIELD_MONO = 'font-mono text-sm';
@@ -333,5 +331,5 @@ export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
 /** Dense list-row inputs (variable/redirect/navbar rows): shorter and tighter.
  *  They always sit inside a bordered list container, so they carry a solid
  *  background and read as wells instead of border-on-border frames. */
-export const FIELD_COMPACT = 'h-8 rounded-md bg-background text-[13px]';
-export const FIELD_COMPACT_MONO = 'h-8 rounded-md bg-background font-mono text-[13px]';
+export const FIELD_COMPACT = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background text-[13px]';
+export const FIELD_COMPACT_MONO = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background font-mono text-[13px]';

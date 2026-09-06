@@ -101,7 +101,7 @@ function ConfigSelect({
   return (
     <ConfigurationField label={label}>
       <Select items={items} onValueChange={(next) => onChange(next ?? value)} value={value}>
-        <SelectTrigger aria-label={label} className="h-9 w-full">
+        <SelectTrigger aria-label={label} className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -197,7 +197,7 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
             <ConfigurationField label={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.label' : 'settings.addons.issueUrl.label')}>
               <Input
                 aria-label={t(addon.id === 'edit-suggestions' ? 'settings.addons.editUrl.label' : 'settings.addons.issueUrl.label')}
-                className="h-9 font-mono text-sm"
+                className="font-mono text-sm"
                 onChange={(event) => setDraftConfig({ ...config, urlTemplate: event.target.value })}
                 placeholder={
                   addon.id === 'edit-suggestions'
@@ -239,7 +239,7 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
           ) : null}
 
           <div className="flex justify-end">
-            <Button className="h-9" disabled={pending} onClick={save} type="button">
+            <Button disabled={pending} onClick={save} type="button">
               {pending ? t('common.saving') : t('common.save')}
             </Button>
           </div>
