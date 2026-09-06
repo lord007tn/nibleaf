@@ -49,6 +49,7 @@ export const rejectExistingImmutableTags = async ({ image, sourceSha, tag, usern
   }
   if (!/^[0-9a-f]{40}$/u.test(sourceSha ?? '')) throw new Error('Source must be a full Git revision');
   if (!/^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$/u.test(tag ?? '')) throw new Error('Invalid image tag');
+  if (tag.startsWith('sha-') && tag !== `sha-${sourceSha}`) throw new Error('SHA image tag must match the source revision');
   if (!username || !token || username.includes(':')) throw new Error('GHCR credentials are required');
   const repository = image.slice('ghcr.io/'.length);
   const scope = encodeURIComponent(`repository:${repository}:pull`);

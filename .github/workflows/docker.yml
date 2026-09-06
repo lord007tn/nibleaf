@@ -114,6 +114,11 @@ jobs:
             exit 1
           fi
 
+          if [[ "$TAG" == sha-* && "$TAG" != "sha-$SOURCE_SHA" ]]; then
+            echo "::error::SHA image tag must match the source revision"
+            exit 1
+          fi
+
           if [[ "$DEPLOY" == "true" && "$PUBLISH" != "true" ]]; then
             echo "Coolify deployment requires publishing the image"
             exit 1

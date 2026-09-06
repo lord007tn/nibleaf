@@ -131,3 +131,15 @@ test('manual workflow invokes the guard before publishing with header-only crede
   assert.ok(guard > 0 && guard < workflow.indexOf('- name: Build and publish'));
   assert.match(workflow, /GHCR_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/u);
 });
+
+test('a supplied SHA alias cannot overwrite another revision, even when the new source is absent', async () => {
+  const mock = harness([]);
+  await assert.rejects(
+    rejectExistingImmutableTags({ ...input, tag: `sha-${'b'.repeat(40)}` }, mock.dependencies),
+    /SHA image tag must match the source revision/u,
+  );
+  assert.equal(mock.calls.length, 0);
+  const matching = harness([auth(), access(), absent()]);
+  await rejectExistingImmutableTags({ ...input, tag: `sha-${input.sourceSha}` }, matching.dependencies);
+  assert.equal(matching.calls.length, 3);
+});
