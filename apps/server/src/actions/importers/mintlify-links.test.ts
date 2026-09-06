@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
-import type { NavNode } from './mintlify-mapping';
+import { buildMintlifyLanguageRouteMap, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import { type NavNode, parseMintlifyLanguages } from './mintlify-mapping';
 
 const nodes: NavNode[] = [
   {
@@ -32,6 +32,28 @@ describe('buildMintlifyRouteMap', () => {
 });
 
 describe('rewriteMintlifyInternalLinks', () => {
+  it('maps a translated target in the matching version while retaining query and fragment', () => {
+    const { languages } = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          { language: 'en', pages: ['intro'] },
+          {
+            language: 'ar',
+            versions: [
+              { version: 'v1', groups: [{ group: 'Old', pages: ['ar/intro'] }] },
+              { version: 'v2', groups: [{ group: 'New', pages: ['ar/intro'] }] },
+            ],
+          },
+        ],
+      },
+    });
+    const routes = buildMintlifyLanguageRouteMap(languages, 'en', 'v2');
+    expect(rewriteMintlifyInternalLinks('[Arabic](./ar/intro?from=guide#install)', 'intro', routes)).toBe(
+      '[Arabic](/new/intro?from=guide&lang=ar#install)',
+    );
+    expect(buildMintlifyLanguageRouteMap(languages, 'en', 'missing').size).toBe(0);
+  });
+
   it('rewrites root, relative Markdown, and MDX href links while preserving suffixes and external URLs', () => {
     const routes = buildMintlifyRouteMap(nodes);
     const content = [

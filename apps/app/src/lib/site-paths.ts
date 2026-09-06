@@ -53,7 +53,7 @@ export function siteHref(projectId: string, path = '', options?: { lang?: string
   const { pathname, query, fragment } = splitPath(path);
   const fullPath = [options?.version, cleanPath(pathname)].filter(Boolean).join('/').split('/').filter(Boolean).map(encodeSegment).join('/');
   const prefix = siteBasePath(projectId, isCustomDomainSite(projectId));
-  const langParam = options?.lang ? `lang=${encodeURIComponent(options.lang)}` : '';
+  const langParam = options?.lang && !new URLSearchParams(query).has('lang') ? `lang=${encodeURIComponent(options.lang)}` : '';
   const search = langParam ? `${query ? `${query}&` : '?'}${langParam}` : query;
   const href = `${prefix}${fullPath ? `/${fullPath}` : ''}` || '/';
   return `${href}${search}${fragment}`;
