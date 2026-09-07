@@ -179,6 +179,19 @@ describe('Mintlify replacement safety', () => {
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('persists literal MDX examples unchanged across import and re-import', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const example = ['# Intro', '', '```mdx', '<Steps>', '<Step title="Literal">', 'Example', '</Step>', '</Steps>', '```'].join('\n');
+    mem.repoFiles.set('intro.mdx', example);
+
+    await runImport();
+    expect(mem.rows.find((row) => row.kind === 'PAGE')?.content).toBe(example);
+    await runImport();
+    const pages = mem.rows.filter((row) => row.kind === 'PAGE');
+    expect(pages).toHaveLength(1);
+    expect(pages[0]?.content).toBe(example);
+  });
+
   it('imports modern object page entries with their label, icon, and tag metadata', async () => {
     setNavigation([{ group: 'Docs', pages: [{ page: 'guides/intro', label: 'Start here', icon: 'rocket', tag: 'New' }] }]);
     mem.repoFiles.set('guides/intro.mdx', '# Ignored heading');
