@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@nibleaf/i18n": "workspace:*",
-    "@openrouter/sdk": "1.2.100",
+    "@openrouter/sdk": "1.2.103",
     "@orama/orama": "^3.1.18",
     "@t3-oss/env-core": "^0.13.11",
     "zod": "^4.5.4"
@@ -32,7 +32,7 @@
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.20.1",
-    "tsdown": "^0.22.14",
+    "tsdown": "^0.23.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }

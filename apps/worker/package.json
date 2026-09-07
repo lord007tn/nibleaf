@@ -27,7 +27,7 @@
     "@nibleaf/storage": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
-    "bullmq": "^6.2.0",
+    "bullmq": "^6.3.4",
     "fflate": "^0.8.2",
     "got": "16.0.0",
     "hono": "^4.13.5",
@@ -43,7 +43,7 @@
     "@types/node": "^22.20.1",
     "@types/nodemailer": "^8.0.1",
     "dotenv-cli": "^11.0.0",
-    "tsdown": "^0.22.14",
+    "tsdown": "^0.23.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   }
