@@ -32,6 +32,16 @@ describe('buildMintlifyRouteMap', () => {
 });
 
 describe('rewriteMintlifyInternalLinks', () => {
+  it('does not discover or rewrite page links inside code examples', () => {
+    const literal = ['~~~mdx', '[Hidden](./hidden)', '<Card href="./quickstart" />', '~~~', '`[Inline](./hidden)`'].join('\n');
+    const input = `${literal}\n[Start](./quickstart)`;
+    const routes = new Map([
+      ['quickstart', '/docs/start'],
+      ['hidden', '/docs/hidden'],
+    ]);
+    expect(mintlifyInternalLinkTargets(input, 'intro')).toEqual(['quickstart']);
+    expect(rewriteMintlifyInternalLinks(input, 'intro', routes)).toBe(`${literal}\n[Start](/docs/start)`);
+  });
   it('maps a translated target in the matching version while retaining query and fragment', () => {
     const { languages } = parseMintlifyLanguages({
       navigation: {

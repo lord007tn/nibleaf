@@ -67,6 +67,7 @@ vi.mock('../languages', () => ({
   }),
 }));
 vi.mock('../projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ id: 'project', config: null })) }));
+vi.mock('../assets', () => ({ findImportedAsset: vi.fn(), storeAsset: vi.fn() }));
 vi.mock('./github', () => ({
   getGitHubDefaultBranch: async () => 'main',
   listGitHubFiles: async () => [...mem.repoFiles.keys()].map((path) => ({ path, type: 'blob' as const })),
@@ -127,6 +128,7 @@ vi.mock('./persistence', () => ({
 }));
 
 import { prisma } from '@nibleaf/database';
+import { findImportedAsset, storeAsset } from '../assets';
 import { promoteImportReplacementBranch } from '../branches';
 import { mintlifyImporter } from './mintlify';
 
@@ -179,6 +181,36 @@ describe('Mintlify replacement safety', () => {
 });
 
 describe('mintlify importNodes slug collisions', () => {
+  it('preserves code images and links through the full import while migrating only prose images', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro'] }]);
+    const source = 'https://cdn.example.com/shared.png';
+    const hosted = 'https://storage.example.com/imported.png';
+    vi.mocked(findImportedAsset).mockResolvedValue({ url: hosted } as never);
+    const literal = [
+      '````mdx',
+      '<Steps>',
+      `<img src="${source}" />`,
+      '```',
+      '![Missing repository example](/images/missing.png)',
+      '[Hidden example](/hidden)',
+      '</Steps>',
+      '````',
+      `\`<img src="${source}" />\``,
+      `[Source](${source})`,
+    ].join('\n');
+    mem.repoFiles.set('intro.mdx', `# Intro\n\n${literal}\n\n<img src="${source}" alt="Real" />`);
+    mem.repoFiles.set('hidden.mdx', '# Must not be discovered from a code example');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const summary = await runImport();
+      const pages = mem.rows.filter((row) => row.kind === 'PAGE');
+      expect(pages).toHaveLength(1);
+      expect(pages[0]?.content).toBe(`# Intro\n\n${literal}\n\n![Real](${hosted})`);
+      expect(summary.warnings).toEqual(['Replaced the existing draft navigation only after the complete Mintlify import succeeded.']);
+    }
+    expect(findImportedAsset).toHaveBeenCalledTimes(2);
+    expect(storeAsset).not.toHaveBeenCalled();
+  });
+
   it('persists literal MDX examples unchanged across import and re-import', async () => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const example = ['# Intro', '', '```mdx', '<Steps>', '<Step title="Literal">', 'Example', '</Step>', '</Steps>', '```'].join('\n');

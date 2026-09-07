@@ -1,3 +1,5 @@
+import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
   return match?.[1] ?? null;
@@ -32,9 +34,10 @@ const componentHeading = (name: string, tag: string): string => {
 export const normalizeMintlifyMdx = (content: string): string => {
   const componentIndents: Array<{ name: string; childIndent: number }> = [];
   const normalized: string[] = [];
-  let fence: { marker: string; length: number } | undefined;
+  let fence: MarkdownFence | undefined;
+  const protectedCode = protectMarkdownCode(content, { fences: false, maxFenceIndent: Number.POSITIVE_INFINITY });
 
-  for (const rawLine of content.split(/\r?\n/)) {
+  for (const rawLine of protectedCode.content.split(/\r?\n/)) {
     const trimmed = rawLine.trim();
     const closingName = trimmed.match(/^<\/([A-Z][A-Za-z0-9.]*)>\s*$/)?.[1];
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
@@ -45,14 +48,12 @@ export const normalizeMintlifyMdx = (content: string): string => {
     // component's indentation; example tags must never alter that component stack.
     if (fence) {
       normalized.push(line);
-      const closing = /^ {0,3}(`+|~+)\s*$/.exec(line)?.[1];
-      if (closing && closing[0] === fence.marker && closing.length >= fence.length) fence = undefined;
+      if (closesMarkdownFence(line, fence)) fence = undefined;
       continue;
     }
-    const opening = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-    const delimiter = opening?.[1];
-    if (delimiter && !(delimiter[0] === '`' && opening?.[2]?.includes('`'))) {
-      fence = { marker: delimiter[0] as string, length: delimiter.length };
+    const opening = openingMarkdownFence(line);
+    if (opening) {
+      fence = opening;
       normalized.push(line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1'));
       continue;
     }
@@ -92,5 +93,5 @@ export const normalizeMintlifyMdx = (content: string): string => {
     }
   }
 
-  return normalized.join('\n');
+  return protectedCode.restore(normalized.join('\n'));
 };

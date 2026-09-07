@@ -2,6 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 
 describe('rewriteMintlifyAssetReferences', () => {
+  it('ignores indented MDX code examples and inline images while resolving real images', () => {
+    const literal = [
+      '<Steps>',
+      '  <Step title="Example">',
+      '    ````mdx',
+      '    ![Literal](/missing.png)',
+      '    ```',
+      '    <img src="/images/real.png" />',
+      '    ````',
+      '  </Step>',
+      '</Steps>',
+      '`![Inline](/missing-inline.png)`',
+    ].join('\n');
+    const result = rewriteMintlifyAssetReferences(
+      `${literal}\n![Real](/images/real.png)`,
+      'intro.mdx',
+      new Set(['images/real.png']),
+      (path) => `https://raw.example/${path}`,
+    );
+    expect(result.content).toBe(`${literal}\n![Real](https://raw.example/images/real.png)`);
+    expect(result.resolved).toEqual(['images/real.png']);
+    expect(result.missing).toEqual([]);
+  });
   it('resolves root/relative Markdown and MDX images while preserving external URLs', () => {
     const input = [
       '![Root](/images/root.png)',
