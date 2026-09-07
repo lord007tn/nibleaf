@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { closesMarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
 
 describe('import Markdown code boundaries', () => {
+  it.each(['$&', '$$', "$'", '$`'])('restores replacement metacharacters literally in inline and fenced code: %s', (token) => {
+    const input = `before \`literal ${token}\`\n~~~\nliteral ${token}\n~~~\nafter`;
+    const protectedCode = protectMarkdownCode(input);
+    expect(protectedCode.restore(protectedCode.content)).toBe(input);
+  });
+
   it.each([
     '````mdx\r\n<img src="literal" />\r\n```\r\n~~~~\r\n`````\r\n',
     '~~~mdx\n![Example](literal)\n~~\n~~~\n',

@@ -189,6 +189,7 @@ describe('mintlify importNodes slug collisions', () => {
     const literal = [
       '````mdx',
       '<Steps>',
+      "Literal replacement characters: $& $$ $' $`",
       `<img src="${source}" />`,
       '```',
       '![Missing repository example](/images/missing.png)',
@@ -196,6 +197,7 @@ describe('mintlify importNodes slug collisions', () => {
       '</Steps>',
       '````',
       `\`<img src="${source}" />\``,
+      "``Literal replacement characters: $& $$ $' $` ``",
       `[Source](${source})`,
     ].join('\n');
     mem.repoFiles.set('intro.mdx', `# Intro\n\n${literal}\n\n<img src="${source}" alt="Real" />`);

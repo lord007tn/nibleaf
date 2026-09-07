@@ -79,6 +79,6 @@ export const protectMarkdownCode = (source: string, { fences = true, maxFenceInd
   content += code ? (fences ? hide(code) : code) : protectInline(prose);
   return {
     content,
-    restore: (value: string) => literals.reduce((text, literal, index) => text.replaceAll(`${prefix}${index}\uE001`, literal), value),
+    restore: (value: string) => literals.reduce((text, literal, index) => text.replaceAll(`${prefix}${index}\uE001`, () => literal), value),
   };
 };
