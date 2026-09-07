@@ -32,6 +32,7 @@ const componentHeading = (name: string, tag: string): string => {
 export const normalizeMintlifyMdx = (content: string): string => {
   const componentIndents: Array<{ name: string; childIndent: number }> = [];
   const normalized: string[] = [];
+  let fence: { marker: string; length: number } | undefined;
 
   for (const rawLine of content.split(/\r?\n/)) {
     const trimmed = rawLine.trim();
@@ -39,6 +40,22 @@ export const normalizeMintlifyMdx = (content: string): string => {
     const currentIndent = componentIndents.at(-1)?.childIndent ?? 0;
     const removable = Math.min(leadingSpaces(rawLine), currentIndent);
     let line = rawLine.slice(removable);
+
+    // Code examples are literal source. Only remove their surrounding real
+    // component's indentation; example tags must never alter that component stack.
+    if (fence) {
+      normalized.push(line);
+      const closing = /^ {0,3}(`+|~+)\s*$/.exec(line)?.[1];
+      if (closing && closing[0] === fence.marker && closing.length >= fence.length) fence = undefined;
+      continue;
+    }
+    const opening = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    const delimiter = opening?.[1];
+    if (delimiter && !(delimiter[0] === '`' && opening?.[2]?.includes('`'))) {
+      fence = { marker: delimiter[0] as string, length: delimiter.length };
+      normalized.push(line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1'));
+      continue;
+    }
 
     if (closingName && unwrappedComponents.has(closingName)) {
       const matchingIndex = componentIndents.findLastIndex((entry) => entry.name === closingName);
@@ -61,7 +78,6 @@ export const normalizeMintlifyMdx = (content: string): string => {
       const alt = attribute(imageTag, 'alt') ?? '';
       return `![${alt.replaceAll(']', '\\]')}](${src})`;
     });
-    line = line.replace(/^(\s*```[A-Za-z0-9_+-]+)\s+.+$/, '$1');
     normalized.push(line);
 
     if (closingName) {
