@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { canAdminister } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Crown, Link2, Mail, Trash2, Users } from 'lucide-react';
 import { useState } from 'react';
@@ -75,7 +76,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const invitations = data?.invitations ?? [];
   // The transfer action is only offered to the current owner (server-enforced too).
   const currentUserId = session?.user?.id;
-  const isCurrentOwner = members.some((member) => member.user.id === currentUserId && member.role === 'owner');
+  const currentMember = members.find((member) => member.user.id === currentUserId);
+  const isCurrentOwner = currentMember?.role === 'owner';
+  const canManageMembers = canAdminister(currentMember?.role ?? '');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
   // No `owner` option: invitations and role changes can never grant ownership.
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
@@ -87,6 +90,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const form = useForm({
     defaultValues: { email: '', role: 'member' as AssignableRole },
     onSubmit: async ({ value }) => {
+      if (!canManageMembers) return;
       const invited = value.email.trim();
       await new Promise<void>((resolve) => {
         invite.mutate(
@@ -112,60 +116,62 @@ export function MembersSection({ projectId }: { projectId: string }) {
     <div>
       <SectionHeader icon={<Users className="size-4" />} title={t('settings.members.title')} description={t('settings.members.description')} />
 
-      <form
-        className="mb-5 flex flex-col items-stretch gap-2.5 rounded-xl bg-muted/30 p-3.5 sm:flex-row sm:items-end"
-        onSubmit={(event) => {
-          event.preventDefault();
-          form.handleSubmit();
-        }}
-      >
-        <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
-          {(field) => (
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-              <Label className="font-medium text-[13px]" htmlFor="project-member-email">
-                {t('settings.members.inviteByEmail')}
-              </Label>
-              <Input
-                className="bg-background"
-                id="project-member-email"
-                onBlur={field.handleBlur}
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="teammate@company.com"
-                type="email"
-                value={field.state.value}
-              />
-              <FieldError errors={field.state.meta.errors} />
-            </div>
-          )}
-        </form.Field>
-        <div className="flex w-full items-end gap-2.5 sm:w-auto">
-          <form.Field name="role">
+      {canManageMembers && (
+        <form
+          className="mb-5 flex flex-col items-stretch gap-2.5 rounded-xl bg-muted/30 p-3.5 sm:flex-row sm:items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            form.handleSubmit();
+          }}
+        >
+          <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
             {(field) => (
-              <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
-                <SelectTrigger aria-label={t('settings.members.roleLabel')} className="min-w-0 flex-1 bg-background sm:w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                <Label className="font-medium text-[13px]" htmlFor="project-member-email">
+                  {t('settings.members.inviteByEmail')}
+                </Label>
+                <Input
+                  className="bg-background"
+                  id="project-member-email"
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                  placeholder="teammate@company.com"
+                  type="email"
+                  value={field.state.value}
+                />
+                <FieldError errors={field.state.meta.errors} />
+              </div>
             )}
           </form.Field>
-          <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
-            {([isSubmitting, emailValue]) => (
-              <Button className="flex-1 sm:flex-none" disabled={isSubmitting || !emailValue.trim()} type="submit">
-                <Mail className="size-4" /> {t('settings.members.invite')}
-              </Button>
-            )}
-          </form.Subscribe>
-        </div>
-      </form>
+          <div className="flex w-full items-end gap-2.5 sm:w-auto">
+            <form.Field name="role">
+              {(field) => (
+                <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
+                  <SelectTrigger aria-label={t('settings.members.roleLabel')} className="min-w-0 flex-1 bg-background sm:w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </form.Field>
+            <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
+              {([isSubmitting, emailValue]) => (
+                <Button className="flex-1 sm:flex-none" disabled={isSubmitting || !emailValue.trim()} type="submit">
+                  <Mail className="size-4" /> {t('settings.members.invite')}
+                </Button>
+              )}
+            </form.Subscribe>
+          </div>
+        </form>
+      )}
 
-      {lastInvite ? (
+      {canManageMembers && lastInvite ? (
         <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="font-medium text-[13px]">{t('settings.members.inviteCreated', { email: lastInvite.email })}</span>
@@ -220,6 +226,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <Crown className="size-3.5" />
                     {t('settings.members.role.owner')}
                   </span>
+                ) : !canManageMembers ? (
+                  <span className="text-muted-foreground text-sm">{t(ROLE_LABEL_KEYS[member.role] ?? 'settings.members.role.member')}</span>
                 ) : (
                   <>
                     {isCurrentOwner && member.role === 'admin' ? (
@@ -312,23 +320,25 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       })}
                     </div>
                   </div>
-                  <div className="ms-auto flex items-center gap-1">
-                    <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
-                    <Button
-                      onClick={() =>
-                        cancelInvite.mutate(inv.id, {
-                          onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
-                          onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
-                        })
-                      }
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label={t('settings.members.revokeInvite')}
-                      title={t('settings.members.revokeInvite')}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
+                  {canManageMembers && (
+                    <div className="ms-auto flex items-center gap-1">
+                      <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
+                      <Button
+                        onClick={() =>
+                          cancelInvite.mutate(inv.id, {
+                            onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
+                            onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
+                          })
+                        }
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t('settings.members.revokeInvite')}
+                        title={t('settings.members.revokeInvite')}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </>
