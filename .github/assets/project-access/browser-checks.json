@@ -1,0 +1,72 @@
+[
+  {
+    "name": "access-ar-320",
+    "dir": "rtl",
+    "forms": 0,
+    "heading": "الصفحة غير موجودة",
+    "lang": "ar",
+    "roles": 0,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "name": "access-en-1440",
+    "dir": "ltr",
+    "forms": 0,
+    "heading": "Page not found",
+    "lang": "en",
+    "roles": 0,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "name": "members-before-ar-320",
+    "dir": "rtl",
+    "forms": 1,
+    "heading": "الأعضاء",
+    "lang": "ar",
+    "roles": 3,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "name": "members-after-ar-320",
+    "dir": "rtl",
+    "forms": 0,
+    "heading": "الأعضاء",
+    "lang": "ar",
+    "roles": 0,
+    "scrollWidth": 320,
+    "width": 320
+  },
+  {
+    "name": "members-before-en-1440",
+    "dir": "ltr",
+    "forms": 1,
+    "heading": "Members",
+    "lang": "en",
+    "roles": 3,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "name": "members-after-en-1440",
+    "dir": "ltr",
+    "forms": 0,
+    "heading": "Members",
+    "lang": "en",
+    "roles": 0,
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "name": "admin-en-1440",
+    "dir": "ltr",
+    "forms": 1,
+    "heading": "Members",
+    "lang": "en",
+    "roles": 3,
+    "scrollWidth": 1440,
+    "width": 1440
+  }
+]

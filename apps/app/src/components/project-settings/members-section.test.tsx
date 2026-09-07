@@ -12,6 +12,7 @@ const translations: Record<string, string> = {
 };
 
 const mutation = { isPending: false, mutate: vi.fn() };
+let currentUserId = 'u-owner';
 const members = [
   { id: 'm-owner', role: 'owner', user: { id: 'u-owner', name: 'Owner', email: 'owner@example.com' } },
   { id: 'm-admin', role: 'admin', user: { id: 'u-admin', name: 'Admin', email: 'admin@example.com' } },
@@ -20,9 +21,12 @@ const members = [
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => translations[key] ?? key }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(async () => false) }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'u-owner' } } }) }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: currentUserId } } }) }));
 vi.mock('@/hooks/api', () => ({
-  useProjectMembers: () => ({ data: { members, invitations: [] }, isPending: false }),
+  useProjectMembers: () => ({
+    data: { members, invitations: [{ id: 'invite-a', email: 'invitee@example.com', role: 'member', expiresAt: '2030-01-01T00:00:00Z' }] },
+    isPending: false,
+  }),
   useInviteProjectMember: () => mutation,
   useRemoveProjectMember: () => mutation,
   useUpdateProjectMemberRole: () => mutation,
@@ -34,6 +38,7 @@ describe('MembersSection role selects', () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
+    currentUserId = 'u-owner';
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
     container.dir = 'rtl';
@@ -57,6 +62,41 @@ describe('MembersSection role selects', () => {
       expect(label).not.toMatch(/^(admin|member)$/);
     }
 
+    act(() => root.unmount());
+  });
+
+  it('shows member roles without offering administration to an editor', async () => {
+    currentUserId = 'u-member';
+    const root = createRoot(container);
+    await act(async () => root.render(<MembersSection projectId="project-a" />));
+    expect(container.querySelector('form')).toBeNull();
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.remove"]')).toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.revokeInvite"]')).toBeNull();
+    expect(container.textContent).toContain('مدير');
+    expect(container.textContent).toContain('عضو');
+    act(() => root.unmount());
+  });
+
+  it('retains member administration for an admin without offering ownership transfer', async () => {
+    currentUserId = 'u-admin';
+    const root = createRoot(container);
+    await act(async () => root.render(<MembersSection projectId="project-a" />));
+    expect(container.querySelector('form')).not.toBeNull();
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(3);
+    expect(container.querySelector('[aria-label="settings.members.remove"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.transferOwnership"]')).toBeNull();
+    act(() => root.unmount());
+  });
+
+  it('fails closed while the current membership is unavailable', async () => {
+    currentUserId = 'unknown';
+    const root = createRoot(container);
+    await act(async () => root.render(<MembersSection projectId="project-a" />));
+    expect(container.querySelector('form')).toBeNull();
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
     act(() => root.unmount());
   });
 });
