@@ -1,4 +1,5 @@
 import { posix } from 'node:path';
+import { protectMarkdownCode } from './markdown-code';
 
 const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()([^\s)]+)((?:\s+["'][^)]*["'])?\))/g;
 const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'])/gi;
@@ -51,7 +52,8 @@ export const rewriteMintlifyAssetReferences = (
     resolved.add(path);
     return rawUrl(path);
   };
-  const markdown = content.replace(
+  const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
+  const markdown = protectedCode.content.replace(
     MARKDOWN_IMAGE,
     (_match, before: string, reference: string, after: string) => `${before}${resolve(reference)}${after}`,
   );
@@ -59,7 +61,7 @@ export const rewriteMintlifyAssetReferences = (
     HTML_IMAGE,
     (_match, before: string, reference: string, after: string) => `${before}${resolve(reference)}${after}`,
   );
-  return { content: rewritten, resolved: [...resolved], missing: [...missing] };
+  return { content: protectedCode.restore(rewritten), resolved: [...resolved], missing: [...missing] };
 };
 
 /** Resolve a config-level asset path relative to the Mintlify config directory. */

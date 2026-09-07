@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { stableHash } from './content';
+import { protectMarkdownCode } from './markdown-code';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const MARKDOWN_LINK = /(?<!!)\[([^\]]+)\]\(([^\s)]+)((?:\s+["'][^)]*["'])?)\)/g;
@@ -75,16 +76,17 @@ const internalReferenceKey = (reference: string, sourcePage: string): string | n
 /** Source-page paths referenced from Markdown or MDX anchors. Used by the
  * importer to include linked hidden pages that Mintlify permits outside nav. */
 export const mintlifyInternalLinkTargets = (content: string, sourcePage: string): string[] => {
+  const prose = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY }).content;
   const targets = new Set<string>();
   const add = (reference: string) => {
     const key = internalReferenceKey(reference, sourcePage);
     if (key) targets.add(key);
   };
-  content.replace(MARKDOWN_LINK, (_match, _label: string, reference: string) => {
+  prose.replace(MARKDOWN_LINK, (_match, _label: string, reference: string) => {
     add(reference);
     return _match;
   });
-  content.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
+  prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
     add(reference);
     return _match;
   });
@@ -94,6 +96,7 @@ export const mintlifyInternalLinkTargets = (content: string, sourcePage: string)
 /** Rewrite links between source Mintlify pages to the grouped public routes
  * produced by the import, preserving external URLs, queries, and fragments. */
 export const rewriteMintlifyInternalLinks = (content: string, sourcePage: string, routes: ReadonlyMap<string, string>): string => {
+  const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
   const rewrite = (reference: string): string => {
     if (!reference || /^(?:[a-z][a-z0-9+.-]*:|#|\/\/)/i.test(reference)) return reference;
     const { suffix } = splitSuffix(reference);
@@ -108,9 +111,11 @@ export const rewriteMintlifyInternalLinks = (content: string, sourcePage: string
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${original.hash}`;
   };
-  const markdown = content.replace(
+  const markdown = protectedCode.content.replace(
     MARKDOWN_LINK,
     (_match, label: string, reference: string, title: string) => `[${label}](${rewrite(reference)}${title})`,
   );
-  return markdown.replace(HREF_ATTRIBUTE, (_match, before: string, reference: string, after: string) => `${before}${rewrite(reference)}${after}`);
+  return protectedCode.restore(
+    markdown.replace(HREF_ATTRIBUTE, (_match, before: string, reference: string, after: string) => `${before}${rewrite(reference)}${after}`),
+  );
 };

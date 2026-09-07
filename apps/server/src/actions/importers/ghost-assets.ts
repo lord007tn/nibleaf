@@ -4,21 +4,23 @@ import { inferSafeInlineAssetContentType, isSafeInlineAssetContentType, normaliz
 import got from 'got';
 import { isPrivateIp } from '@/lib/client-ip';
 import { findImportedAsset, storeAsset } from '../assets';
+import { protectMarkdownCode } from './markdown-code';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
 const MAX_REMOTE_ASSETS = 2000;
 const MAX_REDIRECTS = 3;
-const MARKDOWN_IMAGE = /!\[[^\]]*\]\((https?:\/\/[^\s)]+)(?:\s+["'][^)]*["'])?\)/gi;
-const HTML_IMAGE = /<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'](https?:\/\/[^"']+)["'][^>]*>/gi;
+const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()(https?:\/\/[^\s)]+)((?:\s+["'][^)]*["'])?\))/gi;
+const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])(https?:\/\/[^"']+)(["'][^>]*>)/gi;
 const publicHostChecks = new Map<string, Promise<void>>();
 
-export const remoteImageSources = (content: string): string[] => [
-  ...new Set(
-    [...content.matchAll(MARKDOWN_IMAGE), ...content.matchAll(HTML_IMAGE)]
-      .map((match) => match[1])
-      .filter((value): value is string => Boolean(value)),
-  ),
-];
+export const remoteImageSources = (content: string): string[] => {
+  const prose = protectMarkdownCode(content).content;
+  return [
+    ...new Set(
+      [...prose.matchAll(MARKDOWN_IMAGE), ...prose.matchAll(HTML_IMAGE)].map((match) => match[2]).filter((value): value is string => Boolean(value)),
+    ),
+  ];
+};
 
 const filenameFromUrl = (url: URL): string => {
   const encoded = url.pathname.split('/').filter(Boolean).pop() ?? 'image';
@@ -123,12 +125,12 @@ export class RemoteAssetMigrator {
   }
 
   async rewrite(markdown: string): Promise<string> {
-    const sources = remoteImageSources(markdown);
+    const protectedCode = protectMarkdownCode(markdown, { maxFenceIndent: this.namespace === 'mintlify' ? Number.POSITIVE_INFINITY : 3 });
+    const sources = remoteImageSources(protectedCode.content);
     if (sources.length === 0) return markdown;
     const replacements = new Map(await Promise.all(sources.map(async (source) => [source, await this.migrate(source)] as const)));
-    let rewritten = markdown;
-    for (const [source, hosted] of replacements) rewritten = rewritten.replaceAll(source, hosted);
-    return rewritten;
+    const replace = (_match: string, before: string, source: string, after: string) => `${before}${replacements.get(source) ?? source}${after}`;
+    return protectedCode.restore(protectedCode.content.replace(MARKDOWN_IMAGE, replace).replace(HTML_IMAGE, replace));
   }
 }
 
