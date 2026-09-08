@@ -59,12 +59,15 @@ case "$cmd" in
   server)
     require_prod_secret
     echo "[nibleaf] starting API server on :${API_PORT:-4311}"
-    exec pnpm --filter @nibleaf/server exec tsx src/index.ts
+    # Keep the service itself under Docker's init so SIGTERM reaches its handler.
+    cd apps/server
+    exec node --import tsx src/index.ts
     ;;
   worker)
     require_prod_secret
     echo "[nibleaf] starting worker on :${WORKER_PORT:-4312}"
-    exec pnpm --filter @nibleaf/worker exec tsx src/index.ts
+    cd apps/worker
+    exec node --import tsx src/index.ts
     ;;
   app)
     echo "[nibleaf] starting dashboard on :${PORT:-4310}"
