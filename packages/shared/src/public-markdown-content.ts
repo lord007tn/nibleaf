@@ -1,3 +1,5 @@
+import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+
 const escapeHtml = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
@@ -145,90 +147,14 @@ const stripMdxExpressions = (source: string): string => {
   return output;
 };
 
-interface ProtectedInlineCode {
-  source: string;
-  restore: (value: string) => string;
-}
-
-/** Replace complete CommonMark-style inline code spans with inert sentinels so
- * MDX projection and active-markup stripping cannot interpret their literal
- * HTML or JSON. Fenced blocks are handled separately by the outer normalizer. */
-const protectInlineCode = (source: string): ProtectedInlineCode => {
-  let marker = '\uE000';
-  while (source.includes(marker)) marker += '\uE000';
-
-  const spans: string[] = [];
-  let output = '';
-  let cursor = 0;
-  while (cursor < source.length) {
-    const opening = source.indexOf('`', cursor);
-    if (opening < 0) {
-      output += source.slice(cursor);
-      break;
-    }
-    output += source.slice(cursor, opening);
-
-    let openingEnd = opening + 1;
-    while (source[openingEnd] === '`') openingEnd += 1;
-    const delimiterLength = openingEnd - opening;
-    let search = openingEnd;
-    let closingEnd = -1;
-    while (search < source.length) {
-      const candidate = source.indexOf('`', search);
-      if (candidate < 0) break;
-      let candidateEnd = candidate + 1;
-      while (source[candidateEnd] === '`') candidateEnd += 1;
-      if (candidateEnd - candidate === delimiterLength) {
-        closingEnd = candidateEnd;
-        break;
-      }
-      search = candidateEnd;
-    }
-
-    if (closingEnd < 0) {
-      output += source.slice(opening, openingEnd);
-      cursor = openingEnd;
-      continue;
-    }
-
-    const index = spans.length;
-    spans.push(source.slice(opening, closingEnd));
-    output += `${marker}${index}\uE001`;
-    cursor = closingEnd;
-  }
-
-  return {
-    source: output,
-    restore: (value) => spans.reduce((restored, span, index) => restored.replaceAll(`${marker}${index}\uE001`, span), value),
-  };
-};
-
 const sanitizeAuthoredProse = (source: string): string => {
-  const protectedCode = protectInlineCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.source));
+  const protectedCode = protectMarkdownCode(source);
+  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content));
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
     .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
     .join('\n');
   return protectedCode.restore(sanitized);
-};
-
-interface MarkdownFence {
-  marker: '`' | '~';
-  length: number;
-}
-
-const openingMarkdownFence = (line: string): MarkdownFence | undefined => {
-  const match = /^ {0,3}(`{3,}|~{3,})/.exec(line);
-  const token = match?.[1];
-  if (!token) return undefined;
-  return { marker: token.startsWith('`') ? '`' : '~', length: token.length };
-};
-
-const closesMarkdownFence = (line: string, fence: MarkdownFence): boolean => {
-  const match = /^ {0,3}(\S+)\s*$/.exec(line);
-  const token = match?.[1];
-  return Boolean(token && token.length >= fence.length && [...token].every((character) => character === fence.marker));
 };
 
 export const normalizePublicMarkdownContent = (markdown: string): string => {

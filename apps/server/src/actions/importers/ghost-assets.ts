@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
+import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { inferSafeInlineAssetContentType, isSafeInlineAssetContentType, normalizeAssetContentType } from '@nibleaf/validators';
 import got from 'got';
 import { isPrivateIp } from '@/lib/client-ip';
 import { findImportedAsset, storeAsset } from '../assets';
-import { protectMarkdownCode } from './markdown-code';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
 const MAX_REMOTE_ASSETS = 2000;

@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
+import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { stableHash } from './content';
-import { protectMarkdownCode } from './markdown-code';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const MARKDOWN_LINK = /(?<!!)\[([^\]]+)\]\(([^\s)]+)((?:\s+["'][^)]*["'])?)\)/g;

