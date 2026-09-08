@@ -70,6 +70,7 @@ jobs:
       - name: Exercise Prisma migrations and runtime database access
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          TENANT_FENCE_INTEGRATION: "1"
         run: |
           pnpm --filter @nibleaf/database exec prisma migrate deploy
           pnpm --filter @nibleaf/database exec prisma migrate status
@@ -78,6 +79,7 @@ jobs:
           pnpm --filter @nibleaf/database smoke:addons-migration
           pnpm --filter @nibleaf/database smoke:integrations-migration
           pnpm --filter @nibleaf/database smoke:mcp-migration
+          pnpm --filter @nibleaf/database exec vitest run src/tenant-fence.postgres.test.ts
 
       - name: Verify concurrent manual-publish receipts
         env:
