@@ -13,6 +13,7 @@
     "./integrations": "./src/integrations.ts",
     "./mcp": "./src/mcp.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
+    "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
     "./public-markdown-content": "./src/public-markdown-content.ts",
     "./redirects": "./src/redirects.ts",

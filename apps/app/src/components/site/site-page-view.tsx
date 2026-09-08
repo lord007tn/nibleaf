@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
+import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { markdownAliasPath } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
@@ -185,7 +186,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/[`#*_>[\](){}|~-]/g, ' ');
   const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
-  const imageCount = (page.content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
+  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
   const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
   const [markdownCopyState, setMarkdownCopyState] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle');
   const copyMarkdown = async () => {

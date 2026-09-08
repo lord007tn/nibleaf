@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 export interface MarkdownFence {
   marker: string;
   length: number;
@@ -21,8 +19,8 @@ export const closesMarkdownFence = (line: string, fence: MarkdownFence, maxInden
  * Mintlify passes may opt into structural JSX indentation before normalization.
  * The normalizer itself keeps fences visible so it can remove only that indent. */
 export const protectMarkdownCode = (source: string, { fences = true, maxFenceIndent = 3 } = {}) => {
-  let prefix = `\uE000${randomUUID()}:`;
-  while (source.includes(prefix)) prefix = `\uE000${randomUUID()}:`;
+  let prefix = `\uE000${crypto.randomUUID()}:`;
+  while (source.includes(prefix)) prefix = `\uE000${crypto.randomUUID()}:`;
   const literals: string[] = [];
   const hide = (value: string) => `${prefix}${literals.push(value) - 1}\uE001`;
   const protectInline = (prose: string): string => {

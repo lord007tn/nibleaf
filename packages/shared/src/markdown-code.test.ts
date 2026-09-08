@@ -3,7 +3,7 @@ import { closesMarkdownFence, openingMarkdownFence, protectMarkdownCode } from '
 
 describe('import Markdown code boundaries', () => {
   it.each(['$&', '$$', "$'", '$`'])('restores replacement metacharacters literally in inline and fenced code: %s', (token) => {
-    const input = `before \`literal ${token}\`\n~~~\nliteral ${token}\n~~~\nafter`;
+    const input = [`before \`\`literal ${token}\`\``, '~~~', `literal ${token}`, '~~~', 'after'].join('\n');
     const protectedCode = protectMarkdownCode(input);
     expect(protectedCode.restore(protectedCode.content)).toBe(input);
   });

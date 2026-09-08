@@ -43,6 +43,15 @@ const data = (overrides: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('published page Markdown actions', () => {
+  it('excludes literal image examples from article screenshot counts but counts prose images', () => {
+    const examples = ['````mdx', '<img src="/literal.png" />', '```', '![Example](/literal.png)', '````', '`<img src="/inline.png" />`'].join('\n');
+    const render = (content: string) =>
+      renderToStaticMarkup(<SitePageView data={data({ page: { ...data().page, content } })} projectId="project-1" />);
+    expect(render(examples)).not.toContain('screenshot');
+    expect(render(`${examples}\n![Actual](/actual.png)`)).toContain('screenshot');
+    expect(render(`${examples}\n![Actual](/actual.png)`)).not.toContain('screenshots');
+  });
+
   it('renders visible View and Copy actions for eligible public pages', () => {
     const html = renderToStaticMarkup(<SitePageView data={data()} projectId="project-1" />);
     expect(html).toContain('href="/sites/project-1/start.md"');

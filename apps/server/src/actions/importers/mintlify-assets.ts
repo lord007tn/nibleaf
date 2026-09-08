@@ -1,5 +1,5 @@
 import { posix } from 'node:path';
-import { protectMarkdownCode } from './markdown-code';
+import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 
 const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()([^\s)]+)((?:\s+["'][^)]*["'])?\))/g;
 const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])([^"']+)(["'])/gi;

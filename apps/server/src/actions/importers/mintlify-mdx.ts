@@ -1,4 +1,4 @@
-import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 
 const tagName = (line: string): string | null => {
   const match = line.trim().match(/^<\/?([A-Z][A-Za-z0-9.]*)\b/);
