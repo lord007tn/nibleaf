@@ -113,7 +113,8 @@ export const markAnalyticsStoragePending = async (organizationId: string) => {
  * fence. Existing pending receipts remain drainable and make deletion retry. */
 export const beginUsageDeletion = async (organizationId: string, projectId: string) =>
   prisma.$transaction(async (tx) => {
-    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 904711))`);
+    // PostgreSQL lock functions return void, which the Prisma adapter cannot decode.
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 904711))::text`);
     await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`);
     const project = await tx.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true } });
     if (!project) return { exists: false as const, hadStorageMarker: false, pendingCount: 0 };
@@ -140,7 +141,7 @@ export const runWithTenantAnalyticsWriteFence = async <T>(
 ) =>
   prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${organizationId}, 904711))`);
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${organizationId}, 904711))::text`);
       const [project, marker, checkpoint] = await Promise.all([
         tx.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true } }),
         tx.usageStorageMarker.findUnique({ where: { organizationId }, select: { deletionPendingAt: true } }),
