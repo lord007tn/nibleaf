@@ -32,7 +32,7 @@
     "got": "16.0.0",
     "hono": "^4.13.5",
     "marked": "^18.0.10",
-    "nodemailer": "^9.1.1",
+    "nodemailer": "^10.0.0",
     "pdf-lib": "^1.17.1",
     "playwright-core": "^1.55.0",
     "postmark": "^5.1.0",
