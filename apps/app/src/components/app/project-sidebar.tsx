@@ -7,6 +7,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@nibleaf/design-system/components/ui/sidebar';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
@@ -22,6 +23,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useLocale();
   const direction = useDirection();
+  const { setOpenMobile } = useSidebar();
 
   const base = `/app/projects/${projectId}`;
   const nav: NavItem[] = [
@@ -43,6 +45,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
             {nav.map((item) => (
               <SidebarMenuItem key={item.labelKey}>
                 <SidebarMenuButton
+                  onClick={() => setOpenMobile(false)}
                   isActive={item.isActive}
                   render={<Link params={{ projectId }} to={item.to} />}
                   size="lg"

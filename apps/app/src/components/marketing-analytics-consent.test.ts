@@ -18,6 +18,8 @@ vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) => select({ location: route }),
 }));
 
+import { OPEN_MARKETING_PRIVACY_CHOICES } from './marketing/privacy-choices';
+
 import { MarketingAnalyticsConsent, marketingAnalyticsEnabled } from './marketing-analytics-consent';
 
 describe('marketingAnalyticsEnabled', () => {
@@ -71,10 +73,14 @@ describe('MarketingAnalyticsConsent', () => {
       );
     await act(async () => renderConsent());
 
-    expect(container.textContent).toContain('تحليلات اختيارية');
+    expect(document.querySelector('[role=dialog]')).toBeNull();
+    expect(container.textContent).toBe('');
+    expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBeNull();
+    await act(async () => window.dispatchEvent(new Event(OPEN_MARKETING_PRIVACY_CHOICES)));
+    expect(document.body.textContent).toContain('تحليلات اختيارية');
     expect(document.querySelector('#nibleaf-marketing-gtm')).toBeNull();
 
-    const accept = [...container.querySelectorAll('button')].find((button) => button.textContent === 'قبول التحليلات');
+    const accept = [...document.body.querySelectorAll('button')].find((button) => button.textContent === 'قبول التحليلات');
     await act(async () => accept?.click());
 
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('accepted');
@@ -110,19 +116,53 @@ describe('MarketingAnalyticsConsent', () => {
     expect(window.dataLayer).toHaveLength(before ?? 0);
   });
 
+  it('closes explicit preferences without recording consent or enabling analytics', async () => {
+    await act(async () =>
+      root.render(
+        createElement(QueryClientProvider, { client: queryClient }, createElement(MarketingAnalyticsConsent, { enabled: true, language: 'en' })),
+      ),
+    );
+    await act(async () => window.dispatchEvent(new Event(OPEN_MARKETING_PRIVACY_CHOICES)));
+    const close = document.querySelector<HTMLButtonElement>('button[aria-label="Close"]');
+    expect(close).not.toBeNull();
+    await act(async () => close?.click());
+    expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBeNull();
+    expect(document.querySelector('#nibleaf-marketing-gtm')).toBeNull();
+    expect(document.querySelector('[role="dialog"][data-open]')).toBeNull();
+  });
+
+  it('explains unavailable analytics without offering an ineffective acceptance control', async () => {
+    queryClient.setQueryData(['public', 'meta'], { marketingAnalytics: { gtmContainerId: null, ga4MeasurementId: null } });
+    await act(async () =>
+      root.render(
+        createElement(QueryClientProvider, { client: queryClient }, createElement(MarketingAnalyticsConsent, { enabled: true, language: 'en' })),
+      ),
+    );
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => window.dispatchEvent(new Event(OPEN_MARKETING_PRIVACY_CHOICES)));
+    expect(document.body.textContent).toContain('Optional analytics are currently unavailable and remain off.');
+    expect([...document.querySelectorAll('button')].some((button) => button.textContent === 'Accept analytics')).toBe(false);
+    expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBeNull();
+  });
+
   it('counts same-page regrant once without counting preference reopening or ordinary rerenders', async () => {
     const render = () =>
       root.render(
         createElement(QueryClientProvider, { client: queryClient }, createElement(MarketingAnalyticsConsent, { enabled: true, language: 'en' })),
       );
     const click = async (label: string) => {
-      const button = [...container.querySelectorAll('button')].find((item) => item.textContent === label);
+      if (label === 'Privacy choices') {
+        await act(async () => window.dispatchEvent(new Event(OPEN_MARKETING_PRIVACY_CHOICES)));
+        return;
+      }
+      const button = [...document.body.querySelectorAll('button')].find((item) => item.textContent === label);
       expect(button).toBeDefined();
       await act(async () => button?.click());
     };
     const views = () =>
       (window.dataLayer ?? []).filter((entry) => entry instanceof Object && 'event_name' in entry && entry.event_name === 'page_view');
     await act(async () => render());
+    await click('Privacy choices');
     await click('Accept analytics');
     expect(views()).toHaveLength(1);
     const commandsBeforePreferences = window.dataLayer?.length;

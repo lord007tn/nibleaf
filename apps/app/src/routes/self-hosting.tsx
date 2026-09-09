@@ -1,8 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
-import { CopyCommand, Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
+import { Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
 import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
-import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
 
 export const Route = createFileRoute('/self-hosting')({
   loader: async () => ({ stars: await getGithubStarsFn() }),
@@ -46,9 +45,6 @@ function SelfHostingPage() {
             </ul>
           </div>
           <div className="mt-8 flex flex-col items-start gap-3">
-            <div className="w-full">
-              <CopyCommand command={SELF_HOST_INSTALL_COMMAND} />
-            </div>
             <a className={outlineButton} href="/blog/self-host-documentation-site-docker-compose">
               Follow the deployment guide <ArrowRight className="size-4" />
             </a>

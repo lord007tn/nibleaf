@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@nibleaf/design-system/components/ui/sidebar';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
@@ -29,6 +30,7 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useLocale();
   const direction = useDirection();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar side={direction === 'rtl' ? 'right' : 'left'} variant="inset">
@@ -44,7 +46,7 @@ export function AppSidebar() {
               const label = t(item.labelKey);
               return (
                 <SidebarMenuItem key={item.to}>
-                  <SidebarMenuButton isActive={active} render={<Link to={item.to} />} size="lg" tooltip={label}>
+                  <SidebarMenuButton onClick={() => setOpenMobile(false)} isActive={active} render={<Link to={item.to} />} size="lg" tooltip={label}>
                     <item.icon className="size-5" />
                     <span>{label}</span>
                   </SidebarMenuButton>
