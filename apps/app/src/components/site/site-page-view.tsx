@@ -214,7 +214,10 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                   /
                 </span>
               ) : null}
-              <a href={siteHref(projectId, crumb.path, { lang, version: versionPrefix })} className="transition-opacity hover:opacity-80">
+              <a
+                href={siteHref(projectId, crumb.path, { lang: markdownLanguage, version: versionPrefix })}
+                className="transition-opacity hover:opacity-80"
+              >
                 {crumb.title}
               </a>
             </span>
@@ -271,7 +274,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </ul>
       ) : null}
       <div className="mt-8">
-        <Markdown content={page.content} site={{ projectId, lang: language, version: versionPrefix }} />
+        <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
       </div>
 
       {readerActionsAfterNavigation ? null : <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />}
@@ -286,7 +289,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: markdownLanguage, version: versionPrefix })}
               className="group inline-flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
@@ -297,7 +300,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: markdownLanguage, version: versionPrefix })}
               className="group inline-flex min-w-0 items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <span className="truncate">{next.title}</span>

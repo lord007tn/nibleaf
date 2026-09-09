@@ -164,6 +164,9 @@ export function ArabicShell({ children, englishHref = '/' }: { children: ReactNo
           <div>
             <p className="font-medium">{t('marketing.arabicSeo.shell.usefulLinks')}</p>
             <div className="mt-3 grid gap-2 text-muted-foreground">
+              <a className="hover:text-foreground" href="/ar/guides">
+                أدلة التوثيق
+              </a>
               <a className="hover:text-foreground" href="/pricing">
                 {t('marketing.arabicSeo.shell.currentPricing')}
               </a>

@@ -49,6 +49,11 @@ export function siteBasePath(projectId: string, customDomain: boolean): string {
   return customDomain ? '' : `/sites/${projectId}`;
 }
 
+/** Omit only a known default language; explicit authored query strings stay intact. */
+export function siteLanguageParam(code?: string, defaultCode?: string): string | undefined {
+  return code === defaultCode ? undefined : code;
+}
+
 export function siteHref(projectId: string, path = '', options?: { lang?: string; version?: string }): string {
   const { pathname, query, fragment } = splitPath(path);
   const fullPath = [options?.version, cleanPath(pathname)].filter(Boolean).join('/').split('/').filter(Boolean).map(encodeSegment).join('/');
