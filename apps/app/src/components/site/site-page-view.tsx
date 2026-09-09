@@ -1,22 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
-import { markdownAliasPath } from '@nibleaf/shared/markdown-discovery';
-import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
-import {
-  CalendarClock,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleAlert,
-  Clock3,
-  Copy,
-  ExternalLink,
-  Image,
-  PencilLine,
-  ThumbsDown,
-  ThumbsUp,
-} from 'lucide-react';
+import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
@@ -159,12 +144,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const resolvedVersion = data.versions.find((item) => item.slug === data.activeVersion);
   const versionPrefix = resolvedVersion && !resolvedVersion.isDefault ? resolvedVersion.slug : undefined;
   const defaultLanguage = data.languages.find((item) => item.isDefault)?.code;
-  const markdownLanguage = data.activeLanguage !== defaultLanguage ? data.activeLanguage : undefined;
-  const pageHref = siteHref(projectId, page.path, { lang: markdownLanguage, version: versionPrefix });
-  const pageUrl = new URL(pageHref, 'https://nibleaf.local');
-  pageUrl.pathname = markdownAliasPath(pageUrl.pathname);
-  const markdownHref = `${pageUrl.pathname}${pageUrl.search}`;
-  const publicMarkdownAvailable = isPublicMarkdownPage(data);
+  const navigationLanguage = data.activeLanguage !== defaultLanguage ? data.activeLanguage : undefined;
   // Article-level chrome strings follow the page's RESOLVED language (which can
   // differ from the URL param on fallback pages) so labels match the content.
   const tArticle = siteT(language);
@@ -188,20 +168,6 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
   const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
   const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
-  const [markdownCopyState, setMarkdownCopyState] = useState<'idle' | 'copying' | 'copied' | 'failed'>('idle');
-  const copyMarkdown = async () => {
-    setMarkdownCopyState('copying');
-    try {
-      const response = await fetch(markdownHref, { headers: { Accept: 'text/markdown' } });
-      if (!response.ok || !response.headers.get('content-type')?.startsWith('text/markdown')) throw new Error('Markdown unavailable');
-      await navigator.clipboard.writeText(await response.text());
-      setMarkdownCopyState('copied');
-      setTimeout(() => setMarkdownCopyState('idle'), 2000);
-    } catch {
-      setMarkdownCopyState('failed');
-    }
-  };
-
   const article = (
     <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
@@ -215,7 +181,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                 </span>
               ) : null}
               <a
-                href={siteHref(projectId, crumb.path, { lang: markdownLanguage, version: versionPrefix })}
+                href={siteHref(projectId, crumb.path, { lang: navigationLanguage, version: versionPrefix })}
                 className="transition-opacity hover:opacity-80"
               >
                 {crumb.title}
@@ -239,31 +205,6 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           <CalendarClock className="size-3.5" aria-hidden /> {tArticle('updated')} {updatedLabel}
         </li>
       </ul>
-      {publicMarkdownAvailable ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-          <a
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-            href={markdownHref}
-            rel="noopener alternate"
-            target="_blank"
-            type="text/markdown"
-          >
-            <ExternalLink className="size-3.5" aria-hidden /> {tArticle('viewMarkdown')}
-          </a>
-          <button
-            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
-            disabled={markdownCopyState === 'copying'}
-            onClick={copyMarkdown}
-            type="button"
-          >
-            {markdownCopyState === 'copied' ? <Check className="size-3.5 text-primary" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
-            {markdownCopyState === 'copied' ? tArticle('copied') : tArticle('copyMarkdown')}
-          </button>
-          <span aria-live="polite" className="text-destructive text-xs" role="status">
-            {markdownCopyState === 'failed' ? tArticle('markdownCopyFailed') : ''}
-          </span>
-        </div>
-      ) : null}
       {page.config?.tags?.length ? (
         <ul className="mt-4 flex flex-wrap gap-2" aria-label={tArticle('tags')}>
           {page.config.tags.map((tag) => (
@@ -289,7 +230,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         >
           {prev ? (
             <a
-              href={siteHref(projectId, prev.path, { lang: markdownLanguage, version: versionPrefix })}
+              href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
               className="group inline-flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
@@ -300,7 +241,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
           {next ? (
             <a
-              href={siteHref(projectId, next.path, { lang: markdownLanguage, version: versionPrefix })}
+              href={siteHref(projectId, next.path, { lang: navigationLanguage, version: versionPrefix })}
               className="group inline-flex min-w-0 items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <span className="truncate">{next.title}</span>

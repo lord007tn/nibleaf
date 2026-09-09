@@ -33,7 +33,6 @@ import { type ComponentType, type ReactNode, type SVGProps, useState } from 'rea
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
-import { SELF_HOST_INSTALL_COMMAND } from '@/lib/self-host-release';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 const buttonBase =
@@ -263,9 +262,6 @@ function Hero({ stars }: { stars: number }) {
             <GitHubStarLink stars={stars} />
           </div>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-            <div className="min-w-0 flex-1">
-              <CopyCommand command={SELF_HOST_INSTALL_COMMAND} />
-            </div>
             <a
               aria-label="Read the self-hosting guide"
               className="inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-lg border border-border px-4 font-medium text-sm transition-colors hover:bg-muted"
