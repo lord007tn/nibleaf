@@ -345,7 +345,7 @@ function ShowcaseRow({
 }) {
   return (
     <section className={tinted ? 'border-border border-y bg-card/40' : ''}>
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:py-24">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:py-24">
         <div className={flip ? 'lg:order-2' : ''}>
           <Eyebrow>{eyebrow}</Eyebrow>
           <h2 className="mt-4 text-balance font-semibold text-3xl tracking-tight sm:text-4xl">{title}</h2>
