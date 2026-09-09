@@ -5,6 +5,8 @@ import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Check, ExternalLink, Languages, Search, Server, ShieldCheck } from 'lucide-react';
 import { type ReactNode, useCallback } from 'react';
 import { primaryButton } from '@/components/cloud-marketing';
+import { MobileNavigation } from '@/components/marketing/mobile-navigation';
+import { PrivacyChoices } from '@/components/marketing/privacy-choices';
 import { sendMarketingCtaEvent } from '@/lib/marketing-analytics';
 
 interface Platform {
@@ -149,11 +151,28 @@ export function ArabicShell({ children, englishHref = '/' }: { children: ReactNo
             >
               {t('marketing.arabicSeo.cta.startFree')}
             </a>
+            <MobileNavigation
+              language="ar"
+              className="md:hidden"
+              links={[
+                { href: '/sign-in', label: 'تسجيل الدخول' },
+                { href: '/ar#features', label: t('marketing.arabicSeo.shell.features') },
+                { href: '/ar/documentation-platforms', label: t('marketing.arabicSeo.shell.comparison') },
+                { href: '/ar/guides', label: 'أدلة التوثيق' },
+                { href: '/pricing', label: 'الأسعار' },
+                { href: 'https://docs.nibleaf.com?lang=ar', label: t('marketing.arabicSeo.shell.docs') },
+                { href: '/self-hosting', label: t('marketing.arabicSeo.shell.selfHosting') },
+                { href: englishHref, label: 'English' },
+              ]}
+            />
           </div>
         </div>
       </header>
       <main>{children}</main>
       <footer className="border-border border-t">
+        <div className="mx-auto max-w-6xl px-6 pt-8 text-sm">
+          <PrivacyChoices language="ar" />
+        </div>
         <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 text-sm sm:grid-cols-3">
           <div>
             <div className="flex items-center gap-2 font-semibold">

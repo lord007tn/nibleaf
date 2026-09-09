@@ -8,7 +8,6 @@ import {
   Check,
   Clock,
   Cloud,
-  Copy,
   FileText,
   GitFork,
   Globe2,
@@ -29,7 +28,9 @@ import {
   Workflow,
   X,
 } from 'lucide-react';
-import { type ComponentType, type ReactNode, type SVGProps, useState } from 'react';
+import type { ComponentType, ReactNode, SVGProps } from 'react';
+import { MobileNavigation } from '@/components/marketing/mobile-navigation';
+import { PrivacyChoices } from '@/components/marketing/privacy-choices';
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
 import { GITHUB_URL } from '@/lib/links';
 import { marketingFaqs } from '@/lib/marketing-faqs';
@@ -148,10 +149,15 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             ))}
           </nav>
           <div className="ms-auto flex items-center gap-2">
-            <GitHubStarLink className="h-9 px-2.5 text-muted-foreground hover:text-foreground" compact label="GitHub" stars={stars} />
+            <GitHubStarLink
+              className="hidden h-9 px-2.5 text-muted-foreground hover:text-foreground xl:inline-flex"
+              compact
+              label="GitHub"
+              stars={stars}
+            />
             <button
               aria-label={`Switch to ${nextTheme} mode`}
-              className="grid size-9 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="hidden size-9 shrink-0 place-items-center rounded-md border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground xl:grid"
               onClick={() => setTheme(nextTheme)}
               title={`Switch to ${nextTheme} mode`}
               type="button"
@@ -164,6 +170,17 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
             <a aria-label="Create account" className={cn(primaryButton, 'h-9 px-2.5 text-xs sm:px-3 sm:text-sm')} href="/sign-up">
               Create account
             </a>
+            <MobileNavigation
+              links={[{ href: '/sign-in', label: 'Log in' }, ...navLinks, { href: '/ar', label: 'العربية' }, { href: GITHUB_URL, label: 'GitHub' }]}
+            >
+              <button
+                type="button"
+                className="rounded-md border border-border px-3 py-3 text-start hover:bg-muted"
+                onClick={() => setTheme(nextTheme)}
+              >
+                Switch to {nextTheme} mode
+              </button>
+            </MobileNavigation>
           </div>
         </div>
       </header>
@@ -463,46 +480,6 @@ function HowItWorks() {
         </ol>
       </div>
     </section>
-  );
-}
-
-/** Copies a shell command; renders identically on server and client until clicked. */
-export function CopyCommand({ command }: { command: string }) {
-  const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const copy = () => {
-    if (typeof navigator === 'undefined' || typeof navigator.clipboard?.writeText !== 'function') {
-      setCopyStatus('failed');
-      return;
-    }
-    navigator.clipboard
-      .writeText(command)
-      .then(() => {
-        setCopyStatus('copied');
-        setTimeout(() => setCopyStatus('idle'), 2000);
-      })
-      .catch(() => {
-        setCopyStatus('failed');
-      });
-  };
-  const copied = copyStatus === 'copied';
-  const copyLabel = copied ? 'Copied' : copyStatus === 'failed' ? 'Copy failed' : 'Copy';
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={copyStatus === 'idle' ? `Copy ${command}` : copyLabel}
-      className="group flex min-h-12 w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-border bg-[#0d1117] px-4 py-3 text-start font-mono text-sm text-white/90 transition-colors hover:border-primary/40 sm:h-12 sm:py-0"
-      dir="ltr"
-    >
-      <span className="min-w-0 break-all sm:overflow-x-auto sm:whitespace-nowrap">
-        <span className="select-none text-primary">$ </span>
-        {command}
-      </span>
-      <span className="inline-flex shrink-0 items-center gap-1.5 font-sans font-medium text-[11px] text-white/45 uppercase tracking-wide group-hover:text-white/80">
-        {copyLabel}
-        {copied ? <Check className="size-3.5 text-primary" /> : <Copy className="size-3.5" />}
-      </span>
-    </button>
   );
 }
 
@@ -864,6 +841,7 @@ function SiteFooter({ stars }: { stars: number }) {
         <div className="mt-12 flex flex-col gap-4 border-border border-t pt-6 text-muted-foreground text-xs sm:flex-row sm:items-center sm:justify-between">
           <span>© {new Date().getFullYear()} Nibleaf. Built in public under AGPL-3.0.</span>
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <PrivacyChoices />
             <a className="transition-colors hover:text-foreground" href={GITHUB_URL} rel="noreferrer" target="_blank">
               GitHub
             </a>
