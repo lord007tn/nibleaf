@@ -65,6 +65,14 @@ export function GuidesHub({ locale, stars = 0 }: { locale: GuideLocale; stars?: 
           <Eyebrow>{t.eyebrow}</Eyebrow>
           <h1 className="mt-4 max-w-4xl text-balance font-semibold text-4xl tracking-tight rtl:tracking-normal sm:text-6xl">{t.title}</h1>
           <p className="mt-5 max-w-3xl text-lg text-muted-foreground leading-relaxed">{t.intro}</p>
+          <a
+            className="mt-5 inline-flex items-center gap-2 text-primary underline underline-offset-4"
+            href={locale === 'ar' ? '/guides' : '/ar/guides'}
+            hrefLang={locale === 'ar' ? 'en' : 'ar'}
+          >
+            <Languages className="size-4" aria-hidden />
+            {locale === 'ar' ? 'Guides in English' : 'الأدلة بالعربية'}
+          </a>
           <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-muted-foreground text-xs">
             <CheckCircle2 className="size-3.5 text-primary" aria-hidden /> {t.sources}
           </p>

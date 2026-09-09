@@ -58,6 +58,7 @@ import { siteHref } from '@/lib/site-paths';
 export interface SiteLinkContext {
   projectId: string;
   lang?: string;
+  defaultLanguage?: string;
   version?: string;
 }
 
@@ -84,7 +85,7 @@ function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefi
     return href;
   }
   if (href.startsWith('/')) {
-    return siteHref(site.projectId, href, { lang: site.lang, version: site.version });
+    return siteHref(site.projectId, href, { lang: site.lang === site.defaultLanguage ? undefined : site.lang, version: site.version });
   }
   return href;
 }

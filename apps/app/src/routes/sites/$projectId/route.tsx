@@ -123,6 +123,7 @@ function SiteChrome() {
     return languages.find((language) => language.code === code) ?? languages.find((language) => language.isDefault) ?? languages[0];
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
+  const navigationLanguage = activeLanguage?.isDefault ? undefined : activeLanguage?.code;
   // Chrome strings follow the active language so an Arabic site reads Arabic.
   const t = siteT(activeLanguage?.code);
 
@@ -360,7 +361,7 @@ function SiteChrome() {
                   nodes={site?.nav ?? []}
                   projectId={projectId}
                   currentPath={effectiveCurrentPath}
-                  lang={lang}
+                  lang={navigationLanguage}
                   version={activeVersionPrefix}
                   label={t('docs')}
                   isRtl={isRtl}
@@ -505,7 +506,13 @@ function SiteChrome() {
                   ))}
                 </ul>
               ) : null}
-              <SiteNav nodes={site.nav ?? []} projectId={projectId} currentPath={effectiveCurrentPath} lang={lang} version={activeVersionPrefix} />
+              <SiteNav
+                nodes={site.nav ?? []}
+                projectId={projectId}
+                currentPath={effectiveCurrentPath}
+                lang={navigationLanguage}
+                version={activeVersionPrefix}
+              />
             </>
           }
           content={

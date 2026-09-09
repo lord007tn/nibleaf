@@ -43,6 +43,37 @@ const data = (overrides: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('published page Markdown actions', () => {
+  it.each(['en', 'ar'])('uses clean navigation and body links for the configured default %s language', (code) => {
+    const fixture = data({
+      activeLanguage: code,
+      languages: [{ code, isDefault: true, path: 'start' }],
+      breadcrumbs: [
+        { title: 'Parent', path: 'parent' },
+        { title: 'Start', path: 'start' },
+      ],
+      page: { ...data().page, content: '[Sibling](/sibling#setup)\n\n[Explicit](/other?lang=fr)' },
+      next: { title: 'Next', path: 'next' },
+    });
+    const html = renderToStaticMarkup(<SitePageView data={fixture} lang={code} projectId="project-1" />);
+    expect(html).toContain('href="/sites/project-1/sibling#setup"');
+    expect(html).toContain('href="/sites/project-1/parent"');
+    expect(html).toContain('href="/sites/project-1/next"');
+    expect(html).toContain('href="/sites/project-1/other?lang=fr"');
+    expect(html).not.toContain(`?lang=${code}`);
+  });
+
+  it('keeps a non-default language and version on generated reader links', () => {
+    const fixture = data({
+      activeLanguage: 'ar',
+      activeVersion: 'v2',
+      versions: [{ id: 'v2', name: 'V2', slug: 'v2', isDefault: false }],
+      page: { ...data().page, content: '[Sibling](/sibling#setup)' },
+      next: { title: 'Next', path: 'next' },
+    });
+    const html = renderToStaticMarkup(<SitePageView data={fixture} lang="ar" projectId="project-1" />);
+    expect(html).toContain('href="/sites/project-1/v2/sibling?lang=ar#setup"');
+    expect(html).toContain('href="/sites/project-1/v2/next?lang=ar"');
+  });
   it('excludes literal image examples from article screenshot counts but counts prose images', () => {
     const examples = ['````mdx', '<img src="/literal.png" />', '```', '![Example](/literal.png)', '````', '`<img src="/inline.png" />`'].join('\n');
     const render = (content: string) =>
