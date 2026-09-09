@@ -50,7 +50,7 @@ import {
   sanitizeSchema,
 } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
-import { siteHref } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
  *  root-relative doc links (`/guide`) to the site's base path so they don't
@@ -85,7 +85,7 @@ function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefi
     return href;
   }
   if (href.startsWith('/')) {
-    return siteHref(site.projectId, href, { lang: site.lang === site.defaultLanguage ? undefined : site.lang, version: site.version });
+    return siteHref(site.projectId, href, { lang: siteLanguageParam(site.lang, site.defaultLanguage), version: site.version });
   }
   return href;
 }

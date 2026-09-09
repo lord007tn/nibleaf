@@ -22,7 +22,7 @@ import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { siteHref } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
@@ -123,7 +123,8 @@ function SiteChrome() {
     return languages.find((language) => language.code === code) ?? languages.find((language) => language.isDefault) ?? languages[0];
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
-  const navigationLanguage = activeLanguage?.isDefault ? undefined : activeLanguage?.code;
+  const defaultLanguage = languages.find((language) => language.isDefault)?.code;
+  const navigationLanguage = siteLanguageParam(activeLanguage?.code, defaultLanguage);
   // Chrome strings follow the active language so an Arabic site reads Arabic.
   const t = siteT(activeLanguage?.code);
 
@@ -288,28 +289,29 @@ function SiteChrome() {
   );
 
   const changeLanguage = (code: string) => {
+    const targetLanguage = siteLanguageParam(code, defaultLanguage);
     const alternate = pageAlternates.find((item) => item.code === code && item.path);
     if (!isChangelog && alternate?.path) {
-      window.location.assign(siteHref(projectId, alternate.path, { lang: code, version: activeVersionPrefix }));
+      window.location.assign(siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix }));
       return;
     }
-    navigate({ search: (prev) => ({ ...prev, lang: code }) });
+    navigate({ search: (prev) => ({ ...prev, lang: targetLanguage }) });
   };
   const changeVersion = (slug: string) => {
     const defaultVersion = versions.find((item) => item.isDefault);
     const targetPrefix = defaultVersion?.slug === slug ? '' : slug;
     const targetPath = [targetPrefix, isChangelog ? '' : contentPath].filter(Boolean).join('/');
-    window.location.assign(siteHref(projectId, targetPath, { lang }));
+    window.location.assign(siteHref(projectId, targetPath, { lang: navigationLanguage }));
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
-  const sitePath = (path = '') => siteHref(projectId, path, { lang, version: activeVersionPrefix });
+  const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
 
   // Only configured navigation renders — the chrome imposes no IA of its own.
   // Root-relative hrefs are site-internal: resolve them to the site base (and
   // keep the active language/version) so `/guides`-style links work on both
   // path-based (/sites/:id) and custom-domain serving.
   const resolveNavHref = (href: string): string =>
-    href.startsWith('/') && !href.startsWith('//') ? siteHref(projectId, href, { lang, version: activeVersionPrefix }) : href;
+    href.startsWith('/') && !href.startsWith('//') ? siteHref(projectId, href, { lang: navigationLanguage, version: activeVersionPrefix }) : href;
   const isNavActive = (href: string): boolean => {
     if (!href.startsWith('/') || href.startsWith('//')) {
       return false;
@@ -322,7 +324,7 @@ function SiteChrome() {
   // the mobile drawer render the same list.
   const headerLinks = [
     ...(config?.navbar?.changelog === true
-      ? [{ label: t('changelog'), href: siteHref(projectId, 'changelog', { lang }), active: isChangelog, external: false }]
+      ? [{ label: t('changelog'), href: siteHref(projectId, 'changelog', { lang: navigationLanguage }), active: isChangelog, external: false }]
       : []),
     ...navLinks.map((link) => ({
       label: link.label,

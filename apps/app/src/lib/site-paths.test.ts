@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isCustomDomainSite, siteBasePath, siteHref } from './site-paths';
+import { isCustomDomainSite, siteBasePath, siteHref, siteLanguageParam } from './site-paths';
 
 // site-origin reads the custom-domain origin the server entry stamped on the
 // request; swap it for a controllable value so both serving modes are covered.
@@ -18,6 +18,25 @@ describe('siteBasePath', () => {
 });
 
 describe('siteHref', () => {
+  it.each(['en', 'ar'])('omits the configured default %s when switching languages or following header/version links', (defaultCode) => {
+    const lang = siteLanguageParam(defaultCode, defaultCode);
+    expect(lang).toBeUndefined();
+    for (const customOrigin of [undefined, 'https://docs.acme.com']) {
+      origin.value = customOrigin;
+      const base = customOrigin ? '' : '/sites/p1';
+      expect(siteHref('p1', 'translated-start', { lang, version: 'v2' })).toBe(`${base}/v2/translated-start`);
+      expect(siteHref('p1', '', { lang, version: 'v2' })).toBe(`${base}/v2`);
+      expect(siteHref('p1', 'changelog', { lang })).toBe(`${base}/changelog`);
+      expect(siteHref('p1', '/reference?tab=cli#request', { lang, version: 'v2' })).toBe(`${base}/v2/reference?tab=cli#request`);
+      expect(siteHref('p1', '/reference?lang=fr', { lang })).toBe(`${base}/reference?lang=fr`);
+    }
+  });
+
+  it('retains non-default and unknown-default language selections', () => {
+    expect(siteLanguageParam('ar', 'en')).toBe('ar');
+    expect(siteLanguageParam('en')).toBe('en');
+    expect(siteHref('p1', 'v2/start', { lang: siteLanguageParam('ar', 'en') })).toBe('/sites/p1/v2/start?lang=ar');
+  });
   it('preserves an explicit target language on cross-language links', () => {
     expect(siteHref('p1', '/arabic/intro?lang=ar&tab=cli#install', { lang: 'en', version: 'v2' })).toBe(
       '/sites/p1/v2/arabic/intro?lang=ar&tab=cli#install',
