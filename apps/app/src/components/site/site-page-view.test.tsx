@@ -42,7 +42,7 @@ const data = (overrides: Partial<SitePage> = {}): SitePage => ({
   ...overrides,
 });
 
-describe('published page Markdown actions', () => {
+describe('published page presentation', () => {
   it.each(['en', 'ar'])('uses clean navigation and body links for the configured default %s language', (code) => {
     const fixture = data({
       activeLanguage: code,
@@ -83,21 +83,11 @@ describe('published page Markdown actions', () => {
     expect(render(`${examples}\n![Actual](/actual.png)`)).not.toContain('screenshots');
   });
 
-  it('renders visible View and Copy actions for eligible public pages', () => {
-    const html = renderToStaticMarkup(<SitePageView data={data()} projectId="project-1" />);
-    expect(html).toContain('href="/sites/project-1/start.md"');
-    expect(html).toContain('type="text/markdown"');
-    expect(html).toContain('View Markdown');
-    expect(html).toContain('Copy Markdown');
-  });
-
-  it('localizes actions and targets the resolved Arabic representation', () => {
-    const html = renderToStaticMarkup(
-      <SitePageView data={data({ activeLanguage: 'ar', languageConfig: { name: 'مثال' } })} lang="ar" projectId="project-1" />,
-    );
-    expect(html).toContain('/sites/project-1/start.md?lang=ar');
-    expect(html).toContain('عرض Markdown');
-    expect(html).toContain('نسخ Markdown');
+  it.each(['en', 'ar'])('shows public %s content without Markdown source controls', (language) => {
+    const html = renderToStaticMarkup(<SitePageView data={data({ activeLanguage: language })} lang={language} projectId="project-1" />);
+    expect(html).toContain('Public body.');
+    expect(html).not.toContain('type="text/markdown"');
+    expect(html).not.toMatch(/View Markdown|Copy Markdown|عرض Markdown|نسخ Markdown/);
   });
 
   it.each([

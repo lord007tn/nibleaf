@@ -6,8 +6,20 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CloudPage, CopyCommand, GitHubStarLink, LandingPage } from '@/components/cloud-marketing';
+import { ArabicLandingPage } from '@/components/marketing/arabic-seo';
 
 describe('marketing calls to action', () => {
+  it('keeps the self-hosting guide without exposing an inline installer or Markdown source controls', () => {
+    const landing = renderToStaticMarkup(<LandingPage />);
+    const arabic = renderToStaticMarkup(<ArabicLandingPage />);
+    expect(landing).toContain('aria-label="Read the self-hosting guide"');
+    for (const html of [landing, arabic]) {
+      expect(html).toContain('href="/self-hosting"');
+      expect(html).not.toContain('actual##');
+      expect(html).not.toContain('nibleaf-install.sh');
+      expect(html).not.toMatch(/View Markdown|Copy Markdown|عرض Markdown|نسخ Markdown/);
+    }
+  });
   it('uses destination-focused labels instead of generic prompts', () => {
     const landing = renderToStaticMarkup(<LandingPage stars={42} />);
     const cloud = renderToStaticMarkup(<CloudPage stars={42} />);
