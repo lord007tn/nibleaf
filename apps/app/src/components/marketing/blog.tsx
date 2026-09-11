@@ -233,9 +233,22 @@ function FirstPublishBridge({ source }: { source: FirstPublishSource }) {
   );
 }
 
+function ArticleTable({ children }: { children: ReactNode }) {
+  return (
+    <section
+      className="my-5 max-w-full overflow-x-auto rounded-lg focus-visible:outline-2 focus-visible:outline-primary"
+      aria-label="Scrollable table / جدول قابل للتمرير"
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: Keyboard users must be able to focus and scroll wide tables.
+      tabIndex={0}
+    >
+      <table className="min-w-[36rem]">{children}</table>
+    </section>
+  );
+}
+
 /** Components every MDX article can use without importing them. */
 // biome-ignore lint/suspicious/noExplicitAny: MDX component maps are untyped by design.
-export const articleMdxComponents: Record<string, ComponentType<any>> = { Callout, FirstPublishBridge, Note };
+export const articleMdxComponents: Record<string, ComponentType<any>> = { Callout, FirstPublishBridge, Note, table: ArticleTable };
 
 function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar' | 'en' }) {
   return (
@@ -360,7 +373,7 @@ const proseClass = [
   '[&_:not(pre)>code]:rounded [&_:not(pre)>code]:border [&_:not(pre)>code]:border-border [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[13px] [&_:not(pre)>code]:[direction:ltr] [&_:not(pre)>code]:[unicode-bidi:isolate]',
   // Code blocks — terminal-dark like the self-hosting page, in both themes.
   '[&_pre]:my-5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-border [&_pre]:bg-[#0d1117] [&_pre]:p-5 [&_pre]:font-mono [&_pre]:text-[13px] [&_pre]:leading-relaxed [&_pre]:text-white/90 [&_pre]:[direction:ltr] [&_pre]:text-left',
-  // Tables inside a scroll container courtesy of GFM output
+  // ArticleTable supplies a focusable scroll container for narrow viewports.
   '[&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm',
   '[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-4 [&_th]:py-2.5 [&_th]:text-start [&_th]:font-semibold',
   '[&_td]:border [&_td]:border-border [&_td]:px-4 [&_td]:py-2.5 [&_td]:align-top',

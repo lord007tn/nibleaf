@@ -63,6 +63,12 @@ the canonical site.
 
 ## Conventions
 
+For public pages or product capability changes, review the
+[page coverage inventory](.github/page-coverage.md). It records canonical owners,
+source dates, release boundaries, and reasons not to add duplicate or unsupported
+pages. Keep article metadata and translations synchronized; the blog, guide, and
+sitemap tests validate their discovery contracts.
+
 - **Monorepo** (pnpm + turbo). Apps live in `apps/*`, shared libraries in
   `packages/*`, all scoped `@nibleaf/*`.
 - **Content is Markdown end-to-end.** `Page.content` is a Markdown string that
