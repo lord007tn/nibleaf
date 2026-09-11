@@ -10,7 +10,7 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'What happens after the beta?',
-    a: 'Paid cloud plans will come later, announced with generous advance notice, and beta workspaces will get preferential treatment. Self-hosting remains available under AGPL-3.0.',
+    a: 'No paid cloud plan is currently offered. Future prices, dates, and beta discounts are not specified here. Self-hosting remains available under AGPL-3.0; you cover infrastructure, external services, maintenance, and operator time.',
   },
   {
     q: 'Are there limits during the beta?',

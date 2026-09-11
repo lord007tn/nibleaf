@@ -11,7 +11,7 @@ import { ENTITY_SENTENCE } from '@/lib/marketing-seo';
  */
 
 /** Date the competitor pricing pages were last checked. */
-export const AS_OF = 'August 17, 2026';
+export const AS_OF = 'September 11, 2026';
 
 export type FeatureValue = 'yes' | 'no' | 'partial' | 'planned' | 'unknown';
 
@@ -166,12 +166,12 @@ const gitbookPricing: PricingTable = {
     },
     {
       plan: 'Premium',
-      price: '$65 per site/month + $12 per user/month',
+      price: '$65 per site/month + $12 per user/month (annual billing)',
       includes: 'Custom domain, AI search, advanced branding, analytics & user feedback, site redirects.',
     },
     {
       plan: 'Ultimate',
-      price: '$249 per site/month + $12 per user/month',
+      price: '$249 per site/month + $12 per user/month (annual billing)',
       includes: 'Everything in Premium, plus AI assistant (500 answers included), authenticated access, adaptive content.',
     },
     {
@@ -180,7 +180,7 @@ const gitbookPricing: PricingTable = {
       includes: 'SAML SSO, white-glove migration, custom integrations, dedicated support.',
     },
   ],
-  note: 'Annual billing is advertised as “2 months free”. Auto-updating translations are a paid add-on: $25 for the first 50,000 words, then $0.20 per 1,000 words.',
+  note: 'Annual billing is advertised as “2 months free”. Auto-updating translations are included in Ultimate; Premium lists a paid add-on: $25 for the first 50,000 words, then $0.20 per 1,000 words.',
 };
 
 const readmePricing: PricingTable = {
@@ -197,12 +197,13 @@ const readmePricing: PricingTable = {
     {
       plan: 'Pro',
       price: '$250/month (billed annually)',
-      includes: 'Unlimited projects and versions, branching and reviews, private docs, changelog, recipes, custom MDX components.',
+      includes:
+        'One project, unlimited published versions, multiplayer editing, branching and reviews, private docs, changelog, recipes, custom MDX components.',
     },
     {
       plan: 'Enterprise',
       price: 'Contact sales (annual billing)',
-      includes: 'SSO/OAuth, audit logs, user roles and access control, no ReadMe branding, dedicated support, and on-premise deployment options.',
+      includes: 'SSO/OAuth, audit logs, user roles and access control, no ReadMe branding, dedicated support.',
     },
   ],
   note: '“Ask AI” is a separate add-on at $150/month.',
@@ -310,7 +311,7 @@ export const nibleafVsMintlify: Comparison = {
       ),
       competitor: yes('Pro plan, metered by credits'),
     },
-    { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
+    { feature: 'Enterprise SAML SSO / SCIM', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
     title: 'When to pick Mintlify instead',
@@ -346,7 +347,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'How much does Mintlify cost?',
-      a: 'As of August 17, 2026, Mintlify has a free Starter plan, Pro at $450/month, and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
+      a: 'As of September 11, 2026, Mintlify has a free Starter plan, Pro at $450/month, and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
     },
     {
       q: 'Can I migrate docs from Mintlify to Nibleaf?',
@@ -442,7 +443,7 @@ export const nibleafVsGitbook: Comparison = {
   pickNibleaf: {
     title: 'When to pick Nibleaf',
     reasons: [
-      'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Premium pricing as of August 17, 2026).',
+      'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Premium pricing as of September 11, 2026).',
       'You need the full editor, publishing pipeline, and reader to be deployable together. GitBook self-hosts only its published-site renderer.',
       'You need complete Arabic/RTL authoring support; GitBook says only paragraphs and headings currently auto-align reliably.',
       'You want your content to stay plain Markdown you can export and move any time.',
@@ -456,11 +457,11 @@ export const nibleafVsGitbook: Comparison = {
   faqs: [
     {
       q: 'Is Nibleaf a good alternative to GitBook?',
-      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. GitBook is ahead on GitLab sync, adaptive content, AI features, and enterprise SSO.',
+      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month with annual billing as of September 11, 2026. GitBook is ahead on GitLab sync, adaptive content, AI features, and enterprise SSO.',
     },
     {
       q: 'How much does GitBook cost?',
-      a: 'As of August 17, 2026: Free ($0, 1 user, no custom domain), Premium at $65 per site/month plus $12 per user/month, Ultimate at $249 per site/month plus $12 per user/month, and custom-priced Enterprise with SAML SSO. Annual billing is advertised as two months free. See gitbook.com/pricing for current numbers.',
+      a: 'As of September 11, 2026: Free ($0, 1 user, no custom domain), Premium at $65 per site/month plus $12 per user/month, Ultimate at $249 per site/month plus $12 per user/month, and custom-priced Enterprise with SAML SSO. Annual billing is advertised as two months free. See gitbook.com/pricing for current numbers.',
     },
     {
       q: 'Can I self-host GitBook?',
@@ -525,7 +526,11 @@ export const nibleafVsDocusaurus: Comparison = {
       competitor: yes('Docs versioning built in'),
     },
     { feature: 'Custom domains', nibleaf: yes(), competitor: yes('Via whatever host you deploy to') },
-    { feature: 'Built-in reader analytics', nibleaf: yes('Privacy-friendly, no tracker'), competitor: no('Bring your own') },
+    {
+      feature: 'Built-in reader analytics',
+      nibleaf: yes('Built-in reader analytics; managed hosting also uses Cloudflare'),
+      competitor: no('Bring your own'),
+    },
     {
       feature: 'Full code-level theme control (React)',
       nibleaf: partial('Theming, branding, and MDX components — not arbitrary code'),
@@ -557,13 +562,13 @@ export const nibleafVsDocusaurus: Comparison = {
       'Non-developers write your docs: Nibleaf gives them a Notion-style WYSIWYG editor, no git or Node.js required.',
       'You want instant publishing with versioned snapshots instead of a build-and-deploy pipeline.',
       'You want search and reader analytics built in, without wiring up Algolia or an analytics service.',
-      'You want a managed option in free beta with custom domains and do not require immediate self-hosting.',
+      'You want a managed option in free beta with custom domains and accept beta status and fair-use limits.',
       'You need Arabic/RTL editing in the authoring UI itself, not just in the rendered output.',
     ],
   },
   verdict: [
     'Docusaurus is excellent at what it does. If engineers are happy in Git and want control of a React codebase, it costs nothing and has a mature public distribution.',
-    'Nibleaf trades some of that code-level control for a platform normal humans can operate: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
+    'Nibleaf trades some of that code-level control for a browser-based authoring workflow: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
   ],
   faqs: [
     {
@@ -616,9 +621,9 @@ const starlightEntry: AlternativeEntry = {
 
 const scalarEntry: AlternativeEntry = {
   name: 'Scalar',
-  url: 'https://scalar.com',
+  url: 'https://scalar.com/products/api-references',
   description:
-    'API-first documentation: interactive references generated from OpenAPI/AsyncAPI documents, Markdown/MDX guides, and two-way git sync. Its API client is open source, and hosted plans are available.',
+    'Open-source interactive API references generated from OpenAPI or AsyncAPI documents, with built-in request testing and framework integrations. Evaluate its separate hosted documentation offering if you also need managed guides.',
   bestFor: 'Teams whose documentation is primarily an API reference.',
 };
 
@@ -626,7 +631,7 @@ const gitbookEntry: AlternativeEntry = {
   name: 'GitBook',
   url: 'https://www.gitbook.com',
   description:
-    'Polished hosted docs platform with a block-based editor and GitHub/GitLab sync. Free for one user without a custom domain; custom domains from $65 per site/month plus $12 per user/month, as of August 17, 2026.',
+    'Polished hosted docs platform with a block-based editor and GitHub/GitLab sync. Free for one user without a custom domain; custom domains from $65 per site/month plus $12 per user/month with annual billing, as of September 11, 2026.',
   bestFor: 'Teams that want a managed, all-in-one docs tool and are happy with SaaS pricing.',
 };
 
@@ -634,7 +639,7 @@ const mintlifyEntry: AlternativeEntry = {
   name: 'Mintlify',
   url: 'https://www.mintlify.com',
   description:
-    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground) and paid Pro/Enterprise plans that add AI features, previews, SSO, and an Enterprise self-hosted custom frontend option, as of August 17, 2026.',
+    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground) and paid Pro/Enterprise plans that add AI features, previews, SSO, and an Enterprise self-hosted custom frontend option, as of September 11, 2026.',
   bestFor: 'API-heavy startup docs where AI tooling and an API playground matter most.',
 };
 
@@ -695,7 +700,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What is the cheapest GitBook alternative with a custom domain?',
-      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month as of August 17, 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
+      a: 'GitBook gates custom domains behind Premium at $65 per site/month plus $12 per user/month with annual billing as of September 11, 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
     },
     {
       q: 'Can I self-host a GitBook alternative?',
@@ -730,7 +735,7 @@ export const readmeAlternatives: AlternativesRoundup = {
     },
     {
       q: 'How much does ReadMe cost?',
-      a: 'As of August 17, 2026: a free Starter plan (1 project, API reference, custom domain), Pro at $250/month billed annually, and custom-priced Enterprise. The “Ask AI” add-on is $150/month. See readme.com/pricing for current numbers.',
+      a: 'As of September 11, 2026: a free Starter plan (1 project, API reference, custom domain), Pro at $250/month billed annually, and custom-priced Enterprise. The “Ask AI” add-on is $150/month. See readme.com/pricing for current numbers.',
     },
     {
       q: 'Does Nibleaf have an interactive API reference like ReadMe?',
