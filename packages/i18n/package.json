@@ -21,16 +21,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.25.0"
+    "@inlang/paraglide-js": "2.25.4"
   },
   "peerDependencies": {
-    "react": "^19.2.8"
+    "react": "^19.3.0"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^22.20.1",
-    "@types/react": "^19.2.18",
-    "react": "^19.2.8",
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
