@@ -2,8 +2,8 @@
   "extends": "@nibleaf/tsconfig/base.json",
   "compilerOptions": {
     "lib": ["ES2022", "WebWorker"],
-    "types": ["@cloudflare/workers-types"],
+    "types": [],
     "noEmit": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "cloudflare.config.ts", ".cloudflare/types"]
 }
