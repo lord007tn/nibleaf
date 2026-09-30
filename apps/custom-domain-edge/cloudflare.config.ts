@@ -8,8 +8,8 @@ export default defineConfig({
     workersDev: false,
     previewUrls: false,
     observability: { enabled: true, headSamplingRate: 0.1 },
-    // Preserve variables managed outside this repository on version uploads.
-    unsafe: { metadata: { keep_bindings: ['plain_text', 'json'] } },
+    // Preserve variables and secrets managed outside this repository on uploads.
+    unsafe: { metadata: { keep_bindings: ['plain_text', 'json', 'secret_text'] } },
     env: {
       APP_ORIGIN: bindings.text('https://nibleaf.com'),
       EDGE_SECRET: bindings.secret(),
