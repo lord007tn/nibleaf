@@ -1,0 +1,57 @@
+---
+title: 'Nibleaf integrations: choose the connection your docs workflow needs'
+metaTitle: 'Nibleaf integrations: GitHub, analytics and provider limits'
+description: 'Understand GitHub sync versus GitLab imports, site analytics, webhook availability, and operator-managed providers before connecting a Nibleaf project.'
+datePublished: '2026-09-11'
+dateModified: '2026-09-11'
+tags: ['integrations', 'GitHub', 'workflow']
+related: ['nibleaf-integrations-ar', 'docs-should-live-in-plain-markdown', 'documentation-migration-seo-cutover-lab']
+translationOf: 'nibleaf-integrations-ar'
+readingMinutes: 5
+---
+
+Choose a connection by the job it performs: synchronize source files, import an existing site, measure published pages, or operate the hosting stack. Those jobs have different permissions and failure modes. A provider name in a catalog does not mean that every account has an active connection.
+
+Nibleaf supports a GitHub authoring workflow and public Git imports. Site analytics and infrastructure use separate configuration. The newer integration-management catalog is documented in the [source-release announcement](/blog/nibleaf-august-2026-source-release); it must not be mistaken for a promise that every Cloud workspace or the pinned v0.1.2 self-hosted image has those capabilities.
+
+## Match the connection to the task
+
+| Your task | Connection | Boundary to check |
+| --- | --- | --- |
+| Review Markdown changes in a repository | GitHub | Two-way authoring uses the configured repository, branches, and content path. Confirm repository permissions before editing. |
+| Bring in existing public documentation | GitLab or public Git | Import-only: this is not a two-way GitLab editing workflow. Review imported navigation and unsupported components. |
+| Measure visits on a published site | Google Analytics 4 or Plausible | Project configuration, followed by publishing and reader consent. These are not imports of historical provider reports. |
+| Evaluate project webhook connections | Slack, Discord, Zapier | Source-release integration lifecycle. A saved connection or test does not establish automatic publishing notifications or a Zapier app catalog. |
+| Supply search, storage, or email infrastructure | Operator-managed providers | Instance configuration, not an end-user account connection. Provider costs and availability are separate. |
+
+## GitHub sync or a one-time import?
+
+Use GitHub when the repository remains part of the ongoing review process. Before connecting it, agree on the source branch, content directory, and who resolves conflicts. Try a small representative page containing a heading, image, code block, and one supported MDX component. Compare the repository diff with the rendered page before adopting the workflow for the whole site.
+
+If you are moving from another platform, start with an import rehearsal. Public GitLab and generic Git imports bring content into Nibleaf; they do not promise that later browser edits will be written back. Keep the original repository until navigation, assets, links, and exports have been reviewed. The [migration cutover guide](/blog/documentation-migration-seo-cutover-lab) explains how to preserve URL ownership and plan redirects.
+
+Nibleaf is a poor fit if your requirement is two-way GitLab or Bitbucket authoring, simultaneous live co-editing, or arbitrary executable MDX components. Compare those requirements on the existing [Nibleaf vs Mintlify](/compare/nibleaf-vs-mintlify) and [Nibleaf vs GitBook](/compare/nibleaf-vs-gitbook) pages before moving content.
+
+## Analytics needs both configuration and consent
+
+GA4 uses a measurement ID; Plausible uses a domain. Configure the chosen provider for the project and publish the change. Treat a fresh reader visit separately from an opted-in visit: before explicit consent, optional tracking should remain inactive. Reopen privacy preferences deliberately when testing opt-in. Do not infer that a provider received an event merely because an identifier was saved.
+
+Nibleaf's built-in reader analytics and the operator's ClickHouse infrastructure are different from a project's GA4 or Plausible connection. A third-party provider can also have its own account, fees, and retention settings. There is no automatic historical-data migration in this workflow.
+
+## Webhooks and instance providers: check availability first
+
+The source catalog distinguishes project webhook credentials from operator-owned services. Slack and Zapier verification can send a visible test and requires confirmation in the dashboard; Discord verification is passive. None of those verification states proves a complete event-subscription workflow. Confirm the actual event and delivery behavior required by your use case before relying on automation.
+
+Storage providers include Amazon S3 and compatible services such as Cloudflare R2 and Backblaze B2. Email can use Postmark or SMTP. Optional OpenRouter and Qdrant configuration belongs to the operator; their presence does not mean grounded answers are enabled or included in a free beta allowance. Use the [self-hosting overview](/self-hosting) to understand operational responsibility and release compatibility.
+
+## Start with one publishable page
+
+[Create a free beta account](/sign-up), create a project, and publish one useful page before connecting optional services. Then test one connection end to end: edit and inspect a repository diff, or opt in and verify the intended analytics event. Stop if the workflow depends on an unavailable provider or an unsupported direction of sync. Review [pricing and self-hosting costs](/pricing) before choosing an operating model.
+
+## Sources reviewed September 11, 2026
+
+- [Integration inventory and ownership](https://github.com/lord007tn/nibleaf/blob/main/packages/shared/src/integrations.ts).
+- [Integration lifecycle reference](https://github.com/lord007tn/nibleaf/blob/main/docs/reference/integrations-engine.mdx).
+- [Pinned self-hosted release](https://github.com/lord007tn/nibleaf/blob/main/release/self-host.json).
+
+These public references document capability and release boundaries. They do not certify a particular workspace's credentials, deployment, or provider delivery.

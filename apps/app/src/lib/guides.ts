@@ -31,6 +31,32 @@ export const GUIDE_PILLARS: GuidePillar[] = [
 
 export const GUIDES: GuideEntry[] = [
   {
+    id: 'nibleaf-integrations',
+    pillar: 'ownership',
+    job: 'choose',
+    language: 'bilingual',
+    href: { en: '/blog/nibleaf-integrations', ar: '/blog/nibleaf-integrations-ar' },
+    title: { en: 'Choose a Nibleaf integration by its actual workflow', ar: 'اختر تكامل Nibleaf بحسب سير العمل الفعلي' },
+    summary: {
+      en: 'GitHub sync, import-only providers, consent-gated analytics, and source-release boundaries.',
+      ar: 'مزامنة GitHub والاستيراد والتحليلات المرتبطة بالموافقة وحدود إصدار المصدر.',
+    },
+    next: { en: 'Test one connection with one publishable page.', ar: 'اختبر اتصالًا واحدًا مع صفحة قابلة للنشر.' },
+  },
+  {
+    id: 'support-knowledge-base',
+    pillar: 'publishing',
+    job: 'publish',
+    language: 'bilingual',
+    href: { en: '/blog/customer-support-knowledge-base', ar: '/blog/customer-support-knowledge-base-ar' },
+    title: { en: 'Turn repeat support questions into a help center', ar: 'حوّل أسئلة الدعم المتكررة إلى مركز مساعدة' },
+    summary: {
+      en: 'A first-five-articles workflow with review, language parity, escalation, and publishing checks.',
+      ar: 'سير أول خمسة مقالات مع المراجعة وتكافؤ اللغات والتصعيد وفحوص النشر.',
+    },
+    next: { en: 'Publish and verify one complete answer.', ar: 'انشر إجابة مكتملة وتحقق منها.' },
+  },
+  {
     id: 'platform-or-generator',
     pillar: 'platforms',
     job: 'choose',

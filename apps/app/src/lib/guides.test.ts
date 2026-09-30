@@ -15,7 +15,8 @@ describe('guide academy registry', () => {
       'publishing',
     ]);
     expect(new Set(GUIDES.map((guide) => guide.id)).size).toBe(GUIDES.length);
-    expect(GUIDES).toHaveLength(13);
+    expect(GUIDES.some((guide) => guide.id === 'nibleaf-integrations')).toBe(true);
+    expect(GUIDES.some((guide) => guide.id === 'support-knowledge-base')).toBe(true);
     expect(GUIDES.every((guide) => GUIDE_PILLARS.some((pillar) => pillar.id === guide.pillar))).toBe(true);
   });
 
