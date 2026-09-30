@@ -4,16 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "wrangler deploy --dry-run --outdir dist",
-    "deploy": "wrangler deploy",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "build": "cf build",
+    "dev": "cf dev",
+    "upload": "cf workers versions create --prebuilt --mode production",
+    "deploy": "cf workers deployments create --worker nibleaf-custom-domain-edge --strategy percentage",
+    "test": "vitest run --config vitest.config.ts",
+    "typecheck": "cf workers types && tsc --noEmit"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20260903.1",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-ad79608dd",
     "@nibleaf/tsconfig": "workspace:*",
+    "cf": "1.0.0-beta.6",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.11",
-    "wrangler": "^4.128.0"
+    "vite": "8.3.1",
+    "vitest": "^4.1.11"
   }
 }

@@ -5,6 +5,10 @@
     "apps/app/public/guides/fixtures/markdown-round-trip.mdx"
   ],
   "workspaces": {
+    "apps/custom-domain-edge": {
+      "entry": ["src/index.ts", "cloudflare.config.ts"],
+      "project": ["src/**/*.ts"]
+    },
     ".": {
       "entry": [
         "scripts/graceful-web-service.mjs",
