@@ -5,11 +5,13 @@ import { act } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, it } from 'vitest';
+import englishCatalog from '../../../../packages/i18n/messages/en.json' with { type: 'json' };
 import { AboutPage } from './about';
 import { DeveloperResourcesPage } from './developers';
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
+const englishCopy: Record<string, string> = englishCatalog;
 
 afterEach(async () => {
   if (root) await act(async () => root?.unmount());
@@ -38,6 +40,14 @@ for (const preference of ['ar', 'en']) {
       document.body.append(container);
       const before = container.textContent;
       expect(before).not.toMatch(/[\u0600-\u06ff]/);
+      const releaseKeys =
+        name === 'about'
+          ? ['marketing.release.stack']
+          : ['marketing.release.mcpTitle', 'marketing.release.mcpBody', 'marketing.release.mcpLabel', 'marketing.release.mcpBoundary'];
+      for (const key of releaseKeys) {
+        expect(before).toContain(englishCopy[key]);
+        expect(before).not.toContain(key);
+      }
       const observedText: string[] = [];
       const observer = new MutationObserver(() => observedText.push(container?.textContent ?? ''));
       observer.observe(container, { childList: true, characterData: true, subtree: true });

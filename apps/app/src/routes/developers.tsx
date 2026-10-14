@@ -1,3 +1,9 @@
+import {
+  'marketing.release.mcpBody' as releaseMcpBody,
+  'marketing.release.mcpBoundary' as releaseMcpBoundary,
+  'marketing.release.mcpLabel' as releaseMcpLabel,
+  'marketing.release.mcpTitle' as releaseMcpTitle,
+} from '@nibleaf/i18n/messages';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Bot, Braces, ShieldCheck, Terminal } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -46,10 +52,10 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
     },
     {
       icon: ShieldCheck,
-      title: 'marketing.release.mcpTitle',
-      body: 'marketing.release.mcpBody',
+      title: releaseMcpTitle({}, { locale: 'en' }),
+      body: releaseMcpBody({}, { locale: 'en' }),
       href: 'https://docs.nibleaf.com/self-hosting/mcp',
-      label: 'marketing.release.mcpLabel',
+      label: releaseMcpLabel({}, { locale: 'en' }),
     },
     {
       icon: Terminal,
@@ -127,7 +133,7 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
           <p className="mt-3 text-muted-foreground leading-relaxed">
             Public published sites require no credentials. Private reader sites use their configured reader session and intentionally return 404 to
             unauthorized callers. Dashboard endpoints use an authenticated browser session and are not a supported third-party write API. Do not send
-            session cookies or secrets to the CLI. {'marketing.release.mcpBoundary'}
+            session cookies or secrets to the CLI. {releaseMcpBoundary({}, { locale: 'en' })}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a className={primaryButton} href="https://docs.nibleaf.com/reference/api">
