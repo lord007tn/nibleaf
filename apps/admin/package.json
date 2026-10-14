@@ -21,11 +21,11 @@
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-query": "^5.102.8",
-    "@tanstack/react-router": "^1.170.32",
-    "@tanstack/react-start": "^1.168.49",
+    "@tanstack/react-router": "1.170.44",
+    "@tanstack/react-start": "1.169.1",
     "@t3-oss/env-core": "^0.13.11",
     "lucide-react": "^1.39.0",
-    "nitro": "3.0.260522-beta",
+    "nitro": "3.0.260903-beta",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "recharts": "3.10.1",
@@ -37,9 +37,9 @@
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxc-transform-react": "0.148.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "oxc-transform-react": "0.152.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "8.2.2"
   }
 }

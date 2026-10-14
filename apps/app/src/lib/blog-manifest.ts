@@ -1,4 +1,18 @@
-import { translateFn } from '@nibleaf/i18n';
+import {
+  blog_arabicchecklist_description,
+  blog_arabicchecklist_faqdirectionanswer,
+  blog_arabicchecklist_faqdirectionquestion,
+  blog_arabicchecklist_faqsearchanswer,
+  blog_arabicchecklist_faqsearchquestion,
+  blog_arabicchecklist_faqsupportanswer,
+  blog_arabicchecklist_faqsupportquestion,
+  blog_arabicchecklist_faqtreeanswer,
+  blog_arabicchecklist_faqtreequestion,
+  blog_arabicchecklist_metatitle,
+  blog_arabicchecklist_tagarabic,
+  blog_arabicchecklist_tagproductdocs,
+  blog_arabicchecklist_title,
+} from '@nibleaf/i18n/messages';
 import type { BlogEntry } from './blog';
 
 /** Lightweight article metadata. Keep this in sync with MDX frontmatter.
@@ -514,36 +528,32 @@ export const BLOG_MANIFEST = [
   },
   {
     slug: 'arabic-technical-documentation-rtl-checklist',
-    title: translateFn('blog.arabicChecklist.title', undefined, 'ar'),
-    metaTitle: translateFn('blog.arabicChecklist.metaTitle', undefined, 'ar'),
-    description: translateFn('blog.arabicChecklist.description', undefined, 'ar'),
+    title: blog_arabicchecklist_title({}, { locale: 'ar' }),
+    metaTitle: blog_arabicchecklist_metatitle({}, { locale: 'ar' }),
+    description: blog_arabicchecklist_description({}, { locale: 'ar' }),
     language: 'ar',
     datePublished: '2026-08-15',
     dateModified: '2026-09-03',
-    tags: [
-      translateFn('blog.arabicChecklist.tagArabic', undefined, 'ar'),
-      'RTL',
-      translateFn('blog.arabicChecklist.tagProductDocs', undefined, 'ar'),
-    ],
+    tags: [blog_arabicchecklist_tagarabic({}, { locale: 'ar' }), 'RTL', blog_arabicchecklist_tagproductdocs({}, { locale: 'ar' })],
     related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown-ar', 'self-host-documentation-site-docker-compose-ar'],
     translationOf: 'arabic-documentation-rtl',
     readingMinutes: 8,
     faqs: [
       {
-        question: translateFn('blog.arabicChecklist.faqDirectionQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqDirectionAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqdirectionquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqdirectionanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqSearchQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqSearchAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqsearchquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqsearchanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqTreeQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqTreeAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqtreequestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqtreeanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqSupportQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqSupportAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqsupportquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqsupportanswer({}, { locale: 'ar' }),
       },
     ],
   },

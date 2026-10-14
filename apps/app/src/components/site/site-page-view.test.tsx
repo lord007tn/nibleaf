@@ -1,10 +1,26 @@
-import { renderToStaticMarkup } from 'react-dom/server';
+import { PassThrough } from 'node:stream';
+import type { ReactNode } from 'react';
+import { renderToPipeableStream, renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
 import { SitePageView } from './site-page-view';
 
 vi.mock('@/components/site/page-alternates-context', () => ({ useSitePageAlternates: () => ({ setAlternates: vi.fn() }) }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
+
+// The production reader streams Suspense content; wait for the full HTML to
+// assert that the deferred renderer preserves article text and body links.
+const renderCompleteHtml = (node: ReactNode): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const output = new PassThrough();
+    let html = '';
+    output.on('data', (chunk) => {
+      html += chunk.toString();
+    });
+    output.on('end', () => resolve(html));
+    output.on('error', reject);
+    const { pipe } = renderToPipeableStream(node, { onAllReady: () => pipe(output), onError: reject });
+  });
 
 const data = (overrides: Partial<SitePage> = {}): SitePage => ({
   project: {
@@ -43,26 +59,31 @@ const data = (overrides: Partial<SitePage> = {}): SitePage => ({
 });
 
 describe('published page presentation', () => {
-  it.each(['en', 'ar'])('uses clean navigation and body links for the configured default %s language', (code) => {
-    const fixture = data({
-      activeLanguage: code,
-      languages: [{ code, isDefault: true, path: 'start' }],
-      breadcrumbs: [
-        { title: 'Parent', path: 'parent' },
-        { title: 'Start', path: 'start' },
-      ],
-      page: { ...data().page, content: '[Sibling](/sibling#setup)\n\n[Explicit](/other?lang=fr)' },
-      next: { title: 'Next', path: 'next' },
-    });
-    const html = renderToStaticMarkup(<SitePageView data={fixture} lang={code} projectId="project-1" />);
-    expect(html).toContain('href="/sites/project-1/sibling#setup"');
-    expect(html).toContain('href="/sites/project-1/parent"');
-    expect(html).toContain('href="/sites/project-1/next"');
-    expect(html).toContain('href="/sites/project-1/other?lang=fr"');
-    expect(html).not.toContain(`?lang=${code}`);
-  });
+  it.each(['en', 'ar'])(
+    'uses clean navigation and body links for the configured default %s language',
+    async (code) => {
+      const fixture = data({
+        activeLanguage: code,
+        languages: [{ code, isDefault: true, path: 'start' }],
+        breadcrumbs: [
+          { title: 'Parent', path: 'parent' },
+          { title: 'Start', path: 'start' },
+        ],
+        page: { ...data().page, content: '[Sibling](/sibling#setup)\n\n[Explicit](/other?lang=fr)' },
+        next: { title: 'Next', path: 'next' },
+      });
+      const html = await renderCompleteHtml(<SitePageView data={fixture} lang={code} projectId="project-1" />);
+      expect(html).toContain('href="/sites/project-1/sibling#setup"');
+      expect(html).toContain('href="/sites/project-1/parent"');
+      expect(html).toContain('href="/sites/project-1/next"');
+      expect(html).toContain('href="/sites/project-1/other?lang=fr"');
+      expect(html).not.toContain(`?lang=${code}`);
+    },
+    // The first deferred render also compiles the Markdown dependency graph.
+    30_000,
+  );
 
-  it('keeps a non-default language and version on generated reader links', () => {
+  it('keeps a non-default language and version on generated reader links', async () => {
     const fixture = data({
       activeLanguage: 'ar',
       activeVersion: 'v2',
@@ -70,7 +91,7 @@ describe('published page presentation', () => {
       page: { ...data().page, content: '[Sibling](/sibling#setup)' },
       next: { title: 'Next', path: 'next' },
     });
-    const html = renderToStaticMarkup(<SitePageView data={fixture} lang="ar" projectId="project-1" />);
+    const html = await renderCompleteHtml(<SitePageView data={fixture} lang="ar" projectId="project-1" />);
     expect(html).toContain('href="/sites/project-1/v2/sibling?lang=ar#setup"');
     expect(html).toContain('href="/sites/project-1/v2/next?lang=ar"');
   });
@@ -83,8 +104,8 @@ describe('published page presentation', () => {
     expect(render(`${examples}\n![Actual](/actual.png)`)).not.toContain('screenshots');
   });
 
-  it.each(['en', 'ar'])('shows public %s content without Markdown source controls', (language) => {
-    const html = renderToStaticMarkup(<SitePageView data={data({ activeLanguage: language })} lang={language} projectId="project-1" />);
+  it.each(['en', 'ar'])('shows public %s content without Markdown source controls', async (language) => {
+    const html = await renderCompleteHtml(<SitePageView data={data({ activeLanguage: language })} lang={language} projectId="project-1" />);
     expect(html).toContain('Public body.');
     expect(html).not.toContain('type="text/markdown"');
     expect(html).not.toMatch(/View Markdown|Copy Markdown|عرض Markdown|نسخ Markdown/);

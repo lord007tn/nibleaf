@@ -23,6 +23,7 @@ describe('getGithubStars', () => {
     const { getGithubStars } = await import('@/functions/marketing');
 
     await expect(getGithubStars()).resolves.toBe(0);
+    await vi.dynamicImportSettled();
     expect(getRepository).toHaveBeenCalledTimes(1);
     expect(getRepository).toHaveBeenCalledWith({ owner: 'lord007tn', repo: 'nibleaf' });
 
