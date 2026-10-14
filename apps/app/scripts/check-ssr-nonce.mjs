@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { parseHTML } from 'linkedom';
 
 const [htmlPath, headersPath] = process.argv.slice(2);
 assert.ok(htmlPath && headersPath, 'Pass the SSR HTML and HTTP response header files');
@@ -11,12 +12,13 @@ assert.ok(nonce, 'SSR response must include a nonce-based Content-Security-Polic
 
 let executableScripts = 0;
 let hydrationScripts = 0;
-for (const [, attributes] of html.matchAll(/<script\b([^>]*)>[\s\S]*?<\/script>/giu)) {
-  const type = attributes.match(/\btype="([^"]*)"/i)?.[1];
+const { document } = parseHTML(html);
+for (const script of document.querySelectorAll('script')) {
+  const type = script.getAttribute('type');
   if (type && !['module', 'text/javascript', 'application/javascript'].includes(type)) continue;
   executableScripts++;
-  assert.equal(attributes.match(/\bnonce="([^"]*)"/i)?.[1], nonce, 'Every executable SSR script must match the CSP nonce');
-  if (attributes.includes('data-tsr-stream-part')) hydrationScripts++;
+  assert.equal(script.getAttribute('nonce'), nonce, 'Every executable SSR script must match the CSP nonce');
+  if (script.hasAttribute('data-tsr-stream-part')) hydrationScripts++;
 }
 assert.ok(executableScripts > 0, 'SSR must include executable scripts');
 assert.ok(hydrationScripts > 0, 'SSR must include the TanStack hydration stream');
