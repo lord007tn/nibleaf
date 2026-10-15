@@ -11,7 +11,9 @@
     },
     ".": {
       "entry": [
+        "scripts/docker-context-smoke.mjs",
         "scripts/graceful-web-service.mjs",
+        "scripts/runtime-image-audit.mjs",
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs"

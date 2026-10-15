@@ -58,7 +58,8 @@ deployment acceptance from a local image test.
    and invalid-origin requests still fail closed.
 4. Create a synthetic project, edit and publish on mobile, wait for worker
    completion and verify its reader in English/Arabic. Test Git import from a
-   local fixture plus HTML/ZIP and PDF exports. PDF acceptance must exercise the
+   public read-only fixture plus HTML/ZIP and PDF exports. Private/local Git URLs
+   must remain blocked by SSRF protections. PDF acceptance must exercise the
    image's Chromium executable and produce a readable file.
 5. Send SIGTERM to each service mode. Verify clean exit, drained HTTP requests
    and queue shutdown without orphan child processes or abruptly lost jobs.

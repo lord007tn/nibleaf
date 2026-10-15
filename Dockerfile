@@ -33,7 +33,13 @@ ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 # bundles are optimized together. Keep this aligned with the 5-6 GiB build
 # requirement documented in docker-compose.yml.
 ENV NODE_OPTIONS=--max-old-space-size=6144
-RUN pnpm exec turbo run build --concurrency=1
+# Build only container services and their workspace dependencies. The separately
+# deployed Cloudflare edge uses workerd, whose Linux binary is not Alpine-native.
+RUN pnpm exec turbo run build --concurrency=1 \
+  --filter=@nibleaf/app... \
+  --filter=@nibleaf/admin... \
+  --filter=@nibleaf/server... \
+  --filter=@nibleaf/worker...
 
 # Install a clean production graph instead of copying the builder's tooling.
 # Keep the workspace layout: server/worker and their workspace dependencies run
