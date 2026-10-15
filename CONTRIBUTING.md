@@ -29,7 +29,7 @@ pnpm db:generate
 # Bring up the datastores (Postgres, Dragonfly, maxio):
 docker compose -f docker-compose.dev.yml up -d
 
-# Apply migrations and seed a local demo account (demo@nibleaf.test / nibleafdemo123):
+# Apply migrations and seed a local demo account (demo@nibleaf.test):
 pnpm db:deploy
 pnpm db:seed
 
@@ -39,6 +39,11 @@ pnpm dev
 
 - Dashboard: http://localhost:4310
 - API + OpenAPI docs: http://localhost:4311/docs
+
+The demo account uses the same email-code sign-in as the product. With no email
+provider configured, open the local worker's job dashboard at
+http://localhost:4312/jobs and read the code in the latest email job's data.
+The seed creates the workspace and published starter idempotently.
 
 For a production-style installation, use the pinned-image path in the
 [self-hosted quickstart](https://docs.nibleaf.com/getting-started/self-hosted)

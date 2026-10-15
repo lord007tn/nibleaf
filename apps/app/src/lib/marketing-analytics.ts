@@ -26,6 +26,10 @@ const GA4_ID = /^G-[A-Z0-9]{6,}$/u;
 const GTM_ID = /^GTM-[A-Z0-9]{6,}$/u;
 export const GTM_MARKETING_EVENT = 'nibleaf_marketing_event';
 let activeTarget: MarketingAnalyticsTarget | null = null;
+// A failed write must never restore an older stored acceptance in this page.
+// Acceptance remains unknown until storage works; explicit refusal stays effective.
+let volatileConsent: 'declined' | 'pending' | null = null;
+let withdrawalCleanupPending = false;
 // Only consented events may wait for the public metadata request to select a
 // target. Keep this bounded and in memory; never replay pre-consent activity.
 const pendingEvents: { event: string; properties: Record<string, boolean | number | string>; pathname: string }[] = [];
@@ -159,6 +163,7 @@ export function selectMarketingAnalyticsTarget(input?: { ga4MeasurementId?: unkn
 
 export const readMarketingAnalyticsConsent = (): MarketingAnalyticsConsent => {
   if (typeof window === 'undefined') return 'pending';
+  if (volatileConsent) return volatileConsent;
   try {
     const stored = window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY);
     return stored === 'accepted' || stored === 'declined' ? stored : 'pending';
@@ -167,16 +172,42 @@ export const readMarketingAnalyticsConsent = (): MarketingAnalyticsConsent => {
   }
 };
 
-export const persistMarketingAnalyticsConsent = (choice: Exclude<MarketingAnalyticsConsent, 'pending'>): void => {
-  window.localStorage.setItem(MARKETING_ANALYTICS_CONSENT_KEY, choice);
-  if (choice === 'declined') {
-    pendingEvents.length = 0;
+const clearFirstPublishStorage = (): boolean => {
+  let cleared = true;
+  try {
     window.localStorage.removeItem(FIRST_PUBLISH_CONTEXT_KEY);
+  } catch {
+    cleared = false;
+  }
+  try {
     for (const key of Object.keys(window.sessionStorage)) {
       if (key.startsWith(`${FIRST_PUBLISH_CONTEXT_KEY}.`)) window.sessionStorage.removeItem(key);
     }
+  } catch {
+    cleared = false;
   }
-  window.dispatchEvent(new CustomEvent(MARKETING_ANALYTICS_CONSENT_EVENT, { detail: choice }));
+  return cleared;
+};
+
+export const persistMarketingAnalyticsConsent = (choice: Exclude<MarketingAnalyticsConsent, 'pending'>): void => {
+  if (typeof window === 'undefined') return;
+  if (choice === 'declined') {
+    pendingEvents.length = 0;
+    withdrawalCleanupPending = !clearFirstPublishStorage();
+  } else if (withdrawalCleanupPending) {
+    withdrawalCleanupPending = !clearFirstPublishStorage();
+  }
+  if (choice === 'accepted' && withdrawalCleanupPending) {
+    volatileConsent = 'pending';
+  } else {
+    try {
+      window.localStorage.setItem(MARKETING_ANALYTICS_CONSENT_KEY, choice);
+      volatileConsent = null;
+    } catch {
+      volatileConsent = choice === 'declined' ? 'declined' : 'pending';
+    }
+  }
+  window.dispatchEvent(new CustomEvent(MARKETING_ANALYTICS_CONSENT_EVENT, { detail: readMarketingAnalyticsConsent() }));
 };
 
 const responseNonce = (): string | undefined => document.querySelector<HTMLMetaElement>('meta[property="csp-nonce"]')?.content || undefined;

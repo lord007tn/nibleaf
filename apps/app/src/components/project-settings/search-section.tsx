@@ -128,8 +128,9 @@ function ProjectSearchConfigurationForm({
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
 
+  const defaultValues = { placeholder: configuration.placeholder ?? '', maxResults: String(configuration.maxResults) };
   const form = useForm({
-    defaultValues: { placeholder: configuration.placeholder ?? '', maxResults: String(configuration.maxResults) },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
       try {
@@ -217,12 +218,28 @@ function ProjectSearchConfigurationForm({
         />
       </Field>
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || controlsDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => (
+          <DirtyStateReporter
+            values={values}
+            defaults={defaultValues}
+            extraDirty={controlsDirty}
+            dirty={isDirty || controlsDirty}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !controlsDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => (
+          <SaveBar
+            values={values}
+            defaults={defaultValues}
+            extraDirty={controlsDirty}
+            disabled={!isDirty && !controlsDirty}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </form.Subscribe>
     </form>
   );
@@ -245,8 +262,9 @@ function LanguageSearchForm({
   const update = useUpdateLanguage(project.id);
   const projectSearch = project.config?.search ?? {};
 
+  const defaultValues = { placeholder: language.config?.search?.placeholder ?? '' };
   const form = useForm({
-    defaultValues: { placeholder: language.config?.search?.placeholder ?? '' },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const placeholder = value.placeholder.trim();
       try {
@@ -297,12 +315,12 @@ function LanguageSearchForm({
         />
       </Field>
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => <DirtyStateReporter values={values} defaults={defaultValues} dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );

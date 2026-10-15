@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type DraftState, isDirty, nextHydration, type ServerSnapshot, shouldAutosave, snapshotOf } from './editor-draft';
+import { type DraftState, isDirty, nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft, snapshotOf } from './editor-draft';
 
 const pageA: ServerSnapshot = { id: 'a', title: 'Getting started', content: '# Hello\n\n- one\n- two', updatedAt: '2026-09-01T10:00:00.000Z' };
 const pageB: ServerSnapshot = { id: 'b', title: 'Authentication', content: 'Use a bearer token.', updatedAt: '2026-09-01T11:00:00.000Z' };
@@ -109,15 +109,29 @@ describe('shouldAutosave', () => {
     expect(shouldAutosave({ synced: snapshotOf(newPage), draft: { title: newPage.title, content: 'first words' } }, newPage)).toBe(true);
   });
 
-  it('never automatically replaces a non-empty page with an empty body', () => {
-    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: pageA.title, content: '' } }, pageA)).toBe(false);
-    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: pageA.title, content: '  \n' } }, pageA)).toBe(false);
-    // A title-only edit that arrives together with a transiently empty body is held back too.
-    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: 'Renamed', content: '' } }, pageA)).toBe(false);
+  it('persists deliberate clearing after the correct page has hydrated', () => {
+    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: pageA.title, content: '' } }, pageA)).toBe(true);
+    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: pageA.title, content: '  \n' } }, pageA)).toBe(true);
+    expect(shouldAutosave({ synced: snapshotOf(pageA), draft: { title: 'Renamed', content: '' } }, pageA)).toBe(true);
   });
 
   it('still saves a title edit on an empty page', () => {
     expect(shouldAutosave({ synced: snapshotOf(newPage), draft: { title: 'الصفحة الأولى', content: '' } }, newPage)).toBe(true);
+  });
+});
+
+describe('shouldFlushDraft', () => {
+  it('flushes an undo back to the original content while an older save is in flight', () => {
+    const undone = cleanState(pageA);
+    expect(shouldAutosave(undone, pageA)).toBe(false);
+    expect(shouldFlushDraft(undone, pageA, true)).toBe(true);
+    expect(shouldFlushDraft(undone, pageA, false)).toBe(false);
+  });
+
+  it('allows retrying a failed save but never writes a draft to another page', () => {
+    expect(shouldFlushDraft(cleanState(pageA), pageA, false, true)).toBe(true);
+    expect(shouldFlushDraft(cleanState(pageA), pageB, true, true)).toBe(false);
+    expect(shouldFlushDraft({ synced: null, draft: { title: '', content: '' } }, newPage, true, true)).toBe(false);
   });
 });
 

@@ -32,11 +32,13 @@ export function BranchSwitcher({
   branches,
   activeBranchId,
   onSwitch,
+  beforeChange,
 }: {
   projectId: string;
   branches: Branch[];
   activeBranchId: string | null;
   onSwitch: (id: string) => void;
+  beforeChange?: () => Promise<void>;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -60,6 +62,12 @@ export function BranchSwitcher({
     if (!ok) {
       return;
     }
+    try {
+      await beforeChange?.();
+    } catch {
+      toast.error(t('editor.saveError'));
+      return;
+    }
     merge.mutate(active.id, {
       onSuccess: () => {
         toast.success(t('editor.branch.merged', { name: active.name }));
@@ -71,9 +79,15 @@ export function BranchSwitcher({
     });
   };
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
+      return;
+    }
+    try {
+      await beforeChange?.();
+    } catch {
+      toast.error(t('editor.saveError'));
       return;
     }
     create.mutate(

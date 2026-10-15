@@ -2719,5 +2719,18 @@
   "admin_status_expired": "已过期",
   "admin_status_disabled": "已禁用",
   "admin_operations_gitkind_pull": "拉取",
-  "admin_operations_gitkind_push": "推送"
+  "admin_operations_gitkind_push": "推送",
+  "editor_saveerror": "无法保存更改。请在离开前重试。",
+  "editor_retrysave": "重试保存",
+  "dashboard_search_noresults": "没有与搜索匹配的站点。",
+  "dashboard_search_clear": "清除搜索",
+  "auth_invite_switchaccount": "使用受邀账户登录",
+  "auth_invite_switchaccounterror": "无法切换账户。请重试。",
+  "site_closesearch": "关闭搜索",
+  "settings_permissions_title": "需要管理员权限",
+  "settings_permissions_body": "请联系站点所有者或管理员更新这些设置。您仍可编辑文档并使用当前角色可访问的功能。",
+  "settings_members_removeconfirm": "要从此站点移除 {name} 吗？该成员将无法访问站点文档和设置。",
+  "settings_members_revokeconfirm": "要撤销发给 {email} 的邀请吗？此邀请链接将失效。",
+  "settings_config_discarddescription": "您有未保存的设置更改。离开此部分将丢弃这些更改。",
+  "editor_saveconfigfirst": "请先保存设置更改，再预览或发布。"
 }

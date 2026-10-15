@@ -5,8 +5,8 @@ import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/c
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useDebouncedCallback } from '@tanstack/react-pacer';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { useDebouncer } from '@tanstack/react-pacer';
+import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
   Check,
   ChevronLeft,
@@ -29,15 +29,16 @@ import {
   TriangleAlert,
   Type as TypeIcon,
 } from 'lucide-react';
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
-import { isDirty, nextHydration, type ServerSnapshot, shouldAutosave } from '@/components/editor/editor-draft';
+import { nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
+import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
@@ -45,6 +46,7 @@ import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/compon
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
+import { ConfigDirtyProvider } from '@/components/project-settings/shared';
 import type { Language, PageNode } from '@/hooks/api';
 import {
   useBranches,
@@ -114,6 +116,20 @@ function EditorPage() {
   const uploadAsset = useUploadAsset(projectId);
   const reorderPages = useReorderPages(projectId);
   const confirm = useConfirm();
+  const configDirtySources = useRef(new Set<string>());
+  const reportConfigDirty = useCallback((source: string, dirty: boolean) => {
+    if (dirty) configDirtySources.current.add(source);
+    else configDirtySources.current.delete(source);
+  }, []);
+  const guardConfigChanges = async () => {
+    if (configDirtySources.current.size === 0) return true;
+    return confirm({
+      title: t('settings.chrome.scope.discardTitle'),
+      description: t('settings.config.discardDescription'),
+      confirmLabel: t('settings.chrome.scope.discardConfirm'),
+      destructive: true,
+    });
+  };
 
   // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
   const onUploadImage = async (file: File): Promise<string | null> => {
@@ -164,7 +180,11 @@ function EditorPage() {
   // otherwise claim 300px on the first visit); the author's toggle is persisted.
   const [railOpen, setRailOpen] = useState(false);
   useEffect(() => {
-    setRailOpen(window.localStorage.getItem('nibleaf.editor.railOpen') === '1');
+    try {
+      setRailOpen(window.localStorage.getItem('nibleaf.editor.railOpen') === '1');
+    } catch {
+      // Keep the default layout when storage is unavailable.
+    }
   }, []);
   useEffect(() => {
     try {
@@ -183,14 +203,18 @@ function EditorPage() {
   // unpublished draft in its own tab through the authenticated preview route.
   const [editorMode, setEditorMode] = useState<'visual' | 'wysiwyg' | 'markdown'>('visual');
   useEffect(() => {
-    const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
-    setEditorMode(stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual');
+    try {
+      const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
+      setEditorMode(stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual');
+    } catch {
+      // Keep the default content mode when storage is unavailable.
+    }
   }, []);
   // Unknown JSX components are represented by local opaque nodes. Inventory
   // them for the explanatory banner without locking the rest of the page.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
   const effectiveMode = editorMode;
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
   // page, so opening a page's settings from the tree does NOT switch what you're
@@ -206,11 +230,19 @@ function EditorPage() {
   // Resizable left sidebar (persisted). Clamp to a sensible range.
   const [sidebarWidth, setSidebarWidth] = useState(260);
   useEffect(() => {
-    const stored = Number(window.localStorage.getItem('nibleaf.editor.sidebarWidth'));
-    setSidebarWidth(stored >= 200 && stored <= 520 ? stored : 260);
+    try {
+      const stored = Number(window.localStorage.getItem('nibleaf.editor.sidebarWidth'));
+      setSidebarWidth(stored >= 200 && stored <= 520 ? stored : 260);
+    } catch {
+      // Keep the default width when storage is unavailable.
+    }
   }, []);
   useEffect(() => {
-    window.localStorage.setItem('nibleaf.editor.sidebarWidth', String(sidebarWidth));
+    try {
+      window.localStorage.setItem('nibleaf.editor.sidebarWidth', String(sidebarWidth));
+    } catch {
+      // Layout persistence is optional.
+    }
   }, [sidebarWidth]);
   useEffect(() => {
     try {
@@ -223,7 +255,11 @@ function EditorPage() {
   // the toggle lives in the editor toolbar, not a breadcrumb). Persisted.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
-    setSidebarCollapsed(window.localStorage.getItem('nibleaf.editor.sidebarCollapsed') === '1');
+    try {
+      setSidebarCollapsed(window.localStorage.getItem('nibleaf.editor.sidebarCollapsed') === '1');
+    } catch {
+      // Keep navigation visible when storage is unavailable.
+    }
   }, []);
   useEffect(() => {
     try {
@@ -297,41 +333,115 @@ function EditorPage() {
     setStatus('idle');
   }
 
-  // Debounced autosave: fire ~700ms after the user stops typing the title/content.
-  // `onUnmount` flushes any pending save when the editor unmounts (route change /
-  // tab close) so a keystroke made <700ms before leaving isn't dropped.
-  const saveDraft = useDebouncedCallback(
-    (pageId: string, draft: { title: string; content: string }) => {
-      updatePage.mutate(
-        { pageId, body: draft },
-        {
-          onSuccess: (saved) => {
-            setStatus('saved');
-            // The saved draft is now the synced server state — but only while
-            // that page is still the one open; a save that lands after a page
-            // switch must not disturb the new page's draft.
-            setSynced((current) =>
-              current?.id === pageId ? { id: pageId, title: draft.title, content: draft.content, updatedAt: saved.updatedAt } : current,
-            );
-          },
-          onError: () => setStatus('idle'),
-        },
-      );
+  const draftRef = useRef({ synced, draft: { title, content }, page });
+  const updatePageRef = useRef(updatePage);
+  useLayoutEffect(() => {
+    draftRef.current = { synced, draft: { title, content }, page };
+    updatePageRef.current = updatePage;
+  }, [synced, title, content, page, updatePage]);
+  const saveQueue = useMemo(
+    () =>
+      createEditorSaveQueue(async (draft: PageDraft) => {
+        try {
+          const saved = await updatePageRef.current.mutateAsync({ pageId: draft.id, body: { title: draft.title, content: draft.content } });
+          setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
+          const latest = draftRef.current;
+          if (latest.synced?.id === draft.id) {
+            setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+          }
+          return saved;
+        } catch (error) {
+          if (draftRef.current.synced?.id === draft.id) setStatus('error');
+          throw error;
+        }
+      }),
+    [],
+  );
+  const saveDraft = useDebouncer(
+    (draft: PageDraft) => {
+      void saveQueue.save(draft).catch(() => undefined);
     },
-    { wait: 700, onUnmount: (d) => d.flush() },
+    { wait: 700, onUnmount: (debouncer) => debouncer.flush() },
   );
 
-  // Only ever saves to the page the draft was hydrated from, and never an empty
-  // body over a non-empty page (see shouldAutosave).
+  // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {
     if (!page || !shouldAutosave({ synced, draft: { title, content } }, page)) {
+      // Undoing back to the server copy must cancel an older queued draft.
+      saveDraft.cancel();
       return;
     }
     setStatus('saving');
-    saveDraft(page.id, { title, content });
+    saveDraft.maybeExecute({ id: page.id, title, content });
   }, [title, content, page, synced, saveDraft]);
 
+  const flushCurrentDraft = async () => {
+    saveDraft.cancel();
+    let current = draftRef.current;
+    if (!current.page || current.synced?.id !== current.page.id) {
+      await saveQueue.settled();
+      return;
+    }
+    // The author can undo to the original value while an older save is still
+    // in flight. Persist that final value after the request, even though it
+    // currently compares clean with the old hydration snapshot.
+    if (!shouldFlushDraft(current, current.page, saveQueue.hasPending(), status === 'error')) {
+      await saveQueue.settled();
+      return;
+    }
+    const pageId = current.page.id;
+    // Typing while a slow request runs must also reach the server before a
+    // navigation or publish can proceed.
+    for (;;) {
+      const snapshot: PageDraft = { id: pageId, ...current.draft };
+      setStatus('saving');
+      await saveQueue.save(snapshot);
+      current = draftRef.current;
+      if (current.page?.id !== snapshot.id || (current.draft.title === snapshot.title && current.draft.content === snapshot.content)) return;
+      saveDraft.cancel();
+    }
+  };
+
+  const transitionInFlight = useRef(false);
+  const runAfterSavingDraft = async ({ action }: { action: () => void }) => {
+    if (transitionInFlight.current) return;
+    transitionInFlight.current = true;
+    try {
+      await flushCurrentDraft();
+      action();
+    } catch {
+      toast.error(t('editor.saveError'));
+    } finally {
+      transitionInFlight.current = false;
+    }
+  };
+
+  useBlocker({
+    shouldBlockFn: async () => {
+      try {
+        await flushCurrentDraft();
+        return !(await guardConfigChanges());
+      } catch {
+        toast.error(t('editor.saveError'));
+        return true;
+      }
+    },
+    enableBeforeUnload: () => shouldAutosave(draftRef.current, draftRef.current.page) || status === 'saving' || configDirtySources.current.size > 0,
+  });
+
+  const configIsSaved = () => {
+    if (configDirtySources.current.size === 0) return true;
+    toast.error(t('editor.saveConfigFirst'));
+    return false;
+  };
+  const preparePublish = async () => {
+    if (!configIsSaved()) return false;
+    await flushCurrentDraft();
+    return configIsSaved();
+  };
+
   const openDraftPreview = async () => {
+    if (!configIsSaved()) return;
     // Open synchronously so browsers treat this as a user-initiated popup. We
     // navigate it only after the current draft is safely stored server-side.
     const previewWindow = window.open('about:blank', '_blank');
@@ -348,17 +458,14 @@ function EditorPage() {
     });
 
     try {
-      const draftIsCurrent = page && synced?.id === page.id && !isDirty({ synced, draft: { title, content } });
-      if (page && !draftIsCurrent) {
-        setStatus('saving');
-        const saved = await updatePage.mutateAsync({ pageId: page.id, body: { title, content } });
-        setSynced((current) => (current?.id === page.id ? { id: page.id, title, content, updatedAt: saved.updatedAt } : current));
-        setStatus('saved');
+      await flushCurrentDraft();
+      if (!configIsSaved()) {
+        previewWindow.close();
+        return;
       }
       previewWindow.location.replace(previewUrl);
     } catch {
       previewWindow.close();
-      setStatus('idle');
       toast.error(t('editor.previewSaveError'));
     }
   };
@@ -368,42 +475,52 @@ function EditorPage() {
   // the same-frame double-click window immediately, so a slow request can never
   // create two pages or groups from repeated clicks.
   const creationInFlight = useRef(false);
-  const addPage = (parentId: string | null, languageId: string) => {
-    if (creationInFlight.current) return;
-    creationInFlight.current = true;
-    createPage.mutate(
-      // Localized placeholder title with a pinned 'untitled' slug: the server treats
-      // that slug as a placeholder to swap for the real title's slug on first rename,
-      // and deriving it from e.g. an Arabic title would strip to a broken 'page' slug.
-      { title: t('editor.untitled'), slug: 'untitled', parentId, languageId, ...branchScope },
-      {
-        onSuccess: (created) => setSelectedId(created.id),
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
-        onSettled: () => {
-          creationInFlight.current = false;
-        },
+  const addPage = (parentId: string | null, languageId: string) =>
+    void runAfterSavingDraft({
+      action: () => {
+        if (creationInFlight.current) return;
+        creationInFlight.current = true;
+        createPage.mutate(
+          // Localized placeholder title with a pinned 'untitled' slug: the server treats
+          // that slug as a placeholder to swap for the real title's slug on first rename,
+          // and deriving it from e.g. an Arabic title would strip to a broken 'page' slug.
+          { title: t('editor.untitled'), slug: 'untitled', parentId, languageId, ...branchScope },
+          {
+            onSuccess: (created) => void runAfterSavingDraft({ action: () => setSelectedId(created.id) }),
+            onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
+            onSettled: () => {
+              creationInFlight.current = false;
+            },
+          },
+        );
       },
-    );
-  };
-  const addGroup = (languageId: string) => {
-    if (creationInFlight.current) return;
-    creationInFlight.current = true;
-    createPage.mutate(
-      // The display title is localized, but the slug is pinned: deriving it from
-      // a non-Latin title (e.g. Arabic) would strip to a broken 'page' slug.
-      { title: t('editor.newGroup'), kind: 'GROUP', slug: 'new-group', languageId, ...branchScope },
-      {
-        onSuccess: (created) => {
-          setSelectedId(created.id);
-          setSettingsForId(created.id);
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
-        onSettled: () => {
-          creationInFlight.current = false;
-        },
+    });
+  const addGroup = (languageId: string) =>
+    void runAfterSavingDraft({
+      action: () => {
+        if (creationInFlight.current) return;
+        creationInFlight.current = true;
+        createPage.mutate(
+          // The display title is localized, but the slug is pinned: deriving it from
+          // a non-Latin title (e.g. Arabic) would strip to a broken 'page' slug.
+          { title: t('editor.newGroup'), kind: 'GROUP', slug: 'new-group', languageId, ...branchScope },
+          {
+            onSuccess: (created) => {
+              void runAfterSavingDraft({
+                action: () => {
+                  setSelectedId(created.id);
+                  setSettingsForId(created.id);
+                },
+              });
+            },
+            onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
+            onSettled: () => {
+              creationInFlight.current = false;
+            },
+          },
+        );
       },
-    );
-  };
+    });
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -412,6 +529,15 @@ function EditorPage() {
   // The tree stays reachable through a toolbar button that floats it over the
   // canvas as a temporary overlay (never persisted; closed on page pick).
   const [focusedTreeOpen, setFocusedTreeOpen] = useState(false);
+  const showPagesTrigger = useRef<HTMLButtonElement>(null);
+  const restorePageTreeFocus = useRef(false);
+  const closeFocusedTree = useCallback(() => {
+    // Move focus before the tree becomes inert/aria-hidden. A page selected
+    // below may briefly replace the toolbar with its loading state.
+    showPagesTrigger.current?.focus();
+    restorePageTreeFocus.current = true;
+    setFocusedTreeOpen(false);
+  }, []);
   const { markdownFocused, navigationCollapsed, treeOverlay, navigationHidden, showRail } = resolveEditorLayout({
     view,
     mode: effectiveMode,
@@ -426,18 +552,24 @@ function EditorPage() {
     }
   }, [markdownFocused]);
   useEffect(() => {
+    if (restorePageTreeFocus.current && !treeOverlay && page && showPagesTrigger.current) {
+      showPagesTrigger.current.focus();
+      restorePageTreeFocus.current = false;
+    }
+  }, [treeOverlay, page]);
+  useEffect(() => {
     if (!treeOverlay) {
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
       // A dialog opened from the tree (page settings) handles its own Escape.
       if (event.key === 'Escape' && !event.defaultPrevented) {
-        setFocusedTreeOpen(false);
+        closeFocusedTree();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [treeOverlay]);
+  }, [treeOverlay, closeFocusedTree]);
 
   // Comments on the active page — anchored highlights in the editor + the rail.
   const { data: pageComments } = useComments(projectId, activeId ?? undefined);
@@ -489,10 +621,15 @@ function EditorPage() {
           projectId={projectId}
           branches={branches ?? []}
           activeBranchId={activeBranchId}
+          beforeChange={flushCurrentDraft}
           onSwitch={(id) => {
-            setActiveBranchId(id);
-            setSelectedId(null);
-            setSynced(null);
+            void runAfterSavingDraft({
+              action: () => {
+                setActiveBranchId(id);
+                setSelectedId(null);
+                setSynced(null);
+              },
+            });
           }}
         />
         <span className="hidden items-center gap-1.5 text-muted-foreground text-xs lg:flex">
@@ -512,8 +649,9 @@ function EditorPage() {
             size="sm"
             variant={view === 'config' ? 'secondary' : 'ghost'}
             className="cursor-pointer"
-            onClick={() => {
+            onClick={async () => {
               const nextView = view === 'config' ? 'content' : 'config';
+              if (view === 'config' && !(await guardConfigChanges())) return;
               setView(nextView);
               if (nextView === 'config') {
                 setSidebarCollapsed(false);
@@ -526,7 +664,7 @@ function EditorPage() {
           <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
             <Eye className="size-3.5" /> <span className="hidden md:inline">{t('project.preview')}</span>
           </Button>
-          {project ? <PublishControl project={project} initialPublishOpen={publishParam} /> : null}
+          {project ? <PublishControl project={project} initialPublishOpen={publishParam} beforePublish={preparePublish} /> : null}
         </div>
       </header>
 
@@ -548,7 +686,7 @@ function EditorPage() {
             type="button"
             aria-label={t('editor.hidePages')}
             className="absolute inset-0 z-20 cursor-default bg-background/40"
-            onClick={() => setFocusedTreeOpen(false)}
+            onClick={closeFocusedTree}
           />
         ) : null}
         <aside
@@ -577,7 +715,7 @@ function EditorPage() {
               className="cursor-pointer"
               onClick={() => {
                 if (treeOverlay) {
-                  setFocusedTreeOpen(false);
+                  closeFocusedTree();
                 } else if (window.matchMedia('(max-width: 1023px)').matches) {
                   setMobileSidebarOpen(false);
                 } else {
@@ -596,7 +734,8 @@ function EditorPage() {
               {view === 'config' ? (
                 <ConfigSectionList
                   active={configSection}
-                  onSelect={(section) => {
+                  onSelect={async (section) => {
+                    if (section === configSection || !(await guardConfigChanges())) return;
                     setConfigSection(section);
                     setMobileSidebarOpen(false);
                   }}
@@ -693,12 +832,17 @@ function EditorPage() {
                                 activeId={activeTreeId}
                                 treeKey={lang.id}
                                 onSelect={(id) => {
-                                  setSelectedId(id);
-                                  setMobileSidebarOpen(false);
-                                  setFocusedTreeOpen(false);
+                                  void runAfterSavingDraft({
+                                    action: () => {
+                                      if (treeOverlay) closeFocusedTree();
+                                      setSelectedId(id);
+                                      setMobileSidebarOpen(false);
+                                      setFocusedTreeOpen(false);
+                                    },
+                                  });
                                 }}
                                 onAddChild={(parentId) => addPage(parentId, lang.id)}
-                                onSettings={(id) => setSettingsForId(id)}
+                                onSettings={(id) => void runAfterSavingDraft({ action: () => setSettingsForId(id) })}
                                 onMove={(items) => reorderPages.mutate({ items })}
                               />
                             )}
@@ -732,8 +876,11 @@ function EditorPage() {
           {settingsForId
             ? (() => {
                 const target = (allPages ?? []).find((p) => p.id === settingsForId);
-                return target ? (
-                  <PageSettingsDialog projectId={projectId} page={target} open onOpenChange={(o) => !o && setSettingsForId(null)} />
+                // A save can finish before the tree refetch. Use its current
+                // title so saving settings cannot restore the stale tree title.
+                const settingsPage = target && synced?.id === target.id ? { ...target, title: synced.title } : target;
+                return settingsPage ? (
+                  <PageSettingsDialog projectId={projectId} page={settingsPage} open onOpenChange={(o) => !o && setSettingsForId(null)} />
                 ) : null;
               })()
             : null}
@@ -750,7 +897,9 @@ function EditorPage() {
             <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
               {project ? (
                 <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
-                  <ConfigSection project={project} section={configSection} />
+                  <ConfigDirtyProvider report={reportConfigDirty}>
+                    <ConfigSection project={project} section={configSection} />
+                  </ConfigDirtyProvider>
                 </div>
               ) : (
                 <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
@@ -764,7 +913,7 @@ function EditorPage() {
               <h1 className="mt-3 font-semibold text-xl tracking-tight">{selectedGroup.title}</h1>
               <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
               <div className="mt-4 flex justify-center gap-2">
-                <Button variant="outline" onClick={() => setSettingsForId(selectedGroup.id)}>
+                <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
                   <Settings2 className="size-4" /> {t('editor.pageSettings.title')}
                 </Button>
                 {selectedGroup.languageId ? (
@@ -782,6 +931,18 @@ function EditorPage() {
         ) : activeId && page ? (
           /* Main area: page editor */
           <section className="flex min-h-0 min-w-0 flex-col">
+            {status === 'error' ? (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
+              >
+                <TriangleAlert className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
+                <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
+                  {t('editor.retrySave')}
+                </Button>
+              </div>
+            ) : null}
             {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
             <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
@@ -789,6 +950,7 @@ function EditorPage() {
                 // The focused layout hides the tree; this floats it over the canvas so
                 // the author can still switch pages without leaving Markdown mode.
                 <Button
+                  ref={showPagesTrigger}
                   size="icon-sm"
                   variant="ghost"
                   className="cursor-pointer"
@@ -840,7 +1002,7 @@ function EditorPage() {
                 size="icon-sm"
                 variant="ghost"
                 className="cursor-pointer"
-                onClick={() => activeId && setSettingsForId(activeId)}
+                onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
                 aria-label={t('editor.pageSettings.title')}
                 title={t('editor.pageSettings.title')}
               >
@@ -860,7 +1022,13 @@ function EditorPage() {
                     destructive: true,
                   });
                   if (ok) {
-                    deletePage.mutate(page.id, { onSuccess: () => setSelectedId(null) });
+                    void runAfterSavingDraft({
+                      action: () =>
+                        deletePage.mutate(page.id, {
+                          onSuccess: () => setSelectedId(null),
+                          onError: (error) => toast.error(error.message),
+                        }),
+                    });
                   }
                 }}
               >

@@ -1,13 +1,14 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
-import { AlertCircle, FileText, Loader2, Search, Sparkles } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertCircle, FileText, Loader2, Search, Sparkles, X } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
+import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
@@ -53,6 +54,7 @@ export function SiteSearch({
   open,
   onOpenChange,
   lang,
+  direction,
   version,
   placeholder,
   hotkey,
@@ -65,6 +67,9 @@ export function SiteSearch({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lang?: string;
+  /** Use the published language's configured direction, independently of the
+   * chrome translation locale (which may fall back to English). */
+  direction?: 'ltr' | 'rtl';
   /** Non-default version path prefix, e.g. "next". Default/latest is undefined. */
   version?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
@@ -81,9 +86,12 @@ export function SiteSearch({
   const { track } = useSiteAnalytics();
   const t = siteT(lang);
   const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<'search' | 'answer'>('search');
+  const [requestedMode, setMode] = useState<'search' | 'answer'>('search');
+  const mode = aiAnswers ? requestedMode : 'search';
+  const modeId = useId();
   const [selectedVersion, setSelectedVersion] = useState(version);
-  const arabic = lang?.toLowerCase().startsWith('ar') ?? false;
+  const baseLanguage = lang?.toLowerCase().split(/[-_]/)[0];
+  const rtl = direction ? direction === 'rtl' : (LANGUAGE_CATALOG.find((language) => language.code === baseLanguage)?.rtl ?? false);
   const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
@@ -93,16 +101,19 @@ export function SiteSearch({
   // snapshot; each hit carries its own language for correct localized routing.
   const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
-  const hits = hitsQuery.data ?? [];
-  const answer = answerMutation.isPending ? null : (answerMutation.data ?? null);
-  const answerError = !answerMutation.isPending && answerMutation.error ? t('answerFailed') : null;
-  const searchMessage = !query.trim()
-    ? t('searchPrompt')
-    : hitsQuery.isFetching
-      ? t('searching')
-      : hitsQuery.error
-        ? t('searchFailed')
-        : t('searchEmpty');
+  const queryPending = query.trim() !== debouncedQuery.trim() || hitsQuery.isFetching;
+  const hits = query.trim() && !queryPending && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  // A completed request belongs to the exact question and documentation scope
+  // that produced it. Editing the query or version must never relabel old
+  // evidence or send its citations into a different version.
+  const answerMatchesScope =
+    answerMutation.variables?.projectId === projectId &&
+    answerMutation.variables.query === query.trim() &&
+    answerMutation.variables.language === lang &&
+    answerMutation.variables.version === selectedVersion;
+  const answer = answerMatchesScope && !answerMutation.isPending ? (answerMutation.data ?? null) : null;
+  const answerError = answerMatchesScope && !answerMutation.isPending && answerMutation.error ? t('answerFailed') : null;
+  const searchMessage = !query.trim() ? t('searchPrompt') : queryPending ? t('searching') : hitsQuery.error ? t('searchFailed') : t('searchEmpty');
 
   const ask = () => {
     const q = query.trim();
@@ -151,16 +162,36 @@ export function SiteSearch({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl" data-theme-surface="search" showCloseButton={false}>
+      <DialogContent
+        className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl"
+        data-theme-surface="search"
+        dir={rtl ? 'rtl' : 'ltr'}
+        showCloseButton={false}
+      >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
         <Command shouldFilter={false}>
           {aiAnswers ? (
-            <div className="flex items-center gap-1 border-b px-3 pt-3" role="tablist" aria-label={t('searchMode')}>
+            <div
+              className="flex items-center gap-1 border-b px-3 pt-3"
+              role="tablist"
+              aria-label={t('searchMode')}
+              onKeyDown={(event) => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const offset = (event.key === 'ArrowRight') !== rtl ? 1 : -1;
+                const index = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : ((mode === 'search' ? 0 : 1) + offset + 2) % 2;
+                setMode(index === 0 ? 'search' : 'answer');
+                event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[index]?.focus();
+              }}
+            >
               <button
                 type="button"
                 role="tab"
+                id={`${modeId}-search-tab`}
+                aria-controls={`${modeId}-search-panel`}
                 aria-selected={mode === 'search'}
+                tabIndex={mode === 'search' ? 0 : -1}
                 className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'search' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setMode('search')}
               >
@@ -169,7 +200,10 @@ export function SiteSearch({
               <button
                 type="button"
                 role="tab"
+                id={`${modeId}-answer-tab`}
+                aria-controls={`${modeId}-answer-panel`}
                 aria-selected={mode === 'answer'}
+                tabIndex={mode === 'answer' ? 0 : -1}
                 className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'answer' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
                 onClick={() => setMode('answer')}
               >
@@ -177,7 +211,25 @@ export function SiteSearch({
               </button>
             </div>
           ) : null}
-          <CommandInput placeholder={placeholder?.trim() || t('searchPlaceholder')} value={query} onValueChange={setQuery} />
+          <div className="flex items-center gap-1 pe-2">
+            <div className="min-w-0 flex-1">
+              <CommandInput
+                placeholder={placeholder?.trim() || t('searchPlaceholder')}
+                value={query}
+                onValueChange={setQuery}
+                maxLength={300}
+                onKeyDown={(event) => {
+                  if (mode === 'answer' && event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    ask();
+                  }
+                }}
+              />
+            </div>
+            <Button aria-label={t('closeSearch')} onClick={() => onOpenChange(false)} size="icon-sm" type="button" variant="ghost">
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
           {mode === 'search' && versionFilterEnabled && versions.length > 1 ? (
             <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row">
               <Select
@@ -199,44 +251,61 @@ export function SiteSearch({
             </div>
           ) : null}
           {mode === 'search' ? (
-            <CommandList>
-              <CommandEmpty>{searchMessage}</CommandEmpty>
-              <CommandGroup heading={t('results')}>
-                {hits.map((hit, index) => (
-                  <CommandItem
-                    key={hit.id}
-                    value={hit.id}
-                    onSelect={() => {
-                      track({
-                        name: 'search_result_clicked',
-                        path: hit.path,
-                        resultId: hit.id,
-                        resultPosition: index + 1,
-                        language: hit.language,
-                      });
-                      onOpenChange(false);
-                      window.location.href = siteHref(projectId, hit.path, { lang: hit.language, version: selectedVersion });
-                    }}
-                  >
-                    {hasIcon(hit.icon) ? (
-                      <PageIcon name={hit.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <div className="min-w-0" dir="auto" lang={hit.language}>
-                      <div className="font-medium">
-                        <Highlight text={hit.title} query={debouncedQuery} />
-                      </div>
-                      <div className="truncate text-muted-foreground text-xs">
-                        <Highlight text={hit.snippet} query={debouncedQuery} />
-                      </div>
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
+            <section
+              id={`${modeId}-search-panel`}
+              role={aiAnswers ? 'tabpanel' : undefined}
+              aria-labelledby={aiAnswers ? `${modeId}-search-tab` : undefined}
+            >
+              <CommandList>
+                {hits.length === 0 ? (
+                  <div className="py-6 text-center text-sm" role={query.trim() && !queryPending && hitsQuery.error ? 'alert' : 'status'}>
+                    {searchMessage}
+                  </div>
+                ) : (
+                  <CommandGroup heading={t('results')}>
+                    {hits.map((hit, index) => (
+                      <CommandItem
+                        key={hit.id}
+                        value={hit.id}
+                        onSelect={() => {
+                          track({
+                            name: 'search_result_clicked',
+                            path: hit.path,
+                            resultId: hit.id,
+                            resultPosition: index + 1,
+                            language: hit.language,
+                          });
+                          onOpenChange(false);
+                          window.location.href = siteHref(projectId, hit.path, { lang: hit.language, version: selectedVersion });
+                        }}
+                      >
+                        {hasIcon(hit.icon) ? (
+                          <PageIcon name={hit.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        ) : (
+                          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                        )}
+                        <div className="min-w-0" dir="auto" lang={hit.language}>
+                          <div className="font-medium">
+                            <Highlight text={hit.title} query={debouncedQuery} />
+                          </div>
+                          <div className="truncate text-muted-foreground text-xs">
+                            <Highlight text={hit.snippet} query={debouncedQuery} />
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </section>
           ) : (
-            <div className="max-h-[55vh] overflow-y-auto p-4" dir={arabic ? 'rtl' : 'ltr'}>
+            <div
+              className="max-h-[55vh] overflow-y-auto p-4"
+              dir={rtl ? 'rtl' : 'ltr'}
+              id={`${modeId}-answer-panel`}
+              role="tabpanel"
+              aria-labelledby={`${modeId}-answer-tab`}
+            >
               {!answer && !answerError ? (
                 <div className="rounded-lg border bg-muted/30 p-4 text-sm">
                   <p className="font-medium">{t('groundedAnswerTitle')}</p>
@@ -251,7 +320,7 @@ export function SiteSearch({
               ) : null}
               {answer ? (
                 <div className="space-y-4">
-                  <div className="whitespace-pre-wrap text-sm leading-7" dir={arabic ? 'rtl' : 'ltr'}>
+                  <div className="whitespace-pre-wrap text-sm leading-7" dir={rtl ? 'rtl' : 'ltr'}>
                     {answer.answer}
                   </div>
                   {answer.citations.length > 0 ? (

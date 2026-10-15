@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Abgelaufen",
   "admin_status_disabled": "Deaktiviert",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Änderungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut, bevor Sie die Seite verlassen.",
+  "editor_retrysave": "Speichern erneut versuchen",
+  "dashboard_search_noresults": "Keine Websites entsprechen Ihrer Suche.",
+  "dashboard_search_clear": "Suche löschen",
+  "auth_invite_switchaccount": "Mit dem eingeladenen Konto anmelden",
+  "auth_invite_switchaccounterror": "Kontowechsel fehlgeschlagen. Bitte versuchen Sie es erneut.",
+  "site_closesearch": "Suche schließen",
+  "settings_permissions_title": "Administratorzugriff erforderlich",
+  "settings_permissions_body": "Bitten Sie einen Website-Inhaber oder Administrator, diese Einstellungen zu aktualisieren. Sie können weiterhin die Dokumentation bearbeiten und die für Ihre Rolle verfügbaren Bereiche nutzen.",
+  "settings_members_removeconfirm": "{name} von dieser Website entfernen? Der Zugriff auf Dokumentation und Einstellungen geht verloren.",
+  "settings_members_revokeconfirm": "Einladung für {email} widerrufen? Dieser Einladungslink funktioniert dann nicht mehr.",
+  "settings_config_discarddescription": "Sie haben ungespeicherte Änderungen an den Einstellungen. Beim Verlassen dieses Bereichs werden sie verworfen.",
+  "editor_saveconfigfirst": "Speichere deine Einstellungsänderungen, bevor du eine Vorschau öffnest oder veröffentlichst."
 }

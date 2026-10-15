@@ -2719,5 +2719,18 @@
   "admin_status_expired": "समाप्त",
   "admin_status_disabled": "अक्षम",
   "admin_operations_gitkind_pull": "पुल",
-  "admin_operations_gitkind_push": "पुश"
+  "admin_operations_gitkind_push": "पुश",
+  "editor_saveerror": "बदलाव सहेजे नहीं जा सके। जाने से पहले फिर कोशिश करें।",
+  "editor_retrysave": "सहेजने का फिर प्रयास करें",
+  "dashboard_search_noresults": "आपकी खोज से कोई साइट मेल नहीं खाती।",
+  "dashboard_search_clear": "खोज साफ़ करें",
+  "auth_invite_switchaccount": "आमंत्रित खाते से लॉग इन करें",
+  "auth_invite_switchaccounterror": "खाता बदला नहीं जा सका। फिर कोशिश करें।",
+  "site_closesearch": "खोज बंद करें",
+  "settings_permissions_title": "व्यवस्थापक पहुँच आवश्यक है",
+  "settings_permissions_body": "इन सेटिंग को बदलने के लिए साइट के मालिक या व्यवस्थापक से कहें। आप दस्तावेज़ संपादित कर सकते हैं और अपनी भूमिका के लिए उपलब्ध अनुभागों का उपयोग कर सकते हैं।",
+  "settings_members_removeconfirm": "{name} को इस साइट से हटाएँ? दस्तावेज़ और सेटिंग तक उनकी पहुँच समाप्त हो जाएगी।",
+  "settings_members_revokeconfirm": "{email} का आमंत्रण रद्द करें? यह आमंत्रण लिंक काम करना बंद कर देगा।",
+  "settings_config_discarddescription": "सेटिंग में आपके बदलाव सहेजे नहीं गए हैं। यह अनुभाग छोड़ने पर वे हट जाएँगे।",
+  "editor_saveconfigfirst": "पूर्वावलोकन या प्रकाशन से पहले अपनी सेटिंग में किए गए बदलाव सहेजें।"
 }

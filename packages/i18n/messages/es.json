@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Caducado",
   "admin_status_disabled": "Desactivado",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "No se pudieron guardar los cambios. Inténtalo de nuevo antes de salir.",
+  "editor_retrysave": "Reintentar guardar",
+  "dashboard_search_noresults": "Ningún sitio coincide con tu búsqueda.",
+  "dashboard_search_clear": "Borrar búsqueda",
+  "auth_invite_switchaccount": "Iniciar sesión con la cuenta invitada",
+  "auth_invite_switchaccounterror": "No se pudo cambiar de cuenta. Inténtalo de nuevo.",
+  "site_closesearch": "Cerrar búsqueda",
+  "settings_permissions_title": "Se requiere acceso de administrador",
+  "settings_permissions_body": "Pide al propietario del sitio o a un administrador que actualice estos ajustes. Puedes seguir editando la documentación y usar las secciones disponibles para tu rol.",
+  "settings_members_removeconfirm": "¿Eliminar a {name} de este sitio? Perderá el acceso a su documentación y ajustes.",
+  "settings_members_revokeconfirm": "¿Revocar la invitación para {email}? Este enlace de invitación dejará de funcionar.",
+  "settings_config_discarddescription": "Tienes cambios sin guardar en los ajustes. Si sales de esta sección, se descartarán.",
+  "editor_saveconfigfirst": "Guarda los cambios de configuración antes de previsualizar o publicar."
 }

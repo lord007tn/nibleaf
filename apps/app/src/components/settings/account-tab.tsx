@@ -7,11 +7,13 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
+
+const subscribeToHydration = () => () => undefined;
 
 function NameForm({ initialName }: { initialName: string }) {
   const t = useT();
@@ -134,8 +136,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       <Label htmlFor="acct-email">{t('settings.account.email.label')}</Label>
 
       {stage === 'idle' ? (
-        <div className="flex items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2">
-          <span className="font-medium text-sm" dir="ltr">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-input bg-muted/40 px-3 py-2">
+          <span className="max-w-full break-all font-medium text-sm" dir="ltr">
             {email}
           </span>
           {verified ? (
@@ -291,7 +293,23 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
 
 export function AccountTab() {
   const t = useT();
-  const { data: session } = useSession();
+  const { data: session, isPending } = useSession();
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  // Auth can resolve before this streamed route hydrates. Keep its first render
+  // identical to the server and mount profile drafts only for a loaded account.
+  if (!hydrated || isPending || !session?.user) {
+    return (
+      <SettingsSection title={t('settings.account.title')} description={t('settings.account.description')}>
+        <p className="text-muted-foreground text-sm" role="status">
+          {t('common.loading')}
+        </p>
+      </SettingsSection>
+    );
+  }
   const user = session?.user;
   const name = user?.name ?? '';
   const email = user?.email ?? '';

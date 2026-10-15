@@ -27,6 +27,8 @@ export function MobileNav({
   label,
   isRtl,
   links = [],
+  anchors = [],
+  cta,
 }: {
   nodes: NavNode[];
   projectId: string;
@@ -36,8 +38,11 @@ export function MobileNav({
   label: string;
   isRtl?: boolean;
   links?: MobileNavLink[];
+  anchors?: MobileNavLink[];
+  cta?: { label: string; href: string };
 }) {
   const [open, setOpen] = useState(false);
+  const navigationLinks = [...links, ...anchors];
   // biome-ignore lint/correctness/useExhaustiveDependencies: close the drawer when the route (currentPath) changes.
   useEffect(() => {
     setOpen(false);
@@ -52,21 +57,22 @@ export function MobileNav({
         <Menu className="size-5" />
       </SheetTrigger>
       {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic). */}
-      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 p-0">
+      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 max-w-[calc(100vw-2rem)] p-0" dir={isRtl ? 'rtl' : 'ltr'}>
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-full">
           <div className="px-4 pt-12 pb-8">
-            {links.length > 0 ? (
+            {navigationLinks.length > 0 ? (
               <ul className="mb-4 space-y-0.5 border-border/60 border-b pb-4">
-                {links.map((link) => (
+                {navigationLinks.map((link) => (
                   <li key={`${link.label}-${link.href}`}>
                     <a
                       href={link.href}
                       target={link.external ? '_blank' : undefined}
                       rel={link.external ? 'noreferrer' : undefined}
                       aria-current={link.active ? 'page' : undefined}
+                      onClick={() => setOpen(false)}
                       className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 font-medium text-sm transition-colors ${
                         link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
@@ -77,6 +83,20 @@ export function MobileNav({
                   </li>
                 ))}
               </ul>
+            ) : null}
+            {cta ? (
+              <a
+                href={cta.href}
+                data-analytics-cta
+                data-analytics-placement="mobile-navbar"
+                target="_blank"
+                rel="noreferrer"
+                className="mb-5 flex min-h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
+                onClick={() => setOpen(false)}
+              >
+                {cta.label}
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
             ) : null}
             <SiteNav nodes={nodes} projectId={projectId} currentPath={currentPath} lang={lang} version={version} />
           </div>

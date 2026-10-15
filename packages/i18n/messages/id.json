@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Kedaluwarsa",
   "admin_status_disabled": "Dinonaktifkan",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Perubahan tidak dapat disimpan. Coba lagi sebelum meninggalkan halaman.",
+  "editor_retrysave": "Coba simpan lagi",
+  "dashboard_search_noresults": "Tidak ada situs yang cocok dengan pencarian Anda.",
+  "dashboard_search_clear": "Hapus pencarian",
+  "auth_invite_switchaccount": "Masuk dengan akun yang diundang",
+  "auth_invite_switchaccounterror": "Tidak dapat beralih akun. Silakan coba lagi.",
+  "site_closesearch": "Tutup pencarian",
+  "settings_permissions_title": "Akses administrator diperlukan",
+  "settings_permissions_body": "Minta pemilik situs atau administrator memperbarui pengaturan ini. Anda tetap dapat mengedit dokumentasi dan menggunakan bagian yang tersedia untuk peran Anda.",
+  "settings_members_removeconfirm": "Hapus {name} dari situs ini? Akses ke dokumentasi dan pengaturan akan hilang.",
+  "settings_members_revokeconfirm": "Cabut undangan untuk {email}? Tautan undangan ini tidak akan berfungsi lagi.",
+  "settings_config_discarddescription": "Ada perubahan pengaturan yang belum disimpan. Meninggalkan bagian ini akan membuangnya.",
+  "editor_saveconfigfirst": "Simpan perubahan pengaturan sebelum melihat pratinjau atau menerbitkan."
 }
