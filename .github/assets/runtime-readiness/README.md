@@ -48,3 +48,52 @@ The machine-readable aggregate is [baseline-acceptance.json](baseline-acceptance
 Manual reproduction and acceptance gates are documented in
 [operations/runtime-image-verification.md](../../../operations/runtime-image-verification.md).
 Docker builds remain manual.
+
+## Final packaging candidate: bb72cddb32a6
+
+The final synthetic run used source
+`bb72cddb32a6cb1744683034d26fdfe16b3dbfdb` and immutable image ID
+`sha256:60032d759714ac29e3b37d5a668f1b5a334ebf2e78d52cebe5862497fc917064`.
+The compact [final acceptance record](final-acceptance.json) belongs to that
+image. It records local acceptance and retained failures; it does **not**
+establish production readiness, deployment or external provider acceptance.
+
+Fresh disposable PostgreSQL, ClickHouse, queue and object-storage volumes passed
+migration and seed checks. All four services, transactional email rendering,
+scoped MCP, worker publication, exports and public Git import passed. An active
+publication drained successfully on SIGTERM, and all four services exited zero.
+Public English/Arabic SSR passed with host port 4410 mapped to container 4310,
+including authenticated, private, unpublished and synthetic custom-domain
+checks. The custom-domain fixture establishes no real DNS or TLS provisioning.
+
+The final image's Arabic PDF page is readable without changing its containers:
+
+![Synthetic Arabic PDF page from the final image](arabic-pdf-final.png)
+
+A controlled Redis network interruption retained two **failed** checks:
+the worker reported HTTP 200/healthy while Redis was unavailable, and the OTP
+endpoint reported HTTP 200 after required email enqueue timed out. Both the
+previously accepted job and a new job completed after Redis returned, without
+restarting the worker. These defects are tracked in
+[issue #201](https://github.com/lord007tn/nibleaf/issues/201). Separate source
+corrections and regression checks are pending and are not verified by this image.
+
+The application production audit found zero advisories. The full unfiltered
+image scan retained **67 unique advisories**: **0 critical, 23 high, 18 moderate
+and 26 low**, classified from CVSS scores. No suppressions were applied, and the
+image is not scanner-clean. See [security dispositions](final-security-dispositions.json).
+Installed compiler and npm bytes were removed; TypeScript/Vitest optional peer
+wrappers and source-lock development metadata are recorded separately.
+
+The durable scan artifacts are:
+
+- [Unfiltered Docker Scout SARIF](final-image-cves.sarif.json.gz): all 67 findings,
+  byte-identical to the original report after gzip decompression.
+- [Privacy-minimized SPDX package inventory](final-image-packages.spdx.json.gz):
+  all 1,941 package identities and package-manager references retained; public
+  maintainer/contact and per-file metadata omitted. This is a derived inventory,
+  not the raw unfiltered SPDX file.
+
+Artifact hashes, the original full SPDX hash and distinct installed-package/SBOM
+counts are recorded in the final acceptance JSON. Later source or dependency
+changes require their own image evidence.

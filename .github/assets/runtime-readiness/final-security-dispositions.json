@@ -1,0 +1,253 @@
+{
+  "image": "nibleaf-runtime:bb72cddb32a6",
+  "imageId": "sha256:60032d759714ac29e3b37d5a668f1b5a334ebf2e78d52cebe5862497fc917064",
+  "sourceRevision": "bb72cddb32a6cb1744683034d26fdfe16b3dbfdb",
+  "cvssScoreDerivedSeverity": {
+    "critical": 0,
+    "high": 23,
+    "moderate": 18,
+    "low": 26
+  },
+  "uniqueAdvisoryIds": 67,
+  "sarifResultOccurrences": 67,
+  "noSuppressions": true,
+  "imageScannerClean": false,
+  "applicationProductionAuditAdvisoryIds": 0,
+  "applicationAuditDoesNotCoverOsOrInstaller": true,
+  "remainingHighs": {
+    "alpineLibraries": 22,
+    "pnpmBundledHttpCacheSemantics": 1
+  },
+  "pnpm": {
+    "version": "10.34.6",
+    "bundledTar": "7.5.22",
+    "nativeCompilerInstalledPackages": 0,
+    "globalNpmInstalled": false,
+    "fixedAdvisory": {
+      "id": "CVE-2026-55697",
+      "pnpm10PatchedFrom": "10.34.2",
+      "pnpm11PatchedFrom": "11.5.3",
+      "source": "https://github.com/advisories/GHSA-gj8w-mvpf-x27x"
+    },
+    "remainingBundledHigh": {
+      "id": "CVE-2026-93748",
+      "package": "http-cache-semantics@4.2.0",
+      "imageLocation": "/root/.cache/node/corepack/v1/pnpm/10.34.6/dist/node_modules/http-cache-semantics/package.json",
+      "advisoryNoPatchedVersion": true,
+      "disputedUpstream": true,
+      "source": "https://github.com/advisories/GHSA-ch52-4w7c-c8xp",
+      "dispute": "https://github.com/github/advisory-database/issues/10139",
+      "distinctFromApplicationDependency": true
+    }
+  },
+  "highFindings": [
+    {
+      "id": "CVE-2026-64833",
+      "cvss": 7.1,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-64833?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-66037",
+      "cvss": 7.1,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66037?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-66038",
+      "cvss": 7.1,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66038?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-65704",
+      "cvss": 7.3,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-65704?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-65705",
+      "cvss": 7.3,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-65705?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2025-52194",
+      "cvss": 7.5,
+      "packages": [
+        "pkg:apk/alpine/libsndfile@1.2.2-r2?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2025-52194?s=alpine&n=libsndfile&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D1.2.2-r2"
+    },
+    {
+      "id": "CVE-2026-37555",
+      "cvss": 7.5,
+      "packages": [
+        "pkg:apk/alpine/libsndfile@1.2.2-r2?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-37555?s=alpine&n=libsndfile&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D1.2.2-r2"
+    },
+    {
+      "id": "CVE-2026-66036",
+      "cvss": 7.7,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66036?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-66041",
+      "cvss": 7.7,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66041?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-86140",
+      "cvss": 8,
+      "packages": [
+        "pkg:apk/alpine/libxml2@2.13.9-r2?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-86140?s=alpine&n=libxml2&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D2.13.9-r2"
+    },
+    {
+      "id": "CVE-2026-102633",
+      "cvss": 8.2,
+      "packages": [
+        "pkg:apk/alpine/expat@2.8.5-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "2.9.0-r0",
+      "source": "https://scout.docker.com/v/CVE-2026-102633?s=alpine&n=expat&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C2.9.0-r0"
+    },
+    {
+      "id": "CVE-2026-67216",
+      "cvss": 8.2,
+      "packages": [
+        "pkg:apk/alpine/cjson@1.7.19-r1?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-67216?s=alpine&n=cjson&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D1.7.19-r1"
+    },
+    {
+      "id": "CVE-2026-77214",
+      "cvss": 8.3,
+      "packages": [
+        "pkg:apk/alpine/expat@2.8.5-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "2.9.0-r0",
+      "source": "https://scout.docker.com/v/CVE-2026-77214?s=alpine&n=expat&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C2.9.0-r0"
+    },
+    {
+      "id": "CVE-2026-85091",
+      "cvss": 8.3,
+      "packages": [
+        "pkg:apk/alpine/zlib@1.3.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "1.3.2-r1",
+      "source": "https://scout.docker.com/v/CVE-2026-85091?s=alpine&n=zlib&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C1.3.2-r1"
+    },
+    {
+      "id": "CVE-2026-65703",
+      "cvss": 8.5,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-65703?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-65706",
+      "cvss": 8.5,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-65706?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-70628",
+      "cvss": 8.5,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-70628?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-70632",
+      "cvss": 8.5,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-70632?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-66039",
+      "cvss": 8.7,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66039?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-66040",
+      "cvss": 8.7,
+      "packages": [
+        "pkg:apk/alpine/ffmpeg@8.1.2-r0?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-66040?s=alpine&n=ffmpeg&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D8.1.2-r0"
+    },
+    {
+      "id": "CVE-2026-67215",
+      "cvss": 8.7,
+      "packages": [
+        "pkg:apk/alpine/cjson@1.7.19-r1?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-67215?s=alpine&n=cjson&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C%3D1.7.19-r1"
+    },
+    {
+      "id": "CVE-2026-93748",
+      "cvss": 8.7,
+      "packages": ["pkg:npm/http-cache-semantics@4.2.0"],
+      "fixed": "not fixed",
+      "source": "https://scout.docker.com/v/CVE-2026-93748?s=github&n=http-cache-semantics&t=npm&vr=%3C%3D4.2.0"
+    },
+    {
+      "id": "CVE-2026-1861",
+      "cvss": 8.8,
+      "packages": [
+        "pkg:apk/alpine/libvpx@1.15.2-r1?os_name=alpine&os_version=3.24"
+      ],
+      "fixed": "1.16.0-r0",
+      "source": "https://scout.docker.com/v/CVE-2026-1861?s=alpine&n=libvpx&ns=alpine&t=apk&osn=alpine&osv=3.24&vr=%3C1.16.0-r0"
+    }
+  ],
+  "unfilteredFindings": "final-image-cves.sarif.json.gz",
+  "packageInventory": "final-image-packages.spdx.json.gz",
+  "disposition": "Remaining image findings are retained for review. No OS/Chromium clean or production-readiness claim is made. A later zlib patch or auth/health source correction is not represented by this immutable image."
+}
