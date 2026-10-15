@@ -63,7 +63,7 @@ const visit = (directory) => {
 visit(path.join(app, 'node_modules'));
 for (const service of ['app', 'admin']) visit(path.join(app, 'apps', service, '.output/server/node_modules'));
 const inventory = [...packages.values()].sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
-const forbidden = inventory.filter(({ name }) => name === 'ultracite' || name === 'braces');
+const forbidden = inventory.filter(({ name }) => name === 'ultracite' || name === 'braces' || name.startsWith('@typescript/typescript-'));
 if (forbidden.length) throw new Error('Development-only graph remains installed: ' + JSON.stringify(forbidden));
 if (!inventory.some(({ name }) => name === '@modelcontextprotocol/server')) throw new Error('Missing MCP runtime');
 console.log(JSON.stringify({ revision: process.env.NIBLEAF_REVISION, artifacts, required, packageCount: inventory.length, forbidden, inventory }));

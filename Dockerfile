@@ -13,7 +13,8 @@ ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
-RUN apk add --no-cache chromium curl git openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
+# Chromium needs an Arabic font for readable RTL PDF exports.
+RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corepack enable && corepack prepare pnpm@10.34.6 --activate
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
@@ -47,6 +48,10 @@ RUN pnpm exec turbo run build --concurrency=1 \
 FROM base AS runtime-deps
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# Production peers pull TypeScript's optional native compiler into this graph.
+# Runtime TS/TSX executes through tsx/esbuild; no service invokes tsc. Exclude
+# only that unused compiler, retaining sharp/esbuild/Prisma optional binaries.
+RUN rm -rf /app/node_modules/@typescript/typescript-*
 # These ignored/generated files are runtime inputs, not development tooling.
 COPY --from=build /app/packages/database/src/generated /app/packages/database/src/generated
 COPY --from=build /app/packages/i18n/src/paraglide /app/packages/i18n/src/paraglide
@@ -68,6 +73,9 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.revision=$REVISION
 COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+# Services and operator migrations use Node/tsx or pnpm. The base image's npm
+# installer is unused and carries a separate bundled dependency graph.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]
