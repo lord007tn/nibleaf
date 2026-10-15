@@ -25,16 +25,31 @@ describe('owned worker readiness', () => {
     vi.useFakeTimers();
     try {
       const pendingConnection = workersConnected([{ ...liveWorker(), client: new Promise(() => undefined) }]);
+      let releaseRead: (value: string) => void = () => undefined;
       const hget = vi
         .fn<() => Promise<string>>()
-        .mockImplementationOnce(() => new Promise(() => undefined))
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseRead = resolve;
+            }),
+        )
         .mockResolvedValue('PONG');
       const worker = { ...liveWorker(), client: Promise.resolve({ status: 'ready', hget }) };
       const pendingRead = workersConnected([worker]);
       await vi.advanceTimersByTimeAsync(1000);
       expect(await pendingConnection).toBe(false);
       expect(await pendingRead).toBe(false);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const retry = workersConnected([worker]);
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(await retry).toBe(false);
+      }
+      expect(hget).toHaveBeenCalledTimes(1);
+      releaseRead('6.2.0');
+      await vi.advanceTimersByTimeAsync(0);
       expect(await workersConnected([worker])).toBe(true);
+      expect(hget).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
     }

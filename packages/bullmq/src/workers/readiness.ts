@@ -10,6 +10,24 @@ interface ReadinessWorker {
   blockingClient?: Promise<{ status: string }>;
 }
 
+const inFlightReads = new WeakMap<WorkerConnection, Promise<void>>();
+
+function readConnection(client: WorkerConnection, key: string): Promise<void> {
+  const existing = inFlightReads.get(client);
+  if (existing) return existing;
+  const pending = Promise.resolve()
+    .then(() => client.hget(key, 'version'))
+    .then(() => undefined);
+  inFlightReads.set(client, pending);
+  const release = () => {
+    if (inFlightReads.get(client) === pending) inFlightReads.delete(client);
+  };
+  // A caller's deadline cannot cancel an ioredis command. Retain one shared
+  // read until it settles instead of buffering a new command at every probe.
+  void pending.then(release, release);
+  return pending;
+}
+
 async function connected(worker: ReadinessWorker, timeoutMs: number): Promise<boolean> {
   if (!worker.isRunning()) return false;
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -18,7 +36,7 @@ async function connected(worker: ReadinessWorker, timeoutMs: number): Promise<bo
       (async () => {
         const [client, blockingClient] = await Promise.all([worker.client, worker.blockingClient]);
         if (client.status !== 'ready' || (blockingClient && blockingClient.status !== 'ready')) return false;
-        await client.hget(worker.key, 'version');
+        await readConnection(client, worker.key);
         return worker.isRunning() && client.status === 'ready' && (!blockingClient || blockingClient.status === 'ready');
       })(),
       new Promise<false>((resolve) => {
