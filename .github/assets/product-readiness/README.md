@@ -11,7 +11,8 @@ object storage. It does not establish deployed customer or external-provider acc
   the draft, block publication, and offer Retry.
 - Preserve unsaved configuration across refetches; confirm before leaving it.
   Require saved configuration before preview/publish, and cancel pending publish
-  preparation when its dialog closes.
+  preparation when its dialog closes. Pass subscribed values to shared controls
+  so optimized production builds can save a reversion to the original value.
 - Keep mobile page settings and publish review usable; restore keyboard focus
   when the focused Markdown navigation closes. Destructive confirms focus Cancel.
 - Recover from signup metadata, dashboard, usage, and invitation failures.
@@ -27,7 +28,7 @@ object storage. It does not establish deployed customer or external-provider acc
 ## Verification
 
 - `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm check:dead-code` pass.
-  The full test run completes 24 Turbo tasks; app: 599 tests; API: 503 tests;
+  The full test run completes 24 Turbo tasks; app: 601 tests; API: 503 tests;
   i18n: 83 tests. Optional integration tests skipped in the ordinary suite were
   exercised separately where infrastructure was available.
 - Production app and admin builds pass. Public docs preload budget: 380.11 KiB
@@ -49,6 +50,10 @@ object storage. It does not establish deployed customer or external-provider acc
   to matching reader content; configuration discard/save/SEO clearing; English
   and Arabic mobile navigation/search; signup metadata retry; denied storage;
   and real missing-page HTTP 404.
+- Final compiled-browser checks also confirm configuration blocks stale preview
+  and publication, Cancel during delayed preflight creates no deployment, and an
+  A-to-B save followed by reversion to A persists to the API. Immediate publication
+  succeeds through worker READY with both browser storage getters denied.
 
 ## Visual evidence
 
@@ -56,6 +61,8 @@ object storage. It does not establish deployed customer or external-provider acc
 | --- | --- |
 | Failed save keeps draft and provides Retry | [Screenshot](editor-save-failure-recovery.png) |
 | Editing and publishing interaction | [Recording](editor-save-publish.webm) |
+| Publishing with browser storage denied | [Recording](editor-publish-storage-denied.webm), [success](publish-storage-denied-success-mobile.png) |
+| Configuration discard defaults to Cancel | [Screenshot](config-discard-cancel-focus.png) |
 | Mobile page settings | [Screenshot](page-settings-mobile.png) |
 | Mobile publish review | [Screenshot](publish-review-mobile.png) |
 | Account email layout | [Before](account-mobile-before.png), [after](account-mobile-after.png) |
