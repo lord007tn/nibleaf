@@ -15,7 +15,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { usePendingChanges, usePublish } from '@/hooks/api';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
@@ -28,6 +28,7 @@ interface PublishModalProps {
   onOpenChange: (open: boolean) => void;
   /** Called after the publish mutation is fired, to hand off to the deploy pipeline. */
   onPublished: (deployment: Deployment, attribution: FirstPublishAttribution | null) => void;
+  beforePublish?: () => Promise<void> | Promise<boolean>;
 }
 
 /** Visual treatment per change status. */
@@ -39,15 +40,52 @@ const STATUS_META: Record<PendingChange['status'], { icon: LucideIcon; dot: stri
 
 /** Confirmation dialog before publishing — shows a Mintlify-style diff of which
  *  pages will change since the last deploy, plus an optional release message. */
-export function PublishModal({ project, open, onOpenChange, onPublished }: PublishModalProps) {
+export function PublishModal({ project, open, onOpenChange, onPublished, beforePublish }: PublishModalProps) {
   const t = useT();
   const publish = usePublish(project.id);
   // Only compute the diff while the dialog is open (it re-reads on each open).
-  const { data: pending, isPending: loadingChanges, isError: preflightFailed } = usePendingChanges(project.id, { enabled: open });
+  const {
+    data: pending,
+    isPending: loadingChanges,
+    isFetching: refreshingChanges,
+    isError: preflightFailed,
+    refetch: refreshPreflight,
+  } = usePendingChanges(project.id, { enabled: open });
 
   const [message, setMessage] = useState('');
   const [reviewing, setReviewing] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const publishInFlight = useRef(false);
+  const attemptToken = useRef(0);
+  const mounted = useRef(true);
+  const currentlyOpen = useRef(open);
+
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      attemptToken.current += 1;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    currentlyOpen.current = open;
+    if (!open) {
+      attemptToken.current += 1;
+      publishInFlight.current = false;
+      setPreparing(false);
+    }
+  }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      attemptToken.current += 1;
+      publishInFlight.current = false;
+      setPreparing(false);
+    }
+    onOpenChange(nextOpen);
+  };
 
   // Sort: added → modified → removed, then by path, and only show language chips
   // when the site is multilingual (otherwise the code is just noise).
@@ -58,8 +96,37 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
     return { sorted: ordered, multiLang: langs.size > 1 };
   }, [pending]);
 
-  const doPublish = () => {
-    if (loadingChanges || preflightFailed || (pending?.redirectIssues?.length ?? 0) > 0) {
+  const doPublish = async () => {
+    if (publishInFlight.current || loadingChanges || refreshingChanges || preflightFailed || (pending?.redirectIssues?.length ?? 0) > 0) {
+      return;
+    }
+    const token = ++attemptToken.current;
+    const isCurrentAttempt = () => mounted.current && currentlyOpen.current && attemptToken.current === token;
+    publishInFlight.current = true;
+    setPreparing(true);
+    try {
+      const allowed = await beforePublish?.();
+      if (!isCurrentAttempt()) return;
+      if (allowed === false) {
+        publishInFlight.current = false;
+        setPreparing(false);
+        return;
+      }
+    } catch {
+      if (!isCurrentAttempt()) return;
+      toast.error(t('editor.saveError'));
+      publishInFlight.current = false;
+      setPreparing(false);
+      return;
+    }
+    // A save can change redirects or the reviewed pages. Re-read preflight
+    // after the save barrier instead of publishing from a cached review.
+    const latestPreflight = await refreshPreflight().catch(() => null);
+    if (!isCurrentAttempt()) return;
+    if (!latestPreflight || latestPreflight.isError || !latestPreflight.data || (latestPreflight.data.redirectIssues?.length ?? 0) > 0) {
+      if (!latestPreflight || latestPreflight.isError || !latestPreflight.data) toast.error(t('publish.preflightFailed'));
+      publishInFlight.current = false;
+      setPreparing(false);
       return;
     }
     const trimmed = message.trim();
@@ -73,13 +140,19 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
           onPublished(deployment, firstPublishAttribution);
         },
         onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
+        onSettled: () => {
+          if (!isCurrentAttempt()) return;
+          publishInFlight.current = false;
+          setPreparing(false);
+        },
       },
     );
   };
 
   const count = sorted.length;
   const redirectIssues = pending?.redirectIssues ?? [];
-  const publishBlocked = loadingChanges || preflightFailed || redirectIssues.length > 0;
+  const checkingChanges = loadingChanges || refreshingChanges;
+  const publishBlocked = preparing || checkingChanges || preflightFailed || redirectIssues.length > 0;
   const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
   const selectedChange = sorted.find((change) => changeKey(change) === selectedKey) ?? sorted[0] ?? null;
@@ -97,11 +170,16 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
   }, [sorted, selectedKey, changeKey]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn('gap-0 p-0', reviewing ? 'sm:max-w-[940px]' : 'sm:max-w-[480px]')} showCloseButton={false}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className={cn('max-h-[90dvh] gap-0 overflow-y-auto p-0', reviewing ? 'sm:max-w-[940px]' : 'sm:max-w-[480px]')}
+        showCloseButton={false}
+      >
         <DialogHeader className="gap-1 border-border border-b px-6 pt-5 pb-4">
           {reviewing ? (
             <div className="flex items-center justify-between gap-3">
+              <DialogTitle className="sr-only">{t('publish.reviewTitle')}</DialogTitle>
+              <DialogDescription className="sr-only">{t('publish.reviewSubtitle')}</DialogDescription>
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
@@ -119,13 +197,13 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
         </DialogHeader>
 
         {reviewing && selectedChange ? (
-          <div className="grid min-h-[520px] grid-cols-[260px_1fr]">
+          <div className="grid min-h-0 grid-cols-1 sm:min-h-[520px] sm:grid-cols-[260px_1fr]">
             <aside className="border-border border-e">
               <div className="border-border border-b px-4 py-3">
                 <div className="font-semibold text-sm">{t('publish.reviewTitle')}</div>
                 <div className="text-muted-foreground text-xs">{t('publish.reviewSubtitle')}</div>
               </div>
-              <ScrollArea className="h-[470px]">
+              <ScrollArea className="h-36 sm:h-[470px]">
                 <ul className="p-2">
                   {sorted.map((change) => {
                     const meta = STATUS_META[change.status];
@@ -171,7 +249,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
                   {selectedChange.fields.length > 0 ? <span className="text-white/45">{selectedChange.fields.join(', ')}</span> : null}
                 </div>
               </div>
-              <ScrollArea className="h-[430px]">
+              <ScrollArea className="h-[40dvh] sm:h-[430px]">
                 <div className="px-7 py-6">
                   <div className="overflow-hidden rounded-md border border-white/10 bg-black/25 font-mono text-[12.5px] leading-6">
                     {selectedChange.lines.length > 0 ? (
@@ -241,7 +319,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('publish.changes')}</span>
-                {!loadingChanges && count > 0 ? (
+                {!checkingChanges && count > 0 ? (
                   <span className="text-muted-foreground text-xs">
                     {hasBaseline
                       ? pending?.lastVersion != null
@@ -252,7 +330,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
                 ) : null}
               </div>
 
-              {loadingChanges ? (
+              {checkingChanges ? (
                 <div className="flex items-center gap-2 rounded-xl border border-border border-dashed px-4 py-5 text-muted-foreground text-sm">
                   <Loader2 className="size-4 animate-spin" /> {t('publish.checking')}
                 </div>
@@ -295,7 +373,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished }: Publi
                   </ul>
                 </ScrollArea>
               )}
-              {!loadingChanges && count > 0 ? (
+              {!checkingChanges && count > 0 ? (
                 <Button type="button" variant="outline" className="h-9 justify-center" onClick={() => setReviewing(true)}>
                   <FileText className="size-4" /> {t('publish.reviewDiff')}
                 </Button>

@@ -35,7 +35,7 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
 const MEBIBYTE = 1024 * 1024;
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
-export function ExportsSection({ projectId }: { projectId: string }) {
+export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
   const { number } = useFormatters();
   const sizeLabel = (bytes: number) =>
@@ -131,14 +131,16 @@ export function ExportsSection({ projectId }: { projectId: string }) {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm">{t('settings.exports.workflow.archiveSchedules')}</div>
-            <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
-              <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
-            </Button>
+            {canManageSchedules ? (
+              <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
+                <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
+              </Button>
+            ) : null}
           </div>
-          {showSchedule ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
+          {showSchedule && canManageSchedules ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
           <div className="space-y-2">
             {schedules.data?.map((schedule) => (
-              <ScheduleRow key={schedule.id} projectId={projectId} schedule={schedule} />
+              <ScheduleRow canManage={canManageSchedules} key={schedule.id} projectId={projectId} schedule={schedule} />
             ))}
             {!schedules.isLoading && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
@@ -366,7 +368,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   );
 }
 
-function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: ExportSchedule }) {
+function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; schedule: ExportSchedule; canManage: boolean }) {
   const { locale, t } = useLocale();
   const update = useUpdateExportSchedule(projectId, schedule.id);
   const run = useRunExportSchedule(projectId, schedule.id);
@@ -391,29 +393,31 @@ function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: Exp
           </div>
         ) : null}
       </div>
-      <div className="flex gap-2">
-        <Button
-          disabled={run.isPending}
-          onClick={() =>
-            run.mutate(undefined, {
-              onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
-              onError: (error) => toast.error(error.message),
-            })
-          }
-          size="sm"
-          variant="outline"
-        >
-          <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
-        </Button>
-        <Button
-          disabled={update.isPending}
-          onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
-          size="sm"
-          variant="outline"
-        >
-          {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
-        </Button>
-      </div>
+      {canManage ? (
+        <div className="flex gap-2">
+          <Button
+            disabled={run.isPending}
+            onClick={() =>
+              run.mutate(undefined, {
+                onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
+                onError: (error) => toast.error(error.message),
+              })
+            }
+            size="sm"
+            variant="outline"
+          >
+            <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
+          </Button>
+          <Button
+            disabled={update.isPending}
+            onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
+            size="sm"
+            variant="outline"
+          >
+            {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -293,7 +293,9 @@ pnpm dev
 | API + docs | http://localhost:4311/docs   |
 | Worker ops | http://localhost:4312/jobs   |
 
-Demo login (after `pnpm db:seed`): `demo@nibleaf.test` / `nibleafdemo123`.
+Demo login (after `pnpm db:seed`): `demo@nibleaf.test`, using an email verification
+code. Without an email provider, read the code from the latest email job at
+http://localhost:4312/jobs in your local development environment.
 
 ## 📜 Scripts
 

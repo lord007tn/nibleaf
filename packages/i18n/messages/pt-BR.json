@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Expirado",
   "admin_status_disabled": "Desativado",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Não foi possível salvar as alterações. Tente novamente antes de sair.",
+  "editor_retrysave": "Tentar salvar novamente",
+  "dashboard_search_noresults": "Nenhum site corresponde à sua busca.",
+  "dashboard_search_clear": "Limpar busca",
+  "auth_invite_switchaccount": "Entrar com a conta convidada",
+  "auth_invite_switchaccounterror": "Não foi possível trocar de conta. Tente novamente.",
+  "site_closesearch": "Fechar busca",
+  "settings_permissions_title": "Acesso de administrador necessário",
+  "settings_permissions_body": "Peça ao proprietário do site ou a um administrador para atualizar estas configurações. Você ainda pode editar a documentação e usar as seções disponíveis para sua função.",
+  "settings_members_removeconfirm": "Remover {name} deste site? Essa pessoa perderá o acesso à documentação e às configurações.",
+  "settings_members_revokeconfirm": "Revogar o convite para {email}? Este link de convite deixará de funcionar.",
+  "settings_config_discarddescription": "Há alterações não salvas nas configurações. Ao sair desta seção, elas serão descartadas.",
+  "editor_saveconfigfirst": "Salve as alterações das configurações antes de visualizar ou publicar."
 }

@@ -2719,5 +2719,18 @@
   "admin_status_expired": "মেয়াদোত্তীর্ণ",
   "admin_status_disabled": "নিষ্ক্রিয় করা",
   "admin_operations_gitkind_pull": "পুল",
-  "admin_operations_gitkind_push": "পুশ"
+  "admin_operations_gitkind_push": "পুশ",
+  "editor_saveerror": "পরিবর্তন সংরক্ষণ করা যায়নি। চলে যাওয়ার আগে আবার চেষ্টা করুন।",
+  "editor_retrysave": "আবার সংরক্ষণ করুন",
+  "dashboard_search_noresults": "আপনার অনুসন্ধানের সাথে কোনো সাইট মেলেনি।",
+  "dashboard_search_clear": "অনুসন্ধান মুছুন",
+  "auth_invite_switchaccount": "আমন্ত্রিত অ্যাকাউন্ট দিয়ে লগ ইন করুন",
+  "auth_invite_switchaccounterror": "অ্যাকাউন্ট পরিবর্তন করা যায়নি। আবার চেষ্টা করুন।",
+  "site_closesearch": "অনুসন্ধান বন্ধ করুন",
+  "settings_permissions_title": "প্রশাসকের অনুমতি প্রয়োজন",
+  "settings_permissions_body": "এই সেটিংস আপডেট করতে সাইটের মালিক বা প্রশাসককে বলুন। আপনি নথি সম্পাদনা এবং আপনার ভূমিকার জন্য উপলব্ধ বিভাগগুলি ব্যবহার করতে পারবেন।",
+  "settings_members_removeconfirm": "এই সাইট থেকে {name}-কে সরাবেন? তিনি নথি ও সেটিংসে প্রবেশাধিকার হারাবেন।",
+  "settings_members_revokeconfirm": "{email}-এর আমন্ত্রণ বাতিল করবেন? এই আমন্ত্রণের লিংক আর কাজ করবে না।",
+  "settings_config_discarddescription": "আপনার সেটিংসের পরিবর্তনগুলি সংরক্ষণ করা হয়নি। এই বিভাগ ছেড়ে গেলে সেগুলি হারিয়ে যাবে।",
+  "editor_saveconfigfirst": "প্রিভিউ বা প্রকাশ করার আগে আপনার সেটিংসের পরিবর্তনগুলো সংরক্ষণ করুন।"
 }

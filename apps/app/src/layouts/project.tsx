@@ -2,8 +2,9 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Eye, Rocket } from 'lucide-react';
+import { Eye, Loader2, Rocket } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
+import { toast } from 'sonner';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline } from '@/components/project/deploy-pipeline';
@@ -14,11 +15,20 @@ import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
  *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
-export function PublishControl({ project, initialPublishOpen = false }: { project: Project; initialPublishOpen?: boolean }) {
+export function PublishControl({
+  project,
+  initialPublishOpen = false,
+  beforePublish,
+}: {
+  project: Project;
+  initialPublishOpen?: boolean;
+  beforePublish?: () => Promise<void> | Promise<boolean>;
+}) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
   const [deployOpen, setDeployOpen] = useState(false);
   const [publishedAttribution, setPublishedAttribution] = useState<FirstPublishAttribution | null>(null);
   const [publishedDeploymentId, setPublishedDeploymentId] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const t = useT();
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
@@ -29,15 +39,26 @@ export function PublishControl({ project, initialPublishOpen = false }: { projec
     <div className="flex items-center gap-2">
       <Button
         aria-label={building ? t('project.publishing') : t('project.publish')}
-        disabled={building}
-        onClick={() => setPublishOpen(true)}
+        disabled={building || preparing}
+        onClick={async () => {
+          setPreparing(true);
+          try {
+            if ((await beforePublish?.()) === false) return;
+            setPublishOpen(true);
+          } catch {
+            toast.error(t('editor.saveError'));
+          } finally {
+            setPreparing(false);
+          }
+        }}
         size="sm"
       >
-        <Rocket className="size-3.5" />
+        {preparing ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
         <span className="hidden sm:inline">{building ? t('project.publishing') : t('project.publish')}</span>
       </Button>
 
       <PublishModal
+        beforePublish={beforePublish}
         onOpenChange={setPublishOpen}
         onPublished={(deployment, attribution) => {
           setPublishedAttribution(attribution);

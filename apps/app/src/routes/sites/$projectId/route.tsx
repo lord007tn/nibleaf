@@ -3,7 +3,7 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { DocumentationReaderLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
@@ -24,6 +24,7 @@ import { publishedSiteLogo } from '@/lib/site-branding';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
+import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 
@@ -134,12 +135,14 @@ function SiteChrome() {
   const configTheme = config?.styling?.theme; // 'light' | 'dark' | 'system' | undefined
   const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(configTheme === 'dark' ? 'dark' : 'light');
   const [siteThemeHydratedFor, setSiteThemeHydratedFor] = useState<string>();
+  const hasExplicitThemeChoice = useRef(false);
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
     }
     const storageKey = `nibleaf.site.theme.${projectId}`;
-    const stored = window.localStorage.getItem(storageKey);
+    const stored = readSiteStorage('localStorage', storageKey);
+    hasExplicitThemeChoice.current = stored === 'dark' || stored === 'light';
     // An explicit visitor choice always wins over the configured default.
     if (stored === 'dark' || stored === 'light') {
       setSiteTheme(stored);
@@ -154,7 +157,7 @@ function SiteChrome() {
       setSiteTheme(mq.matches ? 'dark' : 'light');
       setSiteThemeHydratedFor(projectId);
       const onChange = (e: MediaQueryListEvent) => {
-        if (window.localStorage.getItem(storageKey)) {
+        if (hasExplicitThemeChoice.current || readSiteStorage('localStorage', storageKey)) {
           return;
         }
         setSiteTheme(e.matches ? 'dark' : 'light');
@@ -167,11 +170,8 @@ function SiteChrome() {
   }, [projectId, configTheme]);
   const toggleSiteTheme = () => {
     const next = siteTheme === 'dark' ? 'light' : 'dark';
-    try {
-      window.localStorage.setItem(`nibleaf.site.theme.${projectId}`, next);
-    } catch {
-      // ignore (private mode etc.)
-    }
+    hasExplicitThemeChoice.current = true;
+    writeSiteStorage('localStorage', `nibleaf.site.theme.${projectId}`, next);
     setSiteTheme(next);
   };
 
@@ -186,7 +186,7 @@ function SiteChrome() {
       return;
     }
     const root = document.documentElement;
-    const dashboardTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const dashboardTheme = readSiteStorage('localStorage', THEME_STORAGE_KEY);
     const dashboardUsesSystem = dashboardTheme !== 'light' && dashboardTheme !== 'dark';
     const dashboardWasDark = dashboardTheme === 'dark' || (dashboardUsesSystem && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const dashboardResolvedTheme = dashboardWasDark ? 'dark' : 'light';
@@ -368,6 +368,13 @@ function SiteChrome() {
                   label={t('docs')}
                   isRtl={isRtl}
                   links={headerLinks}
+                  anchors={navAnchors.map((anchor) => ({
+                    label: anchor.label,
+                    href: resolveNavHref(anchor.href),
+                    active: !anchor.external && isNavActive(anchor.href),
+                    external: Boolean(anchor.external),
+                  }))}
+                  cta={ctaLabel && ctaUrl ? { label: ctaLabel, href: resolveNavHref(ctaUrl) } : undefined}
                 />
                 {logoHref ? (
                   <a
@@ -448,7 +455,7 @@ function SiteChrome() {
                   </button>
                   {ctaLabel && ctaUrl ? (
                     <a
-                      href={ctaUrl}
+                      href={resolveNavHref(ctaUrl)}
                       data-analytics-cta
                       data-analytics-placement="navbar"
                       target="_blank"
@@ -586,6 +593,7 @@ function SiteChrome() {
                   open={searchOpen}
                   onOpenChange={setSearchOpen}
                   lang={activeLanguage?.code}
+                  direction={isRtl ? 'rtl' : 'ltr'}
                   version={activeVersionPrefix}
                   placeholder={config?.search?.placeholder}
                   hotkey={searchHotkey}

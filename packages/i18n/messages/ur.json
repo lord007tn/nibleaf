@@ -2719,5 +2719,18 @@
   "admin_status_expired": "ختم شدہ",
   "admin_status_disabled": "غیر فعال کردہ",
   "admin_operations_gitkind_pull": "پل",
-  "admin_operations_gitkind_push": "پش"
+  "admin_operations_gitkind_push": "پش",
+  "editor_saveerror": "تبدیلیاں محفوظ نہیں ہو سکیں۔ جانے سے پہلے دوبارہ کوشش کریں۔",
+  "editor_retrysave": "محفوظ کرنے کی دوبارہ کوشش کریں",
+  "dashboard_search_noresults": "آپ کی تلاش سے کوئی سائٹ مطابقت نہیں رکھتی۔",
+  "dashboard_search_clear": "تلاش صاف کریں",
+  "auth_invite_switchaccount": "مدعو کردہ اکاؤنٹ سے لاگ ان کریں",
+  "auth_invite_switchaccounterror": "اکاؤنٹ تبدیل نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+  "site_closesearch": "تلاش بند کریں",
+  "settings_permissions_title": "منتظم کی رسائی درکار ہے",
+  "settings_permissions_body": "ان ترتیبات کو اپ ڈیٹ کرنے کے لیے سائٹ کے مالک یا منتظم سے کہیں۔ آپ دستاویزات میں ترمیم اور اپنے کردار کے لیے دستیاب حصے استعمال کر سکتے ہیں۔",
+  "settings_members_removeconfirm": "{name} کو اس سائٹ سے ہٹائیں؟ دستاویزات اور ترتیبات تک ان کی رسائی ختم ہو جائے گی۔",
+  "settings_members_revokeconfirm": "{email} کی دعوت منسوخ کریں؟ دعوت کا یہ لنک کام کرنا بند کر دے گا۔",
+  "settings_config_discarddescription": "آپ کی ترتیبات کی تبدیلیاں محفوظ نہیں ہوئیں۔ اس حصے سے جانے پر وہ ضائع ہو جائیں گی۔",
+  "editor_saveconfigfirst": "پیش منظر دیکھنے یا شائع کرنے سے پہلے ترتیبات کی تبدیلیاں محفوظ کریں۔"
 }

@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Expired",
   "admin_status_disabled": "Disabled",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Changes could not be saved. Please try again before leaving.",
+  "editor_retrysave": "Retry saving",
+  "dashboard_search_noresults": "No sites match your search.",
+  "dashboard_search_clear": "Clear search",
+  "auth_invite_switchaccount": "Log in with the invited account",
+  "auth_invite_switchaccounterror": "Could not switch accounts. Please try again.",
+  "site_closesearch": "Close search",
+  "settings_permissions_title": "Administrator access required",
+  "settings_permissions_body": "Ask a site owner or administrator to update these settings. You can still edit documentation and use the sections available to your role.",
+  "settings_members_removeconfirm": "Remove {name} from this site? They will lose access to its documentation and settings.",
+  "settings_members_revokeconfirm": "Revoke the invitation for {email}? This invitation link will stop working.",
+  "settings_config_discarddescription": "You have unsaved settings changes. Leaving this section will discard them.",
+  "editor_saveconfigfirst": "Save your settings changes before previewing or publishing."
 }

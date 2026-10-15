@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Expiré",
   "admin_status_disabled": "Désactivé",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Les modifications n’ont pas pu être enregistrées. Réessayez avant de quitter la page.",
+  "editor_retrysave": "Réessayer l’enregistrement",
+  "dashboard_search_noresults": "Aucun site ne correspond à votre recherche.",
+  "dashboard_search_clear": "Effacer la recherche",
+  "auth_invite_switchaccount": "Se connecter avec le compte invité",
+  "auth_invite_switchaccounterror": "Impossible de changer de compte. Veuillez réessayer.",
+  "site_closesearch": "Fermer la recherche",
+  "settings_permissions_title": "Accès administrateur requis",
+  "settings_permissions_body": "Demandez au propriétaire du site ou à un administrateur de modifier ces paramètres. Vous pouvez toujours modifier la documentation et utiliser les sections accessibles à votre rôle.",
+  "settings_members_removeconfirm": "Retirer {name} de ce site ? Cette personne perdra l’accès à sa documentation et à ses paramètres.",
+  "settings_members_revokeconfirm": "Révoquer l’invitation pour {email} ? Ce lien d’invitation ne fonctionnera plus.",
+  "settings_config_discarddescription": "Certaines modifications des paramètres ne sont pas enregistrées. Elles seront perdues si vous quittez cette section.",
+  "editor_saveconfigfirst": "Enregistrez les modifications des paramètres avant de prévisualiser ou de publier."
 }

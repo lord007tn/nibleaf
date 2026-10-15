@@ -1,6 +1,7 @@
 import type { ProjectConfig } from '@nibleaf/validators';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
 import { type PublicAnalyticsPayload, type SiteAnalyticsConsent, useCreateSiteAnalyticsEvent } from '@/hooks/api/site-events';
+import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 
 export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
 
@@ -14,10 +15,11 @@ const randomIdFn = (): string => {
 const sessionIdFn = (): string | undefined => {
   if (typeof window === 'undefined') return undefined;
   const key = 'nibleaf.sid';
-  let id = window.sessionStorage.getItem(key);
+  let id = readSiteStorage('sessionStorage', key);
   if (!id) {
     id = randomIdFn();
-    window.sessionStorage.setItem(key, id);
+    // Omit session identity when it cannot be kept stable for this session.
+    if (!writeSiteStorage('sessionStorage', key, id)) return undefined;
   }
   return id;
 };
@@ -26,7 +28,7 @@ const consentStateFn = (projectId: string, config?: ProjectConfig | null): SiteA
   if (config?.addons?.consentBanner?.enabled === false) return 'denied';
   if (!config?.analytics?.cookieConsent) return 'not_required';
   if (typeof window === 'undefined') return 'unknown';
-  const value = window.localStorage.getItem(`nibleaf.analytics.consent.${projectId}`);
+  const value = readSiteStorage('localStorage', `nibleaf.analytics.consent.${projectId}`);
   return value === 'accepted' ? 'granted' : value === 'declined' ? 'denied' : 'unknown';
 };
 

@@ -138,10 +138,11 @@ export const useUpdateProjectConfig = (projectId: string) => {
         await api.app.projects[':id'].$patch({ param: { id: projectId }, json: icon === undefined ? { config } : { config, icon } }),
         'Could not update the site configuration.',
       ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) }),
+      ]),
   });
 };
 
@@ -201,6 +202,7 @@ export const useUpdatePage = (projectId: string) => {
     onSuccess: (_data, { pageId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
     },
   });
 };

@@ -28,6 +28,7 @@ import { site_changelogrelease } from './paraglide/messages/site_changelogreleas
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
 import { site_checking } from './paraglide/messages/site_checking.js';
+import { site_closesearch } from './paraglide/messages/site_closesearch.js';
 import { site_copied } from './paraglide/messages/site_copied.js';
 import { site_copycode } from './paraglide/messages/site_copycode.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
@@ -87,6 +88,7 @@ import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
 const siteMessages = {
+  closeSearch: site_closesearch,
   docs: site_docs,
   changelog: site_changelog,
   search: site_search,

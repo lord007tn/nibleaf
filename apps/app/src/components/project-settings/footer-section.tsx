@@ -63,14 +63,15 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
   const update = useUpdateProjectConfig(project.id);
   const footer = project.config?.footer ?? {};
 
+  const defaultValues = {
+    copyright: footer.copyright ?? '',
+    github: footer.github ?? '',
+    x: footer.x ?? '',
+    linkedin: footer.linkedin ?? '',
+    madeWithBadge: footer.madeWithBadge !== false,
+  };
   const form = useForm({
-    defaultValues: {
-      copyright: footer.copyright ?? '',
-      github: footer.github ?? '',
-      x: footer.x ?? '',
-      linkedin: footer.linkedin ?? '',
-      madeWithBadge: footer.madeWithBadge !== false,
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const payload: FooterConfig = {
         copyright: value.copyright.trim() || undefined,
@@ -157,12 +158,12 @@ function ProjectFooterForm({ project, onDirtyChange }: { project: Project; onDir
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => <DirtyStateReporter values={values} defaults={defaultValues} dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );
@@ -185,8 +186,9 @@ function LanguageFooterForm({
   const update = useUpdateLanguage(project.id);
   const projectFooter = project.config?.footer ?? {};
 
+  const defaultValues = { copyright: language.config?.footer?.copyright ?? '' };
   const form = useForm({
-    defaultValues: { copyright: language.config?.footer?.copyright ?? '' },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const copyright = value.copyright.trim();
       try {
@@ -237,12 +239,12 @@ function LanguageFooterForm({
         title={t('settings.footer.badge.title')}
       />
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => <DirtyStateReporter values={values} defaults={defaultValues} dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );

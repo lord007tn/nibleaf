@@ -2719,5 +2719,18 @@
   "admin_status_expired": "منتهي الصلاحية",
   "admin_status_disabled": "معطّل",
   "admin_operations_gitkind_pull": "سحب",
-  "admin_operations_gitkind_push": "دفع"
+  "admin_operations_gitkind_push": "دفع",
+  "editor_saveerror": "تعذّر حفظ التغييرات. يرجى المحاولة مجددًا قبل المغادرة.",
+  "editor_retrysave": "إعادة محاولة الحفظ",
+  "dashboard_search_noresults": "لا توجد مواقع تطابق بحثك.",
+  "dashboard_search_clear": "مسح البحث",
+  "auth_invite_switchaccount": "تسجيل الدخول بالحساب المدعو",
+  "auth_invite_switchaccounterror": "تعذّر تبديل الحساب. يرجى المحاولة مجددًا.",
+  "site_closesearch": "إغلاق البحث",
+  "settings_permissions_title": "يلزم صلاحية المسؤول",
+  "settings_permissions_body": "اطلب من مالك الموقع أو أحد المسؤولين تحديث هذه الإعدادات. يمكنك مواصلة تحرير التوثيق واستخدام الأقسام المتاحة لدورك.",
+  "settings_members_removeconfirm": "هل تريد إزالة {name} من هذا الموقع؟ سيفقد الوصول إلى توثيق الموقع وإعداداته.",
+  "settings_members_revokeconfirm": "هل تريد إلغاء دعوة {email}؟ سيتوقف رابط الدعوة عن العمل.",
+  "settings_config_discarddescription": "لديك تغييرات غير محفوظة في الإعدادات. ستُفقد عند مغادرة هذا القسم.",
+  "editor_saveconfigfirst": "احفظ تغييرات الإعدادات قبل المعاينة أو النشر."
 }

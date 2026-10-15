@@ -9,6 +9,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -41,7 +42,7 @@ function SignUpPage() {
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
-  const { data: publicMeta } = useGetPublicMeta();
+  const { data: publicMeta, isPending: metaPending, isError: metaError, isFetching: metaFetching, refetch: retryMeta } = useGetPublicMeta();
   const googleEnabled = publicMeta?.providers.google ?? false;
   const signupDisabled = publicMeta?.signupDisabled ?? true;
 
@@ -108,6 +109,24 @@ function SignUpPage() {
     if (codeSent) await verifyCode();
     else await requestCode();
   };
+
+  if (metaPending) {
+    return (
+      <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+        <p className="py-4 text-center text-muted-foreground text-sm" role="status">
+          {t('common.loading')}
+        </p>
+      </AuthLayout>
+    );
+  }
+
+  if (metaError || !publicMeta) {
+    return (
+      <AuthLayout subtitle={t('auth.signUp.subtitle')}>
+        <QueryErrorState onRetry={() => void retryMeta()} retrying={metaFetching} />
+      </AuthLayout>
+    );
+  }
 
   if (signupDisabled) {
     return (

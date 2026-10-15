@@ -5,8 +5,9 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, FileText, Plus, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useProjects } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 
@@ -16,9 +17,18 @@ export const Route = createFileRoute('/app/(dashboard)/sites')({
     search.newSite === true || search.newSite === 'true' ? { newSite: true } : {},
 });
 
+const subscribeToHydration = () => () => undefined;
+
 function SitesPage() {
   const { newSite } = Route.useSearch();
-  const { data: projects, isPending } = useProjects();
+  const { data: projects, isPending, isError, isFetching, refetch } = useProjects();
+  // The shared project query can resolve before this streamed route hydrates.
+  // Match the server's loading tree before exposing its cached client result.
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [query, setQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(Boolean(newSite));
   const navigate = useNavigate();
@@ -51,13 +61,14 @@ function SitesPage() {
           value={query}
         />
       </div>
-      {isPending ? (
+      {hydrated && isError ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
+      {!hydrated || isPending ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[0, 1, 2].map((item) => (
             <Skeleton key={item} className="h-44 rounded-xl" />
           ))}
         </div>
-      ) : filtered.length ? (
+      ) : isError && !projects ? null : filtered.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((project) => (
             <button
@@ -86,10 +97,21 @@ function SitesPage() {
         <div className="grid min-h-64 place-items-center rounded-xl border border-dashed border-border text-center">
           <div>
             <NibleafMark className="mx-auto size-9" />
-            <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
-            <Button className="mt-4" onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" /> {t('dashboard.empty.cta')}
-            </Button>
+            {query.trim() ? (
+              <>
+                <p className="mt-3 font-medium">{t('dashboard.search.noResults')}</p>
+                <Button className="mt-4" onClick={() => setQuery('')} variant="outline">
+                  {t('dashboard.search.clear')}
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
+                <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+                  <Plus className="size-4" /> {t('dashboard.empty.cta')}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       )}

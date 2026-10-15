@@ -81,10 +81,10 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
               {c?.description ? <DialogDescription>{c.description}</DialogDescription> : null}
             </DialogHeader>
             <DialogFooter>
-              <Button onClick={() => settleConfirm(false)} variant="outline">
+              <Button autoFocus={c?.destructive} onClick={() => settleConfirm(false)} variant="outline">
                 {c?.cancelLabel ?? labels?.cancel ?? 'Cancel'}
               </Button>
-              <Button autoFocus onClick={() => settleConfirm(true)} variant={c?.destructive ? 'destructive' : 'default'}>
+              <Button autoFocus={!c?.destructive} onClick={() => settleConfirm(true)} variant={c?.destructive ? 'destructive' : 'default'}>
                 {c?.confirmLabel ?? labels?.delete ?? 'Delete'}
               </Button>
             </DialogFooter>

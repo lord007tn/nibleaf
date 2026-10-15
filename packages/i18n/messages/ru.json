@@ -2719,5 +2719,18 @@
   "admin_status_expired": "Истёк",
   "admin_status_disabled": "Отключено",
   "admin_operations_gitkind_pull": "Pull",
-  "admin_operations_gitkind_push": "Push"
+  "admin_operations_gitkind_push": "Push",
+  "editor_saveerror": "Не удалось сохранить изменения. Повторите попытку перед выходом.",
+  "editor_retrysave": "Повторить сохранение",
+  "dashboard_search_noresults": "Нет сайтов, соответствующих поиску.",
+  "dashboard_search_clear": "Очистить поиск",
+  "auth_invite_switchaccount": "Войти с приглашённой учётной записью",
+  "auth_invite_switchaccounterror": "Не удалось сменить учётную запись. Повторите попытку.",
+  "site_closesearch": "Закрыть поиск",
+  "settings_permissions_title": "Требуется доступ администратора",
+  "settings_permissions_body": "Попросите владельца сайта или администратора изменить эти настройки. Вы по-прежнему можете редактировать документацию и пользоваться разделами, доступными вашей роли.",
+  "settings_members_removeconfirm": "Удалить {name} с этого сайта? Доступ к документации и настройкам будет потерян.",
+  "settings_members_revokeconfirm": "Отозвать приглашение для {email}? Ссылка приглашения перестанет работать.",
+  "settings_config_discarddescription": "У вас есть несохранённые изменения настроек. При выходе из этого раздела они будут потеряны.",
+  "editor_saveconfigfirst": "Сохраните изменения настроек перед предпросмотром или публикацией."
 }

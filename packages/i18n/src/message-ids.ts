@@ -1,5 +1,18 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.saveConfigFirst': 'editor_saveconfigfirst',
+  'settings.config.discardDescription': 'settings_config_discarddescription',
+  'settings.members.removeConfirm': 'settings_members_removeconfirm',
+  'settings.members.revokeConfirm': 'settings_members_revokeconfirm',
+  'settings.permissions.title': 'settings_permissions_title',
+  'settings.permissions.body': 'settings_permissions_body',
+  'editor.saveError': 'editor_saveerror',
+  'editor.retrySave': 'editor_retrysave',
+  'dashboard.search.noResults': 'dashboard_search_noresults',
+  'dashboard.search.clear': 'dashboard_search_clear',
+  'auth.invite.switchAccount': 'auth_invite_switchaccount',
+  'auth.invite.switchAccountError': 'auth_invite_switchaccounterror',
+  'site.closeSearch': 'site_closesearch',
   'brand.oss': 'brand_oss',
   'common.cancel': 'common_cancel',
   'common.save': 'common_save',
