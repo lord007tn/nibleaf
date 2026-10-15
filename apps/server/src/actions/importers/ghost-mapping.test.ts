@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import TurndownService from 'turndown';
+import { describe, expect, it, vi } from 'vitest';
 import {
   byPublishedAt,
   convertGhostHtml,
@@ -220,6 +221,31 @@ describe('htmlToPlainText (conversion fallback)', () => {
 });
 
 describe('ghostItemToMarkdown', () => {
+  it('reports plain-text fallback when converting stored HTML fails', async () => {
+    const convert = vi.spyOn(TurndownService.prototype, 'turndown').mockImplementationOnce(() => {
+      throw new Error('Synthetic conversion failure');
+    });
+    try {
+      const result = await ghostItemToMarkdown({
+        id: 'conversion-failure',
+        title: 'Synthetic article',
+        slug: 'synthetic-article',
+        html: '<p><strong>Preserved text</strong></p>',
+        lexical: null,
+        mobiledoc: null,
+        plaintext: null,
+        status: 'published',
+        featureImage: null,
+        description: null,
+        publishedAt: null,
+        tags: [],
+      });
+      expect(result).toMatchObject({ markdown: 'Preserved text', usedFallback: true });
+    } finally {
+      convert.mockRestore();
+    }
+  });
+
   const base = {
     id: 'post',
     tags: [],
