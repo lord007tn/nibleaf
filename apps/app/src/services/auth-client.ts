@@ -1,5 +1,5 @@
 import { createNibleafAuthClientFn } from '@nibleaf/auth/client';
-import { getLocale } from '@nibleaf/i18n';
+import { getLocale } from '@nibleaf/i18n/runtime';
 
 // Same-origin: auth requests hit the dashboard origin and are proxied to the API
 // (vite.config nitro routeRules), so the session cookie is first-party.

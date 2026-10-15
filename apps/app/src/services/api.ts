@@ -1,4 +1,5 @@
-import { getLocale, REQUEST_LOCALE_HEADER } from '@nibleaf/i18n';
+import { REQUEST_LOCALE_HEADER } from '@nibleaf/i18n/locales';
+import { getLocale } from '@nibleaf/i18n/runtime';
 import { hcWithType } from '@nibleaf/server/rpc';
 import { env } from '@/env';
 

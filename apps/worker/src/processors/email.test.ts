@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   },
   postmarkSend: vi.fn(),
   smtpSend: vi.fn(),
+  smtpCreate: vi.fn(),
 }));
 
 vi.mock('@/env', () => ({ env: mocks.env }));
@@ -28,7 +29,7 @@ vi.mock('postmark', () => ({
 }));
 vi.mock('nodemailer', () => ({
   default: {
-    createTransport: () => ({ sendMail: mocks.smtpSend }),
+    createTransport: mocks.smtpCreate,
   },
 }));
 
@@ -51,6 +52,7 @@ describe('handleEmailJobs', () => {
     mocks.env.SMTP_URL = undefined;
     mocks.env.EMAIL_DELIVERY_REQUIRED = false;
     vi.clearAllMocks();
+    mocks.smtpCreate.mockReturnValue({ sendMail: mocks.smtpSend });
   });
 
   it('fails a required delivery when no provider is configured', async () => {
@@ -65,10 +67,13 @@ describe('handleEmailJobs', () => {
   it('allows an optional delivery to remain disabled', async () => {
     await expect(handleEmailJobs(job)).resolves.toEqual({ sent: false });
     expect(mocks.log.info).toHaveBeenCalledWith({ jobId: 'email-job-1' }, 'email delivery is optional and no provider is configured');
+    expect(mocks.smtpCreate).not.toHaveBeenCalled();
+    expect(mocks.postmarkSend).not.toHaveBeenCalled();
   });
 
   it('records the Postmark message ID without logging recipient data', async () => {
     mocks.env.POSTMARK_API_KEY = 'server-token';
+    mocks.env.SMTP_URL = 'smtp://localhost';
     mocks.env.POSTMARK_MESSAGE_STREAM = 'outbound';
     mocks.env.EMAIL_DELIVERY_REQUIRED = true;
     mocks.postmarkSend.mockResolvedValue({ MessageID: 'message-123' });
@@ -86,6 +91,7 @@ describe('handleEmailJobs', () => {
     expect(mocks.log.info).toHaveBeenCalledWith({ jobId: 'email-job-1', messageId: 'message-123', provider: 'postmark' }, 'email sent');
     expect(JSON.stringify(mocks.log.info.mock.calls)).not.toContain(job.data.to);
     expect(JSON.stringify(mocks.log.info.mock.calls)).not.toContain(job.data.subject);
+    expect(mocks.smtpCreate).not.toHaveBeenCalled();
   });
 
   it('uses the SMTP fallback without logging recipient data', async () => {
@@ -94,6 +100,7 @@ describe('handleEmailJobs', () => {
     mocks.smtpSend.mockResolvedValue({ messageId: 'smtp-message-123' });
 
     await expect(handleEmailJobs(job)).resolves.toEqual({ sent: true });
+    expect(mocks.smtpCreate).toHaveBeenCalledWith(mocks.env.SMTP_URL);
     expect(mocks.smtpSend).toHaveBeenCalledWith({
       from: mocks.env.EMAIL_FROM,
       to: job.data.to,
@@ -104,5 +111,29 @@ describe('handleEmailJobs', () => {
     expect(mocks.log.info).toHaveBeenCalledWith({ jobId: 'email-job-1', messageId: 'smtp-message-123', provider: 'smtp' }, 'email sent');
     expect(JSON.stringify(mocks.log.info.mock.calls)).not.toContain(job.data.to);
     expect(JSON.stringify(mocks.log.info.mock.calls)).not.toContain(job.data.subject);
+  });
+
+  it('propagates SMTP failures for queue retry without logging message content', async () => {
+    mocks.env.SMTP_URL = 'smtp://localhost';
+    const error = new Error('SMTP recipient rejected');
+    mocks.smtpSend.mockRejectedValue(error);
+
+    await expect(handleEmailJobs(job)).rejects.toBe(error);
+    expect(mocks.log.error).toHaveBeenCalledWith({ jobId: job.id, provider: 'smtp' }, 'email delivery failed');
+    expect(mocks.log.info).not.toHaveBeenCalled();
+    expect(JSON.stringify(mocks.log.error.mock.calls)).not.toContain(job.data.to);
+    expect(JSON.stringify(mocks.log.error.mock.calls)).not.toContain(job.data.subject);
+  });
+
+  it('does not fall back to SMTP after a configured Postmark provider fails', async () => {
+    mocks.env.POSTMARK_API_KEY = 'server-token';
+    mocks.env.SMTP_URL = 'smtp://localhost';
+    const error = new Error('Postmark request failed');
+    mocks.postmarkSend.mockRejectedValue(error);
+
+    await expect(handleEmailJobs(job)).rejects.toBe(error);
+    expect(mocks.smtpCreate).not.toHaveBeenCalled();
+    expect(mocks.log.error).toHaveBeenCalledWith({ jobId: job.id, provider: 'postmark' }, 'email delivery failed');
+    expect(mocks.log.info).not.toHaveBeenCalled();
   });
 });

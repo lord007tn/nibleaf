@@ -149,7 +149,7 @@ jobs:
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           ready=0
           for _ in {1..30}; do
-            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --dump-header /tmp/nibleaf-release-en.headers --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
               ready=1
               break
             fi
@@ -166,6 +166,8 @@ jobs:
           curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
+          node apps/app/scripts/check-ssr-nonce.mjs /tmp/nibleaf-release-en.html /tmp/nibleaf-release-en.headers
+          test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --header 'Host: nibleaf.com' 'http://127.0.0.1:3000/%E0%A4%A')" = 400
 
       - name: Build production admin
         env:
@@ -183,7 +185,7 @@ jobs:
           trap 'kill "$admin_pid" 2>/dev/null || true' EXIT
           ready=0
           for attempt in {1..30}; do
-            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error http://127.0.0.1:4315/sign-in > /tmp/nibleaf-admin-sign-in.html; then
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --dump-header /tmp/nibleaf-admin-sign-in.headers http://127.0.0.1:4315/sign-in > /tmp/nibleaf-admin-sign-in.html; then
               ready=1
               break
             fi
@@ -198,6 +200,8 @@ jobs:
             exit 1
           fi
           grep --fixed-strings --quiet "<title>Nibleaf Admin</title>" /tmp/nibleaf-admin-sign-in.html
+          node apps/app/scripts/check-ssr-nonce.mjs /tmp/nibleaf-admin-sign-in.html /tmp/nibleaf-admin-sign-in.headers
+          test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' 'http://127.0.0.1:4315/%E0%A4%A')" = 400
           if grep --fixed-strings --quiet "__exportAll is not a function" /tmp/nibleaf-admin-runtime.log; then
             cat /tmp/nibleaf-admin-runtime.log
             exit 1

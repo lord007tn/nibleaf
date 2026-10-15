@@ -1,4 +1,5 @@
-import { useLocale } from '@nibleaf/i18n/react';
+import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
+import { useSyncExternalStore } from 'react';
 
 /**
  * Locale-aware number/date formatters bound to the dashboard's active locale.
@@ -7,7 +8,7 @@ import { useLocale } from '@nibleaf/i18n/react';
  * language and the product-wide 0-9 numeral convention.
  */
 export function useFormatters() {
-  const { locale } = useLocale();
+  const locale = useSyncExternalStore(subscribeLanguage, getLocale, () => 'en');
   const tag = localeTag(locale);
   return {
     number: (value: number | bigint, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(tag, options).format(value),

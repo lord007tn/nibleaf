@@ -42,6 +42,12 @@ export default defineConfig(({ mode }) => {
               codeSplitting: {
                 groups: [
                   {
+                    name: 'marketing-faqs',
+                    priority: 100,
+                    minSize: 0,
+                    test: (id) => /\/apps\/app\/src\/lib\/marketing-faqs\.ts$/.test(id.replaceAll('\\', '/')),
+                  },
+                  {
                     name: 'public-site-i18n',
                     test: (id) =>
                       /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),

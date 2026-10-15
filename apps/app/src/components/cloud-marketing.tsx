@@ -1,7 +1,7 @@
 import { NibleafMark, NibleafWordmark } from '@nibleaf/design-system/brand';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useTheme } from '@nibleaf/design-system/theme';
-import { useT } from '@nibleaf/i18n/react';
+import { useMarketingT as useT } from '@nibleaf/i18n/marketing';
 import {
   ArrowRight,
   BarChart3,

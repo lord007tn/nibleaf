@@ -11,6 +11,8 @@
     "./standalone": "./src/standalone.ts",
     "./email": "./src/email.ts",
     "./site": "./src/site.ts",
+    "./marketing": "./src/marketing.ts",
+    "./locale-state": "./src/runtime.ts",
     "./messages": "./src/paraglide/messages.js",
     "./runtime": "./src/paraglide/runtime.js"
   },

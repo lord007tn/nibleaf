@@ -1,7 +1,13 @@
 import { useT } from '@nibleaf/i18n/react';
 import { createRouter as createTanStackRouter } from '@tanstack/react-router';
+import { createIsomorphicFn } from '@tanstack/react-start';
 import { getQueryContext, QueryProvider } from '@/integrations/tanstack-query/root-provider';
+import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
+
+const requestNonce = createIsomorphicFn()
+  .server(() => ssrNonce.getStore())
+  .client(() => undefined);
 
 function NotFound() {
   const t = useT();
@@ -17,6 +23,7 @@ export function getRouter() {
   const queryContext = getQueryContext();
   const router = createTanStackRouter({
     routeTree,
+    ssr: { nonce: requestNonce() },
     context: queryContext,
     defaultNotFoundComponent: NotFound,
     defaultErrorComponent: ErrorComponent,

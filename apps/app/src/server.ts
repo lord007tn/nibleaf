@@ -11,6 +11,7 @@ import {
 } from '@nibleaf/shared/markdown-discovery';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { createServerEntry } from '@tanstack/react-start/server-entry';
 import got from 'got';
 import { z } from 'zod';
 import { serverEnv } from '@/env.server';
@@ -31,6 +32,7 @@ import {
   preferredRepresentation,
 } from '@/lib/request-negotiation';
 import { renderSelfHostInstaller } from '@/lib/self-host-release';
+import { ssrNonce } from '@/lib/ssr-nonce.server';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -49,15 +51,9 @@ import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
  *    so the API rate-limiter doesn't key every SSR render on this container.
  */
 
-const ssrNonce = new AsyncLocalStorage<string>();
-
-const startHandler = createStartHandler((context) => {
-  const nonce = ssrNonce.getStore();
-  if (nonce) {
-    context.router.update({ ssr: { ...context.router.options.ssr, nonce } });
-  }
-  return defaultStreamHandler(context);
-});
+// Rewritten published-site requests own a separate Start request context. Convert
+// errors inside that context before leaving it, preserving headers and cookies.
+const startHandler = createServerEntry({ fetch: createStartHandler(defaultStreamHandler) }).fetch;
 
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in
@@ -1138,4 +1134,4 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   return ssrNonce.run(nonce, () => withSecurityHeaders(handleRequestInner(request, ...rest), nonce));
 };
 
-export default { fetch: handleRequest };
+export default createServerEntry({ fetch: handleRequest });

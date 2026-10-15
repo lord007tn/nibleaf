@@ -2,8 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Markdown } from '@/components/markdown';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
@@ -11,6 +10,8 @@ import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
+
+const Markdown = lazy(() => import('@/components/markdown').then((module) => ({ default: module.Markdown })));
 
 const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
   const trimmed = template?.trim();
@@ -215,7 +216,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </ul>
       ) : null}
       <div className="mt-8">
-        <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+        <Suspense fallback={null}>
+          <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+        </Suspense>
       </div>
 
       {readerActionsAfterNavigation ? null : <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />}
