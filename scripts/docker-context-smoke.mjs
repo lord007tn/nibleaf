@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const ignore = (await readFile(join(root, '.dockerignore'), 'utf8')).split(/\r?\n/).map((line) => line.trim());
 for (const pattern of [
-  '.env.*',
+  '**/.env',
+  '**/.env.*',
+  '!**/.env.example',
+  '!**/.env.production.example',
   '/output/',
   '/.playwright/',
   '/.playwright-cli/',
@@ -24,6 +27,7 @@ for (const pattern of [
 
 const id = randomUUID();
 const filename = `runtime-context-${id}.json`;
+const publicExample = `apps/runtime-context-${id}/.env.example`;
 const paths = [
   `output/playwright/.auth/${filename}`,
   `.playwright/${filename}`,
@@ -35,7 +39,7 @@ const paths = [
   `.docker-data/${filename}`,
   `.env.runtime-context-${id}`,
   `apps/app/.env.runtime-context-${id}`,
-  `packages/email/.env`,
+  'packages/email/.env',
 ];
 const created = [];
 const tag = `nibleaf-runtime-context:${id}`;
@@ -46,9 +50,16 @@ try {
     await writeFile(absolute, `synthetic-context-canary:${id}\n`, { flag: 'wx' });
     created.push(absolute);
   }
+  const examplePath = join(root, publicExample);
+  await mkdir(dirname(examplePath), { recursive: true });
+  await writeFile(examplePath, 'SYNTHETIC_PUBLIC_EXAMPLE=example\n', { flag: 'wx' });
+  created.push(examplePath);
   const probe = [
     "const fs = require('node:fs');",
     "if (!fs.existsSync('/context/package.json')) throw new Error('Application source was not copied');",
+    `for (const path of ${JSON.stringify(['.env.example', '.env.production.example', publicExample])}) {`,
+    "if (!fs.existsSync('/context/' + path)) throw new Error('Public env example was excluded: ' + path);",
+    '}',
     `for (const path of ${JSON.stringify(paths)}) {`,
     "if (fs.existsSync('/context/' + path)) throw new Error('Excluded canary entered Docker context: ' + path);",
     '}',
