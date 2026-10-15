@@ -1,4 +1,5 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { AUTH_OTP_EXPIRY_SECONDS, type SendEmailJobData } from '@nibleaf/bullmq/jobs/email';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import {
@@ -19,12 +20,13 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
 import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { reassignOrDeleteOrgs } from './account-deletion';
+import { requireAuthEmailEnqueue, trackRequiredAuthEmail } from './auth-email-delivery';
+import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
 import { googleOAuthEnabled } from './providers';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
-const OTP_EXPIRY_SECONDS = 10 * 60;
 
 const sanitizeEmailErrorField = (value: string) => value.replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500);
 
@@ -41,10 +43,10 @@ const sendMail = (to: string, email: RenderedEmail) =>
 
 /** Auth codes are required delivery: do not tell the browser a code was sent
  * until rendering succeeded and Redis accepted the email job. */
-async function deliverRequiredAuthEmail(to: string, email: Promise<RenderedEmail>): Promise<void> {
+async function deliverRequiredAuthEmail(to: string, email: Promise<RenderedEmail>, auth: SendEmailJobData['auth']): Promise<void> {
   try {
     const message = await email;
-    await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message } }), ENQUEUE_TIMEOUT_MS);
+    await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message, auth } }), ENQUEUE_TIMEOUT_MS);
   } catch (error) {
     log.error({ error: safeEmailError(error) }, 'required auth email enqueue failed');
     throw error;
@@ -699,6 +701,7 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
+  hooks: { after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
   basePath: '/api/auth',
@@ -761,16 +764,24 @@ export const auth = betterAuth({
         enabled: true,
         verifyCurrentEmail: true,
       },
-      expiresIn: OTP_EXPIRY_SECONDS,
+      expiresIn: AUTH_OTP_EXPIRY_SECONDS,
       allowedAttempts: 3,
       rateLimit: { window: 5 * 60, max: 3 },
       resendStrategy: 'rotate',
       storeOTP: 'hashed',
       async sendVerificationOTP({ email, otp, type }, context) {
-        await deliverRequiredAuthEmail(
-          email,
-          renderVerificationCodeEmail({ code: otp, purpose: type, language: resolveRequestLocale(context?.headers) }),
-        );
+        await trackRequiredAuthEmail(context, async () => {
+          const queued = await deliverAuthOtpEmail({ email, otp, type }, context, (auth) =>
+            deliverRequiredAuthEmail(
+              email,
+              renderVerificationCodeEmail({ code: otp, purpose: type, language: resolveRequestLocale(context?.headers) }),
+              auth,
+            ),
+          );
+          if (!queued) {
+            log.info('superseded auth email skipped before enqueue');
+          }
+        });
       },
     }),
     organization({
