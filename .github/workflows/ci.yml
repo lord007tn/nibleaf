@@ -58,6 +58,9 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Test production email diagnostic boundaries
+        run: node --test scripts/production-email-diagnostic.test.mjs
+
       - name: Test immutable image verification
         run: node --test scripts/verify-published-image.test.mjs scripts/reject-existing-immutable-tags.test.mjs
 
