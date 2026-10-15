@@ -75,7 +75,7 @@ COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 # Services and operator migrations use Node/tsx or pnpm. The base image's npm
 # installer is unused and carries a separate bundled dependency graph.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apk upgrade --no-cache zlib && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

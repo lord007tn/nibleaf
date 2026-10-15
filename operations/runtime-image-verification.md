@@ -23,6 +23,9 @@ also omits the base image's unused npm/npx installer while retaining pnpm for
 existing migration/operator commands. Both the root package-manager pin and
 Corepack preparation use pnpm 10.34.6, whose bundled tar is 7.5.22.
 
+The runner upgrades only the stable-branch zlib package; image scan dispositions
+must use the built image's installed version rather than an earlier baseline.
+
 Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
 job or matching file checksum alone cannot establish that its text is readable.
 
