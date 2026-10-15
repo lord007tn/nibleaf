@@ -39,7 +39,7 @@ for (const workspace of ['.', 'apps/server', 'apps/worker', 'packages/clickhouse
   }
 }
 const database = createRequire(path.join(app, 'packages/database/package.json'));
-required.prisma = database.resolve('prisma');
+required.prisma = database.resolve('prisma/build/index.js');
 required.prismaClient = database.resolve('@prisma/client');
 const visited = new Set();
 const packages = new Map();
