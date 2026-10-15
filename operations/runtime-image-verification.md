@@ -15,6 +15,17 @@ The repository lockfile still contains development dependencies for contributors
 Runtime exclusion is verified from installed files in the final image; this does
 not claim that the source-lock development advisory has been fixed upstream.
 
+Production peers still install TypeScript and Vitest metadata. The runtime stage
+omits only TypeScript's unused optional native compiler packages; services execute
+TS/TSX with tsx/esbuild. Contributor builds retain the compiler. Other native
+optional dependencies, including sharp and Prisma, remain installed. The runner
+also omits the base image's unused npm/npx installer while retaining pnpm for
+existing migration/operator commands. Both the root package-manager pin and
+Corepack preparation use pnpm 10.34.6, whose bundled tar is 7.5.22.
+
+Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
+job or matching file checksum alone cannot establish that its text is readable.
+
 ## Build and inspect
 
 Run these commands explicitly. Docker builds must remain manual; do not add them
@@ -34,7 +45,8 @@ and temporary image tag. It never reads existing browser state or env contents.
 
 The image audit checks required artifacts, TypeScript/config/Prisma resolution,
 MCP runtime presence, and installed package inventory including nested and Nitro
-dependencies. It fails if Ultracite or braces remains installed. No host env is
+dependencies. It fails if Ultracite, braces, or a TypeScript native compiler
+package remains installed. No host env is
 forwarded into the probe container. Keep the JSON report with the exact image ID,
 source revision, build log, and acceptance evidence.
 
