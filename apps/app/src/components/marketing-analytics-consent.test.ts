@@ -18,6 +18,11 @@ vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: { select: (state: { location: { pathname: string } }) => string }) => select({ location: route }),
 }));
 
+// This consent suite supplies public metadata through QueryClient. Keep its
+// network boundary isolated from Start's uncompiled SSR transport in jsdom;
+// origin selection and credential forwarding have dedicated service tests.
+vi.mock('@/services/api', () => ({ api: { public: { meta: { $get: vi.fn() } } } }));
+
 import { OPEN_MARKETING_PRIVACY_CHOICES } from './marketing/privacy-choices';
 
 import { MarketingAnalyticsConsent, marketingAnalyticsEnabled } from './marketing-analytics-consent';
