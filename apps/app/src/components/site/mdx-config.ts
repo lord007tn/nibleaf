@@ -1,5 +1,5 @@
 import type { Root } from 'mdast';
-import { defaultSchema } from 'rehype-sanitize';
+import { defaultSchema, type Options as SanitizeOptions } from 'rehype-sanitize';
 
 export type CalloutType = 'note' | 'info' | 'tip' | 'check' | 'warning' | 'danger';
 
@@ -114,7 +114,7 @@ export function normalizeMdxBlocks(src: string): string {
  *  tags and their props, plus className/id passthrough for headings & code
  *  highlighting. Scripts, event handlers, and unknown attributes are still
  *  stripped — this is what makes raw component HTML safe to render. */
-export const sanitizeSchema = {
+export const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), ...COMPONENT_TAGS],
   attributes: {
@@ -147,7 +147,9 @@ export const sanitizeSchema = {
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.
     pre: [...(defaultSchema.attributes?.pre ?? []), 'dataTitle', 'dataLang'],
-    code: [...(defaultSchema.attributes?.code ?? []), 'className', 'dataTitle', 'dataLang'],
+    // Keep only the code classes used by highlighting and the trusted math
+    // renderer. MathML and layout styles are generated after sanitization.
+    code: [['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang'],
   },
 };
 

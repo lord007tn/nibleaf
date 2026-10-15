@@ -25,8 +25,59 @@ const render = (content: string, language?: string): Promise<string> =>
 
 describe('Markdown renderer — Mintlify component parity', () => {
   it('renders KaTeX for inline and block math', async () => {
-    const html = await render('Inline $a^2+b^2=c^2$ and a block:\n\n$$\\int_0^1 x\\,dx$$');
+    const html = await render('Inline $a^2+b^2=c^2$ and a block:\n\n$$\n\\int_0^1 x\\,dx\n$$');
     expect(html).toContain('katex');
+    expect(html.match(/<math\s/g)).toHaveLength(2);
+    expect(html.match(/<annotation encoding="application\/x-tex">/g)).toHaveLength(2);
+    expect(html.match(/class="katex-html" aria-hidden="true"/g)).toHaveLength(2);
+    expect(html).toMatch(/class="katex-strut" style="height:/);
+    expect(html).toContain('class="katex-sizing reset-size6 size3 mtight"');
+    expect(html).toMatch(/class="vlist[^"]*" style="height:/);
+    expect(html).toContain('class="katex-display"');
+  });
+
+  it('sanitizes authored scripts, event handlers, styles, and MathML before rendering trusted math', async () => {
+    const html = await render(
+      [
+        '<script>alert("authored-script")</script>',
+        '<span style="position:fixed;inset:0" onclick="alert(1)">Safe visible text</span>',
+        '<img src="/safe.png" onerror="alert(2)" />',
+        '<math><mi xlink:href="javascript:alert(3)">authored-math</mi></math>',
+        '',
+        'Trusted math $\\frac{1}{2}$',
+      ].join('\n'),
+    );
+    expect(html).toContain('Safe visible text');
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('authored-script');
+    expect(html).not.toMatch(/\son(?:click|error)=/i);
+    expect(html).not.toContain('position:fixed');
+    expect(html).not.toContain('xlink:href');
+    expect(html.match(/<math\s/g)).toHaveLength(1);
+    expect(html).toContain('class="katex-html" aria-hidden="true"');
+  });
+
+  it('does not trust authored LaTeX links, images, or HTML attributes', async () => {
+    const html = await render(
+      [
+        '$\\href{javascript:alert(1)}{Unsafe link}$',
+        '$\\href{https://example.com/unsafe-math-target}{External link}$',
+        '$\\includegraphics{https://example.com/unsafe-math-image.png}$',
+        '$\\htmlStyle{position:fixed}{Unsafe style}$',
+      ].join('\n\n'),
+    );
+    expect(html).not.toMatch(/<a\b[^>]*\bhref=/);
+    expect(html).not.toMatch(/<img\b/);
+    expect(html).not.toMatch(/\sstyle="[^"]*position\s*:/);
+    expect(html).not.toMatch(/\shref="javascript:/i);
+  });
+
+  it('keeps invalid TeX readable without failing the page render', async () => {
+    const html = await render('Before $\\frac{1}{$ after.');
+    expect(html).toContain('Before');
+    expect(html).toContain('after.');
+    expect(html).toContain('katex-error');
+    expect(html).toContain('\\frac{1}{');
   });
 
   it('draws a filename header from a code fence title= meta', async () => {

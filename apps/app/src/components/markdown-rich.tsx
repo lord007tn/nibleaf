@@ -9,5 +9,12 @@ import { type MarkdownProps, MarkdownRenderer } from './markdown';
  * React's streaming SSR still resolves this component before sending its final
  * content, preserving indexable markup and hydration identity. */
 export default function RichMarkdown(props: MarkdownProps) {
-  return <MarkdownRenderer {...props} extraRemarkPlugins={[remarkMath]} extraRehypePlugins={[rehypeRaw, rehypeKatex]} />;
+  return (
+    <MarkdownRenderer
+      {...props}
+      extraRemarkPlugins={[remarkMath]}
+      extraRehypePlugins={[rehypeRaw]}
+      afterSanitizePlugins={[[rehypeKatex, { trust: false }]]}
+    />
+  );
 }

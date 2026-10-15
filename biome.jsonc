@@ -25,6 +25,13 @@
   // classic runtime and requires React to remain in scope.
   "overrides": [
     {
+      // Preserve the reviewed upstream stylesheet and its recorded SHA-256.
+      "includes": [
+        "packages/design-system/src/styles/vendor/shadcn-tailwind.css"
+      ],
+      "formatter": { "enabled": false }
+    },
+    {
       "includes": ["packages/email/src/templates/**"],
       "javascript": { "jsxRuntime": "reactClassic" }
     }
