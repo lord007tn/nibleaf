@@ -129,7 +129,11 @@ function SignInPage() {
               <p className="text-center text-muted-foreground text-xs">{t('admin.signIn.expiry')}</p>
             </div>
           )}
-          {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
+          {error ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
           <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent ? otp.length !== 6 : !email.trim())} type="submit">
             {isSubmitting ? (codeSent ? t('admin.signIn.verifying') : t('admin.signIn.sending')) : t('admin.signIn.submit')}
           </Button>

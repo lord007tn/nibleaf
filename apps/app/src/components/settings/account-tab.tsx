@@ -9,6 +9,7 @@ import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { authEmailErrorMessage } from '@/lib/auth-errors';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
@@ -84,7 +85,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (res.error) {
-          toast.error(res.error.message ?? t('settings.account.email.sendError'));
+          toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError')));
           return;
         }
         toast.success(t('settings.account.email.currentVerificationSent'));
@@ -101,7 +102,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     try {
       const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
       if (res.error) {
-        toast.error(res.error.message ?? t('settings.account.email.verifyError'));
+        toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError'), t('settings.account.email.verifyError')));
         return;
       }
       toast.success(t('settings.account.email.verificationSent', { email: newEmail }));
