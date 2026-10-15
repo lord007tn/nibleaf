@@ -1,11 +1,11 @@
 import { REQUEST_LOCALE_HEADER } from '@nibleaf/i18n/locales';
 import { getLocale } from '@nibleaf/i18n/runtime';
 import { hcWithType } from '@nibleaf/server/rpc';
-import { env } from '@/env';
+import { apiOrigin } from './api-origin';
 
 // Same-origin: requests go to the dashboard origin and are proxied to the API
 // (see vite.config nitro routeRules), keeping the session cookie first-party.
-const API_URL = typeof window === 'undefined' ? env.VITE_APP_URL : window.location.origin;
+const API_URL = apiOrigin();
 
 // The server mounts every module under `/api`, so the RPC client exposes an
 // `.api` node. We pre-select it here so call sites read `api.app.projects` /

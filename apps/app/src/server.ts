@@ -33,6 +33,7 @@ import {
 } from '@/lib/request-negotiation';
 import { renderSelfHostInstaller } from '@/lib/self-host-release';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
+import { apiOrigin } from '@/services/api-origin';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -58,7 +59,7 @@ const startHandler = createServerEntry({ fetch: createStartHandler(defaultStream
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in
 // dev, matching how the SSR data loaders fetch.
-const SELF = `http://localhost:${serverEnv.PORT}`;
+const SELF = apiOrigin();
 
 const ownHosts = new Set(
   [serverEnv.APP_URL, 'localhost:4310', '127.0.0.1:4310'].map(
