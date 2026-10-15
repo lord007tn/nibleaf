@@ -6,6 +6,7 @@ import { redisConnectionConfig } from '../redis';
 import type { ProcessorRegistry } from '../types';
 import { queueLogger } from '../utils/logger';
 import { getQueueName, QUEUE_CONFIGS } from '../utils/queue';
+import { workersConnected } from './readiness';
 
 export type { ProcessorRegistry } from '../types';
 
@@ -15,6 +16,16 @@ interface WorkerEntry {
 }
 
 const activeWorkers: WorkerEntry[] = [];
+
+export const areWorkersConnected = (): Promise<boolean> =>
+  workersConnected(
+    activeWorkers.map(({ worker }) => ({
+      isRunning: () => worker.isRunning(),
+      key: worker.toKey('meta'),
+      client: worker.getBackend().client,
+      blockingClient: worker.getBackend().blockingClient,
+    })),
+  );
 
 function createWorker(queueName: QueueNames, processor: (job: Job) => Promise<unknown>): Worker {
   const config = QUEUE_CONFIGS[queueName];
