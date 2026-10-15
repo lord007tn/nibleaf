@@ -40,6 +40,13 @@ patchedDependencies:
 importers:
 
   .:
+    dependencies:
+      '@nibleaf/tsconfig':
+        specifier: workspace:*
+        version: link:packages/tsconfig
+      tsx:
+        specifier: 4.23.13
+        version: 4.23.13
     devDependencies:
       '@biomejs/biome':
         specifier: 2.5.11
@@ -50,18 +57,12 @@ importers:
       '@nibleaf/database':
         specifier: workspace:*
         version: link:packages/database
-      '@nibleaf/tsconfig':
-        specifier: workspace:*
-        version: link:packages/tsconfig
       knip:
         specifier: 6.34.0
         version: 6.34.0
       react-doctor:
         specifier: 0.9.13
         version: 0.9.13(@opentelemetry/core@2.11.0(@opentelemetry/api@1.9.1))(eslint@10.9.0(jiti@2.7.0))(react@19.2.8)
-      tsx:
-        specifier: 4.23.13
-        version: 4.23.13
       turbo:
         specifier: ^2.10.12
         version: 2.10.12
@@ -835,6 +836,9 @@ importers:
       '@t3-oss/env-core':
         specifier: ^0.13.11
         version: 0.13.11(typescript@7.0.2)(valibot@1.4.2(typescript@7.0.2))(zod@4.5.4)
+      prisma:
+        specifier: 7.10.0
+        version: 7.10.0(@types/node@22.20.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(magicast@0.5.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
       zod:
         specifier: ^4.5.4
         version: 4.5.4
@@ -851,9 +855,6 @@ importers:
       dotenv-cli:
         specifier: ^11.0.0
         version: 11.0.0
-      prisma:
-        specifier: 7.10.0
-        version: 7.10.0(@types/node@22.20.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(magicast@0.5.4)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@7.0.2)
       tsdown:
         specifier: ^0.22.14
         version: 0.22.14(oxc-resolver@11.24.2)(tsx@4.23.13)(typescript@7.0.2)(unrun@0.3.1)

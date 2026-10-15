@@ -18,3 +18,16 @@ dogfood-output
 coverage
 playwright-report
 test-results
+
+# Local QA may contain signed-in browser state. Never send it to the builder.
+/output/
+/.playwright/
+/.playwright-cli/
+/.playwright-mcp/
+**/playwright/.auth/
+**/playwright/.cache/
+/blob-report/
+# Local service volumes and private audit caches are not application assets.
+/.docker-data/
+/.seo-cache/
+/seo-audit/

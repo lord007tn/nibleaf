@@ -35,6 +35,20 @@ ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 ENV NODE_OPTIONS=--max-old-space-size=6144
 RUN pnpm exec turbo run build --concurrency=1
 
+# Install a clean production graph instead of copying the builder's tooling.
+# Keep the workspace layout: server/worker and their workspace dependencies run
+# through tsx, and the migration commands still use pnpm's workspace filters.
+FROM base AS runtime-deps
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# These ignored/generated files are runtime inputs, not development tooling.
+COPY --from=build /app/packages/database/src/generated /app/packages/database/src/generated
+COPY --from=build /app/packages/i18n/src/paraglide /app/packages/i18n/src/paraglide
+COPY --from=build /app/packages/search/dist /app/packages/search/dist
+COPY --from=build /app/apps/server/dist /app/apps/server/dist
+COPY --from=build /app/apps/app/.output /app/apps/app/.output
+COPY --from=build /app/apps/admin/.output /app/apps/admin/.output
+
 FROM base AS runner
 ARG VERSION=0.1.1
 ARG REVISION=development
@@ -46,7 +60,7 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.source="https://github.com/lord007tn/nibleaf" \
   org.opencontainers.image.version=$VERSION \
   org.opencontainers.image.revision=$REVISION
-COPY --from=build /app /app
+COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
