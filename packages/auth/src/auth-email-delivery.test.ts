@@ -3,10 +3,10 @@ import { memoryAdapter } from 'better-auth/adapters/memory';
 import { createAuthEndpoint } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins';
 import { describe, expect, it, vi } from 'vitest';
-import { requireAuthEmailEnqueue, trackRequiredAuthEmail } from './auth-email-delivery';
+import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 
 function authFixture(send: () => Promise<void>, backgroundHandler?: (task: Promise<unknown>) => void) {
-  return betterAuth({
+  const auth = betterAuth({
     secret: 'synthetic-required-email-secret-at-least-32-characters',
     baseURL: 'http://localhost:3000',
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
@@ -26,6 +26,7 @@ function authFixture(send: () => Promise<void>, backgroundHandler?: (task: Promi
       },
     ],
   });
+  return withRequiredAuthEmailScope(auth);
 }
 
 function request(path = '/email-otp/send-verification-otp', email = 'synthetic@example.test') {
@@ -91,6 +92,56 @@ describe('required auth enqueue HTTP contract', () => {
     await expect(auth.api.sendVerificationOTP({ body: { email: 'synthetic@example.test', type: 'sign-in' } })).rejects.toMatchObject({
       statusCode: 503,
     });
+  });
+
+  it('rejects failed required delivery through the requestless server verification wrapper', async () => {
+    const auth = authFixture(vi.fn().mockRejectedValue(new Error('Synthetic required failure')));
+    await (await auth.$context).internalAdapter.createUser(
+      { email: 'synthetic@example.test', name: 'Synthetic', emailVerified: false },
+      { method: 'email-otp' },
+    );
+    await expect(auth.api.sendVerificationEmail({ body: { email: 'synthetic@example.test' } })).rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  it('preserves successful delivery through the requestless server verification wrapper', async () => {
+    const auth = authFixture(vi.fn().mockResolvedValue(undefined));
+    await (await auth.$context).internalAdapter.createUser(
+      { email: 'synthetic@example.test', name: 'Synthetic', emailVerified: false },
+      { method: 'email-otp' },
+    );
+    await expect(auth.api.sendVerificationEmail({ body: { email: 'synthetic@example.test' } })).resolves.toEqual({ status: true });
+  });
+
+  it.each(['success-first', 'failure-first'] as const)('isolates concurrent requestless verification wrappers (%s)', async (order) => {
+    const failedEnqueue = pendingEnqueue();
+    const successfulEnqueue = pendingEnqueue();
+    const send = vi
+      .fn()
+      .mockImplementationOnce(() => failedEnqueue.promise)
+      .mockImplementationOnce(() => successfulEnqueue.promise);
+    const auth = authFixture(send);
+    const context = await auth.$context;
+    for (const email of ['first@example.test', 'second@example.test']) {
+      await context.internalAdapter.createUser({ email, name: 'Synthetic', emailVerified: false }, { method: 'email-otp' });
+    }
+    const failed = auth.api.sendVerificationEmail({ body: { email: 'first@example.test' } }).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    );
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    const successful = auth.api.sendVerificationEmail({ body: { email: 'second@example.test' } });
+    await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(2));
+    if (order === 'success-first') {
+      successfulEnqueue.resolve();
+      await expect(successful).resolves.toEqual({ status: true });
+      failedEnqueue.reject(new Error('Synthetic required failure'));
+      expect(await failed).toMatchObject({ error: { statusCode: 503 } });
+    } else {
+      failedEnqueue.reject(new Error('Synthetic required failure'));
+      expect(await failed).toMatchObject({ error: { statusCode: 503 } });
+      successfulEnqueue.resolve();
+      await expect(successful).resolves.toEqual({ status: true });
+    }
   });
 
   it('keeps concurrent requests isolated when only one required enqueue fails', async () => {

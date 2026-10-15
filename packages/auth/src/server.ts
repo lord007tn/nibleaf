@@ -20,7 +20,7 @@ import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { APIError } from 'better-auth/api';
 import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { reassignOrDeleteOrgs } from './account-deletion';
-import { requireAuthEmailEnqueue, trackRequiredAuthEmail } from './auth-email-delivery';
+import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
 import { googleOAuthEnabled } from './providers';
@@ -699,7 +699,7 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
   }
 }
 
-export const auth = betterAuth({
+const authInstance = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   hooks: { after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
@@ -925,3 +925,5 @@ export const auth = betterAuth({
     },
   },
 });
+
+export const auth = withRequiredAuthEmailScope(authInstance);
