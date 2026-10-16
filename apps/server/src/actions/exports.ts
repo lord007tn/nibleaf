@@ -139,16 +139,22 @@ export const cancelExport = async (projectId: string, id: string, userId: string
   return updated;
 };
 
-export const getExportDownload = async (projectId: string, jobId: string, artifactId: string, userId: string) => {
+export const getExportDownloadArtifact = async (projectId: string, jobId: string, artifactId: string) => {
   const artifact = await prisma.exportArtifact.findFirst({
     where: { id: artifactId, jobId, job: { projectId, status: 'SUCCEEDED' } },
     include: { job: { select: { expiresAt: true } } },
   });
   if (!artifact) throw notFound('export artifact', { artifactId });
   if (artifact.job.expiresAt && artifact.job.expiresAt <= new Date()) throw notFound('export artifact', { artifactId });
+  return artifact;
+};
+
+export const getExportDownload = async (projectId: string, jobId: string, artifactId: string, userId: string) => {
+  const artifact = await getExportDownloadArtifact(projectId, jobId, artifactId);
   const url = await presignGetUrl({ key: artifact.storageKey, expiresInSeconds: env.EXPORT_DOWNLOAD_TTL_SECONDS });
   logPlatformEvent('export_downloaded', { userId, projectId, metadata: { jobId, artifactId, format: artifact.format } });
-  return { url, expiresInSeconds: env.EXPORT_DOWNLOAD_TTL_SECONDS, fileName: artifact.fileName };
+  const fileUrl = `/api/app/projects/${encodeURIComponent(projectId)}/exports/${encodeURIComponent(jobId)}/artifacts/${encodeURIComponent(artifactId)}/file`;
+  return { url, expiresInSeconds: env.EXPORT_DOWNLOAD_TTL_SECONDS, fileName: artifact.fileName, fileUrl };
 };
 
 export const listExportSchedules = (projectId: string) =>

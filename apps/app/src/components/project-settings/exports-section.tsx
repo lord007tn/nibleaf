@@ -24,7 +24,8 @@ import {
   useRunExportSchedule,
   useUpdateExportSchedule,
 } from '@/hooks/api/exports';
-import { localeTag, useFormatters } from '@/lib/format';
+import { formatExportFileSize } from '@/lib/export-file-size';
+import { localeTag } from '@/lib/format';
 import { SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
@@ -32,16 +33,10 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
   PDF: 'settings.exports.workflow.format.pdf',
   STATIC_HTML: 'settings.exports.workflow.format.html',
 };
-const MEBIBYTE = 1024 * 1024;
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
 export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
-  const { number } = useFormatters();
-  const sizeLabel = (bytes: number) =>
-    bytes >= MEBIBYTE * 1024
-      ? t('settings.usage.unit.gb', { value: number(bytes / MEBIBYTE / 1024, { maximumFractionDigits: 1 }) })
-      : t('settings.usage.unit.mb', { value: number(bytes / MEBIBYTE, { maximumFractionDigits: bytes < MEBIBYTE ? 2 : 1 }) });
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
@@ -53,7 +48,15 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
   const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
       const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
-      window.location.assign(result.url);
+      const link = document.createElement('a');
+      link.href = result.fileUrl;
+      link.download = result.fileName;
+      document.body.append(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('settings.exports.workflow.downloadError'));
     }
@@ -189,7 +192,7 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                   <div className="mt-3 flex flex-wrap gap-2">
                     {run.artifacts.map((artifact) => (
                       <Button key={artifact.id} onClick={() => downloadArtifact(run, artifact)} size="sm" variant="outline">
-                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {sizeLabel(artifact.size)}
+                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {formatExportFileSize(artifact.size, locale)}
                       </Button>
                     ))}
                   </div>

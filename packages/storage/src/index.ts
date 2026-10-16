@@ -42,8 +42,8 @@ export const putObject = async (key: string, body: Buffer | Uint8Array | string,
   await getS3Client(target).send(new PutObjectCommand({ Bucket: getBucket(target), Key: key, Body: body, ContentType: contentType }));
 };
 
-export const getObjectStream = async (key: string, target?: StorageTarget): Promise<Readable> => {
-  const result = await getS3Client(target).send(new GetObjectCommand({ Bucket: getBucket(target), Key: key }));
+export const getObjectStream = async (key: string, target?: StorageTarget, abortSignal?: AbortSignal): Promise<Readable> => {
+  const result = await getS3Client(target).send(new GetObjectCommand({ Bucket: getBucket(target), Key: key }), { abortSignal });
   const body = result.Body;
   if (!(body instanceof Readable)) {
     throw new Error(`Object body for "${key}" is not a readable stream`);
