@@ -36,6 +36,7 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
         projectId="docs"
         currentPath="start"
         label={isRtl ? 'التوثيق' : 'Docs'}
+        closeLabel={isRtl ? 'إغلاق' : undefined}
         isRtl={isRtl}
         links={[{ label: 'Changelog', href: '#changes', active: false, external: false }]}
         anchors={[{ label: 'Community', href: 'https://community.example.com', active: false, external: true }]}
@@ -45,9 +46,17 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
   );
   const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
   await act(async () => trigger?.click());
-  const drawer = document.querySelector('[data-slot="sheet-content"]');
+  let drawer = document.querySelector('[data-slot="sheet-content"]');
   expect(drawer?.getAttribute('dir')).toBe(isRtl ? 'rtl' : 'ltr');
   expect(drawer?.getAttribute('data-side')).toBe(isRtl ? 'right' : 'left');
+  const close = drawer?.querySelector<HTMLButtonElement>('[data-slot="sheet-close"]');
+  expect(close?.textContent).toBe(isRtl ? 'إغلاق' : 'Close');
+  expect(drawer?.hasAttribute('closelabel')).toBe(false);
+  await act(async () => close?.click());
+  expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
+  await vi.waitFor(() => expect(document.activeElement).toBe(trigger));
+  await act(async () => trigger?.click());
+  drawer = document.querySelector('[data-slot="sheet-content"]');
   const community = drawer?.querySelector<HTMLAnchorElement>('a[href="https://community.example.com"]');
   expect(community?.textContent).toContain('Community');
   expect(community?.target).toBe('_blank');

@@ -1,5 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
+import { resolveLocale } from '@nibleaf/i18n/locales';
+import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
@@ -366,6 +368,7 @@ function SiteChrome() {
                   lang={navigationLanguage}
                   version={activeVersionPrefix}
                   label={t('docs')}
+                  closeLabel={deploy_close(undefined, { locale: resolveLocale(activeLanguage?.code) ?? 'en' })}
                   isRtl={isRtl}
                   links={headerLinks}
                   anchors={navAnchors.map((anchor) => ({

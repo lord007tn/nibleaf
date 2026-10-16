@@ -170,7 +170,7 @@ export function SiteSearch({
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
-        <Command shouldFilter={false}>
+        <Command shouldFilter={false} label={t('searchDocumentation')}>
           {aiAnswers ? (
             <div
               className="flex items-center gap-1 border-b px-3 pt-3"
@@ -256,7 +256,7 @@ export function SiteSearch({
               role={aiAnswers ? 'tabpanel' : undefined}
               aria-labelledby={aiAnswers ? `${modeId}-search-tab` : undefined}
             >
-              <CommandList>
+              <CommandList label={t('results')}>
                 {hits.length === 0 ? (
                   <div className="py-6 text-center text-sm" role={query.trim() && !queryPending && hitsQuery.error ? 'alert' : 'status'}>
                     {searchMessage}

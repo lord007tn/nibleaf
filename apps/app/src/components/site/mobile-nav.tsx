@@ -25,6 +25,7 @@ export function MobileNav({
   lang,
   version,
   label,
+  closeLabel,
   isRtl,
   links = [],
   anchors = [],
@@ -36,6 +37,7 @@ export function MobileNav({
   lang?: string;
   version?: string;
   label: string;
+  closeLabel?: string;
   isRtl?: boolean;
   links?: MobileNavLink[];
   anchors?: MobileNavLink[];
@@ -57,7 +59,7 @@ export function MobileNav({
         <Menu className="size-5" />
       </SheetTrigger>
       {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic). */}
-      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 max-w-[calc(100vw-2rem)] p-0" dir={isRtl ? 'rtl' : 'ltr'}>
+      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 max-w-[calc(100vw-2rem)] p-0" dir={isRtl ? 'rtl' : 'ltr'} closeLabel={closeLabel}>
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>

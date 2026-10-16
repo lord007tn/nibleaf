@@ -8,11 +8,15 @@ const mocks = vi.hoisted(() => ({
   answer: vi.fn(),
   mutate: vi.fn(),
   debounced: undefined as string | undefined,
+  realLabels: false,
 }));
 vi.mock('@/hooks/api/site-search', () => ({ useSiteSearch: mocks.search, useAnswerSite: mocks.answer }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [mocks.debounced ?? value] }));
-vi.mock('@nibleaf/i18n/site', () => ({ siteT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/site', async (importOriginal) => {
+  const { siteT } = await importOriginal<typeof import('@nibleaf/i18n/site')>();
+  return { siteT: (language?: string) => (mocks.realLabels ? siteT(language) : (key: string) => key) };
+});
 
 import { SiteSearch } from './site-search';
 
@@ -31,6 +35,7 @@ beforeEach(() => {
   );
   Element.prototype.scrollIntoView = vi.fn();
   mocks.debounced = undefined;
+  mocks.realLabels = false;
   mocks.search.mockReturnValue({ data: [], isFetching: false, error: null });
   mocks.answer.mockReturnValue({ mutate: mocks.mutate, variables: undefined, isPending: false, data: null, error: null });
 });
@@ -66,6 +71,24 @@ const selectAnswers = () =>
   });
 
 describe('published reader search', () => {
+  it.each([
+    ['en', 'Search documentation', 'Results'],
+    ['ar', 'البحث في الوثائق', 'النتائج'],
+    ['ar-SA', 'البحث في الوثائق', 'النتائج'],
+  ])('names the combobox and controlled result list in %s, independently of a custom placeholder', async (lang, label, results) => {
+    mocks.realLabels = true;
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render({ lang, placeholder: 'Custom site prompt', aiAnswers: false });
+    const input = document.querySelector<HTMLInputElement>('[role="combobox"]');
+    const list = document.querySelector('[role="listbox"]');
+    expect(document.getElementById(input?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe(label);
+    expect(input?.placeholder).toBe('Custom site prompt');
+    expect(list?.getAttribute('aria-label')).toBe(results);
+    expect(input?.getAttribute('aria-controls')).toBe(list?.id);
+    await typeQuery('setup');
+    expect(list?.querySelector('[role="option"]')?.textContent).toContain('Setup guide');
+  });
+
   it('distinguishes an unavailable search from a successful empty result and hides cached results on failure', async () => {
     const { rerender } = await render();
     await typeQuery('setup');
