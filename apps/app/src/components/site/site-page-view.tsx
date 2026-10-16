@@ -2,7 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
@@ -132,8 +132,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const { setAlternates } = useSitePageAlternates();
 
   useEffect(() => {
-    setAlternates(data?.languages ?? []);
-    return () => setAlternates([]);
+    // Language-switcher metadata must not interrupt a still-hydrating article.
+    startTransition(() => setAlternates(data?.languages ?? []));
+    return () => startTransition(() => setAlternates([]));
   }, [data?.languages, setAlternates]);
 
   const { page, breadcrumbs, prev, next } = data;
