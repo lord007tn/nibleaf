@@ -94,19 +94,28 @@
           "format": "MARKDOWN",
           "suggestedFilename": "Synthetic Product Guide.zip",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 44,
+          "sha256": "422c27a55299d655588f11b3fb88922d3638b85810d29620ea82580b6e7f7ca6",
+          "matchesStorageBytesAndDatabaseChecksum": true
         },
         {
           "format": "STATIC_HTML",
           "suggestedFilename": "دليل المنتج — HTML.zip",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 47,
+          "sha256": "b3cd1f205b548fc29c5656d8790094c558700c9092a2fd8e34af4b3fcd082c73",
+          "matchesStorageBytesAndDatabaseChecksum": true
         },
         {
           "format": "PDF",
           "suggestedFilename": "دليل المنتج.pdf",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 50,
+          "sha256": "ab6c4eae21d6e04fb66ccd150060146990095023e0d2fdb812863698061a7e48",
+          "matchesStorageBytesAndDatabaseChecksum": true
         }
       ],
       "expiredPreflightNoDownload": true,
@@ -121,19 +130,28 @@
           "format": "MARKDOWN",
           "suggestedFilename": "Synthetic Product Guide.zip",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 44,
+          "sha256": "422c27a55299d655588f11b3fb88922d3638b85810d29620ea82580b6e7f7ca6",
+          "matchesStorageBytesAndDatabaseChecksum": true
         },
         {
           "format": "STATIC_HTML",
           "suggestedFilename": "دليل المنتج — HTML.zip",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 47,
+          "sha256": "b3cd1f205b548fc29c5656d8790094c558700c9092a2fd8e34af4b3fcd082c73",
+          "matchesStorageBytesAndDatabaseChecksum": true
         },
         {
           "format": "PDF",
           "suggestedFilename": "دليل المنتج.pdf",
           "failure": null,
-          "workspaceUnchanged": true
+          "workspaceUnchanged": true,
+          "bytes": 50,
+          "sha256": "ab6c4eae21d6e04fb66ccd150060146990095023e0d2fdb812863698061a7e48",
+          "matchesStorageBytesAndDatabaseChecksum": true
         }
       ],
       "expiredPreflightNoDownload": true,
@@ -153,5 +171,23 @@
     "noSuccessfulArtifact": true,
     "browserStorageStatus": null,
     "limit": "Browser did not expose request/response events for this failed native download; direct authenticated HTTP separately verified expired endpoint404"
-  }
+  },
+  "localNode": "v24.21.0",
+  "artifactFiles": [
+    {
+      "name": "en-history.png",
+      "bytes": 108228,
+      "sha256": "31315ca6a36cc67c02fedc36e367f45201fdf941b3a52f2c4541abe65c6a3650"
+    },
+    {
+      "name": "ar-history.png",
+      "bytes": 98708,
+      "sha256": "b130273015abf45e10beb492030197120fd5fe2cd24ad1503ffa3d52a4b9f93e"
+    },
+    {
+      "name": "ar-downloads.webm",
+      "bytes": 186741,
+      "sha256": "9f5e01ed4fea966e072beca532ed69c6aedfe84b4a1eee261f3838970b23b1ee"
+    }
+  ]
 }

@@ -25,11 +25,11 @@ That result is why the UI uses the authenticated streaming endpoint rather than 
 
 ## Compiled browser and API acceptance
 
-An independent check built the candidate app and API, then exercised the actual Nitro proxy, BetterAuth session, PostgreSQL membership/retention checks and MaxIO storage against new fictional fixtures in disposable QA services. The [sanitized compiled receipt](compiled-acceptance.json) records the compiled source hashes; this is local source-build evidence, not an immutable image or production receipt.
+An independent check built the candidate app and API, then exercised the actual Nitro proxy, BetterAuth session, PostgreSQL membership/retention checks and MaxIO storage against new fictional fixtures in disposable QA services. The [sanitized compiled receipt](compiled-acceptance.json) records the compiled source hashes; this is local source-build evidence, not an immutable image or production receipt. Local checks used Node 24.21.0; required CI verifies the supported Node 22 runtime.
 
 - Each of the three formats returned the expected attachment content type/disposition, private/no-store and nosniff headers. All three response byte counts and SHA-256 hashes matched their stored fixture metadata. Nitro transferred these responses without a Content-Length header; byte identity was checked directly.
 - Anonymous requests returned 401, and foreign-workspace and expired artifacts returned 404, with no attachment header or artifact bytes.
-- All three native browser downloads passed in both English and Arabic: six successful download events, exact suggested filenames including Arabic/em-dash characters, unchanged workspace URLs and zero page errors. Expired preflights produced no download and kept the workspace in both languages.
+- All three native browser downloads passed in both English and Arabic: all six saved files were rehashed against the stored sizes/checksums, with exact suggested filenames including Arabic/em-dash characters, unchanged workspace URLs and zero page errors. Expired preflights produced no download and kept the workspace in both languages.
 - A controlled successful preflight pointing at the expired fixture also retained the workspace and produced no successful artifact; the native download reported `canceled`. Chrome exposed no page-level request/response events for that failed download, so its browser HTTP status is unknown. The direct authenticated HTTP check separately established the expired endpoint returns 404.
 - The 44/47/50-byte objects are opaque fictional transport markers. These checks establish download behavior and byte identity; they do not claim valid ZIP/PDF generation or PDF rendering.
 
