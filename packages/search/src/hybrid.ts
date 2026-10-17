@@ -354,13 +354,22 @@ export const searchChunkSnippet = (chunk: SearchChunk, query = '', maxChars = 24
   return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
 };
 
-/** First give distinct pages a place, then fill with supporting passages.
- * A long source must not consume the entire grounded-answer context. */
+/** Keep the strongest supporting passages, reserving two slots for other pages.
+ * A comparison can need several sections from the same authoritative guide. */
 export const selectAnswerChunks = (hits: HybridChunkHit[], limit = 8): SearchChunk[] => {
   if (limit <= 0) return [];
   const selected: SearchChunk[] = [];
   const seenPages = new Set<string>();
   const seenChunks = new Set<string>();
+  const primaryCount = Math.max(1, limit - 2);
+  for (const { chunk } of hits) {
+    if (seenChunks.has(chunk.id)) continue;
+    selected.push(chunk);
+    seenPages.add(chunk.pageId);
+    seenChunks.add(chunk.id);
+    if (selected.length >= primaryCount) break;
+  }
+  if (selected.length >= limit) return selected;
   for (const { chunk } of hits) {
     if (seenPages.has(chunk.pageId) || seenChunks.has(chunk.id)) continue;
     selected.push(chunk);

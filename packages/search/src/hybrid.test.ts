@@ -199,7 +199,7 @@ describe('documentation passage selection', () => {
     expect(snippet).not.toContain('```');
   });
 
-  it('gives independent sources room before adding a second passage from a long page', () => {
+  it('reserves space for independent sources and fills remaining capacity without duplicates', () => {
     const long = chunks('long-page', 'معلومات الحجوزات والغرف. '.repeat(60));
     const other = chunks('another-page', 'إلغاء الحجز.');
     const third = chunks('third-page', 'إضافة عميل.');
@@ -214,5 +214,41 @@ describe('documentation passage selection', () => {
         3,
       ),
     ).toHaveLength(3);
+  });
+
+  it('keeps complementary definitions ahead of lower-ranked independent pages', () => {
+    const normal = chunks(
+      'basic-contract',
+      '## Block\n\nFixed rooms each day, already confirmed.\n\n## Overview\n\nCreate a basic contract.\n\n## Nights\n\nA fixed night balance needs confirmation.\n\n## Save\n\nSave the contract.',
+    );
+    const advanced = chunks(
+      'advanced-contract',
+      '## Overview\n\nChoose a contract type.\n\n## Block\n\nFixed rooms each day, already confirmed.\n\n## Nights\n\nA fixed total of nights requires confirmation for each booking.\n\n## Note\n\nThe last day is checkout.',
+    );
+    const independent = ['comparison', 'pricing', 'company', 'appendix'].flatMap((page) => chunks(page, 'Related reference.'));
+    const ordered = [
+      normal[0],
+      advanced[0],
+      advanced[1],
+      normal[1],
+      advanced[2],
+      independent[0],
+      advanced[3],
+      normal[2],
+      independent[1],
+      normal[3],
+      independent[2],
+      independent[3],
+    ];
+    const hits = ordered.map((chunk, index) => {
+      if (!chunk) throw new Error('Missing comparative source fixture');
+      return { chunk, score: 0.8 - index * 0.05 };
+    });
+    const selected = selectAnswerChunks(hits);
+    expect(selected).toContain(advanced[2]);
+    expect(selected).toContain(advanced[1]);
+    expect(selected).toHaveLength(8);
+    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(8);
+    expect(new Set(selected.map((chunk) => chunk.pageId)).size).toBeGreaterThanOrEqual(3);
   });
 });
