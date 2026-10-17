@@ -205,6 +205,9 @@ describe('published reader search', () => {
     await render();
     await typeQuery('setup');
     await selectAnswers();
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
     expect(document.querySelector('strong')?.textContent).toBe('Configure storage');
     expect(document.querySelector('pre code')?.textContent).toContain('API_URL=http://localhost:4311');
     expect(document.querySelector('pre')?.getAttribute('dir')).toBe('ltr');

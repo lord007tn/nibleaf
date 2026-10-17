@@ -5,13 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { AlertCircle, FileText, Loader2, Search, Sparkles, X } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { lazy, Suspense, useEffect, useId, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
+
+const AnswerMarkdown = lazy(() => import('./site-search-answer'));
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
 const splitWithOffsets = (text: string, pattern: RegExp) => {
@@ -322,21 +323,9 @@ export function SiteSearch({
               {answer ? (
                 <div className="space-y-4">
                   <div className="min-w-0 space-y-3 text-sm leading-7 [&_li]:ms-5 [&_ol]:list-decimal [&_ul]:list-disc" dir={rtl ? 'rtl' : 'ltr'}>
-                    <ReactMarkdown
-                      allowedElements={['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
-                      skipHtml
-                      unwrapDisallowed
-                      components={{
-                        pre: ({ children }) => (
-                          <pre className="max-w-full overflow-x-auto rounded-md bg-muted p-3 text-start text-xs" dir="ltr">
-                            {children}
-                          </pre>
-                        ),
-                        code: ({ children }) => <code dir="ltr">{children}</code>,
-                      }}
-                    >
-                      {answer.answer}
-                    </ReactMarkdown>
+                    <Suspense fallback={<p className="whitespace-pre-wrap">{answer.answer}</p>}>
+                      <AnswerMarkdown>{answer.answer}</AnswerMarkdown>
+                    </Suspense>
                   </div>
                   {answer.citations.length > 0 ? (
                     <div className="space-y-2 border-t pt-3">
