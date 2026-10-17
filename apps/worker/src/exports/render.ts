@@ -625,9 +625,13 @@ export const renderMarkdownZip = (snapshot: SiteSnapshot, assets: ExportAsset[])
   return { bytes: zipSync(files, { level: 6 }), contentType: 'application/zip', extension: 'zip' };
 };
 
-export const renderPdfHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): string => {
+export const renderPdfHtml = (
+  snapshot: SiteSnapshot,
+  assets: ExportAsset[],
+  options: { pages?: SnapshotPage[]; includeCover?: boolean; internalLinkPrefix?: string } = {},
+): string => {
   const assetData = new Map(assets.map((asset) => [asset.url, `data:${asset.contentType};base64,${Buffer.from(asset.bytes).toString('base64')}`]));
-  const pages = snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden);
+  const pages = (options.pages ?? snapshot.pages).filter((page) => page.kind === 'PAGE' && !page.hidden);
   const content = pages
     .map((page) => {
       const direction = snapshot.project.languages.find((language) => language.code === page.languageCode)?.direction ?? 'LTR';
@@ -636,11 +640,15 @@ export const renderPdfHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): st
         .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => `${before}${assetData.get(url) ?? '#'}${after}`)
         .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
           const target = resolvePageTarget(snapshot, page, href);
-          return `${before}${target ? `#page-${escapeHtml(target.id)}` : escapeHtml(href)}${after}`;
+          return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });
       return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(page.title)}</h1>${html}</article>`;
     })
     .join('');
   const theme = resolveTheme(themeConfigOf(snapshot));
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${exportThemeCss(snapshot, true)}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt}a{text-decoration:none}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}}</style></head><body data-theme-id="${escapeHtml(theme.id)}"><header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta"><time datetime="${escapeHtml(snapshot.generatedAt)}">${escapeHtml(snapshot.generatedAt)}</time></p></header>${content}</body></html>`;
+  const cover =
+    options.includeCover === false
+      ? ''
+      : `<header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta"><time datetime="${escapeHtml(snapshot.generatedAt)}">${escapeHtml(snapshot.generatedAt)}</time></p></header>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${exportThemeCss(snapshot, true)}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt;border-collapse:collapse}th,td{padding:4pt 6pt;vertical-align:top}a{text-decoration:none}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}}</style></head><body data-theme-id="${escapeHtml(theme.id)}">${cover}${content}</body></html>`;
 };

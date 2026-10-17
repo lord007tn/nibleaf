@@ -389,6 +389,19 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(html).toContain('data:image/png;base64,AQID');
   });
 
+  it('renders an article without repeating the cover and keeps links to other articles', () => {
+    const html = renderPdfHtml(snapshot, assets, {
+      pages: [required(snapshot.pages[0])],
+      includeCover: false,
+      internalLinkPrefix: 'https://nibleaf.invalid/export/page/',
+    });
+    expect(html).not.toContain('<header>');
+    expect(html).toContain('<article id="page-intro"');
+    expect(html).not.toContain('<article id="page-setup"');
+    expect(html).toContain('href="https://nibleaf.invalid/export/page/setup"');
+    expect(html).toContain('dir="rtl"');
+  });
+
   it('retains Markdown and published metadata in a snapshot-backed zip', () => {
     const files = unzipSync(renderMarkdownZip(snapshot, assets).bytes);
     expect(text(required(files['main/ar/intro.md']))).toContain('[التالي](/setup)');

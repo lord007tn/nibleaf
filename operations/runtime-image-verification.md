@@ -31,6 +31,14 @@ must use the built image's installed version rather than an earlier baseline.
 Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
 job or matching file checksum alone cannot establish that its text is readable.
 
+PDF exports render the cover and each visible article in separate browser
+contexts, then combine their pages with continuous numbering and internal link
+destinations. This bounds decoded image/DOM memory instead of loading a whole
+image-heavy site into Chromium at once. Cancellation is checked between articles.
+The Coolify worker defaults to one export at a time, with a 1 GiB memory limit
+and one CPU. Verify the resulting container limits and complete a representative
+export before raising concurrency or admitting other expensive work on the host.
+
 ## Build and inspect
 
 Run these commands explicitly. Docker builds must remain manual; do not add them
