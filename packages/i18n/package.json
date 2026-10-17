@@ -29,6 +29,8 @@
     "react": "^19.2.8"
   },
   "devDependencies": {
+    "@inlang/plugin-m-function-matcher": "2.3.4",
+    "@inlang/plugin-message-format": "4.5.4",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.18",
