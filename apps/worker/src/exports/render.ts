@@ -630,14 +630,24 @@ export const renderPdfHtml = (
   assets: ExportAsset[],
   options: { pages?: SnapshotPage[]; includeCover?: boolean; internalLinkPrefix?: string } = {},
 ): string => {
-  const assetData = new Map(assets.map((asset) => [asset.url, `data:${asset.contentType};base64,${Buffer.from(asset.bytes).toString('base64')}`]));
+  const assetsByUrl = new Map(assets.map((asset) => [asset.url, asset]));
+  const assetData = new Map<string, string>();
   const pages = (options.pages ?? snapshot.pages).filter((page) => page.kind === 'PAGE' && !page.hidden);
   const content = pages
     .map((page) => {
       const direction = snapshot.project.languages.find((language) => language.code === page.languageCode)?.direction ?? 'LTR';
       let html = String(marked.parse(portablePublicMdxMarkdown(page.content)));
       html = html
-        .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => `${before}${assetData.get(url) ?? '#'}${after}`)
+        .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => {
+          const asset = assetsByUrl.get(url);
+          if (!asset) return `${before}#${after}`;
+          let data = assetData.get(url);
+          if (!data) {
+            data = `data:${asset.contentType};base64,${Buffer.from(asset.bytes).toString('base64')}`;
+            assetData.set(url, data);
+          }
+          return `${before}${data}${after}`;
+        })
         .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
           const target = resolvePageTarget(snapshot, page, href);
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;

@@ -402,6 +402,18 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(html).toContain('dir="rtl"');
   });
 
+  it('does not encode assets absent from the rendered PDF article', () => {
+    const unused = {
+      key: 'assets/unused.png',
+      url: '/assets/unused.png',
+      contentType: 'image/png',
+      get bytes(): Uint8Array {
+        throw new Error('Unreferenced asset was encoded');
+      },
+    };
+    expect(renderPdfHtml(snapshot, [...assets, unused])).toContain('data:image/png;base64,AQID');
+  });
+
   it('retains Markdown and published metadata in a snapshot-backed zip', () => {
     const files = unzipSync(renderMarkdownZip(snapshot, assets).bytes);
     expect(text(required(files['main/ar/intro.md']))).toContain('[التالي](/setup)');

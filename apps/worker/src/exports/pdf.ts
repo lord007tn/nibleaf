@@ -32,10 +32,8 @@ export const renderPdf = async (
           const protocol = new URL(route.request().url()).protocol;
           return ['about:', 'data:'].includes(protocol) ? route.continue() : route.abort();
         });
-        const content = article?.content ?? '';
-        const articleAssets = article ? assets.filter((asset) => content.includes(asset.url)) : [];
         await page.setContent(
-          renderPdfHtml(snapshot, articleAssets, {
+          renderPdfHtml(snapshot, assets, {
             pages: article ? [article] : [],
             includeCover: article === null,
             internalLinkPrefix: INTERNAL_PAGE_URL,

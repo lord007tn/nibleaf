@@ -80,6 +80,19 @@ beforeEach(() => {
 });
 
 describe('bounded PDF rendering', () => {
+  it('embeds an image whose Markdown URL contains escaped parentheses', async () => {
+    const fixture = browserFixture();
+    launch.mockResolvedValue(fixture.browser);
+    const article = snapshot.pages[0];
+    if (!article) throw new Error('Missing article fixture');
+    await renderPdf(
+      { ...snapshot, pages: [{ ...article, content: '![Logo](/assets/lo\\(go\\).png)' }] },
+      [{ key: 'assets/lo(go).png', url: '/assets/lo(go).png', contentType: 'image/png', bytes: new Uint8Array([1, 2, 3]) }],
+      { executablePath: '/synthetic/chromium' },
+    );
+    expect(fixture.html[1]).toContain('src="data:image/png;base64,AQID"');
+  });
+
   it('combines the cover and visible articles in order and restores cross-article destinations', async () => {
     const fixture = browserFixture();
     launch.mockResolvedValue(fixture.browser);

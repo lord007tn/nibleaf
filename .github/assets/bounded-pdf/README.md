@@ -8,11 +8,11 @@ The fixture contains no customer content or authenticated browser state.
 The unchanged input to a separate full-size local acceptance run contained 308
 published articles and 1,175 referenced assets (69,159,309 bytes). The previous
 whole-site HTML renderer crashed Chromium with a container OOM at a 1 GiB limit.
-An initial bounded run completed in 399.4 seconds on one CPU with a
-620,032,000-byte cgroup memory peak. A final cold run after a Docker restart
-completed in 272.0 seconds at the configured 1 GiB cap, with 538 memory-limit
-reclaim events and zero OOM/OOM-kill events. The cap includes filesystem cache;
-the initial warmer run is not a claim of universal memory headroom.
+After the asset-resolution fix, the full local run completed in 248.2 seconds
+on one CPU, with a 625,647,616-byte cgroup memory peak and zero OOM events.
+An earlier cold run after a Docker restart completed at the configured 1 GiB
+cap with 538 memory-limit reclaim events and zero OOM/OOM-kill events. The cap
+includes filesystem cache; the warmer run is not a universal headroom claim.
 The final PDF had 1,097 pages, all footers matched
 their global page numbers, and all 189 internal destinations were valid. These
 are backend/local receipts, not production or native Chrome download acceptance.
