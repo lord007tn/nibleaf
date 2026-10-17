@@ -199,13 +199,15 @@ describe('documentation passage selection', () => {
     expect(snippet).not.toContain('```');
   });
 
-  it('reserves space for independent sources and fills remaining capacity without duplicates', () => {
+  it('retains ranking order within a context limit and removes duplicate passages', () => {
     const long = chunks('long-page', 'معلومات الحجوزات والغرف. '.repeat(60));
     const other = chunks('another-page', 'إلغاء الحجز.');
     const third = chunks('third-page', 'إضافة عميل.');
     const hits = [...long, ...other, ...third].map((chunk, index) => ({ chunk, score: 1 - index / 100 }));
-    expect(selectAnswerChunks(hits, 3).map((chunk) => chunk.pageId)).toEqual(['long-page', 'another-page', 'third-page']);
-    const selected = selectAnswerChunks(hits, 5);
+    expect(selectAnswerChunks(hits, 3)).toEqual(long.slice(0, 3));
+    const firstHit = hits[0];
+    if (!firstHit) throw new Error('Missing ranked passage fixture');
+    const selected = selectAnswerChunks([firstHit, ...hits], 5);
     expect(selected).toHaveLength(5);
     expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(5);
     expect(
@@ -216,7 +218,7 @@ describe('documentation passage selection', () => {
     ).toHaveLength(3);
   });
 
-  it('keeps complementary definitions ahead of lower-ranked independent pages', () => {
+  it('retains complementary definitions after higher-ranked procedural passages', () => {
     const normal = chunks(
       'basic-contract',
       '## Block\n\nFixed rooms each day, already confirmed.\n\n## Overview\n\nCreate a basic contract.\n\n## Nights\n\nA fixed night balance needs confirmation.\n\n## Save\n\nSave the contract.',
@@ -231,9 +233,9 @@ describe('documentation passage selection', () => {
       advanced[0],
       advanced[1],
       normal[1],
-      advanced[2],
       independent[0],
       advanced[3],
+      advanced[2],
       normal[2],
       independent[1],
       normal[3],
@@ -247,10 +249,10 @@ describe('documentation passage selection', () => {
     const selected = selectAnswerChunks(hits);
     expect(selected).toContain(advanced[2]);
     expect(selected).toContain(advanced[1]);
-    expect(selected).toHaveLength(8);
-    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(8);
+    expect(selected).toHaveLength(12);
+    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(12);
     expect(new Set(selected.map((chunk) => chunk.pageId))).toEqual(
-      new Set(['basic-contract', 'advanced-contract', 'comparison', 'pricing', 'company']),
+      new Set(['basic-contract', 'advanced-contract', 'comparison', 'pricing', 'company', 'appendix']),
     );
   });
 });
