@@ -3,7 +3,24 @@ import { ArrowRight, Check, ExternalLink, Minus, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
 import type { AlternativesRoundup, Comparison, FaqEntry, FeatureCell, FeatureRow, PickReasons, PricingTable } from '@/lib/comparison-data';
-import { nibleafPricing } from '@/lib/comparison-data';
+import { AS_OF, nibleafPricing } from '@/lib/comparison-data';
+
+const featureSources: Record<string, { label: string; href: string }[]> = {
+  Mintlify: [
+    { label: 'Editor', href: 'https://www.mintlify.com/docs/editor/tutorial' },
+    { label: 'Languages and RTL', href: 'https://www.mintlify.com/docs/guides/internationalization' },
+    { label: 'Self-hosted frontend boundary', href: 'https://www.mintlify.com/blog/custom-frontends-on-mintlify' },
+  ],
+  GitBook: [
+    { label: 'Plans and capabilities', href: 'https://www.gitbook.com/pricing' },
+    { label: 'Editing and RTL limits', href: 'https://gitbook.com/docs/help-center/editing-content/writing-and-editing' },
+    { label: 'Published-site renderer', href: 'https://github.com/GitbookIO/gitbook' },
+  ],
+  Docusaurus: [
+    { label: 'Documentation', href: 'https://docusaurus.io/docs' },
+    { label: 'Internationalization', href: 'https://docusaurus.io/docs/i18n/introduction' },
+  ],
+};
 
 /**
  * Shared page templates for the /compare/nibleaf-vs-* and /alternatives/*
@@ -106,6 +123,18 @@ function PageHero({ eyebrow, heading, paragraphs, asOf }: { eyebrow: string; hea
         <p className="mx-auto mt-6 max-w-2xl border-border border-t pt-4 text-muted-foreground text-xs leading-relaxed">
           We build Nibleaf, so read this page as an informed but interested party: every price was checked against the vendor’s official pricing page
           as of {asOf} and links to its source, and everything Nibleaf doesn’t do yet is disclosed plainly.
+        </p>
+        <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
+          Nibleaf Cloud remains in active beta. Feature availability depends on the deployed release and configuration; the pinned v0.1.2 self-hosted
+          image predates newer source capabilities. Read the{' '}
+          <a className="underline underline-offset-2" href="/blog/nibleaf-august-2026-source-release">
+            release boundaries
+          </a>{' '}
+          and{' '}
+          <a className="underline underline-offset-2" href="/blog/nibleaf-integrations">
+            integration workflow guide
+          </a>{' '}
+          before choosing.
         </p>
       </div>
     </section>
@@ -219,6 +248,16 @@ function FeatureMatrix({ competitorName, rows }: { competitorName: string; rows:
         </a>
         . “—” means the vendor’s pricing page does not state it either way; check its documentation.
       </p>
+      <p className="mt-4 text-muted-foreground text-sm">Feature references reviewed {AS_OF}:</p>
+      <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+        {(featureSources[competitorName] ?? []).map((source) => (
+          <li key={source.href}>
+            <a className="underline underline-offset-2" href={source.href}>
+              {source.label}
+            </a>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

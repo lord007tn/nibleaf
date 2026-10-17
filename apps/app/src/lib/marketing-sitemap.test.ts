@@ -10,21 +10,21 @@ describe('marketing sitemap', () => {
       '/ar': '2026-08-22',
       '/documentation-platforms': '2026-09-03',
       '/ar/documentation-platforms': '2026-09-03',
-      '/ar/guides': '2026-09-03',
+      '/ar/guides': '2026-09-11',
       '/cloud': '2026-07-13',
-      '/pricing': '2026-08-24',
+      '/pricing': '2026-09-11',
       '/self-hosting': '2026-08-15',
       '/about': '2026-08-24',
       '/contact': '2026-08-15',
       '/developers': '2026-08-24',
-      '/guides': '2026-09-03',
+      '/guides': '2026-09-11',
       '/tools/rtl-documentation-readiness': '2026-08-19',
-      '/compare/nibleaf-vs-mintlify': '2026-08-17',
-      '/compare/nibleaf-vs-gitbook': '2026-08-17',
-      '/compare/nibleaf-vs-docusaurus': '2026-08-17',
-      '/alternatives/mintlify': '2026-08-17',
-      '/alternatives/gitbook': '2026-08-17',
-      '/alternatives/readme': '2026-08-17',
+      '/compare/nibleaf-vs-mintlify': '2026-09-11',
+      '/compare/nibleaf-vs-gitbook': '2026-09-11',
+      '/compare/nibleaf-vs-docusaurus': '2026-09-11',
+      '/alternatives/mintlify': '2026-09-11',
+      '/alternatives/gitbook': '2026-09-11',
+      '/alternatives/readme': '2026-09-11',
       '/terms': '2026-08-15',
       '/privacy': '2026-08-15',
     });
@@ -35,7 +35,7 @@ describe('marketing sitemap', () => {
     const xml = marketingSitemap('https://nibleaf.com');
 
     expect(xml.match(/<url>/g)).toHaveLength(entries.length);
-    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-08-24</lastmod>');
+    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-09-11</lastmod>');
     expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');
