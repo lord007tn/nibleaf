@@ -88,6 +88,23 @@ describe('hybrid multilingual retrieval primitives', () => {
     ]);
   });
 
+  it('retains definitions written entirely in adjacent headings', () => {
+    const chunks = chunkSearchDocument(scope('tenant-a'), {
+      id: 'definitions',
+      title: 'Booking modes',
+      path: 'booking-modes',
+      description: '',
+      headings: [],
+      content:
+        '## Automatic mode confirms bookings without approval.\n\n## Manual mode requires approval for every booking.\n\nChoose the mode when creating an allocation.',
+      language: 'en',
+      visible: true,
+    });
+    expect(chunks.find((chunk) => chunk.heading.startsWith('Automatic mode'))?.content).toContain('confirms bookings without approval');
+    expect(chunks.find((chunk) => chunk.heading.startsWith('Manual mode'))?.heading).toContain('requires approval for every booking');
+    expect(chunks.map((chunk) => chunk.content).join('\n')).toContain('Choose the mode when creating an allocation.');
+  });
+
   it('weights title/headings/code in a stable sparse representation', () => {
     const [chunk] = chunkSearchDocument(scope('tenant-a'), {
       id: 'page',

@@ -195,7 +195,8 @@ const markdownSections = (content: string): Section[] => {
   let fenced = false;
   const flush = () => {
     const value = body.join('\n').trim();
-    if (value) sections.push({ heading, headingPath: headingPath.filter(Boolean), body: value });
+    // Imported docs may put a complete definition in a heading with no body.
+    if (value || heading) sections.push({ heading, headingPath: headingPath.filter(Boolean), body: value || heading });
     body = [];
   };
   for (const line of content.split(/\r?\n/)) {
