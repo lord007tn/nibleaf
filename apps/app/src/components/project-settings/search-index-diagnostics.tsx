@@ -49,7 +49,13 @@ export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
         </div>
         <Button
           className="h-9 shrink-0"
-          disabled={reindex.isPending || diagnostics.data?.availability.reason !== null}
+          disabled={
+            reindex.isPending ||
+            !diagnostics.data ||
+            diagnostics.data.availability.reason === 'not_configured' ||
+            diagnostics.data.availability.reason === 'not_published' ||
+            diagnostics.data.health === 'indexing'
+          }
           onClick={createReindex}
           type="button"
         >

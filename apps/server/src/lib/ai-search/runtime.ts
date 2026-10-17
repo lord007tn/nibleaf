@@ -13,6 +13,7 @@ import {
   type SearchHit,
   type SearchScope,
   searchCacheKey,
+  selectAnswerChunks,
   sparseVectorForQuery,
 } from '@nibleaf/search';
 import { z } from 'zod';
@@ -170,7 +171,7 @@ export const runPublishedSearch = async (
     const legacyHits = await legacy();
     void retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal)
       .then((result) => {
-        const hybridIds = new Set(collapseChunkHits(result.chunks, limit).map((hit) => hit.id));
+        const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
         const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
         log.info(
           {
@@ -189,7 +190,10 @@ export const runPublishedSearch = async (
   }
   try {
     const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal);
-    return { hits: collapseChunkHits(result.chunks, limit), runtime: 'hybrid' };
+    // A newly published deployment can be served before its async index job
+    // finishes. Keep ordinary search working during that window and recovery.
+    if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
+    return { hits: collapseChunkHits(result.chunks, limit, query), runtime: 'hybrid' };
   } catch (error) {
     log.error({ projectId: scope.projectId, error }, 'hybrid search failed; using rollback runtime');
     return { hits: await legacy(), runtime: 'legacy-fallback' };
@@ -205,7 +209,7 @@ export const answerPublishedSearch = async (
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v1-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${env.SEARCH_ANSWER_MODEL}`,
+    `answer-v2-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${env.SEARCH_ANSWER_MODEL}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
@@ -221,7 +225,7 @@ export const answerPublishedSearch = async (
   const answer = await generateGroundedAnswer(
     provider,
     query,
-    retrieval.chunks.slice(0, 8).map((hit) => hit.chunk),
+    selectAnswerChunks(retrieval.chunks),
     retrieval.confidence,
     scope.language,
     signal,

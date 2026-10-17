@@ -189,4 +189,27 @@ describe('published reader search', () => {
     expect(document.body.textContent).not.toContain('The saved answer');
     expect(document.body.textContent).not.toContain('Saved source');
   });
+
+  it('renders answer formatting and code while keeping model HTML and remote links inert', async () => {
+    mocks.answer.mockReturnValue({
+      mutate: mocks.mutate,
+      variables: { projectId: 'docs', query: 'setup', language: 'en' },
+      isPending: false,
+      data: {
+        answer:
+          '**Configure storage** [S1]\n\n```sh\nAPI_URL=http://localhost:4311\n```\n\n[Untrusted link](https://example.invalid/collect) <img src="https://example.invalid/pixel">',
+        citations: [{ id: 'S1', path: 'setup', title: 'Setup', snippet: 'Evidence', direction: 'ltr' }],
+      },
+      error: null,
+    });
+    await render();
+    await typeQuery('setup');
+    await selectAnswers();
+    expect(document.querySelector('strong')?.textContent).toBe('Configure storage');
+    expect(document.querySelector('pre code')?.textContent).toContain('API_URL=http://localhost:4311');
+    expect(document.querySelector('pre')?.getAttribute('dir')).toBe('ltr');
+    expect(document.querySelector('img[src*="example.invalid"]')).toBeNull();
+    expect(document.querySelector('a[href*="example.invalid"]')).toBeNull();
+    expect(document.querySelector('a[href*="setup"]')).not.toBeNull();
+  });
 });

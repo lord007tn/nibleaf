@@ -9,12 +9,15 @@ export type SearchTokenAdapter = (token: string) => string[];
 
 const plainText = (value: string): string =>
   value
-    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/^\s*(?:```|~~~)[^\n]*$/gm, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
-    .replace(/[>*_~]/g, ' ')
+    .replace(/^(?:>\s*|[-*+]\s+)/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
+    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, '$1$2')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -192,7 +195,7 @@ const markdownSections = (content: string): Section[] => {
   let fenced = false;
   const flush = () => {
     const value = body.join('\n').trim();
-    if (value) sections.push({ heading, headingPath: [...headingPath], body: value });
+    if (value) sections.push({ heading, headingPath: headingPath.filter(Boolean), body: value });
     body = [];
   };
   for (const line of content.split(/\r?\n/)) {
@@ -301,7 +304,7 @@ export const searchCacheKey = (scope: SearchScope, query: string, namespace = 'r
 
 /** Collapse chunk-level retrieval into stable page results without allowing a
  * page absent from the authorized candidate set to appear in counts/citations. */
-export const collapseChunkHits = (hits: HybridChunkHit[], limit: number): SearchHit[] => {
+export const collapseChunkHits = (hits: HybridChunkHit[], limit: number, query = ''): SearchHit[] => {
   const byPage = new Map<string, HybridChunkHit>();
   for (const hit of hits) {
     const current = byPage.get(hit.chunk.pageId);
@@ -316,9 +319,61 @@ export const collapseChunkHits = (hits: HybridChunkHit[], limit: number): Search
       path: chunk.path,
       description: chunk.description,
       icon: chunk.icon,
-      snippet: plainText(chunk.content).slice(0, 240),
+      snippet: searchChunkSnippet(chunk, query),
       score,
     }));
+};
+
+/** Keep the matching passage visible, including code identifiers and Arabic
+ * morphology, instead of always showing a chunk's unrelated opening. */
+export const searchChunkSnippet = (chunk: SearchChunk, query = '', maxChars = 240): string => {
+  const text = plainText(chunk.content);
+  if (text.length <= maxChars) return text;
+  const terms = new Set(hybridTokens(query, chunk.language));
+  const words = [...text.matchAll(TOKEN)];
+  const matches = words.filter((word) => hybridTokens(word[0], chunk.language).some((term) => terms.has(term)));
+  const lead = Math.floor(maxChars / 5);
+  let start = 0;
+  let bestCoverage = 0;
+  for (const match of matches) {
+    const proposed = Math.min(Math.max(0, match.index - lead), Math.max(0, text.length - maxChars));
+    const candidate = proposed === 0 ? 0 : text.indexOf(' ', proposed) + 1;
+    const coverage = new Set(
+      matches
+        .filter((word) => word.index >= candidate && word.index + word[0].length <= candidate + maxChars - 2)
+        .flatMap((word) => hybridTokens(word[0], chunk.language).filter((term) => terms.has(term))),
+    ).size;
+    if (coverage > bestCoverage) {
+      bestCoverage = coverage;
+      start = candidate;
+    }
+  }
+  const available = maxChars - (start > 0 ? 1 : 0) - 1;
+  const end = Math.min(text.length, start + available);
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
+};
+
+/** First give distinct pages a place, then fill with supporting passages.
+ * A long source must not consume the entire grounded-answer context. */
+export const selectAnswerChunks = (hits: HybridChunkHit[], limit = 8): SearchChunk[] => {
+  if (limit <= 0) return [];
+  const selected: SearchChunk[] = [];
+  const seenPages = new Set<string>();
+  const seenChunks = new Set<string>();
+  for (const { chunk } of hits) {
+    if (seenPages.has(chunk.pageId) || seenChunks.has(chunk.id)) continue;
+    selected.push(chunk);
+    seenPages.add(chunk.pageId);
+    seenChunks.add(chunk.id);
+    if (selected.length >= limit) return selected;
+  }
+  for (const { chunk } of hits) {
+    if (seenChunks.has(chunk.id)) continue;
+    selected.push(chunk);
+    seenChunks.add(chunk.id);
+    if (selected.length >= limit) break;
+  }
+  return selected;
 };
 
 /** Deterministic second-stage ranking after Qdrant's dense+sparse RRF fusion.

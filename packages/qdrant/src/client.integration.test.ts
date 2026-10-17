@@ -3,7 +3,9 @@ import { QdrantClient, type QdrantFilter, type QdrantPoint } from './client';
 
 const url = process.env.QDRANT_INTEGRATION_URL;
 const alias = `nibleaf_search_it_${process.pid}_${Date.now()}`;
-const client = url ? new QdrantClient({ url, alias, schemaVersion: 'v1', vectorSize: 4, timeoutMs: 10_000 }) : null;
+const client = url
+  ? new QdrantClient({ url, apiKey: process.env.QDRANT_API_KEY, alias, schemaVersion: 'v1', vectorSize: 4, timeoutMs: 10_000 })
+  : null;
 
 const filter = (projectId: string, pageId: string): QdrantFilter => ({
   must: [

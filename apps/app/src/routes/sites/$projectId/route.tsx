@@ -19,6 +19,7 @@ import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
@@ -46,7 +47,8 @@ export const Route = createFileRoute('/sites/$projectId')({
       const candidate = rest && rest !== 'changelog' ? decodeURIComponent(rest).split('/')[0] : undefined;
       const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
       return { site, siteOrigin: customDomainOrigin() };
-    } catch {
+    } catch (error) {
+      if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
       return { site: null, siteOrigin: customDomainOrigin() };
     }
   },

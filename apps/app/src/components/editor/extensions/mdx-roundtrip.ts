@@ -370,7 +370,7 @@ function prepareMdxForEditor(source: string): string {
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
-    if (/^\s*(?:import|export)\s/.test(line) && !overlaps(offset, offset + line.length)) {
+    if (!mask[offset] && /^\s*(?:import|export)\s/.test(line) && !overlaps(offset, offset + line.length)) {
       const moduleRange = { start: offset, end: offset + line.length, source: line, name: 'MDX module', block: true };
       opaque.push(moduleRange);
       occupied.push(moduleRange);

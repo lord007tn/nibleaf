@@ -6,6 +6,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { AlertCircle, FileText, Loader2, Search, Sparkles, X } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -320,8 +321,22 @@ export function SiteSearch({
               ) : null}
               {answer ? (
                 <div className="space-y-4">
-                  <div className="whitespace-pre-wrap text-sm leading-7" dir={rtl ? 'rtl' : 'ltr'}>
-                    {answer.answer}
+                  <div className="min-w-0 space-y-3 text-sm leading-7 [&_li]:ms-5 [&_ol]:list-decimal [&_ul]:list-disc" dir={rtl ? 'rtl' : 'ltr'}>
+                    <ReactMarkdown
+                      allowedElements={['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
+                      skipHtml
+                      unwrapDisallowed
+                      components={{
+                        pre: ({ children }) => (
+                          <pre className="max-w-full overflow-x-auto rounded-md bg-muted p-3 text-start text-xs" dir="ltr">
+                            {children}
+                          </pre>
+                        ),
+                        code: ({ children }) => <code dir="ltr">{children}</code>,
+                      }}
+                    >
+                      {answer.answer}
+                    </ReactMarkdown>
                   </div>
                   {answer.citations.length > 0 ? (
                     <div className="space-y-2 border-t pt-3">

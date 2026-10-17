@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const embeddingResponseSchema = z.object({
-  data: z.array(z.object({ embedding: z.array(z.number()), index: z.number().optional() })),
+  data: z.array(z.object({ embedding: z.array(z.number()), index: z.number().int().nonnegative() })),
   model: z.string(),
   usage: z.object({ promptTokens: z.number(), totalTokens: z.number() }).optional(),
 });

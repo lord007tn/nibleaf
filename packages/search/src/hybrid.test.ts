@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   chunkSearchDocument,
+  collapseChunkHits,
   hybridTokens,
   registerSearchTokenAdapter,
   rerankHybridChunks,
   type SearchScope,
   searchCacheKey,
+  selectAnswerChunks,
   sparseVectorForChunk,
   sparseVectorForQuery,
 } from './hybrid';
@@ -62,8 +64,28 @@ describe('hybrid multilingual retrieval primitives', () => {
     const second = chunkSearchDocument(scope('tenant-a'), source, { maxChars: 80, overlapChars: 10 });
     expect(first).toEqual(second);
     expect(first[0]?.direction).toBe('rtl');
+    expect(first[0]?.headingPath).toEqual(['التثبيت']);
     expect(first.map((chunk) => chunk.content).join('\n')).toContain('pnpm dev');
     expect(new Set(first.map((chunk) => chunk.id)).size).toBe(first.length);
+  });
+
+  it('keeps skipped heading levels serializable without null ancestors', () => {
+    const chunks = chunkSearchDocument(scope('tenant-a'), {
+      id: 'headings',
+      title: 'Guide',
+      path: 'guide',
+      description: '',
+      headings: [],
+      content: '## Setup\n\nFirst.\n\n#### API_URL\n\nSecond.\n\n### Run\n\nThird.\n\n## Next\n\nFourth.',
+      language: 'en',
+      visible: true,
+    });
+    expect(chunks.map((chunk) => JSON.parse(JSON.stringify(chunk.headingPath)))).toEqual([
+      ['Setup'],
+      ['Setup', 'API_URL'],
+      ['Setup', 'Run'],
+      ['Next'],
+    ]);
   });
 
   it('weights title/headings/code in a stable sparse representation', () => {
@@ -121,5 +143,59 @@ describe('authorization-scoped cache keys', () => {
     expect(searchCacheKey(scope('tenant-a', ['page-b']), 'setup')).not.toBe(base);
     expect(searchCacheKey({ ...scope('tenant-a', ['page-a']), deploymentId: 'deployment-2' }, 'setup')).not.toBe(base);
     expect(searchCacheKey({ ...scope('tenant-a', ['page-a']), visibility: 'public' }, 'setup')).not.toBe(base);
+  });
+});
+
+describe('documentation passage selection', () => {
+  const chunks = (pageId: string, content: string) =>
+    chunkSearchDocument(
+      scope('tenant-a'),
+      {
+        id: pageId,
+        title: pageId,
+        path: pageId,
+        description: '',
+        headings: [],
+        content,
+        language: 'ar',
+        visible: true,
+      },
+      { maxChars: 100, overlapChars: 10 },
+    );
+
+  it('shows the matching Arabic passage and keeps technical identifiers from fenced code', () => {
+    const [chunk] = chunkSearchDocument(scope('tenant-a'), {
+      id: 'api',
+      title: 'API setup',
+      path: 'api',
+      description: '',
+      headings: [],
+      content: `${'Introductory context. '.repeat(20)}\n\n\`\`\`sh\nAPI_URL=http://localhost:4311\n\`\`\`\n\nإعدادات الحجوزات والغرف.`,
+      language: 'ar',
+      visible: true,
+    });
+    if (!chunk) throw new Error('Missing fixture');
+    const snippet = collapseChunkHits([{ chunk, score: 1 }], 1, 'API_URL الحجوزات')[0]?.snippet;
+    expect(snippet).toContain('API_URL');
+    expect(snippet).toContain('الحجوزات');
+    expect(snippet?.length).toBeLessThanOrEqual(240);
+    expect(snippet).not.toContain('```');
+  });
+
+  it('gives independent sources room before adding a second passage from a long page', () => {
+    const long = chunks('long-page', 'معلومات الحجوزات والغرف. '.repeat(60));
+    const other = chunks('another-page', 'إلغاء الحجز.');
+    const third = chunks('third-page', 'إضافة عميل.');
+    const hits = [...long, ...other, ...third].map((chunk, index) => ({ chunk, score: 1 - index / 100 }));
+    expect(selectAnswerChunks(hits, 3).map((chunk) => chunk.pageId)).toEqual(['long-page', 'another-page', 'third-page']);
+    const selected = selectAnswerChunks(hits, 5);
+    expect(selected).toHaveLength(5);
+    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(5);
+    expect(
+      selectAnswerChunks(
+        hits.filter(({ chunk }) => chunk.pageId === 'long-page'),
+        3,
+      ),
+    ).toHaveLength(3);
   });
 });

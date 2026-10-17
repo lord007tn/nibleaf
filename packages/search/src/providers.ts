@@ -7,6 +7,9 @@ export interface OpenRouterEmbeddingOptions {
   dimensions?: number;
   fetch?: Fetcher;
   maxBatchSize?: number;
+  /** Conservative UTF-8 byte budgets also bound multilingual token usage. */
+  maxInputBytes?: number;
+  maxBatchBytes?: number;
   model?: string;
   siteUrl?: string;
   timeoutMs?: number;
@@ -19,11 +22,21 @@ export class OpenRouterEmbeddingProvider {
   readonly model: string;
   private readonly client: OpenRouter;
   private readonly maxBatchSize: number;
+  private readonly maxInputBytes: number;
+  private readonly maxBatchBytes: number;
 
   constructor(options: OpenRouterEmbeddingOptions) {
     this.model = options.model ?? 'openai/text-embedding-3-small';
     this.dimensions = options.dimensions ?? 1536;
     this.maxBatchSize = options.maxBatchSize ?? 96;
+    this.maxInputBytes = options.maxInputBytes ?? 8191;
+    this.maxBatchBytes = options.maxBatchBytes ?? 100_000;
+    if (
+      ![this.maxBatchSize, this.maxInputBytes, this.maxBatchBytes, this.dimensions].every((value) => Number.isSafeInteger(value) && value > 0) ||
+      this.maxBatchBytes < this.maxInputBytes
+    ) {
+      throw new RangeError('Embedding limits must be positive integers and the batch budget must cover one input.');
+    }
     this.client = new OpenRouter({
       apiKey: options.apiKey,
       httpReferer: options.siteUrl,
@@ -34,9 +47,43 @@ export class OpenRouterEmbeddingProvider {
   }
 
   async embed(inputs: string[], signal?: AbortSignal) {
+    signal?.throwIfAborted();
     if (inputs.length === 0) return { vectors: [], model: this.model };
-    if (inputs.length > this.maxBatchSize) throw new RangeError(`Embedding batch exceeds ${this.maxBatchSize} inputs.`);
     if (inputs.some((input) => input.trim().length === 0)) throw new TypeError('Embedding inputs cannot be empty.');
+    // Validate the entire operation before sending any billable request. Count
+    // limits alone let long Arabic/mixed documentation overflow provider limits.
+    const sizes = inputs.map((input) => Buffer.byteLength(input, 'utf8'));
+    if (sizes.some((size) => size > this.maxInputBytes)) throw new RangeError(`Embedding input exceeds ${this.maxInputBytes} UTF-8 bytes.`);
+    const vectors: number[][] = [];
+    let model = this.model;
+    let usage: { promptTokens: number; totalTokens: number } | undefined;
+    let offset = 0;
+    while (offset < inputs.length) {
+      signal?.throwIfAborted();
+      let end = offset;
+      let bytes = 0;
+      while (end < inputs.length && end - offset < this.maxBatchSize && bytes + (sizes[end] ?? 0) <= this.maxBatchBytes) {
+        bytes += sizes[end] ?? 0;
+        end += 1;
+      }
+      const batch = inputs.slice(offset, end);
+      const result = await this.embedBatch(batch, signal);
+      vectors.push(...result.vectors);
+      model = result.model;
+      // Missing provider usage stays unknown; never under-report a split batch.
+      usage =
+        result.usage && (offset === 0 || usage)
+          ? {
+              promptTokens: (usage?.promptTokens ?? 0) + result.usage.promptTokens,
+              totalTokens: (usage?.totalTokens ?? 0) + result.usage.totalTokens,
+            }
+          : undefined;
+      offset = end;
+    }
+    return { vectors, model, ...(usage ? { usage } : {}) };
+  }
+
+  private async embedBatch(inputs: string[], signal?: AbortSignal) {
     const response = embeddingResponseSchema.parse(
       await this.client.embeddings.generate(
         {
@@ -50,8 +97,13 @@ export class OpenRouterEmbeddingProvider {
         { signal },
       ),
     );
-    const vectors = [...response.data].sort((left, right) => (left.index ?? 0) - (right.index ?? 0)).map((item) => item.embedding);
-    if (vectors.length !== inputs.length || vectors.some((vector) => vector.length !== this.dimensions)) {
+    const ordered = [...response.data].sort((left, right) => left.index - right.index);
+    const vectors = ordered.map((item) => item.embedding);
+    if (
+      ordered.some((item, index) => item.index !== index) ||
+      vectors.length !== inputs.length ||
+      vectors.some((vector) => vector.length !== this.dimensions)
+    ) {
       throw new Error('Embedding provider returned an unexpected vector count or dimension.');
     }
     return {

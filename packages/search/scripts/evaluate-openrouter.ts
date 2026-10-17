@@ -20,8 +20,11 @@ interface EvaluationRecord {
   model: string;
   fixture: string;
   status: 'answered' | 'no_answer';
-  citationFaithfulness: number;
-  groundedness: number;
+  answer: string;
+  citationIds: string[];
+  expectedNoAnswer: boolean;
+  citationValidity: number;
+  requiredClaimCoverage: number;
   noAnswerCorrect: boolean;
   languageQuality: number;
   latencyMs?: number;
@@ -99,8 +102,11 @@ for (const model of models) {
       model,
       fixture: fixture.id,
       status: answer.status,
-      citationFaithfulness: validCitations && !forbiddenPresent ? 1 : 0,
-      groundedness: requiredCoverage,
+      answer: answer.answer,
+      citationIds: answer.citations.map((citation) => citation.id),
+      expectedNoAnswer: fixture.expectedNoAnswer,
+      citationValidity: validCitations && !forbiddenPresent ? 1 : 0,
+      requiredClaimCoverage: requiredCoverage,
       noAnswerCorrect,
       languageQuality,
       latencyMs: answer.latencyMs,
@@ -122,8 +128,8 @@ const summary = models.map((model) => {
   return {
     model,
     cases: rows.length,
-    citationFaithfulness: mean((row) => row.citationFaithfulness),
-    groundedness: mean((row) => row.groundedness),
+    citationValidity: mean((row) => row.citationValidity),
+    requiredClaimCoverage: mean((row) => row.requiredClaimCoverage),
     noAnswerAccuracy: rows.filter((row) => row.noAnswerCorrect === true).length / Math.max(1, rows.length),
     languageQuality: mean((row) => row.languageQuality),
     latencyMs: mean((row) => row.latencyMs),
@@ -133,7 +139,7 @@ const summary = models.map((model) => {
   };
 });
 
-const output = resolve(process.cwd(), 'output/search-eval', `${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
+const output = resolve(here, '../../../output/search-eval', `${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
 await mkdir(dirname(output), { recursive: true });
 await writeFile(
   output,

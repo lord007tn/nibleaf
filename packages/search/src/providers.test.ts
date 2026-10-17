@@ -1,5 +1,6 @@
 import type { Fetcher } from '@openrouter/sdk';
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
 
@@ -60,6 +61,78 @@ describe('OpenRouter SDK embeddings', () => {
     const provider = new OpenRouterEmbeddingProvider({ apiKey: 'secret', dimensions: 2, fetch: request });
     await expect(provider.embed([''])).rejects.toThrow('cannot be empty');
     await expect(provider.embed(['valid'])).rejects.toThrow('unexpected vector');
+  });
+
+  it.each([
+    [0, 0],
+    [0, 2],
+    [1, 2],
+  ])('rejects corrupt embedding indexes %j before vectors reach the index', async (...indexes) => {
+    const request = vi.fn<Fetcher>(async () =>
+      Response.json({ object: 'list', model: 'test', data: indexes.map((index) => ({ object: 'embedding', index, embedding: [1, 2] })) }),
+    );
+    const provider = new OpenRouterEmbeddingProvider({ apiKey: 'test', dimensions: 2, fetch: request });
+    await expect(provider.embed(['first', 'second'])).rejects.toThrow('unexpected vector');
+  });
+
+  it('bounds Arabic batches by bytes and count, preserves order, and sums actual usage', async () => {
+    const batches: string[][] = [];
+    const request = vi.fn<Fetcher>(async (input, init) => {
+      const body = z.object({ input: z.array(z.string()) }).parse(await (input instanceof Request ? input : new Request(input, init)).json());
+      batches.push(body.input);
+      return Response.json({
+        object: 'list',
+        model: 'test',
+        usage: { prompt_tokens: body.input.length, total_tokens: body.input.length },
+        data: body.input.map((text: string, index: number) => ({ object: 'embedding', index, embedding: [text.length, index] })),
+      });
+    });
+    const provider = new OpenRouterEmbeddingProvider({
+      apiKey: 'test',
+      dimensions: 2,
+      fetch: request,
+      maxBatchSize: 2,
+      maxInputBytes: 8,
+      maxBatchBytes: 8,
+    });
+    const result = await provider.embed(['حجز', 'غرف', 'a', 'bb', 'ccc']);
+    expect(batches).toEqual([['حجز'], ['غرف', 'a'], ['bb', 'ccc']]);
+    expect(result.vectors.map((vector) => vector[0])).toEqual([3, 3, 1, 2, 3]);
+    expect(result.usage).toEqual({ promptTokens: 5, totalTokens: 5 });
+  });
+
+  it('preflights the entire input and honors cancellation between batches', async () => {
+    const controller = new AbortController();
+    const request = vi.fn<Fetcher>(async () => {
+      controller.abort();
+      return Response.json({ object: 'list', model: 'test', data: [{ object: 'embedding', index: 0, embedding: [1, 2] }] });
+    });
+    const provider = new OpenRouterEmbeddingProvider({
+      apiKey: 'test',
+      dimensions: 2,
+      fetch: request,
+      maxBatchSize: 1,
+      maxInputBytes: 8,
+      maxBatchBytes: 8,
+    });
+    await expect(provider.embed(['ok', 'هذا نص طويل'])).rejects.toThrow('UTF-8 bytes');
+    expect(request).not.toHaveBeenCalled();
+    await expect(provider.embed(['one', 'two'], controller.signal)).rejects.toThrow();
+    expect(request).toHaveBeenCalledOnce();
+  });
+
+  it('keeps split-batch usage unknown when any provider batch omits it', async () => {
+    let call = 0;
+    const request = vi.fn<Fetcher>(async () =>
+      Response.json({
+        object: 'list',
+        model: 'test',
+        ...(call++ === 0 ? {} : { usage: { prompt_tokens: 1, total_tokens: 1 } }),
+        data: [{ object: 'embedding', index: 0, embedding: [1, 2] }],
+      }),
+    );
+    const provider = new OpenRouterEmbeddingProvider({ apiKey: 'test', dimensions: 2, fetch: request, maxBatchSize: 1 });
+    expect((await provider.embed(['one', 'two'])).usage).toBeUndefined();
   });
 });
 
