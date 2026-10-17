@@ -21,9 +21,11 @@ TS/TSX with tsx/esbuild. Contributor builds retain the compiler. Other native
 optional dependencies, including sharp and Prisma, remain installed. The runner
 also omits the base image's unused npm/npx installer while retaining pnpm for
 existing migration/operator commands. Both the root package-manager pin and
-Corepack preparation use pnpm 10.34.6, whose bundled tar is 7.5.22.
+Corepack preparation use pnpm 10.34.7, whose bundled tar is 7.5.22 and
+http-cache-semantics is 4.3.0. Root dependency overrides do not update pnpm's
+separate bundled dependencies.
 
-The runner upgrades only the stable-branch zlib package; image scan dispositions
+The runner upgrades stable-branch zlib, libexpat and Chromium packages; image scan dispositions
 must use the built image's installed version rather than an earlier baseline.
 
 Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
