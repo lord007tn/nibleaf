@@ -249,6 +249,8 @@ describe('documentation passage selection', () => {
     expect(selected).toContain(advanced[1]);
     expect(selected).toHaveLength(8);
     expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(8);
-    expect(new Set(selected.map((chunk) => chunk.pageId)).size).toBeGreaterThanOrEqual(3);
+    expect(new Set(selected.map((chunk) => chunk.pageId))).toEqual(
+      new Set(['basic-contract', 'advanced-contract', 'comparison', 'pricing', 'company']),
+    );
   });
 });
