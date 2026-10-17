@@ -92,6 +92,34 @@ describe('QdrantClient official SDK boundary', () => {
     expect(JSON.stringify(input)).not.toContain('tenant-b');
   });
 
+  it('filters weak dense candidates before fusion without suppressing lexical matches', async () => {
+    const { client, sdk } = harness();
+    const filter = retrievalFilter();
+    await client.queryHybrid({
+      dense: [0.1],
+      sparse: { indices: [1], values: [1] },
+      filter,
+      idfCorpus: filter,
+      limit: 5,
+      denseScoreThreshold: 0.35,
+    });
+    expect(sdk.query.mock.calls[0]?.[1].prefetch).toEqual([
+      expect.objectContaining({ using: 'bm25', filter, params: { idf: { corpus: filter } } }),
+      expect.objectContaining({ using: 'dense', filter, score_threshold: 0.35 }),
+    ]);
+    const lanes = sdk.query.mock.calls[0]?.[1].prefetch as Record<string, unknown>[];
+    expect(lanes[0]).not.toHaveProperty('score_threshold');
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -2, 2])('rejects invalid dense relevance %s before I/O', async (denseScoreThreshold) => {
+    const { client, sdk } = harness();
+    const filter = retrievalFilter();
+    await expect(
+      client.queryHybrid({ dense: [0.1], sparse: { indices: [], values: [] }, filter, idfCorpus: filter, limit: 5, denseScoreThreshold }),
+    ).rejects.toThrow('finite cosine score');
+    expect(sdk.query).not.toHaveBeenCalled();
+  });
+
   it('writes through the official SDK to the versioned physical collection and sweeps only owned rollback versions', async () => {
     const { client, sdk } = harness({ alias: 'search_active', schemaVersion: 'v2' });
     sdk.getCollections.mockResolvedValueOnce({

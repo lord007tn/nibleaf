@@ -17,6 +17,7 @@ vi.mock('@/env', () => ({
     QDRANT_COLLECTION_VERSION: 'v1',
     SEARCH_CACHE_TTL_MS: 100,
     SEARCH_CANDIDATE_LIMIT: 48,
+    SEARCH_DENSE_MIN_SCORE: 0.35,
   },
 }));
 vi.mock('@nibleaf/search', async (original) => ({
@@ -50,6 +51,7 @@ describe('hybrid index recovery', () => {
     const legacy = vi.fn().mockResolvedValue([result]);
     await expect(runPublishedSearch(scope, 'حجز جديد', 12, legacy)).resolves.toEqual({ hits: [result], runtime: 'legacy-fallback' });
     expect(legacy).toHaveBeenCalledOnce();
+    expect(doubles.queryHybrid).toHaveBeenCalledWith(expect.objectContaining({ denseScoreThreshold: 0.35 }), undefined);
   });
 
   it('falls back when the provider is unavailable', async () => {

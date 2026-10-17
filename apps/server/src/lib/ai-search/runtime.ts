@@ -125,7 +125,11 @@ const retrieveHybrid = async (scope: SearchScope, query: string, limit: number, 
   const provider = embeddings();
   if (!client || !provider) throw new Error('Hybrid search is not configured.');
   if (client.vectorSize !== provider.dimensions) throw new Error('Qdrant vector size and embedding dimensions must match.');
-  const key = searchCacheKey(scope, query, `chunks-v1-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${limit}`);
+  const key = searchCacheKey(
+    scope,
+    query,
+    `chunks-v2-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
+  );
   const cached = retrievalCache.get(key);
   if (cached) return { cacheHit: true, chunks: cached, confidence: retrievalConfidence(cached) };
   const embedded = await provider.embed([query], signal);
@@ -139,6 +143,7 @@ const retrieveHybrid = async (scope: SearchScope, query: string, limit: number, 
       idfCorpus: filter,
       limit,
       candidateLimit: env.SEARCH_CANDIDATE_LIMIT,
+      denseScoreThreshold: env.SEARCH_DENSE_MIN_SCORE,
     },
     signal,
   );

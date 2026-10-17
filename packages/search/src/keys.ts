@@ -14,6 +14,9 @@ export const keys = () =>
       SEARCH_EMBEDDING_DIMENSIONS: z.coerce.number().int().min(64).max(8192).default(1536),
       SEARCH_EMBEDDING_TIMEOUT_MS: z.coerce.number().int().min(500).max(120_000).default(20_000),
       SEARCH_CANDIDATE_LIMIT: z.coerce.number().int().min(10).max(200).default(48),
+      // Apply to cosine scores before RRF, whose rank scores do not measure
+      // relevance. Operators using another embedding model can calibrate this.
+      SEARCH_DENSE_MIN_SCORE: z.coerce.number().min(-1).max(1).default(0.35),
       SEARCH_CACHE_TTL_MS: z.coerce.number().int().min(0).max(3_600_000).default(60_000),
       SEARCH_ANSWER_ENABLED: z.stringbool().default(false),
       SEARCH_ANSWER_MODEL: z.string().default('openai/gpt-5.6-luna'),

@@ -65,6 +65,19 @@ describe.skipIf(!client)('Qdrant live tenant isolation', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.payload).toMatchObject({ project_id: 'tenant-a', page_id: 'page-a' });
     expect(JSON.stringify(result)).not.toContain('tenant-b');
+
+    // Rank fusion promotes even an unrelated nearest neighbor unless cosine
+    // relevance is checked in the dense lane before fusion.
+    const weakDense = [0.2, Math.sqrt(0.96), 0, 0];
+    const unmatchedSparse = { indices: [9999], values: [1] };
+    const weakQuery = { dense: weakDense, sparse: unmatchedSparse, filter: tenantA, idfCorpus: tenantA, limit: 5 };
+    expect(await client.queryHybrid(weakQuery)).toHaveLength(1);
+    expect(await client.queryHybrid({ ...weakQuery, denseScoreThreshold: 0.35 })).toEqual([]);
+
+    // An exact lexical match must survive even with a weak dense vector.
+    const lexical = await client.queryHybrid({ ...weakQuery, sparse: { indices: [42], values: [1] }, denseScoreThreshold: 0.35 });
+    expect(lexical).toHaveLength(1);
+    expect(lexical[0]?.payload).toMatchObject({ project_id: 'tenant-a', page_id: 'page-a' });
     expect(await client.count({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] })).toBe(1);
     expect(await client.count({ must: [{ key: 'project_id', match: { value: 'tenant-b' } }] })).toBe(1);
 
