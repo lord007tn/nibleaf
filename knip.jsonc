@@ -26,6 +26,13 @@
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]
     },
+    "packages/i18n": {
+      // Loaded from project.inlang/settings.json by the translation compiler.
+      "ignoreDependencies": [
+        "@inlang/plugin-message-format",
+        "@inlang/plugin-m-function-matcher"
+      ]
+    },
     "packages/tsconfig": {
       "ignoreDependencies": ["vite"]
     }
