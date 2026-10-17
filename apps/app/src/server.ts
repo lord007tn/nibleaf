@@ -22,6 +22,7 @@ import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/
 import { marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
+import { readerRateLimitResponse } from '@/lib/reader-rate-limit';
 import {
   acceptsHtml,
   appendVary,
@@ -54,7 +55,15 @@ import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
 // Rewritten published-site requests own a separate Start request context. Convert
 // errors inside that context before leaving it, preserving headers and cookies.
-const startHandler = createServerEntry({ fetch: createStartHandler(defaultStreamHandler) }).fetch;
+const startHandler = createServerEntry({
+  fetch: createStartHandler(async (context) => {
+    const result = await defaultStreamHandler(context);
+    return readerRateLimitResponse(
+      result,
+      context.router.state.matches.map((match) => match.error),
+    );
+  }),
+}).fetch;
 
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in

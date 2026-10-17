@@ -34,6 +34,7 @@ export class ApiResponseError extends Error {
     message: string,
     readonly status: number,
     readonly code?: string,
+    readonly retryAfter?: string,
   ) {
     super(message);
     this.name = 'ApiResponseError';
@@ -43,7 +44,7 @@ export class ApiResponseError extends Error {
 export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string) {
   if (!res.ok) {
     const error = await readApiError(res, fallback ?? `Failed to load ${what}.`);
-    throw new ApiResponseError(error.message, res.status, error.code);
+    throw new ApiResponseError(error.message, res.status, error.code, res.headers.get('retry-after') ?? undefined);
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
 }
@@ -52,7 +53,7 @@ export async function getData<TData = never, TResponse extends Response = Respon
 export async function mutateData<TData = never, TResponse extends Response = Response>(res: TResponse, fallback: string) {
   if (!res.ok) {
     const error = await readApiError(res, fallback);
-    throw new ApiResponseError(error.message, res.status, error.code);
+    throw new ApiResponseError(error.message, res.status, error.code, res.headers.get('retry-after') ?? undefined);
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
 }
