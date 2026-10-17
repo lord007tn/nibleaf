@@ -315,6 +315,7 @@ interface SiteMeta {
 }
 
 const siteMetaCache = new Map<string, { meta: SiteMeta | null; at: number }>();
+const siteMetaRequests = new Map<string, Promise<SiteMeta | null>>();
 const SITE_META_TTL = 60_000;
 
 /** Fetch (and TTL-cache) the site shell's metadata. Returns null when the site
@@ -326,6 +327,21 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
   if (hit && Date.now() - hit.at < SITE_META_TTL) {
     return hit.meta;
   }
+  // A cold reader burst shares only anonymous metadata. Each credentialed
+  // request still resolves its own viewer-dependent result.
+  if (requestHasCredentials) return loadSiteMeta(projectId, true);
+  const existing = siteMetaRequests.get(projectId);
+  if (existing) return existing;
+  const pending = loadSiteMeta(projectId, false);
+  siteMetaRequests.set(projectId, pending);
+  try {
+    return await pending;
+  } finally {
+    siteMetaRequests.delete(projectId);
+  }
+}
+
+async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): Promise<SiteMeta | null> {
   let meta: SiteMeta | null = null;
   try {
     const response = await got(`${SELF}/api/public/sites/${projectId}`, {
@@ -333,6 +349,7 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
       responseType: 'json',
       retry: { limit: 0 },
       throwHttpErrors: false,
+      timeout: { request: 5000 },
     });
     if (response.ok) {
       const parsed = z
