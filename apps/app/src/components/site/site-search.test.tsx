@@ -54,6 +54,9 @@ async function render(overrides: Partial<Parameters<typeof SiteSearch>[0]> = {})
   const props = { projectId: 'docs', open: true, onOpenChange: vi.fn(), aiAnswers: true, lang: 'en', ...overrides };
   const rerender = (next: Partial<Parameters<typeof SiteSearch>[0]> = {}) => act(async () => root.render(<SiteSearch {...props} {...next} />));
   await rerender();
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   return { props, rerender };
 }
 
@@ -64,13 +67,35 @@ const typeQuery = (value: string) =>
     input?.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
-const selectAnswers = () =>
-  act(async () => {
+const selectAnswers = async () => {
+  await act(async () => {
     const tab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent?.includes('askAi'));
     tab?.click();
   });
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+};
 
 describe('published reader search', () => {
+  it('opens with the shortcut before loading the dialog and preserves its mode when reopened', async () => {
+    const { props, rerender } = await render({ open: false });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(props.onOpenChange).toHaveBeenCalledWith(true);
+    await rerender({ open: true });
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
+    await selectAnswers();
+    await rerender({ open: false });
+    await rerender({ open: true });
+    expect([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent?.includes('askAi'))?.getAttribute('aria-selected')).toBe(
+      'true',
+    );
+  });
   it.each([
     ['en', 'Search documentation', 'Results'],
     ['ar', 'البحث في الوثائق', 'النتائج'],
@@ -205,9 +230,6 @@ describe('published reader search', () => {
     await render();
     await typeQuery('setup');
     await selectAnswers();
-    await act(async () => {
-      await vi.dynamicImportSettled();
-    });
     expect(document.querySelector('strong')?.textContent).toBe('Configure storage');
     expect(document.querySelector('pre code')?.textContent).toContain('API_URL=http://localhost:4311');
     expect(document.querySelector('pre')?.getAttribute('dir')).toBe('ltr');
