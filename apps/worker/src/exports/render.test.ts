@@ -112,7 +112,7 @@ describe('export renderers', () => {
   it('keeps explicit cross-language links inside the published static and PDF exports', () => {
     const intro = {
       ...required(snapshot.pages[0]),
-      content: '[English](/setup?lang=en#install)\n\n[Arabic](/setup)\n\n[Unknown](/setup?lang=fr)',
+      content: '[English](/setup?from=guide&lang=en#install)\n\n[Arabic](/setup)\n\n[Unknown](/setup?lang=fr)',
     };
     const englishSetup = { ...required(snapshot.pages[1]), id: 'setup-en', languageCode: 'en' };
     const bilingual = {
@@ -128,7 +128,7 @@ describe('export renderers', () => {
     };
     const files = unzipSync(renderStaticHtml(bilingual, []).bytes);
     const html = text(required(files['main/ar/intro/index.html']));
-    expect(html).toContain('href="../../en/setup/index.html?lang=en#install"');
+    expect(html).toContain('href="../../en/setup/index.html?from=guide&amp;lang=en#install"');
     expect(html).toContain('href="../setup/index.html"');
     expect(html).toContain('href="/setup?lang=fr"');
     expect(renderPdfHtml(bilingual, [])).toContain('href="#page-setup-en"');
