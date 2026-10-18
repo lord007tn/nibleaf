@@ -1,0 +1,57 @@
+---
+title: 'Build a customer support knowledge base from repeat questions'
+metaTitle: 'Customer support knowledge base workflow | Nibleaf'
+description: 'Turn recurring support questions into searchable help articles, with a practical page pattern, editorial review, Arabic parity, and a first-publish checklist.'
+datePublished: '2026-09-11'
+dateModified: '2026-09-11'
+tags: ['use-cases', 'support', 'knowledge-base']
+related: ['customer-support-knowledge-base-ar', 'documentation-information-architecture-collaboration', 'arabic-documentation-rtl']
+translationOf: 'customer-support-knowledge-base-ar'
+readingMinutes: 4
+---
+
+A support knowledge base should help a reader finish a task or decide when to contact support. Start with repeat questions that have stable answers, rather than copying an internal ticket archive. Remove customer details and account-specific instructions before drafting any public article.
+
+Nibleaf can supply the browser editor, published navigation, search, and language-specific page trees for this workflow. It is a documentation publishing tool: do not select it as a ticket inbox, live-chat system, or customer relationship manager. No automatic ticket ingestion or reduction in support volume is promised here.
+
+## Choose the first five articles
+
+Pick questions that appear repeatedly and can be answered without inspecting a private account. A useful first set is getting started, inviting a teammate, understanding access, troubleshooting a common error, and contacting support. Replace these examples with the actual jobs in your product; do not publish empty category pages to fill a navigation tree.
+
+Separate public instructions from staff-only diagnosis. An article about inviting a teammate can explain required permissions and the expected invitation state. It should not include real email addresses, internal administrative URLs, or a promise that support can bypass access rules.
+
+## A page pattern that resolves a question
+
+Use the reader's question as the title. Then write:
+
+1. **Direct answer:** what the reader can do and any prerequisite role or product version.
+2. **Steps:** one action per step, using the current interface labels.
+3. **Expected result:** what the reader should see when the task succeeds.
+4. **If that fails:** safe checks and an escalation route, without asking readers to disclose passwords or tokens.
+5. **Review note:** the product version or date checked and an accountable editorial owner.
+
+For example, an invitation article should distinguish “invite sent” from “member joined.” Tell the reader where to check each state. A generic “success” screenshot can hide the exact distinction that generated the support question.
+
+## Publish a small, reviewable help center
+
+[Create a free beta account](/sign-up) and create a project. Draft the first article in the visual Markdown editor, group related tasks in navigation, preview the page, and publish. Open the published URL in a fresh browser session and test the title, search terms, links, and contact route. A draft in the editor is not yet a reader-accessible answer.
+
+Keep a stable page URL when the instructions change. If a page must move, use a reviewed redirect plan rather than leaving old links in canned support replies. Nibleaf's immutable publishing snapshots give publication boundaries; they do not replace your editorial review process. The [information architecture guide](/blog/documentation-information-architecture-collaboration) covers ownership and navigation in more detail.
+
+## English and Arabic need separate review
+
+Use real translated pages and language-specific navigation. Test Arabic titles and search terms, mixed English product names, numbered steps, and code direction on a narrow phone screen. Do not link to an English page as though it were an Arabic translation. If the translation is not ready, label the available language clearly.
+
+The [Arabic and RTL guide](/blog/arabic-documentation-rtl) explains the authoring checks. A translated shell alone does not demonstrate that the answer, screenshots, or search results work for Arabic readers.
+
+## Know when this workflow is a poor fit
+
+Keep your help-desk product when the main job is routing tickets, live chat, SLA escalation, or synchronized customer records. Evaluate another documentation product if live multi-user co-editing or SAML/SCIM is mandatory. For sensitive answers, first validate the intended reader-access model; a public help article must never become a workaround for authorization.
+
+Nibleaf Cloud remains free during active beta, with fair use and no credit card. Self-hosting has no software license fee under AGPL-3.0, but requires infrastructure, backups, upgrades, external services, and operator time. [Compare those responsibilities](/pricing) before choosing where to run the help center.
+
+## Maintain the answers
+
+When a product screen or permission changes, update the affected article and its translations together. Ask support staff whether the article answers the actual question before adding more pages. Search activity can identify candidates to review; it does not by itself prove successful resolution or fewer tickets.
+
+Product references reviewed September 11, 2026: [Nibleaf documentation](https://docs.nibleaf.com), [public publishing implementation](https://github.com/lord007tn/nibleaf/tree/main/apps/worker/src), and [release boundaries](/blog/nibleaf-august-2026-source-release). Optional source-release features are not required for the basic draft-to-publish workflow above.
