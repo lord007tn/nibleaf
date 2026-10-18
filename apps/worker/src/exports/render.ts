@@ -89,7 +89,8 @@ const splitSuffix = (href: string): [string, string] => {
 };
 
 const resolvePageTarget = (snapshot: SiteSnapshot, page: SnapshotPage, href: string): SnapshotPage | undefined => {
-  const [raw] = splitSuffix(href);
+  const [raw, suffix] = splitSuffix(href);
+  const languageCode = new URLSearchParams(suffix.split('#')[0]).get('lang') ?? page.languageCode;
   const current = page.path.split('/').slice(0, -1);
   const normalized = path.posix
     .normalize(raw.startsWith('/') ? raw : [...current, raw].join('/'))
@@ -100,7 +101,7 @@ const resolvePageTarget = (snapshot: SiteSnapshot, page: SnapshotPage, href: str
     (candidate) =>
       candidate.kind === 'PAGE' &&
       candidate.versionId === page.versionId &&
-      candidate.languageCode === page.languageCode &&
+      candidate.languageCode === languageCode &&
       candidate.path.replace(/^\/+|\/+$/g, '') === normalized,
   );
 };

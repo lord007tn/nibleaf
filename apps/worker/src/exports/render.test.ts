@@ -109,6 +109,31 @@ describe('export renderers', () => {
     expect(files['assets/logo.png']).toEqual(new Uint8Array([1, 2, 3]));
   });
 
+  it('keeps explicit cross-language links inside the published static and PDF exports', () => {
+    const intro = {
+      ...required(snapshot.pages[0]),
+      content: '[English](/setup?lang=en#install)\n\n[Arabic](/setup)\n\n[Unknown](/setup?lang=fr)',
+    };
+    const englishSetup = { ...required(snapshot.pages[1]), id: 'setup-en', languageCode: 'en' };
+    const bilingual = {
+      ...snapshot,
+      project: {
+        ...snapshot.project,
+        languages: [
+          ...snapshot.project.languages,
+          { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: false, enabled: true, config: null },
+        ],
+      },
+      pages: [intro, required(snapshot.pages[1]), englishSetup],
+    };
+    const files = unzipSync(renderStaticHtml(bilingual, []).bytes);
+    const html = text(required(files['main/ar/intro/index.html']));
+    expect(html).toContain('href="../../en/setup/index.html?lang=en#install"');
+    expect(html).toContain('href="../setup/index.html"');
+    expect(html).toContain('href="/setup?lang=fr"');
+    expect(renderPdfHtml(bilingual, [])).toContain('href="#page-setup-en"');
+  });
+
   it('projects the immutable deployment theme into static, PDF, and Markdown artifacts', () => {
     const staticFiles = unzipSync(renderStaticHtml(themedSnapshot, assets).bytes);
     expect(text(required(staticFiles['theme/theme.css']))).toContain('--accent:#4f46e5');
