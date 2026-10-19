@@ -23,18 +23,18 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.25.0"
+    "@inlang/paraglide-js": "2.29.0"
   },
   "peerDependencies": {
-    "react": "^19.2.8"
+    "react": "^19.3.1"
   },
   "devDependencies": {
     "@inlang/plugin-m-function-matcher": "2.3.4",
     "@inlang/plugin-message-format": "4.5.4",
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^22.20.1",
-    "@types/react": "^19.2.18",
-    "react": "^19.2.8",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.11"
   }
