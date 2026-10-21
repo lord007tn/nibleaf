@@ -40,6 +40,6 @@
     "@vitejs/plugin-react": "6.1.2",
     "oxc-transform-react": "0.152.0",
     "typescript": "^7.0.2",
-    "vite": "8.2.2"
+    "vite": "8.2.4"
   }
 }
