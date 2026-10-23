@@ -1,4 +1,4 @@
-import { ghostImportBody, mintlifyImportBody } from '@nibleaf/validators';
+import { ghostImportBody, gitbookImportBody, mintlifyImportBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { trackProjectEvent } from '@/actions/analytics';
@@ -25,7 +25,11 @@ const notifyImportCompleted = (projectId: string, actorUserId: string, source: s
     actorUserId,
   ).catch(() => undefined);
 
-const trackedImport = async <T extends ImportSummary>(projectId: string, sourceType: 'ghost' | 'mintlify', run: () => Promise<T>): Promise<T> => {
+const trackedImport = async <T extends ImportSummary>(
+  projectId: string,
+  sourceType: 'ghost' | 'gitbook' | 'mintlify',
+  run: () => Promise<T>,
+): Promise<T> => {
   const started = performance.now();
   const operationId = `${sourceType}-${crypto.randomUUID()}`;
   await trackProjectEvent(projectId, { name: 'import_started', sourceType, operationId }, { source: 'dashboard' }).catch(() => undefined);
@@ -65,6 +69,16 @@ const app = new Hono<HonoEnv>()
       importers.mintlify.run({ organizationId, projectId, input: ctx.req.valid('json') }),
     );
     await notifyImportCompleted(projectId, user.id, 'Mintlify', summary);
+    return ctx.json({ data: summary }, 200);
+  })
+  .post('/gitbook', ...importsRoutes.gitbook, validator('json', gitbookImportBody), async (ctx) => {
+    const organizationId = getContextOrganizationIdOrThrow();
+    const user = getContextUserOrThrow();
+    const projectId = ctx.req.param('projectId') ?? '';
+    const summary = await trackedImport(projectId, 'gitbook', () =>
+      importers.gitbook.run({ organizationId, projectId, input: ctx.req.valid('json') }),
+    );
+    await notifyImportCompleted(projectId, user.id, 'GitBook', summary);
     return ctx.json({ data: summary }, 200);
   })
   .post(

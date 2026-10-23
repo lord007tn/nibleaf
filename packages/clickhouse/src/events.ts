@@ -60,7 +60,7 @@ const lifecyclePayload = z
     ]),
     operationId: boundedDimension.optional(),
     format: z.enum(['html', 'markdown', 'pdf', 'zip']).optional(),
-    sourceType: z.enum(['api', 'ghost', 'github', 'mintlify', 'template', 'ui', 'unknown']).optional(),
+    sourceType: z.enum(['api', 'ghost', 'github', 'gitbook', 'mintlify', 'template', 'ui', 'unknown']).optional(),
     outcomeReason: boundedDimension.optional(),
     itemCount: z.number().int().min(0).max(10_000_000).optional(),
     durationMs: z.number().int().min(0).max(86_400_000).optional(),

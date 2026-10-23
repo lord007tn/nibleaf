@@ -51,6 +51,18 @@ const publicHttpUrl = async (value: string): Promise<URL> => {
 const importIdForSource = (namespace: string, source: string): string =>
   `${namespace}-${createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
 
+/** Image type from magic bytes. GitBook stores many uploads without an
+ * extension, which raw.githubusercontent.com serves as application/octet-stream. */
+const sniffImageType = (bytes: Uint8Array): string => {
+  const ascii = (start: number, end: number) => String.fromCharCode(...bytes.subarray(start, end));
+  if (bytes[0] === 0x89 && ascii(1, 4) === 'PNG') return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (ascii(0, 6) === 'GIF87a' || ascii(0, 6) === 'GIF89a') return 'image/gif';
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'image/webp';
+  if (ascii(4, 8) === 'ftyp' && ['avif', 'avis'].includes(ascii(8, 12))) return 'image/avif';
+  return '';
+};
+
 const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
   let url = await publicHttpUrl(source);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
@@ -71,12 +83,13 @@ const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; co
 
     const announcedSize = Number(response.headers['content-length'] ?? 0);
     if (announcedSize > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
-    const filename = filenameFromUrl(url);
-    const contentType = normalizeAssetContentType(response.headers['content-type'] ?? '') || inferSafeInlineAssetContentType(filename) || '';
-    if (!isSafeInlineAssetContentType(contentType)) throw new Error('unsupported image type');
-
     const bytes = new Uint8Array(response.rawBody);
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_REMOTE_ASSET_BYTES) throw new Error('invalid image size');
+
+    const filename = filenameFromUrl(url);
+    const announced = normalizeAssetContentType(response.headers['content-type'] ?? '') || inferSafeInlineAssetContentType(filename) || '';
+    const contentType = isSafeInlineAssetContentType(announced) ? announced : sniffImageType(bytes);
+    if (!isSafeInlineAssetContentType(contentType)) throw new Error('unsupported image type');
     return { bytes, contentType, filename };
   }
   throw new Error('too many redirects');
@@ -84,32 +97,45 @@ const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; co
 
 /** Per-import remote-image cache. The same Ghost image may appear in multiple
  * localized pages; one promise per source URL guarantees it is fetched and
- * stored only once while allowing images within a page to migrate in parallel. */
+ * stored only once while allowing images within a page to migrate in parallel.
+ * The cap bounds downloads only: images a previous import stored are reused. */
 export class RemoteAssetMigrator {
   readonly failures = new Set<string>();
   migrated = 0;
   skipped = 0;
+  private downloads = 0;
   private readonly cache = new Map<string, Promise<string>>();
+  private readonly capMessage: string;
 
   constructor(
     private readonly projectId: string,
     private readonly namespace = 'ghost',
-  ) {}
+    private readonly maxDownloads = MAX_REMOTE_ASSETS,
+  ) {
+    this.capMessage = `Asset migration was capped at ${maxDownloads} downloaded images.`;
+  }
+
+  /** Up to `limit` distinct failure reasons, the download cap first when it was hit. */
+  failureReasons(limit = 3): string {
+    const reasons = [...this.failures].sort((a, b) => Number(b === this.capMessage) - Number(a === this.capMessage));
+    return reasons.slice(0, limit).join('; ');
+  }
 
   private migrate(source: string): Promise<string> {
     const cached = this.cache.get(source);
     if (cached) return cached;
-    if (this.cache.size >= MAX_REMOTE_ASSETS) {
-      this.skipped++;
-      this.failures.add(`Asset migration was capped at ${MAX_REMOTE_ASSETS} unique images.`);
-      return Promise.resolve(source);
-    }
     const pending = (async () => {
       try {
         const filename = filenameFromUrl(new URL(source));
         const importId = importIdForSource(this.namespace, source);
         const existing = await findImportedAsset(this.projectId, importId, filename);
         if (existing) return existing.url;
+        if (this.downloads >= this.maxDownloads) {
+          this.skipped++;
+          this.failures.add(this.capMessage);
+          return source;
+        }
+        this.downloads++;
         const image = await fetchPublicImage(source);
         const asset = await storeAsset({ projectId: this.projectId, importId, ...image });
         this.migrated++;
@@ -125,7 +151,7 @@ export class RemoteAssetMigrator {
   }
 
   async rewrite(markdown: string): Promise<string> {
-    const protectedCode = protectMarkdownCode(markdown, { maxFenceIndent: this.namespace === 'mintlify' ? Number.POSITIVE_INFINITY : 3 });
+    const protectedCode = protectMarkdownCode(markdown, { maxFenceIndent: this.namespace === 'ghost' ? 3 : Number.POSITIVE_INFINITY });
     const sources = remoteImageSources(protectedCode.content);
     if (sources.length === 0) return markdown;
     const replacements = new Map(await Promise.all(sources.map(async (source) => [source, await this.migrate(source)] as const)));
