@@ -77,15 +77,15 @@
   },
   "dependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "tsx": "4.23.13"
+    "tsx": "4.23.15"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.11",
+    "@biomejs/biome": "2.6.2",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
-    "knip": "6.34.0",
-    "react-doctor": "0.9.13",
-    "turbo": "^2.10.12",
+    "knip": "6.42.1",
+    "react-doctor": "0.9.18",
+    "turbo": "^2.11.10",
     "typescript": "^7.0.2",
     "ultracite": "7.10.7",
     "vitest": "^4.1.11"
