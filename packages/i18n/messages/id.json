@@ -381,6 +381,8 @@
   "editor_deletepageconfirm": "Hapus halaman ini?",
   "editor_hiderail": "Sembunyikan AI & komentar",
   "editor_showrail": "Tampilkan AI & komentar",
+  "editor_hidecomments": "Sembunyikan komentar",
+  "editor_showcomments": "Tampilkan komentar",
   "editor_nopageselected": "Tidak ada halaman yang dipilih",
   "editor_nopageselectedhint": "Pilih halaman dari navigasi, atau buat halaman.",
   "dashboard_header_projects": "Proyek",

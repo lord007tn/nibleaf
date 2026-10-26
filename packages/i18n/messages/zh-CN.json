@@ -381,6 +381,8 @@
   "editor_deletepageconfirm": "删除此页面？",
   "editor_hiderail": "隐藏人工智能和评论",
   "editor_showrail": "显示人工智能和评论",
+  "editor_hidecomments": "隐藏评论",
+  "editor_showcomments": "显示评论",
   "editor_nopageselected": "未选择页面",
   "editor_nopageselectedhint": "从导航中选择一个页面，或创建一个页面。",
   "dashboard_header_projects": "项目",

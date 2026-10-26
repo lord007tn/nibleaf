@@ -53,6 +53,7 @@ import {
   useComments,
   useCreatePage,
   useDeletePage,
+  useGetPublicMeta,
   useLanguages,
   usePage,
   usePages,
@@ -85,6 +86,8 @@ function EditorPage() {
   const { projectId } = Route.useParams();
   const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
+  const { data: publicMeta } = useGetPublicMeta();
+  const aiDraft = publicMeta?.ai.draft === true;
 
   useEffect(() => {
     if (firstPublish && project) void recordFirstPublishStage('editor_entered');
@@ -175,10 +178,12 @@ function EditorPage() {
   const { data: page } = usePage(projectId, activeId ?? undefined);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [railTab, setRailTab] = useState<'comments' | 'ai'>('comments');
+  const [requestedRailTab, setRailTab] = useState<'comments' | 'ai'>('comments');
+  const railTab = aiDraft ? requestedRailTab : 'comments';
   // The comments/AI rail starts closed (an empty "No comments yet" panel would
   // otherwise claim 300px on the first visit); the author's toggle is persisted.
   const [railOpen, setRailOpen] = useState(false);
+  const railLabel = railOpen ? t(aiDraft ? 'editor.hideRail' : 'editor.hideComments') : t(aiDraft ? 'editor.showRail' : 'editor.showComments');
   useEffect(() => {
     try {
       setRailOpen(window.localStorage.getItem('nibleaf.editor.railOpen') === '1');
@@ -1036,12 +1041,12 @@ function EditorPage() {
               </Button>
               {!markdownFocused ? (
                 <Button
-                  aria-label={railOpen ? t('editor.hideRail') : t('editor.showRail')}
+                  aria-label={railLabel}
                   aria-pressed={railOpen}
                   className="hidden cursor-pointer xl:inline-flex"
                   onClick={() => setRailOpen((v) => !v)}
                   size="icon-sm"
-                  title={railOpen ? t('editor.hideRail') : t('editor.showRail')}
+                  title={railLabel}
                   variant={railOpen ? 'secondary' : 'ghost'}
                 >
                   <PanelRight className="size-4" />
@@ -1131,11 +1136,13 @@ function EditorPage() {
         {showRail && activeId ? (
           <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
             <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
-              <TabsList className="m-2 self-start">
-                <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
-                <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
-              </TabsList>
-              <div className="min-h-0 flex-1 overflow-y-auto p-4 pt-0">
+              {aiDraft ? (
+                <TabsList className="m-2 self-start">
+                  <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
+                  <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
+                </TabsList>
+              ) : null}
+              <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', aiDraft && 'pt-0')}>
                 {railTab === 'comments' ? (
                   <CommentsPanel
                     pageId={activeId}

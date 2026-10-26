@@ -381,6 +381,8 @@
   "editor_deletepageconfirm": "Excluir esta página?",
   "editor_hiderail": "Ocultar IA e comentários",
   "editor_showrail": "Mostrar IA e comentários",
+  "editor_hidecomments": "Ocultar comentários",
+  "editor_showcomments": "Mostrar comentários",
   "editor_nopageselected": "Nenhuma página selecionada",
   "editor_nopageselectedhint": "Escolha uma página na navegação ou crie uma.",
   "dashboard_header_projects": "Projetos",

@@ -381,6 +381,8 @@
   "editor_deletepageconfirm": "এই পৃষ্ঠাটি মুছবেন?",
   "editor_hiderail": "AI এবং মন্তব্য লুকান",
   "editor_showrail": "এআই এবং মন্তব্য দেখান",
+  "editor_hidecomments": "মন্তব্য লুকান",
+  "editor_showcomments": "মন্তব্য দেখান",
   "editor_nopageselected": "কোনো পৃষ্ঠা নির্বাচন করা হয়নি",
   "editor_nopageselectedhint": "নেভিগেশন থেকে একটি পৃষ্ঠা চয়ন করুন, বা একটি তৈরি করুন৷",
   "dashboard_header_projects": "প্রকল্প",

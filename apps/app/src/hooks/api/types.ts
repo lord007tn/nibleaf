@@ -307,6 +307,8 @@ export interface SiteShell {
   generatedAt: string;
   /** Validated OpenAPI document metadata frozen in the current deployment. */
   openapi?: PublishedOpenApi | null;
+  /** `answer`: the site enables AI answers and the instance can serve them. */
+  capabilities: { answer: boolean };
 }
 
 interface Heading {
