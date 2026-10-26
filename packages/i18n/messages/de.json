@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Gliederung hinzugefügt.",
   "editor_ai_sectiondrafted": "Abschnitt entworfen.",
   "editor_ai_drafterror": "Inhalt konnte nicht erstellt werden.",
+  "editor_ai_ratelimited": "Tägliches KI-Limit erreicht. Versuche es morgen erneut.",
   "editor_ai_summarylabel": "Zusammenfassung",
   "editor_ai_suggestionlabel": "Vorschlag",
   "editor_ai_replace": "Ersetzen",

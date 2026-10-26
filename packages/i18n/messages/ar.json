@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "تمت إضافة المخطط التفصيلي.",
   "editor_ai_sectiondrafted": "تمت صياغة القسم.",
   "editor_ai_drafterror": "تعذّرت صياغة المحتوى.",
+  "editor_ai_ratelimited": "تم بلوغ الحد اليومي للذكاء الاصطناعي. حاول مجددًا غدًا.",
   "editor_ai_summarylabel": "الملخص",
   "editor_ai_suggestionlabel": "اقتراح",
   "editor_ai_replace": "استبدال",

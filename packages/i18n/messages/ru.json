@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Схема добавлена.",
   "editor_ai_sectiondrafted": "Раздел составлен.",
   "editor_ai_drafterror": "Не удалось подготовить контент.",
+  "editor_ai_ratelimited": "Достигнут дневной лимит ИИ. Попробуйте завтра.",
   "editor_ai_summarylabel": "Резюме",
   "editor_ai_suggestionlabel": "Предложение",
   "editor_ai_replace": "Заменить",

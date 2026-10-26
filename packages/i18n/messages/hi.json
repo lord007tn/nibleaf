@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "रूपरेखा जोड़ी गई.",
   "editor_ai_sectiondrafted": "अनुभाग का मसौदा तैयार किया गया.",
   "editor_ai_drafterror": "सामग्री का प्रारूप तैयार नहीं किया जा सका.",
+  "editor_ai_ratelimited": "दैनिक AI सीमा पूरी हो गई. कल फिर से प्रयास करें.",
   "editor_ai_summarylabel": "सारांश",
   "editor_ai_suggestionlabel": "सुझाव",
   "editor_ai_replace": "बदलें",

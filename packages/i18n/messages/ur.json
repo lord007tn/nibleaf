@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "آؤٹ لائن شامل کی گئی۔",
   "editor_ai_sectiondrafted": "سیکشن کا مسودہ تیار کیا گیا۔",
   "editor_ai_drafterror": "مواد کا مسودہ تیار نہیں کیا جا سکا۔",
+  "editor_ai_ratelimited": "روزانہ AI کی حد پوری ہو گئی۔ کل دوبارہ کوشش کریں۔",
   "editor_ai_summarylabel": "خلاصہ",
   "editor_ai_suggestionlabel": "تجویز",
   "editor_ai_replace": "بدل دیں۔",
