@@ -472,6 +472,7 @@
   "settings_saveerror": "Tidak dapat menyimpan",
   "settings_general_title": "Umum",
   "settings_general_changeicon": "Ubah ikon",
+  "settings_general_noicon": "Tanpa ikon (gunakan bawaan)",
   "settings_general_name_label": "Nama",
   "settings_general_name_hint": "Nama proyek, ditampilkan di bilah navigasi dan tab browser.",
   "settings_general_url_label": "Nama penerapan",

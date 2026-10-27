@@ -489,6 +489,7 @@
   "settings_saveerror": "Could not save",
   "settings_general_title": "General",
   "settings_general_changeicon": "Change icon",
+  "settings_general_noicon": "No icon (use the default)",
   "settings_general_name_label": "Name",
   "settings_general_name_hint": "The name of the project, shown in the navbar and browser tab.",
   "settings_general_url_label": "Deployment name",

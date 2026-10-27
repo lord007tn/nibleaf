@@ -472,6 +472,7 @@
   "settings_saveerror": "无法保存",
   "settings_general_title": "一般",
   "settings_general_changeicon": "更改图标",
+  "settings_general_noicon": "无图标（使用默认）",
   "settings_general_name_label": "名称",
   "settings_general_name_hint": "项目的名称，显示在导航栏和浏览器选项卡中。",
   "settings_general_url_label": "部署名称",

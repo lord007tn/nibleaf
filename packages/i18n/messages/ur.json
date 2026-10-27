@@ -472,6 +472,7 @@
   "settings_saveerror": "بچا نہیں سکا",
   "settings_general_title": "جنرل",
   "settings_general_changeicon": "آئیکن تبدیل کریں۔",
+  "settings_general_noicon": "کوئی آئیکن نہیں (ڈیفالٹ استعمال کریں)",
   "settings_general_name_label": "نام",
   "settings_general_name_hint": "پروجیکٹ کا نام، نیوبار اور براؤزر ٹیب میں دکھایا گیا ہے۔",
   "settings_general_url_label": "تعیناتی کا نام",

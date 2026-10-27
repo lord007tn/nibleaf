@@ -472,6 +472,7 @@
   "settings_saveerror": "বাঁচাতে পারেনি",
   "settings_general_title": "সাধারণ",
   "settings_general_changeicon": "আইকন পরিবর্তন করুন",
+  "settings_general_noicon": "কোনো আইকন নেই (ডিফল্ট ব্যবহার করুন)",
   "settings_general_name_label": "নাম",
   "settings_general_name_hint": "প্রকল্পের নাম, নেভিবার এবং ব্রাউজার ট্যাবে দেখানো হয়েছে।",
   "settings_general_url_label": "স্থাপনার নাম",

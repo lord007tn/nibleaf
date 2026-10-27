@@ -472,6 +472,7 @@
   "settings_saveerror": "No se pudo guardar",
   "settings_general_title": "generales",
   "settings_general_changeicon": "Cambiar icono",
+  "settings_general_noicon": "Sin icono (usar el predeterminado)",
   "settings_general_name_label": "Nombre",
   "settings_general_name_hint": "El nombre del proyecto, que se muestra en la barra de navegación y en la pestaña del navegador.",
   "settings_general_url_label": "Nombre de implementación",

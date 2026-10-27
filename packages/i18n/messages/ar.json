@@ -489,6 +489,7 @@
   "settings_saveerror": "تعذّر الحفظ",
   "settings_general_title": "عام",
   "settings_general_changeicon": "تغيير الأيقونة",
+  "settings_general_noicon": "بلا أيقونة (استخدم الافتراضية)",
   "settings_general_name_label": "الاسم",
   "settings_general_name_hint": "اسم المشروع، يظهر في شريط التنقّل وعلامة تبويب المتصفح.",
   "settings_general_url_label": "اسم النشر",

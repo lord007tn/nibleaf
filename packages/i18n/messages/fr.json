@@ -472,6 +472,7 @@
   "settings_saveerror": "Impossible d'enregistrer",
   "settings_general_title": "Général",
   "settings_general_changeicon": "Changer d'icône",
+  "settings_general_noicon": "Aucune icône (utiliser celle par défaut)",
   "settings_general_name_label": "Nom",
   "settings_general_name_hint": "Le nom du projet, affiché dans la barre de navigation et dans l'onglet du navigateur.",
   "settings_general_url_label": "Nom du déploiement",

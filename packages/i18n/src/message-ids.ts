@@ -502,6 +502,7 @@ export const MESSAGE_IDS = {
   'settings.saveError': 'settings_saveerror',
   'settings.general.title': 'settings_general_title',
   'settings.general.changeIcon': 'settings_general_changeicon',
+  'settings.general.noIcon': 'settings_general_noicon',
   'settings.general.name.label': 'settings_general_name_label',
   'settings.general.name.hint': 'settings_general_name_hint',
   'settings.general.url.label': 'settings_general_url_label',

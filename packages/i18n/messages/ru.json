@@ -472,6 +472,7 @@
   "settings_saveerror": "Не удалось сохранить",
   "settings_general_title": "Общий",
   "settings_general_changeicon": "Изменить значок",
+  "settings_general_noicon": "Без значка (использовать стандартный)",
   "settings_general_name_label": "Имя",
   "settings_general_name_hint": "Имя проекта, отображаемое на панели навигации и вкладке браузера.",
   "settings_general_url_label": "Имя развертывания",

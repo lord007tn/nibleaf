@@ -472,6 +472,7 @@
   "settings_saveerror": "सहेजा नहीं जा सका",
   "settings_general_title": "सामान्य",
   "settings_general_changeicon": "आइकन बदलें",
+  "settings_general_noicon": "कोई आइकन नहीं (डिफ़ॉल्ट उपयोग करें)",
   "settings_general_name_label": "नाम",
   "settings_general_name_hint": "प्रोजेक्ट का नाम, नेवबार और ब्राउज़र टैब में दिखाया गया है।",
   "settings_general_url_label": "परिनियोजन नाम",

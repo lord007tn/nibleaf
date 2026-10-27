@@ -472,6 +472,7 @@
   "settings_saveerror": "Konnte nicht gespeichert werden",
   "settings_general_title": "Allgemein",
   "settings_general_changeicon": "Symbol ändern",
+  "settings_general_noicon": "Kein Symbol (Standard verwenden)",
   "settings_general_name_label": "Name",
   "settings_general_name_hint": "Der Name des Projekts, angezeigt in der Navigationsleiste und im Browser-Tab.",
   "settings_general_url_label": "Bereitstellungsname",
