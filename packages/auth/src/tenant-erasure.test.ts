@@ -56,7 +56,7 @@ describe('shared tenant privacy erasure', () => {
     expect(mocks.createJob).toHaveBeenCalledWith(
       'search',
       { name: 'delete-project', data: { projectId: 'project-a' } },
-      { jobId: 'search-delete-project-a', attempts: 10, backoff: { type: 'exponential', delay: 5000 } },
+      { jobId: 'search-delete-project-a', attempts: 10, backoff: { type: 'exponential', delay: 5000 }, removeOnFail: true },
     );
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
     expect(mocks.createJob).toHaveBeenCalledBefore(mocks.organizationDelete);

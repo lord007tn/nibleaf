@@ -284,10 +284,9 @@ const renewRunClaim = async (run: { id: string; claimToken: string }) => {
 export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
   const client = getQdrantClient();
   if (job.name === 'delete-project') {
+    if (client) await client.deleteByFilterAllVersions(projectFilter(job.data.projectId));
     const storageObjects = await eraseProjectStorage(job.data.projectId);
-    if (!client) return { disabled: true, storageObjects };
-    await client.deleteByFilterAllVersions(projectFilter(job.data.projectId));
-    return { deleted: true, storageObjects };
+    return client ? { deleted: true, storageObjects } : { disabled: true, storageObjects };
   }
   if (job.name === 'delete-deployment') {
     if (!job.data.deploymentId) throw new Error('delete-deployment requires deploymentId');

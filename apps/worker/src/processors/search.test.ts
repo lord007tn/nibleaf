@@ -392,7 +392,7 @@ describe('hybrid search differential indexing jobs', () => {
     mocks.apiKey = undefined;
     await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true, storageObjects: 2 });
     expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
-    expect(mocks.eraseProjectStorage).toHaveBeenCalledBefore(mocks.deleteByFilterAllVersions);
+    expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledBefore(mocks.eraseProjectStorage);
     expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
     expect(JSON.stringify(mocks.deleteByFilterAllVersions.mock.calls)).not.toContain('tenant-b');
     expect(mocks.embed).not.toHaveBeenCalled();
@@ -404,10 +404,10 @@ describe('hybrid search differential indexing jobs', () => {
     expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
   });
 
-  it('does not erase search data before stored objects are gone', async () => {
+  it('erases search data even when storage erasure must retry', async () => {
     mocks.eraseProjectStorage.mockRejectedValueOnce(new Error('Project still exists'));
     await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).rejects.toThrow('Project still exists');
-    expect(mocks.deleteByFilterAllVersions).not.toHaveBeenCalled();
+    expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
   });
 
   it('rejects a disabled result when the worker lost its durable run claim', async () => {
