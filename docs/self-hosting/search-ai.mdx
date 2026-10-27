@@ -170,3 +170,8 @@ versioned collection under the configured alias prefix. Deployment cleanup uses
 the same sweep through `delete-deployment`. Confirm an exact project-scoped
 count of zero after the job, then apply your normal Qdrant backup-retention
 policy. Never delete a physical collection while its alias is serving traffic.
+
+The same `delete-project` job also erases object storage. It waits until the
+project row is deleted, then removes every object under `projects/<projectId>/`
+(uploaded and imported assets and export artifacts). It runs even without
+Qdrant, is safe to repeat, and retries transient failures for about 40 minutes.

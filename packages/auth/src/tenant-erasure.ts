@@ -2,6 +2,10 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
+/** Search and storage erasure waits for the relational delete and must outlast
+ * transient storage or Qdrant outages (~40 minutes of exponential backoff). */
+const ERASURE_JOB_RETRY = { attempts: 10, backoff: { type: 'exponential', delay: 5000 } } as const;
+
 export class TenantUsageDeletionPendingError extends Error {
   constructor(readonly pendingCount: number) {
     super('Usage ingestion is still draining.');
@@ -35,7 +39,11 @@ export const eraseProjectOrganization = async (organizationId: string, expectedP
   if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) || deletion.hadStorageMarker) {
     await Promise.all([deleteProjectAnalytics(organizationId, project.id), deleteProjectUsage(organizationId, project.id)]);
   }
-  await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: project.id } }, { jobId: `search-delete-${project.id}` });
+  await createJob(
+    QueueNames.SEARCH,
+    { name: 'delete-project', data: { projectId: project.id } },
+    { jobId: `search-delete-${project.id}`, ...ERASURE_JOB_RETRY },
+  );
   await prisma.usageProviderCheckpoint.updateMany({
     where: { organizationId },
     data: { status: 'deletion_pending', hasError: false },

@@ -171,7 +171,7 @@ The deletion workflow first sets a Postgres fence under the same organization
 row lock used to create ingestion receipts. New batches are rejected; existing
 pending batches may drain. Deletion returns a retryable conflict until none
 remain, then writes a project tombstone, deletes facts, hourly projections,
-reconciliation state, and coverage synchronously, queues search erasure, and
+reconciliation state, and coverage synchronously, queues search and object-storage erasure, and
 marks export checkpoints `deletion_pending`. Better Auth account deletion uses
 this same workflow rather than deleting an organization directly. Queries and
 the worker exclude both usage and analytics tombstones; ordinary analytics

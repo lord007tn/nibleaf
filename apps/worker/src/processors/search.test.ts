@@ -57,6 +57,7 @@ const mocks = vi.hoisted(() => ({
   },
   apiKey: 'embedding-key' as string | undefined,
   loseDisabledClaim: false,
+  qdrantConfigured: true,
   accessMode: 'READERS' as 'PUBLIC' | 'WORKSPACE' | 'READERS',
   currentPoints: [] as QdrantIndexedPoint[],
   previousPoints: [] as QdrantIndexedPoint[],
@@ -104,6 +105,7 @@ const mocks = vi.hoisted(() => ({
   deleteByFilterAllVersions: vi.fn(async (_filter: QdrantFilter) => 1),
   embed: vi.fn(async (inputs: string[]) => ({ vectors: inputs.map(() => [0.1, 0.2]), model: 'test' })),
   enqueueUsageEvents: vi.fn(async (_events: unknown[]) => 'usage-job-a'),
+  eraseProjectStorage: vi.fn(async (_projectId: string) => 2),
 }));
 
 const deploymentIdFrom = (filter: QdrantFilter) => {
@@ -200,21 +202,26 @@ vi.mock('@nibleaf/database', () => ({
   })(),
 }));
 
+vi.mock('../lib/project-storage-erasure', () => ({ eraseProjectStorage: mocks.eraseProjectStorage }));
+
 vi.mock('../lib/usage-ingest', () => ({
   DurableUsageEnqueueError: mocks.DurableUsageEnqueueError,
   enqueueUsageEvents: mocks.enqueueUsageEvents,
 }));
 
 vi.mock('@nibleaf/qdrant', () => ({
-  getQdrantClient: () => ({
-    vectorSize: 2,
-    ensureHybridCollection: mocks.ensureHybridCollection,
-    upsert: mocks.upsert,
-    replacePayload: mocks.replacePayload,
-    deletePoints: mocks.deletePoints,
-    deleteByFilterAllVersions: mocks.deleteByFilterAllVersions,
-    listIndexedPoints,
-  }),
+  getQdrantClient: () =>
+    mocks.qdrantConfigured
+      ? {
+          vectorSize: 2,
+          ensureHybridCollection: mocks.ensureHybridCollection,
+          upsert: mocks.upsert,
+          replacePayload: mocks.replacePayload,
+          deletePoints: mocks.deletePoints,
+          deleteByFilterAllVersions: mocks.deleteByFilterAllVersions,
+          listIndexedPoints,
+        }
+      : null,
 }));
 
 vi.mock('@nibleaf/search', async () => {
@@ -245,6 +252,7 @@ describe('hybrid search differential indexing jobs', () => {
     vi.clearAllMocks();
     mocks.apiKey = 'embedding-key';
     mocks.loseDisabledClaim = false;
+    mocks.qdrantConfigured = true;
     mocks.accessMode = 'READERS';
     mocks.currentPoints = [];
     mocks.previousPoints = [];
@@ -382,10 +390,24 @@ describe('hybrid search differential indexing jobs', () => {
 
   it('can delete tenant data even when no embedding credential is configured', async () => {
     mocks.apiKey = undefined;
-    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true });
+    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true, storageObjects: 2 });
+    expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
+    expect(mocks.eraseProjectStorage).toHaveBeenCalledBefore(mocks.deleteByFilterAllVersions);
     expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
     expect(JSON.stringify(mocks.deleteByFilterAllVersions.mock.calls)).not.toContain('tenant-b');
     expect(mocks.embed).not.toHaveBeenCalled();
+  });
+
+  it('erases stored objects even when Qdrant is not configured', async () => {
+    mocks.qdrantConfigured = false;
+    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ disabled: true, storageObjects: 2 });
+    expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
+  });
+
+  it('does not erase search data before stored objects are gone', async () => {
+    mocks.eraseProjectStorage.mockRejectedValueOnce(new Error('Project still exists'));
+    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).rejects.toThrow('Project still exists');
+    expect(mocks.deleteByFilterAllVersions).not.toHaveBeenCalled();
   });
 
   it('rejects a disabled result when the worker lost its durable run claim', async () => {
