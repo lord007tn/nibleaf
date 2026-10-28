@@ -785,6 +785,9 @@ const authInstance = betterAuth({
       },
     }),
     organization({
+      // Workspaces are erased only through eraseProjectOrganization (analytics, search,
+      // storage, usage); the plugin's own delete endpoint would skip all of it.
+      disableOrganizationDeletion: true,
       organizationHooks: {
         // Single-owner invariant, enforced even through better-auth's OWN
         // update-member-role endpoint: `owner` can never be granted here, and
