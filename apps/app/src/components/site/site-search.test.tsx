@@ -253,7 +253,6 @@ it('routes a selected search result with its language and selected version', asy
   window.history.replaceState(null, '', '/');
 });
 
-
 it('keeps default-language search navigation on the clean URL', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });

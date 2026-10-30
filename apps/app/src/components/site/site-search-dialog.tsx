@@ -255,7 +255,9 @@ export default function SiteSearchDialog({
                             language: hit.language,
                           });
                           onOpenChange(false);
-                          void router.navigate({ href: siteHref(projectId, hit.path, { lang: siteLanguageParam(hit.language, defaultLanguage), version: selectedVersion }) });
+                          void router.navigate({
+                            href: siteHref(projectId, hit.path, { lang: siteLanguageParam(hit.language, defaultLanguage), version: selectedVersion }),
+                          });
                         }}
                       >
                         {hasIcon(hit.icon) ? (
