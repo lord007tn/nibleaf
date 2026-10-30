@@ -36,6 +36,14 @@ beforeEach(() => {
 });
 
 describe('published changelog route', () => {
+  it('gives a missing site not-found metadata without a canonical or feed link', () => {
+    const head = Route.options.head as (input: { loaderData?: unknown; params: { projectId: string } }) => Record<string, unknown>;
+
+    const missing = head({ params: { projectId: 'missing-site' } });
+    expect(missing.links).toBeUndefined();
+    expect(missing.meta).toContainEqual({ name: 'robots', content: 'noindex,nofollow' });
+  });
+
   it.each(['$projectId', 'missing-site'])('returns the router not-found sentinel for missing site %s', async (projectId) => {
     mocks.getSite.mockResolvedValueOnce(apiError(404));
 
