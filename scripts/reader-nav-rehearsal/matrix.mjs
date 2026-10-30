@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 const { chromium } = await import(process.env.BROWSER_MODULE);
 const out = 'output/reader-nav';
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP docs.reader.test 127.0.0.1', '--no-proxy-server'] });
+const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP docs.reader.localhost 127.0.0.1', '--no-proxy-server'] });
 const results = [];
 const base = 'http://localhost:4310/sites/preview-harbor';
 const slug = 'reference/البداية';
@@ -22,11 +22,11 @@ const sidebar = (page, path) => page.locator('[data-theme-region="sidebar"] a').
 const openSearch = async page => {
   await page.keyboard.press('Control+k');
   await page.getByRole('dialog').waitFor();
-  await page.getByRole('combobox').fill('');
+  await page.locator('input[data-slot="command-input"]').fill('');
 };
 const searchTo = async (page, lang) => {
   await openSearch(page);
-  await page.getByRole('combobox').fill(title[lang]);
+  await page.locator('input[data-slot="command-input"]').fill(title[lang]);
   await page.getByRole('option').filter({ hasText: title[lang] }).first().click();
   await heading(page, title[lang]);
   await page.getByRole('dialog').waitFor({ state: 'hidden' });
@@ -43,7 +43,7 @@ for (let attempt = 0; attempt < 90; attempt++) {
 async function row(lang, name, action, options = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ...options });
   // Mock-only rehearsal: do not contact fonts, social sites, or other external services.
-  await context.route('**/*', route => /^(localhost|127\.0\.0\.1|docs\.reader\.test)$/.test(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
+  await context.route('**/*', route => /^(localhost|127\.0\.0\.1|docs\.reader\.localhost)$/.test(new URL(route.request().url()).hostname) ? route.continue() : route.abort());
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const errors = [];
@@ -162,7 +162,8 @@ for (const lang of ['en', 'ar']) {
     await retained(page);
   }, { viewport: { width: 390, height: 844 }, isMobile: true });
   await row(lang, 'custom-domain', async page => {
-    await page.goto(href(home, lang, 'http://docs.reader.test:4310'), { waitUntil: 'networkidle' });
+    await page.goto(href(home, lang, 'http://docs.reader.localhost:4310'), { waitUntil: 'networkidle' });
+    assert.equal(await page.evaluate(() => window.isSecureContext), true, 'custom-domain harness must support secure-context browser APIs');
     await page.locator('main h1').waitFor();
     assert.equal(await page.locator('meta[name="nibleaf-site-project"]').getAttribute('content'), 'preview-harbor');
     await mark(page);
