@@ -76,6 +76,10 @@ describe('isDocumentPath', () => {
 describe('isAppOwnedPath', () => {
   it.each([
     '/api',
+    '/api/x',
+    '/assets/x',
+    '/sites/x',
+    '/_serverFn/x',
     '/api/public/sites/project',
     '/assets/app.js',
     '/favicon.ico',
@@ -92,6 +96,8 @@ describe('isAppOwnedPath', () => {
     '/getting-started',
     '/ar/use-nibleaf/authoring',
     '/api-reference',
+    '/apis',
+    '/sites-guide',
     '/api.v2',
     '/assets-guide',
     '/sites-overview',
