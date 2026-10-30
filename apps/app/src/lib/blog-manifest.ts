@@ -564,7 +564,7 @@ export const BLOG_MANIFEST = [
     description:
       'A source-backed GitBook and Mintlify comparison covering editors, Git workflows, API docs, pricing, multilingual content, and self-hosting.',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-17',
+    dateModified: '2026-10-30',
     tags: ['comparison', 'gitbook', 'mintlify'],
     related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
     readingMinutes: 8,
