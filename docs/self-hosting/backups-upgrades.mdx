@@ -73,8 +73,8 @@ Do not re-run the installer to upgrade. It is for new installations only, and
 replacing `.env` with newly generated secrets locks you out of existing data.
 
 **From v0.1.2 to v0.2.0, follow the [upgrade guide](/self-hosting/upgrade-v0-2).**
-That upgrade has a required staged step, and changing the version alone leaves the
-API and worker in a restart loop.
+That upgrade has a required staged step. If you change only the version, scheduling
+is refused and the API and worker do not become ready.
 
 For other upgrades, read each intervening release note and check for
 release-specific migration or configuration changes. Create and restore-test a

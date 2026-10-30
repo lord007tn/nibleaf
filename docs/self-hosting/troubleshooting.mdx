@@ -44,10 +44,9 @@ version, affected service, redacted error, expected behavior, and exact time.
 
 Do not skip migrations by removing dependencies from the Compose file.
 
-## The API and worker restart in a loop after an upgrade
+## The API and worker do not become ready after an upgrade
 
-`docker compose ps` shows `server` and `worker` restarting, `app` does not start, and
-the logs show:
+`server` and `worker` do not become ready, `app` waits for the API, and the logs show:
 
 ```text
 Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image

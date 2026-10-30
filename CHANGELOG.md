@@ -14,9 +14,9 @@ need none of them. The
 procedure.
 
 - **Upgrade in two hops.** Changing only the image tag does not work. BullMQ 6
-  refuses the repeat definitions left by v0.1.2, so the API and worker exit at
-  startup and Compose restarts them in a loop. Migrate the schedules from the staged
-  image first (#123, #147).
+  refuses the repeat definitions left by v0.1.2: the log shows `Unknown recurring
+  configuration`, scheduling is refused, and the API and worker do not become ready.
+  Migrate the schedules from the staged image first (#123, #147).
 - **Take a tested backup.** Seven Prisma migrations run on start and are
   forward-only. Going back means restoring the pre-upgrade backup. Rolling back the
   schedules alone is not enough.

@@ -44,10 +44,9 @@ docker compose -f docker-compose.prod.yml config --services
 
 لا تتخطَّ عمليات الترحيل بإزالة الاعتماديات من ملف Compose.
 
-## يعيد API وعامل المعالجة التشغيل في حلقة بعد الترقية
+## لا يصبح API وعامل المعالجة جاهزين بعد الترقية
 
-يعرض `docker compose ps` الخدمتين `server` و`worker` وهما تعيدان التشغيل، ولا تبدأ
-`app`، وتعرض السجلات:
+لا تصبح `server` و`worker` جاهزتين، وتنتظر `app` خدمة API، وتعرض السجلات:
 
 ```text
 Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
