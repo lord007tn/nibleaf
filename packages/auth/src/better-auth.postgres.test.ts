@@ -62,7 +62,7 @@ interface SessionBody {
 // Explicit opt-in: CI supplies its disposable migrated PostgreSQL service. The
 // real auth instance runs against it; only email, queues, and Google are stubbed.
 describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL', () => {
-  let auth: (typeof import('./server'))['auth'];
+  let auth: typeof import('./server')['auth'];
 
   const send = (path: string, { body, cookie, origin }: RequestOptions = {}) => {
     const headers = new Headers();
