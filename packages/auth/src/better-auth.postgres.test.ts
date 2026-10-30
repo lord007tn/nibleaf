@@ -215,8 +215,11 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   it('keeps workspace invitations on the Nibleaf action that enforces the single-owner rule', async () => {
     const { cookie, organizationId } = await signInAsOwner();
     const email = addressFor('second-owner');
-    const response = await send('/organization/invite-member', { body: { email, organizationId, role: 'owner' }, cookie });
-    expect(response.status).toBe(404);
+    const paths = ['/organization/invite-member', '/organization/invite-member/', '/organization//invite-member', '/organization/invite%2Dmember'];
+    for (const path of paths) {
+      const response = await send(path, { body: { email, organizationId, role: 'owner' }, cookie });
+      expect(response.status, path).toBe(404);
+    }
     expect(await prisma.invitation.count({ where: { email } })).toBe(0);
   });
 
@@ -281,6 +284,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(user?.user.email).toBe(email);
     const account = await prisma.account.findFirst({ where: { accountId: sub, providerId: 'google' } });
     expect(account?.userId).toBe(user?.user.id);
+    expect(await prisma.member.count({ where: { role: 'owner', userId: user?.user.id } })).toBe(1);
 
     const second = await signInWithGoogle(sub, email);
     expectSignedInRedirect(second);
@@ -334,6 +338,15 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expectSignedInRedirect(response);
     expect((await readSession(sessionCookie(response)))?.user.id).toBe(existing?.user.id);
     expect((await prisma.account.findFirst({ where: { accountId: sub, providerId: 'google' } }))?.userId).toBe(existing?.user.id);
+  });
+
+  it('does not link Google to a local account whose address was never verified', async () => {
+    const email = addressFor('unverified');
+    const user = await prisma.user.create({ data: { email, emailVerified: false, name: 'Unverified' } });
+    const response = await signInWithGoogle(`unverified-${run}`, email);
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toContain('error=account_not_linked');
+    expect(await prisma.account.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it('refuses a Google identity that matches more than one account', async () => {
