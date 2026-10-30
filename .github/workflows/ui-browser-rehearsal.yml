@@ -1,0 +1,70 @@
+name: UI browser rehearsal
+
+on:
+  push:
+    branches: [rehearsal/ui-browser-checks]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-browser-rehearsal
+  cancel-in-progress: true
+
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      APP_URL: http://localhost:4310
+      PORT: '4310'
+      VITE_API_URL: http://localhost:4311
+      NODE_OPTIONS: --max-old-space-size=4096
+      OUT: output/ui-browser
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Start throwaway local infrastructure
+        run: docker compose -f docker-compose.dev.yml up -d postgres dragonfly qdrant clickhouse maxio
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Build app on hosted runner
+        run: |
+          mkdir -p "$OUT"
+          pnpm build:app --concurrency=2 > "$OUT/build.log" 2>&1 || { tail -n 80 "$OUT/build.log"; exit 1; }
+      - name: Record resolved dompurify and seroval
+        run: |
+          node scripts/ui-browser-rehearsal/versions.mjs | tee "$OUT/versions.json"
+          pnpm --filter @nibleaf/app why dompurify seroval > "$OUT/dependency-why.txt" 2>&1 || true
+      - name: Export local service settings
+        run: node scripts/ui-browser-rehearsal/env.mjs
+      - name: Migrate and seed the throwaway database
+        run: |
+          docker compose -f docker-compose.dev.yml up -d --wait postgres dragonfly clickhouse
+          pnpm --filter @nibleaf/database exec prisma migrate deploy > "$OUT/migrate.log" 2>&1 || { tail -n 40 "$OUT/migrate.log"; exit 1; }
+          pnpm --filter @nibleaf/clickhouse migrate > "$OUT/clickhouse-migrate.log" 2>&1 || tail -n 20 "$OUT/clickhouse-migrate.log"
+          pnpm --filter @nibleaf/server exec tsx src/database/seed/index.ts > "$OUT/seed.log" 2>&1 || { tail -n 40 "$OUT/seed.log"; exit 1; }
+          cp scripts/ui-browser-rehearsal/session.mts apps/server/rehearsal-session.mts
+          pnpm --filter @nibleaf/server exec tsx rehearsal-session.mts /tmp/ui-browser-session.json
+      - name: Install isolated browser harness
+        run: |
+          npm install --prefix /tmp/ui-browser --no-audit --no-fund playwright@1.62.1
+          /tmp/ui-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Walk rows in Chromium
+        run: |
+          (cd apps/server && exec pnpm exec tsx src/index.ts) > "$OUT/api.log" 2>&1 &
+          node scripts/ui-browser-rehearsal/fixture.mjs --port 4311 > "$OUT/mock.log" 2>&1 &
+          NODE_ENV=production node apps/app/.output/server/index.mjs > "$OUT/app.log" 2>&1 &
+          BROWSER_MODULE=/tmp/ui-browser/node_modules/playwright/index.mjs SESSION_FILE=/tmp/ui-browser-session.json \
+            node scripts/ui-browser-rehearsal/walk.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: ui-browser-rehearsal-${{ github.sha }}
+          path: output/ui-browser
+          retention-days: 14
