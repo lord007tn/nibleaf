@@ -922,7 +922,16 @@ function withoutHeadBody(response: Response, method: string): Response {
   return method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response;
 }
 
-const handleRequestInner: RequestHandler<Register> = async (request, ...rest) => {
+/** Drop any client-sent `x-nibleaf-site-origin`; only the custom-domain rewrite may set it. */
+function withoutClientSiteOrigin(request: Request): Request {
+  if (!request.headers.has('x-nibleaf-site-origin')) return request;
+  const sanitized = new Request(request.url, request);
+  sanitized.headers.delete('x-nibleaf-site-origin');
+  return sanitized;
+}
+
+const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) => {
+  const request = withoutClientSiteOrigin(incoming);
   const url = new URL(request.url);
   const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
