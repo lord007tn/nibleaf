@@ -1,3 +1,4 @@
+import { posix } from 'node:path';
 import { Readable } from 'node:stream';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
@@ -17,6 +18,14 @@ const PREFIX = /^\/api\/public\/assets\//;
  *  so the owning project is recoverable from the key — required to honour takedowns. */
 const PROJECT_KEY = /^projects\/([^/]+)\/assets\//;
 
+/** Anything else a project stores, such as export artifacts, is served only by
+ *  its own authenticated route. Keys outside `projects/` are not covered here. */
+const PROJECT_SCOPED_KEY = /^projects\/[^/]+\//;
+
+/** Classify a decoded key as a path-normalizing store would read it, so dot
+ *  segments and repeated slashes cannot move it across these prefixes. */
+const canonicalKey = (key: string): string => posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
+
 const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // Derive the object key from the path (Hono's wildcard param isn't reliable for
   // multi-segment keys); decode in case the browser percent-encoded segments.
@@ -24,9 +33,13 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (!key) {
     throw notFound('asset');
   }
+  const canonical = canonicalKey(key);
+  const projectId = PROJECT_KEY.exec(canonical)?.[1];
+  if (!projectId && PROJECT_SCOPED_KEY.test(canonical)) {
+    throw notFound('asset', { key });
+  }
   // Moderation: a taken-down project's hosted files (the usual phishing/DMCA
   // payload) must stop being served, not just its pages.
-  const projectId = PROJECT_KEY.exec(key)?.[1];
   if (projectId && (await isProjectTakenDown(projectId))) {
     throw notFound('asset', { key });
   }
