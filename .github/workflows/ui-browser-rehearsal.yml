@@ -14,7 +14,7 @@ concurrency:
 jobs:
   walk:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 120
     env:
       APP_URL: http://localhost:4310
       PORT: '4310'
@@ -43,6 +43,22 @@ jobs:
           pnpm --filter @nibleaf/app why dompurify seroval > "$OUT/dependency-why.txt" 2>&1 || true
       - name: Record built CSS rules for hidden elements
         run: grep -rhoE '[^{}]*\[hidden\][^{}]*\{[^}]*\}' apps/app/.output/public --include='*.css' | sort -u > "$OUT/hidden-css-rules.txt" || true
+      # ── Hydration diagnostic, part 1 (separate from rows 1–16): build origin/main
+      #    the same way as the merged branch, before the service settings are exported.
+      - name: 'Hydration diagnostic: check out origin/main'
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          ref: a28cbfdbec01f478caa4374eb36ad834e5424fb6
+          path: main-build
+          persist-credentials: false
+      - name: 'Hydration diagnostic: build origin/main'
+        continue-on-error: true
+        working-directory: main-build
+        run: |
+          pnpm install --frozen-lockfile > "../$OUT/main-install.log" 2>&1 || { tail -n 60 "../$OUT/main-install.log"; exit 1; }
+          pnpm db:generate > /dev/null
+          pnpm build:app --concurrency=2 > "../$OUT/main-build.log" 2>&1 || { tail -n 80 "../$OUT/main-build.log"; exit 1; }
       - name: Export local service settings
         run: node scripts/ui-browser-rehearsal/env.mjs
       - name: Migrate and seed the throwaway database
@@ -64,6 +80,13 @@ jobs:
           NODE_ENV=production node apps/app/.output/server/index.mjs > "$OUT/app.log" 2>&1 &
           BROWSER_MODULE=/tmp/ui-browser/node_modules/playwright/index.mjs SESSION_FILE=/tmp/ui-browser-session.json \
             node scripts/ui-browser-rehearsal/walk.mjs
+      # ── Hydration diagnostic, part 2: load signed-in /app repeatedly on both builds,
+      #    against the same fixture, local API, database and session used above.
+      - name: 'Hydration diagnostic: /app on the merged branch and origin/main'
+        if: always()
+        run: |
+          pkill -f 'apps/app/.output/server/index.mjs' || true
+          BROWSER_MODULE=/tmp/ui-browser/node_modules/playwright/index.mjs SESSION_FILE=/tmp/ui-browser-session.json           MERGED_SERVER=apps/app/.output/server/index.mjs MAIN_SERVER=main-build/apps/app/.output/server/index.mjs           MAIN_REVISION=a28cbfdbec01f478caa4374eb36ad834e5424fb6             node scripts/ui-browser-rehearsal/hydration-diagnostic.mjs
       - uses: actions/upload-artifact@v7
         if: always()
         with:
