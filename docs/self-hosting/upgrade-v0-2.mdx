@@ -38,13 +38,13 @@ project name, `.env`, encryption keys, and volumes.
 | Area | Change | What you do |
 | --- | --- | --- |
 | Recurring jobs | BullMQ 5 repeat definitions become BullMQ 6 Job Schedulers. | Run the staged migration. |
-| Database | Seven Prisma migrations run through the `migrate` service. They are forward-only. | Take a backup. Step 11 runs the migrations. |
+| Database | Eight Prisma migrations run through the `migrate` service. They are forward-only. | Take a backup. Step 11 runs the migrations. |
 | Compose file | New `MCP_*` and `INTEGRATION_*` passthroughs. Changing only the version misses them. | Replace the file with the release's verified copy. |
 | Integrations | Stored credentials use a dedicated encryption key. | Add `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` before you use integrations. See [After the upgrade](#after-the-upgrade). |
 | AI writing assist | v0.2.0 reads `OPENROUTER_API_KEY`, not `OPENAI_API_KEY`. | See [After the upgrade](#after-the-upgrade) if you use it. |
 | Platform | Prisma 7, Vite 8, and TypeScript 7 are inside the image. | Nothing. |
 
-The seven migrations are:
+The eight migrations are:
 
 1. `20260823120000_add_git_file_ownership`
 2. `20260823143000_native_better_auth_admin`
@@ -53,6 +53,7 @@ The seven migrations are:
 5. `20260823220000_project_addons`
 6. `20260823230000_add_project_integrations`
 7. `20260823240000_mcp_control_plane`
+8. `20261030120000_invitation_created_at`
 
 ## Before you start
 
@@ -336,14 +337,14 @@ until all three report `healthy`:
 for svc in server worker app; do
   docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")"
 done
-docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 7'
+docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 8'
 ```
 
 **Expected:**
 
 - the `migrate` command ends with `[nibleaf] migrate complete`;
 - `server`, `worker`, and `app` all report `healthy`;
-- the query lists the seven migrations above.
+- the query lists the eight migrations above.
 
 ### 12. Check the schedules and resume the queues
 
@@ -371,9 +372,10 @@ rm nibleaf-queues.ts
 
 ### 13. Test the product
 
-Sign in with a real code, upload one image, publish a two-page project, search for
-the second page while signed out, open a public page, and download one export.
-Then record the image digest with your upgrade notes:
+Sign in with a real code, and with Google if you configured it. Upload one image,
+publish a two-page project, search for the second page while signed out, open a
+public page, and download one export. Then record the image digest with your upgrade
+notes:
 
 ```bash
 docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.0
@@ -401,9 +403,15 @@ stop the failing services:
 docker compose stop server worker
 ```
 
-Run only the staged `operator pause` command from step 4. If it fails, stop, and do
-not use the worker restart from step 4, because the database has already migrated.
-Skip step 5 and keep your original pre-upgrade backup and `STAMP`. A backup taken now
+Run only the staged `operator pause` command from step 4. Recovery can continue only
+if both queues have no active or waiting work. If the command fails, stop, and do not
+use the worker restart from step 4: that container is already v0.2.0, so it is not a
+retry under v0.1.2. Keep the queues paused and the services stopped, and do not bypass
+the check. This guide does not cover recovery from busy queues after a failed v0.2.0
+start, so [open an issue](https://github.com/lord007tn/nibleaf/issues) before you go
+further.
+
+If the command passes, skip step 5 and keep your original pre-upgrade backup and `STAMP`. A backup taken now
 cannot replace them for rollback. Run steps 6 to 8. Skip step 9 only if the release
 Compose file is already installed. Run step 10, including `unset NIBLEAF_VERSION` and
 the image check, then steps 11 to 13. [Rolling back](#roll-back) requires a backup
@@ -503,11 +511,24 @@ Keep `nibleaf_failed_upgrade` until you have finished investigating.
 v0.2.0 does not turn these on by itself.
 
 - **Integrations.** Add the dedicated key before you use integrations. The command
-  writes it to `.env` and never prints it. The key must be a base64-encoded 32-byte
-  value:
+  adds it to `.env` if it is missing or empty, and never prints it. It then checks that
+  the key is a base64-encoded 32-byte value:
 
   ```bash
-  grep -Eq '^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=.+' .env || printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+  _integration_key=$(sed -n 's/^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=//p' .env | tail -n 1)
+  case "$_integration_key" in
+    ''|"''"|'""')
+      printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+      ;;
+  esac
+  unset _integration_key
+  docker compose run --rm --no-deps -T server node -e '
+  const key = process.env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY;
+  if (!key || Buffer.from(key, "base64").length !== 32) {
+    console.error("Integration key must be a base64-encoded 32-byte value; preserve any existing key and investigate.");
+    process.exit(1);
+  }
+  console.log("Integration key format: PASS");'
   docker compose up -d
   ```
 

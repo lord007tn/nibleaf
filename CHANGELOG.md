@@ -17,9 +17,12 @@ procedure.
   refuses the repeat definitions left by v0.1.2: the log shows `Unknown recurring
   configuration`, scheduling is refused, and the API and worker do not become ready.
   Migrate the schedules from the staged image first (#123, #147).
-- **Take a tested backup.** Seven Prisma migrations run on start and are
+- **Take a tested backup.** Eight Prisma migrations run on start and are
   forward-only. Going back means restoring the pre-upgrade backup. Rolling back the
   schedules alone is not enough.
+- **Check for duplicate linked accounts.** Better Auth now refuses a sign-in when two
+  `account` rows share a provider and account ID. The check in the upgrade guide must
+  return no rows (#249).
 - **Replace the Compose file** with the release's verified copy, keeping `.env`, the
   Compose project name, and the volume names. Changing only the version misses the
   new `MCP_*` and `INTEGRATION_*` settings.
@@ -108,6 +111,9 @@ procedure.
 
 ### Security
 
+- Tightened remote image downloads in the importers (#243).
+- Disabled an unused Better Auth invitation endpoint, so invitations keep following
+  Nibleaf's rules (#249).
 - Updated the runtime image's zlib, Expat, Chromium, and bundled pnpm (#203, #217,
   #219).
 - Patched the MDX frontmatter TOML parser for GHSA-82x6-q7mm-w9cf and

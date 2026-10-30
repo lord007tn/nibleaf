@@ -39,9 +39,10 @@ zero and not successful.
 
 Install the exact application revision and generate the Prisma client before
 typechecking or starting services. The normal deployment command applies pending
-Postgres migrations in filename order. A v0.1.2 database has seven pending: first
+Postgres migrations in filename order. A v0.1.2 database has eight pending: first
 `20260823120000_add_git_file_ownership` and `20260823143000_native_better_auth_admin`,
-then these five capability migrations:
+then these five capability migrations, and last
+`20261030120000_invitation_created_at`:
 
 1. `20260823180000_search_configuration_diagnostics`
 2. `20260823210000_usage_metering`
@@ -50,8 +51,8 @@ then these five capability migrations:
 5. `20260823240000_mcp_control_plane`
 
 The integrations migration owns nullable `ApiKey.expiresAt` as a shared
-authentication prerequisite. The MCP migration depends on it and must remain
-last. Do not copy that column into the MCP migration or remove it while MCP or
+authentication prerequisite. The MCP migration depends on it and must
+run after it. Do not copy that column into the MCP migration or remove it while MCP or
 another consumer still depends on it.
 
 ```bash

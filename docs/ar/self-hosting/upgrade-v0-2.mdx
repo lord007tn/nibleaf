@@ -38,13 +38,13 @@ translation_key: 'self-hosting/upgrade-v0-2'
 | المجال | التغيير | ما عليك فعله |
 | --- | --- | --- |
 | المهام المتكررة | تتحول تعريفات التكرار من BullMQ 5 إلى Job Schedulers في BullMQ 6. | شغّل الترحيل المرحلي. |
-| قاعدة البيانات | تُنفَّذ سبعة ترحيلات Prisma عبر خدمة `migrate`، وهي أحادية الاتجاه. | أنشئ نسخة احتياطية. تُنفَّذ الترحيلات في الخطوة 11. |
+| قاعدة البيانات | تُنفَّذ ثمانية ترحيلات Prisma عبر خدمة `migrate`، وهي أحادية الاتجاه. | أنشئ نسخة احتياطية. تُنفَّذ الترحيلات في الخطوة 11. |
 | ملف Compose | تمريرات جديدة `MCP_*` و`INTEGRATION_*`. لا يكفي تغيير الإصدار للحصول عليها. | استبدل الملف بالنسخة الموثّقة من الإصدار. |
 | التكاملات | تستخدم بيانات الاعتماد المخزنة مفتاح تشفير مخصصًا. | أضف `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` قبل استخدام التكاملات. راجع [بعد الترقية](#بعد-الترقية). |
 | المساعدة الكتابية بالذكاء الاصطناعي | يقرأ v0.2.0 المتغيّر `OPENROUTER_API_KEY` بدلًا من `OPENAI_API_KEY`. | راجع [بعد الترقية](#بعد-الترقية) إذا كنت تستخدمها. |
 | المنصة | أصبحت Prisma 7 وVite 8 وTypeScript 7 داخل الصورة. | لا شيء. |
 
-الترحيلات السبعة هي:
+الترحيلات الثمانية هي:
 
 1. `20260823120000_add_git_file_ownership`
 2. `20260823143000_native_better_auth_admin`
@@ -53,6 +53,7 @@ translation_key: 'self-hosting/upgrade-v0-2'
 5. `20260823220000_project_addons`
 6. `20260823230000_add_project_integrations`
 7. `20260823240000_mcp_control_plane`
+8. `20261030120000_invitation_created_at`
 
 ## قبل أن تبدأ
 
@@ -335,14 +336,14 @@ docker compose up -d
 for svc in server worker app; do
   docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")"
 done
-docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 7'
+docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 8'
 ```
 
 **المتوقع:**
 
 - ينتهي أمر `migrate` بالعبارة `[nibleaf] migrate complete`؛
 - تعرض `server` و`worker` و`app` جميعها `healthy`؛
-- يعرض الاستعلام الترحيلات السبعة المذكورة أعلاه.
+- يعرض الاستعلام الترحيلات الثمانية المذكورة أعلاه.
 
 ### 12. تحقق من الجداول واستأنف الطوابير
 
@@ -370,9 +371,9 @@ rm nibleaf-queues.ts
 
 ### 13. اختبر المنتج
 
-سجّل الدخول برمز حقيقي، وارفع صورة واحدة، وانشر مشروعًا من صفحتين، وابحث عن الصفحة
-الثانية بعد تسجيل الخروج، وافتح صفحة عامة، ونزّل عملية تصدير واحدة. ثم سجّل الملخّص
-الرقمي للصورة مع ملاحظات الترقية:
+سجّل الدخول برمز حقيقي، وبحساب Google إذا كنت قد ضبطته. ارفع صورة واحدة، وانشر مشروعًا
+من صفحتين، وابحث عن الصفحة الثانية بعد تسجيل الخروج، وافتح صفحة عامة، ونزّل عملية تصدير
+واحدة. ثم سجّل الملخّص الرقمي للصورة مع ملاحظات الترقية:
 
 ```bash
 docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.0
@@ -400,9 +401,15 @@ Unknown recurring configuration in analytics; complete the migration using the r
 docker compose stop server worker
 ```
 
-نفّذ أمر `operator pause` بالصورة المرحلية من الخطوة 4 فقط. إذا فشل، فتوقف؛ لا تستخدم
-إعادة تشغيل عامل المعالجة الواردة فيها، لأن قاعدة البيانات رُحّلت بالفعل. تخطَّ الخطوة 5
-واحتفظ بالنسخة الاحتياطية الأصلية السابقة للترقية وقيمة `STAMP` الخاصة بها؛ لا تصلح نسخة
+نفّذ أمر `operator pause` بالصورة المرحلية من الخطوة 4 فقط. لا يمكن مواصلة التعافي إلا إذا
+لم يكن في الطابورين عمل نشط أو منتظر. إذا فشل الأمر، فتوقف ولا تستخدم إعادة تشغيل عامل
+المعالجة الواردة في الخطوة 4؛ فتلك الحاوية على v0.2.0 بالفعل، لذا لا تُعد إعادة محاولة على
+v0.1.2. أبقِ الطوابير متوقفة مؤقتًا والخدمات متوقفة، ولا تتجاوز هذا الفحص. لا يغطي هذا الدليل
+التعافي من طوابير مشغولة بعد فشل تشغيل v0.2.0، لذا
+[افتح بلاغًا](https://github.com/lord007tn/nibleaf/issues) قبل أن تتابع.
+
+إذا نجح الأمر، فتخطَّ الخطوة 5 واحتفظ بالنسخة الاحتياطية الأصلية السابقة للترقية وقيمة
+`STAMP` الخاصة بها؛ لا تصلح نسخة
 تُنشأ الآن بديلًا عنهما للتراجع. نفّذ الخطوات من 6 إلى 8. تخطَّ الخطوة 9 فقط إذا كان ملف
 Compose الخاص بالإصدار مثبتًا بالفعل. نفّذ الخطوة 10، بما فيها `unset NIBLEAF_VERSION`
 وفحص الصور، ثم الخطوات من 11 إلى 13. يتطلب [التراجع](#التراجع-إلى-الإصدار-السابق)
@@ -501,11 +508,25 @@ rm nibleaf-queues.ts
 
 لا يفعّل v0.2.0 ما يلي تلقائيًا.
 
-- **التكاملات.** أضف المفتاح المخصص قبل استخدام التكاملات. يكتب الأمر المفتاح في `.env`
-  ولا يطبعه مطلقًا. يجب أن يكون المفتاح قيمة بطول 32 بايتًا بترميز base64:
+- **التكاملات.** أضف المفتاح المخصص قبل استخدام التكاملات. يضيف الأمر المفتاح إلى `.env`
+  إذا كان مفقودًا أو فارغًا، ولا يطبعه مطلقًا. ثم يتحقق من أنه قيمة بطول 32 بايتًا بترميز
+  base64:
 
   ```bash
-  grep -Eq '^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=.+' .env || printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+  _integration_key=$(sed -n 's/^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=//p' .env | tail -n 1)
+  case "$_integration_key" in
+    ''|"''"|'""')
+      printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+      ;;
+  esac
+  unset _integration_key
+  docker compose run --rm --no-deps -T server node -e '
+  const key = process.env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY;
+  if (!key || Buffer.from(key, "base64").length !== 32) {
+    console.error("Integration key must be a base64-encoded 32-byte value; preserve any existing key and investigate.");
+    process.exit(1);
+  }
+  console.log("Integration key format: PASS");'
   docker compose up -d
   ```
 
