@@ -1,0 +1,158 @@
+[
+  {
+    "name": "en-desktop-unknown",
+    "locale": "en",
+    "device": "desktop",
+    "state": "unknown",
+    "values": [
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown"
+    ],
+    "problems": []
+  },
+  {
+    "name": "en-desktop-small",
+    "locale": "en",
+    "device": "desktop",
+    "state": "small",
+    "values": [
+      "3",
+      "4",
+      "1",
+      "Unknown"
+    ],
+    "problems": []
+  },
+  {
+    "name": "en-desktop-known",
+    "locale": "en",
+    "device": "desktop",
+    "state": "known",
+    "values": [
+      "12,345",
+      "9,876",
+      "1,234",
+      "12%"
+    ],
+    "problems": []
+  },
+  {
+    "name": "en-mobile-unknown",
+    "locale": "en",
+    "device": "mobile",
+    "state": "unknown",
+    "values": [
+      "Unknown",
+      "Unknown",
+      "Unknown",
+      "Unknown"
+    ],
+    "problems": []
+  },
+  {
+    "name": "en-mobile-small",
+    "locale": "en",
+    "device": "mobile",
+    "state": "small",
+    "values": [
+      "3",
+      "4",
+      "1",
+      "Unknown"
+    ],
+    "problems": []
+  },
+  {
+    "name": "en-mobile-known",
+    "locale": "en",
+    "device": "mobile",
+    "state": "known",
+    "values": [
+      "12,345",
+      "9,876",
+      "1,234",
+      "12%"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-desktop-unknown",
+    "locale": "ar",
+    "device": "desktop",
+    "state": "unknown",
+    "values": [
+      "غير معروف",
+      "غير معروف",
+      "غير معروف",
+      "غير معروف"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-desktop-small",
+    "locale": "ar",
+    "device": "desktop",
+    "state": "small",
+    "values": [
+      "3",
+      "4",
+      "1",
+      "غير معروف"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-desktop-known",
+    "locale": "ar",
+    "device": "desktop",
+    "state": "known",
+    "values": [
+      "12,345",
+      "9,876",
+      "1,234",
+      "12‎%‎"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-mobile-unknown",
+    "locale": "ar",
+    "device": "mobile",
+    "state": "unknown",
+    "values": [
+      "غير معروف",
+      "غير معروف",
+      "غير معروف",
+      "غير معروف"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-mobile-small",
+    "locale": "ar",
+    "device": "mobile",
+    "state": "small",
+    "values": [
+      "3",
+      "4",
+      "1",
+      "غير معروف"
+    ],
+    "problems": []
+  },
+  {
+    "name": "ar-mobile-known",
+    "locale": "ar",
+    "device": "mobile",
+    "state": "known",
+    "values": [
+      "12,345",
+      "9,876",
+      "1,234",
+      "12‎%‎"
+    ],
+    "problems": []
+  }
+]
