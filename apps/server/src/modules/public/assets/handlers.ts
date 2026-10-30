@@ -22,9 +22,13 @@ const PROJECT_KEY = /^projects\/([^/]+)\/assets\//;
  *  its own authenticated route. Keys outside `projects/` are not covered here. */
 const PROJECT_SCOPED_KEY = /^projects\/[^/]+\//;
 
-/** Classify a decoded key as a path-normalizing store would read it, so dot
- *  segments and repeated slashes cannot move it across these prefixes. */
-const canonicalKey = (key: string): string => posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
+/** Nibleaf never writes a key with dot or empty segments. S3 reads one literally and
+ *  some compatible stores normalize it, so a check and the read could reach different
+ *  objects. Refuse any that could touch `projects/`; other keys stay as they were. */
+const isAmbiguousProjectKey = (key: string): boolean => {
+  const normalized = posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
+  return normalized !== key && (key.startsWith('projects/') || normalized.startsWith('projects/'));
+};
 
 const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // Derive the object key from the path (Hono's wildcard param isn't reliable for
@@ -33,9 +37,8 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (!key) {
     throw notFound('asset');
   }
-  const canonical = canonicalKey(key);
-  const projectId = PROJECT_KEY.exec(canonical)?.[1];
-  if (!projectId && PROJECT_SCOPED_KEY.test(canonical)) {
+  const projectId = PROJECT_KEY.exec(key)?.[1];
+  if (isAmbiguousProjectKey(key) || (!projectId && PROJECT_SCOPED_KEY.test(key))) {
     throw notFound('asset', { key });
   }
   // Moderation: a taken-down project's hosted files (the usual phishing/DMCA

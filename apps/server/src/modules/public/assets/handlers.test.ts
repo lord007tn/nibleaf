@@ -78,6 +78,12 @@ describe('public asset delivery', () => {
     'legacy%2F..%2Fprojects%2Fproject-a%2Fexports%2Frun-1%2Fsite.zip',
     '%2Fprojects%2Fproject-a%2Fexports%2Frun-1%2Fsite.zip',
     'projects%2F%2Fproject-a%2Fexports%2Frun-1%2Fsite.zip',
+    // Authorization could see one project and the read another, depending on the store.
+    'projects%2Fproject-a%2Fassets%2F..%2F..%2Fproject-b%2Fassets%2Fsecret.png',
+    'projects%2Fproject-a%2Fexports%2F..%2Fassets%2Fsecret.zip',
+    'projects%2F.%2Fproject-a%2Fassets%2Flogo.png',
+    '.%2Fprojects%2Fproject-a%2Fassets%2Flogo.png',
+    'projects%2F..%2Flegacy%2Flogo.png',
   ])('answers %s with the missing-asset 404 and no storage call', async (key) => {
     const response = await assetRequest(key);
     expect(response.status).toBe(404);
@@ -94,22 +100,16 @@ describe('public asset delivery', () => {
     expect(await errorOf(exported)).toMatchObject({ code: (await errorOf(missing)).code, entityType: 'asset' });
   });
 
-  it('checks access against the project a dot-segment key really points at', async () => {
-    mocks.getProjectDeliveryAccess.mockImplementation(async (projectId: string) =>
-      projectId === 'project-a' ? { kind: 'public', allowedPageIds: null } : null,
-    );
-    const response = await assetRequest('projects%2Fproject-a%2Fassets%2F..%2F..%2Fproject-b%2Fassets%2Fsecret.png');
-    expect(response.status).toBe(404);
-    expect(mocks.getProjectDeliveryAccess).toHaveBeenCalledExactlyOnceWith('project-b', expect.any(Headers));
-    expectNoStorageCall();
-  });
-
-  it('leaves a key outside projects/ as it was', async () => {
-    const response = await assetRequest('legacy/logo.png');
+  it.each([
+    ['legacy/logo.png', 'legacy/logo.png'],
+    ['legacy%2F..%2Flogo.png', 'legacy/../logo.png'],
+    ['legacy%2F%2Flogo.png', 'legacy//logo.png'],
+  ])('leaves %s, outside projects/, as it was', async (requested, stored) => {
+    const response = await assetRequest(requested);
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('image-bytes');
     expect(mocks.isProjectTakenDown).not.toHaveBeenCalled();
     expect(mocks.getProjectDeliveryAccess).not.toHaveBeenCalled();
-    expect(mocks.headObject).toHaveBeenCalledWith('legacy/logo.png');
+    expect(mocks.headObject).toHaveBeenCalledWith(stored);
   });
 });
