@@ -58,6 +58,9 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Test installer safety boundaries
+        run: node --test scripts/installer.test.mjs
+
       - name: Test production email diagnostic boundaries
         run: node --test scripts/production-email-diagnostic.test.mjs
 
