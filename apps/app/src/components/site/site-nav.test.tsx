@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NavNode } from '@/hooks/api';
 import { isVersionIndependentNavNode, SiteNav } from './site-nav';
@@ -32,7 +33,9 @@ async function renderNav(currentPath: string, dir: 'ltr' | 'rtl' = 'ltr') {
 const toggleFor = (container: HTMLElement, title: string) =>
   [...container.querySelectorAll('a')].find((anchor) => anchor.textContent === title)?.parentElement?.querySelector('button') ?? null;
 
-const visibleTitles = (container: HTMLElement) => [...container.querySelectorAll('a')].map((anchor) => anchor.textContent);
+// Collapsed subtrees stay in the DOM under a `hidden` list.
+const visibleTitles = (container: HTMLElement) =>
+  [...container.querySelectorAll('a')].filter((anchor) => !anchor.closest('[hidden]')).map((anchor) => anchor.textContent);
 
 describe('isVersionIndependentNavNode', () => {
   it('keeps synthetic OpenAPI navigation outside branch URL prefixes', () => {
@@ -69,15 +72,36 @@ describe('SiteNav page subtrees', () => {
     expect(toggle?.getAttribute('aria-labelledby')).toBe(`${toggle?.id} ${link?.id}`);
     expect(toggle?.getAttribute('aria-label')).toBe('Toggle subpages');
     expect(toggle?.querySelector('svg')?.getAttribute('class')).toContain('rtl:-scale-x-100');
+    expect(toggle?.querySelector('svg')?.getAttribute('class')).not.toContain('rotate-90');
 
     await act(async () => toggle?.click());
     expect(toggle?.getAttribute('aria-expanded')).toBe('true');
     expect(document.getElementById(toggle?.getAttribute('aria-controls') ?? '')?.tagName).toBe('UL');
     expect(visibleTitles(container)).toEqual(['guide', 'install', 'configure', 'faq']);
+    // Scale applies before rotation, so a mirrored chevron must turn the other way to point down.
+    expect(toggle?.querySelector('svg')?.getAttribute('class')).toContain('rotate-90 rtl:-rotate-90');
 
     await act(async () => toggle?.click());
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-    expect(document.getElementById(toggle?.getAttribute('aria-controls') ?? '')).toBeNull();
+    const controlled = document.getElementById(toggle?.getAttribute('aria-controls') ?? '');
+    expect(controlled?.tagName).toBe('UL');
+    expect(controlled?.hidden).toBe(true);
+  });
+
+  it('keeps collapsed subpage links in the server HTML', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nav} projectId="docs" currentPath="faq" toggleLabel="Toggle subpages" />);
+    const links = [...container.querySelectorAll('a')];
+    expect(links.map((anchor) => anchor.textContent)).toEqual(['guide', 'install', 'docker', 'configure', 'faq']);
+    for (const anchor of links) expect(anchor.getAttribute('href')).toBeTruthy();
+    expect(visibleTitles(container)).toEqual(['guide', 'faq']);
+
+    const toggle = toggleFor(container, 'guide');
+    const subtree = container.querySelector(`[id="${toggle?.getAttribute('aria-controls')}"]`);
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(subtree?.tagName).toBe('UL');
+    expect(subtree?.hasAttribute('hidden')).toBe(true);
+    expect(subtree?.textContent).toContain('docker');
   });
 
   it('opens the branch when navigation moves into it', async () => {

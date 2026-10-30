@@ -29,7 +29,8 @@ export const isVersionIndependentNavNode = (node: Pick<NavNode, 'id'>): boolean 
 
 /** Pages with subpages collapse like virtual categories: only the branch
  *  holding the current page starts expanded. The link keeps navigating; the
- *  adjacent chevron toggles the subtree. */
+ *  adjacent chevron toggles the subtree. Collapsed subpages stay in the DOM,
+ *  hidden, so server HTML keeps every link for crawlers and no-JS readers. */
 function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLabel, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
   const active = currentPath === node.path;
   const hasChildren = node.children.length > 0;
@@ -76,13 +77,14 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
             aria-labelledby={`${toggleId} ${linkId}`}
             className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           >
-            <ChevronRight className={cn('size-3.5 transition-transform rtl:-scale-x-100', open && 'rotate-90')} />
+            <ChevronRight className={cn('size-3.5 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
           </button>
         ) : null}
       </div>
-      {hasChildren && open ? (
+      {hasChildren ? (
         <NavItems
           id={childrenId}
+          hidden={!open}
           nodes={node.children}
           projectId={projectId}
           currentPath={currentPath}
@@ -116,7 +118,7 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         <ChevronRight
           className={cn(
             'size-3.5 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-focus-visible:opacity-100 pointer-coarse:opacity-100 rtl:-scale-x-100',
-            open ? 'rotate-90' : 'opacity-100',
+            open ? 'rotate-90 rtl:-rotate-90' : 'opacity-100',
           )}
         />
       </button>
@@ -156,7 +158,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
         aria-expanded={open}
         className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground"
       >
-        <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} />
+        <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground/80" /> : null}
         <span className="truncate">{node.title}</span>
       </button>
@@ -187,9 +189,9 @@ interface NavItemProps {
   toggleLabel: string;
 }
 
-function NavItems({ id, nodes, rail, ...rest }: NavItemProps & { id?: string; nodes: NavNode[]; rail?: boolean }) {
+function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: string; hidden?: boolean; nodes: NavNode[]; rail?: boolean }) {
   return (
-    <ul id={id} className={cn('space-y-px', rail && 'ms-3 border-border/70 border-s ps-3')}>
+    <ul id={id} hidden={hidden} className={cn('space-y-px', rail && 'ms-3 border-border/70 border-s ps-3')}>
       {nodes.map((node) => {
         if (node.kind === 'GROUP') {
           return rest.depth === 0 ? <NavSection key={node.id} node={node} {...rest} /> : <NavSubGroup key={node.id} node={node} {...rest} />;
