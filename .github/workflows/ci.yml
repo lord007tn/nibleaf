@@ -90,6 +90,18 @@ jobs:
           ACTIVATION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts
 
+      - name: Verify Better Auth on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          AUTH_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/auth exec vitest run src/better-auth.postgres.test.ts
+
+      - name: Verify publishing retention aggregates
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ACTIVATION_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/platform-events.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

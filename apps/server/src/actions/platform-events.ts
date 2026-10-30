@@ -1,5 +1,13 @@
 import { type Prisma, prisma } from '@nibleaf/database';
-import { activationTiming } from '@/lib/activation-metrics';
+import {
+  activationTiming,
+  type PublishRetention,
+  type PublishRetentionCounts,
+  publishRetentionReadout,
+  publishRetentionWindows,
+  RETENTION_MAX_HOURS,
+  RETENTION_MIN_HOURS,
+} from '@/lib/activation-metrics';
 
 /**
  * Platform-level product events (activation funnel), written to `platform_event`.
@@ -85,6 +93,64 @@ export interface ActivationFunnel {
   medianHoursToReady: number | null;
   /** Consent-gated, source-level event receipts. They never store users or projects. */
   sourceJourneys: FirstPublishSourceJourney[];
+  /** Project-level manual-publish counts and day 1-7 retention. Aggregates only. */
+  publishRetention: PublishRetention;
+}
+
+/**
+ * Publishing retention per project, computed from full history before the
+ * reporting windows apply, so a project's old first publish is never mistaken
+ * for a new one.
+ *
+ * Only `publish-ready:<deploymentId>` receipts count as publishes: their primary
+ * key makes worker retries a no-op, whereas rows written before receipts existed
+ * have random IDs and a retry looks like another publish. Those legacy rows still
+ * prove a project published before its first receipt, so such a project can't be
+ * a first-time publisher and is left out. `metadata -> 'auto'` is compared as JSON
+ * because `publish_ready` also holds source receipts without that key, and Git
+ * publishes record `true`. Rollbacks never pass through the worker, so they write
+ * no receipt.
+ *
+ * This reads every `publish_ready` row through the (type, createdAt) index; the
+ * history can't be bounded without misdating a project's first publish.
+ */
+export async function getPublishRetention(days = 30, now = new Date(), db: Pick<typeof prisma, '$queryRaw'> = prisma): Promise<PublishRetention> {
+  const windows = publishRetentionWindows(days, now);
+  const [counts] = await db.$queryRaw<[PublishRetentionCounts]>`
+    WITH manual_publish AS (
+      SELECT
+        "projectId",
+        "createdAt",
+        "id" LIKE 'publish-ready:%' AS "isReceipt",
+        ROW_NUMBER() OVER (PARTITION BY "projectId", "id" LIKE 'publish-ready:%' ORDER BY "createdAt", "id") AS "publishNumber"
+      FROM "platform_event"
+      WHERE "type" = 'publish_ready' AND "projectId" IS NOT NULL AND "metadata" -> 'auto' = 'false'::jsonb
+    ),
+    project_publish AS (
+      SELECT
+        MIN("createdAt") FILTER (WHERE "isReceipt" AND "publishNumber" = 1) AS "firstAt",
+        MIN("createdAt") FILTER (WHERE "isReceipt" AND "publishNumber" = 2) AS "secondAt",
+        MIN("createdAt") FILTER (WHERE NOT "isReceipt") AS "legacyAt"
+      FROM manual_publish
+      GROUP BY "projectId"
+    ),
+    first_time_publisher AS (
+      SELECT "firstAt", "secondAt"
+      FROM project_publish
+      WHERE "firstAt" IS NOT NULL AND ("legacyAt" IS NULL OR "legacyAt" > "firstAt")
+    )
+    SELECT
+      (SELECT MIN("firstAt") FROM project_publish) AS "observationStart",
+      COUNT(*) FILTER (WHERE "firstAt" >= ${windows.firstPublishSince} AND "firstAt" <= ${now})::int AS "firstManualPublishes",
+      COUNT(*) FILTER (WHERE "firstAt" >= ${windows.cohortSince} AND "firstAt" <= ${windows.cohortUntil})::int AS "cohortSize",
+      COUNT(*) FILTER (
+        WHERE "firstAt" >= ${windows.cohortSince} AND "firstAt" <= ${windows.cohortUntil}
+          AND "secondAt" >= "firstAt" + make_interval(hours => ${RETENTION_MIN_HOURS})
+          AND "secondAt" <= "firstAt" + make_interval(hours => ${RETENTION_MAX_HOURS})
+      )::int AS "retained"
+    FROM first_time_publisher
+  `;
+  return publishRetentionReadout(counts, windows, now);
 }
 
 /** Activation funnel counts for the admin overview (last `days` days). All four
@@ -104,7 +170,7 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       distinct: ['userId'],
       select: { userId: true },
     });
-  const [signups, edited, published, ready, signupEvents, readyEvents, sourceEvents] = await Promise.all([
+  const [signups, edited, published, ready, signupEvents, readyEvents, sourceEvents, publishRetention] = await Promise.all([
     prisma.platformEvent.count({ where: { type: 'signup_completed', createdAt: { gte: since } } }),
     distinctUsers('page_edited', false),
     distinctUsers('publish_clicked', true),
@@ -124,6 +190,7 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
       },
       select: { type: true, metadata: true },
     }),
+    getPublishRetention(days),
   ]);
 
   const sourceJourneys = FIRST_PUBLISH_SOURCES.map((source) => {
@@ -149,5 +216,6 @@ export async function getActivationFunnel(days = 30): Promise<ActivationFunnel> 
     ready: ready.length,
     ...activationTiming(signupEvents, readyEvents),
     sourceJourneys,
+    publishRetention,
   };
 }
