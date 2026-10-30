@@ -141,6 +141,9 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
+> [!WARNING]
+> **Known issue:** the install command below fails with a checksum error until v0.2.0 is released, because the published v0.1.2 files no longer match the checksums on `main`. It stops before anything starts, and existing installations aren't affected.
+
 On a Linux server, the pinned bootstrap downloads the v0.1.2 installer, verifies
 its committed SHA-256 digest, and only then executes it. The verified installer
 also verifies the release's production Compose file before it writes a mode-600
