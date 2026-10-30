@@ -49,15 +49,9 @@ jobs:
       # pnpm rewrites workspace: ranges when packing; plain npm publish doesn't.
       - name: Pack package
         working-directory: packages/cli
-        run: pnpm pack --pack-destination "$RUNNER_TEMP/cli-package"
-
-      - name: Refuse unresolved workspace ranges
         run: |
-          tar -xzOf "$RUNNER_TEMP"/cli-package/*.tgz package/package.json > "$RUNNER_TEMP/packed-package.json"
-          if grep -n 'workspace:' "$RUNNER_TEMP/packed-package.json"; then
-            echo "::error::The packed package.json still contains a workspace: range."
-            exit 1
-          fi
+          mkdir -p "$RUNNER_TEMP/cli-package"
+          pnpm pack --pack-destination "$RUNNER_TEMP/cli-package"
 
       - name: Upload the reviewed tarball
         uses: actions/upload-artifact@v7
@@ -89,6 +83,15 @@ jobs:
         with:
           name: cli-package
           path: ${{ runner.temp }}/cli-package
+
+      # Checked here so the bytes checked are the bytes published.
+      - name: Refuse unresolved dependency ranges
+        run: |
+          tar -xzOf "$RUNNER_TEMP"/cli-package/*.tgz package/package.json > "$RUNNER_TEMP/packed-package.json"
+          if grep -nE '"(workspace|catalog|link|file):' "$RUNNER_TEMP/packed-package.json"; then
+            echo "::error::The packed package.json still contains a local dependency range."
+            exit 1
+          fi
 
       - name: Publish package
         run: npm publish "$RUNNER_TEMP"/cli-package/*.tgz --access public --provenance
