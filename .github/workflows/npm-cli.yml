@@ -22,16 +22,26 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      - name: Require a reviewed main commit
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+            echo "Select the current reviewed main commit."
+            exit 1
+          }
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version: "22.18.0"
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-          registry-url: https://registry.npmjs.org
+
+      - name: Pin npm for trusted publishing
+        run: npm install --global npm@11.6.2
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -40,6 +50,5 @@ jobs:
         run: pnpm --filter @nibleaf/cli prepublishOnly
 
       - name: Publish package
-        run: pnpm --filter @nibleaf/cli publish --access public --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: packages/cli
+        run: npm publish --access public --provenance
