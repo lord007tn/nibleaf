@@ -1,0 +1,34 @@
+﻿name: Upgrade v0.2 rehearsal (disposable)
+on:
+  push:
+    branches: [rehearsal/upgrade-v0-2]
+permissions:
+  contents: read
+jobs:
+  rehearse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [staged, direct]
+    env:
+      CANDIDATE: sha-bbef8d8e85b1250092a3fa71e99682ba2cfa613a
+      STAGED: sha-33cb19838cf8ea89889bcaafba5d63596e6f6c64
+      MODE: ${{ matrix.mode }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Free disposable runner disk
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get update -qq >/dev/null
+          sudo apt-get install -y expect >/dev/null
+          df -BG / | tail -1
+      - name: Rehearse published images
+        run: bash scripts/upgrade-rehearsal.sh
+      - name: Upload status receipts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: upgrade-${{ matrix.mode }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/upgrade-status.txt
