@@ -11,8 +11,9 @@ COMPOSE_URL=${NIBLEAF_COMPOSE_URL:-$RELEASE_BASE_URL/docker-compose.yml}
 COMPOSE_SHA256=${NIBLEAF_COMPOSE_SHA256:-$RELEASE_COMPOSE_SHA256}
 DEFAULT_INSTALL_DIR=${NIBLEAF_INSTALL_DIR:-"$PWD/nibleaf"}
 TTY=/dev/tty
-# Add future published architectures here. uname reports amd64 as x86_64.
-SUPPORTED_ARCHITECTURES='x86_64'
+# Add future published architectures here. uname reports amd64 as x86_64;
+# Docker reports it as amd64.
+SUPPORTED_ARCHITECTURES='x86_64 amd64'
 
 say() { printf '%s\n' "$*"; }
 fail() { say "Error: $*" >&2; exit 1; }
@@ -86,6 +87,12 @@ has sed || fail 'sed is required.'
 has openssl || fail 'openssl is required to generate secure credentials.'
 has docker || fail 'Docker is required. Install Docker Engine and try again.'
 docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 (docker compose) is required.'
+# The image runs on the Docker daemon, which can differ from this shell under emulation.
+DOCKER_ARCHITECTURE=$(docker version -f '{{.Server.Arch}}' 2>/dev/null) || fail 'Could not reach the Docker daemon. Start Docker and try again.'
+case " $SUPPORTED_ARCHITECTURES " in
+  *" $DOCKER_ARCHITECTURE "*) ;;
+  *) fail "Unsupported architecture: $DOCKER_ARCHITECTURE on the Docker daemon. The published image supports linux/amd64 only." ;;
+esac
 
 say ''
 say 'Nibleaf guided production setup'
@@ -96,9 +103,9 @@ INSTALL_DIR=$(prompt 'Install directory' "$DEFAULT_INSTALL_DIR")
 # The production Compose file declares name: nibleaf. Honor an explicit
 # project override and persist it so later Compose commands use the same name.
 PROJECT_NAME=${COMPOSE_PROJECT_NAME:-nibleaf}
-case $PROJECT_NAME in ''|*[!a-z0-9_-]*) fail 'COMPOSE_PROJECT_NAME must contain only lowercase letters, digits, underscores or hyphens.' ;; esac
+case $PROJECT_NAME in ''|[!a-z0-9]*|*[!a-z0-9_-]*) fail 'COMPOSE_PROJECT_NAME must start with a lowercase letter or digit and contain only lowercase letters, digits, underscores or hyphens.' ;; esac
 for _file in .env compose.yaml compose.yml docker-compose.yaml docker-compose.yml docker-compose.prod.yml; do
-  if [ -e "$INSTALL_DIR/$_file" ]; then
+  if [ -e "$INSTALL_DIR/$_file" ] || [ -L "$INSTALL_DIR/$_file" ]; then
     fail "Existing installation in $INSTALL_DIR. Use https://docs.nibleaf.com/self-hosting/upgrade-v0-2; no files were changed."
   fi
 done
@@ -202,7 +209,11 @@ if ! (cd "$INSTALL_DIR" && docker compose pull); then
 fi
 
 say 'Starting Nibleaf...'
-(cd "$INSTALL_DIR" && docker compose up -d)
+if ! (cd "$INSTALL_DIR" && docker compose up -d); then
+  say ''
+  say "Check the output above, then restart with: cd '$INSTALL_DIR' && docker compose up -d"
+  fail 'Nibleaf did not start; the generated configuration was kept.'
+fi
 trap - EXIT HUP INT TERM
 
 say ''
@@ -211,4 +222,8 @@ say "Dashboard: $APP_URL"
 say "Configuration: $INSTALL_DIR/.env (mode 600)"
 say "Reverse proxy targets: dashboard -> 127.0.0.1:4310; storage -> maxio:9000 (or publish it to loopback)."
 say "Check status: cd '$INSTALL_DIR' && docker compose ps"
-say 'Next: configure DNS/TLS, open /sign-up for the first owner, then set DISABLE_SIGNUP=true if this is a private instance.'
+if [ "$EMAIL_DELIVERY_REQUIRED" = false ]; then
+  say "Next: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to $INSTALL_DIR/.env, run docker compose up -d there, then open /sign-up. Email codes will not arrive until Postmark or SMTP is configured."
+else
+  say 'Next: configure DNS/TLS, open /sign-up for the first owner, then set DISABLE_SIGNUP=true if this is a private instance.'
+fi
