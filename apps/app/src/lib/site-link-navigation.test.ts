@@ -111,13 +111,13 @@ it('announces dialog navigation, focuses fragments, and restores temporary tabin
         toLocation: { pathname, searchStr: '', hash },
       }),
     );
-  await act(async () => listeners.onBeforeNavigate?.());
+  await act(async () => listeners.onBeforeNavigate?.({ fromLocation: { href: '/old' }, toLocation: { href: '/new' } }));
   await render();
   expect(document.activeElement).toBe(heading);
   heading.blur();
   await render('', '/old');
   expect(document.activeElement).not.toBe(heading);
-  await act(async () => listeners.onBeforeNavigate?.());
+  await act(async () => listeners.onBeforeNavigate?.({ fromLocation: { href: '/old' }, toLocation: { href: '/new' } }));
   await render('section');
   const fragment = document.getElementById('section');
   expect(document.activeElement).toBe(fragment);
@@ -128,13 +128,15 @@ it('announces dialog navigation, focuses fragments, and restores temporary tabin
   dialog.innerHTML = '<input />';
   document.body.append(dialog);
   dialog.querySelector('input')?.focus();
-  await act(async () => listeners.onBeforeNavigate?.());
+  await act(async () => listeners.onBeforeNavigate?.({ fromLocation: { href: '/old' }, toLocation: { href: '/new' } }));
   dialog.remove();
   await render();
   expect(document.activeElement).not.toBe(heading);
   expect(host.textContent).toBe('New page');
+  await act(async () => listeners.onBeforeNavigate?.({ fromLocation: { href: '/new' }, toLocation: { href: '/new' } }));
+  expect(host.textContent).toBe('New page');
   heading.remove();
-  await act(async () => listeners.onBeforeNavigate?.());
+  await act(async () => listeners.onBeforeNavigate?.({ fromLocation: { href: '/old' }, toLocation: { href: '/new' } }));
   await render();
   expect(document.activeElement).toBe(content);
   content.blur();

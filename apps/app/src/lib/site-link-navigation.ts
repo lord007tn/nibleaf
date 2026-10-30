@@ -48,7 +48,8 @@ export function useSiteLinkNavigation(projectId: string): string {
     let focusDialog: Element | null = null;
     let announcementObserver: MutationObserver | undefined;
     let restoreTabIndex: (() => void) | undefined;
-    const beforeNavigate = router.subscribe('onBeforeNavigate', () => {
+    const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
+      if (fromLocation?.href === toLocation.href) return;
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
       announcementObserver?.disconnect();

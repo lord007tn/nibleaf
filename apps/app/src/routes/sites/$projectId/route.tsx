@@ -20,7 +20,7 @@ import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import type { ProjectConfig } from '@/hooks/api/types';
+import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
@@ -112,29 +112,35 @@ function SiteChrome() {
   }, []);
   // SSR renders the platform-neutral label; the client corrects it after hydration.
   const searchShortcut = useSearchShortcutLabel();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const committedLocation = useRouterState({ select: (s) => s.resolvedLocation ?? s.location });
+  const pathname = committedLocation.pathname;
   const currentPath = decodeURIComponent(siteRoutePath(pathname)).replace(/\/+$/, '');
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const pathVersion = site?.versions.find((item) => item.slug === currentPath.split('/')[0]);
   const resolvedVersion = pathVersion ?? site?.versions.find((item) => item.isDefault);
-  const attemptedVersion = useRef<string | undefined>(undefined);
+  const resolvedVersionSlug = resolvedVersion?.slug;
+  const attemptedVersion = useRef<{ key: string; site: SiteShell } | undefined>(undefined);
   useEffect(() => {
-    if (!site || !resolvedVersion) return;
-    if (site.activeVersion === resolvedVersion.slug) {
+    if (!site || !resolvedVersionSlug) return;
+    if (site.activeVersion === resolvedVersionSlug) {
       attemptedVersion.current = undefined;
       return;
     }
-    const attempt = JSON.stringify([projectId, lang, resolvedVersion.slug]);
-    if (attemptedVersion.current === attempt) return;
-    attemptedVersion.current = attempt;
+    const attempt = JSON.stringify([projectId, lang, resolvedVersionSlug]);
+    const previous = attemptedVersion.current;
+    // A fresh shell can refuse a version; an unchanged shell can mean an interrupted fetch.
+    if (previous?.key === attempt && previous.site !== site) return;
+    attemptedVersion.current = { key: attempt, site };
     void router.invalidate({ filter: (match) => match.routeId === Route.id, sync: true });
-  }, [site, resolvedVersion, router, projectId, lang]);
+  }, [site, resolvedVersionSlug, pathname, router, projectId, lang]);
   const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
   const contentPath = pathVersion ? currentPath.slice(pathVersion.slug.length).replace(/^\/+/, '') : currentPath;
   // The home route (empty path) renders the site's first page server-side, so
   // highlight that page's nav entry rather than leaving the sidebar inert.
   const effectiveCurrentPath = contentPath || firstLeafPath(site?.nav ?? []) || '';
+  const shellMatchesVersion = !resolvedVersionSlug || site?.activeVersion === resolvedVersionSlug;
+  const analyticsPath = contentPath || (shellMatchesVersion ? effectiveCurrentPath : '');
 
   const config: ProjectConfig | null = site?.project.config ?? null;
   const languages = site?.languages ?? [];
@@ -146,6 +152,8 @@ function SiteChrome() {
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
   const defaultLanguage = languages.find((language) => language.isDefault)?.code;
+  const committedLanguage = (committedLocation.search as { lang?: string }).lang;
+  const analyticsLanguage = languages.find((language) => language.code === committedLanguage)?.code ?? defaultLanguage;
   const navigationLanguage = siteLanguageParam(activeLanguage?.code, defaultLanguage);
   // Chrome strings follow the active language so an Arabic site reads Arabic.
   const t = siteT(activeLanguage?.code);
@@ -358,9 +366,9 @@ function SiteChrome() {
   return (
     <SiteAnalyticsProvider
       projectId={projectId}
-      path={effectiveCurrentPath}
-      language={activeLanguage?.code}
-      version={resolvedVersion?.slug}
+      path={analyticsPath}
+      language={analyticsLanguage}
+      version={resolvedVersionSlug}
       config={config}
     >
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-site-route-announcer>

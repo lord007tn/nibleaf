@@ -13,7 +13,14 @@ function publicOrigin(): string {
     return window.location.origin;
   }
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  return env?.APP_URL ?? 'http://localhost:4310';
+  const configured = env?.APP_URL ?? 'http://localhost:4310';
+  try {
+    const parsed = new URL(configured);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return configured;
+  } catch {
+    // Preserve head rendering when an SSR environment has no usable app origin.
+  }
+  return 'http://localhost:4310';
 }
 
 /** The free-subdomain base configured for this deployment (`<slug>.<base>`),
