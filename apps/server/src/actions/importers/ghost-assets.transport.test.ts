@@ -74,7 +74,7 @@ describe('remote image transport', () => {
     expect(migrator.migrated).toBe(1);
   });
 
-  it('checks every connection without retaining a successful hostname check', async () => {
+  it('checks each download independently', async () => {
     respond([{}, {}]);
     await new RemoteAssetMigrator('synthetic').rewrite(markdown);
     network.lookup.mockResolvedValueOnce([
@@ -96,6 +96,26 @@ describe('remote image transport', () => {
     expect(network.lookup).toHaveBeenCalledTimes(2);
     expect(storeAsset).not.toHaveBeenCalled();
     expect(migrator.skipped).toBe(1);
+  });
+
+  it.each([
+    'http://127.0.0.1/image.png',
+    'http://[::ffff:7f00:1]/image.png',
+    'ftp://images.example/image.png',
+    'https://user:pass@images.example/image.png',
+  ])('refuses a redirect to %s before requesting it', async (location) => {
+    respond([{ status: 302, headers: { location } }]);
+    expect(await new RemoteAssetMigrator('synthetic').rewrite(markdown)).toBe(markdown);
+    expect(network.stream).toHaveBeenCalledTimes(1);
+    expect(storeAsset).not.toHaveBeenCalled();
+  });
+
+  it('keeps image downloads on their own connections', async () => {
+    respond([{}]);
+    await new RemoteAssetMigrator('synthetic').rewrite(markdown);
+    const [, options] = network.stream.mock.calls[0];
+    expect(options.agent.http.keepAlive).toBe(false);
+    expect(options.agent.https.keepAlive).toBe(false);
   });
 
   it.each(['http://127.0.0.1/image.png', 'http://[::ffff:7f00:1]/image.png', 'http://[::a00:1]/image.png'])(
@@ -125,7 +145,7 @@ describe('remote image transport', () => {
     expect(requests[0]?.destroyed).toBe(true);
   });
 
-  it('bounds decoded bytes when the compressed body is small', async () => {
+  it('handles compressed responses over the size limit', async () => {
     const compressed = gzipSync(Buffer.alloc(limit + 1));
     expect(compressed.length).toBeLessThan(limit);
     // Exercise Got's decoder with a compressed response and no network.

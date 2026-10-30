@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { once } from 'node:events';
 import type { IncomingMessage } from 'node:http';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
 import type { LookupFunction } from 'node:net';
 import { isIP } from 'node:net';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
@@ -16,6 +18,8 @@ const MAX_REDIRECTS = 3;
 const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()(https?:\/\/[^\s)]+)((?:\s+["'][^)]*["'])?\))/gi;
 const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])(https?:\/\/[^"']+)(["'][^>]*>)/gi;
 const MAX_CONCURRENT_DOWNLOADS = 4;
+// Image downloads never share connections with other outbound requests.
+const DOWNLOAD_AGENTS = { http: new HttpAgent({ keepAlive: false }), https: new HttpsAgent({ keepAlive: false }) };
 
 export const remoteImageSources = (content: string): string[] => {
   const prose = protectMarkdownCode(content).content;
@@ -45,7 +49,7 @@ const publicHttpUrl = (value: string): URL => {
   return url;
 };
 
-// Validate all answers in the lookup used by the connection; never cache them.
+// Validate every answer in the lookup the connection uses.
 const publicDnsLookup: LookupFunction = (hostname, options, callback) => {
   lookup(hostname, { all: true, verbatim: true }).then(
     (addresses) => {
@@ -74,6 +78,7 @@ const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; co
       throwHttpErrors: false,
       timeout: { request: 20_000 },
       dnsLookup: publicDnsLookup,
+      agent: DOWNLOAD_AGENTS,
     });
     try {
       const [response] = (await once(request, 'response')) as [IncomingMessage];
