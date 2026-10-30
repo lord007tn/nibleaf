@@ -88,7 +88,7 @@ has openssl || fail 'openssl is required to generate secure credentials.'
 has docker || fail 'Docker is required. Install Docker Engine and try again.'
 docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 (docker compose) is required.'
 # The image runs on the Docker daemon, which can differ from this shell under emulation.
-DOCKER_ARCHITECTURE=$(docker version -f '{{.Server.Arch}}' 2>/dev/null) || fail 'Could not reach the Docker daemon. Start Docker and try again.'
+DOCKER_ARCHITECTURE=$(docker version -f '{{.Server.Arch}}' 2>/dev/null) || fail 'Could not reach the Docker daemon. Check that it is running and that this user can access it (for example, through the docker group or sudo).'
 case " $SUPPORTED_ARCHITECTURES " in
   *" $DOCKER_ARCHITECTURE "*) ;;
   *) fail "Unsupported architecture: $DOCKER_ARCHITECTURE on the Docker daemon. The published image supports linux/amd64 only." ;;
@@ -223,7 +223,7 @@ say "Configuration: $INSTALL_DIR/.env (mode 600)"
 say "Reverse proxy targets: dashboard -> 127.0.0.1:4310; storage -> maxio:9000 (or publish it to loopback)."
 say "Check status: cd '$INSTALL_DIR' && docker compose ps"
 if [ "$EMAIL_DELIVERY_REQUIRED" = false ]; then
-  say "Next: add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to $INSTALL_DIR/.env, run docker compose up -d there, then open /sign-up. Email codes will not arrive until Postmark or SMTP is configured."
+  say "Next: configure DNS/TLS, add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to $INSTALL_DIR/.env, run docker compose up -d there, then open /sign-up. Email codes will not arrive until Postmark or SMTP is configured. Set DISABLE_SIGNUP=true if this is a private instance."
 else
   say 'Next: configure DNS/TLS, open /sign-up for the first owner, then set DISABLE_SIGNUP=true if this is a private instance.'
 fi
