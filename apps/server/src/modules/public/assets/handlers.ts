@@ -22,9 +22,9 @@ const PROJECT_KEY = /^projects\/([^/]+)\/assets\//;
  *  its own authenticated route. Keys outside `projects/` are not covered here. */
 const PROJECT_SCOPED_KEY = /^projects\/[^/]+\//;
 
-/** Nibleaf never writes a key with dot or empty segments. S3 reads one literally and
- *  some compatible stores normalize it, so a check and the read could reach different
- *  objects. Refuse any that could touch `projects/`; other keys stay as they were. */
+/** S3 reads a key with dot or empty segments literally and some compatible stores
+ *  normalize it, so a check and the read could reach different objects. Refuse any
+ *  such key that could touch `projects/`; other keys stay as they were. */
 const isAmbiguousProjectKey = (key: string): boolean => {
   const normalized = posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
   return normalized !== key && (key.startsWith('projects/') || normalized.startsWith('projects/'));
