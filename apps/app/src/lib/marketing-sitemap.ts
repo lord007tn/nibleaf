@@ -17,7 +17,7 @@ export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/guides', lastmod: '2026-09-03' },
   { path: '/ar/guides', lastmod: '2026-09-03' },
   { path: '/cloud', lastmod: '2026-07-13' },
-  { path: '/pricing', lastmod: '2026-08-24' },
+  { path: '/pricing', lastmod: '2026-10-30' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
   { path: '/about', lastmod: '2026-08-24' },
   { path: '/contact', lastmod: '2026-08-15' },

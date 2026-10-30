@@ -12,7 +12,7 @@ describe('marketing sitemap', () => {
       '/ar/documentation-platforms': '2026-09-03',
       '/ar/guides': '2026-09-03',
       '/cloud': '2026-07-13',
-      '/pricing': '2026-08-24',
+      '/pricing': '2026-10-30',
       '/self-hosting': '2026-08-15',
       '/about': '2026-08-24',
       '/contact': '2026-08-15',
