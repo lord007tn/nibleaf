@@ -145,18 +145,19 @@ it('reports the old page maximum scroll depth without reading replacement geomet
   Reflect.deleteProperty(document, 'visibilityState');
 });
 
-
 it('keeps the page view and engagement timer when equivalent shell config is refreshed', async () => {
   let now = 0;
   vi.spyOn(performance, 'now').mockImplementation(() => now);
   const config: ProjectConfig = { analytics: { cookieConsent: false } };
   await render(config);
   now = 1500;
-  await act(async () => roots[0]?.render(
-    <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={structuredClone(config)}>
-      <ReaderContent />
-    </SiteAnalyticsProvider>,
-  ));
+  await act(async () =>
+    roots[0]?.render(
+      <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={structuredClone(config)}>
+        <ReaderContent />
+      </SiteAnalyticsProvider>,
+    ),
+  );
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_engaged')).toHaveLength(0);
   now = 2300;
@@ -167,11 +168,13 @@ it('keeps the page view and engagement timer when equivalent shell config is ref
 
 it('uses the latest consent config without restarting the page lifecycle', async () => {
   const container = await render({ analytics: { cookieConsent: false } });
-  await act(async () => roots[0]?.render(
-    <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={{ addons: { consentBanner: { enabled: false } } }}>
-      <ReaderContent />
-    </SiteAnalyticsProvider>,
-  ));
+  await act(async () =>
+    roots[0]?.render(
+      <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={{ addons: { consentBanner: { enabled: false } } }}>
+        <ReaderContent />
+      </SiteAnalyticsProvider>,
+    ),
+  );
   await act(async () => container.querySelector('button')?.click());
   expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe('denied');
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);

@@ -92,11 +92,11 @@ export function useSiteLinkNavigation(projectId: string): string {
         if (!target.hasAttribute('tabindex')) {
           target.tabIndex = -1;
           const temporaryTarget = target;
-          restoreTabIndex = () => {
+          const restore = () => {
             temporaryTarget.removeAttribute('tabindex');
             temporaryTarget.removeEventListener('blur', restore);
           };
-          const restore = () => restoreTabIndex?.();
+          restoreTabIndex = restore;
           target.addEventListener('blur', restore, { once: true });
         }
         target.focus({ preventScroll: true });

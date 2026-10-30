@@ -241,7 +241,6 @@ describe('published reader search', () => {
   });
 });
 
-
 it('routes a selected search result with its language and selected version', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar' }], isFetching: false, error: null });

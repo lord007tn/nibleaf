@@ -112,7 +112,9 @@ function SiteChangelog() {
         <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
           <Sparkles className="size-4" />
         </span>
-        <h1 tabIndex={-1} className="font-bold text-3xl tracking-tight outline-none">{t('changelog')}</h1>
+        <h1 tabIndex={-1} className="font-bold text-3xl tracking-tight outline-none">
+          {t('changelog')}
+        </h1>
       </div>
       <p className="mt-2 text-muted-foreground text-sm">{t('changelogSubtitle')}</p>
 

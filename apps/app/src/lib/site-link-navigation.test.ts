@@ -79,27 +79,38 @@ it('leaves malformed URLs to the browser', () => {
   expect(siteNavigationHref(event, 'p1', appHost)).toBeNull();
 });
 
-
 it('announces dialog navigation, focuses fragments, and restores temporary tabindex', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const listeners: Record<string, (event?: unknown) => void> = {};
-  router.subscribe.mockImplementation((name, callback) => { listeners[name] = callback; return vi.fn(); });
-  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => { callback(); return 1; });
+  router.subscribe.mockImplementation((name, callback) => {
+    listeners[name] = callback;
+    return vi.fn();
+  });
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
+    callback();
+    return 1;
+  });
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
   const host = document.createElement('div');
   const content = document.createElement('main');
   content.innerHTML = '<h1 tabindex="-1">New page</h1><h2 id="section">Section</h2>';
   document.body.append(host, content);
-  function Reader() { return createElement('output', null, useSiteLinkNavigation('p1')); }
+  function Reader() {
+    return createElement('output', null, useSiteLinkNavigation('p1'));
+  }
   const root = createRoot(host);
   await act(async () => root.render(createElement(Reader)));
   const heading = content.querySelector('h1');
   if (!heading) throw new Error('Missing heading');
   expect(document.activeElement).not.toBe(heading);
   expect(host.textContent).toBe('');
-  const render = (hash = '', pathname = '/new') => act(async () => listeners.onRendered?.({
-    fromLocation: { pathname: '/old', searchStr: '' }, toLocation: { pathname, searchStr: '', hash },
-  }));
+  const render = (hash = '', pathname = '/new') =>
+    act(async () =>
+      listeners.onRendered?.({
+        fromLocation: { pathname: '/old', searchStr: '' },
+        toLocation: { pathname, searchStr: '', hash },
+      }),
+    );
   await act(async () => listeners.onBeforeNavigate?.());
   await render();
   expect(document.activeElement).toBe(heading);

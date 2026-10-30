@@ -131,10 +131,7 @@ function SiteChrome() {
     void router.invalidate({ filter: (match) => match.routeId === Route.id, sync: true });
   }, [site, resolvedVersion, router, projectId, lang]);
   const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
-  const contentPath =
-    pathVersion
-      ? currentPath.slice(pathVersion.slug.length).replace(/^\/+/, '')
-      : currentPath;
+  const contentPath = pathVersion ? currentPath.slice(pathVersion.slug.length).replace(/^\/+/, '') : currentPath;
   // The home route (empty path) renders the site's first page server-side, so
   // highlight that page's nav entry rather than leaving the sidebar inert.
   const effectiveCurrentPath = contentPath || firstLeafPath(site?.nav ?? []) || '';
@@ -359,7 +356,13 @@ function SiteChrome() {
   ];
 
   return (
-    <SiteAnalyticsProvider projectId={projectId} path={effectiveCurrentPath} language={activeLanguage?.code} version={resolvedVersion?.slug} config={config}>
+    <SiteAnalyticsProvider
+      projectId={projectId}
+      path={effectiveCurrentPath}
+      language={activeLanguage?.code}
+      version={resolvedVersion?.slug}
+      config={config}
+    >
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-site-route-announcer>
         {announcement}
       </div>
