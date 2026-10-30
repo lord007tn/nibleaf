@@ -106,7 +106,7 @@ describe('SiteNav page subtrees', () => {
 
   it('shows collapsed subpages to readers without JavaScript', () => {
     const html = renderToString(<SiteNav nodes={nav} projectId="docs" currentPath="faq" toggleLabel="Toggle subpages" />);
-    expect(html).toContain('<noscript><style>nav[data-site-nav] ul[hidden]{display:block!important}</style></noscript>');
+    expect(html).toContain('<noscript><style>@layer base{nav[data-site-nav] ul[hidden]{display:block!important}}</style></noscript>');
     expect(html.match(/<noscript>/g)).toHaveLength(1);
     expect(html).toContain('<nav data-site-nav="">');
   });
