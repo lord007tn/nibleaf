@@ -41,6 +41,7 @@ describe('siteNavigationHref', () => {
   it('routes site pages on a custom domain but not app-owned paths', () => {
     custom.domain = true;
     expect(routed('/setup')).toBe('/setup');
+    expect(routed('/api-reference')).toBe('/api-reference');
     expect(routed('/api/public/assets/projects/p1/x')).toBeNull();
     expect(routed('/_serverFn/x')).toBeNull();
   });
@@ -78,59 +79,57 @@ it('leaves malformed URLs to the browser', () => {
   expect(siteNavigationHref(event, 'p1', appHost)).toBeNull();
 });
 
-it('focuses rendered headings without moving scroll, respecting fragments and dialog focus', async () => {
+
+it('announces dialog navigation, focuses fragments, and restores temporary tabindex', async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   const listeners: Record<string, (event?: unknown) => void> = {};
-  router.subscribe.mockImplementation((name, callback) => {
-    listeners[name] = callback;
-    return vi.fn();
-  });
-  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => {
-    callback();
-    return 1;
-  });
+  router.subscribe.mockImplementation((name, callback) => { listeners[name] = callback; return vi.fn(); });
+  vi.stubGlobal('requestAnimationFrame', (callback: () => void) => { callback(); return 1; });
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
   const host = document.createElement('div');
-  document.body.append(host);
-  function Reader() {
-    useSiteLinkNavigation('p1');
-    return null;
-  }
+  const content = document.createElement('main');
+  content.innerHTML = '<h1 tabindex="-1">New page</h1><h2 id="section">Section</h2>';
+  document.body.append(host, content);
+  function Reader() { return createElement('output', null, useSiteLinkNavigation('p1')); }
   const root = createRoot(host);
   await act(async () => root.render(createElement(Reader)));
-  host.innerHTML = '<main><h1>New page</h1></main>';
-  const heading = host.querySelector('h1');
-  if (!heading) throw new Error('Missing fixture heading');
+  const heading = content.querySelector('h1');
+  if (!heading) throw new Error('Missing heading');
   expect(document.activeElement).not.toBe(heading);
-  const render = (hash = '', pathname = '/new') =>
-    listeners.onRendered?.({
-      fromLocation: { pathname: '/old', searchStr: '' },
-      toLocation: { pathname, searchStr: '', hash },
-    });
-  listeners.onBeforeNavigate?.();
-  render();
+  expect(host.textContent).toBe('');
+  const render = (hash = '', pathname = '/new') => act(async () => listeners.onRendered?.({
+    fromLocation: { pathname: '/old', searchStr: '' }, toLocation: { pathname, searchStr: '', hash },
+  }));
+  await act(async () => listeners.onBeforeNavigate?.());
+  await render();
   expect(document.activeElement).toBe(heading);
-  expect(heading.tabIndex).toBe(-1);
   heading.blur();
-  listeners.onBeforeNavigate?.();
-  render('section');
+  await render('', '/old');
   expect(document.activeElement).not.toBe(heading);
-  render('', '/old');
-  expect(document.activeElement).not.toBe(heading);
+  await act(async () => listeners.onBeforeNavigate?.());
+  await render('section');
+  const fragment = document.getElementById('section');
+  expect(document.activeElement).toBe(fragment);
+  fragment?.blur();
+  expect(fragment?.hasAttribute('tabindex')).toBe(false);
   const dialog = document.createElement('div');
   dialog.setAttribute('role', 'dialog');
   dialog.innerHTML = '<input />';
   document.body.append(dialog);
   dialog.querySelector('input')?.focus();
-  listeners.onBeforeNavigate?.();
+  await act(async () => listeners.onBeforeNavigate?.());
   dialog.remove();
-  render();
+  await render();
   expect(document.activeElement).not.toBe(heading);
+  expect(host.textContent).toBe('New page');
   heading.remove();
-  listeners.onBeforeNavigate?.();
-  render();
-  expect(document.activeElement).toBe(host.querySelector('main'));
+  await act(async () => listeners.onBeforeNavigate?.());
+  await render();
+  expect(document.activeElement).toBe(content);
+  content.blur();
+  expect(content.hasAttribute('tabindex')).toBe(false);
   await act(async () => root.unmount());
   host.remove();
+  content.remove();
   vi.unstubAllGlobals();
 });

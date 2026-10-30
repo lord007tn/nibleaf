@@ -1,5 +1,5 @@
 import type { ProjectConfig } from '@nibleaf/validators';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { type PublicAnalyticsPayload, type SiteAnalyticsConsent, useCreateSiteAnalyticsEvent } from '@/hooks/api/site-events';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 
@@ -42,35 +42,43 @@ export function SiteAnalyticsProvider({
   projectId,
   path,
   language,
+  version,
   config,
 }: {
   children: ReactNode;
   projectId: string;
   path: string;
   language?: string;
+  version?: string;
   config?: ProjectConfig | null;
 }) {
   const { mutate: createEvent } = useCreateSiteAnalyticsEvent(projectId);
+  const configRef = useRef(config);
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
   const track = useCallback(
     (payload: PublicAnalyticsPayload) => {
       createEvent({
         eventId: randomIdFn(),
         occurredAt: new Date().toISOString(),
-        consentState: consentStateFn(projectId, config),
+        consentState: consentStateFn(projectId, configRef.current),
         sessionId: sessionIdFn(),
         payload,
       });
     },
-    [config, createEvent, projectId],
+    [createEvent, projectId],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another version is a distinct view of the same path.
   useEffect(() => {
     if (!path) return;
     const referrer = viewedDocuments.has(document) ? undefined : document.referrer || undefined;
     viewedDocuments.add(document);
     track({ name: 'page_view', path, referrer, language });
-  }, [language, path, track]);
+  }, [language, path, track, version]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: engagement belongs to one version of the page.
   useEffect(() => {
     if (!path) return;
     const started = performance.now();
@@ -98,7 +106,7 @@ export function SiteAnalyticsProvider({
       window.removeEventListener('resize', measureScroll);
       sendEngagement();
     };
-  }, [language, path, track]);
+  }, [language, path, track, version]);
 
   useEffect(() => {
     if (!path) return;

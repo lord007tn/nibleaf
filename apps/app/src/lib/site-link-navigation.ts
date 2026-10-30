@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { isAppOwnedPath, isDocumentPath } from '@/lib/request-negotiation';
 import { isCustomDomainSite } from '@/lib/site-paths';
 
@@ -38,28 +38,67 @@ export function siteNavigationHref(
 /** Route clicks on links between pages of a published site through the client
  * router instead of a full document load. Links stay plain `<a href>` so they
  * work without JavaScript and in server-rendered HTML. */
-export function useSiteLinkNavigation(projectId: string): void {
+export function useSiteLinkNavigation(projectId: string): string {
   const router = useRouter();
+  const [announcement, setAnnouncement] = useState('');
   useEffect(() => {
     let frame = 0;
     let focusOwner: Element | null = null;
     let dialogOwnedFocus = false;
+    let focusDialog: Element | null = null;
+    let announcementObserver: MutationObserver | undefined;
+    let restoreTabIndex: (() => void) | undefined;
     const beforeNavigate = router.subscribe('onBeforeNavigate', () => {
       cancelAnimationFrame(frame);
+      restoreTabIndex?.();
+      announcementObserver?.disconnect();
+      setAnnouncement('');
       focusOwner = document.activeElement;
-      dialogOwnedFocus = !!focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog');
+      focusDialog = focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog') ?? null;
+      dialogOwnedFocus = !!focusDialog;
     });
     const rendered = router.subscribe('onRendered', ({ fromLocation, toLocation }) => {
       if (!fromLocation || (fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
-      // Fragment navigation and dialogs retain their own scroll/focus behavior.
-      if (toLocation.hash || dialogOwnedFocus) return;
       frame = requestAnimationFrame(() => {
-        const active = document.activeElement;
-        if (active !== document.body && active !== focusOwner && active?.isConnected) return;
         const main = document.querySelector<HTMLElement>('main');
-        const target = main?.querySelector<HTMLElement>('h1') ?? main;
+        const heading = main?.querySelector<HTMLElement>('h1');
+        // Closing a dialog restores its trigger; the live region announces the destination.
+        if (dialogOwnedFocus) {
+          const title = heading?.textContent || document.title;
+          const announce = () => {
+            if (focusDialog?.isConnected) return;
+            announcementObserver?.disconnect();
+            frame = requestAnimationFrame(() => setAnnouncement(title));
+          };
+          announcementObserver = new MutationObserver(announce);
+          announcementObserver.observe(document.body, { childList: true, subtree: true });
+          announce();
+          return;
+        }
+        const active = document.activeElement;
+        if (active !== document.body && active !== focusOwner && active?.isConnected) {
+          setAnnouncement(heading?.textContent || document.title);
+          return;
+        }
+        let target = heading ?? main;
+        if (toLocation.hash) {
+          try {
+            target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
+          } catch {
+            // Malformed fragments still announce the destination page.
+          }
+        }
         if (!target) return;
-        target.tabIndex = -1;
+        if (!target.hasAttribute('tabindex')) {
+          target.tabIndex = -1;
+          const temporaryTarget = target;
+          restoreTabIndex = () => {
+            temporaryTarget.removeAttribute('tabindex');
+            temporaryTarget.removeEventListener('blur', restore);
+          };
+          const restore = () => restoreTabIndex?.();
+          target.addEventListener('blur', restore, { once: true });
+        }
         target.focus({ preventScroll: true });
       });
     });
@@ -75,6 +114,9 @@ export function useSiteLinkNavigation(projectId: string): void {
       beforeNavigate();
       rendered();
       cancelAnimationFrame(frame);
+      restoreTabIndex?.();
+      announcementObserver?.disconnect();
     };
   }, [router, projectId]);
+  return announcement;
 }

@@ -105,4 +105,20 @@ describe('SSR RPC request context through the loopback proxy', () => {
     expect(anonymous.get('authorization')).toBeNull();
     expect(anonymous.get('x-nibleaf-internal')).toBeNull();
   });
+
+  it.each([
+    ['http://public-dashboard.example:4410/sites/synthetic-site/intro', null],
+    ['https://docs.synthetic.example/intro', 'https://docs.synthetic.example'],
+  ] as const)('ignores a client-sent site origin on %s', async (url, expected) => {
+    mocks.port = 4310;
+    const { default: server } = await import('../server');
+    let renderedRequest: Request | undefined;
+    mocks.startHandler.mockImplementation(async (request) => {
+      renderedRequest = request;
+      return new Response('<!doctype html><title>Reader</title>', { headers: { 'content-type': 'text/html' } });
+    });
+    await server.fetch(new Request(url, { headers: { accept: 'text/html', 'x-nibleaf-site-origin': 'https://spoofed.example' } }));
+    expect(renderedRequest).toBeDefined();
+    expect(renderedRequest?.headers.get('x-nibleaf-site-origin')).toBe(expected);
+  });
 });

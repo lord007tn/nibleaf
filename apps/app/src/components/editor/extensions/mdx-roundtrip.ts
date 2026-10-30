@@ -6,6 +6,25 @@ import type { MarkdownNodeSpec } from 'tiptap-markdown';
 type SerializeState = {
   write: (text: string) => void;
   closeBlock: (node: PMNode) => void;
+  /** prosemirror-markdown internal (not in its typings): output ends at a line start. */
+  atBlank?: () => boolean;
+};
+
+/**
+ * End the previous block before a block-level MDX tag is written, even when
+ * the node before it never closed itself. Without this, content such as a
+ * trailing image is glued onto the tag (`![x](y)</Card>`), which leaves the tag
+ * unclosed for the Markdown parser.
+ */
+const separateBlock = (state: SerializeState, node: PMNode): void => {
+  if (state.atBlank?.() === false) state.closeBlock(node);
+};
+
+/** Write a block-level MDX tag on its own blank-line-separated line. */
+export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string): void => {
+  separateBlock(state, node);
+  state.write(tag);
+  state.closeBlock(node);
 };
 
 type SupportedDefinition = {
@@ -554,8 +573,7 @@ const MdxOpaqueBlock = Node.create({
   addStorage: () => ({
     markdown: {
       serialize(state: SerializeState, node: PMNode) {
-        state.write(String(node.attrs.source ?? ''));
-        state.closeBlock(node);
+        writeBlockTag(state, node, String(node.attrs.source ?? ''));
       },
       parse: {
         setup(markdownit) {
