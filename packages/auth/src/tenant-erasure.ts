@@ -1,5 +1,5 @@
 import { createJob, getJob, QueueNames, removeJob } from '@nibleaf/bullmq';
-import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/search';
+import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, ERASE_PROJECT_STORAGE_START_DELAY_MS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/search';
 import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
@@ -10,7 +10,11 @@ const enqueueProjectStorageErasure = async (projectId: string) => {
   const jobId = eraseProjectStorageJobId(projectId);
   const existing = await getJob(QueueNames.SEARCH, jobId);
   if (await existing?.isFailed()) await removeJob(QueueNames.SEARCH, jobId);
-  await createJob(QueueNames.SEARCH, { name: 'erase-project-storage', data: { projectId } }, { jobId, ...ERASE_PROJECT_STORAGE_JOB_OPTIONS });
+  await createJob(
+    QueueNames.SEARCH,
+    { name: 'erase-project-storage', data: { projectId } },
+    { jobId, delay: ERASE_PROJECT_STORAGE_START_DELAY_MS, ...ERASE_PROJECT_STORAGE_JOB_OPTIONS },
+  );
 };
 
 export class TenantUsageDeletionPendingError extends Error {

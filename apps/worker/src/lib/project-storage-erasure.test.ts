@@ -2,8 +2,6 @@ import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, type ReindexProjectJobData } from '@
 import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const PRESIGN_SECONDS = 3600;
-
 const mocks = vi.hoisted(() => ({ createJob: vi.fn(), deletePrefix: vi.fn(), logError: vi.fn(), projectFindUnique: vi.fn() }));
 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { SEARCH: 'search' } }));
@@ -63,9 +61,8 @@ describe('erase-project-storage job', () => {
     );
   });
 
-  it('waits just over the presigned URL lifetime before the final pass', () => {
-    expect(FINAL_PASS_DELAY_MS).toBeGreaterThan(PRESIGN_SECONDS * 1000);
-    expect(FINAL_PASS_DELAY_MS).toBeLessThanOrEqual((PRESIGN_SECONDS + 300) * 1000);
+  it('waits a day before the final pass', () => {
+    expect(FINAL_PASS_DELAY_MS).toBe(24 * 60 * 60 * 1000);
   });
 
   it('does not schedule another pass from the final pass', async () => {
@@ -78,9 +75,24 @@ describe('erase-project-storage job', () => {
 
   it('does not schedule the final pass after a failed first pass', async () => {
     mocks.deletePrefix.mockRejectedValue(new Error('storage unavailable'));
-    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a' }))).rejects.toThrow('storage unavailable');
+    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a' }))).rejects.toThrow('Project storage erasure failed (Error).');
     expect(mocks.createJob).not.toHaveBeenCalled();
     expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  it('gives the queue a key-free error whatever the backend said', async () => {
+    const backendError = Object.assign(new Error('Could not read projects/project-a/assets/passport-scan.png'), { name: 'AccessDenied' });
+    mocks.deletePrefix.mockRejectedValue(backendError);
+    const failure = await handleProjectStorageErasure(erasureJob({ projectId: 'project-a' })).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toBe('Project storage erasure failed (AccessDenied).');
+    expect(JSON.stringify(failure, Object.getOwnPropertyNames(failure))).not.toContain('passport-scan');
+  });
+
+  it('keeps the counts and code of a partial delete failure', async () => {
+    const partial = Object.assign(new Error('Could not delete 2 stored object(s); first error code: AccessDenied.'), { name: 'StorageDeleteError' });
+    mocks.deletePrefix.mockRejectedValue(partial);
+    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a' }))).rejects.toBe(partial);
   });
 
   it('logs one key-free error on the last attempt and still fails the job', async () => {
@@ -96,6 +108,10 @@ describe('erase-project-storage job', () => {
     const job = erasureJob({ projectId: 'project-a' }, ERASE_PROJECT_STORAGE_JOB_OPTIONS.attempts - 1);
     await expect(handleProjectStorageErasure(job)).rejects.toThrow('waits for relational deletion');
     expect(mocks.deletePrefix).not.toHaveBeenCalled();
+  });
+
+  it('keeps a failed job until an operator acts on it', () => {
+    expect(ERASE_PROJECT_STORAGE_JOB_OPTIONS.removeOnFail).toBe(false);
   });
 
   it('keeps retrying for about 45.5 hours', () => {
