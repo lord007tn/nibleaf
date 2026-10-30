@@ -1987,6 +1987,7 @@ export const MESSAGE_IDS = {
   'site.analyticsConsentDecline': 'site_analyticsconsentdecline',
   'site.changeLanguage': 'site_changelanguage',
   'site.toggleTheme': 'site_toggletheme',
+  'site.toggleSubpages': 'site_togglesubpages',
   'site.articleDetails': 'site_articledetails',
   'site.copyCode': 'site_copycode',
   'site.copied': 'site_copied',
