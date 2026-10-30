@@ -34,8 +34,8 @@ The release manifest currently records:
 
 ```text
 version: v0.1.2
-installer sha256: d23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a
-compose sha256: 1097cc899705fed843acd71eff11eed8ffa8c54d7edea4bba948ab4e84d4cce9
+installer sha256: 8ab6b0229126bdda2a78295d5a5ee34a04caef59535d6934606dbfd8a40ddbe7
+compose sha256: abede1e037e30fc4860db44fef84e9038880b305befa7188391090329b023858
 ```
 
 Those hashes are evidence for the published files, not a substitute for reviewing the script. Download, verify, inspect, then run it:
@@ -43,7 +43,7 @@ Those hashes are evidence for the published files, not a substitute for reviewin
 ```bash
 curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
 printf '%s  %s\n' \
-  'd23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a' \
+  '8ab6b0229126bdda2a78295d5a5ee34a04caef59535d6934606dbfd8a40ddbe7' \
   'nibleaf-install.sh' | sha256sum --check -
 less nibleaf-install.sh
 sh nibleaf-install.sh
