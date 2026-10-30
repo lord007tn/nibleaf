@@ -1,0 +1,78 @@
+name: Reader navigation rehearsal
+
+on:
+  push:
+    branches: [rehearsal/reader-nav-matrix]
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      APP_URL: http://localhost:4310
+      PORT: '4310'
+      VITE_API_URL: http://localhost:4311
+      NODE_OPTIONS: --max-old-space-size=4096
+      GOMAXPROCS: '2'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - name: Format owned reader changes
+        run: |
+          mkdir -p output/reader-nav
+          pnpm exec biome format --write 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.test.ts apps/app/src/lib/site-seo.client.test.ts
+          git diff > output/reader-nav/format.patch
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reader-format-${{ github.sha }}
+          path: output/reader-nav/format.patch
+      - run: pnpm db:generate
+      - run: mkdir -p output/reader-nav
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          pnpm typecheck --concurrency=2 > output/reader-nav/typecheck.log 2>&1
+          code=$?
+          printf '{"exitCode":%s}\n' "$code" > output/reader-nav/typecheck.json
+          tail -n 25 output/reader-nav/typecheck.log
+          exit "$code"
+      - name: Build reader on hosted runner
+        run: pnpm build:app --concurrency=2 > output/reader-nav/build.log 2>&1
+      - name: Check reader follow-ups
+        id: checks
+        continue-on-error: true
+        run: |
+          pnpm --filter @nibleaf/app test src/lib/site-link-navigation.test.ts src/providers/site-analytics-provider.test.tsx src/components/site/site-page-view.client.test.tsx src/components/site/site-search.test.tsx src/lib/site-seo.test.ts src/lib/site-seo.client.test.ts 'src/routes/sites/$projectId/-route-errors.test.ts' 'src/routes/sites/$projectId/-changelog-route.test.ts'
+          pnpm exec biome check 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.test.ts apps/app/src/lib/site-seo.client.test.ts
+          pnpm check:dead-code
+      - name: Install isolated browser harness
+        run: |
+          npm install --prefix /tmp/reader-browser --no-audit --no-fund playwright@1.62.1
+          /tmp/reader-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Walk reader matrix
+        run: |
+          echo '127.0.0.1 docs.reader.localhost' | sudo tee -a /etc/hosts
+          node scripts/reader-nav-rehearsal/fixture.mjs --port 4311 > output/reader-nav/mock.log 2>&1 &
+          node apps/app/.output/server/index.mjs > output/reader-nav/reader.log 2>&1 &
+          BROWSER_MODULE=/tmp/reader-browser/node_modules/playwright/index.mjs node scripts/reader-nav-rehearsal/matrix.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: reader-nav-matrix-${{ github.sha }}
+          path: output/reader-nav
+          retention-days: 14
+      - name: Require clean checks
+        if: always() && (steps.typecheck.outcome != 'success' || steps.checks.outcome != 'success')
+        run: exit 1
