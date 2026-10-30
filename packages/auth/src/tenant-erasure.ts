@@ -1,5 +1,5 @@
 import { createJob, getJob, QueueNames, removeJob } from '@nibleaf/bullmq';
-import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, ERASE_PROJECT_STORAGE_START_DELAY_MS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/search';
+import { ERASE_PROJECT_STORAGE_START_DELAY_MS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/erasure';
 import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
@@ -8,13 +8,9 @@ import { beginUsageDeletion, prisma } from '@nibleaf/database';
  * active job is left alone: it already waits for the relational delete. */
 const enqueueProjectStorageErasure = async (projectId: string) => {
   const jobId = eraseProjectStorageJobId(projectId);
-  const existing = await getJob(QueueNames.SEARCH, jobId);
-  if (await existing?.isFailed()) await removeJob(QueueNames.SEARCH, jobId);
-  await createJob(
-    QueueNames.SEARCH,
-    { name: 'erase-project-storage', data: { projectId } },
-    { jobId, delay: ERASE_PROJECT_STORAGE_START_DELAY_MS, ...ERASE_PROJECT_STORAGE_JOB_OPTIONS },
-  );
+  const existing = await getJob(QueueNames.ERASURE, jobId);
+  if (await existing?.isFailed()) await removeJob(QueueNames.ERASURE, jobId);
+  await createJob(QueueNames.ERASURE, { name: 'erase-project-storage', data: { projectId } }, { jobId, delay: ERASE_PROJECT_STORAGE_START_DELAY_MS });
 };
 
 export class TenantUsageDeletionPendingError extends Error {

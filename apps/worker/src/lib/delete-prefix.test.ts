@@ -8,7 +8,7 @@ import { deletePrefix, type StorageTarget } from '@nibleaf/storage';
 
 const SENSITIVE_KEY = 'projects/project-a/assets/passport-scan.png';
 
-const stub = { pages: [] as string[][], failedKeys: new Set<string>(), deletedKeys: [] as string[] };
+const stub = { pages: [] as string[][], failedKeys: new Set<string>(), deletedKeys: [] as string[], errorCode: 'AccessDenied' };
 
 const readBody = async (request: IncomingMessage): Promise<string> => {
   const chunks: Buffer[] = [];
@@ -28,7 +28,7 @@ const deleteResponse = (body: string): string => {
   const keys = [...body.matchAll(/<Key>([^<]*)<\/Key>/g)].flatMap((match) => (match[1] ? [match[1]] : []));
   const failed = keys.filter((key) => stub.failedKeys.has(key));
   stub.deletedKeys.push(...keys.filter((key) => !stub.failedKeys.has(key)));
-  const errors = failed.map((key) => `<Error><Key>${key}</Key><Code>AccessDenied</Code><Message>denied ${key}</Message></Error>`).join('');
+  const errors = failed.map((key) => `<Error><Key>${key}</Key><Code>${stub.errorCode}</Code><Message>denied ${key}</Message></Error>`).join('');
   return `<DeleteResult>${errors}</DeleteResult>`;
 };
 
@@ -76,6 +76,7 @@ describe('deletePrefix', () => {
     stub.pages = [];
     stub.failedKeys = new Set();
     stub.deletedKeys = [];
+    stub.errorCode = 'AccessDenied';
   });
 
   it('counts every object when all deletions succeed, across listing pages', async () => {
@@ -100,5 +101,16 @@ describe('deletePrefix', () => {
     expect(stub.deletedKeys).toEqual(['projects/project-a/assets/a.png', 'projects/project-a/assets/b.png']);
     expect(String(error)).not.toContain('passport-scan');
     expect(JSON.stringify(error)).not.toContain('passport-scan');
+  });
+
+  it('replaces an error code that is not a short identifier', async () => {
+    stub.pages = [[SENSITIVE_KEY]];
+    stub.failedKeys = new Set([SENSITIVE_KEY]);
+    stub.errorCode = SENSITIVE_KEY;
+
+    const error = await deletePrefix('projects/project-a/', target).catch((cause: unknown) => cause);
+
+    expect(error).toMatchObject({ name: 'StorageDeleteError', firstErrorCode: 'unknown' });
+    expect(String(error)).not.toContain('passport-scan');
   });
 });

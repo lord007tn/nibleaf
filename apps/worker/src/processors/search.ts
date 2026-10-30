@@ -10,7 +10,6 @@ import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
 import { z } from 'zod';
 import { env } from '../env';
-import { handleProjectStorageErasure } from '../lib/project-storage-erasure';
 import { DurableUsageEnqueueError, enqueueUsageEvents } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'search' });
@@ -282,7 +281,6 @@ const renewRunClaim = async (run: { id: string; claimToken: string }) => {
  * the embedding provider, and stale points are deleted after successful writes.
  */
 export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
-  if (job.name === 'erase-project-storage') return handleProjectStorageErasure(job);
   const client = getQdrantClient();
   if (job.name === 'delete-project') {
     if (!client) return { disabled: true };

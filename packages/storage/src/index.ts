@@ -24,7 +24,10 @@ export const DEFAULT_PRESIGN_EXPIRES_IN_SECONDS = 3600;
 
 /** `DeleteObjects` reports per-object failures inside an HTTP success. Only counts
  * and an error code leave this module: object keys can be personal. */
-class StorageDeleteError extends Error {
+/** S3 error codes are short identifiers. Anything else a backend sends stays out of logs. */
+const safeErrorCode = (code: string | undefined): string => (code && /^\w{1,64}$/.test(code) ? code : 'unknown');
+
+export class StorageDeleteError extends Error {
   constructor(
     readonly failedCount: number,
     readonly deletedCount: number,
@@ -103,7 +106,7 @@ export const deletePrefix = async (prefix: string, target?: StorageTarget): Prom
     continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
   } while (continuationToken);
   if (failed > 0) {
-    throw new StorageDeleteError(failed, deleted, firstErrorCode ?? 'unknown');
+    throw new StorageDeleteError(failed, deleted, safeErrorCode(firstErrorCode));
   }
   return deleted;
 };

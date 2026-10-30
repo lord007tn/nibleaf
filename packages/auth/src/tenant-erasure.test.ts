@@ -17,7 +17,7 @@ vi.mock('@nibleaf/bullmq', () => ({
   createJob: mocks.createJob,
   getJob: mocks.getJob,
   removeJob: mocks.removeJob,
-  QueueNames: { SEARCH: 'search' },
+  QueueNames: { ERASURE: 'erasure', SEARCH: 'search' },
 }));
 vi.mock('@nibleaf/clickhouse', () => ({
   clickHouseWritesEnabled: () => true,
@@ -69,9 +69,9 @@ describe('shared tenant privacy erasure', () => {
       { jobId: 'search-delete-project-a' },
     );
     expect(mocks.createJob).toHaveBeenCalledWith(
-      'search',
+      'erasure',
       { name: 'erase-project-storage', data: { projectId: 'project-a' } },
-      { jobId: 'search-storage-erase-project-a', delay: 300_000, attempts: 16, backoff: { type: 'exponential', delay: 5000 }, removeOnFail: false },
+      { jobId: 'erase-storage-project-a', delay: 60_000 },
     );
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
     expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.organizationDelete.mock.invocationCallOrder[0] ?? 0);
@@ -86,8 +86,8 @@ describe('shared tenant privacy erasure', () => {
   it('replaces only a failed storage erasure job when deletion is retried', async () => {
     mocks.getJob.mockResolvedValue({ isFailed: async () => true });
     await eraseProjectOrganization('org-a', 'project-a');
-    expect(mocks.getJob).toHaveBeenCalledExactlyOnceWith('search', 'search-storage-erase-project-a');
-    expect(mocks.removeJob).toHaveBeenCalledExactlyOnceWith('search', 'search-storage-erase-project-a');
+    expect(mocks.getJob).toHaveBeenCalledExactlyOnceWith('erasure', 'erase-storage-project-a');
+    expect(mocks.removeJob).toHaveBeenCalledExactlyOnceWith('erasure', 'erase-storage-project-a');
     expect(mocks.removeJob).toHaveBeenCalledBefore(mocks.createJob);
   });
 
@@ -96,9 +96,9 @@ describe('shared tenant privacy erasure', () => {
     await eraseProjectOrganization('org-a', 'project-a');
     expect(mocks.removeJob).not.toHaveBeenCalled();
     expect(mocks.createJob).toHaveBeenCalledWith(
-      'search',
+      'erasure',
       expect.objectContaining({ name: 'erase-project-storage' }),
-      expect.objectContaining({ jobId: 'search-storage-erase-project-a' }),
+      expect.objectContaining({ jobId: 'erase-storage-project-a' }),
     );
   });
 });
