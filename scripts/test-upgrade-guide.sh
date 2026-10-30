@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+HARNESS_SOURCE="$PWD"
 PUBLIC="$RUNNER_TEMP/guide-public"
 PRIVATE="$RUNNER_TEMP/guide-private"
 mkdir -p "$PUBLIC" "$PRIVATE"
@@ -87,6 +88,9 @@ runblock 4 inline-helper
 export -f operator
 runblock 5
 runblock 6 staged-image-and-legacy
+grep '^\["ghcr.io/lord007tn/nibleaf@sha256:' "$log" > "$PUBLIC/staged-digest.txt"
+grep -q 'sha256:880938a6ab865487f0b85733eeb2c20da06de34dcce1bdb5a8f35f694e4a3da8' "$PUBLIC/staged-digest.txt"
+record staged-digest PASS 'RepoDigests matches the exact guide digest' 
 if [ "$MODE" = recovery ]; then
   # Deliberately skip stage migration, then execute the guide candidate setup.
   runblock 14 recovery-compose
@@ -182,6 +186,8 @@ runblock 17 health-and-migrations
 # Assert the guide's query really returns the documented seven names, not merely exit zero.
 grep -E '^202[0-9]{11}_' "$log" | sort > "$PUBLIC/migrations.txt"
 test "$(wc -l < "$PUBLIC/migrations.txt")" = 7
+cmp -s "$PUBLIC/migrations.txt" "$PUBLIC/expected-migrations.txt"
+record migration-list PASS 'exact seven documented migration names' 
 runblock 18 inventory-http
 runblock 19 resume
 runblock 20 digest
@@ -189,7 +195,7 @@ cp "$log" "$PUBLIC/candidate-digest.txt"
 # Test the exact key command, then actual crypto module roundtrip in candidate runtime.
 runblock 29 integration-key-missing
 crypto_probe() {
-  docker compose run --rm --no-deps -T server sh -c 'cd apps/server && node --import tsx --input-type=module -e '\''try { const {encryptIntegrationSecret,decryptIntegrationSecret}=await import("./src/actions/integrations/crypto.ts"); const value=encryptIntegrationSecret("synthetic-guide-check"); if(decryptIntegrationSecret(value)!=="synthetic-guide-check") process.exit(1); console.log("crypto roundtrip: PASS"); } catch {console.log("crypto roundtrip: FAIL (key rejected)");process.exit(1)}'\'''
+  docker compose run --rm --no-deps -T server sh -c 'cd apps/server && node --import tsx --input-type=module -e '\''try { const {encryptIntegrationSecret,decryptIntegrationSecret}=await import("./src/actions/integrations/crypto.ts"); const value=encryptIntegrationSecret("synthetic-guide-check"); if(decryptIntegrationSecret(value)!=="synthetic-guide-check") process.exit(1); console.log("crypto roundtrip: PASS"); } catch(error) {const allowed=["Integration credential encryption is not configured.","Integration credential encryption requires a base64-encoded 32-byte key."]; console.log(allowed.includes(error?.message)?error.message:"crypto roundtrip: FAIL (private diagnostic withheld)");process.exit(1)}'\'''
 }
 quiet crypto_probe
 record integration-key-format PASS 'candidate crypto module encrypt/decrypt roundtrip'
@@ -203,8 +209,19 @@ runblock 29 integration-key-quoted-empty
 log="$PRIVATE/crypto-empty.log"
 if crypto_probe > "$log" 2>&1; then record integration-empty-behavior PASS 'key accepted'; else
   record integration-empty-behavior FAIL 'quoted empty value prevents generation; crypto rejects key';
-  grep '^crypto roundtrip:' "$log" >> "$PUBLIC/failures.txt" || true
+  grep -E '^crypto roundtrip:|^Integration credential encryption' "$log" >> "$PUBLIC/failures.txt" || true
 fi
+# Test proposed replacement separately, without editing the pinned MDX.
+CURRENT=integration-key-proposed-repair
+log="$PRIVATE/key-repair.log"
+source "$HARNESS_SOURCE/scripts/proposed-integration-key.sh" > "$log" 2>&1
+quiet crypto_probe
+record integration-key-proposed-repair PASS 'quoted-empty field repaired; actual crypto roundtrip passes'
+cp .env "$PRIVATE/env-repaired-key"
+source "$HARNESS_SOURCE/scripts/proposed-integration-key.sh" > "$PRIVATE/key-repair-preserve.log" 2>&1
+cmp -s .env "$PRIVATE/env-repaired-key"
+record integration-key-proposed-preserve PASS 'valid key preserved byte-for-byte'
+cp "$HARNESS_SOURCE/scripts/proposed-integration-key.sh" "$PUBLIC/proposed-integration-key.sh"
 cp "$PRIVATE/env-with-valid-key" .env
 quiet docker compose up -d
 healthy

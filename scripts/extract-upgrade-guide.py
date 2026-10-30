@@ -14,6 +14,7 @@ manifest=json.loads(fetch('release/self-host.json',rev))
 compose=fetch('docker-compose.prod.yml',rev)
 assert hashlib.sha256(compose.encode()).hexdigest()==manifest['composeSha256'], 'candidate manifest compose checksum is stale'
 (out/'substitutions.txt').write_text(f'Guide source: {commit}\nCandidate image: {candidate}\n1. Replace v0.2.0 with {candidate} in executable blocks.\n2. Replace release Compose URL with raw candidate-commit docker-compose.prod.yml.\n3. Replace nonexistent release SHA256SUMS fetch with candidate release/self-host.json composeSha256 rendered as a SHA256SUMS entry. Keep the guide checksum-verification command unchanged.\nNo other guide command text is substituted. Runner fixtures, assertions and separately labelled diagnostic repairs are harness commands.\n')
+(out/'expected-migrations.txt').write_text('\n'.join(sorted(set(re.findall(r'`(202[0-9]{11}_[a-z_]+)`',sources[0]))))+'\n')
 for i,b in enumerate(allblocks[0]):
  original=b
  if i==14:
