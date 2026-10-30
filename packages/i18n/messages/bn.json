@@ -2091,7 +2091,7 @@
   "admin_overview_retentioncoverage": "Counted from {date}. Earlier publishes weren't recorded, so totals may be incomplete.",
   "admin_overview_retentionrate": "Retention rate",
   "admin_overview_retentionretained": "Published again (days 1-7)",
-  "admin_overview_retentionretainedhelp": "Projects whose second manual publish came between 1 and 7 days after the first. If the second publish comes on the same day, the project isn't counted, even if it publishes again later.",
+  "admin_overview_retentionretainedhelp": "Projects whose second manual publish came 24 to 168 hours after the first, inclusive. If the second publish comes less than 24 hours after the first, the project isn't counted, even if it publishes again later.",
   "admin_overview_retentionsmallgroup": "Rates are hidden for groups of fewer than 5 projects.",
   "admin_overview_retentionunknown": "Unknown",
   "admin_overview_retentionupdated": "Updated {time}",
