@@ -143,6 +143,7 @@ for (const lang of ['en', 'ar']) {
     await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
     await wait(page, () => location.pathname.includes('/v2/'));
     await page.getByRole('button').filter({ hasText: 'V2' }).waitFor();
+    assert.ok((await sidebar(page, slug).getAttribute('href')).includes('/v2/'));
     assert.equal(new URL(page.url()).searchParams.get('lang'), lang === 'ar' ? 'ar' : null);
     await retained(page);
   });
@@ -161,7 +162,7 @@ for (const lang of ['en', 'ar']) {
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     await retained(page);
   }, { viewport: { width: 390, height: 844 }, isMobile: true });
-  await row(lang, 'custom-domain', async page => {
+  await row(lang, 'custom-domain', async (page, _context, result) => {
     await page.goto(href(home, lang, 'http://docs.reader.localhost:4310'), { waitUntil: 'networkidle' });
     assert.equal(await page.evaluate(() => window.isSecureContext), true, 'custom-domain harness must support secure-context browser APIs');
     await page.locator('main h1').waitFor();
@@ -170,7 +171,8 @@ for (const lang of ['en', 'ar']) {
     await sidebar(page, slug).click();
     await heading(page, title[lang]);
     assert.equal(decodeURI(new URL(page.url()).pathname), `/${slug}`);
-    assert.ok(!(await page.locator('link[rel="canonical"]').getAttribute('href')).includes('/sites/'));
+    result.canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
+    assert.ok(!result.canonical.includes('/sites/'));
     await retained(page);
   });
   await row(lang, 'title-meta', async page => {
