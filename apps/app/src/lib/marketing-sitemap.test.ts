@@ -35,7 +35,7 @@ describe('marketing sitemap', () => {
     const xml = marketingSitemap('https://nibleaf.com');
 
     expect(xml.match(/<url>/g)).toHaveLength(entries.length);
-    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-08-24</lastmod>');
+    expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-10-30</lastmod>');
     expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');
