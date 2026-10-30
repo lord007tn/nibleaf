@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "Delete this page?",
   "editor_hiderail": "Hide AI & comments",
   "editor_showrail": "Show AI & comments",
+  "editor_hidecomments": "Hide comments",
+  "editor_showcomments": "Show comments",
   "editor_nopageselected": "No page selected",
   "editor_nopageselectedhint": "Pick a page from the navigation, or create one.",
   "dashboard_header_projects": "Projects",

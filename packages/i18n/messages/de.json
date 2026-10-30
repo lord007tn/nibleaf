@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "Diese Seite löschen?",
   "editor_hiderail": "KI und Kommentare ausblenden",
   "editor_showrail": "KI und Kommentare anzeigen",
+  "editor_hidecomments": "Kommentare ausblenden",
+  "editor_showcomments": "Kommentare anzeigen",
   "editor_nopageselected": "Keine Seite ausgewählt",
   "editor_nopageselectedhint": "Wählen Sie eine Seite aus der Navigation aus oder erstellen Sie eine.",
   "dashboard_header_projects": "Projekte",

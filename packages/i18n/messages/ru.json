@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "Удалить эту страницу?",
   "editor_hiderail": "Скрыть AI и комментарии",
   "editor_showrail": "Показать AI и комментарии",
+  "editor_hidecomments": "Скрыть комментарии",
+  "editor_showcomments": "Показать комментарии",
   "editor_nopageselected": "Страница не выбрана",
   "editor_nopageselectedhint": "Выберите страницу в навигации или создайте ее.",
   "dashboard_header_projects": "Проекты",

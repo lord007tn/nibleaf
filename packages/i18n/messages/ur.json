@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "اس صفحہ کو حذف کریں؟",
   "editor_hiderail": "AI اور تبصرے چھپائیں۔",
   "editor_showrail": "AI اور تبصرے دکھائیں۔",
+  "editor_hidecomments": "تبصرے چھپائیں",
+  "editor_showcomments": "تبصرے دکھائیں",
   "editor_nopageselected": "کوئی صفحہ منتخب نہیں کیا گیا۔",
   "editor_nopageselectedhint": "نیویگیشن سے ایک صفحہ منتخب کریں، یا ایک تخلیق کریں۔",
   "dashboard_header_projects": "پروجیکٹس",

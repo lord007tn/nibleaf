@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "यह पृष्ठ हटाएं?",
   "editor_hiderail": "एआई और टिप्पणियाँ छिपाएँ",
   "editor_showrail": "एआई और टिप्पणियाँ दिखाएँ",
+  "editor_hidecomments": "टिप्पणियाँ छिपाएँ",
+  "editor_showcomments": "टिप्पणियाँ दिखाएँ",
   "editor_nopageselected": "कोई पृष्ठ चयनित नहीं",
   "editor_nopageselectedhint": "नेविगेशन से एक पेज चुनें, या एक बनाएं।",
   "dashboard_header_projects": "परियोजनाएं",

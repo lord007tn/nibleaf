@@ -382,6 +382,8 @@
   "editor_deletepageconfirm": "هل تريد حذف هذه الصفحة؟",
   "editor_hiderail": "إخفاء الذكاء الاصطناعي والتعليقات",
   "editor_showrail": "إظهار الذكاء الاصطناعي والتعليقات",
+  "editor_hidecomments": "إخفاء التعليقات",
+  "editor_showcomments": "إظهار التعليقات",
   "editor_nopageselected": "لم يتم تحديد أي صفحة",
   "editor_nopageselectedhint": "اختر صفحة من التنقّل، أو أنشئ صفحة جديدة.",
   "dashboard_header_projects": "المشاريع",

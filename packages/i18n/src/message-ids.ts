@@ -395,6 +395,8 @@ export const MESSAGE_IDS = {
   'editor.deletePageConfirm': 'editor_deletepageconfirm',
   'editor.hideRail': 'editor_hiderail',
   'editor.showRail': 'editor_showrail',
+  'editor.hideComments': 'editor_hidecomments',
+  'editor.showComments': 'editor_showcomments',
   'editor.noPageSelected': 'editor_nopageselected',
   'editor.noPageSelectedHint': 'editor_nopageselectedhint',
   'dashboard.header.projects': 'dashboard_header_projects',
