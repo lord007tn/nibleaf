@@ -460,8 +460,11 @@ docker compose run --rm --no-deps -T worker \
 unset NIBLEAF_VERSION
 ```
 
-**Expected:** all four entries show `"legacy": true` and `"scheduler": false`. v0.1.2
-does not know `reconcile-usage-periods`. It handles that job as its normal retention
+**Expected:** if you applied the rollback, all four entries show `"legacy": true` and
+`"scheduler": false`. If you skipped the apply command because the original legacy
+definitions were intact, those three entries show these values, and
+`reconcile-usage-periods` shows `false` for both. v0.1.2 does not know
+`reconcile-usage-periods`. It handles that job as its normal retention
 cleanup, and the next upgrade migrates it again.
 
 Restore the previous configuration:

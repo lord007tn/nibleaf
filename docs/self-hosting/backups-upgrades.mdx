@@ -30,7 +30,9 @@ mkdir -m 700 -p backups
 STAMP=$(date +%Y%m%d-%H%M%S)
 docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
 MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
-test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \n  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \n  || echo 'Stop: could not identify or archive the maxio volume.'
+test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \
+  || echo 'Stop: could not identify or archive the maxio volume.'
 ```
 
 These commands find the volume mounted at `/data` in the running maxio container, so
@@ -57,9 +59,13 @@ own stack, using the same `$STAMP`:
 
 ```bash
 docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump"
-MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
-test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \n  && docker compose stop maxio \n  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \n  || echo 'Stop: could not identify or restore the maxio volume.'
-docker compose up -d
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
+  && test -n "$MAXIO_VOLUME" \
+  && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker compose stop maxio \
+  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \
+  && docker compose up -d \
+  || echo 'Stop: restore failed; do not start application services.'
 ```
 
 Then verify projects, memberships, page trees, current drafts, ready deployments,
