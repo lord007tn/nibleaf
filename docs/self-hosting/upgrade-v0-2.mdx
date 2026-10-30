@@ -401,8 +401,13 @@ stop the failing services:
 docker compose stop server worker
 ```
 
-Run steps 4 to 8, then skip steps 9 and 10, which are already done. Finish with steps
-11 to 13. If you cannot bring the queues to zero, [roll back](#roll-back).
+Run only the staged `operator pause` command from step 4. If it fails, stop, and do
+not use the worker restart from step 4, because the database has already migrated.
+Skip step 5 and keep your original pre-upgrade backup and `STAMP`. A backup taken now
+cannot replace them for rollback. Run steps 6 to 8. Skip step 9 only if the release
+Compose file is already installed. Run step 10, including `unset NIBLEAF_VERSION` and
+the image check, then steps 11 to 13. [Rolling back](#roll-back) requires a backup
+taken before the database migration.
 
 ## Roll back
 
@@ -416,7 +421,11 @@ Set up the shell and the helper from step 1, run `unset NIBLEAF_VERSION`, and se
 
 ### Restore the schedules
 
-Skip this section if step 7 never completed, because the schedules are still legacy.
+Do not skip this section because step 7 failed or was interrupted: it may have changed
+some schedules. Stop the application services and pause the queues as shown below, then
+inspect the inventory with the staged rollback dry run. Skip only the rollback apply
+command if every entry has `scheduler: false` and the expected legacy definitions are
+intact. Always restore the previous Compose file and `.env` before starting v0.1.2.
 
 Stop the application services and pause the queues:
 
@@ -425,7 +434,10 @@ docker compose --profile admin stop app admin server worker
 NIBLEAF_VERSION="$STAGED" operator pause
 ```
 
-**Expected:** `queues pause: PASS`. If it reports `FAIL`, use the retry in step 4.
+**Expected:** `queues pause: PASS`. If it reports `FAIL`, stop the rollback with all
+application services stopped and the queues paused. Do not use the retry from step 4
+here: it starts the existing worker, which may be v0.2.0. Do not restore the database
+or resume queues until the waiting or active work has a reviewed recovery procedure.
 
 Move the schedules back, then check them:
 

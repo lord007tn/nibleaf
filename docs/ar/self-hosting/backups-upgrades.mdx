@@ -29,12 +29,13 @@ translation_key: 'self-hosting/backups-upgrades'
 mkdir -m 700 -p backups
 STAMP=$(date +%Y%m%d-%H%M%S)
 docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
-docker run --rm -v nibleaf_nibleaf-maxio:/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data .
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
+test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \n  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \n  || echo 'Stop: could not identify or archive the maxio volume.'
 ```
 
-يأتي اسم وحدة التخزين من اسم مشروع Compose، وهو `nibleaf` افتراضيًا. تأكد من الاسم
-لديك باستخدام `docker volume ls --filter name=maxio`. لا توجد حاويات R2 أو S3
-الخارجية في هذه الوحدة، لذا تخطَّ سطر `docker run` واستخدم إمكانات المزوّد لإدارة
+تحدد هذه الأوامر وحدة التخزين المثبتة عند `/data` في حاوية maxio القائمة، لذا تعمل مع
+أي اسم لمشروع Compose وتتوقف إذا تعذّر تحديدها. لا توجد حاويات R2 أو S3
+الخارجية في هذه الوحدة، لذا تخطَّ هذه الأسطر واستخدم إمكانات المزوّد لإدارة
 الإصدارات أو النسخ المتماثل، أو أنشئ نسخة احتياطية مستقلة للحاوية.
 
 من نسخة محلية للمستودع، ينفّذ `./scripts/backup.sh` الخطوتين نفسيهما ويحذف النسخ
@@ -56,8 +57,8 @@ docker run --rm -v nibleaf_nibleaf-maxio:/data:ro -v "$PWD/backups":/backup alpi
 
 ```bash
 docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump"
-docker compose stop maxio
-docker run --rm -v nibleaf_nibleaf-maxio:/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
+test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \n  && docker compose stop maxio \n  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \n  || echo 'Stop: could not identify or restore the maxio volume.'
 docker compose up -d
 ```
 
