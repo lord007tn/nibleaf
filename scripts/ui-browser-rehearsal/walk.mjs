@@ -23,6 +23,7 @@ const m = (lang, key) => {
 };
 const TITLES = {
   retries: { en: 'Webhook retries', ar: 'إعادة محاولة الويب هوك' },
+  pkce: { en: 'PKCE flow', ar: 'تدفق PKCE' },
 };
 const site = (project, path, lang) => `${APP}/sites/${project}/${path}${lang === 'ar' ? '?lang=ar' : ''}`;
 const results = [];
@@ -736,6 +737,106 @@ for (const lang of LANGS) {
       check('cleared icon is stored as null', (await stored()) === null);
       await shot('after-clear', undefined, { fullPage: device === 'mobile' });
     }, { device, needs: 'dashboard' });
+  }
+}
+
+// ─── Row 17: the sidebar under client-side navigation (#237 with #262) ──────
+// Before #237 every sidebar click loaded a new document, so a branch only ever
+// opened from server state. Here the document survives, so the current page
+// changing in place is the only thing that can open a branch.
+
+const expandedPaths = async (nav) => (await branchState(nav)).filter((branch) => branch.expanded === 'true').map((branch) => branch.path).sort();
+const currentPaths = (nav) => nav.locator('a[aria-current="page"]').evaluateAll((links) => links.map((link) => new URL(link.href).pathname.split('/').slice(3).join('/')));
+const arrivedAt = async (page, nav, path) => {
+  await page.waitForFunction((tail) => location.pathname.endsWith(`/${tail}`), path);
+  await nav.locator(`a[aria-current="page"][href*="/${path}"]`).first().waitFor({ state: 'attached' });
+};
+const keptLanguage = (page, lang) =>
+  page.evaluate(
+    (code) => document.documentElement.lang === code && document.documentElement.dir === (code === 'ar' ? 'rtl' : 'ltr') && (code !== 'ar' || location.search.includes('lang=ar')),
+    lang,
+  );
+
+for (const lang of LANGS) {
+  for (const [theme, project] of Object.entries(THEMES)) {
+    await run('17-client-nav-sidebar', lang, theme, async (t) => {
+      const { page, check, shot } = t;
+      await openReader(t, project, 'getting-started/introduction', lang);
+      const nav = await readerNav(t);
+      await markDocument(page);
+      check('starts with every page branch collapsed', (await expandedPaths(nav)).length === 0, await expandedPaths(nav));
+
+      await nav.locator('a[href*="/guides/webhooks"]').first().click();
+      await arrivedAt(page, nav, 'guides/webhooks');
+      check('parent link stayed in the document', await sameDocument(page));
+      check('parent link opened its own branch', (await expandedPaths(nav)).join() === 'guides/webhooks', await expandedPaths(nav));
+
+      const child = nav.locator('a[href*="/guides/webhook-retries"]');
+      check('its subpage is now visible', await child.isVisible());
+      await child.click();
+      await arrivedAt(page, nav, 'guides/webhook-retries');
+      await page.locator('main h1').filter({ hasText: TITLES.retries[lang] }).waitFor();
+      check('subpage link stayed in the document', await sameDocument(page));
+      check('highlight moved to the subpage', (await currentPaths(nav)).join() === 'guides/webhook-retries', await currentPaths(nav));
+      check('branch stayed open on the subpage', (await expandedPaths(nav)).join() === 'guides/webhooks', await expandedPaths(nav));
+      await shot('subpage');
+
+      // A reader can close the branch they are in, and nothing reopens it behind them.
+      await toggleFor(nav, 'guides/webhooks').click();
+      await page.waitForTimeout(1500);
+      check('branch holding the current page stays collapsed by hand', (await expandedPaths(nav)).length === 0, await expandedPaths(nav));
+      await nav.locator('a[href*="/guides/authentication"]').first().click();
+      await arrivedAt(page, nav, 'guides/authentication');
+      check('moving on leaves it collapsed and opens the new branch', (await expandedPaths(nav)).join() === 'guides/authentication', await expandedPaths(nav));
+
+      // Search lands two levels down, with no sidebar click to open the way.
+      await page.keyboard.press('Control+k');
+      await page.locator('input[data-slot="command-input"]').fill('PKCE');
+      await page.getByRole('option').filter({ hasText: TITLES.pkce[lang] }).first().click();
+      await page.getByRole('dialog').waitFor({ state: 'hidden' });
+      await arrivedAt(page, nav, 'guides/auth-oauth-pkce');
+      check('search stayed in the document', await sameDocument(page));
+      check('both ancestors of the search result opened', (await expandedPaths(nav)).join() === 'guides/auth-oauth,guides/authentication', await expandedPaths(nav));
+      check('search result is highlighted and visible', await nav.locator('a[aria-current="page"]').isVisible());
+      check('search kept the language', await keptLanguage(page, lang), page.url());
+      await shot('search-result');
+
+      await page.goBack();
+      await arrivedAt(page, nav, 'guides/authentication');
+      await page.goBack();
+      await arrivedAt(page, nav, 'guides/webhook-retries');
+      check('back stayed in the document', await sameDocument(page));
+      check('back reopened the branch holding the page', (await expandedPaths(nav)).join() === 'guides/auth-oauth,guides/authentication,guides/webhooks', await expandedPaths(nav));
+      check('highlight followed back', (await currentPaths(nav)).join() === 'guides/webhook-retries', await currentPaths(nav));
+      check('back kept the language', await keptLanguage(page, lang), page.url());
+
+      await page.reload({ waitUntil: 'networkidle' });
+      const fresh = await readerNav(t);
+      check('after a reload only the branch holding the page is open', (await expandedPaths(fresh)).join() === 'guides/webhooks', await expandedPaths(fresh));
+    }, { needs: 'reader' });
+  }
+
+  for (const theme of ['harbor', 'signal']) {
+    await run('17-client-nav-sidebar', lang, theme, async (t) => {
+      const { page, check, shot } = t;
+      await openReader(t, THEMES[theme], 'getting-started/introduction', lang);
+      let nav = await readerNav(t);
+      await markDocument(page);
+      await nav.locator('a[href*="/guides/webhooks"]').first().click();
+      await page.waitForFunction(() => location.pathname.endsWith('/guides/webhooks'));
+      await page.getByRole('dialog').waitFor({ state: 'hidden' });
+      check('following a link closed the drawer and stayed in the document', await sameDocument(page));
+      nav = await readerNav(t);
+      check('reopened drawer shows the branch open', (await expandedPaths(nav)).join() === 'guides/webhooks', await expandedPaths(nav));
+      await nav.locator('a[href*="/guides/webhook-retries"]').click();
+      await page.waitForFunction(() => location.pathname.endsWith('/guides/webhook-retries'));
+      await page.getByRole('dialog').waitFor({ state: 'hidden' });
+      check('subpage link closed the drawer and stayed in the document', await sameDocument(page));
+      nav = await readerNav(t);
+      check('highlight moved to the subpage', (await currentPaths(nav)).join() === 'guides/webhook-retries', await currentPaths(nav));
+      check('branch stayed open on the subpage', (await expandedPaths(nav)).join() === 'guides/webhooks', await expandedPaths(nav));
+      await shot('reopened', page.getByRole('dialog'));
+    }, { device: 'mobile', needs: 'reader' });
   }
 }
 

@@ -2,7 +2,7 @@ name: Reader navigation rehearsal
 
 on:
   push:
-    branches: [rehearsal/reader-nav-matrix]
+    branches: [rehearsal/reader-ui-combined]
 
 permissions:
   contents: read
