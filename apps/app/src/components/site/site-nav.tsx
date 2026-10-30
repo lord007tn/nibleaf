@@ -203,8 +203,9 @@ function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: st
 }
 
 /** The toggle needs JavaScript, so without it collapsed subpages stay open. One
- *  rule at the root avoids nesting `noscript`, which breaks parsing when scripts run. */
-const SHOW_SUBPAGES_WITHOUT_SCRIPT = 'nav[data-site-nav] ul[hidden]{display:block}';
+ *  rule at the root avoids nesting `noscript`, which breaks parsing when scripts run.
+ *  `!important` is required to beat Tailwind's own `[hidden]` rule. */
+const SHOW_SUBPAGES_WITHOUT_SCRIPT = 'nav[data-site-nav] ul[hidden]{display:block!important}';
 
 export function SiteNav({
   nodes,
