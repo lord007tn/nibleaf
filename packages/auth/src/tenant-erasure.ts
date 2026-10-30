@@ -1,11 +1,17 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { createJob, getJob, QueueNames, removeJob } from '@nibleaf/bullmq';
+import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/search';
 import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
-/** Storage erasure waits for the relational delete and must outlast transient
- * storage or Qdrant outages (~40 minutes of exponential backoff). Failed jobs are
- * dropped so a retried deletion can enqueue the same job id again. */
-const ERASURE_JOB_RETRY = { attempts: 10, backoff: { type: 'exponential', delay: 5000 }, removeOnFail: true } as const;
+/** BullMQ ignores a new job whose id it still retains, so a retried deletion must
+ * clear an exhausted failed job to queue erasure again. A waiting, delayed, or
+ * active job is left alone: it already waits for the relational delete. */
+const enqueueProjectStorageErasure = async (projectId: string) => {
+  const jobId = eraseProjectStorageJobId(projectId);
+  const existing = await getJob(QueueNames.SEARCH, jobId);
+  if (await existing?.isFailed()) await removeJob(QueueNames.SEARCH, jobId);
+  await createJob(QueueNames.SEARCH, { name: 'erase-project-storage', data: { projectId } }, { jobId, ...ERASE_PROJECT_STORAGE_JOB_OPTIONS });
+};
 
 export class TenantUsageDeletionPendingError extends Error {
   constructor(readonly pendingCount: number) {
@@ -40,11 +46,8 @@ export const eraseProjectOrganization = async (organizationId: string, expectedP
   if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) || deletion.hadStorageMarker) {
     await Promise.all([deleteProjectAnalytics(organizationId, project.id), deleteProjectUsage(organizationId, project.id)]);
   }
-  await createJob(
-    QueueNames.SEARCH,
-    { name: 'delete-project', data: { projectId: project.id } },
-    { jobId: `search-delete-${project.id}`, ...ERASURE_JOB_RETRY },
-  );
+  await enqueueProjectStorageErasure(project.id);
+  await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: project.id } }, { jobId: `search-delete-${project.id}` });
   await prisma.usageProviderCheckpoint.updateMany({
     where: { organizationId },
     data: { status: 'deletion_pending', hasError: false },

@@ -1,19 +1,29 @@
+import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, type ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
+import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ deletePrefix: vi.fn(), projectFindUnique: vi.fn() }));
+const PRESIGN_SECONDS = 3600;
 
-vi.mock('@nibleaf/storage', () => ({ deletePrefix: mocks.deletePrefix }));
+const mocks = vi.hoisted(() => ({ createJob: vi.fn(), deletePrefix: vi.fn(), logError: vi.fn(), projectFindUnique: vi.fn() }));
+
+vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { SEARCH: 'search' } }));
+vi.mock('@nibleaf/logger', () => ({ createLogger: () => ({ error: mocks.logError }) }));
+vi.mock('@nibleaf/storage', () => ({ DEFAULT_PRESIGN_EXPIRES_IN_SECONDS: 3600, deletePrefix: mocks.deletePrefix }));
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: mocks.projectFindUnique } } }));
 
-import { eraseProjectStorage } from './project-storage-erasure';
+import { eraseProjectStorage, FINAL_PASS_DELAY_MS, handleProjectStorageErasure } from './project-storage-erasure';
+
+const erasureJob = (data: ReindexProjectJobData, attemptsMade = 0) =>
+  ({ data, attemptsMade, opts: { attempts: ERASE_PROJECT_STORAGE_JOB_OPTIONS.attempts } }) as unknown as Job<ReindexProjectJobData>;
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.projectFindUnique.mockResolvedValue(null);
+  mocks.deletePrefix.mockResolvedValue(3);
+  mocks.createJob.mockResolvedValue(undefined);
+});
 
 describe('project storage erasure', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mocks.projectFindUnique.mockResolvedValue(null);
-    mocks.deletePrefix.mockResolvedValue(3);
-  });
-
   it('deletes only the deleted project prefix', async () => {
     await expect(eraseProjectStorage('project-a')).resolves.toBe(3);
     expect(mocks.projectFindUnique).toHaveBeenCalledWith({ where: { id: 'project-a' }, select: { id: true } });
@@ -31,7 +41,7 @@ describe('project storage erasure', () => {
     expect(mocks.deletePrefix).not.toHaveBeenCalled();
   });
 
-  it.each(['', 'a/b'])('rejects an id that would widen the prefix (%j)', async (projectId) => {
+  it.each(['', 'a/b', '/', 'a/'])('rejects an id that would widen the prefix (%j)', async (projectId) => {
     await expect(eraseProjectStorage(projectId)).rejects.toBeInstanceOf(TypeError);
     expect(mocks.projectFindUnique).not.toHaveBeenCalled();
     expect(mocks.deletePrefix).not.toHaveBeenCalled();
@@ -40,5 +50,57 @@ describe('project storage erasure', () => {
   it('propagates storage failures so the job retries', async () => {
     mocks.deletePrefix.mockRejectedValue(new Error('storage unavailable'));
     await expect(eraseProjectStorage('project-a')).rejects.toThrow('storage unavailable');
+  });
+});
+
+describe('erase-project-storage job', () => {
+  it('schedules one delayed final pass after a successful first pass', async () => {
+    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a' }))).resolves.toEqual({ storageObjects: 3, finalPass: false });
+    expect(mocks.createJob).toHaveBeenCalledExactlyOnceWith(
+      'search',
+      { name: 'erase-project-storage', data: { projectId: 'project-a', finalPass: true } },
+      { ...ERASE_PROJECT_STORAGE_JOB_OPTIONS, jobId: 'search-storage-final-project-a', delay: FINAL_PASS_DELAY_MS },
+    );
+  });
+
+  it('waits just over the presigned URL lifetime before the final pass', () => {
+    expect(FINAL_PASS_DELAY_MS).toBeGreaterThan(PRESIGN_SECONDS * 1000);
+    expect(FINAL_PASS_DELAY_MS).toBeLessThanOrEqual((PRESIGN_SECONDS + 300) * 1000);
+  });
+
+  it('does not schedule another pass from the final pass', async () => {
+    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a', finalPass: true }))).resolves.toEqual({
+      storageObjects: 3,
+      finalPass: true,
+    });
+    expect(mocks.createJob).not.toHaveBeenCalled();
+  });
+
+  it('does not schedule the final pass after a failed first pass', async () => {
+    mocks.deletePrefix.mockRejectedValue(new Error('storage unavailable'));
+    await expect(handleProjectStorageErasure(erasureJob({ projectId: 'project-a' }))).rejects.toThrow('storage unavailable');
+    expect(mocks.createJob).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  it('logs one key-free error on the last attempt and still fails the job', async () => {
+    mocks.deletePrefix.mockRejectedValue(new Error('projects/project-a/assets/passport-scan.png'));
+    const job = erasureJob({ projectId: 'project-a' }, ERASE_PROJECT_STORAGE_JOB_OPTIONS.attempts - 1);
+    await expect(handleProjectStorageErasure(job)).rejects.toThrow();
+    expect(mocks.logError).toHaveBeenCalledExactlyOnceWith({ projectId: 'project-a', finalPass: false }, expect.any(String));
+    expect(JSON.stringify(mocks.logError.mock.calls)).not.toContain('passport-scan');
+  });
+
+  it('never erases while the project row exists, even on the last attempt', async () => {
+    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a' });
+    const job = erasureJob({ projectId: 'project-a' }, ERASE_PROJECT_STORAGE_JOB_OPTIONS.attempts - 1);
+    await expect(handleProjectStorageErasure(job)).rejects.toThrow('waits for relational deletion');
+    expect(mocks.deletePrefix).not.toHaveBeenCalled();
+  });
+
+  it('keeps retrying for about 45.5 hours', () => {
+    const { attempts, backoff } = ERASE_PROJECT_STORAGE_JOB_OPTIONS;
+    const totalSeconds = (backoff.delay * (2 ** (attempts - 1) - 1)) / 1000;
+    expect(totalSeconds).toBe(163_835);
   });
 });

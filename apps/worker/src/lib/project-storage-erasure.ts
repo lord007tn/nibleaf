@@ -1,5 +1,20 @@
+import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { ERASE_PROJECT_STORAGE_JOB_OPTIONS, eraseProjectStorageFinalPassJobId, type ReindexProjectJobData } from '@nibleaf/bullmq/jobs/search';
 import { prisma } from '@nibleaf/database';
-import { deletePrefix } from '@nibleaf/storage';
+import { createLogger } from '@nibleaf/logger';
+import { DEFAULT_PRESIGN_EXPIRES_IN_SECONDS, deletePrefix } from '@nibleaf/storage';
+import type { Job } from 'bullmq';
+import { isFinalExportAttempt } from '../exports/lifecycle';
+
+const log = createLogger({ processor: 'project-storage-erasure' });
+
+/** Lets a PUT that started just before its URL expired finish uploading. */
+const LATE_WRITE_MARGIN_MS = 5 * 60 * 1000;
+
+/** An upload URL signed just before deletion stays usable for its whole lifetime,
+ * and a running export can still write inside that window (its queue lock is
+ * shorter), so an object can appear after the first pass. */
+export const FINAL_PASS_DELAY_MS = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS * 1000 + LATE_WRITE_MARGIN_MS;
 
 /** Every per-project object (assets, imported assets, export artifacts) lives under this prefix. */
 const projectStoragePrefix = (projectId: string): string => {
@@ -17,4 +32,26 @@ export const eraseProjectStorage = async (projectId: string): Promise<number> =>
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
   if (project) throw new Error('Project still exists; storage erasure waits for relational deletion.');
   return deletePrefix(prefix);
+};
+
+/** Run one `erase-project-storage` pass. The first successful pass schedules the
+ * final one; the final pass never schedules another. */
+export const handleProjectStorageErasure = async (job: Job<ReindexProjectJobData>) => {
+  const { projectId, finalPass = false } = job.data;
+  try {
+    const storageObjects = await eraseProjectStorage(projectId);
+    if (!finalPass) {
+      await createJob(
+        QueueNames.SEARCH,
+        { name: 'erase-project-storage', data: { projectId, finalPass: true } },
+        { ...ERASE_PROJECT_STORAGE_JOB_OPTIONS, jobId: eraseProjectStorageFinalPassJobId(projectId), delay: FINAL_PASS_DELAY_MS },
+      );
+    }
+    return { storageObjects, finalPass };
+  } catch (error) {
+    if (isFinalExportAttempt(job.attemptsMade, job.opts.attempts)) {
+      log.error({ projectId, finalPass }, 'project storage erasure used all its attempts; objects may remain');
+    }
+    throw error;
+  }
 };

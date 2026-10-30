@@ -105,7 +105,7 @@ const mocks = vi.hoisted(() => ({
   deleteByFilterAllVersions: vi.fn(async (_filter: QdrantFilter) => 1),
   embed: vi.fn(async (inputs: string[]) => ({ vectors: inputs.map(() => [0.1, 0.2]), model: 'test' })),
   enqueueUsageEvents: vi.fn(async (_events: unknown[]) => 'usage-job-a'),
-  eraseProjectStorage: vi.fn(async (_projectId: string) => 2),
+  handleProjectStorageErasure: vi.fn(async (_job: unknown) => ({ storageObjects: 2, finalPass: false })),
 }));
 
 const deploymentIdFrom = (filter: QdrantFilter) => {
@@ -202,7 +202,7 @@ vi.mock('@nibleaf/database', () => ({
   })(),
 }));
 
-vi.mock('../lib/project-storage-erasure', () => ({ eraseProjectStorage: mocks.eraseProjectStorage }));
+vi.mock('../lib/project-storage-erasure', () => ({ handleProjectStorageErasure: mocks.handleProjectStorageErasure }));
 
 vi.mock('../lib/usage-ingest', () => ({
   DurableUsageEnqueueError: mocks.DurableUsageEnqueueError,
@@ -390,24 +390,25 @@ describe('hybrid search differential indexing jobs', () => {
 
   it('can delete tenant data even when no embedding credential is configured', async () => {
     mocks.apiKey = undefined;
-    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true, storageObjects: 2 });
-    expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
-    expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledBefore(mocks.eraseProjectStorage);
+    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ deleted: true });
     expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
     expect(JSON.stringify(mocks.deleteByFilterAllVersions.mock.calls)).not.toContain('tenant-b');
     expect(mocks.embed).not.toHaveBeenCalled();
   });
 
-  it('erases stored objects even when Qdrant is not configured', async () => {
+  it('never touches storage from a delete-project job, with or without Qdrant', async () => {
+    await handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }));
     mocks.qdrantConfigured = false;
-    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ disabled: true, storageObjects: 2 });
-    expect(mocks.eraseProjectStorage).toHaveBeenCalledExactlyOnceWith('tenant-a');
+    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).resolves.toEqual({ disabled: true });
+    expect(mocks.handleProjectStorageErasure).not.toHaveBeenCalled();
   });
 
-  it('erases search data even when storage erasure must retry', async () => {
-    mocks.eraseProjectStorage.mockRejectedValueOnce(new Error('Project still exists'));
-    await expect(handleSearchJobs(job('delete-project', { projectId: 'tenant-a' }))).rejects.toThrow('Project still exists');
-    expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
+  it.each([true, false])('runs storage erasure apart from search cleanup (Qdrant configured: %s)', async (configured) => {
+    mocks.qdrantConfigured = configured;
+    const erasure = job('erase-project-storage', { projectId: 'tenant-a' });
+    await expect(handleSearchJobs(erasure)).resolves.toEqual({ storageObjects: 2, finalPass: false });
+    expect(mocks.handleProjectStorageErasure).toHaveBeenCalledExactlyOnceWith(erasure);
+    expect(mocks.deleteByFilterAllVersions).not.toHaveBeenCalled();
   });
 
   it('rejects a disabled result when the worker lost its durable run claim', async () => {
