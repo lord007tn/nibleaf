@@ -2,6 +2,13 @@
 // hydration error on the merged branch and on origin/main. Both builds run on
 // port 4310 against the same fixture, local API, database and session, and
 // take turns in rounds so time since seeding is comparable.
+//
+// Two arms per load:
+//   live     — the document streams from the server untouched; its body is read
+//              from Playwright's response object after the load.
+//   replayed — the document is fetched in full and replayed in one piece. This
+//              was the first version of this diagnostic; it is kept to show
+//              whether buffering the document changes the rate.
 import { spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -12,7 +19,10 @@ const out = `${process.env.OUT ?? 'output/ui-browser'}/hydration`;
 const APP = 'http://localhost:4310';
 const ROUNDS = Number(process.env.ROUNDS ?? 4);
 const PER_COMBO = Number(process.env.PER_COMBO ?? 10);
+const REPLAYED_PER_COMBO = Number(process.env.REPLAYED_PER_COMBO ?? 3);
+const BASELINES_PER_GROUP = 2;
 const BUILDS = { merged: process.env.MERGED_SERVER, main: process.env.MAIN_SERVER };
+const ARMS = ['live', 'replayed'];
 const COMBOS = [
   { lang: 'en', width: 390 },
   { lang: 'en', width: 1440 },
@@ -20,8 +30,8 @@ const COMBOS = [
   { lang: 'ar', width: 1440 },
 ];
 const HYDRATION = /Minified React error #(418|419|421|422|423|425)\b|hydrat|did not match|server rendered/i;
-await mkdir(`${out}/merged`, { recursive: true });
-await mkdir(`${out}/main`, { recursive: true });
+const DOCUMENT = /^http:\/\/localhost:4310\/app\/?(\?.*)?$/;
+for (const dir of ['merged', 'main', 'baseline']) await mkdir(`${out}/${dir}`, { recursive: true });
 
 const session = JSON.parse(await readFile(process.env.SESSION_FILE, 'utf8'));
 const cookieHeader = session.cookies.map((cookie) => `${cookie.name}=${cookie.value}`).join('; ');
@@ -60,6 +70,7 @@ async function stop() {
 
 // Runs in the page before any app script. Records text mutations once parsing
 // is done, and snapshots the DOM at the moment React reports a hydration error.
+// Times are navigation-relative (performance.now()).
 const INIT = () => {
   const textsOf = (root) => {
     const texts = [];
@@ -74,10 +85,9 @@ const INIT = () => {
   };
   window.__textsOf = textsOf;
   window.__mutations = [];
-  const origin = performance.now();
   const observer = new MutationObserver((records) => {
     for (const record of records) {
-      const at = Math.round(performance.now() - origin);
+      const at = Math.round(performance.now());
       if (record.type === 'characterData') {
         window.__mutations.push({ at, kind: 'text', before: record.oldValue, after: record.target.nodeValue });
         continue;
@@ -102,7 +112,7 @@ const INIT = () => {
     'error',
     (event) => {
       if (window.__atError || !/#4(18|19|21|22|23|25)\b|ydrat/.test(String(event.message))) return;
-      window.__atError = { at: Math.round(performance.now() - origin), clock: Date.now(), texts: textsOf(document.documentElement), html: document.documentElement.outerHTML };
+      window.__atError = { at: Math.round(performance.now()), texts: textsOf(document.documentElement), html: document.documentElement.outerHTML };
     },
     true,
   );
@@ -122,9 +132,10 @@ const multisetDiff = (left, right) => {
 
 const browser = await chromium.launch();
 const loads = [];
+const baselinesSaved = new Map();
 let seedTime = null;
 
-async function load(build, combo, index) {
+async function load(build, combo, index, arm) {
   const mobile = combo.width === 390;
   const context = await browser.newContext({
     viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
@@ -137,12 +148,14 @@ async function load(build, combo, index) {
   await context.addCookies([{ name: 'NIBLEAF_LOCALE', value: combo.lang, url: APP }, ...session.cookies.map((cookie) => ({ ...cookie, url: APP }))]);
   await context.route('**/*', (route) => (['localhost', '127.0.0.1'].includes(new URL(route.request().url()).hostname) ? route.fallback() : route.abort()));
   let serverHtml = null;
-  await context.route(/^http:\/\/localhost:4310\/app\/?(\?.*)?$/, async (route) => {
-    if (route.request().resourceType() !== 'document') return route.fallback();
-    const response = await route.fetch();
-    serverHtml = await response.text();
-    await route.fulfill({ response, body: serverHtml });
-  });
+  if (arm === 'replayed') {
+    await context.route(DOCUMENT, async (route) => {
+      if (route.request().resourceType() !== 'document') return route.fallback();
+      const response = await route.fetch();
+      serverHtml = await response.text();
+      await route.fulfill({ response, body: serverHtml });
+    });
+  }
   await context.addInitScript(INIT);
   const page = await context.newPage();
   const pageErrors = [];
@@ -152,26 +165,50 @@ async function load(build, combo, index) {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
   const startedAt = Date.now();
-  const record = { build, lang: combo.lang, width: combo.width, index, at: new Date(startedAt).toISOString(), sinceSeedMs: seedTime ? startedAt - seedTime : null };
+  const record = { build, arm, lang: combo.lang, width: combo.width, index, at: new Date(startedAt).toISOString(), sinceSeedMs: seedTime ? startedAt - seedTime : null };
   try {
-    await page.goto(`${APP}/app`, { waitUntil: 'load', timeout: 30000 });
+    const response = await page.goto(`${APP}/app`, { waitUntil: 'load', timeout: 30000 });
     await page.waitForTimeout(2500);
+    if (arm === 'live' && response) serverHtml = await response.text().catch(() => null);
   } catch (error) {
     record.navigationError = error.message.split('\n')[0];
   }
   record.finalUrl = page.url();
+  // When the dashboard's data arrived, relative to navigation and to the error.
+  record.timing = await page
+    .evaluate(() => {
+      const resources = performance.getEntriesByType('resource');
+      const end = (pattern) => {
+        const entry = resources.find((item) => pattern.test(new URL(item.name).pathname));
+        return entry ? Math.round(entry.responseEnd) : null;
+      };
+      const scripts = resources.filter((item) => /\.m?js$/.test(new URL(item.name).pathname));
+      const nav = performance.getEntriesByType('navigation')[0];
+      return {
+        documentEnd: nav ? Math.round(nav.responseEnd) : null,
+        domContentLoaded: nav ? Math.round(nav.domContentLoadedEventEnd) : null,
+        lastScriptEnd: scripts.length ? Math.round(Math.max(...scripts.map((item) => item.responseEnd))) : null,
+        session: end(/\/api\/auth\/get-session$/),
+        projects: end(/^\/api\/app\/projects$/),
+        hydrationErrorAt: window.__atError?.at ?? null,
+      };
+    })
+    .catch(() => null);
   const hydration = [...pageErrors, ...consoleErrors].filter((text) => HYDRATION.test(text));
   record.hydration = hydration.map((text) => text.slice(0, 400));
   record.otherPageErrors = pageErrors.filter((text) => !HYDRATION.test(text)).map((text) => text.slice(0, 300));
+  const mutations = await page.evaluate(() => window.__mutations).catch(() => []);
+  const group = `${build}-${arm}-${combo.lang}-${combo.width}`;
   if (hydration.length) {
-    const tag = `${String(loads.length + 1).padStart(3, '0')}-${combo.lang}-${combo.width}`;
+    const tag = `${String(loads.length + 1).padStart(3, '0')}-${arm}-${combo.lang}-${combo.width}`;
     const atError = await page.evaluate(() => window.__atError ?? null).catch(() => null);
-    const mutations = await page.evaluate(() => window.__mutations).catch(() => []);
     const serverTexts = serverHtml ? await page.evaluate((html) => window.__textsOf(new DOMParser().parseFromString(html, 'text/html').documentElement), serverHtml) : [];
     const clientTexts = atError?.texts ?? (await page.evaluate(() => window.__textsOf(document.documentElement)));
-    record.capturedAtErrorMs = atError?.at ?? null;
     record.serverOnlyText = multisetDiff(serverTexts, clientTexts);
     record.clientOnlyText = multisetDiff(clientTexts, serverTexts);
+    // Text the server rendered that React removed, and what it put in its place.
+    record.removedByClient = mutations.filter((item) => item.kind === 'removed').map((item) => item.text);
+    record.addedByClient = mutations.filter((item) => item.kind === 'added').map((item) => item.text);
     record.files = {
       server: `${out}/${build}/${tag}-server.html`,
       client: `${out}/${build}/${tag}-client-at-error.html`,
@@ -181,9 +218,17 @@ async function load(build, combo, index) {
     await writeFile(record.files.client, atError?.html ?? (await page.content()));
     await writeFile(record.files.detail, JSON.stringify({ ...record, pageErrors, consoleErrors, mutations }, null, 2));
     await page.screenshot({ path: `${out}/${build}/${tag}.png` }).catch(() => {});
+  } else if ((baselinesSaved.get(group) ?? 0) < BASELINES_PER_GROUP) {
+    // Loads without an error, kept for comparison.
+    baselinesSaved.set(group, (baselinesSaved.get(group) ?? 0) + 1);
+    record.baseline = `${out}/baseline/${group}-${index}.json`;
+    await writeFile(record.baseline, JSON.stringify({ ...record, mutations }, null, 2));
+    if (serverHtml) await writeFile(`${out}/baseline/${group}-${index}-server.html`, serverHtml);
   }
   loads.push(record);
-  console.log(`${build.padEnd(6)} ${combo.lang} ${combo.width} #${index} +${Math.round((record.sinceSeedMs ?? 0) / 1000)}s ${hydration.length ? `HYDRATION ${record.hydration[0].slice(0, 80)}` : 'ok'}${record.navigationError ? ` (${record.navigationError})` : ''}`);
+  console.log(
+    `${build.padEnd(6)} ${arm.padEnd(8)} ${combo.lang} ${combo.width} #${index} +${Math.round((record.sinceSeedMs ?? 0) / 1000)}s ${hydration.length ? `HYDRATION ${record.hydration[0].slice(0, 60)}` : 'ok'}${record.navigationError ? ` (${record.navigationError})` : ''}`,
+  );
   await context.close();
 }
 
@@ -206,7 +251,8 @@ for (let round = 0; round < ROUNDS; round++) {
       console.log(`seeded user created at ${current?.user?.createdAt}`);
     }
     for (const combo of COMBOS) {
-      for (let index = 0; index < PER_COMBO; index++) await load(build, combo, round * PER_COMBO + index);
+      for (let index = 0; index < PER_COMBO; index++) await load(build, combo, round * PER_COMBO + index, 'live');
+      for (let index = 0; index < REPLAYED_PER_COMBO; index++) await load(build, combo, round * REPLAYED_PER_COMBO + index, 'replayed');
     }
     await stop();
   }
@@ -215,29 +261,43 @@ await browser.close();
 
 const summary = {};
 for (const build of Object.keys(BUILDS)) {
-  const mine = loads.filter((item) => item.build === build);
-  const failing = mine.filter((item) => item.hydration.length);
-  summary[build] = {
-    loads: mine.length,
-    hydrationErrors: failing.length,
-    rate: mine.length ? `${((failing.length / mine.length) * 100).toFixed(1)}%` : 'not run',
-    navigationErrors: mine.filter((item) => item.navigationError).length,
-    byCombo: Object.fromEntries(
-      COMBOS.map((combo) => {
-        const group = mine.filter((item) => item.lang === combo.lang && item.width === combo.width);
-        return [`${combo.lang}-${combo.width}`, `${group.filter((item) => item.hydration.length).length}/${group.length}`];
-      }),
-    ),
-    failingLoads: failing.map((item) => ({
-      lang: item.lang,
-      width: item.width,
-      sinceSeedS: item.sinceSeedMs === null ? null : Math.round(item.sinceSeedMs / 1000),
-      error: item.hydration[0].slice(0, 160),
-      serverOnlyText: item.serverOnlyText,
-      clientOnlyText: item.clientOnlyText,
-      files: item.files,
-    })),
-  };
+  for (const arm of ARMS) {
+    const mine = loads.filter((item) => item.build === build && item.arm === arm);
+    const failing = mine.filter((item) => item.hydration.length);
+    summary[`${build}/${arm}`] = {
+      loads: mine.length,
+      hydrationErrors: failing.length,
+      rate: mine.length ? `${((failing.length / mine.length) * 100).toFixed(1)}%` : 'not run',
+      navigationErrors: mine.filter((item) => item.navigationError).length,
+      byCombo: Object.fromEntries(
+        COMBOS.map((combo) => {
+          const group = mine.filter((item) => item.lang === combo.lang && item.width === combo.width);
+          return [`${combo.lang}-${combo.width}`, `${group.filter((item) => item.hydration.length).length}/${group.length}`];
+        }),
+      ),
+      failingLoads: failing.map((item) => ({
+        lang: item.lang,
+        width: item.width,
+        sinceSeedS: item.sinceSeedMs === null ? null : Math.round(item.sinceSeedMs / 1000),
+        error: item.hydration[0].slice(0, 160),
+        serverOnlyText: item.serverOnlyText,
+        clientOnlyText: item.clientOnlyText,
+        removedByClient: item.removedByClient,
+        addedByClient: item.addedByClient,
+        timing: item.timing,
+        files: item.files,
+      })),
+    };
+  }
 }
-await writeFile(`${out}/summary.json`, JSON.stringify({ revision: process.env.GITHUB_SHA, mainRevision: process.env.MAIN_REVISION, seedTime: seedTime && new Date(seedTime).toISOString(), summary, loads }, null, 2));
-console.log(JSON.stringify(Object.fromEntries(Object.entries(summary).map(([build, value]) => [build, { loads: value.loads, hydrationErrors: value.hydrationErrors, rate: value.rate, byCombo: value.byCombo }])), null, 2));
+await writeFile(
+  `${out}/summary.json`,
+  JSON.stringify({ revision: process.env.GITHUB_SHA, mainRevision: process.env.MAIN_REVISION, seedTime: seedTime && new Date(seedTime).toISOString(), summary, loads }, null, 2),
+);
+console.log(
+  JSON.stringify(
+    Object.fromEntries(Object.entries(summary).map(([key, value]) => [key, { loads: value.loads, hydrationErrors: value.hydrationErrors, rate: value.rate, byCombo: value.byCombo }])),
+    null,
+    2,
+  ),
+);
