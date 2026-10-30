@@ -269,8 +269,9 @@ function Hero({ stars }: { stars: number }) {
           </a>
           <h1 className="mt-6 text-balance font-semibold text-5xl tracking-tight sm:text-6xl">The visual Markdown alternative to Mintlify.</h1>
           <p className="mt-5 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and 12
-            interface languages and first-class RTL. Use the free cloud beta or install the public AGPL-3.0 release on your own infrastructure.
+            Nibleaf is a documentation platform with a Notion-style editor over Markdown, versioned publishing, built-in search and analytics, and
+            English and Arabic authoring with first-class RTL. Use the free cloud beta or install the public AGPL-3.0 release on your own
+            infrastructure.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={`${primaryButton} group`} href="/sign-up">
