@@ -34,7 +34,7 @@ for (const scenario of ['architecture', 'env', 'compose', 'containers', 'volumes
       if (scenario === 'env') writeFileSync(join(target, '.env'), 'preserved');
       if (scenario === 'compose') writeFileSync(join(target, 'compose.yaml'), 'preserved');
       const script = join(root, 'installer.sh');
-      writeFileSync(script, template.replace('TTY=/dev/tty', 'TTY=/dev/stdin'));
+      writeFileSync(script, template.replace('TTY=/dev/tty', 'TTY=/dev/null').replaceAll('>"$TTY"', '>/dev/null').replaceAll('<"$TTY"', '<&0'));
       const input = `${target}\n\n\n\n${scenario === 'smtp' ? 'y\nNibleaf <nibleaf@example.test>\nsmtp\nsmtp://localhost:25\n' : `n\n${scenario === 'fresh' ? 'y' : 'n'}\n`}`;
       const result = spawnSync(process.env.TEST_SHELL || 'sh', [script], {
         input,
@@ -55,6 +55,15 @@ for (const scenario of ['architecture', 'env', 'compose', 'containers', 'volumes
         assert.equal(Buffer.from(key, 'base64').length, 32);
       } else {
         assert.notEqual(result.status, 0);
+        const reason =
+          scenario === 'architecture'
+            ? 'Unsupported architecture'
+            : scenario === 'inspection'
+              ? 'Could not inspect'
+              : scenario === 'decline'
+                ? 'Cancelled'
+                : 'Existing';
+        assert.ok((result.stdout + result.stderr).includes(reason), result.stdout + result.stderr);
         assert.equal(existsSync(join(target, 'docker-compose.yml')), false);
         if (scenario === 'env') assert.equal(readFileSync(join(target, '.env'), 'utf8'), 'preserved');
         else assert.equal(existsSync(join(target, '.env')), false);
