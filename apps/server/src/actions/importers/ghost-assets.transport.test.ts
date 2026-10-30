@@ -113,7 +113,7 @@ describe('remote image transport', () => {
   it('keeps image downloads on their own connections', async () => {
     respond([{}]);
     await new RemoteAssetMigrator('synthetic').rewrite(markdown);
-    const [, options] = network.stream.mock.calls[0];
+    const options = network.stream.mock.calls[0]?.[1];
     expect(options.agent.http.keepAlive).toBe(false);
     expect(options.agent.https.keepAlive).toBe(false);
   });
