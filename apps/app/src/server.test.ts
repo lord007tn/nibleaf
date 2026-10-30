@@ -110,6 +110,30 @@ describe('published Markdown edge routing', () => {
     expect(response.headers.get('x-nibleaf-revision')).toBe('development');
   });
 
+  it.each(['GET', 'HEAD'])('marks an HTML not-found %s response as non-indexable', async (method) => {
+    mocks.startHandler.mockResolvedValueOnce(
+      new Response(method === 'HEAD' ? null : '<!doctype html><title>Not found</title>', {
+        status: 404,
+        headers: { 'content-type': 'text/html' },
+      }),
+    );
+
+    const response = await server.fetch(new Request('http://localhost:4310/sites/%24projectId', { method, headers: { accept: 'text/html' } }));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+    expect(response.headers.get('x-nibleaf-revision')).toBe('development');
+    if (method === 'HEAD') expect(await response.text()).toBe('');
+  });
+
+  it('does not force noindex onto an indexable successful HTML response', async () => {
+    const response = await server.fetch(new Request('http://localhost:4310/sites/project-1', { headers: { accept: 'text/html' } }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-robots-tag')).toBeNull();
+    expect(await response.text()).toContain('<title>Published</title>');
+  });
+
   it('converts errors in a rewritten request before losing its helper status, headers and cookies', async () => {
     let rewrittenPath = '';
     mocks.startHandler.mockImplementationOnce(async () => {

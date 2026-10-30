@@ -38,7 +38,7 @@ your content stays in your database.
 
 - 🖋️ **Rich text _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
-- 🌍 **Multilingual & RTL-first** — 12 interface languages, arbitrary BCP-47 content
+- 🌍 **Multilingual & RTL-first** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content
   languages, per-language page trees, and right-to-left layout.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
@@ -87,7 +87,7 @@ Private customer documentation supports dedicated reader accounts, audience/page
   encrypted write-only project credentials, and clear project-versus-instance ownership.
 - **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
   validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
-- **Multilingual & RTL** — 12 interface languages, arbitrary BCP-47 content languages,
+- **Multilingual & RTL** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
   and host-based published-site routing.
