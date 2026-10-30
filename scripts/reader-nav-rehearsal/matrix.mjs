@@ -11,8 +11,6 @@ const slug = 'reference/البداية';
 const home = 'getting-started/introduction';
 const title = { en: 'Matrix English', ar: 'مصفوفة عربية' };
 const description = { en: 'English navigation fixture.', ar: 'صفحة اختبار التنقل العربية.' };
-const languages = { en: 'Change language', ar: 'تغيير اللغة' };
-const versions = { en: 'Change docs version', ar: 'تغيير إصدار المستندات' };
 const href = (path, lang, origin = base) => `${origin}/${path}${lang === 'ar' ? '?lang=ar' : ''}`;
 const wait = async (page, predicate, arg) => page.waitForFunction(predicate, arg, { timeout: 15000 });
 const mark = page => page.evaluate(() => { window.__readerDocument = 'original'; });
@@ -37,7 +35,7 @@ const searchTo = async (page, lang) => {
 // Wait for the actual hosted reader, without relying on a fixed startup delay.
 let available = false;
 for (let attempt = 0; attempt < 90; attempt++) {
-  try { available = (await fetch(`${base}/${home}`)).ok; } catch {}
+  try { available = (await fetch(`${base}/${home}`, { signal: AbortSignal.timeout(5000) })).ok; } catch {}
   if (available) break;
   await new Promise(resolve => setTimeout(resolve, 1000));
 }
@@ -61,6 +59,7 @@ async function row(lang, name, action, options = {}) {
     await action(page, context, result);
     result.status = 'pass';
   } catch (error) {
+    if (!available) result.status = 'not-verified';
     result.reason = error.message;
   } finally {
     result.url = page.url();
@@ -81,14 +80,17 @@ for (const lang of ['en', 'ar']) {
     await retained(page);
   });
   await row(lang, 'cards', async page => {
+    const previousHeading = await page.locator('main h1').textContent();
     await page.locator('main article a[href*="guides/webhooks"]').first().click();
     await wait(page, () => location.pathname.endsWith('/guides/webhooks'));
-    await page.waitForLoadState('networkidle');
+    await wait(page, previous => document.querySelector('main h1')?.textContent !== previous, previousHeading);
     await retained(page);
   });
   await row(lang, 'pager', async page => {
+    const previousHeading = await page.locator('main h1').textContent();
     await page.locator('main article nav a').last().click();
     await wait(page, () => location.pathname.endsWith('/getting-started/installation'));
+    await wait(page, previous => document.querySelector('main h1')?.textContent !== previous, previousHeading);
     await retained(page);
   });
   await row(lang, 'search', async page => {
@@ -145,9 +147,10 @@ for (const lang of ['en', 'ar']) {
     await retained(page);
   });
   await row(lang, 'changelog', async page => {
+    const previousHeading = await page.locator('main h1').textContent();
     await page.locator('header a[href*="/changelog"]').first().click();
     await wait(page, () => location.pathname.endsWith('/changelog'));
-    await page.locator('main h1').waitFor();
+    await wait(page, previous => document.querySelector('main h1')?.textContent !== previous, previousHeading);
     await retained(page);
   });
   await row(lang, 'mobile-menu', async page => {

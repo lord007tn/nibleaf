@@ -27,6 +27,12 @@ replace("  if (pathname.startsWith('/api/public/assets/')) {", `
   if (pathname.startsWith('/api/public/assets/')) {`);
 replace("json(res, 200, { data: { hits: [] } });", `json(res, 200, { data: { hits: PAGES.flatMap(page => ['en', 'ar'].map(lang => ({
   id: pageId(page, lang), path: pagePath(page), title: page[lang].title,
-  snippet: page[lang].description, language: lang, icon: page.icon
+  description: page[lang].description, snippet: page[lang].description, score: 1, language: lang, icon: page.icon
 }))).filter(hit => hit.title.includes(searchParams.get('q') || '')) } });`);
-await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+if (process.argv.includes('--check')) {
+  const fixture = new Function(source.slice(0, source.indexOf('const json =')).replace(/^#!.*\n/, '').replace("import { createServer } from 'node:http';", '') + '; return PAGES[0].en.content;')();
+  if (!fixture.includes('\n\n## matrix-end\n')) throw new Error('Fragment fixture did not contain Markdown newlines');
+  console.log('Fixture compilation and Markdown newlines: pass');
+} else {
+  await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+}

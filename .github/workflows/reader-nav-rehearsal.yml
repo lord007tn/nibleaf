@@ -26,6 +26,7 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: mkdir -p output/reader-nav
       - name: Typecheck
         id: typecheck
@@ -46,7 +47,7 @@ jobs:
           /tmp/reader-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Walk reader matrix
         run: |
-          node scripts/reader-nav-rehearsal/fixture.mjs > output/reader-nav/mock.log 2>&1 &
+          node scripts/reader-nav-rehearsal/fixture.mjs --port 4311 > output/reader-nav/mock.log 2>&1 &
           node apps/app/.output/server/index.mjs > output/reader-nav/reader.log 2>&1 &
           BROWSER_MODULE=/tmp/reader-browser/node_modules/playwright/index.mjs node scripts/reader-nav-rehearsal/matrix.mjs
       - uses: actions/upload-artifact@v7
