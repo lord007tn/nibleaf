@@ -564,7 +564,7 @@ export const BLOG_MANIFEST = [
     description:
       'A source-backed GitBook and Mintlify comparison covering editors, Git workflows, API docs, pricing, multilingual content, and self-hosting.',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-17',
+    dateModified: '2026-10-30',
     tags: ['comparison', 'gitbook', 'mintlify'],
     related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
     readingMinutes: 8,
@@ -671,7 +671,7 @@ export const BLOG_MANIFEST = [
     description:
       'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-31',
+    dateModified: '2026-10-30',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
     readingMinutes: 12,
@@ -689,7 +689,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Does Nibleaf support Arabic and right-to-left documentation?',
         answer:
-          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.',
+          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface offers 12 locale options, with some strings still in English.',
       },
     ],
   },

@@ -67,6 +67,9 @@ procedure.
 - Removed the View Markdown and Copy Markdown buttons from the public reader (#175).
 - Self-hosting documentation now covers the upgrade, the `amd64` requirement, the
   sign-in prerequisite, and backups that work from an installer directory.
+- Upgraded Better Auth to 1.7.14, with an additive migration for the `invitation.createdAt`
+  column its schema check requires. Builds of `main` on 1.7.0 to 1.7.2 could not
+  complete Google sign-in; no published release was affected (#249).
 
 ### Fixed
 
