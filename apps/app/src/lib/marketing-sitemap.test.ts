@@ -6,7 +6,7 @@ describe('marketing sitemap', () => {
     const lastmodByPath = Object.fromEntries(MARKETING_SITEMAP.map((entry) => [entry.path, entry.lastmod]));
 
     expect(lastmodByPath).toEqual({
-      '/': '2026-08-24',
+      '/': '2026-10-30',
       '/ar': '2026-08-22',
       '/documentation-platforms': '2026-09-03',
       '/ar/documentation-platforms': '2026-10-30',
