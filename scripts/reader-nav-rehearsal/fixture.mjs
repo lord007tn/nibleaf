@@ -15,7 +15,7 @@ PAGES.push({ group: 'reference', slug: 'البداية', icon: 'book-open',
 for (const page of PAGES) {
   for (const lang of ['en', 'ar']) {
     page[lang].content += '\\n\\n[Matrix cross fragment](/reference/البداية#matrix-end)\\n\\n[Matrix same fragment](#matrix-end)\\n\\n' +
-      Array.from({length: 35}, (_, i) => 'Paragraph ' + i + ': Reader navigation fixture content.').join('\\n\\n') + '\\n\\n## matrix-end\\n\\nDestination fragment.';
+      Array.from({length: 35}, (_, i) => 'Paragraph ' + i + ': Reader navigation fixture content.').join('\\n\\n') + '\\n\\n## matrix-end\\n\\nDestination fragment.' + Array.from({length: 15}, () => '\\n\\nContent after the target.').join('');
   }
 }
 const pagePath =`);
