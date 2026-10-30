@@ -60,6 +60,7 @@
               "self-hosting/clickhouse-analytics",
               "self-hosting/usage-metering",
               "self-hosting/backups-upgrades",
+              "self-hosting/upgrade-v0-2",
               "self-hosting/troubleshooting"
             ]
           },
@@ -145,6 +146,7 @@
               "ar/self-hosting/clickhouse-analytics",
               "ar/self-hosting/usage-metering",
               "ar/self-hosting/backups-upgrades",
+              "ar/self-hosting/upgrade-v0-2",
               "ar/self-hosting/troubleshooting"
             ]
           },
