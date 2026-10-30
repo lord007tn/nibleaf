@@ -71,9 +71,13 @@ PAGES.push({ group: 'reference', slug: 'localized-en', arSlug: 'localized-ar', i
 });
 for (const page of PAGES) {`);
 if (process.argv.includes('--check')) {
-  const fixture = new Function(source.slice(0, source.indexOf('const json =')).replace(/^#!.*\n/, '').replace("import { createServer } from 'node:http';", '') + '; return PAGES[0].en.content;')();
-  if (!fixture.includes('\n\n## matrix-end\n')) throw new Error('Fragment fixture did not contain Markdown newlines');
-  console.log('Fixture compilation and Markdown newlines: pass');
+  const model = new Function(source.slice(0, source.indexOf('const json =')).replace(/^#!.*\n/, '').replace("import { createServer } from 'node:http';", '') + '; return {PAGES, siteShell, sitePage};')();
+  if (!model.PAGES[0].en.content.includes('\n\n## matrix-end\n')) throw new Error('Fragment fixture did not contain Markdown newlines');
+  const v2 = model.siteShell('preview-harbor', 'harbor', new URLSearchParams('version=v2'));
+  if (v2.nav[0].children[0].path !== 'getting-started/installation') throw new Error('V2 must have a different first page');
+  const localized = model.sitePage('preview-harbor', 'harbor', new URLSearchParams('path=reference/localized-ar&lang=ar'));
+  if (localized.page.path !== 'reference/localized-ar' || localized.languages.find(item => item.code === 'en').path !== 'reference/localized-en') throw new Error('Localized slugs must differ');
+  console.log('Fixture compilation, Markdown, version homes, and localized slugs: pass');
 } else {
   await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 }
