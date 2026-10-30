@@ -29,7 +29,7 @@ jobs:
       - name: Format owned reader changes
         run: |
           mkdir -p output/reader-nav
-          pnpm exec biome format --write 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.client.test.ts
+          pnpm exec biome format --write 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.test.ts apps/app/src/lib/site-seo.client.test.ts
           git diff > output/reader-nav/format.patch
       - uses: actions/upload-artifact@v7
         with:
@@ -55,7 +55,7 @@ jobs:
         continue-on-error: true
         run: |
           pnpm --filter @nibleaf/app test src/lib/site-link-navigation.test.ts src/providers/site-analytics-provider.test.tsx src/components/site/site-page-view.client.test.tsx src/components/site/site-search.test.tsx src/lib/site-seo.test.ts src/lib/site-seo.client.test.ts 'src/routes/sites/$projectId/-route-errors.test.ts' 'src/routes/sites/$projectId/-changelog-route.test.ts'
-          pnpm exec biome check 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.client.test.ts
+          pnpm exec biome check 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' 'apps/app/src/routes/sites/$projectId/-changelog-route.test.ts' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx apps/app/src/components/site/site-search-dialog.tsx apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.test.ts apps/app/src/lib/site-seo.client.test.ts
           pnpm check:dead-code
       - name: Install isolated browser harness
         run: |

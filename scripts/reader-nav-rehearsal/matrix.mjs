@@ -96,7 +96,7 @@ async function row(lang, name, action, options = {}) {
       }
     }
     const expectedShells = result.expectedShells ?? (['language-seo', 'version', 'refused-version', 'javascript-disabled'].includes(name) ? 1 : 0);
-    if (!result.variableShells) assert.equal(result.shellFetchCount, expectedShells, `${name}: unexpected shell fetch count`);
+    assert.equal(result.shellFetchCount, expectedShells, `${name}: unexpected shell fetch count`);
     result.status = 'pass';
   } catch (error) {
     if (!available) result.status = 'not-verified';
@@ -328,19 +328,31 @@ for (const lang of ['en', 'ar']) {
   });
   await row(lang, 'version-interleaved', async (page, _context, result) => {
     result.expectedViews = 2;
-    result.variableShells = true;
+    result.expectedShells = 2;
     await page.getByRole('button').filter({ hasText: 'Latest' }).click();
     await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
     await wait(page, () => location.pathname.includes('/v2/'));
+    await page.locator('main article nav a[href*="/v2/"]').last().waitFor();
     const deadline = Date.now() + 5000;
     while ((await countSince(result.counterStart)).shellFetches === 0 && Date.now() < deadline) await page.waitForTimeout(25);
     // Supersede the invalidation, then navigate within V2 while the old shell is still visible.
     await page.getByRole('button').filter({ hasText: 'Latest' }).click();
     await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
-    await page.locator('main article nav a').last().click();
+    await page.locator('main article nav a[href*="/v2/"]').last().click();
     await wait(page, () => location.pathname.includes('/v2/getting-started/installation'));
     await page.getByRole('button').filter({ hasText: 'V2' }).waitFor();
     assert.ok((await sidebar(page, slug).getAttribute('href')).includes('/v2/'));
+    await retained(page);
+  });
+  await row(lang, 'version-focus-announcement', async (page, _context, result) => {
+    result.expectedShells = 1;
+    await page.getByRole('button').filter({ hasText: 'Latest' }).click();
+    await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
+    await page.getByRole('button').filter({ hasText: 'V2' }).waitFor();
+    const text = await page.locator('main h1').textContent();
+    await wait(page, title => document.activeElement === document.querySelector('main h1') || document.querySelector('[data-site-route-announcer]')?.textContent === title, text);
+    result.headingFocused = await page.evaluate(() => document.activeElement === document.querySelector('main h1'));
+    result.announcement = await page.locator('[data-site-route-announcer]').textContent();
     await retained(page);
   });
 }
