@@ -187,6 +187,10 @@ false claim that no facts exist. An accepted provider export remains a separate
 external deletion reconciliation obligation; the checkpoint records that
 obligation without storing provider payloads or payment identifiers.
 
+Object-storage erasure applies to deletions made after upgrading and does not
+clean up objects left by earlier deletions; see
+[Operate hybrid search and grounded answers](/self-hosting/search-ai).
+
 ## Rollback
 
 1. Set `ANALYTICS_MODE=disabled` if ClickHouse is unhealthy. The dashboard will
