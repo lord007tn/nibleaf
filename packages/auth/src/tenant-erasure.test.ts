@@ -13,7 +13,12 @@ const mocks = vi.hoisted(() => ({
   organizationDelete: vi.fn(),
 }));
 
-vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, getJob: mocks.getJob, removeJob: mocks.removeJob, QueueNames: { SEARCH: 'search' } }));
+vi.mock('@nibleaf/bullmq', () => ({
+  createJob: mocks.createJob,
+  getJob: mocks.getJob,
+  removeJob: mocks.removeJob,
+  QueueNames: { SEARCH: 'search' },
+}));
 vi.mock('@nibleaf/clickhouse', () => ({
   clickHouseWritesEnabled: () => true,
   keys: () => ({ ANALYTICS_MODE: 'clickhouse' }),

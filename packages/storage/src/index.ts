@@ -116,7 +116,12 @@ export interface PresignPutOptions {
 }
 
 /** Create a presigned URL a client can PUT bytes to directly (signed with the public endpoint). */
-export const presignPutUrl = ({ key, contentType, expiresInSeconds = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS, target }: PresignPutOptions): Promise<string> => {
+export const presignPutUrl = ({
+  key,
+  contentType,
+  expiresInSeconds = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS,
+  target,
+}: PresignPutOptions): Promise<string> => {
   const signTarget = target ?? publicTarget();
   return getSignedUrl(getS3Client(signTarget), new PutObjectCommand({ Bucket: getBucket(signTarget), Key: key, ContentType: contentType }), {
     expiresIn: expiresInSeconds,
