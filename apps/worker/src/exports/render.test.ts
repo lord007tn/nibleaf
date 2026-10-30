@@ -383,6 +383,8 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
       expect(search).not.toContain('[!');
       expect(search).not.toMatch(/\b(?:TIP|CAUTION|UNKNOWN)\b/);
       expect(search).toContain('Danger zone');
+      // Each blockquote sets its own color, or a nested note inherits its parent's.
+      expect(css).toContain('blockquote,blockquote[data-callout]{--callout:var(--info);');
       expect(css).toContain('blockquote[data-callout="warning"]{--callout:var(--warning)}');
       expect(css).toContain('body[data-theme-callouts="solid"] blockquote{background:var(--callout,var(--info))');
 
