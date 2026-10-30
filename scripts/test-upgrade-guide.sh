@@ -42,6 +42,7 @@ healthy() {
   done
   return 1
 }
+record prebootstrap PASS 'sample before published image pulls'
 # Bootstrap is deliberately the old published installer, not guide command text.
 INSTALL="$RUNNER_TEMP/guide-install"
 mkdir -p "$INSTALL"
@@ -90,7 +91,7 @@ runblock 5
 runblock 6 staged-image-and-legacy
 grep '^\["ghcr.io/lord007tn/nibleaf@sha256:' "$log" > "$PUBLIC/staged-digest.txt"
 grep -q 'sha256:880938a6ab865487f0b85733eeb2c20da06de34dcce1bdb5a8f35f694e4a3da8' "$PUBLIC/staged-digest.txt"
-record staged-digest PASS 'RepoDigests matches the exact guide digest' 
+record staged-digest PASS 'RepoDigests matches the exact guide digest'
 if [ "$MODE" = recovery ]; then
   # Deliberately skip stage migration, then execute the guide candidate setup.
   runblock 14 recovery-compose
@@ -100,7 +101,14 @@ if [ "$MODE" = recovery ]; then
   # Direct startup is expected to refuse; preserve private output.
   if bash -e "$PUBLIC/block-16.sh" > "$PRIVATE/direct-start.log" 2>&1; then :; fi
   sleep 15
-  if docker compose logs server worker 2>/dev/null | grep -q 'Unknown recurring configuration'; then
+  # Do not combine grep -q and a live log producer under pipefail: SIGPIPE
+  # can turn an observed refusal into a false negative.
+  docker compose logs server worker > "$PRIVATE/direct-service-logs.txt" 2>&1 || true
+  grep -o 'Unknown recurring configuration in [a-z]*; complete the migration using the retained staged v5 image' "$PRIVATE/direct-service-logs.txt" | sort -u > "$PUBLIC/direct-refusal-messages.txt" || true
+  for svc in server worker; do
+    docker inspect -f '{{.Name}} status={{.State.Status}} restarts={{.RestartCount}} health={{if .State.Health}}{{.State.Health.Status}}{{end}}' "$(docker compose ps -aq "$svc")"
+  done > "$PUBLIC/direct-service-status.txt"
+  if grep -q 'Unknown recurring configuration' "$PRIVATE/direct-service-logs.txt"; then
     record direct-refusal PASS 'Unknown recurring configuration observed'
   else
     record direct-refusal FAIL 'expected refusal missing'; exit 1
@@ -176,7 +184,9 @@ else
   record checksum-tamper PASS 'tampered fixture rejected'; safe_failure
 fi
 runblock 15 env-pin-and-unset
-if env -u NIBLEAF_VERSION bash -c 'docker compose config --images' | grep 'ghcr.io/lord007tn/nibleaf:' | grep -v ":$CANDIDATE"; then
+env -u NIBLEAF_VERSION bash -c 'docker compose config --images' > "$PUBLIC/fresh-shell-images.txt"
+grep -q 'ghcr.io/lord007tn/nibleaf:' "$PUBLIC/fresh-shell-images.txt"
+if grep 'ghcr.io/lord007tn/nibleaf:' "$PUBLIC/fresh-shell-images.txt" | grep -v ":$CANDIDATE"; then
   record fresh-shell-tag FAIL 'unexpected image'; exit 1
 fi
 record fresh-shell-tag PASS '.env selects candidate with no exported tag'
@@ -187,7 +197,7 @@ runblock 17 health-and-migrations
 grep -E '^202[0-9]{11}_' "$log" | sort > "$PUBLIC/migrations.txt"
 test "$(wc -l < "$PUBLIC/migrations.txt")" = 7
 cmp -s "$PUBLIC/migrations.txt" "$PUBLIC/expected-migrations.txt"
-record migration-list PASS 'exact seven documented migration names' 
+record migration-list PASS 'exact seven documented migration names'
 runblock 18 inventory-http
 runblock 19 resume
 runblock 20 digest
