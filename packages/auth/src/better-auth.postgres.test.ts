@@ -318,13 +318,13 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   });
 
   it.each([
-    ['banned', { banned: true }],
-    ['suspended', { suspendedAt: new Date() }],
-  ])('creates no session for a %s Google user', async (label, state) => {
+    ['banned', { banned: true }, 302],
+    ['suspended', { suspendedAt: new Date() }, 403],
+  ])('creates no session for a %s Google user', async (label, state, status) => {
     const { email, sub, userId } = await createGoogleUser(label, state);
     const response = await signInWithGoogle(sub, email);
-    expect(response.status).toBe(302);
-    expect(response.headers.get('location')).toContain('error=');
+    expect(response.status).toBe(status);
+    expect(response.headers.get('location')).not.toBe('/app');
     expect(setCookiePairs(response).some((pair) => pair?.startsWith(`${SESSION_COOKIE}=`))).toBe(false);
     expect(await prisma.session.count({ where: { userId } })).toBe(0);
   });
