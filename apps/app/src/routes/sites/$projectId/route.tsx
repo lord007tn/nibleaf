@@ -25,7 +25,7 @@ import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
 import { siteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
@@ -43,8 +43,9 @@ export const Route = createFileRoute('/sites/$projectId')({
   // candidates that aren't real version slugs.
   loader: async ({ params, deps, location }) => {
     try {
-      const rest = location.pathname.replace(new RegExp(`^/sites/${params.projectId}/?`), '').replace(/\/+$/, '');
-      const candidate = rest && rest !== 'changelog' ? decodeURIComponent(rest).split('/')[0] : undefined;
+      const rest = siteRoutePath(location.pathname).replace(/\/+$/, '');
+      const segment = rest.split('/')[0];
+      const candidate = segment && rest !== 'changelog' ? decodeURIComponent(segment) : undefined;
       const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
       return { site, siteOrigin: customDomainOrigin() };
     } catch (error) {
@@ -107,7 +108,7 @@ function SiteChrome() {
   // SSR renders the platform-neutral label; the client corrects it after hydration.
   const searchShortcut = useSearchShortcutLabel();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const currentPath = decodeURIComponent(pathname.replace(new RegExp(`^/sites/${projectId}/?`), '')).replace(/\/+$/, '');
+  const currentPath = decodeURIComponent(siteRoutePath(pathname)).replace(/\/+$/, '');
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const activeVersionPrefix = currentVersion && !currentVersion.isDefault ? currentVersion.slug : undefined;
