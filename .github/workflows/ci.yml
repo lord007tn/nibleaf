@@ -96,6 +96,16 @@ jobs:
           AUTH_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/auth exec vitest run src/better-auth.postgres.test.ts
 
+      # TEMPORARY, removed before merge: an older image has no new migration folder.
+      - name: Check an older image's migrate step against the new migration
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+        run: |
+          mv packages/database/prisma/migrations/20261030120000_invitation_created_at "$RUNNER_TEMP/"
+          pnpm --filter @nibleaf/database exec prisma migrate deploy
+          pnpm --filter @nibleaf/database exec prisma migrate status || echo "migrate status exited $?"
+          mv "$RUNNER_TEMP/20261030120000_invitation_created_at" packages/database/prisma/migrations/
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt
