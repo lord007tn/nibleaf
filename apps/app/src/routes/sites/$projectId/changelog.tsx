@@ -1,8 +1,9 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { createFileRoute, useSearch } from '@tanstack/react-router';
+import { createFileRoute, notFound, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
-import type { ChangelogEntry } from '@/hooks/api/types';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
+import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { changelogFeedUrl, sitePageUrl } from '@/lib/site-seo';
@@ -13,18 +14,22 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
   // Fetch the site shell server-side so the changelog gets a real SSR <title>
   // and canonical (the changelog route renders no SitePageView to own the head).
   loader: async ({ params, deps }) => {
+    let site: SiteShell;
     try {
-      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
-      let entries: ChangelogEntry[] = [];
-      try {
-        entries = await listSiteChangelogFn({ data: { projectId: params.projectId } });
-      } catch {
-        // The shell still owns SEO/chrome when the optional feed is unavailable.
-      }
-      return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
-    } catch {
-      return { site: null, entries: [] as ChangelogEntry[], lang: deps.lang, siteOrigin: customDomainOrigin() };
+      site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
+    } catch (error) {
+      // A missing or privacy-hidden site is a real 404, not an empty changelog
+      // served as 200; other failures reach the retryable error boundary.
+      if (error instanceof ApiResponseError && error.status === 404) throw notFound();
+      throw error;
     }
+    let entries: ChangelogEntry[] = [];
+    try {
+      entries = await listSiteChangelogFn({ data: { projectId: params.projectId } });
+    } catch {
+      // The shell still owns SEO/chrome when the optional feed is unavailable.
+    }
+    return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
   },
   head: ({ loaderData, params }) => {
     const site = loaderData?.site ?? null;
