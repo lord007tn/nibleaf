@@ -7,7 +7,8 @@ const replace = (before, after) => {
   source = source.replace(before, after);
 };
 replace("const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }];", "const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }, { id: 'ver_v2', name: 'V2', slug: 'v2', isDefault: false }, { id: 'ver_refused', name: 'Refused', slug: 'refused', isDefault: false }];");
-replace('const resolveVersion = (version) =>', "const resolveVersion = (version) => version === 'refused' ? VERSIONS[0] :");
+// Simulate a shell refusing a still-advertised version while its page endpoint resolves it.
+replace("const version = resolveVersion(query.get('version'));", "const version = resolveVersion(query.get('version') === 'refused' ? undefined : query.get('version'));");
 replace('const server = createServer((req, res) => {', `
 const recordedEvents = [];
 const shellRequests = [];
