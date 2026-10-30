@@ -10,22 +10,22 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    name: Test and publish @nibleaf/cli
+  package:
+    name: Test and pack @nibleaf/cli
     runs-on: ubuntu-latest
     steps:
       - name: Check out the selected ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
+          persist-credentials: false
 
       - name: Require a reviewed main commit
         run: |
-          git fetch origin main
-          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+          git fetch "https://github.com/$GITHUB_REPOSITORY" main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" || {
             echo "Select the current reviewed main commit."
             exit 1
           }
@@ -34,14 +34,11 @@ jobs:
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
-          node-version: "22.18.0"
+          node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-
-      - name: Pin npm for trusted publishing
-        run: npm install --global npm@11.6.2
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -49,6 +46,49 @@ jobs:
       - name: Verify package
         run: pnpm --filter @nibleaf/cli prepublishOnly
 
-      - name: Publish package
+      # pnpm rewrites workspace: ranges when packing; plain npm publish doesn't.
+      - name: Pack package
         working-directory: packages/cli
-        run: npm publish --access public --provenance
+        run: pnpm pack --pack-destination "$RUNNER_TEMP/cli-package"
+
+      - name: Refuse unresolved workspace ranges
+        run: |
+          tar -xzOf "$RUNNER_TEMP"/cli-package/*.tgz package/package.json > "$RUNNER_TEMP/packed-package.json"
+          if grep -n 'workspace:' "$RUNNER_TEMP/packed-package.json"; then
+            echo "::error::The packed package.json still contains a workspace: range."
+            exit 1
+          fi
+
+      - name: Upload the reviewed tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-package
+          path: ${{ runner.temp }}/cli-package/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish the packed tarball
+    needs: package
+    runs-on: ubuntu-latest
+    # Only this job can request the publish credential, and it runs no repository code.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.18.0"
+
+      - name: Pin npm for trusted publishing
+        run: npm install --global npm@11.6.2
+
+      - name: Download the reviewed tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-package
+          path: ${{ runner.temp }}/cli-package
+
+      - name: Publish package
+        run: npm publish "$RUNNER_TEMP"/cli-package/*.tgz --access public --provenance
