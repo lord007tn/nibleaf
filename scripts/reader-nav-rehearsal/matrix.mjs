@@ -207,4 +207,4 @@ for (const lang of ['en', 'ar']) {
 }
 await writeFile(`${out}/results.json`, JSON.stringify({ revision: process.env.GITHUB_SHA, results }, null, 2));
 await browser.close();
-process.exitCode = results.some(result => result.status === 'fail') ? 1 : 0;
+process.exitCode = results.some(result => result.status !== 'pass') ? 1 : 0;
