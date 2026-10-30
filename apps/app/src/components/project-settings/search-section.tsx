@@ -207,7 +207,7 @@ function ProjectSearchConfigurationForm({
         />
       </div>
 
-      {publicMeta?.ai.answers ? (
+      {publicMeta?.ai?.answers ? (
         <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
           <Segmented
             className="max-w-[240px]"

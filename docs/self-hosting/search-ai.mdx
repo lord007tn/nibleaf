@@ -67,6 +67,13 @@ validates the complete structured response, rejects unknown citations and
 unsupported claims, and only then returns it. This avoids streaming unvalidated
 model text. Search results remain immediate and non-generative.
 
+AI controls stay hidden until the instance can serve them. The editor's AI tab
+appears only when `OPENROUTER_API_KEY` is set and `AI_DAILY_LIMIT` is above
+zero. The **Grounded AI answers** setting and the reader's AI answer mode appear
+only when Qdrant and `OPENROUTER_API_KEY` are configured and
+`SEARCH_ANSWER_ENABLED=true`. If the provider fails, drafting returns an error
+instead of placeholder text.
+
 ## Index and evaluate
 
 Publishing enqueues an idempotent deployment index job. A retry diffs chunk IDs

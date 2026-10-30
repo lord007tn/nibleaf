@@ -606,7 +606,7 @@ function SiteChrome() {
                   maxResults={config?.search?.maxResults}
                   versions={versions}
                   versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
-                  aiAnswers={site?.capabilities.answer === true}
+                  aiAnswers={site?.capabilities?.answer === true}
                 />
               ) : null}
               <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />

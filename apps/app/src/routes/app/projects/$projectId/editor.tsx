@@ -87,7 +87,7 @@ function EditorPage() {
   const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
   const { data: publicMeta } = useGetPublicMeta();
-  const aiDraft = publicMeta?.ai.draft === true;
+  const aiDraft = publicMeta?.ai?.draft === true;
 
   useEffect(() => {
     if (firstPublish && project) void recordFirstPublishStage('editor_entered');
