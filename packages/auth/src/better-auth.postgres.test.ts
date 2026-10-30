@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto';
+import { diffSchema, getExpectedSchema } from '@better-auth/core/db/internal';
 import { prisma } from '@nibleaf/database';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -85,7 +86,8 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   const setCookiePairs = (response: Response) => response.headers.getSetCookie().map((cookie) => cookie.split(';', 1)[0]);
 
   const sessionCookie = (response: Response) => {
-    const cookie = setCookiePairs(response).find((pair) => pair?.startsWith(`${SESSION_COOKIE}=`));
+    // Impersonation clears the old cookie first; like a browser, the last one wins.
+    const cookie = setCookiePairs(response).findLast((pair) => pair?.startsWith(`${SESSION_COOKIE}=`));
     expect(cookie, 'session cookie').toBeTruthy();
     return cookie as string;
   };
@@ -133,6 +135,13 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(response.headers.get('location')).toBe('/app');
   };
 
+  const signInAsOwner = async () => {
+    const cookie = sessionCookie(await signInWithCode(addressFor(`owner-${randomUUID()}`)));
+    const userId = (await readSession(cookie))?.user.id as string;
+    const { organizationId } = await prisma.member.findFirstOrThrow({ where: { role: 'owner', userId } });
+    return { cookie, organizationId, userId };
+  };
+
   beforeAll(async () => {
     ({ auth } = await import('./server'));
     const realFetch = globalThis.fetch;
@@ -156,6 +165,59 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   afterAll(async () => {
     vi.unstubAllGlobals();
     await prisma.$disconnect();
+  });
+
+  it('passes Better Auth schema validation on the generated client and the migrated database', async () => {
+    const context = await auth.$context;
+    expect(context.explicitSchemaCheck, 'schema check registered').toBeTypeOf('function');
+    await context.explicitSchemaCheck?.();
+
+    // The Prisma check reads the generated client, so also compare the real tables.
+    const rows = await prisma.$queryRaw<{ columnDefault: string | null; columnName: string; isNullable: string; tableName: string }[]>`
+      SELECT table_name AS "tableName", column_name AS "columnName", is_nullable AS "isNullable", column_default AS "columnDefault"
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+    `;
+    const tables = new Map<string, { hasDefault: boolean; name: string; nullable: boolean }[]>();
+    for (const { columnDefault, columnName, isNullable, tableName } of rows) {
+      const columns = tables.get(tableName) ?? [];
+      columns.push({ hasDefault: columnDefault !== null, name: columnName, nullable: isNullable === 'YES' });
+      tables.set(tableName, columns);
+    }
+    const database = [...tables].map(([name, columns]) => ({ columns, name }));
+    const expected = getExpectedSchema(context.options);
+    expect(Object.keys(expected)).toEqual(
+      expect.arrayContaining(['account', 'invitation', 'member', 'organization', 'session', 'user', 'verification']),
+    );
+    expect(diffSchema(expected, database)).toEqual([]);
+
+    const withoutCreatedAt = database.map((table) =>
+      table.name === 'invitation' ? { ...table, columns: table.columns.filter(({ name }) => name !== 'createdAt') } : table,
+    );
+    expect(diffSchema(expected, withoutCreatedAt)).toEqual([{ column: 'createdAt', kind: 'missing-column', table: 'invitation' }]);
+  });
+
+  it('accepts an invitation inserted the way an older image inserts it', async () => {
+    const { organizationId, userId } = await signInAsOwner();
+    const email = addressFor('invitee');
+    const id = `invitation-${run}`;
+    await prisma.$executeRaw`
+      INSERT INTO "invitation" ("id", "organizationId", "email", "role", "status", "expiresAt", "inviterId")
+      VALUES (${id}, ${organizationId}, ${email}, 'member', 'pending', now() + interval '1 hour', ${userId})
+    `;
+    expect((await prisma.invitation.findUniqueOrThrow({ where: { id } })).createdAt).toBeInstanceOf(Date);
+
+    const cookie = sessionCookie(await signInWithCode(email));
+    expect((await send('/organization/accept-invitation', { body: { invitationId: id }, cookie })).status).toBe(200);
+    expect(await prisma.member.count({ where: { organizationId, user: { email } } })).toBe(1);
+  });
+
+  it('keeps workspace invitations on the Nibleaf action that enforces the single-owner rule', async () => {
+    const { cookie, organizationId } = await signInAsOwner();
+    const email = addressFor('second-owner');
+    const response = await send('/organization/invite-member', { body: { email, organizationId, role: 'owner' }, cookie });
+    expect(response.status).toBe(404);
+    expect(await prisma.invitation.count({ where: { email } })).toBe(0);
   });
 
   it('signs in with an email code, provisions a workspace, reads the session, and signs out', async () => {
@@ -234,5 +296,18 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expectSignedInRedirect(response);
     expect((await readSession(sessionCookie(response)))?.user.id).toBe(existing?.user.id);
     expect((await prisma.account.findFirst({ where: { accountId: sub, providerId: 'google' } }))?.userId).toBe(existing?.user.id);
+  });
+
+  it('refuses a Google identity that matches more than one account', async () => {
+    const email = addressFor('duplicate');
+    const sub = `duplicate-${run}`;
+    expectSignedInRedirect(await signInWithGoogle(sub, email));
+    const other = await prisma.user.create({ data: { email: addressFor('other'), emailVerified: true, name: 'Other' } });
+    await prisma.account.create({ data: { accountId: sub, providerId: 'google', userId: other.id } });
+
+    const response = await signInWithGoogle(sub, email);
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toContain('error=internal_server_error');
+    expect(setCookiePairs(response).some((pair) => pair?.startsWith(`${SESSION_COOKIE}=`))).toBe(false);
   });
 });
