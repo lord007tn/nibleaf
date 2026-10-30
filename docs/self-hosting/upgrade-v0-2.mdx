@@ -4,7 +4,7 @@ description: 'Move a self-hosted Nibleaf v0.1.2 installation to v0.2.0 in two ho
 audience: 'self-hosted Nibleaf operators running v0.1.2'
 content_type: 'how-to'
 last_reviewed: '2026-10-30'
-verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
+verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/upgrade-v0-2'
@@ -75,6 +75,18 @@ Confirm each of these first:
   sign-in, also set `EMAIL_DELIVERY_REQUIRED=false`. Otherwise the worker reports
   unhealthy: its health check returns 503 when required email delivery has no
   provider.
+- **No duplicate linked accounts.** Better Auth in v0.2.0 refuses a sign-in when two
+  `account` rows share the same provider and account ID, and the table has no unique
+  index on that pair. Run this read-only check from the deployment directory. In a
+  repository checkout, run `export COMPOSE_FILE=docker-compose.prod.yml` first:
+
+  ```bash
+  docker compose exec -T postgres psql -U nibleaf -d nibleaf -c 'SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;'
+  ```
+
+  **Expected:** `(0 rows)`. A duplicate blocks only that one identity, but you must
+  resolve it before you upgrade. This guide gives no delete or merge query, because
+  which row to keep is a decision about your own data.
 - **One Bash session.** Run every step in the same shell from the deployment
   directory, because later steps use the variables and functions from step 1. Stop
   at the first command that fails.

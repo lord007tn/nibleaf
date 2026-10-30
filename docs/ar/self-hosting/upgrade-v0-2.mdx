@@ -4,7 +4,7 @@ description: 'انقل تثبيت Nibleaf v0.1.2 المستضاف ذاتيًا �
 audience: 'مشغّلو Nibleaf المستضاف ذاتيًا على الإصدار v0.1.2'
 content_type: 'how-to'
 last_reviewed: '2026-10-30'
-verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
+verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/upgrade-v0-2'
@@ -75,6 +75,18 @@ translation_key: 'self-hosting/upgrade-v0-2'
   إذا كنت تعتمد على تسجيل الدخول عبر Google وحده، فاضبط أيضًا
   `EMAIL_DELIVERY_REQUIRED=false`. وإلا فسيظهر عامل المعالجة (worker) غير سليم، إذ
   يعيد فحص سلامته 503 عندما يكون تسليم البريد مطلوبًا من دون مزوّد.
+- **عدم وجود حسابات مرتبطة مكررة.** يرفض Better Auth في v0.2.0 تسجيل الدخول عندما يشترك
+  صفّان من الجدول `account` في المزوّد ومعرّف الحساب نفسيهما، ولا يوجد في الجدول فهرس
+  فريد على هذا الزوج. نفّذ هذا الفحص المخصص للقراءة فقط من مجلد عملية النشر. في نسخة
+  محلية من المستودع، نفّذ أولًا `export COMPOSE_FILE=docker-compose.prod.yml`:
+
+  ```bash
+  docker compose exec -T postgres psql -U nibleaf -d nibleaf -c 'SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;'
+  ```
+
+  **المتوقع:** `(0 rows)`. لا يمنع التكرار إلا تلك الهوية وحدها، لكن عليك معالجته قبل
+  الترقية. لا يقدّم هذا الدليل استعلام حذف أو دمج، لأن اختيار الصف الذي تبقيه قرار يخص
+  بياناتك.
 - **جلسة Bash واحدة.** نفّذ كل الخطوات في الصدفة نفسها من مجلد عملية النشر، لأن
   الخطوات اللاحقة تستخدم المتغيرات والدوال المعرّفة في الخطوة 1. توقف عند أول أمر
   يفشل.
