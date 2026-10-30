@@ -117,7 +117,7 @@ const compareRows: { label: string; nibleaf: boolean; them: boolean }[] = [
   { label: 'Markdown editor + live preview', nibleaf: true, them: true },
   { label: 'Built-in search', nibleaf: true, them: true },
   { label: 'Custom domains', nibleaf: true, them: true },
-  { label: '12 interface languages + first-class RTL', nibleaf: true, them: false },
+  { label: '12 interface locales (some strings in English) + first-class RTL', nibleaf: true, them: false },
   { label: 'No per-seat lock-in', nibleaf: true, them: false },
 ];
 
@@ -288,7 +288,7 @@ function Hero({ stars }: { stars: number }) {
             </a>
           </div>
           <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-muted-foreground text-sm">
-            {['No credit card required', 'Your content stays Markdown', '12 interface languages'].map((item) => (
+            {['No credit card required', 'Your content stays Markdown', 'English and Arabic with RTL'].map((item) => (
               <span key={item} className="flex items-center gap-1.5">
                 <Check className="size-4 text-primary" /> {item}
               </span>
@@ -306,7 +306,7 @@ function TrustStrip() {
   const stats = [
     { value: 'AGPL-3.0', label: 'licensed codebase' },
     { value: 'Beta', label: 'cloud access available' },
-    { value: '12 languages', label: 'Localized interface with LTR and RTL' },
+    { value: '12 locales', label: 'interface options, some strings still in English' },
     { value: 'Built in', label: 'product analytics' },
   ];
   return (
@@ -414,7 +414,7 @@ function ShowcaseBilingual() {
     <ShowcaseRow
       eyebrow="Arabic & RTL deep dive"
       title="RTL that actually works."
-      body="Most docs platforms bolt RTL on as an afterthought. Nibleaf supports 12 interface languages, arbitrary BCP-47 content languages, per-language page trees, mirrored layouts, localized chrome, and hreflang for every page."
+      body="Most docs platforms bolt RTL on as an afterthought. Nibleaf offers 12 interface locale options, with some strings still in English, plus arbitrary BCP-47 content languages, per-language page trees, mirrored layouts, localized chrome, and hreflang for every page."
       bullets={[
         'Per-language page trees — structure each language independently',
         'True RTL layout in the editor, dashboard, and published site',

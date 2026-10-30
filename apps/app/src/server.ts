@@ -703,7 +703,7 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Integrations: project-managed encrypted write-only webhook credentials and instance-managed provider status with explicit ownership and health states.
 - Documentation themes: Harbor, Manuscript, and Signal structural templates, bounded JSON exchange, and runnable Git-native repositories with platform/shared/customer ownership.
 - MCP: project-bound, expiring scoped API keys expose read-only content, search, usage, add-on, integration, operation, and theme adapters. Theme import is preview-only and cannot apply changes.
-- Bilingual and RTL: per-language page trees, RTL layout, hreflang, and localized dashboard/editor/site chrome in English and Arabic.
+- Multilingual and RTL: per-language page trees, RTL layout, hreflang, and 12 interface locale options. Some interface strings remain in English. English and Arabic authoring include RTL support.
 - Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
 - SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
 - Per-site teams: each site is its own workspace with role-based members (owner/admin/editor).

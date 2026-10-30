@@ -13,9 +13,8 @@ export const Route = createFileRoute('/developers')({
   loader: async () => ({ stars: await getGithubStarsFn() }),
   head: () => ({
     meta: pageMeta({
-      title: 'Nibleaf developer resources: OpenAPI, agents, and CLI',
-      description:
-        'Discover the Nibleaf public reader API, OpenAPI schema, Markdown content negotiation, llms files, authentication boundaries, and official CLI.',
+      title: 'Nibleaf developer resources: OpenAPI, llms.txt, and Markdown',
+      description: 'Discover the Nibleaf public reader API, OpenAPI schema, Markdown content negotiation, llms files, and authentication boundaries.',
       path: '/developers',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/developers') }],
@@ -59,10 +58,10 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
     },
     {
       icon: Terminal,
-      title: 'Official Nibleaf CLI',
-      body: 'The @nibleaf/cli package inspects a Nibleaf site’s machine-readable endpoints and fetches canonical pages as Markdown for scripts and agents.',
-      href: 'https://www.npmjs.com/package/@nibleaf/cli',
-      label: 'View the npm package',
+      title: 'Nibleaf CLI (source only)',
+      body: 'The CLI is not published to npm yet. You can build it from the public repository to inspect a site’s machine-readable endpoints and fetch pages as Markdown.',
+      href: 'https://github.com/lord007tn/nibleaf/tree/main/packages/cli',
+      label: 'View the CLI source',
     },
   ] as const;
   return (
@@ -74,8 +73,8 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Nibleaf developer resources</h1>
           <p className="mx-auto mt-4 max-w-3xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Discover the supported public reader API, machine-readable product files, Markdown negotiation contract, and command-line tooling without
-            guessing private dashboard routes.
+            Discover the supported public reader API, machine-readable product files, and Markdown negotiation contract without guessing private
+            dashboard routes.
           </p>
         </div>
       </section>
@@ -112,13 +111,13 @@ export function DeveloperResourcesPage({ stars = 0 }: { stars?: number }) {
             </ol>
           </div>
           <div>
-            <h2 className="font-semibold text-2xl tracking-tight">CLI quick start</h2>
+            <h2 className="font-semibold text-2xl tracking-tight">Quick start with curl</h2>
             <pre className="mt-5 overflow-x-auto rounded-xl border border-border bg-background p-5 font-mono text-sm leading-7" dir="ltr">
-              <code>{'npx @nibleaf/cli inspect https://nibleaf.com\nnpx @nibleaf/cli fetch https://nibleaf.com/developers'}</code>
+              <code>{"curl -s https://nibleaf.com/llms.txt\ncurl -s -H 'Accept: text/markdown' https://nibleaf.com/developers"}</code>
             </pre>
             <p className="mt-4 text-muted-foreground text-sm leading-relaxed">
-              The CLI uses standard HTTP endpoints and does not collect credentials. Its inspect command checks status, content type, OpenAPI, llms,
-              sitemap, Markdown negotiation, and real 404 behavior.
+              Both requests use standard public HTTP endpoints and need no credentials or extra tooling. The source-only CLI automates the same checks
+              for status, content type, OpenAPI, llms, sitemap, Markdown negotiation, and real 404 behavior.
             </p>
           </div>
         </div>

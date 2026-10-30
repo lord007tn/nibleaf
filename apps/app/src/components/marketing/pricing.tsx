@@ -36,7 +36,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
   {
     title: 'Languages',
     rows: [
-      { label: 'English + Arabic, full RTL', cloud: true, self: true },
+      { label: 'English and Arabic authoring with RTL; 12 interface locales, with some strings still in English', cloud: true, self: true },
       { label: 'Per-language page trees', cloud: true, self: true },
     ],
   },
@@ -45,7 +45,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     rows: [
       { label: 'Hosting', cloud: 'Managed for you', self: 'Your servers' },
       { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres, any S3-compatible store' },
-      { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new image; migrations run themselves' },
+      { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new release and follow its upgrade notes' },
       { label: 'Data ownership', cloud: 'Exportable Markdown, always', self: 'Everything stays on your infra' },
       { label: 'Support', cloud: 'support@nibleaf.com', self: 'Community support and your own operations' },
     ],
@@ -124,7 +124,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <a className={`${primaryButton} mt-7`} href="/sign-up">
             Create free account <ArrowRight className="size-4" />
           </a>
-          <p className="mt-3 text-center text-muted-foreground text-xs">Live in about 60 seconds.</p>
+          <p className="mt-3 text-center text-muted-foreground text-xs">No credit card. Create a project and publish from your browser.</p>
         </div>
         <div className="flex flex-col rounded-xl border border-border bg-card p-8">
           <h2 className="flex items-center gap-2 font-semibold text-lg">
@@ -157,9 +157,10 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
         <div className="mx-auto max-w-4xl px-6 py-20">
           <div className="flex flex-col items-center text-center">
             <Eyebrow>What's included</Eyebrow>
-            <h2 className="mt-4 font-semibold text-3xl tracking-tight">Every feature, both plans</h2>
+            <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              The same product features are available in Cloud and the self-hosted stack; operational responsibility differs.
+              Writing, publishing, search, custom domains, and Arabic/RTL work in Cloud and self-hosted. Newer capabilities such as hybrid search,
+              grounded answers, usage history, and MCP depend on the release in use and on which optional services are configured.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">
