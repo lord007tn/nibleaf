@@ -624,6 +624,7 @@ function SiteChrome() {
                   open={searchOpen}
                   onOpenChange={setSearchOpen}
                   lang={activeLanguage?.code}
+                  defaultLanguage={defaultLanguage}
                   direction={isRtl ? 'rtl' : 'ltr'}
                   version={activeVersionPrefix}
                   placeholder={config?.search?.placeholder}

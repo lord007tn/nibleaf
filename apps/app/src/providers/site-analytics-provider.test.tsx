@@ -168,9 +168,10 @@ it('keeps the page view and engagement timer when equivalent shell config is ref
 
 it('uses the latest consent config without restarting the page lifecycle', async () => {
   const container = await render({ analytics: { cookieConsent: false } });
+  window.localStorage.setItem('nibleaf.analytics.consent.docs', 'declined');
   await act(async () =>
     roots[0]?.render(
-      <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={{ addons: { consentBanner: { enabled: false } } }}>
+      <SiteAnalyticsProvider projectId="docs" path="start" language="en" config={{ analytics: { cookieConsent: true } }}>
         <ReaderContent />
       </SiteAnalyticsProvider>,
     ),

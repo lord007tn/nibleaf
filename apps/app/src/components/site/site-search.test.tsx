@@ -252,3 +252,16 @@ it('routes a selected search result with its language and selected version', asy
   expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/v2/setup?lang=ar' });
   window.history.replaceState(null, '', '/');
 });
+
+
+it('keeps default-language search navigation on the clean URL', async () => {
+  window.history.replaceState(null, '', '/sites/docs/start');
+  mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+  await render({ lang: 'en', defaultLanguage: 'en' });
+  await typeQuery('Setup');
+  const result = document.querySelector<HTMLElement>('[role="option"]');
+  if (!result) throw new Error('Missing search result');
+  await act(async () => result.click());
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/setup' });
+  window.history.replaceState(null, '', '/');
+});

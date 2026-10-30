@@ -159,7 +159,8 @@ function ogLocale(code?: string): string | undefined {
 export function sitePageUrl(projectId: string, path: string, lang?: string, options?: SiteUrlOptions): string {
   const clean = path ? `/${path.replace(/^\/+/, '')}` : '';
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-  return `${canonicalSiteBase(projectId, options)}${clean}${query}`;
+  const url = `${canonicalSiteBase(projectId, options)}${clean}${query}`;
+  return path ? new URL(url).href : url;
 }
 
 /** Changelog RSS URL derived from its page URL without corrupting a language

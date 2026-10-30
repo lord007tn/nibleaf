@@ -76,3 +76,17 @@ describe('published changelog route', () => {
     expect(mocks.getChangelog).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' } });
   });
 });
+
+
+it('reuses the loaded parent shell without another getSite call', async () => {
+  const site = { project: { id: 'qa-site' }, nav: [], languages: [], versions: [] };
+  mocks.getChangelog.mockResolvedValueOnce(Response.json({ data: [] }));
+  const loader = Route.options.loader as (input: {
+    params: { projectId: string }; deps: { lang: string };
+    parentMatchPromise: Promise<{ loaderData: { site: unknown } }>;
+  }) => Promise<unknown>;
+  await expect(loader({ params: { projectId: 'qa-site' }, deps: { lang: 'ar' },
+    parentMatchPromise: Promise.resolve({ loaderData: { site } }),
+  })).resolves.toMatchObject({ site, entries: [], lang: 'ar' });
+  expect(mocks.getSite).not.toHaveBeenCalled();
+});

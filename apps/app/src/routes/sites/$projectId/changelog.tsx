@@ -11,12 +11,14 @@ import { changelogFeedUrl, pageHead, sitePageUrl } from '@/lib/site-seo';
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  // Fetch the site shell server-side so the changelog gets a real SSR <title>
-  // and canonical (the changelog route renders no SitePageView to own the head).
-  loader: async ({ params, deps }) => {
+  // Reuse the parent shell for SSR metadata and client navigation.
+  loader: async ({ params, deps, parentMatchPromise }) => {
     let site: SiteShell;
     try {
-      site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
+      const parent = await parentMatchPromise;
+      const parentSite = (parent?.loaderData as { site?: SiteShell | null } | undefined)?.site;
+      if (parentSite === null) throw notFound();
+      site = parentSite ?? await getSiteFn({ data: { projectId: params.projectId, language: deps.lang } });
     } catch (error) {
       // A missing or privacy-hidden site is a real 404, not an empty changelog
       // served as 200; other failures reach the retryable error boundary.
