@@ -30,7 +30,7 @@ export const isVersionIndependentNavNode = (node: Pick<NavNode, 'id'>): boolean 
 /** Pages with subpages collapse like virtual categories: only the branch
  *  holding the current page starts expanded. The link keeps navigating; the
  *  adjacent chevron toggles the subtree. Collapsed subpages stay in the DOM,
- *  hidden, so server HTML keeps every link for crawlers and no-JS readers. */
+ *  hidden, so server HTML keeps every link for crawlers. */
 function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLabel, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
   const active = currentPath === node.path;
   const hasChildren = node.children.length > 0;
@@ -202,6 +202,10 @@ function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: st
   );
 }
 
+/** The toggle needs JavaScript, so without it collapsed subpages stay open. One
+ *  rule at the root avoids nesting `noscript`, which breaks parsing when scripts run. */
+const SHOW_SUBPAGES_WITHOUT_SCRIPT = 'nav[data-site-nav] ul[hidden]{display:block}';
+
 export function SiteNav({
   nodes,
   projectId,
@@ -218,7 +222,10 @@ export function SiteNav({
   toggleLabel: string;
 }) {
   return (
-    <nav>
+    <nav data-site-nav="">
+      <noscript>
+        <style>{SHOW_SUBPAGES_WITHOUT_SCRIPT}</style>
+      </noscript>
       <NavItems nodes={nodes} projectId={projectId} currentPath={currentPath} depth={0} lang={lang} version={version} toggleLabel={toggleLabel} />
     </nav>
   );
