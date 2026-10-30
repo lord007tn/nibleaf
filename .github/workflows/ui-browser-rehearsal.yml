@@ -41,6 +41,8 @@ jobs:
         run: |
           node scripts/ui-browser-rehearsal/versions.mjs | tee "$OUT/versions.json"
           pnpm --filter @nibleaf/app why dompurify seroval > "$OUT/dependency-why.txt" 2>&1 || true
+      - name: Record built CSS rules for hidden elements
+        run: grep -rhoE '[^{}]*\[hidden\][^{}]*\{[^}]*\}' apps/app/.output/public --include='*.css' | sort -u > "$OUT/hidden-css-rules.txt" || true
       - name: Export local service settings
         run: node scripts/ui-browser-rehearsal/env.mjs
       - name: Migrate and seed the throwaway database

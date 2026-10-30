@@ -98,12 +98,13 @@ replace(
       json(res, 200, { data: shell });`,
 );
 
+// The reader's dialog searches every language at once, like the real API.
 replace(
   'json(res, 200, { data: { hits: [] } });',
   `json(res, 200, { data: { hits: PAGES.flatMap((page) => ['en', 'ar'].map((lang) => ({
   id: pageId(page, lang), path: pagePath(page), title: page[lang].title,
   description: page[lang].description, snippet: page[lang].description, score: 1, language: lang, icon: page.icon,
-}))).filter((hit) => hit.language === (searchParams.get('lang') || 'en') && hit.title.toLowerCase().includes((searchParams.get('q') || '').toLowerCase())).slice(0, 8) } });`,
+}))).filter((hit) => hit.title.toLowerCase().includes((searchParams.get('q') || '').toLowerCase())).slice(0, 8) } });`,
 );
 
 replace(

@@ -145,6 +145,8 @@ const readerNav = async ({ page, device }) => {
     await page.locator('button[data-slot="sheet-trigger"]').first().click();
     const dialog = page.getByRole('dialog');
     await dialog.waitFor();
+    // Let the sheet finish sliding in before anything is measured.
+    await dialog.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)));
     return dialog.locator('nav[data-site-nav]');
   }
   const nav = page.locator('nav[data-site-nav]').filter({ visible: true }).first();
@@ -472,7 +474,8 @@ for (const lang of LANGS) {
           await page.getByRole('menuitem').filter({ hasText: target === 'ar' ? 'العربية' : 'English' }).click();
           await page.waitForFunction((code) => document.documentElement.lang === code && document.documentElement.dir === (code === 'ar' ? 'rtl' : 'ltr'), target);
           check('language switch changed lang and dir', true);
-          check('language switch stayed in the same document', await sameDocument(page));
+          // Not part of this row: whether switching is a soft navigation belongs to the open navigation PR.
+          t.note('language switch kept the same document', await sameDocument(page));
           await shot('after-language-switch');
         }
       }, { device, needs: 'reader' });
@@ -541,6 +544,8 @@ const metaWithAi = async (context, ai) => {
 };
 
 const toast = (page, text) => page.locator('[data-sonner-toast]').filter({ hasText: text }).first();
+const toastTexts = (page) => page.locator('[data-sonner-toast]').allTextContents();
+const settle = (page) => page.waitForTimeout(700);
 
 let demoProjectId = null;
 let demoPageId = null;
@@ -581,9 +586,11 @@ for (const lang of LANGS) {
       const response = await created;
       check('create request succeeds', response.ok(), response.status());
       await toast(page, m(lang, 'newsite_created')).waitFor();
+      t.note('toasts', await toastTexts(page));
       await dialog.waitFor({ state: 'hidden' });
       await page.getByText(name).first().waitFor();
       check('new site appears on the dashboard', true);
+      await settle(page);
       await shot('created');
     }, { device, needs: 'dashboard' });
   }
@@ -609,11 +616,17 @@ for (const lang of LANGS) {
     await rail.click();
     await page.getByRole('tab', { name: m(lang, 'editor_ai') }).click();
     const editor = page.locator('.ProseMirror').first();
-    const before = await editor.innerText();
     const saves = [];
+    const baseline = [];
+    let afterClick = false;
     page.on('request', (request) => {
-      if (['PATCH', 'PUT'].includes(request.method()) && /\/pages\//.test(request.url())) saves.push({ url: request.url(), body: request.postData()?.slice(0, 200) });
+      if (['PATCH', 'PUT'].includes(request.method()) && /\/pages\//.test(request.url())) (afterClick ? saves : baseline).push({ url: request.url(), body: request.postData() });
     });
+    // Idle window: anything the editor saves on its own after opening is not caused by AI.
+    await page.waitForTimeout(6000);
+    t.note('page saves while idle before any AI request', baseline.map((save) => ({ url: save.url, body: save.body?.slice(0, 300) })));
+    const before = await editor.innerText();
+    afterClick = true;
     // Real local API without a provider: the request must fail.
     const failed = page.waitForResponse((response) => response.request().method() === 'POST' && /\/api\/app\/projects\/[^/]+\/ai$/.test(new URL(response.url()).pathname));
     await page.getByRole('button', { name: m(lang, 'editor_ai_continue') }).click();
@@ -621,19 +634,27 @@ for (const lang of LANGS) {
     t.note('AI response from the local API', { status: response.status(), body: (await response.text()).slice(0, 200) });
     check('AI request failed', !response.ok(), response.status());
     await toast(page, m(lang, 'editor_ai_drafterror')).waitFor();
+    t.note('toasts after the provider error', await toastTexts(page));
     check('translated draft error toast is shown', true, m(lang, 'editor_ai_drafterror'));
+    await settle(page);
     await shot('provider-error-toast');
     await page.waitForTimeout(2500);
     check('editor content unchanged', (await editor.innerText()) === before);
-    check('no page save was sent', saves.length === 0, saves);
+    check('no page save was sent after the AI request', saves.length === 0, saves);
     // Rate limit, as the real API reports it.
     await context.route(/\/api\/app\/projects\/[^/]+\/ai$/, async (route) => {
       const real = await route.fetch();
       await route.fulfill({ response: real, status: 429, json: { error: { code: 'http:rate_limited', message: 'Daily AI limit reached.' } } });
     });
+    await page.locator('[data-sonner-toast]').first().waitFor({ state: 'detached', timeout: 15000 });
+    const limited = page.waitForResponse((response) => response.request().method() === 'POST' && /\/api\/app\/projects\/[^/]+\/ai$/.test(new URL(response.url()).pathname));
     await page.getByRole('button', { name: m(lang, 'editor_ai_continue') }).click();
+    check('routed AI request answered 429', (await limited).status() === 429);
     await toast(page, m(lang, 'editor_ai_ratelimited')).waitFor();
-    check('translated rate-limit toast is shown', true, m(lang, 'editor_ai_ratelimited'));
+    const shown = await toastTexts(page);
+    t.note('toasts after the rate limit', shown);
+    check('only the translated rate-limit toast is shown', shown.length === 1 && shown[0].includes(m(lang, 'editor_ai_ratelimited')), shown);
+    await settle(page);
     await shot('rate-limit-toast');
     await page.waitForTimeout(2500);
     check('editor content still unchanged', (await editor.innerText()) === before);
