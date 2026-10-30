@@ -1,4 +1,4 @@
-﻿import { Queue } from 'bullmq';
+import { Queue } from 'bullmq';
 import { producerConnectionConfig } from '../src/redis';
 import { getQueueName } from '../src/utils/queue';
 const mode = process.argv[2];
@@ -13,7 +13,7 @@ try {
     }
     if (mode === 'legacy') {
       const definitions = await queue.getRepeatableJobs();
-      if (definitions.length !== 2) throw new Error('Expected two legacy definitions per queue.');
+      if (definitions.length !== (queue.name.includes('analytics') ? 1 : 2)) throw new Error('Expected v0.1.2 legacy definitions.');
     }
     if (mode === 'inventory') {
       const definitions = await queue.getJobSchedulers(0, -1, true);

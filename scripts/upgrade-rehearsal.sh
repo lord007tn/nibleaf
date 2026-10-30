@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
 STATUS="$RUNNER_TEMP/upgrade-status.txt"
 exec > >(tee -a "$STATUS") 2>&1
@@ -54,6 +54,7 @@ operator() {
 }
 # Read legacy inventory using staged v5, without starting staged services.
 NIBLEAF_VERSION="$STAGED" quiet dc pull worker
+checkpoint staged-image-pulled
 NIBLEAF_VERSION="$STAGED" operator legacy
 checkpoint legacy-confirmed
 quiet dc --profile admin stop app admin server
@@ -62,7 +63,7 @@ quiet dc stop worker
 if [ "$MODE" = staged ]; then
   export NIBLEAF_VERSION="$STAGED"
   dc run --rm --no-deps -T worker pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts > "$RUNNER_TEMP/before.json"
-  jq -e '.schedules | length == 4 and all(.legacy == true and .scheduler == false)' "$RUNNER_TEMP/before.json" >/dev/null
+  jq -e '.schedules | length == 4 and ([.[] | select(.legacy)] | length == 3) and all(.scheduler == false)' "$RUNNER_TEMP/before.json" >/dev/null
   dc run --rm --no-deps -T worker pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply > "$RUNNER_TEMP/applied.json"
   dc run --rm --no-deps -T worker pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts > "$RUNNER_TEMP/after.json"
   for file in applied after; do jq -e '.schedules | length == 4 and all(.scheduler == true and .legacy == false)' "$RUNNER_TEMP/$file.json" >/dev/null; done

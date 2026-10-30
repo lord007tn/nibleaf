@@ -1,4 +1,4 @@
-﻿name: Upgrade v0.2 rehearsal (disposable)
+name: Upgrade v0.2 rehearsal (disposable)
 on:
   push:
     branches: [rehearsal/upgrade-v0-2]
