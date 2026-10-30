@@ -288,6 +288,44 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.account.count({ where: { accountId: sub, providerId: 'google' } })).toBe(1);
   });
 
+  it('signs in a returning Google user whose account row Better Auth 1.6 wrote', async () => {
+    const email = addressFor('returning');
+    const sub = `returning-${run}`;
+    const createdAt = new Date('2026-06-01T00:00:00.000Z');
+    const user = await prisma.user.create({ data: { createdAt, email, emailVerified: true, name: 'Returning', updatedAt: createdAt } });
+    // The columns createOAuthUser wrote before 1.7: no issuer, and a comma-joined scope.
+    const account = await prisma.account.create({
+      data: {
+        accessToken: 'access-token-from-1.6',
+        accessTokenExpiresAt: new Date('2026-06-01T01:00:00.000Z'),
+        accountId: sub,
+        createdAt,
+        idToken: 'id-token-from-1.6',
+        providerId: 'google',
+        scope: 'email,profile,openid',
+        updatedAt: createdAt,
+        userId: user.id,
+      },
+    });
+
+    const response = await signInWithGoogle(sub, email);
+    expectSignedInRedirect(response);
+    expect((await readSession(sessionCookie(response)))?.user.id).toBe(user.id);
+    expect(await prisma.user.count({ where: { email } })).toBe(1);
+    expect(await prisma.member.count({ where: { userId: user.id } })).toBe(0);
+    const rows = await prisma.account.findMany({ where: { userId: user.id } });
+    expect(rows.map(({ id }) => id)).toEqual([account.id]);
+    expect(rows[0]?.createdAt).toEqual(createdAt);
+    expect(rows[0]?.accessToken).toBe('synthetic-access-token');
+
+    // Identity follows the Google subject, not the address on the token.
+    const changedEmail = addressFor('returning-changed');
+    const changed = await signInWithGoogle(sub, changedEmail);
+    expectSignedInRedirect(changed);
+    expect((await readSession(sessionCookie(changed)))?.user.id).toBe(user.id);
+    expect(await prisma.user.count({ where: { email: changedEmail } })).toBe(0);
+  });
+
   it('links Google to an existing email-code user with the same verified address', async () => {
     const email = addressFor('linked');
     const existing = await readSession(sessionCookie(await signInWithCode(email)));
