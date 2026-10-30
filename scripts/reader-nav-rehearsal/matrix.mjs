@@ -87,15 +87,27 @@ async function row(lang, name, action, options = {}) {
     result.pageViews = counts.pageViews;
     result.pageViewCount = counts.pageViews.length;
     result.shellFetchCount = counts.shellFetches;
-    const expectedViews = ['same-page-fragment', 'initial-focus', 'dialog-close', 'javascript-disabled'].includes(name) ? 0 : name === 'history-scroll' ? 3 : 1;
+    const expectedViews = result.expectedViews ?? (['same-page-fragment', 'initial-focus', 'dialog-close', 'javascript-disabled'].includes(name) ? 0 : name === 'history-scroll' ? 3 : 1);
     assert.equal(result.pageViewCount, expectedViews, `${name}: expected ${expectedViews} page_view requests`);
-    const allowedShells = ['language-seo', 'version', 'refused-version', 'javascript-disabled'].includes(name) ? 1 : 0;
-    assert.ok(result.shellFetchCount <= allowedShells, `${name}: unexpected shell fetches: ${result.shellFetchCount}`);
+    if (result.expectedPagePath) {
+      for (const event of result.pageViews) {
+        assert.equal(event.path, result.expectedPagePath);
+        assert.equal(event.language, result.expectedLanguage ?? lang);
+      }
+    }
+    const expectedShells = result.expectedShells ?? (['language-seo', 'version', 'refused-version', 'javascript-disabled'].includes(name) ? 1 : 0);
+    if (!result.variableShells) assert.equal(result.shellFetchCount, expectedShells, `${name}: unexpected shell fetch count`);
     result.status = 'pass';
   } catch (error) {
     if (!available) result.status = 'not-verified';
     result.reason = error.message;
   } finally {
+    if (result.counterStart) {
+      const counts = await countSince(result.counterStart);
+      result.pageViews = counts.pageViews;
+      result.pageViewCount = counts.pageViews.length;
+      result.shellFetchCount = counts.shellFetches;
+    }
     result.url = page.url();
     result.activeElement = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 120) })).catch(() => null);
     await page.screenshot({ path: `${out}/${lang}-${name}.png`, fullPage: false }).catch(() => {});
@@ -281,6 +293,56 @@ for (const lang of ['en', 'ar']) {
     assert.ok(decodeURI(new URL(page.url()).pathname).endsWith(slug));
     assert.equal(await page.evaluate(() => window.__readerDocument), undefined, 'expected a new document without JS');
   }, { javaScriptEnabled: false });
+  for (const [name, start, choice, expectedPath] of [
+    ['root-to-v2-home', '', 'V2', 'getting-started/installation'],
+    ['changelog-to-v2-home', 'changelog', 'V2', 'getting-started/installation'],
+    ['v2-home-to-default', 'v2', 'Latest', home],
+  ]) {
+    await row(lang, name, async (page, _context, result) => {
+      await page.goto(href(start, lang), { waitUntil: 'networkidle' });
+      result.counterStart = counters(await stats());
+      result.expectedShells = 1;
+      result.expectedPagePath = expectedPath;
+      await mark(page);
+      await page.getByRole('button').filter({ hasText: choice === 'V2' ? 'Latest' : 'V2' }).click();
+      await page.getByRole('menuitem').filter({ hasText: choice }).click();
+      await page.getByRole('button').filter({ hasText: choice }).waitFor();
+      const data = await (await fetch(`http://localhost:4311/api/public/sites/preview-harbor/page?path=${expectedPath}&lang=${lang}&version=${choice === 'V2' ? 'v2' : 'latest'}`)).json();
+      await heading(page, data.data.page.title);
+      await retained(page);
+    });
+  }
+  await row(lang, 'language-different-slug', async (page, _context, result) => {
+    const target = lang === 'en' ? 'ar' : 'en';
+    await page.goto(href(`reference/localized-${lang}`, lang), { waitUntil: 'networkidle' });
+    result.counterStart = counters(await stats());
+    result.expectedShells = 1;
+    result.expectedPagePath = `reference/localized-${target}`;
+    result.expectedLanguage = target;
+    await mark(page);
+    await page.locator('button').filter({ has: page.locator('span[lang]') }).first().click();
+    await page.getByRole('menuitem').filter({ hasText: target === 'ar' ? 'العربية' : 'English' }).click();
+    await heading(page, target === 'ar' ? 'Localized Arabic' : 'Localized English');
+    await wait(page, code => document.documentElement.lang === code, target);
+    await retained(page);
+  });
+  await row(lang, 'version-interleaved', async (page, _context, result) => {
+    result.expectedViews = 2;
+    result.variableShells = true;
+    await page.getByRole('button').filter({ hasText: 'Latest' }).click();
+    await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
+    await wait(page, () => location.pathname.includes('/v2/'));
+    const deadline = Date.now() + 5000;
+    while ((await countSince(result.counterStart)).shellFetches === 0 && Date.now() < deadline) await page.waitForTimeout(25);
+    // Supersede the invalidation, then navigate within V2 while the old shell is still visible.
+    await page.getByRole('button').filter({ hasText: 'Latest' }).click();
+    await page.getByRole('menuitem').filter({ hasText: 'V2' }).click();
+    await page.locator('main article nav a').last().click();
+    await wait(page, () => location.pathname.includes('/v2/getting-started/installation'));
+    await page.getByRole('button').filter({ hasText: 'V2' }).waitFor();
+    assert.ok((await sidebar(page, slug).getAttribute('href')).includes('/v2/'));
+    await retained(page);
+  });
 }
 await writeFile(`${out}/results.json`, JSON.stringify({ revision: process.env.GITHUB_SHA, results }, null, 2));
 await browser.close();

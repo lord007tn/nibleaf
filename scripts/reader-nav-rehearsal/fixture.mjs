@@ -54,6 +54,22 @@ replace("json(res, 200, { data: { hits: [] } });", `json(res, 200, { data: { hit
   id: pageId(page, lang), path: pagePath(page), title: page[lang].title,
   description: page[lang].description, snippet: page[lang].description, score: 1, language: lang, icon: page.icon
 }))).filter(hit => hit.title.includes(searchParams.get('q') || '')) } });`);
+replace('const pagePath = (page) => `${page.group}/${page.slug}`;', "const pagePath = (page, lang = 'en') => `${page.group}/${lang === 'ar' && page.arSlug ? page.arSlug : page.slug}`;");
+replace('const buildNav = (lang) =>', "const buildNav = (lang, version) =>");
+replace('PAGES.filter((page) => page.group === group.slug).map((page) => ({', "PAGES.filter((page) => page.group === group.slug).sort((a, b) => version === 'v2' ? Number(b.slug === 'installation') - Number(a.slug === 'installation') : 0).map((page) => ({");
+source = source.replaceAll('path: pagePath(page),', 'path: pagePath(page, lang),');
+replace('nav: buildNav(language.code),', 'nav: buildNav(language.code, version.slug),');
+replace('const page = findPage(cleanPath(query.get(\'path\')));', "const page = findPage(cleanPath(query.get('path')) || (version.slug === 'v2' ? 'getting-started/installation' : 'getting-started/introduction'));");
+replace('pagePath(page) === path', "(pagePath(page, 'en') === path || pagePath(page, 'ar') === path)");
+// The previous broad replacement also affects alternates; resolve them per language.
+replace('path: pagePath(page) })),', 'path: pagePath(page, item.code) })),');
+source = source.replaceAll('pagePath(prev)', 'pagePath(prev, lang)').replaceAll('pagePath(next)', 'pagePath(next, lang)');
+replace("for (const page of PAGES) {", `
+PAGES.push({ group: 'reference', slug: 'localized-en', arSlug: 'localized-ar', icon: 'book-open',
+  en: { title: 'Localized English', description: 'English slug fixture.', content: 'Localized English page.' },
+  ar: { title: 'Localized Arabic', description: 'Arabic slug fixture.', content: 'Localized Arabic page.' }
+});
+for (const page of PAGES) {`);
 if (process.argv.includes('--check')) {
   const fixture = new Function(source.slice(0, source.indexOf('const json =')).replace(/^#!.*\n/, '').replace("import { createServer } from 'node:http';", '') + '; return PAGES[0].en.content;')();
   if (!fixture.includes('\n\n## matrix-end\n')) throw new Error('Fragment fixture did not contain Markdown newlines');
