@@ -1,6 +1,7 @@
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
+import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
 
 /**
  * Public origin the site is served from. On the client this is the real origin;
@@ -62,6 +63,9 @@ export function canonicalSiteBase(projectId: string, options: SiteUrlOptions = {
   }
   if (options.requestOrigin) {
     return options.requestOrigin;
+  }
+  if (hydratedCustomDomainProjectId() === projectId) {
+    return publicOrigin();
   }
   return `${publicOrigin()}/sites/${projectId}`;
 }
