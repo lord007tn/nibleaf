@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Garis besar ditambahkan.",
   "editor_ai_sectiondrafted": "Bagian dirancang.",
   "editor_ai_drafterror": "Tidak dapat membuat draf konten.",
+  "editor_ai_ratelimited": "Batas AI harian tercapai. Coba lagi besok.",
   "editor_ai_summarylabel": "Ringkasan",
   "editor_ai_suggestionlabel": "Saran",
   "editor_ai_replace": "Ganti",

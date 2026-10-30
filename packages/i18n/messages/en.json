@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Outline added.",
   "editor_ai_sectiondrafted": "Section drafted.",
   "editor_ai_drafterror": "Could not draft content.",
+  "editor_ai_ratelimited": "Daily AI limit reached. Try again tomorrow.",
   "editor_ai_summarylabel": "Summary",
   "editor_ai_suggestionlabel": "Suggestion",
   "editor_ai_replace": "Replace",

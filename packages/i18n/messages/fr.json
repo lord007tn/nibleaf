@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Aperçu ajouté.",
   "editor_ai_sectiondrafted": "Article rédigé.",
   "editor_ai_drafterror": "Impossible de rédiger le contenu.",
+  "editor_ai_ratelimited": "Limite quotidienne d’IA atteinte. Réessayez demain.",
   "editor_ai_summarylabel": "Résumé",
   "editor_ai_suggestionlabel": "Suggestions",
   "editor_ai_replace": "Remplacer",

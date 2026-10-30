@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
@@ -23,6 +23,12 @@ import { SiteSearch } from './site-search';
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
 const hit = { id: 'setup', path: 'setup', title: 'Setup guide', snippet: 'Configure the project.', language: 'en', icon: null };
+
+// Load the lazy dialog and answer chunks up front: a cold import under a busy
+// runner can outlast `vi.dynamicImportSettled()` and leave the dialog unrendered.
+beforeAll(async () => {
+  await Promise.all([import('./site-search-dialog'), import('./site-search-answer')]);
+});
 
 beforeEach(() => {
   vi.stubGlobal(

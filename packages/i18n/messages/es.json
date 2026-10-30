@@ -331,6 +331,7 @@
   "editor_ai_outlineadded": "Se agregó el esquema.",
   "editor_ai_sectiondrafted": "Sección redactada.",
   "editor_ai_drafterror": "No se pudo redactar el contenido.",
+  "editor_ai_ratelimited": "Se alcanzó el límite diario de IA. Inténtalo de nuevo mañana.",
   "editor_ai_summarylabel": "Resumen",
   "editor_ai_suggestionlabel": "sugerencia",
   "editor_ai_replace": "Reemplazar",
