@@ -36,7 +36,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
   {
     title: 'Languages',
     rows: [
-      { label: 'Interface in 12 languages; English and Arabic authoring with full RTL', cloud: true, self: true },
+      { label: 'English and Arabic authoring with RTL; 12 interface locales, with some strings still in English', cloud: true, self: true },
       { label: 'Per-language page trees', cloud: true, self: true },
     ],
   },
@@ -160,7 +160,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Writing, publishing, search, custom domains, and Arabic/RTL work in Cloud and self-hosted. Newer capabilities such as hybrid search,
-              grounded answers, usage history, and MCP depend on the release you install and on optional services you configure.
+              grounded answers, usage history, and MCP depend on the release in use and on which optional services are configured.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

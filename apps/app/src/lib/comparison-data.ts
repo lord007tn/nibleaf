@@ -140,7 +140,7 @@ const mintlifyPricing: PricingTable = {
     },
     {
       plan: 'Pro',
-      price: '$450/month billed annually ($540 month-to-month)',
+      price: '$450/month billed annually',
       includes: 'Everything in Starter, plus agent, assistant, automations, preview deployments, and admin APIs.',
     },
     {
@@ -180,7 +180,7 @@ const gitbookPricing: PricingTable = {
       includes: 'SAML SSO, white-glove migration, custom integrations, dedicated support.',
     },
   ],
-  note: 'GitBook shows all amounts as monthly costs under annual billing, advertised as “2 months free”. Auto-updating translations are included in Ultimate and usage-metered on Essential.',
+  note: 'GitBook shows all amounts as monthly costs under annual billing, advertised as “2 months free”. Auto-updating translations are included in Ultimate.',
 };
 
 const readmePricing: PricingTable = {
@@ -346,7 +346,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'How much does Mintlify cost?',
-      a: 'As of October 30, 2026, Mintlify has a free Starter plan, Pro at $450/month billed annually ($540 month-to-month), and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
+      a: 'As of October 30, 2026, Mintlify has a free Starter plan, Pro at $450/month billed annually, and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
     },
     {
       q: 'Can I migrate docs from Mintlify to Nibleaf?',
@@ -430,7 +430,7 @@ export const nibleafVsGitbook: Comparison = {
     {
       feature: 'AI search & assistant',
       nibleaf: partial('Optional hybrid retrieval and grounded answers are in source main; they require operator configuration and project opt-in'),
-      competitor: yes('AI search from Essential; assistant from Ultimate'),
+      competitor: yes('AI search from Essential; chat assistant from Ultimate'),
     },
     { feature: 'SAML SSO', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],

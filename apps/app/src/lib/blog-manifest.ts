@@ -689,7 +689,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Does Nibleaf support Arabic and right-to-left documentation?',
         answer:
-          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is available in 12 languages, with English and Arabic as the first-class authoring languages.',
+          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface offers 12 locale options, with some strings still in English.',
       },
     ],
   },

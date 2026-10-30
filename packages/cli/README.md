@@ -10,7 +10,7 @@ Official command-line access to Nibleaf's public, agent-readable surface. The CL
 
 ## Install from source
 
-The package is not published to npm yet, so `npx @nibleaf/cli` will not work. Build it from a clone of this repository (Node.js 22.13 or later and pnpm 10):
+The package is not published to npm yet, so `npx @nibleaf/cli` will not work. Build it from a clone of this repository (Node.js 22.18 or later and pnpm 10):
 
 ```bash
 git clone https://github.com/lord007tn/nibleaf.git
