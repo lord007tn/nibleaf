@@ -121,6 +121,7 @@ function SiteChrome() {
   const resolvedVersion = pathVersion ?? site?.versions.find((item) => item.isDefault);
   const resolvedVersionSlug = resolvedVersion?.slug;
   const attemptedVersion = useRef<{ key: string; site: SiteShell } | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new pathname retries an interrupted fetch for the same version.
   useEffect(() => {
     if (!site || !resolvedVersionSlug) return;
     if (site.activeVersion === resolvedVersionSlug) {
@@ -364,13 +365,7 @@ function SiteChrome() {
   ];
 
   return (
-    <SiteAnalyticsProvider
-      projectId={projectId}
-      path={analyticsPath}
-      language={analyticsLanguage}
-      version={resolvedVersionSlug}
-      config={config}
-    >
+    <SiteAnalyticsProvider projectId={projectId} path={analyticsPath} language={analyticsLanguage} version={resolvedVersionSlug} config={config}>
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true" data-site-route-announcer>
         {announcement}
       </div>

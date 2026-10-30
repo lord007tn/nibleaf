@@ -91,7 +91,6 @@ it('reuses the loaded parent shell without another getSite call', async () => {
   expect(mocks.getSite).not.toHaveBeenCalled();
 });
 
-
 it('returns notFound for a privacy-hidden parent without another shell lookup', async () => {
   const loader = Route.options.loader as (input: {
     params: { projectId: string };
@@ -99,7 +98,8 @@ it('returns notFound for a privacy-hidden parent without another shell lookup', 
     parentMatchPromise: Promise<{ loaderData: { site: null } }>;
   }) => Promise<unknown>;
   const error = await loader({
-    params: { projectId: 'qa-site' }, deps: { lang: 'ar' },
+    params: { projectId: 'qa-site' },
+    deps: { lang: 'ar' },
     parentMatchPromise: Promise.resolve({ loaderData: { site: null } }),
   }).catch((caught: unknown) => caught);
   expect(isNotFound(error)).toBe(true);

@@ -448,7 +448,6 @@ describe('pageHead not-found (soft-404)', () => {
   });
 });
 
-
 it.each(['', 'not-absolute'])('keeps SSR head rendering with an invalid APP_URL: %s', (configured) => {
   vi.stubEnv('APP_URL', configured);
   vi.stubGlobal('window', undefined);
