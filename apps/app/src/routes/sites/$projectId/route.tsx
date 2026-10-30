@@ -37,6 +37,8 @@ export const Route = createFileRoute('/sites/$projectId')({
   // The active language lives in the URL so it survives reloads and is shareable.
   validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined) }).parse(search),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
+  // A child path segment selects the version without changing this route's params.
+  shouldReload: true,
   // Fetch the site shell on the server so the chrome (nav, branding) is in the
   // initial HTML; the result also feeds site-level SEO tags via head(). The
   // first path segment is passed as a version candidate so versioned URLs
