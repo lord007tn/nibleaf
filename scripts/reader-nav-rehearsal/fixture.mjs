@@ -6,7 +6,31 @@ const replace = (before, after) => {
   if (!source.includes(before)) throw new Error(`Missing fixture insertion: ${before}`);
   source = source.replace(before, after);
 };
-replace("const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }];", "const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }, { id: 'ver_v2', name: 'V2', slug: 'v2', isDefault: false }];");
+replace("const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }];", "const VERSIONS = [{ id: 'ver_latest', name: 'Latest', slug: 'latest', isDefault: true }, { id: 'ver_v2', name: 'V2', slug: 'v2', isDefault: false }, { id: 'ver_refused', name: 'Refused', slug: 'refused', isDefault: false }];");
+replace('const resolveVersion = (version) =>', "const resolveVersion = (version) => version === 'refused' ? VERSIONS[0] :");
+replace('const server = createServer((req, res) => {', `
+const recordedEvents = [];
+const shellRequests = [];
+const server = createServer((req, res) => {`);
+replace("  if (pathname.startsWith('/api/public/assets/')) {", `
+  if (pathname === '/__matrix') {
+    json(res, 200, {events: recordedEvents, shells: shellRequests});
+    return;
+  }
+  if (req.method === 'POST' && pathname.endsWith('/events')) {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      const event = JSON.parse(body);
+      recordedEvents.push({name: event.payload.name, path: event.payload.path, language: event.payload.language});
+      res.writeHead(204); res.end();
+    });
+    return;
+  }
+  if (pathname.startsWith('/api/public/assets/')) {`);
+replace("      json(res, 200, { data: siteShell(id, project.preset, searchParams) });", `
+      shellRequests.push({lang: searchParams.get('lang'), version: searchParams.get('version')});
+      setTimeout(() => json(res, 200, { data: siteShell(id, project.preset, searchParams) }), 1300);`);
 replace('const pagePath =', `
 PAGES.push({ group: 'reference', slug: 'البداية', icon: 'book-open',
   en: { title: 'Matrix English', description: 'English navigation fixture.', content: 'A page with an Arabic slug.' },

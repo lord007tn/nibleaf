@@ -15,6 +15,30 @@ const href = (path, lang, origin = base) => `${origin}/${path}${lang === 'ar' ? 
 const wait = async (page, predicate, arg) => page.waitForFunction(predicate, arg, { timeout: 15000 });
 const mark = page => page.evaluate(() => { window.__readerDocument = 'original'; });
 const retained = async page => assert.equal(await page.evaluate(() => window.__readerDocument), 'original', 'navigation loaded a new document');
+const stats = async () => (await fetch('http://localhost:4311/__matrix')).json();
+const counters = data => ({ events: data.events.length, shells: data.shells.length });
+const countSince = async (start) => {
+  const data = await stats();
+  return { pageViews: data.events.slice(start.events).filter(event => event.name === 'page_view'), shellFetches: data.shells.length - start.shells };
+};
+const checkTransition = async (page, result, name, action) => {
+  const start = counters(await stats());
+  await action();
+  await page.waitForTimeout(1650);
+  const counts = await countSince(start);
+  (result.transitions ??= []).push({ name, ...counts });
+  assert.equal(counts.pageViews.length, 1, `${name}: expected one page_view`);
+  assert.equal(counts.shellFetches, 0, `${name}: ordinary navigation fetched the shell`);
+};
+const announced = async (page, text) => wait(page, expected => document.querySelector('[data-site-route-announcer]')?.textContent === expected, text);
+const expectedSeo = (path, lang, origin = base) => new URL(href(path, lang, origin)).href;
+const assertSeo = async (page, path, lang, origin = base) => {
+  assert.equal(await page.locator('link[rel="canonical"]').getAttribute('href'), expectedSeo(path, lang, origin));
+  assert.equal(await page.locator('meta[property="og:url"]').getAttribute('content'), expectedSeo(path, lang, origin));
+  const alternates = await page.locator('link[rel="alternate"][hreflang]').evaluateAll(nodes => Object.fromEntries(nodes.map(node => [node.hreflang, node.href])));
+  assert.equal(alternates.en, expectedSeo(path, 'en', origin));
+  assert.equal(alternates.ar, expectedSeo(path, 'ar', origin));
+};
 const heading = async (page, text) => {
   await page.locator('main h1').filter({ hasText: text }).waitFor();
 };
@@ -56,7 +80,17 @@ async function row(lang, name, action, options = {}) {
     await page.goto(href(home, lang), { waitUntil: 'networkidle' });
     await page.locator('main h1').waitFor();
     await mark(page);
+    result.counterStart = counters(await stats());
     await action(page, context, result);
+    await page.waitForTimeout(1650);
+    const counts = await countSince(result.counterStart);
+    result.pageViews = counts.pageViews;
+    result.pageViewCount = counts.pageViews.length;
+    result.shellFetchCount = counts.shellFetches;
+    const expectedViews = ['same-page-fragment', 'initial-focus', 'dialog-close', 'javascript-disabled'].includes(name) ? 0 : name === 'history-scroll' ? 3 : 1;
+    assert.equal(result.pageViewCount, expectedViews, `${name}: expected ${expectedViews} page_view requests`);
+    const allowedShells = ['language-seo', 'version', 'refused-version', 'javascript-disabled'].includes(name) ? 1 : 0;
+    assert.ok(result.shellFetchCount <= allowedShells, `${name}: unexpected shell fetches: ${result.shellFetchCount}`);
     result.status = 'pass';
   } catch (error) {
     if (!available) result.status = 'not-verified';
@@ -97,25 +131,32 @@ for (const lang of ['en', 'ar']) {
     await searchTo(page, lang);
     await retained(page);
   });
-  await row(lang, 'history-scroll', async page => {
+  await row(lang, 'history-scroll', async (page, _context, result) => {
     await page.evaluate(() => window.scrollTo(0, 650));
     await page.waitForTimeout(250);
     assert.equal(await page.evaluate(() => Math.round(window.scrollY)), 650);
-    await sidebar(page, slug).click();
-    await heading(page, title[lang]);
+    await checkTransition(page, result, 'forward navigation', async () => {
+      await sidebar(page, slug).click();
+      await heading(page, title[lang]);
+    });
     await page.evaluate(() => window.scrollTo(0, 900));
     await page.waitForTimeout(250);
-    await page.goBack();
-    await wait(page, () => Math.abs(window.scrollY - 650) < 20);
-    await page.goForward();
-    await heading(page, title[lang]);
-    await wait(page, () => Math.abs(window.scrollY - 900) < 20);
+    await checkTransition(page, result, 'back', async () => {
+      await page.goBack();
+      await wait(page, () => Math.abs(window.scrollY - 650) < 20);
+    });
+    await checkTransition(page, result, 'forward', async () => {
+      await page.goForward();
+      await heading(page, title[lang]);
+      await wait(page, () => Math.abs(window.scrollY - 900) < 20);
+    });
     await retained(page);
   });
   await row(lang, 'cross-page-fragment', async page => {
     await page.getByRole('link', { name: 'Matrix cross fragment', exact: true }).click();
     await heading(page, title[lang]);
     await wait(page, () => location.hash === '#matrix-end' && Math.abs(document.getElementById('matrix-end').getBoundingClientRect().top) < 200);
+    await wait(page, () => document.activeElement === document.getElementById('matrix-end'));
     await retained(page);
   });
   await row(lang, 'same-page-fragment', async page => {
@@ -136,6 +177,7 @@ for (const lang of ['en', 'ar']) {
     const alternates = await page.locator('link[rel="alternate"][hreflang]').evaluateAll(nodes => nodes.map(node => ({ lang: node.hreflang, href: node.href })));
     assert.ok(alternates.some(item => item.lang === 'ar' && new URL(item.href).searchParams.get('lang') === 'ar'));
     assert.ok(alternates.some(item => item.lang === 'en' && new URL(item.href).searchParams.get('lang') === null));
+    await assertSeo(page, home, target);
     await retained(page);
   });
   await row(lang, 'version', async page => {
@@ -152,6 +194,8 @@ for (const lang of ['en', 'ar']) {
     await page.locator('header a[href*="/changelog"]').first().click();
     await wait(page, () => location.pathname.endsWith('/changelog'));
     await wait(page, previous => document.querySelector('main h1')?.textContent !== previous, previousHeading);
+    await wait(page, () => document.activeElement === document.querySelector('main h1'));
+    assert.equal(await page.locator('main h1').getAttribute('tabindex'), '-1');
     await retained(page);
   });
   await row(lang, 'mobile-menu', async page => {
@@ -160,19 +204,30 @@ for (const lang of ['en', 'ar']) {
     await page.getByRole('dialog').locator(`a[href*="${encodeURI(slug)}"]`).first().click();
     await heading(page, title[lang]);
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    await announced(page, title[lang]);
     await retained(page);
   }, { viewport: { width: 390, height: 844 }, isMobile: true });
-  await row(lang, 'custom-domain', async (page, _context, result) => {
+  await row(lang, 'custom-domain', async (page, context, result) => {
+    await page.setExtraHTTPHeaders({ 'x-forwarded-proto': 'http' });
+    const initialUrl = href(home, lang, 'http://docs.reader.localhost:4310');
+    const ssr = await context.request.get(initialUrl, { headers: { 'x-forwarded-proto': 'http' } });
+    const html = await ssr.text();
+    result.ssrCanonical = await page.evaluate(text => new DOMParser().parseFromString(text, 'text/html').querySelector('link[rel="canonical"]')?.getAttribute('href'), html);
+    assert.equal(result.ssrCanonical, expectedSeo(home, lang, 'http://docs.reader.localhost:4310'));
     await page.goto(href(home, lang, 'http://docs.reader.localhost:4310'), { waitUntil: 'networkidle' });
     assert.equal(await page.evaluate(() => window.isSecureContext), true, 'custom-domain harness must support secure-context browser APIs');
     await page.locator('main h1').waitFor();
     assert.equal(await page.locator('meta[name="nibleaf-site-project"]').getAttribute('content'), 'preview-harbor');
     await mark(page);
+    await assertSeo(page, home, lang, 'http://docs.reader.localhost:4310');
+    result.counterStart = counters(await stats());
     await sidebar(page, slug).click();
     await heading(page, title[lang]);
     assert.equal(decodeURI(new URL(page.url()).pathname), `/${slug}`);
     result.canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
     assert.ok(!result.canonical.includes('/sites/'));
+    assert.equal(result.canonical, expectedSeo(slug, lang, 'http://docs.reader.localhost:4310'));
+    await assertSeo(page, slug, lang, 'http://docs.reader.localhost:4310');
     await retained(page);
   });
   await row(lang, 'title-meta', async page => {
@@ -199,6 +254,25 @@ for (const lang of ['en', 'ar']) {
     await searchTo(page, lang);
     await page.waitForTimeout(300);
     assert.equal(await page.evaluate(() => document.activeElement === document.querySelector('main h1')), false, 'navigation stole dialog restoration focus');
+    await announced(page, title[lang]);
+    await retained(page);
+  });
+  await row(lang, 'dialog-close', async page => {
+    const trigger = page.locator('header button').filter({ has: page.locator('kbd') }).first();
+    // Focus the real search trigger before opening, so closing has a deliberate restoration target.
+    await trigger.focus();
+    await openSearch(page);
+    await page.keyboard.press('Escape');
+    await page.getByRole('dialog').waitFor({ state: 'hidden' });
+    assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
+    assert.equal(await page.locator('[data-site-route-announcer]').textContent(), '');
+    await retained(page);
+  });
+  await row(lang, 'refused-version', async page => {
+    await page.getByRole('button').filter({ hasText: 'Latest' }).click();
+    await page.getByRole('menuitem').filter({ hasText: 'Refused' }).click();
+    await wait(page, () => location.pathname.includes('/refused/'));
+    await page.waitForTimeout(3200);
     await retained(page);
   });
   await row(lang, 'javascript-disabled', async page => {

@@ -26,6 +26,15 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: pnpm install --frozen-lockfile
+      - name: Format owned reader changes
+        run: |
+          mkdir -p output/reader-nav
+          pnpm exec biome format --write 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx
+          git diff > output/reader-nav/format.patch
+      - uses: actions/upload-artifact@v7
+        with:
+          name: reader-format-${{ github.sha }}
+          path: output/reader-nav/format.patch
       - run: pnpm db:generate
       - run: mkdir -p output/reader-nav
       - name: Typecheck
@@ -42,9 +51,11 @@ jobs:
       - name: Build reader on hosted runner
         run: pnpm build:app --concurrency=2 > output/reader-nav/build.log 2>&1
       - name: Check reader follow-ups
+        id: checks
+        continue-on-error: true
         run: |
-          pnpm --filter @nibleaf/app test src/lib/site-link-navigation.test.ts src/providers/site-analytics-provider.test.tsx src/components/site/site-page-view.client.test.tsx src/lib/site-seo.test.ts src/lib/site-seo.client.test.ts 'src/routes/sites/$projectId/-route-errors.test.ts'
-          pnpm exec biome check 'apps/app/src/routes/sites/$projectId/route.tsx' apps/app/src/lib/site-seo.ts apps/app/src/lib/site-seo.client.test.ts
+          pnpm --filter @nibleaf/app test src/lib/site-link-navigation.test.ts src/providers/site-analytics-provider.test.tsx src/components/site/site-page-view.client.test.tsx src/components/site/site-search.test.tsx src/lib/site-seo.test.ts src/lib/site-seo.client.test.ts 'src/routes/sites/$projectId/-route-errors.test.ts' 'src/routes/sites/$projectId/-changelog-route.test.ts'
+          pnpm exec biome check 'apps/app/src/routes/sites/$projectId/route.tsx' 'apps/app/src/routes/sites/$projectId/changelog.tsx' apps/app/src/lib/site-link-navigation.ts apps/app/src/lib/site-link-navigation.test.ts apps/app/src/providers/site-analytics-provider.tsx apps/app/src/providers/site-analytics-provider.test.tsx apps/app/src/components/site/site-search.test.tsx
           pnpm check:dead-code
       - name: Install isolated browser harness
         run: |
@@ -61,6 +72,6 @@ jobs:
           name: reader-nav-matrix-${{ github.sha }}
           path: output/reader-nav
           retention-days: 14
-      - name: Require clean typecheck
-        if: steps.typecheck.outcome != 'success'
+      - name: Require clean checks
+        if: always() && (steps.typecheck.outcome != 'success' || steps.checks.outcome != 'success')
         run: exit 1
