@@ -4,12 +4,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
+import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, FileText, Loader2, Search, Sparkles, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useId, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
-import { siteHref } from '@/lib/site-paths';
+import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const SiteSearchAnswer = lazy(() => import('./site-search-answer'));
@@ -56,6 +57,7 @@ export default function SiteSearchDialog({
   open,
   onOpenChange,
   lang,
+  defaultLanguage,
   direction,
   version,
   placeholder,
@@ -68,6 +70,7 @@ export default function SiteSearchDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lang?: string;
+  defaultLanguage?: string;
   /** Use the published language's configured direction, independently of the
    * chrome translation locale (which may fall back to English). */
   direction?: 'ltr' | 'rtl';
@@ -85,6 +88,7 @@ export default function SiteSearchDialog({
   aiAnswers?: boolean;
 }) {
   const { track } = useSiteAnalytics();
+  const router = useRouter();
   const t = siteT(lang);
   const [query, setQuery] = useState('');
   const [requestedMode, setMode] = useState<'search' | 'answer'>('search');
@@ -251,7 +255,9 @@ export default function SiteSearchDialog({
                             language: hit.language,
                           });
                           onOpenChange(false);
-                          window.location.href = siteHref(projectId, hit.path, { lang: hit.language, version: selectedVersion });
+                          void router.navigate({
+                            href: siteHref(projectId, hit.path, { lang: siteLanguageParam(hit.language, defaultLanguage), version: selectedVersion }),
+                          });
                         }}
                       >
                         {hasIcon(hit.icon) ? (
