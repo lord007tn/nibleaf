@@ -1,34 +1,32 @@
-name: Upgrade v0.2 rehearsal (disposable)
+name: Test pinned upgrade guide
 on:
   push:
     branches: [rehearsal/upgrade-v0-2]
 permissions:
   contents: read
 jobs:
-  rehearse:
+  guide:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        mode: [staged, direct]
+        mode: [happy-rollback, recovery]
     env:
-      CANDIDATE: sha-bbef8d8e85b1250092a3fa71e99682ba2cfa613a
-      STAGED: sha-33cb19838cf8ea89889bcaafba5d63596e6f6c64
+      GUIDE_COMMIT: becb4a55efdde4ec18e383e9f4cf76962f15d2f3
       MODE: ${{ matrix.mode }}
     steps:
       - uses: actions/checkout@v7
-      - name: Free disposable runner disk
+      - name: Prepare disposable runner
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo apt-get update -qq >/dev/null
           sudo apt-get install -y expect >/dev/null
-          df -BG / | tail -1
-      - name: Rehearse published images
-        run: bash scripts/upgrade-rehearsal.sh
-      - name: Upload status receipts
+      - name: Test extracted guide commands
+        run: bash scripts/test-upgrade-guide.sh
+      - name: Upload public receipts only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: upgrade-${{ matrix.mode }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/upgrade-status.txt
+          name: guide-${{ matrix.mode }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/guide-public/
