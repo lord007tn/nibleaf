@@ -1,0 +1,47 @@
+name: Admin retention visual rehearsal
+
+on:
+  push:
+    branches: [rehearsal/admin-retention-visual]
+    paths-ignore:
+      - rehearsal-screenshots/**
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PORT: '4315'
+      VITE_APP_URL: http://localhost:4315
+      VITE_API_URL: http://localhost:4311
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: mkdir -p output/admin-retention
+      - name: Build the admin app and its workspace dependencies
+        run: pnpm exec turbo run build -F @nibleaf/admin... --concurrency=2 > output/admin-retention/build.log 2>&1
+      - name: Install isolated browser harness
+        run: |
+          npm install --prefix /tmp/admin-browser --no-audit --no-fund playwright@1.62.1
+          /tmp/admin-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Capture the funnel against mocked API responses
+        run: |
+          node apps/admin/.output/server/index.mjs > output/admin-retention/admin.log 2>&1 &
+          BROWSER_MODULE=/tmp/admin-browser/node_modules/playwright/index.mjs node scripts/admin-retention-visual/capture.mjs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: admin-retention-visual-${{ github.sha }}
+          path: output/admin-retention
+          retention-days: 14
