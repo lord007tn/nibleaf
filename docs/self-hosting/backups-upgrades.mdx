@@ -58,8 +58,9 @@ target, and application origin, then restore into them. On a separate host with 
 own stack, using the same `$STAMP`:
 
 ```bash
-docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump"
-MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
+docker compose --profile admin stop app admin server worker \
+  && docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump" \
+  && MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
   && test -n "$MAXIO_VOLUME" \
   && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
   && docker compose stop maxio \

@@ -417,6 +417,10 @@ Compose file is already installed. Run step 10, including `unset NIBLEAF_VERSION
 the image check, then steps 11 to 13. [Rolling back](#roll-back) requires a backup
 taken before the database migration.
 
+Before you continue, check that your `STAMP` has all four files from step 5. If the
+`env` or Compose copy is missing, put your pre-upgrade copies at `backups/env-$STAMP`
+and `backups/compose-$STAMP.yml`, because the rollback restores them from there.
+
 ## Roll back
 
 There are no down migrations, so rolling back v0.2.0 means restoring the pre-upgrade

@@ -58,8 +58,9 @@ test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
 وباستخدام قيمة `$STAMP` نفسها:
 
 ```bash
-docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump"
-MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
+docker compose --profile admin stop app admin server worker \
+  && docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump" \
+  && MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
   && test -n "$MAXIO_VOLUME" \
   && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
   && docker compose stop maxio \
