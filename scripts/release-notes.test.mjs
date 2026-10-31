@@ -54,6 +54,10 @@ test('version highlights take precedence; only dry runs fall back; empty highlig
   assert.throws(() => highlights('## v0.2.0\n\n### Highlights\n\n', 'v0.2.0', false), /Highlights must not be empty/);
   assert.throws(() => highlights(md, 'v0.3.0', false), /Add 1–3.*### Highlights.*## v0.3.0/);
   assert.throws(
+    () => highlights('## v0.2.0\n\n### Highlights\n\nReal text.\n\n<!-- note -->\n', 'v0.2.0', false),
+    /must not be empty or contain HTML comments/,
+  );
+  assert.throws(
     () => highlights('## Unreleased\n\n### Highlights\n\n<!-- TODO -->\n', 'v0.2.0', true, (message) => warnings.push(message)),
     /Highlights must not be empty/,
   );

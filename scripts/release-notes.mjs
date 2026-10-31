@@ -27,7 +27,7 @@ export function highlights(markdown, version, dry, warn = console.error) {
   const text = section?.[2].match(/^### Highlights\s*\r?\n([\s\S]*?)(?=^### |$(?![\s\S]))/m)?.[1].trim();
   if (!text || text.includes('<!--'))
     throw new Error(
-      `Add 1–3 user-facing sentences under ### Highlights in CHANGELOG.md section ## ${version}${dry ? ' (or ## Unreleased for a dry run)' : ''}. Highlights must not be empty.`,
+      `Add 1–3 user-facing sentences under ### Highlights in CHANGELOG.md section ## ${version}${dry ? ' (or ## Unreleased for a dry run)' : ''}. Highlights must not be empty or contain HTML comments.`,
     );
   return text;
 }
