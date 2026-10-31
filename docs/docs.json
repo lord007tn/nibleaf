@@ -67,7 +67,7 @@
           {
             "group": "Releases",
             "x-nibleaf": { "slug": "releases" },
-            "pages": ["releases/august-2026-capabilities"]
+            "pages": ["releases/v0-2-0", "releases/august-2026-capabilities"]
           },
           {
             "group": "Reference",
@@ -153,7 +153,10 @@
           {
             "group": "الإصدارات",
             "x-nibleaf": { "slug": "releases" },
-            "pages": ["ar/releases/august-2026-capabilities"]
+            "pages": [
+              "ar/releases/v0-2-0",
+              "ar/releases/august-2026-capabilities"
+            ]
           },
           {
             "group": "المرجع",

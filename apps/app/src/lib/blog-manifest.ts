@@ -633,7 +633,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
@@ -671,7 +671,7 @@ export const BLOG_MANIFEST = [
     description:
       'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.',
     datePublished: '2026-07-13',
-    dateModified: '2026-10-30',
+    dateModified: '2026-10-31',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
     readingMinutes: 12,
@@ -700,7 +700,7 @@ export const BLOG_MANIFEST = [
     description:
       'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',

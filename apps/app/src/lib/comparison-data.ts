@@ -124,7 +124,7 @@ export const nibleafProductLimitations = [
   'Live multi-user co-editing is not currently available.',
   'SAML/SCIM is not currently available.',
   'Adaptive content is not currently available.',
-  'Grounded answers require optional operator-configured providers and explicit project opt-in; they are not part of the v0.1.2 self-hosted artifact.',
+  'Grounded answers require an operator-configured AI provider key and explicit project opt-in; self-hosted releases include them from v0.2.0.',
 ] as const;
 
 const mintlifyPricing: PricingTable = {
@@ -305,9 +305,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       feature: 'AI assistant & agent',
-      nibleaf: partial(
-        'Grounded answers and read-only MCP are in source main; provider setup is optional and the v0.1.2 artifact does not include them',
-      ),
+      nibleaf: partial('Self-hosted v0.2.0 includes grounded answers, which need an AI provider key, and read-only MCP, which is off by default'),
       competitor: yes('Pro plan, metered by credits'),
     },
     { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
@@ -429,7 +427,7 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       feature: 'AI search & assistant',
-      nibleaf: partial('Optional hybrid retrieval and grounded answers are in source main; they require operator configuration and project opt-in'),
+      nibleaf: partial('Optional hybrid retrieval and grounded answers ship in v0.2.0; they need Qdrant, an AI provider key, and project opt-in'),
       competitor: yes('AI search from Essential; chat assistant from Ultimate'),
     },
     { feature: 'SAML SSO', nibleaf: planned(), competitor: yes('Enterprise plan') },
@@ -454,7 +452,7 @@ export const nibleafVsGitbook: Comparison = {
   },
   verdict: [
     'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook says that path is not recommended or supported and it does not include the hosted workspace and editor.',
-    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Source main also includes optional hybrid retrieval, grounded answers, and read-only MCP, but the published v0.1.2 self-hosted artifact does not. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
+    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Self-hosted v0.2.0 also includes optional hybrid retrieval, which needs Qdrant, grounded answers, which need an AI provider key, and read-only MCP, which is off by default. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
   ],
   faqs: [
     {
@@ -514,7 +512,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       feature: 'Built-in search',
-      nibleaf: partial('Built-in Orama path; optional Qdrant hybrid path is in source main but not the v0.1.2 artifact'),
+      nibleaf: partial('Built-in Orama path; optional Qdrant hybrid path from v0.2.0 when you run Qdrant'),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
     {
@@ -597,7 +595,7 @@ const nibleafAlternativeEntry = (_vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. Source main includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP. It still lacks SAML/SCIM and adaptive content; the published v0.1.2 self-hosted artifact predates the latest capability set.`,
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. v0.2.0 includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP, which is off by default. It still lacks SAML/SCIM and adaptive content.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -706,7 +704,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of August 2026, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, SAML SSO, and a published self-host image for the capabilities currently merged in source main. The source tree includes optional hybrid retrieval and grounded answers plus read-only MCP; providers and project opt-in remain explicit.',
+      a: 'As of the v0.2.0 release, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, and SAML SSO. v0.2.0 includes optional hybrid retrieval and grounded answers plus read-only MCP; Qdrant, an AI provider key, and project opt-in remain explicit, and MCP is off by default.',
     },
   ],
 };

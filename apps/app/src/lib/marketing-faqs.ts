@@ -22,6 +22,6 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'How does search work?',
-    a: 'The built-in Orama path provides full-text and fuzzy results. Source main also includes an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers; operators start in shadow mode and retain the legacy path for rollback.',
+    a: 'The built-in Orama path provides full-text and fuzzy results. v0.2.0 adds an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers, which need Qdrant and an AI provider key; operators start in shadow mode and retain the legacy path for rollback.',
   },
 ];
