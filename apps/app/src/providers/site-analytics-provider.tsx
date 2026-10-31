@@ -1,9 +1,11 @@
 import type { ProjectConfig } from '@nibleaf/validators';
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { type PublicAnalyticsPayload, type SiteAnalyticsConsent, useCreateSiteAnalyticsEvent } from '@/hooks/api/site-events';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 
 export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
+
+const viewedDocuments = new WeakSet<Document>();
 
 const randomIdFn = (): string => {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -40,53 +42,71 @@ export function SiteAnalyticsProvider({
   projectId,
   path,
   language,
+  version,
   config,
 }: {
   children: ReactNode;
   projectId: string;
   path: string;
   language?: string;
+  version?: string;
   config?: ProjectConfig | null;
 }) {
   const { mutate: createEvent } = useCreateSiteAnalyticsEvent(projectId);
+  const configRef = useRef(config);
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
   const track = useCallback(
     (payload: PublicAnalyticsPayload) => {
       createEvent({
         eventId: randomIdFn(),
         occurredAt: new Date().toISOString(),
-        consentState: consentStateFn(projectId, config),
+        consentState: consentStateFn(projectId, configRef.current),
         sessionId: sessionIdFn(),
         payload,
       });
     },
-    [config, createEvent, projectId],
+    [createEvent, projectId],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another version is a distinct view of the same path.
   useEffect(() => {
-    if (path) track({ name: 'page_view', path, referrer: document.referrer || undefined, language });
-  }, [language, path, track]);
+    if (!path) return;
+    const referrer = viewedDocuments.has(document) ? undefined : document.referrer || undefined;
+    viewedDocuments.add(document);
+    track({ name: 'page_view', path, referrer, language });
+  }, [language, path, track, version]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: engagement belongs to one version of the page.
   useEffect(() => {
     if (!path) return;
     const started = performance.now();
     let sent = false;
+    let scrollDepth = 0;
+    const measureScroll = () => {
+      const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      scrollDepth = Math.max(scrollDepth, Math.min(100, Math.max(0, Math.round((window.scrollY / scrollable) * 100))));
+    };
+    measureScroll();
+    window.addEventListener('scroll', measureScroll, { passive: true });
+    window.addEventListener('resize', measureScroll);
     const sendEngagement = () => {
       if (sent) return;
       const engagementMs = Math.round(performance.now() - started);
       if (engagementMs < 1000) return;
       sent = true;
-      const root = document.documentElement;
-      const scrollable = Math.max(1, root.scrollHeight - window.innerHeight);
-      const scrollDepth = Math.min(100, Math.max(0, Math.round((window.scrollY / scrollable) * 100)));
       track({ name: 'page_engaged', path, language, engagementMs, scrollDepth });
     };
     const onVisibility = () => document.visibilityState === 'hidden' && sendEngagement();
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('scroll', measureScroll);
+      window.removeEventListener('resize', measureScroll);
       sendEngagement();
     };
-  }, [language, path, track]);
+  }, [language, path, track, version]);
 
   useEffect(() => {
     if (!path) return;
