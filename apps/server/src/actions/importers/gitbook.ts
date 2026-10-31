@@ -45,9 +45,8 @@ export const gitbookImporter: ImporterSource<GitbookImportBody> = {
 
   async run({ organizationId, projectId, input }): Promise<ImportSummary> {
     const budget = new GitBookImportBudget();
-    await assertProjectInOrg(organizationId, projectId);
-    const draft = await captureImportDraft(projectId);
     const project = await assertProjectInOrg(organizationId, projectId);
+    const draft = await captureImportDraft(projectId);
 
     const [owner, name] = input.repo.split('/');
     if (!owner || !name) {

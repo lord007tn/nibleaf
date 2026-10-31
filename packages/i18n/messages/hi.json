@@ -2758,11 +2758,11 @@
   "settings_members_revokeconfirm": "{email} का आमंत्रण रद्द करें? यह आमंत्रण लिंक काम करना बंद कर देगा।",
   "settings_config_discarddescription": "सेटिंग में आपके बदलाव सहेजे नहीं गए हैं। यह अनुभाग छोड़ने पर वे हट जाएँगे।",
   "editor_saveconfigfirst": "पूर्वावलोकन या प्रकाशन से पहले अपनी सेटिंग में किए गए बदलाव सहेजें।",
-  "settings_import_maystillrun": "The connection ended before the import result arrived. This import may still be running. Do not start it again; check your pages before retrying.",
-  "settings_import_incomplete": "Source content could not be loaded. The import stopped and your draft was preserved.",
-  "settings_import_limit": "The import exceeded its content or time limit. Your draft was preserved. Import a smaller space and try again.",
-  "settings_import_conflict": "Your draft changed during the import. Your edits were preserved. Review your pages before retrying.",
-  "settings_import_inprogress": "An import is already running for this project. Wait for it to finish before starting another.",
-  "settings_import_busy": "Import capacity is busy or the import could not complete in time. Try again shortly.",
-  "settings_import_nodelimit": "The import exceeds the limit of {limit} navigation entries. Import a smaller space. Your draft was preserved."
+  "settings_import_maystillrun": "इम्पोर्ट का परिणाम आने से पहले कनेक्शन समाप्त हो गया। यह इम्पोर्ट अभी भी चल रहा हो सकता है। इसे दोबारा शुरू न करें; फिर से कोशिश करने से पहले अपने पेज जाँचें।",
+  "settings_import_incomplete": "स्रोत सामग्री लोड नहीं हो सकी। इम्पोर्ट रुक गया और आपका ड्राफ़्ट सुरक्षित रखा गया।",
+  "settings_import_limit": "इम्पोर्ट ने अपनी सामग्री या समय सीमा पार कर ली। आपका ड्राफ़्ट सुरक्षित रखा गया। छोटा स्पेस इम्पोर्ट करें और फिर से कोशिश करें।",
+  "settings_import_conflict": "इम्पोर्ट के दौरान आपका ड्राफ़्ट बदल गया। आपके संपादन सुरक्षित रखे गए। फिर से कोशिश करने से पहले अपने पेज देखें।",
+  "settings_import_inprogress": "इस प्रोजेक्ट के लिए एक इम्पोर्ट पहले से चल रहा है। दूसरा शुरू करने से पहले इसके पूरा होने की प्रतीक्षा करें।",
+  "settings_import_busy": "इम्पोर्ट क्षमता व्यस्त है या इम्पोर्ट समय पर पूरा नहीं हो सका। थोड़ी देर बाद फिर से कोशिश करें।",
+  "settings_import_nodelimit": "इम्पोर्ट {limit} नेविगेशन प्रविष्टियों की सीमा से अधिक है। छोटा स्पेस इम्पोर्ट करें। आपका ड्राफ़्ट सुरक्षित रखा गया।"
 }
