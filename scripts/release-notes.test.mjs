@@ -118,3 +118,12 @@ test('Zhincore squash co-authors share the login resolved by #237; Anthropic tra
     ],
   });
 });
+
+test('human co-authors on bot commits receive credit without counting the bot commit', () => {
+  const summary = summarize(
+    [commit('dependabot[bot]', 'bot@example.test', 'chore(deps): update (#3)', [{ name: 'Human contributor', email: 'human@example.test' }])],
+    [],
+    new Map([['human@example.test', 'human-contributor']]),
+  );
+  assert.deepEqual(summary, { changes: 0, contributors: [{ label: '@human-contributor', first: true }] });
+});

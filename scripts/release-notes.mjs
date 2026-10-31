@@ -53,7 +53,7 @@ export function summarize(commits, previous, logins) {
   );
   const people = new Map();
   const changes = commits.filter((c) => isPerson(identity(c.people[0])));
-  for (const commit of changes) {
+  for (const commit of commits) {
     for (const person of commit.people.map(identity).filter(isPerson)) people.set(person.key, person);
   }
   return {
