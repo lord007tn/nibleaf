@@ -57,6 +57,9 @@ advisory.
   architectures.
 - `docker-compose.prod.yml` includes neither Qdrant nor ClickHouse.
 - The interface offers 12 locale options, with some strings still in English.
+- Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`,
+  and `deepmerge`. The image includes them through its email packages. Nibleaf does
+  not import them directly, and removing them needs upstream changes.
 
 See [known limitations](/reference/known-limitations) for the wider product
 boundaries.

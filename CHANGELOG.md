@@ -10,7 +10,7 @@ manifest remains the authority for the latest published artifact.
 
 ### Highlights
 
-v0.2.0 adds optional hybrid search with grounded AI answers, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint. Published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag.
+v0.2.0 adds optional hybrid search with grounded AI answers, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint, and published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag. Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`, and `deepmerge`, which the image includes through its email packages.
 
 ### Upgrade actions
 
@@ -142,6 +142,8 @@ procedure.
 
 - Patched runtime dependency advisories and upgraded the MCP server SDK with input
   limits (#258, #261).
+- Moved `next`, `vite`, `vitest`, `body-parser`, `fast-uri`, `qs`, and `toml` to
+  patched versions (#268).
 - Removed the unused Better Auth organization deletion endpoint, so workspace removal
   uses the full erasure workflow (#245).
 - Tightened remote image downloads in the importers (#243).
@@ -163,3 +165,6 @@ procedure.
 - The MCP endpoint is off by default and its adapters are read-only.
 - Usage metering does not enable billing or payments, and entitlements remain
   advisory.
+- Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`,
+  and `deepmerge`. The image includes them through its email packages. Nibleaf does
+  not import them directly, and removing them needs upstream changes.
