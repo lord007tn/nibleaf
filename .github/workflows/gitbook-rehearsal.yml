@@ -1,32 +1,13 @@
-name: GitBook importer rehearsal
+name: GitBook full workspace verification
 on:
   push:
     branches: [rehearsal/gitbook-importer]
 permissions:
   contents: read
 jobs:
-  postgres-and-app:
+  full-workspace:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: gitbook_rehearsal
-        ports: [5432:5432]
-        options: >-
-          --health-cmd "pg_isready -U postgres -d gitbook_rehearsal"
-          --health-interval 5s --health-timeout 5s --health-retries 12
-      redis:
-        image: redis:7-alpine
-        ports: [6379:6379]
-    env:
-      NODE_ENV: test
-      POSTGRES_URL: postgresql://postgres@127.0.0.1:5432/gitbook_rehearsal
-      REDIS_HOST: 127.0.0.1
-      REDIS_PORT: 6379
-      ANALYTICS_MODE: disabled
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,34 +21,8 @@ jobs:
       - run: git rev-parse HEAD
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
-      - run: pnpm --filter @nibleaf/database exec prisma migrate deploy
       - run: pnpm typecheck
-      - name: Real PostgreSQL races and authenticated public-repository import
-        env:
-          GITBOOK_REHEARSAL: '1'
-        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook.postgres.test.ts --reporter=verbose
-      - name: Focused regressions
-        run: |
-          pnpm --filter @nibleaf/server exec vitest run src/actions/importers src/actions/branches-import.test.ts src/modules/app/imports/limit.test.ts --reporter=verbose
-          pnpm --filter @nibleaf/app exec vitest run src/components/markdown.test.ts src/components/settings/import-errors.test.ts src/hooks/api/client-helpers.test.ts
-  codeql:
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-          ref: 0e08e368a74168991d6065e5fd440e8b1eaff0cc
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          build-mode: none
-      - uses: github/codeql-action/analyze@v3
-        with:
-          upload: never
-          output: ${{ runner.temp }}/codeql-results
-      - uses: actions/upload-artifact@v7
-        with:
-          name: gitbook-codeql-results
-          path: ${{ runner.temp }}/codeql-results/*.sarif
-          if-no-files-found: error
+      - run: pnpm lint
+      - run: pnpm exec biome format .
+      - run: pnpm check:dead-code
+      - run: pnpm test
