@@ -387,6 +387,7 @@ describe('siteHead analytics scripts', () => {
     languageConfig,
     version: 1,
     generatedAt: '2026-07-01T00:00:00.000Z',
+    capabilities: { answer: false },
   });
 
   it('advertises the project name as og:site_name, localized by the active language', () => {
@@ -446,4 +447,26 @@ describe('pageHead not-found (soft-404)', () => {
     const head = pageHead(base(), 'p1');
     expect(meta(head, 'robots')).toBeUndefined();
   });
+});
+
+it('uses the parsed origin of APP_URL', () => {
+  vi.stubEnv('APP_URL', 'https://example.com ');
+  vi.stubGlobal('window', undefined);
+  try {
+    expect(canonical(pageHead(base(), 'p1'))).toBe('https://example.com/sites/p1/quickstart');
+  } finally {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  }
+});
+
+it.each(['', 'not-absolute'])('keeps SSR head rendering with an invalid APP_URL: %s', (configured) => {
+  vi.stubEnv('APP_URL', configured);
+  vi.stubGlobal('window', undefined);
+  try {
+    expect(() => pageHead(base(), 'p1')).not.toThrow();
+    expect(canonical(pageHead(base(), 'p1'))).toBe('http://localhost:4310/sites/p1/quickstart');
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

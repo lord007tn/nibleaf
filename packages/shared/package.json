@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./addons": "./src/addons.ts",
+    "./callouts": "./src/callouts.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
@@ -33,7 +34,7 @@
   "dependencies": {
     "github-slugger": "^2.0.0",
     "nanoid": "^6.0.1",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",

@@ -339,6 +339,72 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(html).not.toContain('<Unknown onclick=');
   });
 
+  describe('GitHub alert callouts', () => {
+    const calloutContent = [
+      '> [!TIP]\n> استخدم [دليل الإعداد](/setup).\n>\n> ![صورة](/api/public/assets/projects/project_public/assets/logo.png)',
+      '> [!warning] Same-line warning',
+      '> [!CAUTION]\n> Danger zone',
+      '> [!NOTE]\n> > [!important]\n> > Nested',
+      '> [!UNKNOWN]\n> Fallback',
+      '> [!CHECK]',
+      '> Plain quote',
+      '```md\n> [!TIP]\n> Shown as code\n```',
+    ].join('\n\n');
+    const calloutSnapshot: SiteSnapshot = {
+      ...snapshot,
+      pages: [{ ...required(snapshot.pages[0]), content: calloutContent }, required(snapshot.pages[1])],
+    };
+    const withoutCode = (html: string) => html.replace(/<pre[\s\S]*?<\/pre>/g, '');
+
+    it('renders alert markers as typed callouts without the literal marker', () => {
+      const html = renderPageMarkdown(calloutSnapshot, required(calloutSnapshot.pages[0]), assets);
+
+      expect(withoutCode(html)).not.toContain('[!');
+      expect(html).toContain('<blockquote data-callout="tip">\n<p>استخدم <a href="../setup/index.html">دليل الإعداد</a>.</p>');
+      expect(html).toContain('src="../../../assets/logo.png"');
+      expect(html).toContain('<blockquote data-callout="warning">\n<p>Same-line warning</p>');
+      expect(html).toContain('<blockquote data-callout="danger">\n<p>Danger zone</p>');
+      expect(html).toContain('<blockquote data-callout="note">\n<blockquote data-callout="info">\n<p>Nested</p>');
+      expect(html).toContain('<blockquote data-callout="note">\n<p>Fallback</p>');
+      expect(html).toContain('<blockquote data-callout="check">\n</blockquote>');
+      expect(html).toContain('<blockquote>\n<p>Plain quote</p>');
+      expect(html).toContain('&gt; [!TIP]\n&gt; Shown as code');
+    });
+
+    it('keeps markers out of static HTML, search text, and PDF HTML', () => {
+      const files = unzipSync(renderStaticHtml(calloutSnapshot, assets).bytes);
+      const intro = text(required(files['main/ar/intro/index.html']));
+      const css = text(required(files['theme/theme.css']));
+      const search = text(required(files['theme/theme.js']));
+      const pdf = renderPdfHtml(calloutSnapshot, assets);
+
+      expect(withoutCode(intro)).not.toContain('[!');
+      expect(intro).toContain('<blockquote data-callout="tip">');
+      expect(search).not.toContain('[!');
+      expect(search).not.toMatch(/\b(?:TIP|CAUTION|UNKNOWN)\b/);
+      expect(search).toContain('Danger zone');
+      // Each blockquote sets its own color, or a nested note inherits its parent's.
+      expect(css).toContain('blockquote,blockquote[data-callout]{--callout:var(--info);');
+      expect(css).toContain('blockquote[data-callout="warning"]{--callout:var(--warning)}');
+      expect(css).toContain('body[data-theme-callouts="solid"] blockquote{background:var(--callout,var(--info))');
+
+      expect(withoutCode(pdf)).not.toContain('[!');
+      expect(pdf).toContain('<blockquote data-callout="tip">');
+      expect(pdf).toContain('<blockquote data-callout="danger">');
+      expect(pdf).toContain('href="#page-setup"');
+      expect(pdf).toContain('data:image/png;base64,AQID');
+      expect(pdf).toContain('blockquote[data-callout="danger"]{--callout:var(--danger)}');
+    });
+
+    it('keeps the authored alert markers in the Markdown archive', () => {
+      const files = unzipSync(renderMarkdownZip(calloutSnapshot, assets).bytes);
+      const markdown = text(required(files['main/ar/intro.md']));
+
+      expect(markdown).toContain('> [!TIP]\n> استخدم [دليل الإعداد](/setup).');
+      expect(markdown).toContain('> [!warning] Same-line warning');
+    });
+  });
+
   it('escapes malformed legacy theme values in static HTML attributes', () => {
     const malformed = {
       ...themedSnapshot,

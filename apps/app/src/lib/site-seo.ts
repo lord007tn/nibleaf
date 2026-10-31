@@ -1,6 +1,7 @@
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
+import { hydratedCustomDomainProjectId } from '@/lib/custom-domain-rewrite';
 
 /**
  * Public origin the site is served from. On the client this is the real origin;
@@ -12,7 +13,14 @@ function publicOrigin(): string {
     return window.location.origin;
   }
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-  return env?.APP_URL ?? 'http://localhost:4310';
+  const configured = env?.APP_URL ?? 'http://localhost:4310';
+  try {
+    const parsed = new URL(configured);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') return parsed.origin;
+  } catch {
+    // Preserve head rendering when an SSR environment has no usable app origin.
+  }
+  return 'http://localhost:4310';
 }
 
 /** The free-subdomain base configured for this deployment (`<slug>.<base>`),
@@ -62,6 +70,9 @@ export function canonicalSiteBase(projectId: string, options: SiteUrlOptions = {
   }
   if (options.requestOrigin) {
     return options.requestOrigin;
+  }
+  if (hydratedCustomDomainProjectId() === projectId) {
+    return publicOrigin();
   }
   return `${publicOrigin()}/sites/${projectId}`;
 }
@@ -155,7 +166,8 @@ function ogLocale(code?: string): string | undefined {
 export function sitePageUrl(projectId: string, path: string, lang?: string, options?: SiteUrlOptions): string {
   const clean = path ? `/${path.replace(/^\/+/, '')}` : '';
   const query = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-  return `${canonicalSiteBase(projectId, options)}${clean}${query}`;
+  const url = `${canonicalSiteBase(projectId, options)}${clean}${query}`;
+  return path ? new URL(url).href : url;
 }
 
 /** Changelog RSS URL derived from its page URL without corrupting a language

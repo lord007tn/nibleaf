@@ -14,6 +14,11 @@ export async function initializeClickHouseFn(
 ) {
   const config = keys();
   const roles = [...new Set<ClickHouseClientRole>(options.roles ?? ['reader'])];
+  if (!config.ANALYTICS_HASH_SALT && process.env.NODE_ENV === 'production') {
+    log.warn(
+      'ANALYTICS_HASH_SALT is not set; reader identifiers are hashed with a public fallback salt. Set it to a random value (openssl rand -hex 32).',
+    );
+  }
   if (config.ANALYTICS_MODE === 'disabled') return { configured: false, latencyMs: null, roles: [], status: 'disabled' };
 
   const started = performance.now();

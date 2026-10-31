@@ -192,7 +192,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           ))}
         </div>
       ) : null}
-      <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
+      <h1 tabIndex={-1} className="outline-none font-semibold text-3xl tracking-tight md:text-4xl">
+        {page.title}
+      </h1>
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
       <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label={tArticle('articleDetails')}>
         <li className="inline-flex items-center gap-1.5">
@@ -222,7 +224,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </Suspense>
       </div>
 
-      {readerActionsAfterNavigation ? null : <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />}
+      {readerActionsAfterNavigation ? null : (
+        <ReaderActions
+          key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
+          projectId={projectId}
+          path={page.path}
+          language={language}
+          addons={addons}
+        />
+      )}
 
       {prev || next ? (
         <nav
@@ -256,7 +266,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
         </nav>
       ) : null}
-      {readerActionsAfterNavigation ? <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} /> : null}
+      {readerActionsAfterNavigation ? (
+        <ReaderActions
+          key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
+          projectId={projectId}
+          path={page.path}
+          language={language}
+          addons={addons}
+        />
+      ) : null}
     </article>
   );
 
