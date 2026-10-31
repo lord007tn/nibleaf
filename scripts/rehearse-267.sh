@@ -55,6 +55,13 @@ prepare_upgrade() {
  export -f operator
  grep -q 'sha256:880938a6ab865487f0b85733eeb2c20da06de34dcce1bdb5a8f35f694e4a3da8' "$log"
  record staged-digest PASS 'exact guide digest'
+ if [ "$MODE" = recovery-quiet ];then
+  # Quiet-case fixture: cache the published candidate while old services still
+  # process maintenance. No jobs are removed or changed to manufacture quietness.
+  quiet docker pull "ghcr.io/lord007tn/nibleaf:$CANDIDATE"
+  record quiet-image-prefetch PASS 'fixture cache warm before outage; v0.1.2 worker still running'
+  while [ "$(date +%S)" -lt 3 ] || [ "$(date +%S)" -gt 8 ];do sleep 1;done
+ fi
  run upgrade 7
  run upgrade 8
  run upgrade 10 backup-four-files

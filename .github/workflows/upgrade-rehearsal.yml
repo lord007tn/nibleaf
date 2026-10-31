@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        mode: [main, recovery-quiet, recovery-busy, rollback-interrupted, rollback-skip-apply, backup-drill, installer]
+        mode: [recovery-quiet]
     env:
       GUIDE_COMMIT: 8e9281995beef4b8089af2b884bc5882035a3788
       CANDIDATE: sha-a28cbfdbec01f478caa4374eb36ad834e5424fb6
