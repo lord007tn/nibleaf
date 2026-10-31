@@ -5,6 +5,8 @@ SOURCE_INSTALL=$INSTALL
 SOURCE_PROJECT=$COMPOSE_PROJECT_NAME
 run backup 0 backup-custom-project
 SOURCE_STAMP=$STAMP
+SOURCE_VOLUME=$MAXIO_VOLUME
+export STAMP
 for f in "backups/nibleaf-db-$STAMP.dump" "backups/nibleaf-storage-$STAMP.tar.gz";do test -s "$f";done
 case $MAXIO_VOLUME in guide-source-custom_*) ;;*)record backup-custom-project FAIL 'wrong volume selected';exit 1;;esac
 record backup-volume-identity PASS 'actual mounted volume found for custom Compose project'
@@ -23,7 +25,7 @@ run backup 1 isolated-restore
 healthy;marker
 TARGET_VOL=$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
 case $TARGET_VOL in guide-target-custom_*) ;;*)return 1;;esac
-test "$TARGET_VOL" != "$MAXIO_VOLUME" || true
+test "$TARGET_VOL" != "$SOURCE_VOLUME"
 quiet docker run --rm -v "$TARGET_VOL:/data:ro" alpine:3.22 sh -c 'test "$(cat /data/rehearsal-marker)" = before-upgrade'
 record isolated-restore-marker PASS 'database and object marker restored on separate custom project/origin/volumes'
 cp "backups/nibleaf-db-$STAMP.dump" "$PRIVATE/good.dump"
@@ -32,6 +34,7 @@ log="$PRIVATE/restore-corrupt.log"
 bash -e "$PUBLIC/backup-en-1.sh" > "$log" 2>&1
 # The literal guard echoes Stop and returns zero; assert behavior, not just exit code.
 grep -q '^Stop: restore failed; do not start application services.' "$log"
+grep -q '^pg_restore: error:' "$log"
 safe_errors;stopped
 record pg-restore-failure PASS 'Stop message printed; all app services stay stopped'
 cp "$PRIVATE/good.dump" "backups/nibleaf-db-$STAMP.dump"
