@@ -5,6 +5,7 @@ export PUBLIC="$RUNNER_TEMP/pr267-public" PRIVATE="$RUNNER_TEMP/pr267-private"
 mkdir -p "$PUBLIC" "$PRIVATE"
 python3 "$SOURCE/scripts/extract-267.py"
 printf '| Check | Result | Seconds | Free MiB | Evidence |\n|---|---|---:|---:|---|\n' > "$PUBLIC/results.md"
+CASE_FAILURES=0
 CURRENT=prepare
 log="$PRIVATE/prepare.log"
 record() { printf '| %s | %s | %s | %s | %s |\n' "$1" "$2" "$SECONDS" "$(df -m / | awk 'NR==2 {print $4}')" "${3:-}" | tee -a "$PUBLIC/results.md"; }
@@ -116,9 +117,29 @@ start_candidate() {
  run upgrade 18
  run upgrade 19
  run upgrade 20 candidate-digest;cp "$log" "$PUBLIC/candidate-digest.txt"
- quiet docker compose run --rm --no-deps -T server node -e 'console.log(JSON.parse(require("node:fs").readFileSync("packages/auth/node_modules/better-auth/package.json","utf8")).version)'
- grep -qx '1.7.14' "$PRIVATE/fixture.log"
- record better-auth PASS 'published candidate contains 1.7.14'
+ CURRENT=better-auth-runtime
+ log="$PRIVATE/better-auth-runtime.log"
+ if docker compose run --rm --no-deps -T server node --input-type=module -e '
+import {createRequire} from "node:module";
+import {readFileSync,existsSync} from "node:fs";
+import {dirname,join} from "node:path";
+try {
+ const req=createRequire("/app/packages/auth/package.json");
+ let path=dirname(req.resolve("better-auth"));
+ while(path!==dirname(path)) {
+  const file=join(path,"package.json");
+  if(existsSync(file)) {const pkg=JSON.parse(readFileSync(file,"utf8"));if(pkg.name==="better-auth") {console.log("better-auth runtime version: "+pkg.version);process.exit(pkg.version==="1.7.14"?0:1);}}
+  path=dirname(path);
+ }
+ console.log("metadata probe: package manifest not found");process.exit(1);
+} catch(error) {console.log("metadata probe: "+(error.code||"unresolved"));process.exit(1);}
+' > "$PUBLIC/better-auth-version.txt" 2> "$log";then
+  record better-auth PASS 'actual package resolver confirms 1.7.14'
+ else
+  cat "$PUBLIC/better-auth-version.txt"
+  record better-auth FAIL 'auxiliary metadata probe; remaining guide coverage continues'
+  CASE_FAILURES=$((CASE_FAILURES+1))
+ fi
 }
 crypto_probe() {
  docker compose run --rm --no-deps -T server sh -c 'cd apps/server && node --import tsx --input-type=module -e '\''try {const c=await import("./src/actions/integrations/crypto.ts");if(c.decryptIntegrationSecret(c.encryptIntegrationSecret("synthetic-guide-check"))) console.log("crypto roundtrip: PASS");else process.exit(1);}catch{console.log("crypto roundtrip: FAIL");process.exit(1)}'\'''
@@ -199,4 +220,5 @@ case "$MODE" in
   ;;
 esac
 record product-journey NOT-RUN 'no real provider sign-in, upload/publish/search/export journey'
+if [ "$CASE_FAILURES" -gt 0 ];then record complete FAIL 'a recorded probe failed';exit 1;fi
 record complete PASS "$MODE scenario completed"
