@@ -133,7 +133,9 @@ must not be stored in environment examples or repository configuration.
 | `EXPORT_DOWNLOAD_TTL_SECONDS` | No | `300` | Presigned download lifetime; accepted range is 30–900 seconds. |
 
 The official image includes Chromium. If `WORKER_QUEUES` is a comma-separated
-allowlist, include `export`; an empty value enables every queue.
+allowlist, include `export`; an empty value enables every queue. An allowlist
+must also include `erasure`, or the stored objects of deleted projects stay in
+storage. See [Operate hybrid search and grounded answers](/self-hosting/search-ai).
 
 ### Bidirectional Git
 

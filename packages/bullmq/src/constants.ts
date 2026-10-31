@@ -8,5 +8,6 @@ export const QueueNames = {
   ANALYTICS: 'analytics',
   EXPORT: 'export',
   GIT: 'git',
+  ERASURE: 'erasure',
 } as const;
 export type QueueNames = (typeof QueueNames)[keyof typeof QueueNames];

@@ -30,6 +30,10 @@ manifest remains the authority for the latest published artifact.
 - Documented the Postgres dependency order: search, usage, add-ons,
   integrations, then MCP. The integrations migration owns the shared nullable
   `ApiKey.expiresAt` prerequisite used by MCP.
+- Upgraded Better Auth to 1.7.14, which restores Google sign-in. Versions 1.7.0
+  through 1.7.2 require an `account.issuer` column that Nibleaf never had. An
+  additive migration adds the `invitation.createdAt` column that Better Auth's
+  schema check now requires.
 
 ### Operational status
 

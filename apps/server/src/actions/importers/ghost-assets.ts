@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
+import { once } from 'node:events';
+import type { IncomingMessage } from 'node:http';
+import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpsAgent } from 'node:https';
+import type { LookupFunction } from 'node:net';
+import { isIP } from 'node:net';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { inferSafeInlineAssetContentType, isSafeInlineAssetContentType, normalizeAssetContentType } from '@nibleaf/validators';
 import got from 'got';
-import { isPrivateIp } from '@/lib/client-ip';
+import { isPublicAddress } from '@/lib/domain-checks';
 import { findImportedAsset, storeAsset } from '../assets';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
@@ -11,7 +17,9 @@ const MAX_REMOTE_ASSETS = 2000;
 const MAX_REDIRECTS = 3;
 const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()(https?:\/\/[^\s)]+)((?:\s+["'][^)]*["'])?\))/gi;
 const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])(https?:\/\/[^"']+)(["'][^>]*>)/gi;
-const publicHostChecks = new Map<string, Promise<void>>();
+const MAX_CONCURRENT_DOWNLOADS = 4;
+// Image downloads never share connections with other outbound requests.
+const DOWNLOAD_AGENTS = { http: new HttpAgent({ keepAlive: false }), https: new HttpsAgent({ keepAlive: false }) };
 
 export const remoteImageSources = (content: string): string[] => {
   const prose = protectMarkdownCode(content).content;
@@ -31,53 +39,77 @@ const filenameFromUrl = (url: URL): string => {
   }
 };
 
-const publicHttpUrl = async (value: string): Promise<URL> => {
+const publicHttpUrl = (value: string): URL => {
   const url = new URL(value);
   if ((url.protocol !== 'https:' && url.protocol !== 'http:') || url.username || url.password) {
     throw new Error('unsupported URL');
   }
-  let check = publicHostChecks.get(url.hostname);
-  if (!check) {
-    check = lookup(url.hostname, { all: true, verbatim: true }).then((addresses) => {
-      if (addresses.length === 0 || addresses.some((address) => isPrivateIp(address.address))) throw new Error('non-public host');
-    });
-    publicHostChecks.set(url.hostname, check);
-    check.catch(() => publicHostChecks.delete(url.hostname));
-  }
-  await check;
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
+  if (isIP(hostname) && !isPublicAddress(hostname)) throw new Error('non-public host');
   return url;
+};
+
+// Validate every answer in the lookup the connection uses.
+const publicDnsLookup: LookupFunction = (hostname, options, callback) => {
+  lookup(hostname, { all: true, verbatim: true }).then(
+    (addresses) => {
+      const selected = addresses[0];
+      if (!selected || addresses.some(({ address }) => !isPublicAddress(address))) {
+        callback(new Error('non-public host'), '', 4);
+        return;
+      }
+      if (options.all) callback(null, addresses);
+      else callback(null, selected.address, selected.family);
+    },
+    () => callback(new Error('host lookup failed'), '', 4),
+  );
 };
 
 const importIdForSource = (namespace: string, source: string): string =>
   `${namespace}-${createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
 
 const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
-  let url = await publicHttpUrl(source);
+  let url = publicHttpUrl(source);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
-    const response = await got(url, {
+    const request = got.stream(url, {
       headers: { 'User-Agent': 'nibleaf-content-importer/1.0' },
       followRedirect: false,
       retry: { limit: 0 },
       throwHttpErrors: false,
       timeout: { request: 20_000 },
+      dnsLookup: publicDnsLookup,
+      agent: DOWNLOAD_AGENTS,
     });
-    if (response.statusCode >= 300 && response.statusCode < 400) {
-      const location = response.headers.location;
-      if (!(location && redirect < MAX_REDIRECTS)) throw new Error('too many redirects');
-      url = await publicHttpUrl(new URL(location, url).toString());
-      continue;
+    try {
+      const [response] = (await once(request, 'response')) as [IncomingMessage];
+      const status = response.statusCode ?? 0;
+      if (status >= 300 && status < 400) {
+        const location = response.headers.location;
+        if (!(location && redirect < MAX_REDIRECTS)) throw new Error('too many redirects');
+        url = publicHttpUrl(new URL(location, url).toString());
+        continue;
+      }
+      if (status < 200 || status >= 300) throw new Error('remote response failed');
+      const announcedSize = Number(response.headers['content-length'] ?? 0);
+      if (announcedSize > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
+      const filename = filenameFromUrl(url);
+      const contentType = normalizeAssetContentType(response.headers['content-type'] ?? '') || inferSafeInlineAssetContentType(filename) || '';
+      if (!isSafeInlineAssetContentType(contentType)) throw new Error('unsupported image type');
+
+      const chunks: Buffer[] = [];
+      let total = 0;
+      // Got streams decoded bytes, so this also bounds compressed responses.
+      for await (const chunk of request) {
+        const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        total += bytes.byteLength;
+        if (total > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
+        chunks.push(bytes);
+      }
+      if (total === 0) throw new Error('invalid image size');
+      return { bytes: Buffer.concat(chunks, total), contentType, filename };
+    } finally {
+      request.destroy();
     }
-    if (!response.ok) throw new Error(`remote response ${response.statusCode}`);
-
-    const announcedSize = Number(response.headers['content-length'] ?? 0);
-    if (announcedSize > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
-    const filename = filenameFromUrl(url);
-    const contentType = normalizeAssetContentType(response.headers['content-type'] ?? '') || inferSafeInlineAssetContentType(filename) || '';
-    if (!isSafeInlineAssetContentType(contentType)) throw new Error('unsupported image type');
-
-    const bytes = new Uint8Array(response.rawBody);
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_REMOTE_ASSET_BYTES) throw new Error('invalid image size');
-    return { bytes, contentType, filename };
   }
   throw new Error('too many redirects');
 };
@@ -89,6 +121,8 @@ export class RemoteAssetMigrator {
   readonly failures = new Set<string>();
   migrated = 0;
   skipped = 0;
+  private active = 0;
+  private readonly waiting: Array<() => void> = [];
   private readonly cache = new Map<string, Promise<string>>();
 
   constructor(
@@ -105,6 +139,8 @@ export class RemoteAssetMigrator {
       return Promise.resolve(source);
     }
     const pending = (async () => {
+      if (this.active >= MAX_CONCURRENT_DOWNLOADS) await new Promise<void>((resolve) => this.waiting.push(resolve));
+      else this.active++;
       try {
         const filename = filenameFromUrl(new URL(source));
         const importId = importIdForSource(this.namespace, source);
@@ -114,10 +150,14 @@ export class RemoteAssetMigrator {
         const asset = await storeAsset({ projectId: this.projectId, importId, ...image });
         this.migrated++;
         return asset.url;
-      } catch (error) {
+      } catch {
         this.skipped++;
-        this.failures.add(error instanceof Error ? error.message : 'image migration failed');
+        this.failures.add('image migration failed');
         return source;
+      } finally {
+        const next = this.waiting.shift();
+        if (next) next();
+        else this.active--;
       }
     })();
     this.cache.set(source, pending);

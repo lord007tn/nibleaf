@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
+  navigate: vi.fn(),
   answer: vi.fn(),
   mutate: vi.fn(),
   debounced: undefined as string | undefined,
   realLabels: false,
 }));
+vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ navigate: mocks.navigate }) }));
 vi.mock('@/hooks/api/site-search', () => ({ useSiteSearch: mocks.search, useAnswerSite: mocks.answer }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [mocks.debounced ?? value] }));
@@ -23,6 +25,12 @@ import { SiteSearch } from './site-search';
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
 const hit = { id: 'setup', path: 'setup', title: 'Setup guide', snippet: 'Configure the project.', language: 'en', icon: null };
+
+// Load the lazy dialog and answer chunks up front: a cold import under a busy
+// runner can outlast `vi.dynamicImportSettled()` and leave the dialog unrendered.
+beforeAll(async () => {
+  await Promise.all([import('./site-search-dialog'), import('./site-search-answer')]);
+});
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -237,4 +245,28 @@ describe('published reader search', () => {
     expect(document.querySelector('a[href*="example.invalid"]')).toBeNull();
     expect(document.querySelector('a[href*="setup"]')).not.toBeNull();
   });
+});
+
+it('routes a selected search result with its language and selected version', async () => {
+  window.history.replaceState(null, '', '/sites/docs/start');
+  mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar' }], isFetching: false, error: null });
+  await render({ lang: 'ar', version: 'v2' });
+  await typeQuery('Setup');
+  const result = document.querySelector<HTMLElement>('[role="option"]');
+  if (!result) throw new Error('Missing search result');
+  await act(async () => result.click());
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/v2/setup?lang=ar' });
+  window.history.replaceState(null, '', '/');
+});
+
+it('keeps default-language search navigation on the clean URL', async () => {
+  window.history.replaceState(null, '', '/sites/docs/start');
+  mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+  await render({ lang: 'en', defaultLanguage: 'en' });
+  await typeQuery('Setup');
+  const result = document.querySelector<HTMLElement>('[role="option"]');
+  if (!result) throw new Error('Missing search result');
+  await act(async () => result.click());
+  expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/setup' });
+  window.history.replaceState(null, '', '/');
 });

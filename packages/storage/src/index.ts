@@ -20,7 +20,23 @@ import { getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTar
 export { defaultTarget, getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
 
 const DELETE_BATCH_SIZE = 1000;
-const DEFAULT_EXPIRES_IN_SECONDS = 3600;
+export const DEFAULT_PRESIGN_EXPIRES_IN_SECONDS = 3600;
+
+/** `DeleteObjects` reports per-object failures inside an HTTP success. Only counts
+ * and an error code leave this module: object keys can be personal. */
+/** S3 error codes are short identifiers. Anything else a backend sends stays out of logs. */
+const safeErrorCode = (code: string | undefined): string => (code && /^\w{1,64}$/.test(code) ? code : 'unknown');
+
+export class StorageDeleteError extends Error {
+  constructor(
+    readonly failedCount: number,
+    readonly deletedCount: number,
+    readonly firstErrorCode: string,
+  ) {
+    super(`Could not delete ${failedCount} stored object(s); first error code: ${firstErrorCode}.`);
+    this.name = 'StorageDeleteError';
+  }
+}
 
 /** Create the bucket if it does not exist yet (idempotent; used on API boot for self-host). */
 export const ensureBucket = async (target?: StorageTarget): Promise<void> => {
@@ -75,16 +91,23 @@ export const deletePrefix = async (prefix: string, target?: StorageTarget): Prom
   const bucket = getBucket(target);
   let continuationToken: string | undefined;
   let deleted = 0;
+  let failed = 0;
+  let firstErrorCode: string | undefined;
   do {
     const listed = await client.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: continuationToken }));
     const identifiers: ObjectIdentifier[] = (listed.Contents ?? []).flatMap((object) => (object.Key ? [{ Key: object.Key }] : []));
     for (let i = 0; i < identifiers.length; i += DELETE_BATCH_SIZE) {
       const batch = identifiers.slice(i, i + DELETE_BATCH_SIZE);
-      await client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: batch, Quiet: true } }));
-      deleted += batch.length;
+      const { Errors: errors = [] } = await client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: batch, Quiet: true } }));
+      deleted += batch.length - errors.length;
+      failed += errors.length;
+      firstErrorCode ??= errors[0]?.Code;
     }
     continuationToken = listed.IsTruncated ? listed.NextContinuationToken : undefined;
   } while (continuationToken);
+  if (failed > 0) {
+    throw new StorageDeleteError(failed, deleted, safeErrorCode(firstErrorCode));
+  }
   return deleted;
 };
 
@@ -96,7 +119,12 @@ export interface PresignPutOptions {
 }
 
 /** Create a presigned URL a client can PUT bytes to directly (signed with the public endpoint). */
-export const presignPutUrl = ({ key, contentType, expiresInSeconds = DEFAULT_EXPIRES_IN_SECONDS, target }: PresignPutOptions): Promise<string> => {
+export const presignPutUrl = ({
+  key,
+  contentType,
+  expiresInSeconds = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS,
+  target,
+}: PresignPutOptions): Promise<string> => {
   const signTarget = target ?? publicTarget();
   return getSignedUrl(getS3Client(signTarget), new PutObjectCommand({ Bucket: getBucket(signTarget), Key: key, ContentType: contentType }), {
     expiresIn: expiresInSeconds,
@@ -109,7 +137,7 @@ export interface PresignGetOptions {
   target?: StorageTarget;
 }
 
-export const presignGetUrl = ({ key, expiresInSeconds = DEFAULT_EXPIRES_IN_SECONDS, target }: PresignGetOptions): Promise<string> => {
+export const presignGetUrl = ({ key, expiresInSeconds = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS, target }: PresignGetOptions): Promise<string> => {
   const signTarget = target ?? publicTarget();
   return getSignedUrl(getS3Client(signTarget), new GetObjectCommand({ Bucket: getBucket(signTarget), Key: key }), { expiresIn: expiresInSeconds });
 };

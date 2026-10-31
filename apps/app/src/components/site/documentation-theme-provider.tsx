@@ -1,4 +1,3 @@
-import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { type ResolvedTheme, THEME_SCHEMA_VERSION, type ThemeLayout } from '@nibleaf/shared/themes';
 import { type CSSProperties, createContext, type ReactNode, useContext } from 'react';
@@ -67,11 +66,11 @@ const HarborTemplate: DocumentationThemeTemplate = {
           className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-(--theme-border) border-e lg:block"
           data-theme-region="sidebar"
         >
-          <ScrollArea className="h-full">
+          <div className="documentation-sidebar-scroll h-full overflow-y-auto">
             <div className="pt-6 pb-16 pe-4" data-theme-region="sidebar-content">
               {slots.navigation}
             </div>
-          </ScrollArea>
+          </div>
         </aside>
         {slots.content}
       </div>,
@@ -212,11 +211,11 @@ const SignalTemplate: DocumentationThemeTemplate = {
             className="documentation-signal-rail hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
             data-theme-region="sidebar"
           >
-            <ScrollArea className="sticky top-[4.25rem] h-[calc(100dvh-5.75rem)]">
+            <div className="documentation-sidebar-scroll sticky top-[4.25rem] h-[calc(100dvh-5.75rem)] overflow-y-auto">
               <div className="px-3 pt-4 pb-16" data-theme-region="sidebar-content">
                 {slots.navigation}
               </div>
-            </ScrollArea>
+            </div>
           </aside>
           <div className="min-w-0">{slots.content}</div>
         </div>

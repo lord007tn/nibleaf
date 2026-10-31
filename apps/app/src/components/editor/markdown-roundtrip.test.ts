@@ -91,6 +91,56 @@ describe('markdown round-trip stability', () => {
   });
 });
 
+describe('block boundaries after images', () => {
+  const cards = [
+    '<CardGroup cols="2">',
+    '<Card title="One" href="/one">',
+    '![One](https://example.com/one.png)',
+    '</Card>',
+    '<Card title="Two" href="/two">',
+    '![Two](https://example.com/two.png)',
+    '</Card>',
+    '</CardGroup>',
+  ].join('\n\n');
+
+  it('keeps a closing tag after a trailing image on its own line', () => {
+    const output = expectStable(cards);
+    expect(output).toContain('![One](https://example.com/one.png)\n\n</Card>\n\n<Card title="Two" href="/two">');
+    expect(output).toContain('![Two](https://example.com/two.png)\n\n</Card>\n\n</CardGroup>');
+  });
+
+  it('keeps an opening tag after an image on its own line', () => {
+    const output = expectStable('![](https://example.com/banner.png)\n\n<Check>\n\n**Done**\n\n</Check>');
+    expect(output).toContain('![](https://example.com/banner.png)\n\n<Check>\n\n**Done**\n\n</Check>');
+  });
+
+  it('keeps a paragraph after an image separate', () => {
+    const output = expectStable('![](https://example.com/a.png)\n\nNext paragraph.');
+    expect(output).toBe('![](https://example.com/a.png)\n\nNext paragraph.');
+  });
+
+  const after = { type: 'paragraph', content: [{ type: 'text', text: 'After.' }] };
+
+  it('keeps parentheses, quotes and a trailing backslash in image titles', () => {
+    const attrs = { src: 'https://example.com/a(1).png', alt: 'Diagram', title: 'Say "hi" \\' };
+    editor.commands.setContent({ type: 'doc', content: [{ type: 'image', attrs }, after] }, { emitUpdate: false });
+    const markdown = getMarkdown(editor);
+
+    expect(expectStable(markdown)).toBe(markdown);
+    editor.commands.setContent(markdown, { emitUpdate: false });
+    expect(editor.getJSON().content?.find((node) => node.type === 'image')?.attrs).toMatchObject(attrs);
+  });
+
+  it('does not let a trailing backslash in an image source swallow its closing parenthesis', () => {
+    const image = { type: 'image', attrs: { src: 'https://example.com/a\\', alt: 'A' } };
+    editor.commands.setContent({ type: 'doc', content: [image, after] }, { emitUpdate: false });
+
+    const output = expectStable(getMarkdown(editor));
+    editor.commands.setContent(output, { emitUpdate: false });
+    expect(editor.getJSON().content?.map((node) => node.type)).toEqual(['image', 'paragraph']);
+  });
+});
+
 describe('text alignment (why the align buttons were removed)', () => {
   it('drops textAlign on serialization — alignment cannot survive Markdown', () => {
     const aligned = new Editor({
