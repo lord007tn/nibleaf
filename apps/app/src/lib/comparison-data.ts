@@ -450,7 +450,6 @@ export const nibleafVsGitbook: Comparison = {
       'You need the full editor, publishing pipeline, and reader to be deployable together. GitBook self-hosts only its published-site renderer.',
       'You need complete Arabic/RTL authoring support; GitBook says only paragraphs and headings currently auto-align reliably.',
       'You want your content to stay plain Markdown you can export and move any time.',
-      'You want built-in analytics without upgrading to a paid tier.',
     ],
   },
   verdict: [
