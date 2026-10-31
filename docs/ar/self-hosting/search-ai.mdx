@@ -44,8 +44,8 @@ BM25 والمتجهات الكثيفة، مع فرض نطاق المستأجر �
 docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 ```
 
-لا يتضمن `docker-compose.prod.yml` خدمة Qdrant، وهذا الملف الإضافي هو أيضًا ما يمرّر
-`OPENROUTER_API_KEY` إلى API وعامل المعالجة. يوجد الملف الإضافي في المستودع لا في أصول
+لا يتضمن `docker-compose.prod.yml` خدمة Qdrant، لذا يحتاج البحث الهجين إلى هذا الملف الإضافي.
+ويمرّر ملف Compose الإنتاجي أصلًا `OPENROUTER_API_KEY` إلى API وعامل المعالجة. يوجد الملف الإضافي في المستودع لا في أصول
 الإصدار، لذا يجب في المجلد الذي أنشأه برنامج التثبيت الموجّه جلبه من وسم الإصدار
 المطابق واستخدام `docker-compose.yml` ملفًا أول. ويتضمن إعداد Coolify وبيئة التطوير
 Qdrant مباشرة.

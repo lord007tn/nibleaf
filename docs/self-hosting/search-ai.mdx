@@ -51,8 +51,9 @@ operation (including pull, up, config checks, and backup automation):
 docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 ```
 
-`docker-compose.prod.yml` does not include Qdrant, and this overlay is also what
-passes `OPENROUTER_API_KEY` to the API and worker. The overlay is in the repository,
+`docker-compose.prod.yml` does not include Qdrant, so hybrid search needs this overlay.
+The production Compose file already passes `OPENROUTER_API_KEY` to the API and worker.
+The overlay is in the repository,
 not in the release assets, so a guided-installer directory must fetch it from the
 matching release tag and use `docker-compose.yml` as the first file. Coolify and the
 development stack include Qdrant directly.

@@ -8,7 +8,7 @@ manifest remains the authority for the latest published artifact.
 
 ### Highlights
 
-<!-- Before releasing, add one to three reviewed user-facing sentences here. -->
+v0.2.0 adds optional hybrid search with grounded AI answers, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint. Published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag.
 
 ### Upgrade actions
 
@@ -38,11 +38,24 @@ procedure.
   Configure Postmark or SMTP, or set `EMAIL_DELIVERY_REQUIRED=false` on an instance
   that signs in through Google.
 - **Move AI to OpenRouter.** AI writing assist and search read `OPENROUTER_API_KEY`.
-  `OPENAI_API_KEY` is no longer used (#100). The new key reaches the services through
-  the optional `docker-compose.search.yml` overlay.
+  `OPENAI_API_KEY` is no longer used (#100). The release Compose file passes the new
+  key to the services (#241).
+- **Add `erasure` to `WORKER_QUEUES` if you set it.** Deleting a project now also
+  erases its stored files through a new `erasure` queue. An allowlist without it
+  leaves those files in place. This applies only to projects deleted after the upgrade
+  (#248).
 
 ### Added
 
+- Published sites move between pages without a full reload, thanks to @Zhincore, with
+  focus, announcements and page views handled for each navigation (#237).
+- Pages with subpages collapse in the published sidebar, with only the branch holding
+  the current page open, and Harbor and Signal show a visible scrollbar. Readers
+  without JavaScript still see every page (#262).
+- The admin funnel shows first manual publishes and day 1 to 7 publishing retention
+  (#244).
+- The installer refuses to run over an existing installation, checks the Docker
+  architecture, and requires a sign-in path (#241).
 - Tenant-safe hybrid search over Qdrant with optional grounded AI answers, project
   search configuration, and privacy-safe index diagnostics (#98, #106).
 - Project add-ons with entitlement-aware availability, consent controls, reader
@@ -80,6 +93,16 @@ procedure.
 
 ### Fixed
 
+- **AI:** When an AI provider fails, drafting shows a translated error in the editor
+  instead of offline placeholder text, and AI controls no longer appear on instances
+  without a provider (#259, #260).
+- **Projects:** Deleting a project also erases its stored files (#248), and a project
+  has no icon unless one is picked (#263).
+- **Exports:** GitHub alert callouts render without the literal marker (#257).
+- **Published sites:** Public asset routes serve only a project's assets (#250), and
+  custom domains keep the right paths and canonical origins (#246).
+- **CLI:** `inspect` checks a path that gets the real Markdown 404, and publishing uses
+  npm trusted publishing (#242).
 - **Editor and publishing:** Saving a page no longer corrupts an image placed directly
   before an MDX block tag or paragraph (#236, thanks @Zhincore). Pages already saved
   in the corrupted form need a manual fix or a re-import. Saves are serialized so
@@ -115,6 +138,10 @@ procedure.
 
 ### Security
 
+- Patched runtime dependency advisories and upgraded the MCP server SDK with input
+  limits (#258, #261).
+- Removed the unused Better Auth organization deletion endpoint, so workspace removal
+  uses the full erasure workflow (#245).
 - Tightened remote image downloads in the importers (#243).
 - Disabled an unused Better Auth invitation endpoint, so invitations keep following
   Nibleaf's rules (#249).

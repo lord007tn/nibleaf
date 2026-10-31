@@ -541,11 +541,14 @@ v0.2.0 does not turn these on by itself.
   Git key.
 - **MCP.** The endpoint stays off until you set `MCP_ENABLED=true`. Read the
   [MCP guide](/self-hosting/mcp) before you enable it.
-- **Search and AI.** `docker-compose.prod.yml` does not include Qdrant, and AI needs a
-  provider key that you supply. `OPENROUTER_API_KEY` reaches the services through
-  the optional `docker-compose.search.yml` overlay, so AI writing assist and hybrid
-  search both need it. The overlay is in the repository, not in the release assets.
-  Follow [hybrid search and grounded answers](/self-hosting/search-ai).
+- **Search and AI.** AI needs a provider key that you supply: set `OPENROUTER_API_KEY`
+  in `.env`, and the release Compose file passes it to the services. Hybrid search also
+  needs Qdrant, which `docker-compose.prod.yml` does not include. Add the optional
+  `docker-compose.search.yml` overlay for that. The overlay is in the repository, not in
+  the release assets. Follow [hybrid search and grounded answers](/self-hosting/search-ai).
+- **Worker queues.** If you set `WORKER_QUEUES`, add `erasure`, or the stored files of
+  deleted projects stay in place. This applies only to projects deleted after the
+  upgrade.
 - **Analytics.** `docker-compose.prod.yml` does not include ClickHouse, and analytics
   stays in its existing mode until you follow the
   [ClickHouse guide](/self-hosting/clickhouse-analytics).
