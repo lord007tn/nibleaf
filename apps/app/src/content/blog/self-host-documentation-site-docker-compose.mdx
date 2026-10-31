@@ -2,7 +2,7 @@
 title: 'Self-Host a Documentation Site with Docker Compose'
 description: 'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.'
 datePublished: '2026-07-13'
-dateModified: '2026-09-03'
+dateModified: '2026-10-31'
 tags: ['self-hosting', 'docker', 'guide']
 related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown']
 readingMinutes: 13
@@ -20,7 +20,7 @@ faqs:
 
 Self-hosting a documentation platform is a state-and-recovery problem more than a Docker problem. A successful `docker compose up` is only the start: you still need a manual publish, a public-reader check, and a restore rehearsal.
 
-This workflow was verified on 31 August 2026 against `release/self-host.json`, `scripts/install.sh`, `docker-compose.prod.yml`, and the product's sign-up and publishing code. The published release at that boundary is **v0.1.2**. Source `main` may contain features that are not in that image.
+This workflow was verified on 31 August 2026 against `release/self-host.json`, `scripts/install.sh`, `docker-compose.prod.yml`, and the product's sign-up and publishing code. The release manifest, version, and checksums below were updated for **v0.2.0** on 31 October 2026. Source `main` may contain features that are not in that image.
 
 <Callout title="Use a disposable host first">
 Start from the [canonical self-hosting page](/self-hosting). Do not move production content until you have completed the manual-publish and restore checks in this article from outside the server's network.
@@ -33,9 +33,9 @@ The guided installer writes two files into the chosen installation directory: `.
 The release manifest currently records:
 
 ```text
-version: v0.1.2
-installer sha256: 63c707791887025d44deddb105931b65341b242f46220ccc03637c9ea8ab2a7f
-compose sha256: 3354dd46cfdc1f1c8dfe6089222459bf90270c42c21b69b94b42d6509e32c7e5
+version: v0.2.0
+installer sha256: eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7
+compose sha256: 950ea4d855355350e7d8a489844a5d4623b17d9f01a9e49a926d70ba6e2d6d62
 ```
 
 Those hashes are evidence for the published files, not a substitute for reviewing the script. Download, verify, inspect, then run it:
@@ -43,7 +43,7 @@ Those hashes are evidence for the published files, not a substitute for reviewin
 ```bash
 curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
 printf '%s  %s\n' \
-  '63c707791887025d44deddb105931b65341b242f46220ccc03637c9ea8ab2a7f' \
+  'eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7' \
   'nibleaf-install.sh' | sha256sum --check -
 less nibleaf-install.sh
 sh nibleaf-install.sh
@@ -120,7 +120,7 @@ Record the observed recovery point and recovery time. Do not claim zero downtime
 
 ## Upgrade and rollback without wishful thinking
 
-Use a versioned image or digest. Before an upgrade:
+Use a versioned image or digest. Moving from v0.1.2 to v0.2.0 takes two steps, so follow the [v0.2.0 upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of changing only the image tag. Before an upgrade:
 
 1. Read release notes and environment changes.
 2. Create and verify database and asset backups.

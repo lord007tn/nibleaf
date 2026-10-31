@@ -44,11 +44,10 @@ jobs:
           send "\r"
           expect "Enable transactional email delivery for sign-in codes and invitations?"
           send "n\r"
-          # Published v0.1.2 has no acknowledgement prompt; newer installers do.
-          expect {
-            "Continue without email delivery and configure Google sign-in separately?" { send "y\r"; exp_continue }
-            eof {}
-          }
+          # The v0.2.0 installer requires this acknowledgement without email delivery.
+          expect "Continue without email delivery and configure Google sign-in separately?"
+          send "y\r"
+          expect eof
           catch wait result
           exit [lindex $result 3]
           EXPECT

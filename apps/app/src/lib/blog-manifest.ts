@@ -164,7 +164,7 @@ export const BLOG_MANIFEST = [
       'مسار موثق من التثبيت إلى أول نشر يدوي في Nibleaf، مع سلامة الإصدار والنسخ والاستعادة والترقية والتراجع والأمان والمراقبة وتحديد الموارد.',
     language: 'ar',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['الاستضافة الذاتية', 'Docker', 'دليل'],
     related: ['self-host-documentation-site-docker-compose', 'coolify-documentation-502-503-recovery-ar', 'open-source-documentation-tools-ar'],
     translationOf: 'self-host-documentation-site-docker-compose',
@@ -733,7 +733,7 @@ export const BLOG_MANIFEST = [
     description:
       'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['self-hosting', 'docker', 'guide'],
     related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
     translationOf: 'self-host-documentation-site-docker-compose-ar',

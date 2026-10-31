@@ -79,14 +79,16 @@ Private customer documentation supports dedicated reader accounts, audience/page
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
 - **Tenant-safe search** — built-in Orama full-text/fuzzy search remains the default and
-  immediate rollback; source `main` also includes an optional Qdrant BM25+dense hybrid path,
-  privacy-safe diagnostics, and opt-in grounded answers for English, Arabic, and mixed content.
+  immediate rollback; v0.2.0 adds an optional Qdrant BM25+dense hybrid path, privacy-safe
+  diagnostics, and opt-in grounded answers for English, Arabic, and mixed content. The hybrid
+  path needs a Qdrant service, and embeddings and answers need an AI provider key.
 - **Usage and entitlements** — provider-neutral usage events, ClickHouse rollups, explicit
   unknown states, and advisory limits without a payment or billing claim.
 - **Project add-ons and integrations** — audited optional capabilities, consent controls,
   encrypted write-only project credentials, and clear project-versus-instance ownership.
 - **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
   validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
+  MCP is off by default (`MCP_ENABLED=false`) until an operator enables it.
 - **Multilingual & RTL** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
@@ -141,16 +143,13 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
-> [!WARNING]
-> **Known issue:** the install command below fails with a checksum error until v0.2.0 is released, because the published v0.1.2 files no longer match the checksums on `main`. It stops before anything starts, and existing installations aren't affected.
-
-On a Linux `amd64` server, the pinned bootstrap downloads the v0.1.2 installer, verifies
+On a Linux `amd64` server, the pinned bootstrap downloads the v0.2.0 installer, verifies
 its committed SHA-256 digest, and only then executes it. The verified installer
 also verifies the release's production Compose file before it writes a mode-600
 `.env` or starts the stack:
 
 ```bash
-set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "63c707791887025d44deddb105931b65341b242f46220ccc03637c9ea8ab2a7f" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 For manual setup, the recommended path below **pulls the prebuilt image** from
@@ -210,7 +209,7 @@ docker compose up -d --build
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
   `SERVICE_*` secrets), set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`,
-  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.2`.
+  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.2.0`.
 - **Nibleaf Cloud** — don't want to run servers? The hosted beta at
   [nibleaf.com](https://nibleaf.com) is free while in beta.
 
@@ -272,9 +271,10 @@ better-auth session cookies stay first-party with no CORS dance.
 TanStack Start · React 19 · Hono · better-auth · Prisma · PostgreSQL · BullMQ · Dragonfly ·
 Orama · optional Qdrant and ClickHouse · shadcn/ui (Base UI) · Tailwind CSS v4 · Zod · Pino · tsdown · Vite · Biome.
 
-> **Release boundary:** the integrated capabilities above are present in source `main`. The
-> checksummed installer and pinned public container remain v0.1.2 until a separate release is
-> published. Do not treat a source merge as an image or deployment receipt.
+> **Release boundary:** the capabilities above ship in v0.2.0, the release that the checksummed
+> installer and pinned public container install. The image is published for `linux/amd64` only.
+> Source `main` can move ahead of the latest release, so do not treat a source merge as an image
+> or deployment receipt.
 
 ## 💻 Local development
 

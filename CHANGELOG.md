@@ -6,6 +6,8 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+## v0.2.0
+
 ### Highlights
 
 v0.2.0 adds optional hybrid search with grounded AI answers, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint. Published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag.
