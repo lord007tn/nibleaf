@@ -13,7 +13,8 @@ PY
 CURRENT=direct-pull-migrate;log="$PRIVATE/direct-pull.log";source "$PUBLIC/recovery-pull-migrate.sh" > "$log" 2>&1
 # Start just after a minute tick; stop the failed worker promptly on its refusal,
 # so this quiet fixture has no due maintenance occurrences promoted by a restarting worker.
-while [ "$(date +%S)" -lt 3 ] || [ "$(date +%S)" -gt 8 ];do sleep 1;done
+# The quiet fixture was aligned while the old worker was still running.
+# Do not wait for another minute after pausing: that would make a repeat overdue.
 bash -e "$PUBLIC/recovery-up.sh" > "$PRIVATE/direct-up.log" 2>&1 & up_pid=$!
 refused=false
 for attempt in $(seq 1 45);do
