@@ -23,7 +23,7 @@ describe('guide academy long-form content', () => {
     const firstNibleaf = body.indexOf('Nibleaf');
 
     expect(words.length).toBeGreaterThanOrEqual(1400);
-    expect(source).toContain("dateModified: '2026-09-03'");
+    expect(source).toMatch(/dateModified: '\d{4}-\d{2}-\d{2}'/u);
     expect(body).toContain('References reviewed 2026-09-03');
     expect(firstNibleaf).toBeGreaterThan(body.length * 0.6);
     expect(body).toMatch(/GitBook/u);

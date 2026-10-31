@@ -704,7 +704,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'As of the v0.2.0 release, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, and SAML SSO. v0.2.0 includes optional hybrid retrieval and grounded answers plus read-only MCP; Qdrant, an AI provider key, and project opt-in remain explicit, and MCP is off by default.',
+      a: 'For self-hosted v0.2.0, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, and SAML SSO. Self-hosted v0.2.0 includes optional hybrid retrieval and grounded answers plus read-only MCP; Qdrant, an AI provider key, and project opt-in remain explicit, and MCP is off by default.',
     },
   ],
 };

@@ -70,4 +70,6 @@ boundaries.
   [v0.2.0 upgrade guide](/self-hosting/upgrade-v0-2), which migrates recurring job
   schedules in two steps and covers the backup, Compose file, and new
   environment settings.
+- **If you set `WORKER_QUEUES`:** add `erasure`; otherwise, files belonging to
+  projects deleted after the upgrade remain in storage.
 - **Something failed:** see [troubleshooting](/self-hosting/troubleshooting).

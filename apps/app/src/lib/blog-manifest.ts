@@ -25,7 +25,7 @@ export const BLOG_MANIFEST = [
     description: 'اجعل التوثيق العام قابلاً للاكتشاف عبر HTML وMarkdown متكافئين وفهارس llms موجزة وجرد كامل واختبارات منع التسريب.',
     language: 'ar',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['الذكاء الاصطناعي', 'llms.txt', 'Markdown'],
     related: ['ai-ready-documentation', 'docs-should-live-in-plain-markdown-ar', 'arabic-technical-documentation-rtl-checklist'],
     translationOf: 'ai-ready-documentation',
@@ -308,7 +308,7 @@ export const BLOG_MANIFEST = [
     description:
       'Make public documentation reliably discoverable by assistants through equivalent HTML and Markdown, concise llms indexes, complete inventories, and leakage tests.',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['ai', 'llms-txt', 'markdown'],
     related: ['docs-should-live-in-plain-markdown', 'documentation-production-readiness-decision', 'arabic-documentation-rtl'],
     translationOf: 'ai-ready-documentation-ar',
@@ -439,7 +439,7 @@ export const BLOG_MANIFEST = [
       'إعلان تقني عن القدرات المدمجة في فرع Nibleaf الرئيسي: البحث الهجين والاستخدام والإضافات والتكاملات والسمات المحمولة وMCP للقراءة فقط.',
     language: 'ar',
     datePublished: '2026-08-24',
-    dateModified: '2026-08-24',
+    dateModified: '2026-10-31',
     tags: ['إعلان', 'إصدار', 'العمليات'],
     related: [
       'documentation-templates-harbor-manuscript-signal-ar',
@@ -456,7 +456,7 @@ export const BLOG_MANIFEST = [
     description:
       'A technical launch note for the capabilities merged into Nibleaf main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.',
     datePublished: '2026-08-24',
-    dateModified: '2026-08-24',
+    dateModified: '2026-10-31',
     tags: ['announcement', 'release', 'operations'],
     related: [
       'documentation-templates-harbor-manuscript-signal',
