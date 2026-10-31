@@ -62,7 +62,7 @@
     "linkedom": "^0.18.13",
     "lowlight": "3.3.0",
     "lucide-react": "^1.39.0",
-    "mermaid": "^11.17.2",
+    "mermaid": "^12.2.0",
     "nitro": "3.0.260903-beta",
     "octokit": "5.0.5",
     "react": "^19.2.8",
