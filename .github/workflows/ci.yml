@@ -48,6 +48,8 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -57,6 +59,27 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Test installer safety boundaries
+        run: node --test scripts/installer.test.mjs
+
+      - name: Test release notes
+        run: node --test scripts/release-notes.test.mjs
+
+      - name: Preview release notes on Linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A temporary checkout copy supplies sample prose until the release PR
+          # fills Highlights. Never treat this CI fixture as reviewed release copy.
+          preview_dir=$(mktemp -d)
+          trap 'rm -rf "$preview_dir"' EXIT
+          git clone --shared --no-checkout . "$preview_dir"
+          git -C "$preview_dir" checkout --detach "$GITHUB_SHA"
+          git -C "$preview_dir" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+          cd "$preview_dir"
+          node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const path="CHANGELOG.md"; const text=readFileSync(path,"utf8"); writeFileSync(path, "## Unreleased\n\n### Highlights\n\nPreview release notes from the checked-out source.\n\n" + text.replace(/^## Unreleased$/m,"## Source changes"));'
+          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.0 --output "$RUNNER_TEMP/release-notes-preview.md"
 
       - name: Test production email diagnostic boundaries
         run: node --test scripts/production-email-diagnostic.test.mjs

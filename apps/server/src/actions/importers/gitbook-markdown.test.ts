@@ -305,3 +305,26 @@ it.each(['a < b and c', 'x <= y', 'List<T> API'])('preserves literal title text 
 it('handles out-of-range entity values', () => {
   expect(() => plainGitBookText('&#x110000; &#999999999999999999999999;')).not.toThrow();
 });
+
+it('continues converting buttons after an unmatched anchor opener', () => {
+  const content = convert('<a href="/stray">Unclosed\n<a href="/valid" class="button">Valid</a>').content;
+  expect(content).toContain('<Button href="/valid" variant="primary">Valid</Button>');
+  expect(content).toContain('<a href="/stray">Unclosed');
+});
+it.each(['Map<K, V>', 'a<b and c>d'])('preserves ambiguous prose %s', (title) => {
+  expect(plainGitBookText(title)).toBe(title);
+});
+it('bounds the echoed include reference', async () => {
+  await expect(
+    expandGitBookIncludes(
+      `{% include "${'x'.repeat(1000)}" %}`,
+      'page.md',
+      () => undefined,
+      async () => null,
+      [],
+    ),
+  ).rejects.toMatchObject({ details: { path: 'x'.repeat(200) } });
+});
+it('keeps indentation after extracting the page heading', () => {
+  expect(extractGitBookTitle('# Title\n\n    literal')).toEqual({ title: 'Title', body: '    literal' });
+});

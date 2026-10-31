@@ -11,12 +11,11 @@ import { isSafeInlineAssetContentType, normalizeAssetContentType } from '@niblea
 import got from 'got';
 import { isPublicAddress } from '@/lib/domain-checks';
 import { findImportedAsset, storeAsset } from '../assets';
+import { htmlImageReferences, markdownReferences, replaceImportReferences } from './import-references';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
 const MAX_REMOTE_ASSETS = 2000;
 const MAX_REDIRECTS = 3;
-const MARKDOWN_IMAGE = /(!\[[^\]]*\]\()(https?:\/\/[^\s)]+)((?:\s+["'][^)]*["'])?\))/gi;
-const HTML_IMAGE = /(<(?:img|Image)\b[^>]*\bsrc\s*=\s*["'])(https?:\/\/[^"']+)(["'][^>]*>)/gi;
 const MAX_CONCURRENT_DOWNLOADS = 4;
 // Image downloads never share connections with other outbound requests.
 const DOWNLOAD_AGENTS = { http: new HttpAgent({ keepAlive: false }), https: new HttpsAgent({ keepAlive: false }) };
@@ -25,7 +24,9 @@ export const remoteImageSources = (content: string): string[] => {
   const prose = protectMarkdownCode(content).content;
   return [
     ...new Set(
-      [...prose.matchAll(MARKDOWN_IMAGE), ...prose.matchAll(HTML_IMAGE)].map((match) => match[2]).filter((value): value is string => Boolean(value)),
+      [...markdownReferences(prose).filter((reference) => reference.image), ...htmlImageReferences(prose)]
+        .map((reference) => reference.value)
+        .filter((value) => /^https?:\/\//i.test(value)),
     ),
   ];
 };
@@ -208,8 +209,18 @@ export class RemoteAssetMigrator {
         }),
       );
     }
-    const replace = (_match: string, before: string, source: string, after: string) => `${before}${replacements.get(source) ?? source}${after}`;
-    return protectedCode.restore(protectedCode.content.replace(MARKDOWN_IMAGE, replace).replace(HTML_IMAGE, replace));
+    const rewrittenMarkdown = replaceImportReferences(
+      protectedCode.content,
+      markdownReferences(protectedCode.content).filter((reference) => reference.image),
+      (reference) => replacements.get(reference.value) ?? reference.value,
+    );
+    return protectedCode.restore(
+      replaceImportReferences(
+        rewrittenMarkdown,
+        htmlImageReferences(rewrittenMarkdown),
+        (reference) => replacements.get(reference.value) ?? reference.value,
+      ),
+    );
   }
 }
 

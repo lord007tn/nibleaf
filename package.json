@@ -58,10 +58,10 @@
     "lint": "ultracite check",
     "format": "biome format --write .",
     "typecheck": "turbo run typecheck",
-    "test": "node --test scripts/email-runtime.test.mjs scripts/ui-primitives.test.mjs scripts/service-signals.test.mjs && turbo run test",
+    "test": "node --test scripts/release-notes.test.mjs scripts/email-runtime.test.mjs scripts/ui-primitives.test.mjs scripts/service-signals.test.mjs && turbo run test",
     "check:dead-code": "knip --include files,dependencies,exports,types,duplicates --no-config-hints",
     "check:react": "react-doctor --project @nibleaf/app,@nibleaf/admin --no-dead-code --no-supply-chain --no-score --blocking error",
-    "release:notes": "pnpm dlx changelogithub@14.0.0",
+    "release:notes": "node scripts/release-notes.mjs",
     "release:check": "node --test scripts/coolify-release-probes.test.mjs scripts/coolify-env-literal.test.mjs && node scripts/check-release-contract.mjs",
     "self-host:check": "node scripts/self-host-release.mjs",
     "docs:check": "node scripts/check-docs.mjs",
@@ -75,7 +75,9 @@
     "analytics:migrate": "pnpm --filter @nibleaf/clickhouse migrate",
     "analytics:backfill": "tsx scripts/analytics-migration.ts backfill",
     "analytics:reconcile": "tsx scripts/analytics-migration.ts reconcile",
-    "analytics:rollback": "tsx scripts/analytics-migration.ts rollback"
+    "analytics:rollback": "tsx scripts/analytics-migration.ts rollback",
+    "release:notes:engine": "pnpm dlx changelogithub@14.0.0",
+    "release:notes:dry": "node scripts/release-notes.mjs --dry"
   },
   "dependencies": {
     "@nibleaf/tsconfig": "workspace:*",

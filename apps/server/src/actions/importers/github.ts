@@ -1,7 +1,15 @@
 import { Octokit, RequestError } from 'octokit';
 import { badRequest, ImportError } from '@/errors';
 
-const github = new Octokit({ userAgent: 'nibleaf-importer' });
+const github = new Octokit({
+  userAgent: 'nibleaf-importer',
+  throttle: { enabled: false },
+  retry: { enabled: false },
+  request: {
+    fetch: (url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) =>
+      fetch(url, { ...options, signal: AbortSignal.timeout(30_000) }),
+  },
+});
 
 const githubFailure = (error: unknown) => {
   if (error instanceof RequestError) {

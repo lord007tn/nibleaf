@@ -4,6 +4,7 @@ import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence } from '@
 import { parse as parseYaml } from 'yaml';
 import { humanize, stableHash } from './content';
 import { plainGitBookText, safeDecodeUri } from './gitbook-markdown';
+import { stripHeadingEnd } from './gitbook-tokens';
 
 /**
  * GitBook Git Sync repository layout → an ordered page plan. Pure (no prisma /
@@ -150,7 +151,7 @@ export const parseGitBookSummary = (markdown: string, summaryPath = 'SUMMARY.md'
     }
     fence = openingMarkdownFence(line, Number.POSITIVE_INFINITY);
     if (fence || !line.trim()) continue;
-    const heading = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    const heading = /^(#{1,6})[ \t]+/.exec(line);
     if (heading) {
       // The leading `# Summary` / `# Table of contents` is the file's own title.
       if (!sawContent && heading[1] === '#') {
@@ -158,7 +159,7 @@ export const parseGitBookSummary = (markdown: string, summaryPath = 'SUMMARY.md'
         continue;
       }
       sawContent = true;
-      const title = plainText(heading[2] ?? '');
+      const title = plainText(stripHeadingEnd(line.slice(heading[0].length)));
       if (title) sections.push({ title, nodes: [] });
       stack = [];
       continue;

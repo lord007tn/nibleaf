@@ -2,20 +2,19 @@ import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { stableHash } from './content';
+import { markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
-const MARKDOWN_LINK = /(?<!!)\[([^\]]+)\]\(([^\s)]+)((?:\s+["'][^)]*["'])?)\)/g;
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
 
+const trimSlashes = (value: string): string => {
+  let end = value.length;
+  while (value[end - 1] === '/') end--;
+  return value.slice(0, end);
+};
+
 const normalizedSourcePath = (value: string): string =>
-  posix
-    .normalize(
-      value
-        .replace(/^\/+/, '')
-        .replace(/\.(?:md|mdx)$/i, '')
-        .replace(/\/+$/, ''),
-    )
-    .replace(/^\.\//, '');
+  posix.normalize(trimSlashes(value.replace(/^\/+/, '').replace(/\.(?:md|mdx)$/i, ''))).replace(/^\.\//, '');
 
 /** Build the exact public route each Mintlify navigation page receives after
  * its groups become Nibleaf GROUP pages. The sibling slug ledger mirrors the
@@ -82,10 +81,7 @@ export const mintlifyInternalLinkTargets = (content: string, sourcePage: string)
     const key = internalReferenceKey(reference, sourcePage);
     if (key) targets.add(key);
   };
-  prose.replace(MARKDOWN_LINK, (_match, _label: string, reference: string) => {
-    add(reference);
-    return _match;
-  });
+  for (const reference of markdownReferences(prose)) if (!reference.image) add(reference.value);
   prose.replace(HREF_ATTRIBUTE, (_match, _before: string, reference: string) => {
     add(reference);
     return _match;
@@ -111,9 +107,10 @@ export const rewriteMintlifyInternalLinks = (content: string, sourcePage: string
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${original.hash}`;
   };
-  const markdown = protectedCode.content.replace(
-    MARKDOWN_LINK,
-    (_match, label: string, reference: string, title: string) => `[${label}](${rewrite(reference)}${title})`,
+  const markdown = replaceImportReferences(
+    protectedCode.content,
+    markdownReferences(protectedCode.content).filter((reference) => !reference.image),
+    (reference) => rewrite(reference.value),
   );
   return protectedCode.restore(
     markdown.replace(HREF_ATTRIBUTE, (_match, before: string, reference: string, after: string) => `${before}${rewrite(reference)}${after}`),

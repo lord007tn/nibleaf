@@ -274,3 +274,15 @@ it.each(['a < b', 'x <= y', 'List<T>', '<<script>script>', '{sample}'])('renders
   expect(html).not.toMatch(/<script\b/);
   expect(html).toContain(plainGitBookText(label).replace(/</g, '&lt;').replace(/>/g, '&gt;'));
 });
+
+it('renders card body cells as text with generic types and comparisons intact', async () => {
+  const table =
+    '<table data-view="cards"><thead><tr><th>Title</th><th>Body</th></tr></thead><tbody><tr><td>Types</td><td>Map&lt;K, V&gt; and a&lt;b and c&gt;d {value}</td></tr></tbody></table>';
+  const { content } = convertGitBookMarkdown(table, { resolveFile: () => undefined });
+  expect(content).toContain('Map&lt;K, V>');
+  expect(content).toContain('&#123;value}');
+  const html = await render(content);
+  expect(html).toContain('Map&lt;K, V&gt;');
+  expect(html).toContain('a&lt;b and c&gt;d');
+  expect(html).not.toMatch(/<K|<b and/);
+});

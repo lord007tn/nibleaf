@@ -1,10 +1,10 @@
 import { posix } from 'node:path';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { safeDecodeUri } from './gitbook-markdown';
+import { markdownReferences, replaceImportReferences } from './import-references';
 
 /** `![alt](<path with spaces>)`, `![alt](path "title")`, and one level of
  * balanced parentheses in bare destinations (`image (1).png` after encoding). */
-const MARKDOWN_IMAGE = /(!\[(?:\\.|[^\]\\])*\]\()(?:<([^>\n]+)>|((?:[^\s()]|\([^\s()]*\))+))((?:\s+["'][^"'\n]*["'])?\))/g;
 
 const cleanReference = (value: string): string => safeDecodeUri(value.split(/[?#]/, 1)[0] ?? value);
 
@@ -48,19 +48,20 @@ export const rewriteGitBookImages = (
 ): GitBookAssetRewriteResult => {
   const missing = new Set<string>();
   const protectedCode = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY });
-  const rewritten = protectedCode.content.replace(
-    MARKDOWN_IMAGE,
-    (match, before: string, bracketed: string | undefined, bare: string | undefined, after: string) => {
-      const reference = bracketed ?? bare ?? '';
-      if (/^https?:\/\//i.test(reference)) return `${before}${encodeMarkdownUrl(reference)}${after}`;
-      if (/^(?:data:|blob:|#)/i.test(reference)) return match;
-      const path = resolveGitBookRepoPath(reference, sourceFile, blobs, spaceRoot);
-      if (!path) {
-        missing.add(reference);
-        return match;
-      }
-      return `${before}${encodeMarkdownUrl(rawUrl(path))}${after}`;
-    },
-  );
+  const references = markdownReferences(protectedCode.content)
+    .filter((reference) => reference.image)
+    .map((reference) =>
+      protectedCode.content[reference.start - 1] === '<' ? { ...reference, start: reference.start - 1, end: reference.end + 1 } : reference,
+    );
+  const rewritten = replaceImportReferences(protectedCode.content, references, ({ value: reference, start, end }) => {
+    if (/^https?:\/\//i.test(reference)) return encodeMarkdownUrl(reference);
+    if (/^(?:data:|blob:|#)/i.test(reference)) return protectedCode.content.slice(start, end);
+    const path = resolveGitBookRepoPath(reference, sourceFile, blobs, spaceRoot);
+    if (!path) {
+      missing.add(reference);
+      return protectedCode.content.slice(start, end);
+    }
+    return encodeMarkdownUrl(rawUrl(path));
+  });
   return { content: protectedCode.restore(rewritten), missing: [...missing] };
 };

@@ -85,3 +85,53 @@ the canonical site.
 Use the GitHub issue templates. For security issues, **do not** open a public
 issue — see [SECURITY.md](SECURITY.md). For support and community questions, see
 [SUPPORT.md](SUPPORT.md).
+
+## GitHub release notes
+
+Release notes use pinned `changelogithub@14.0.0` through `pnpm release:notes:engine`.
+`pnpm release:notes` composes the reviewed highlights and publishes **Nibleaf vX.Y.Z**
+for the current tag. It never edits an already published release's title or notes;
+retries still upload the verified self-host assets. An existing draft is completed.
+This is separate from the manual Docker image build and deployment process.
+
+In the release PR, rename `## Unreleased` in `CHANGELOG.md` to `## vX.Y.Z` and
+fill its `### Highlights` block with one to three plain user-facing sentences.
+Empty blocks (including comment-only blocks) fail with instructions. Publishing
+requires the version section; only dry runs fall back to `## Unreleased`.
+Keep `release/self-host.json` aligned with the tag and run `pnpm release:check`
+and `pnpm self-host:check` before tagging through the owner's release process.
+Before creating a tag, run the dry command below against the exact release PR
+head (`--to HEAD`) with its intended `--version`. Resolve every Highlights fallback
+warning: the version heading must exist for publishing; Unreleased is only a
+preview fallback. Final releases select the previous non-prerelease version tag;
+prerelease versions may select a preceding candidate. `--from` overrides selection.
+
+With full Git history and an authenticated `gh` session (CI uses its existing
+`GITHUB_TOKEN`), preview without publishing:
+
+```bash
+pnpm release:notes:dry -- --from v0.1.2 --to origin/main --version v0.2.0
+```
+
+Use `--output notes.md` to save the composed Markdown. The same command runs in
+CI on Linux in a temporary checkout with sample Highlights prose, using HEAD
+instead of origin/main. That smoke run exercises GitHub account/release reads,
+`gh api --paginate --slurp`, and the nested pinned engine call without publishing.
+Its temporary prose is a fixture, not reviewed release copy. The existing
+read-only `GITHUB_TOKEN` is used; permissions are not widened. Non-conventional
+commits warn in the log. The
+folded full changelog lists conventional commits; counts cover all non-bot
+commits. The short Fixes section includes fix commits with PR numbers; direct
+fix commits remain in the full changelog. Contributors include human co-authors, resolve GitHub logins across
+email addresses, exclude bots and AI identities, and mark people absent from
+history through the previous tag as first-time contributors. Unresolved people
+are credited by name and deduplicated by email. PR titles follow Naasher's
+conventional-title check, including `chore(deps): ...` for Dependabot.
+
+The non-human identity policy is defined beside `isPerson` in the script:
+GitHub accounts of type Bot, `[bot]` markers, Dependabot/GitHub Actions automation
+addresses, all `@openai.com` addresses, and `noreply@anthropic.com`,
+`noreply@cursor.com`, `noreply@githubcopilot.com`. Display names such as Claude or
+Bot alone never exclude a person. Unresolved names cannot create @mentions.
+Fixes are deduplicated and HTML-escaped. A fork's `(#N)` in a squash subject is
+interpreted as this repository's PR number N, not a link to the fork's PR.

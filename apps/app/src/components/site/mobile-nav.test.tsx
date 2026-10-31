@@ -37,6 +37,7 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
         currentPath="start"
         label={isRtl ? 'التوثيق' : 'Docs'}
         closeLabel={isRtl ? 'إغلاق' : undefined}
+        toggleLabel="Toggle subpages"
         isRtl={isRtl}
         links={[{ label: 'Changelog', href: '#changes', active: false, external: false }]}
         anchors={[{ label: 'Community', href: 'https://community.example.com', active: false, external: true }]}
