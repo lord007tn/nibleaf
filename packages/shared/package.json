@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./addons": "./src/addons.ts",
+    "./callouts": "./src/callouts.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
