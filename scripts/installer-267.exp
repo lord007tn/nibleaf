@@ -1,0 +1,22 @@
+set timeout 1500
+log_user 0
+log_file -a -noappend $env(INSTALLER_LOG)
+spawn sh $env(INSTALLER_SCRIPT)
+if {$env(INSTALLER_KIND) eq "preflight"} {
+  expect eof
+} elseif {$env(INSTALLER_KIND) eq "existing"} {
+  expect "Install directory"; send "\r"
+  expect eof
+} else {
+  expect "Install directory"; send "\r"
+  expect "Base domain for published sites (optional)"; send "\r"
+  expect "CNAME target for customer domains (optional)"; send "\r"
+  expect "Nibleaf image tag"; send "\r"
+  expect "Enable transactional email delivery for sign-in codes and invitations?"; send "n\r"
+  if {$env(INSTALLER_KIND) eq "new"} {
+    expect "Continue without email delivery and configure Google sign-in separately?"; send "y\r"
+  }
+  expect eof
+}
+catch wait result
+exit [lindex $result 3]

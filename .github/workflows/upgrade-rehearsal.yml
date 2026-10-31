@@ -1,19 +1,21 @@
-name: Test pinned upgrade guide
+name: Protect v0.2.0 release with guide rehearsal
 on:
   push:
     branches: [rehearsal/upgrade-v0-2]
 permissions:
   contents: read
 jobs:
-  guide:
+  rehearsal:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 40
     strategy:
       fail-fast: false
+      max-parallel: 4
       matrix:
-        mode: [happy-rollback, recovery]
+        mode: [main, recovery-quiet, recovery-busy, rollback-interrupted, rollback-skip-apply, backup-drill, installer]
     env:
-      GUIDE_COMMIT: becb4a55efdde4ec18e383e9f4cf76962f15d2f3
+      GUIDE_COMMIT: ed170862a45de50fd742e414f541f9a4dc94b78e
+      CANDIDATE: sha-a28cbfdbec01f478caa4374eb36ad834e5424fb6
       MODE: ${{ matrix.mode }}
     steps:
       - uses: actions/checkout@v7
@@ -22,11 +24,11 @@ jobs:
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo apt-get update -qq >/dev/null
           sudo apt-get install -y expect >/dev/null
-      - name: Test extracted guide commands
-        run: bash scripts/test-upgrade-guide.sh
+      - name: Execute extracted commands with disposable fixtures
+        run: bash scripts/rehearse-267.sh
       - name: Upload public receipts only
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: guide-${{ matrix.mode }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/guide-public/
+          name: pr267-${{ matrix.mode }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/pr267-public/
