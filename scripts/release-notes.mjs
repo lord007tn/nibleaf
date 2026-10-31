@@ -7,15 +7,25 @@ import { parseArgs } from 'node:util';
 
 export const conventional = /^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test|wip)(\([\w./-]+\))?!?: .+/;
 
-export function isPerson({ name = '', email = '', login = '' }) {
-  return !/\[bot\]|\bbot\b|dependabot|github-actions|copilot|\bclaude\b|\bcodex\b|\bgpt\b|anthropic|openai/i.test(`${name} ${email} ${login}`);
+// Non-human policy: GitHub Bot accounts, [bot] markers, known automation
+// addresses, all @openai.com addresses, and these AI noreply addresses.
+const excludedEmail =
+  /@openai\.com$|^noreply@(?:anthropic\.com|cursor\.com|githubcopilot\.com)$|^(?:dependabot|github-actions)@(?:users\.noreply\.github\.com|github\.com)$/i;
+
+export function isPerson({ name = '', email = '', login = '', type }) {
+  return type !== 'Bot' && !/\[bot\]/i.test(`${name} ${email} ${login}`) && !excludedEmail.test(email);
 }
 
-export function highlights(markdown, version, dry) {
+export function highlights(markdown, version, dry, warn = console.error) {
   const sections = [...markdown.matchAll(/^## (.+)\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
-  const section = sections.find((m) => m[1].replace(/^\[|\]$/g, '') === version) ?? (dry ? sections.find((m) => m[1] === 'Unreleased') : undefined);
+  const versionSection = sections.find((m) => m[1].replace(/^\[|\]$/g, '') === version);
+  const section = versionSection ?? (dry ? sections.find((m) => m[1] === 'Unreleased') : undefined);
+  if (section && !versionSection)
+    warn(
+      `Warning: ## ${version} is missing; using ## Unreleased for this dry run only. Before tagging, rename the section to ## ${version} and rerun the preview. Publishing will fail until that version section exists.`,
+    );
   const text = section?.[2].match(/^### Highlights\s*\r?\n([\s\S]*?)(?=^### |$(?![\s\S]))/m)?.[1].trim();
-  if (!text || /<!--|-->/.test(text))
+  if (!text || text.includes('<!--'))
     throw new Error(
       `Add 1–3 user-facing sentences under ### Highlights in CHANGELOG.md section ## ${version}${dry ? ' (or ## Unreleased for a dry run)' : ''}. Highlights must not be empty.`,
     );
@@ -35,10 +45,10 @@ export function parseLog(log) {
     });
 }
 
-export function summarize(commits, previous, logins) {
+export function summarize(commits, previous, logins, accountTypes = new Map()) {
   const identity = (person) => {
     const login = logins.get(person.email.toLowerCase());
-    return { ...person, login, key: login?.toLowerCase() ?? person.email.toLowerCase() };
+    return { ...person, login, type: accountTypes.get(login), key: login?.toLowerCase() ?? person.email.toLowerCase() };
   };
   const old = new Set(
     previous.flatMap((c) =>
@@ -56,19 +66,30 @@ export function summarize(commits, previous, logins) {
   return {
     changes: changes.length,
     contributors: [...people.values()]
-      .map((p) => ({ label: p.login ? `@${p.login}` : p.name.replace(/[<>[\]*_`]/g, ''), first: !old.has(p.key) }))
+      .map((p) => ({ label: p.login ? `@${p.login}` : p.name.replace(/[@<>[\]*_`]/g, ''), first: !old.has(p.key) }))
       .sort((a, b) => a.label.localeCompare(b.label)),
   };
 }
 
 export function compose({ version, from, to, repo, intro, commits, summary, generated }) {
-  const fixes = commits
-    .filter((c) => /^fix(?:\([\w./-]+\))?!?: /.test(c.subject) && /#\d+/.test(c.subject))
-    .map((c) => `- ${c.subject.replace(/^fix(?:\([\w./-]+\))?!?: /, '')}`);
+  const fixes = [
+    ...new Set(
+      commits
+        .filter((c) => /^fix(?:\([\w./-]+\))?!?: /.test(c.subject) && /#\d+/.test(c.subject))
+        .map(
+          (c) =>
+            `- ${c.subject
+              .replace(/^fix(?:\([\w./-]+\))?!?: /, '')
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;')}`,
+        ),
+    ),
+  ];
   // The engine adds its own compare footer; the unified layout owns that link.
   const changelog = generated.replace(/^##### .*\[View changes on GitHub\].*$/gm, '').trim();
   return `${[
-    `**${version}** · ${summary.changes} changes from ${summary.contributors.length} contributors`,
+    `**${version}** · ${summary.changes} changes from ${summary.contributors.length} contributor${summary.contributors.length === 1 ? '' : 's'}`,
     '## Highlights',
     intro,
     ...(fixes.length ? ['## Fixes', fixes.join('\n')] : []),
@@ -80,6 +101,10 @@ export function compose({ version, from, to, repo, intro, commits, summary, gene
 
 const run = (command, args) => execFileSync(command, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
 const git = (...args) => run('git', args).trim();
+
+export function previousTag(toOid, prerelease, gitCommand = git) {
+  return gitCommand('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', ...(prerelease ? [] : ['--exclude', 'v*-*']), `${toOid}^`);
+}
 
 function resolveLogins(commits, repo) {
   const logins = new Map();
@@ -99,12 +124,19 @@ function resolveLogins(commits, repo) {
       for (const author of commit.authors.nodes) if (author.user) logins.set(author.email.toLowerCase(), author.user.login);
     }
   }
-  return logins;
+  const accountTypes = new Map();
+  for (const login of new Set(logins.values())) {
+    const account = JSON.parse(run('gh', ['api', `users/${login}`]));
+    if (!account.type) throw new Error(`Missing GitHub account type for ${login}`);
+    accountTypes.set(login, account.type);
+  }
+  return { logins, accountTypes };
 }
 
-export function publishRelease({ repo, version, file, prerelease }, gh = (...args) => run('gh', args)) {
+export function publishRelease({ repo, version, file, prerelease, dry = false }, gh = (...args) => run('gh', args)) {
   // List succeeds (including an empty result) or fails closed on auth/network errors.
   const releases = JSON.parse(gh('api', '--paginate', '--slurp', `repos/${repo}/releases?per_page=100`)).flat();
+  if (dry) return 'Dry run: release lookup succeeded; no release was created or edited.';
   const existing = releases.find((r) => r.tag_name === version);
   if (existing && !existing.draft) return 'Published release already exists; preserving its title and notes.';
   const common = [version, '--repo', repo, '--title', `Nibleaf ${version}`, '--notes-file', file];
@@ -122,8 +154,9 @@ function main() {
   const version = values.version ?? to;
   if (!/^v\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?$/.test(version)) throw new Error('Use --version vX.Y.Z when --to is a branch or SHA.');
   if (!values.dry && to !== version) throw new Error('Publishing requires --to to equal the version tag.');
+  const prerelease = /^v\d+\.\d+\.\d+-/.test(version);
   const toOid = git('rev-parse', '--verify', `${to}^{commit}`);
-  const from = values.from ?? git('describe', '--tags', '--abbrev=0', `${toOid}^`);
+  const from = values.from ?? previousTag(toOid, prerelease);
   const fromOid = git('rev-parse', '--verify', `${from}^{commit}`);
   console.error(`Release notes range: ${from} (${fromOid})..${to} (${toOid})`);
   const repo = git('remote', 'get-url', 'origin')
@@ -135,7 +168,8 @@ function main() {
   const commits = readLog(`${fromOid}..${toOid}`);
   const previous = readLog(fromOid);
   for (const c of commits) if (!conventional.test(c.subject)) console.error(`Warning: non-conventional commit ${c.sha.slice(0, 7)}: ${c.subject}`);
-  const summary = summarize(commits, previous, resolveLogins([...commits, ...previous], repo));
+  const { logins, accountTypes } = resolveLogins([...commits, ...previous], repo);
+  const summary = summarize(commits, previous, logins, accountTypes);
   const temp = mkdtempSync(join(tmpdir(), 'release-notes-'));
   try {
     const raw = join(temp, 'changelog.md');
@@ -148,11 +182,9 @@ function main() {
     const body = compose({ version, from, to, repo, intro, commits, summary, generated: readFileSync(raw, 'utf8') });
     if (values.output) writeFileSync(values.output, body);
     process.stdout.write(body);
-    if (!values.dry) {
-      const file = join(temp, 'notes.md');
-      writeFileSync(file, body);
-      console.error(publishRelease({ repo, version, file, prerelease: /^v\d+\.\d+\.\d+-/.test(version) }));
-    }
+    const file = join(temp, 'notes.md');
+    writeFileSync(file, body);
+    console.error(publishRelease({ repo, version, file, prerelease, dry: values.dry }));
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

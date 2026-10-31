@@ -25,7 +25,7 @@ jobs:
             exit 1
           fi
 
-      # changelogithub derives the previous tag from history, so fetch everything.
+      # The notes composer selects the previous tag from full history.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
