@@ -1,6 +1,7 @@
 import type { AiDraftBody } from '@nibleaf/validators';
 import { OpenRouter } from '@openrouter/sdk';
 import { env } from '@/env';
+import { envExtras } from '@/lib/env-extras';
 
 const SYSTEM_PROMPT = `You write accurate technical documentation for the reader's task.
 
@@ -57,65 +58,17 @@ const callOpenRouter = async (body: AiDraftBody) => {
   return { text, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
 };
 
-/** Deterministic, offline fallback so the assistant always returns something useful. */
-const fallback = ({ mode, content, instruction }: AiDraftBody) => {
-  const trimmed = content.trim();
-  const hint = instruction ? ` (${instruction})` : '';
-  switch (mode) {
-    case 'continue':
-      return `${trimmed ? `${trimmed}\n\n` : ''}## Next steps${hint}\n\nExpand on the section above with concrete details: explain the why, walk through a short example, and link to related pages so readers can go deeper.`;
-    case 'rephrase':
-      return `${trimmed || '_No content to rephrase yet._'}\n\n> Note: AI rephrasing is unavailable offline. Tighten the wording above by removing filler and leading with the key point.${hint}`;
-    case 'outline':
-      return `# ${trimmed ? trimmed.split('\n')[0]?.replace(/^#+\s*/, '') || 'Overview' : 'Overview'}\n\n## Introduction\n\n## Getting started\n\n## Configuration\n\n## Examples\n\n## Troubleshooting\n\n## Reference${hint}`;
-    case 'summarize': {
-      const lines = trimmed
-        .split('\n')
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .slice(0, 5);
-      const bullets = lines.length
-        ? lines.map((line) => `- ${line.replace(/^#+\s*/, '').slice(0, 120)}`).join('\n')
-        : '- No content to summarize yet.';
-      return `**Summary**${hint}\n\n${bullets}`;
-    }
-    default:
-      return trimmed;
-  }
-};
+/** AI drafting needs a provider key and a non-zero daily workspace budget. */
+export const aiDraftAvailable = () => Boolean(env.OPENROUTER_API_KEY) && envExtras.AI_DAILY_LIMIT > 0;
 
-/** Internal variant used by the API to emit content-free operational metrics. */
+/** Draft through OpenRouter and report content-free operational metrics. Provider failures propagate. */
 export const draftContentWithTelemetry = async (body: AiDraftBody) => {
   const started = performance.now();
-  if (env.OPENROUTER_API_KEY) {
-    try {
-      const result = await callOpenRouter(body);
-      return {
-        ...result,
-        provider: 'openrouter' as const,
-        model: env.AI_DRAFT_MODEL,
-        outcome: 'completed' as const,
-        latencyMs: Math.round(performance.now() - started),
-      };
-    } catch {
-      return {
-        text: fallback(body),
-        promptTokens: undefined,
-        completionTokens: undefined,
-        provider: 'nibleaf_offline' as const,
-        model: 'deterministic-fallback',
-        outcome: 'fallback' as const,
-        latencyMs: Math.round(performance.now() - started),
-      };
-    }
-  }
+  const result = await callOpenRouter(body);
   return {
-    text: fallback(body),
-    promptTokens: undefined,
-    completionTokens: undefined,
-    provider: 'nibleaf_offline' as const,
-    model: 'deterministic-fallback',
-    outcome: 'completed' as const,
+    ...result,
+    provider: 'openrouter' as const,
+    model: env.AI_DRAFT_MODEL,
     latencyMs: Math.round(performance.now() - started),
   };
 };

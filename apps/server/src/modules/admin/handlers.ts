@@ -44,7 +44,10 @@ const adminInviteOrganizationBody = z
 
 const app = new Hono<HonoEnv>()
   .get('/overview', ...adminRoutes.overview, async (ctx) => ctx.json({ data: await getAdminOverview() }, 200))
-  .get('/funnel', ...adminRoutes.funnel, async (ctx) => ctx.json({ data: await getActivationFunnel() }, 200))
+  .get('/funnel', ...adminRoutes.funnel, async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    return ctx.json({ data: await getActivationFunnel() }, 200);
+  })
   .get('/users', ...adminRoutes.users, async (ctx) => ctx.json({ data: await listAdminUsers() }, 200))
   .get('/users/:id', ...adminRoutes.user, async (ctx) => ctx.json({ data: await getAdminUser(ctx.req.param('id')) }, 200))
   .post('/users/:id/role', ...adminRoutes.setRole, validator('json', adminSetRoleBody), async (ctx) =>
