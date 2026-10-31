@@ -6,10 +6,12 @@ const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
   findFirst: vi.fn(),
   createMany: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
+    $queryRaw: mocks.queryRaw,
     platformEvent: {
       count: mocks.count,
       create: mocks.create,
@@ -28,6 +30,7 @@ describe('first-publish platform events', () => {
     mocks.create.mockResolvedValue({ id: 'event' });
     mocks.findFirst.mockResolvedValue(null);
     mocks.createMany.mockResolvedValue({ count: 1 });
+    mocks.queryRaw.mockResolvedValue([{ observationStart: null, firstManualPublishes: 0, cohortSize: 0, retained: 0 }]);
   });
 
   it('preserves historical edit receipts and retries after a failed write', async () => {
@@ -95,5 +98,6 @@ describe('first-publish platform events', () => {
       { source: 'mintlify_introduction', landingViews: 1, ctaClicks: 1, projectEntered: 1, editorEntered: 1, ready: 1 },
       { source: 'rtl_readiness_grader', landingViews: 0, ctaClicks: 0, projectEntered: 0, editorEntered: 0, ready: 0 },
     ]);
+    expect(result.publishRetention).toMatchObject({ firstManualPublishes: null, cohortSize: null, retained: null, rate: null });
   });
 });
