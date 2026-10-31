@@ -177,7 +177,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
         return;
       }
       if (error.code === 'import:limit') {
-        toast.error(t('settings.import.limit'));
+        toast.error(error.limit === undefined ? t('settings.import.limit') : t('settings.import.nodeLimit', { limit: error.limit }));
         return;
       }
       if (error.status === 409) {

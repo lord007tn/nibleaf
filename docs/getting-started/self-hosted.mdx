@@ -3,42 +3,50 @@ title: 'Install Nibleaf on one Linux server'
 description: 'Install the pinned Nibleaf release with the guided installer or Docker Compose, then verify migrations, sign-up, storage, and publishing.'
 audience: 'operators evaluating or installing self-hosted Nibleaf'
 content_type: 'tutorial'
-last_reviewed: '2026-08-24'
+last_reviewed: '2026-10-30'
 verified_against: 'scripts/install.sh, docker-compose.prod.yml, and .env.production.example'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'getting-started/self-hosted'
 ---
 
-The recommended production path pulls the pinned multi-architecture image from
-GHCR. It does not compile the monorepo on the server. Complete this tutorial on
-a disposable host before moving real content.
+The recommended production path pulls the pinned `linux/amd64` image from GHCR. It
+does not compile the monorepo on the server. Complete this tutorial on a disposable
+host before moving real content.
 
-The published installer and self-host manifest currently identify v0.1.2. The
-August 2026 capability set is merged into source but is not a published image.
-Use this tutorial for the pinned artifact it downloads; do not substitute a
-`main` commit into production without the separate
-[combined migration review](/self-hosting/combined-release-migration).
+The installer deploys the release pinned in the published self-host manifest. Use
+this tutorial for the pinned artifact it downloads; do not substitute a `main`
+commit into production.
+
+This tutorial is for new installations. To upgrade an existing installation, do not
+re-run the installer. Follow [back up, restore, and upgrade](/self-hosting/backups-upgrades),
+or the [v0.2.0 upgrade guide](/self-hosting/upgrade-v0-2) if you run v0.1.2.
 
 ## Prerequisites
 
 Prepare:
 
-- a Linux host with Docker Engine and Docker Compose v2 (`docker compose`);
+- a Linux `amd64` host (`x86_64`) with Docker Engine and Docker Compose v2
+  (`docker compose`);
 - `curl`, `sed`, and OpenSSL;
 - a dashboard hostname and a separate browser-reachable storage hostname;
 - a TLS reverse proxy;
-- outbound email when email verification is enabled;
+- outbound email through Postmark or SMTP. Sign-in uses email codes, so the first
+  owner can't sign in without it unless Google sign-in is configured;
 - enough separate capacity for Postgres and object-storage backups.
 
-Confirm the required tools:
+Confirm the required tools and architecture:
 
 ```bash
+uname -m
 docker --version
 docker compose version
 curl --version
 openssl version
 ```
+
+`uname -m` must print `x86_64`. The published image does not run on other
+architectures.
 
 ## Run the guided installer
 
@@ -61,7 +69,8 @@ sh nibleaf-install.sh
 The installer validates its local tools, asks for public origins, generates
 fresh secrets, writes a mode-600 `.env`, downloads the production Compose file,
 pulls the pinned image, and starts the stack. Its default install directory is
-`$PWD/nibleaf`.
+`$PWD/nibleaf`. That directory contains only `docker-compose.yml` and `.env`; run
+later Compose commands from it and omit `-f docker-compose.prod.yml`.
 
 ## Install manually
 

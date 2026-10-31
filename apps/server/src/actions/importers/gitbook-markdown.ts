@@ -258,7 +258,7 @@ const replaceHtmlBlocks = (
   source: string,
   opening: RegExp,
   closing: string,
-  replace: (whole: string, inner: string, open: string) => string,
+  replace: (whole: string, inner: string, open: string, start: number) => string,
 ): string => {
   const lower = source.toLowerCase();
   const output: string[] = [];
@@ -272,7 +272,10 @@ const replaceHtmlBlocks = (
     if (end < start) end = lower.indexOf(closing, start);
     if (end < 0) break;
     if ((openings[index + 1]?.index ?? Number.POSITIVE_INFINITY) < end) continue;
-    output.push(source.slice(cursor, match.index), replace(source.slice(match.index, end + closing.length), source.slice(start, end), match[0]));
+    output.push(
+      source.slice(cursor, match.index),
+      replace(source.slice(match.index, end + closing.length), source.slice(start, end), match[0], match.index),
+    );
     cursor = end + closing.length;
   }
   output.push(source.slice(cursor));
@@ -351,6 +354,9 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   const protectedCode = protectMarkdownCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')), {
     maxFenceIndent: Number.POSITIVE_INFINITY,
   });
+  if (!protectedCode.content.includes('{%') && !protectedCode.content.includes('<')) {
+    return { content: protectedCode.restore(protectedCode.content.replace(/\n{3,}/g, '\n\n')).trim(), warnings: [] };
+  }
   const tokens = liquidTokens(protectedCode.content);
   const pairs = liquidPairs(tokens);
   const output: string[] = [];
@@ -473,9 +479,29 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
     return title === undefined ? whole : `\n<Accordion title="${attr(title)}">\n\n${body.trim()}\n\n</Accordion>\n`;
   });
   content = content
-    // Heading anchors GitBook appends: `## Title <a href="#title" id="title"></a>`.
-    .replace(/^(#{1,6}[ \t][^\n]*?)<a\b[^<>]*\bid\s*=\s*["'][^"']*["'][^<>]*>[ \t]*<\/a>[ \t]*$/gm, (_match, heading: string) => heading.trimEnd())
-    .replace(/^(#{1,6})[ \t]+<a\b[^<>]*\bid\s*=\s*["'][^"']*["'][^<>]*>[ \t]*<\/a>[ \t]*/gm, '$1 ');
+    .split('\n')
+    .map((line) => {
+      const prefix = /^(#{1,6})[ \t]+/.exec(line);
+      if (!prefix) return line;
+      const end = line.trimEnd().length;
+      let leading = false;
+      let trailing = false;
+      const result = replaceHtmlBlocks(line, /<a\b[^<>]*>/gi, '</a>', (whole, inner, open, start) => {
+        if (htmlAttribute(open, 'id') === undefined || inner.trim()) return whole;
+        if (start === prefix[0].length) {
+          leading = true;
+          return '';
+        }
+        if (start + whole.length === end) {
+          trailing = true;
+          return '';
+        }
+        return whole;
+      });
+      if (leading) return `${prefix[1]} ${result.slice(prefix[0].length).trimStart()}`;
+      return trailing ? result.trimEnd() : result;
+    })
+    .join('\n');
   content = replaceHtmlBlocks(content, /<a\b[^<>]*>/gi, '</a>', (whole, label, open) => {
     const classes = htmlAttribute(open, 'class') ?? '';
     if (!/\bbutton\b/.test(classes)) return whole;

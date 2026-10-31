@@ -216,7 +216,11 @@ const loadNodes = async (nodes: readonly PlannedGitBookNode[], context: LoadCont
   for (const node of nodes) {
     // The cap bounds every CREATED node — groups included.
     if (state.pages >= MAX_IMPORT_FILES) {
-      throw new ImportError({ code: 'import:limit', message: `GitBook import exceeds ${MAX_IMPORT_FILES} pages; the draft was preserved.` });
+      throw new ImportError({
+        code: 'import:limit',
+        message: `GitBook import exceeds the limit of ${MAX_IMPORT_FILES} navigation entries; the draft was preserved.`,
+        details: { limit: MAX_IMPORT_FILES },
+      });
     }
 
     if (node.kind === 'group' || !node.path) {

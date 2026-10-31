@@ -8,7 +8,7 @@ import {convertGitBookMarkdown,extractGitBookTitle,expandGitBookIncludes,plainGi
 import {parseGitBookSummary} from ${moduleUrl('./gitbook-mapping.ts')};
 import {rewriteGitBookImages} from ${moduleUrl('./gitbook-assets.ts')};
 import {rewriteMintlifyInternalLinks} from ${moduleUrl('./mintlify-links.ts')};
-import {remoteImageSources} from ${moduleUrl('./ghost-assets.ts')};
+import {remoteImageSources} from ${moduleUrl('./import-references.ts')};
 import {protectMarkdownCode} from '@nibleaf/shared/markdown-code';
 const size=2*1024*1024;
 const fill=unit=>unit.repeat(Math.ceil(size/unit.length)).slice(0,size);
@@ -24,6 +24,7 @@ const cases={
  'unclosed Liquid steps':()=>convert(fill('{% step %}')),
  'paired Liquid nesting':()=>convert('{% step %}'.repeat(Math.floor(size/23))+'body'+'{% endstep %}'.repeat(Math.floor(size/23))),
  'Liquid attribute word':()=>convert('{% tab '+fill('a')+' %}'),
+ 'heading anchor attribute run':()=>convert('## <a '+fill('id="')+'> </a>'),
  'unclosed HTML attributes':()=>convert(fill('<a id="')),
  'unterminated labels':()=>rewriteMintlifyInternalLinks(fill('['),'p.md',new Map()),
  'unterminated images':()=>rewriteGitBookImages(fill('!['),'p.md',new Set(),'',()=> ''),
@@ -52,7 +53,7 @@ const measure = (name: string) =>
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error(`${name}: measurement deadline exceeded`));
-    }, 10_000);
+    }, 20_000);
     child.on('error', (error) => {
       clearTimeout(timer);
       reject(error);
@@ -82,6 +83,7 @@ const cases = [
   'unclosed Liquid steps',
   'paired Liquid nesting',
   'Liquid attribute word',
+  'heading anchor attribute run',
   'unclosed HTML attributes',
   'unterminated labels',
   'unterminated images',
@@ -97,14 +99,14 @@ it.each(cases)(
     console.info(`${name}: ${Math.round(elapsed)} ms`);
     expect(elapsed).toBeLessThan(1000);
   },
-  15_000,
+  25_000,
 );
-it.skipIf(process.env.GITBOOK_SHARED_RESTORE_READY !== '1').each(['shared code restore', 'pipeline code restore'])(
+it.each(['shared code restore', 'pipeline code restore'])(
   'processes two MiB: %s',
   async (name) => {
     const elapsed = await measure(name);
     console.info(`${name}: ${Math.round(elapsed)} ms`);
     expect(elapsed).toBeLessThan(1000);
   },
-  15_000,
+  25_000,
 );

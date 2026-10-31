@@ -201,3 +201,10 @@ it('names a missing navigation file', async () => {
   mem.repoFiles.set('SUMMARY.md', '* [Missing](missing.md)');
   await expect(runImport()).rejects.toMatchObject({ details: { path: 'missing.md' } });
 });
+
+it('reports the unchanged navigation limit before promotion', async () => {
+  for (let index = 0; index < 501; index++) mem.repoFiles.set(`p${index}.md`, `# Page ${index}`);
+  mem.repoFiles.set('SUMMARY.md', Array.from({ length: 501 }, (_, index) => `* [Page ${index}](p${index}.md)`).join('\n'));
+  await expect(runImport()).rejects.toMatchObject({ code: 'import:limit', details: { limit: 500 } });
+  expect(promoteImportReplacementBranch).not.toHaveBeenCalled();
+});

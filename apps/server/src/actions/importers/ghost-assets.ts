@@ -11,7 +11,7 @@ import { isSafeInlineAssetContentType, normalizeAssetContentType } from '@niblea
 import got from 'got';
 import { isPublicAddress } from '@/lib/domain-checks';
 import { findImportedAsset, storeAsset } from '../assets';
-import { htmlImageReferences, markdownReferences, replaceImportReferences } from './import-references';
+import { htmlImageReferences, markdownReferences, remoteImageSources, replaceImportReferences } from './import-references';
 
 const MAX_REMOTE_ASSET_BYTES = 50 * 1024 * 1024;
 const MAX_REMOTE_ASSETS = 2000;
@@ -20,16 +20,7 @@ const MAX_CONCURRENT_DOWNLOADS = 4;
 // Image downloads never share connections with other outbound requests.
 const DOWNLOAD_AGENTS = { http: new HttpAgent({ keepAlive: false }), https: new HttpsAgent({ keepAlive: false }) };
 
-export const remoteImageSources = (content: string): string[] => {
-  const prose = protectMarkdownCode(content).content;
-  return [
-    ...new Set(
-      [...markdownReferences(prose).filter((reference) => reference.image), ...htmlImageReferences(prose)]
-        .map((reference) => reference.value)
-        .filter((value) => /^https?:\/\//i.test(value)),
-    ),
-  ];
-};
+export { remoteImageSources } from './import-references';
 
 const filenameFromUrl = (url: URL): string => {
   const encoded = url.pathname.split('/').filter(Boolean).pop() ?? 'image';

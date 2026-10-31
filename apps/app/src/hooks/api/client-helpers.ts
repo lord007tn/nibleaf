@@ -2,7 +2,7 @@ interface ApiErrorBody {
   error?: {
     code?: string;
     message?: string;
-    details?: { path?: string; sourceFile?: string; errors?: Array<string | { path?: string; message?: string }> };
+    details?: { path?: string; sourceFile?: string; limit?: number; errors?: Array<string | { path?: string; message?: string }> };
   };
 }
 
@@ -22,7 +22,13 @@ const readApiError = async (res: Response, fallback: string) => {
         message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
       };
     }
-    return { code: body.error?.code, message, path: body.error?.details?.path, sourceFile: body.error?.details?.sourceFile };
+    return {
+      code: body.error?.code,
+      message,
+      path: body.error?.details?.path,
+      sourceFile: body.error?.details?.sourceFile,
+      limit: body.error?.details?.limit,
+    };
   } catch {
     return { code: undefined, message: fallback };
   }
@@ -37,6 +43,7 @@ export class ApiResponseError extends Error {
     readonly retryAfter?: string,
     readonly path?: string,
     readonly sourceFile?: string,
+    readonly limit?: number,
   ) {
     super(message);
     this.name = 'ApiResponseError';
@@ -46,7 +53,15 @@ export class ApiResponseError extends Error {
 export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string) {
   if (!res.ok) {
     const error = await readApiError(res, fallback ?? `Failed to load ${what}.`);
-    throw new ApiResponseError(error.message, res.status, error.code, res.headers.get('retry-after') ?? undefined, error.path, error.sourceFile);
+    throw new ApiResponseError(
+      error.message,
+      res.status,
+      error.code,
+      res.headers.get('retry-after') ?? undefined,
+      error.path,
+      error.sourceFile,
+      error.limit,
+    );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
 }
@@ -55,7 +70,15 @@ export async function getData<TData = never, TResponse extends Response = Respon
 export async function mutateData<TData = never, TResponse extends Response = Response>(res: TResponse, fallback: string) {
   if (!res.ok) {
     const error = await readApiError(res, fallback);
-    throw new ApiResponseError(error.message, res.status, error.code, res.headers.get('retry-after') ?? undefined, error.path, error.sourceFile);
+    throw new ApiResponseError(
+      error.message,
+      res.status,
+      error.code,
+      res.headers.get('retry-after') ?? undefined,
+      error.path,
+      error.sourceFile,
+      error.limit,
+    );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
 }

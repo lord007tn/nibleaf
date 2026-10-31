@@ -3,8 +3,8 @@ title: 'Troubleshoot a self-hosted deployment'
 description: 'Diagnose startup, migration, storage, email, publishing, domain, proxy, and search failures without destroying recoverable state.'
 audience: 'self-hosted operators responding to a failed workflow'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'docker-compose.prod.yml, scripts/install.sh, and apps/server/src/env.ts'
+last_reviewed: '2026-10-30'
+verified_against: 'docker-compose.prod.yml, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/troubleshooting'
@@ -16,7 +16,8 @@ delete volumes or run a clean reset as a troubleshooting shortcut.
 
 ## Collect a safe diagnostic snapshot
 
-Run from the deployment directory:
+Run from the deployment directory. In a guided-installer directory, omit
+`-f docker-compose.prod.yml`:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -37,8 +38,24 @@ version, affected service, redacted error, expected behavior, and exact time.
 | App waits for the server | Server health is failing or `migrate` did not complete. | Read `migrate`, then the first server error. |
 | Production refuses authentication secret | The value is empty, weak, or a known demo default. | Generate a fresh independent value and restart only after updating `.env`. |
 | Image pull is denied or missing | The tag does not exist or registry access failed. | Confirm the tag on the release page and run `docker compose pull` directly. |
+| Pull reports no matching manifest, or a container exits with `exec format error` | The host is not `linux/amd64`. The published image supports only that architecture. | Run `uname -m`. Anything other than `x86_64` needs an amd64 host. |
+| The installer stops with `Unsupported architecture` | The host is not `linux/amd64`. | Use an amd64 host. Do not work around the check. |
+| The installer stops with `Existing installation` | The directory or Docker already holds a Nibleaf installation. | Do not remove it to get past the check. Use the [upgrade guide](/self-hosting/upgrade-v0-2). |
 
 Do not skip migrations by removing dependencies from the Compose file.
+
+## The API and worker do not become ready after an upgrade
+
+`server` and `worker` do not become ready, `app` waits for the API, and the logs show:
+
+```text
+Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
+```
+
+v0.2.0 started on schedules from v0.1.2, usually because the version was changed
+without the staged migration. Your data is intact. Do not delete the Dragonfly
+volume, remove jobs, or re-run the installer. Follow
+[If you skip the staged step](/self-hosting/upgrade-v0-2#if-you-skip-the-staged-step).
 
 ## Uploads fail in the browser
 
@@ -55,7 +72,10 @@ Check the worker log, sender verification, Postmark message stream or SMTP URL,
 recipient spam folder, and provider activity. Passwordless sign-in requires
 delivery of a one-time code. In development, or when delivery is optional, the
 worker can log development mail instead. Required production delivery fails
-when neither Postmark nor SMTP is configured.
+when neither Postmark nor SMTP is configured, and the worker health check returns
+503 until one is. `EMAIL_DELIVERY_REQUIRED` defaults to `true`. Set it to `false` only
+when Google sign-in is configured, because nobody can receive an email code without a
+provider.
 
 ## A publish stays queued or fails
 

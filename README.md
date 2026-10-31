@@ -144,7 +144,7 @@ or private examples in a document you intend to publish.
 > [!WARNING]
 > **Known issue:** the install command below fails with a checksum error until v0.2.0 is released, because the published v0.1.2 files no longer match the checksums on `main`. It stops before anything starts, and existing installations aren't affected.
 
-On a Linux server, the pinned bootstrap downloads the v0.1.2 installer, verifies
+On a Linux `amd64` server, the pinned bootstrap downloads the v0.1.2 installer, verifies
 its committed SHA-256 digest, and only then executes it. The verified installer
 also verifies the release's production Compose file before it writes a mode-600
 `.env` or starts the stack:
@@ -163,6 +163,8 @@ cd nibleaf && cp .env.production.example .env
 
 # Edit .env — set APP_URL (your dashboard origin), the storage endpoints, and
 # fresh secrets (openssl rand -hex 32). The stack fails fast if one is missing.
+# Configure Postmark or SMTP too: sign-in uses email codes, so the first owner
+# can't sign in without it unless Google sign-in is configured.
 
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
@@ -172,7 +174,10 @@ docker compose -f docker-compose.prod.yml up -d
 Database migrations run automatically (the one-shot `migrate` service), and the
 image tag is **pinned** via `NIBLEAF_VERSION`. Read the
 **[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
-before changing it. Open **`$APP_URL/sign-up`** and create the first
+before changing it, and don't re-run the installer to upgrade. Moving from v0.1.2 to
+v0.2.0 has a required staged step, covered in the
+**[upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2)**. Open
+**`$APP_URL/sign-up`** and create the first
 account — it's provisioned with a workspace and a starter docs project
 automatically (no demo credentials are seeded in production). The full production
 guide — reverse proxy, TLS, wildcard subdomains, custom-domain TLS automation,

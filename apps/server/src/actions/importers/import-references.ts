@@ -1,3 +1,4 @@
+import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 export interface ImportReference {
   value: string;
   start: number;
@@ -85,4 +86,15 @@ export const htmlImageReferences = (source: string): ImportReference[] => {
     references.push({ value, start, end: start + value.length, image: true });
   }
   return references;
+};
+
+export const remoteImageSources = (content: string): string[] => {
+  const prose = protectMarkdownCode(content).content;
+  return [
+    ...new Set(
+      [...markdownReferences(prose).filter((reference) => reference.image), ...htmlImageReferences(prose)]
+        .map((reference) => reference.value)
+        .filter((value) => /^https?:\/\//i.test(value)),
+    ),
+  ];
 };
