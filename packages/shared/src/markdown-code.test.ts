@@ -27,6 +27,21 @@ describe('import Markdown code boundaries', () => {
     expect(protectedCode.restore(protectedCode.content.replace('(real)', '(hosted)'))).toBe(input.replace('(real)', '(hosted)'));
   });
 
+  it('restores a large page with many fences in one pass', () => {
+    const input = '```\n'.repeat(100_000);
+    const protectedCode = protectMarkdownCode(input);
+    const started = performance.now();
+    expect(protectedCode.restore(protectedCode.content)).toBe(input);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it('keeps placeholder-shaped text inside a literal unchanged', () => {
+    const input = 'one `first` and `second`';
+    const protectedCode = protectMarkdownCode(input);
+    const placeholder = protectedCode.content.match(/\uE000[^\uE001]+\uE001/)?.[0] ?? '';
+    expect(protectedCode.restore(`${placeholder} ${protectedCode.content}`)).toBe(`\`first\` ${input}`);
+  });
+
   it('leaves unmatched and escaped inline delimiters as prose', () => {
     const input = '\\`escaped and `unmatched';
     const protectedCode = protectMarkdownCode(input);
