@@ -131,7 +131,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       summary.assetsImported = assets.migrated;
       summary.assetsSkipped = assets.skipped;
       if (assets.skipped > 0) {
-        const reasons = [...assets.failures].slice(0, 3).join('; ');
+        const reasons = assets.failureReasons();
         summary.warnings.push(
           `${assets.skipped} Mintlify image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source references were preserved.`,
         );

@@ -1437,6 +1437,10 @@
   "settings_import_mintlify_branch": "الفرع (اختياري)",
   "settings_import_mintlify_invalidrepo": "استخدم الصيغة owner/repo.",
   "settings_import_mintlify_replaceexisting": "استبدل المسودة الحالية بهذا المستودع",
+  "settings_import_gitbook_title": "GitBook",
+  "settings_import_gitbook_description": "استورد مستودع GitBook Git Sync عامًا من GitHub ‏(.gitbook.yaml وSUMMARY.md) — الصفحات وكتل GitBook والصور وإعادات التوجيه.",
+  "settings_import_gitbook_path": "مجلد المساحة (اختياري)",
+  "settings_import_gitbook_pathhint": "مطلوب فقط عندما يزامن المستودع عدة مساحات GitBook، مثل docs/guides.",
   "settings_import_ghost_title": "Ghost",
   "settings_import_ghost_description": "ارفع ملف تصدير Ghost بصيغة JSON — تُحوَّل المنشورات والصفحات المنشورة إلى Markdown.",
   "settings_import_ghost_file": "ملف التصدير (‎.json)",
@@ -2753,5 +2757,12 @@
   "settings_members_removeconfirm": "هل تريد إزالة {name} من هذا الموقع؟ سيفقد الوصول إلى توثيق الموقع وإعداداته.",
   "settings_members_revokeconfirm": "هل تريد إلغاء دعوة {email}؟ سيتوقف رابط الدعوة عن العمل.",
   "settings_config_discarddescription": "لديك تغييرات غير محفوظة في الإعدادات. ستُفقد عند مغادرة هذا القسم.",
-  "editor_saveconfigfirst": "احفظ تغييرات الإعدادات قبل المعاينة أو النشر."
+  "editor_saveconfigfirst": "احفظ تغييرات الإعدادات قبل المعاينة أو النشر.",
+  "settings_import_maystillrun": "انتهى الاتصال قبل وصول نتيجة الاستيراد. قد يكون الاستيراد لا يزال قيد التشغيل. لا تبدأه مرة أخرى؛ تحقق من صفحاتك قبل إعادة المحاولة.",
+  "settings_import_incomplete": "تعذر تحميل محتوى المصدر. توقف الاستيراد وتم الحفاظ على مسودتك.",
+  "settings_import_limit": "تجاوز الاستيراد حد المحتوى أو الوقت. تم الحفاظ على مسودتك. حاول استيراد مساحة أصغر.",
+  "settings_import_conflict": "تغيرت مسودتك أثناء الاستيراد. تم الحفاظ على تعديلاتك. راجع صفحاتك قبل إعادة المحاولة.",
+  "settings_import_inprogress": "يجري استيراد لهذا المشروع بالفعل. انتظر حتى ينتهي قبل بدء استيراد آخر.",
+  "settings_import_busy": "سعة الاستيراد مشغولة أو لم يكتمل الاستيراد في الوقت المحدد. حاول مجدداً بعد قليل.",
+  "settings_import_nodelimit": "يتجاوز الاستيراد الحد الأقصى البالغ {limit} عنصراً في التنقل. استورد مساحة أصغر. تم الحفاظ على مسودتك."
 }

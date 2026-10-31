@@ -1,6 +1,6 @@
 ---
 title: 'Migrate documentation into Nibleaf'
-description: 'Plan a reversible migration from Mintlify, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
+description: 'Plan a reversible migration from Mintlify, GitBook, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
 audience: 'documentation owners planning a platform migration'
 content_type: 'how-to'
 last_reviewed: '2026-08-23'
@@ -19,6 +19,7 @@ traffic only after a crawl and rollback rehearsal.
 | Source | Nibleaf reads | Review closely |
 | --- | --- | --- |
 | Mintlify repository | Public GitHub repository, `docs.json` or `mint.json`, recursive navigation, repository-local JSON references, Markdown/MDX, reachable assets, and supported site settings. | Custom components, redirects, asset URLs, and settings that do not have a Nibleaf equivalent. |
+| GitBook Git Sync repository | Public GitHub repository, `.gitbook.yaml` (`root`, `structure`, `redirects`), `SUMMARY.md` sections and nested pages, page frontmatter, GitBook blocks, reusable content, and `.gitbook/assets` images. | OpenAPI blocks, embeds, adaptive content, external navigation links, and blocks without a Nibleaf equivalent. |
 | Ghost export | Published posts and pages, tags, metadata, feature images, HTML, Lexical or legacy Mobiledoc content, and reachable assets from a JSON export. | Language assignment, custom cards and embeds, routes, redirects, members, and missing remote assets. |
 | Public Git repository | Markdown content from the configured public provider and branch. | Source root, ordering, frontmatter, link rewriting, and later synchronization expectations. |
 
@@ -36,6 +37,14 @@ Nibleaf does not read a private Mintlify Cloud editor URL. If the workspace is
 not backed by a public GitHub repository, export or publish its source to a
 disposable public repository first, remove secrets and private content, and use
 that repository for the migration rehearsal.
+
+For a GitBook import, enter the Git Sync `owner/repository`, an optional
+branch, and, for a repository that syncs several spaces, the folder holding that
+space's `.gitbook.yaml`. `SUMMARY.md` sections become sidebar categories that
+keep GitBook URLs, GitBook blocks map onto Nibleaf components, and
+`.gitbook/assets` images are copied into project storage. Blocks without an
+equivalent (embeds, OpenAPI, adaptive content) are converted or unwrapped and
+reported as warnings.
 
 For Ghost, open **Settings → Labs → Import/Export** in Ghost Admin and export
 the site content and settings as JSON. Upload that JSON and provide the

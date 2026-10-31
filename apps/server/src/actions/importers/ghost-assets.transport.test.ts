@@ -200,3 +200,106 @@ describe('remote image transport', () => {
     expect(migrator.migrated).toBe(12);
   });
 });
+
+describe('RemoteAssetMigrator content types', () => {
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  const serve = (body: Uint8Array, contentType: string) =>
+    respond([
+      {
+        headers: { 'content-type': contentType },
+        async *body() {
+          yield Buffer.from(body);
+        },
+      },
+    ]);
+
+  beforeEach(() => vi.mocked(findImportedAsset).mockResolvedValue(null as never));
+
+  it('identifies an extensionless image served as octet-stream by its bytes', async () => {
+    serve(png, 'application/octet-stream');
+    vi.mocked(storeAsset).mockResolvedValue({ url: 'https://storage.example.com/stored.png' } as never);
+    const assets = new RemoteAssetMigrator('synthetic', 'gitbook');
+
+    expect(await assets.rewrite('![Shot](https://raw.example.com/.gitbook/assets/image)')).toBe('![Shot](https://storage.example.com/stored.png)');
+    expect(storeAsset).toHaveBeenCalledWith(expect.objectContaining({ contentType: 'image/png', filename: 'image' }));
+    expect(assets.migrated).toBe(1);
+  });
+
+  it('identifies an extensionless AVIF by its brand', async () => {
+    serve(Uint8Array.from([0, 0, 0, 0x1c, ...new TextEncoder().encode('ftypavif'), 0, 0, 0, 0]), 'application/octet-stream');
+    vi.mocked(storeAsset).mockResolvedValue({ url: 'https://storage.example.com/stored.avif' } as never);
+
+    await new RemoteAssetMigrator('synthetic', 'gitbook').rewrite('![Shot](https://raw.example.com/.gitbook/assets/photo)');
+
+    expect(storeAsset).toHaveBeenCalledWith(expect.objectContaining({ contentType: 'image/avif' }));
+  });
+
+  it('still refuses a body that is not a known image', async () => {
+    serve(new TextEncoder().encode('<!doctype html><title>nope</title>'), 'application/octet-stream');
+    const assets = new RemoteAssetMigrator('synthetic', 'gitbook');
+    const source = '![Shot](https://raw.example.com/.gitbook/assets/page)';
+
+    expect(await assets.rewrite(source)).toBe(source);
+    expect(storeAsset).not.toHaveBeenCalled();
+    expect([...assets.failures]).toEqual(['image migration failed']);
+  });
+});
+
+describe('RemoteAssetMigrator download cap', () => {
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+
+  beforeEach(() => {
+    respond([
+      {
+        async *body() {
+          yield Buffer.from(png);
+        },
+      },
+    ]);
+    vi.mocked(storeAsset).mockImplementation(async ({ importId }) => ({ url: `https://storage.example.com/${importId}.png` }) as never);
+  });
+
+  it('reuses stored images without spending the download cap on them', async () => {
+    vi.mocked(findImportedAsset).mockImplementation(async (_project, _importId, filename) =>
+      filename.startsWith('stored') ? ({ url: `https://storage.example.com/${filename}` } as never) : null,
+    );
+    const assets = new RemoteAssetMigrator('synthetic', 'gitbook', 1);
+    const page = ['stored-1.png', 'stored-2.png', 'stored-3.png', 'new-1.png', 'new-2.png']
+      .map((name) => `![](https://cdn.example.com/${name})`)
+      .join('\n');
+
+    const result = await assets.rewrite(page);
+
+    expect(result).toContain('https://storage.example.com/stored-3.png');
+    expect(assets.migrated).toBe(1);
+    expect(assets.skipped).toBe(1);
+    expect(network.stream).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the download cap first among failure reasons', async () => {
+    vi.mocked(findImportedAsset).mockResolvedValue(null as never);
+    respond([{ status: 404 }, { status: 403 }, { status: 400 }]);
+    const assets = new RemoteAssetMigrator('synthetic', 'gitbook', 3);
+    for (const name of ['a', 'b', 'c', 'd']) await assets.rewrite(`![](https://cdn.example.com/${name}.png)`);
+
+    expect(assets.failureReasons()).toBe('Asset migration was capped at 3 downloaded images.; image migration failed');
+  });
+});
+
+it('refuses an announced HTML body even if its bytes resemble an image', async () => {
+  respond([
+    {
+      headers: { 'content-type': 'text/html' },
+      async *body() {
+        for (let i = 0; i < 100; i++) {
+          produced++;
+          yield Buffer.alloc(1024 * 1024);
+        }
+      },
+    },
+  ]);
+  const migrator = new RemoteAssetMigrator('synthetic');
+  expect(await migrator.rewrite(markdown)).toBe(markdown);
+  expect(storeAsset).not.toHaveBeenCalled();
+  expect(produced).toBeLessThan(100);
+});

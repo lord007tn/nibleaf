@@ -3,6 +3,7 @@ import { createElement } from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
+import { convertGitBookMarkdown, plainGitBookText } from '../../../server/src/actions/importers/gitbook-markdown';
 
 const render = (content: string, language?: string): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -254,4 +255,34 @@ describe('Markdown renderer — Mintlify component parity', () => {
     const html = await render('<CodeGroup>\n\n```\necho ready\n```\n\n</CodeGroup>', 'ar');
     expect(html).toContain('علامة التبويب 1');
   });
+});
+
+it('renders GitBook labels after decoding and removing nested markup', async () => {
+  const hostile = '&lt;img src=x onerror=alert(1)&gt;Safe <<script>script>';
+  const label = plainGitBookText(hostile);
+  expect(label).toBe('Safe <script>');
+  const converted = convertGitBookMarkdown(`{% content-ref url="/safe" %}[${hostile}](/safe){% endcontent-ref %}`, { resolveFile: () => undefined });
+  const html = await render(converted.content);
+  expect(html).not.toMatch(/<(?:img|script)\b|onerror=/);
+  expect(html).toContain('Safe');
+});
+
+it.each(['a < b', 'x <= y', 'List<T>', '<<script>script>', '{sample}'])('renders literal Button label %s', async (label) => {
+  const { content } = convertGitBookMarkdown(`<a href="/safe" class="button">${label}</a>`, { resolveFile: () => undefined });
+  expect(content).not.toContain('{sample}');
+  const html = await render(content);
+  expect(html).not.toMatch(/<script\b/);
+  expect(html).toContain(plainGitBookText(label).replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+});
+
+it('renders card body cells as text with generic types and comparisons intact', async () => {
+  const table =
+    '<table data-view="cards"><thead><tr><th>Title</th><th>Body</th></tr></thead><tbody><tr><td>Types</td><td>Map&lt;K, V&gt; and a&lt;b and c&gt;d {value}</td></tr></tbody></table>';
+  const { content } = convertGitBookMarkdown(table, { resolveFile: () => undefined });
+  expect(content).toContain('Map&lt;K, V>');
+  expect(content).toContain('&#123;value}');
+  const html = await render(content);
+  expect(html).toContain('Map&lt;K, V&gt;');
+  expect(html).toContain('a&lt;b and c&gt;d');
+  expect(html).not.toMatch(/<K|<b and/);
 });

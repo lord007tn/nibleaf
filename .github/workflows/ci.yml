@@ -170,6 +170,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify importer timings
+        env:
+          GITBOOK_PERFORMANCE: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook-performance.test.ts --reporter=verbose
+
       - name: Build production app
         env:
           # The integrated app's route graph exceeds V8's default ~4 GiB heap

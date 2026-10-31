@@ -1070,6 +1070,26 @@ export const mintlifyImportBody = z
   .strict();
 export type MintlifyImportBody = z.infer<typeof mintlifyImportBody>;
 
+/** Import a public GitBook Git Sync repo from GitHub (.gitbook.yaml + SUMMARY.md).
+ *  `path` selects one space's directory in a repo that syncs several spaces. */
+export const gitbookImportBody = z
+  .object({
+    repo: z
+      .string()
+      .max(120)
+      .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
+    branch: z.string().max(120).optional(),
+    path: z
+      .string()
+      .trim()
+      .max(200)
+      .regex(/^(?!.*(?:^|\/)\.\.(?:\/|$))[\w ./-]*$/, 'Use a folder path inside the repository, such as docs/guides.')
+      .optional(),
+    replaceExisting: z.boolean().optional(),
+  })
+  .strict();
+export type GitbookImportBody = z.infer<typeof gitbookImportBody>;
+
 /** A Ghost JSON export posted as the request body. The export is a large,
  *  loosely-versioned document (`db[0].data.posts` …), so only "is a JSON
  *  object" is enforced here; the importer validates the actual shape. */

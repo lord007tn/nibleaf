@@ -1,4 +1,4 @@
-import { ghostImportBody, mintlifyImportBody } from '@nibleaf/validators';
+import { ghostImportBody, gitbookImportBody, mintlifyImportBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { trackProjectEvent } from '@/actions/analytics';
@@ -7,6 +7,7 @@ import { createNotificationsForOrgMembers } from '@/actions/notifications';
 import { badRequest } from '@/errors';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
+import { limitImport } from './limit';
 import importsRoutes from './routes';
 
 /** Ghost exports ship the whole site in one JSON document — allow up to 15 MB. */
@@ -25,7 +26,11 @@ const notifyImportCompleted = (projectId: string, actorUserId: string, source: s
     actorUserId,
   ).catch(() => undefined);
 
-const trackedImport = async <T extends ImportSummary>(projectId: string, sourceType: 'ghost' | 'mintlify', run: () => Promise<T>): Promise<T> => {
+const trackedImport = async <T extends ImportSummary>(
+  projectId: string,
+  sourceType: 'ghost' | 'gitbook' | 'mintlify',
+  run: () => Promise<T>,
+): Promise<T> => {
   const started = performance.now();
   const operationId = `${sourceType}-${crypto.randomUUID()}`;
   await trackProjectEvent(projectId, { name: 'import_started', sourceType, operationId }, { source: 'dashboard' }).catch(() => undefined);
@@ -56,7 +61,7 @@ const trackedImport = async <T extends ImportSummary>(projectId: string, sourceT
 // organizationId is the PROJECT's own org (resolved from :projectId by the guards),
 // mirroring the project-settings module. Mounted under /projects/:projectId/settings/import.
 const app = new Hono<HonoEnv>()
-  .post('/mintlify', ...importsRoutes.mintlify, validator('json', mintlifyImportBody), async (ctx) => {
+  .post('/mintlify', ...importsRoutes.mintlify, limitImport('mintlify'), validator('json', mintlifyImportBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();
     // Always present — the module is mounted under /projects/:projectId/settings/import.
@@ -67,9 +72,20 @@ const app = new Hono<HonoEnv>()
     await notifyImportCompleted(projectId, user.id, 'Mintlify', summary);
     return ctx.json({ data: summary }, 200);
   })
+  .post('/gitbook', ...importsRoutes.gitbook, limitImport('gitbook'), validator('json', gitbookImportBody), async (ctx) => {
+    const organizationId = getContextOrganizationIdOrThrow();
+    const user = getContextUserOrThrow();
+    const projectId = ctx.req.param('projectId') ?? '';
+    const summary = await trackedImport(projectId, 'gitbook', () =>
+      importers.gitbook.run({ organizationId, projectId, input: ctx.req.valid('json') }),
+    );
+    await notifyImportCompleted(projectId, user.id, 'GitBook', summary);
+    return ctx.json({ data: summary }, 200);
+  })
   .post(
     '/ghost',
     ...importsRoutes.ghost,
+    limitImport('ghost'),
     bodyLimit({
       maxSize: GHOST_MAX_BODY_BYTES,
       onError: () => {
