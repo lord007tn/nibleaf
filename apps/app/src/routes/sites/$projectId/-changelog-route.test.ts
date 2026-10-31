@@ -76,3 +76,46 @@ describe('published changelog route', () => {
     expect(mocks.getChangelog).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' } });
   });
 });
+
+it('reuses the loaded parent shell without another getSite call', async () => {
+  const site = { project: { id: 'qa-site' }, nav: [], languages: [], versions: [] };
+  mocks.getChangelog.mockResolvedValueOnce(Response.json({ data: [] }));
+  const loader = Route.options.loader as (input: {
+    params: { projectId: string };
+    deps: { lang: string };
+    parentMatchPromise: Promise<{ loaderData: { site: unknown } }>;
+  }) => Promise<unknown>;
+  await expect(
+    loader({ params: { projectId: 'qa-site' }, deps: { lang: 'ar' }, parentMatchPromise: Promise.resolve({ loaderData: { site } }) }),
+  ).resolves.toMatchObject({ site, entries: [], lang: 'ar' });
+  expect(mocks.getSite).not.toHaveBeenCalled();
+});
+
+it('rethrows a failed parent load without another shell lookup', async () => {
+  const failure = new Error('rate limited');
+  const loader = Route.options.loader as (input: {
+    params: { projectId: string };
+    deps: { lang: string };
+    parentMatchPromise: Promise<{ status: string; error: unknown }>;
+  }) => Promise<unknown>;
+  await expect(
+    loader({ params: { projectId: 'qa-site' }, deps: { lang: 'ar' }, parentMatchPromise: Promise.resolve({ status: 'error', error: failure }) }),
+  ).rejects.toBe(failure);
+  expect(mocks.getSite).not.toHaveBeenCalled();
+});
+
+it('returns notFound for a privacy-hidden parent without another shell lookup', async () => {
+  const loader = Route.options.loader as (input: {
+    params: { projectId: string };
+    deps: { lang: string };
+    parentMatchPromise: Promise<{ loaderData: { site: null } }>;
+  }) => Promise<unknown>;
+  const error = await loader({
+    params: { projectId: 'qa-site' },
+    deps: { lang: 'ar' },
+    parentMatchPromise: Promise.resolve({ loaderData: { site: null } }),
+  }).catch((caught: unknown) => caught);
+  expect(isNotFound(error)).toBe(true);
+  expect(mocks.getSite).not.toHaveBeenCalled();
+  expect(mocks.getChangelog).not.toHaveBeenCalled();
+});
