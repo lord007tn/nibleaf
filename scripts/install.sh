@@ -11,6 +11,9 @@ COMPOSE_URL=${NIBLEAF_COMPOSE_URL:-$RELEASE_BASE_URL/docker-compose.yml}
 COMPOSE_SHA256=${NIBLEAF_COMPOSE_SHA256:-$RELEASE_COMPOSE_SHA256}
 DEFAULT_INSTALL_DIR=${NIBLEAF_INSTALL_DIR:-"$PWD/nibleaf"}
 TTY=/dev/tty
+# Add future published architectures here. uname reports amd64 as x86_64;
+# Docker reports it as amd64.
+SUPPORTED_ARCHITECTURES='x86_64 amd64'
 
 say() { printf '%s\n' "$*"; }
 fail() { say "Error: $*" >&2; exit 1; }
@@ -72,12 +75,24 @@ verify_sha256() {
   [ "$_actual" = "$_expected" ] || fail "Compose checksum mismatch: expected $_expected but received $_actual. No configuration was installed."
 }
 
+ARCHITECTURE=$(uname -m)
+case " $SUPPORTED_ARCHITECTURES " in
+  *" $ARCHITECTURE "*) ;;
+  *) fail "Unsupported architecture: $ARCHITECTURE. The published image supports linux/amd64 only." ;;
+esac
+
 [ -r "$TTY" ] || fail 'Run this command from an interactive SSH terminal.'
 has curl || fail 'curl is required.'
 has sed || fail 'sed is required.'
 has openssl || fail 'openssl is required to generate secure credentials.'
 has docker || fail 'Docker is required. Install Docker Engine and try again.'
 docker compose version >/dev/null 2>&1 || fail 'Docker Compose v2 (docker compose) is required.'
+# The image runs on the Docker daemon, which can differ from this shell under emulation.
+DOCKER_ARCHITECTURE=$(docker version -f '{{.Server.Arch}}' 2>/dev/null) || fail 'Could not reach the Docker daemon. Check that it is running and that this user can access it (for example, through the docker group or sudo).'
+case " $SUPPORTED_ARCHITECTURES " in
+  *" $DOCKER_ARCHITECTURE "*) ;;
+  *) fail "Unsupported architecture: $DOCKER_ARCHITECTURE on the Docker daemon. The published image supports linux/amd64 only." ;;
+esac
 
 say ''
 say 'Nibleaf guided production setup'
@@ -85,6 +100,22 @@ say 'This will download Docker Compose, generate secrets locally, and start the 
 say ''
 
 INSTALL_DIR=$(prompt 'Install directory' "$DEFAULT_INSTALL_DIR")
+# The production Compose file declares name: nibleaf. Honor an explicit
+# project override and persist it so later Compose commands use the same name.
+PROJECT_NAME=${COMPOSE_PROJECT_NAME:-nibleaf}
+case $PROJECT_NAME in ''|[!a-z0-9]*|*[!a-z0-9_-]*) fail 'COMPOSE_PROJECT_NAME must start with a lowercase letter or digit and contain only lowercase letters, digits, underscores or hyphens.' ;; esac
+for _file in .env compose.yaml compose.yml docker-compose.yaml docker-compose.yml docker-compose.prod.yml; do
+  if [ -e "$INSTALL_DIR/$_file" ] || [ -L "$INSTALL_DIR/$_file" ]; then
+    fail "Existing installation in $INSTALL_DIR. Use https://docs.nibleaf.com/self-hosting/upgrade-v0-2; no files were changed."
+  fi
+done
+CONTAINERS=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT_NAME") || fail 'Could not inspect existing Compose containers.'
+VOLUMES=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT_NAME") || fail 'Could not inspect existing Compose volumes.'
+# Also catch retained volumes whose Compose labels are missing.
+NAMED_VOLUMES=$(docker volume ls -q --filter "name=^${PROJECT_NAME}_") || fail 'Could not inspect existing volumes.'
+if [ -n "$CONTAINERS$VOLUMES$NAMED_VOLUMES" ]; then
+  fail "Existing Compose project or volumes for $PROJECT_NAME. Use https://docs.nibleaf.com/self-hosting/upgrade-v0-2; nothing was changed."
+fi
 APP_URL=${NIBLEAF_APP_URL:-$(prompt 'Public dashboard URL (https://docs.example.com)' '')}
 STORAGE_PUBLIC_ENDPOINT=${NIBLEAF_STORAGE_PUBLIC_ENDPOINT:-$(prompt 'Public storage URL (https://storage.example.com)' '')}
 require_value 'Public dashboard URL' "$APP_URL"
@@ -102,6 +133,7 @@ EMAIL_FROM='nibleaf@localhost'
 POSTMARK_API_KEY=''
 POSTMARK_MESSAGE_STREAM=''
 SMTP_URL=''
+EMAIL_DELIVERY_REQUIRED=true
 if confirm 'Enable transactional email delivery for sign-in codes and invitations?' y; then
   EMAIL_FROM=$(prompt 'From address (Nibleaf <no-reply@example.com>)' '')
   require_value 'From address' "$EMAIL_FROM"
@@ -118,10 +150,10 @@ if confirm 'Enable transactional email delivery for sign-in codes and invitation
       ;;
     *) fail 'Mail provider must be postmark or smtp.' ;;
   esac
-fi
-
-if [ -e "$INSTALL_DIR/.env" ] || [ -e "$INSTALL_DIR/docker-compose.yml" ]; then
-  confirm "Existing Nibleaf files found in $INSTALL_DIR. Replace the configuration?" n || fail 'Cancelled; existing files were not changed.'
+else
+  say 'Warning: without email delivery, the first owner cannot sign in with email codes unless Google sign-in is configured.'
+  confirm 'Continue without email delivery and configure Google sign-in separately?' n || fail 'Cancelled; configure Postmark or SMTP for email sign-in.'
+  EMAIL_DELIVERY_REQUIRED=false
 fi
 
 umask 077
@@ -131,9 +163,11 @@ COMPOSE_TMP="$INSTALL_DIR/docker-compose.yml.tmp.$$"
 trap 'rm -f "$ENV_TMP" "$COMPOSE_TMP"' EXIT HUP INT TERM
 : >"$ENV_TMP"
 
+env_line COMPOSE_PROJECT_NAME "$PROJECT_NAME"
 env_line NIBLEAF_VERSION "$NIBLEAF_VERSION"
 env_line APP_URL "$APP_URL"
 env_line BETTER_AUTH_SECRET "$(random_hex 32)"
+env_line INTEGRATION_CREDENTIAL_ENCRYPTION_KEY "$(openssl rand -base64 32)"
 env_line INTERNAL_API_SECRET "$(random_hex 32)"
 env_line POSTGRES_PASSWORD "$(random_hex 24)"
 env_line STORAGE_PROVIDER maxio
@@ -148,6 +182,7 @@ env_line STORAGE_FORCE_PATH_STYLE true
 env_line SITE_BASE_DOMAIN "$SITE_BASE_DOMAIN"
 env_line CUSTOM_DOMAIN_CNAME_TARGET "$CUSTOM_DOMAIN_CNAME_TARGET"
 env_line DISABLE_SIGNUP false
+env_line EMAIL_DELIVERY_REQUIRED "$EMAIL_DELIVERY_REQUIRED"
 env_line EMAIL_FROM "$EMAIL_FROM"
 env_line POSTMARK_API_KEY "$POSTMARK_API_KEY"
 env_line POSTMARK_MESSAGE_STREAM "$POSTMARK_MESSAGE_STREAM"
@@ -168,14 +203,17 @@ chmod 600 "$INSTALL_DIR/.env"
 say 'Pulling Nibleaf containers...'
 if ! (cd "$INSTALL_DIR" && docker compose pull); then
   say ''
-  say 'The container registry rejected the pull. If the image is private, run:'
-  say '  docker login ghcr.io'
+  say 'The public image could not be pulled. Check linux/amd64 architecture, network access to ghcr.io, and available disk space.'
   say "Then restart with: cd '$INSTALL_DIR' && docker compose up -d"
   fail 'Container pull failed; the generated configuration was kept.'
 fi
 
 say 'Starting Nibleaf...'
-(cd "$INSTALL_DIR" && docker compose up -d)
+if ! (cd "$INSTALL_DIR" && docker compose up -d); then
+  say ''
+  say "Check the output above, then restart with: cd '$INSTALL_DIR' && docker compose up -d"
+  fail 'Nibleaf did not start; the generated configuration was kept.'
+fi
 trap - EXIT HUP INT TERM
 
 say ''
@@ -184,4 +222,8 @@ say "Dashboard: $APP_URL"
 say "Configuration: $INSTALL_DIR/.env (mode 600)"
 say "Reverse proxy targets: dashboard -> 127.0.0.1:4310; storage -> maxio:9000 (or publish it to loopback)."
 say "Check status: cd '$INSTALL_DIR' && docker compose ps"
-say 'Next: configure DNS/TLS, open /sign-up for the first owner, then set DISABLE_SIGNUP=true if this is a private instance.'
+if [ "$EMAIL_DELIVERY_REQUIRED" = false ]; then
+  say "Next: configure DNS/TLS, add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to $INSTALL_DIR/.env, run docker compose up -d there, then open /sign-up. Email codes will not arrive until Postmark or SMTP is configured. Set DISABLE_SIGNUP=true if this is a private instance."
+else
+  say 'Next: configure DNS/TLS, open /sign-up for the first owner, then set DISABLE_SIGNUP=true if this is a private instance.'
+fi

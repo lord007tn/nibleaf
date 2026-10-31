@@ -83,8 +83,8 @@ export default function SiteSearchDialog({
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   versionFilterEnabled?: boolean;
-  /** Site-level product switch. Instance/provider availability is still
-   * enforced server-side and never inferred from this client flag. */
+  /** Shows the "Ask AI" mode: the site enables AI answers and the instance
+   * can serve them. The answer endpoint still enforces both server-side. */
   aiAnswers?: boolean;
 }) {
   const { track } = useSiteAnalytics();

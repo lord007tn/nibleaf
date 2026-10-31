@@ -387,6 +387,7 @@ describe('siteHead analytics scripts', () => {
     languageConfig,
     version: 1,
     generatedAt: '2026-07-01T00:00:00.000Z',
+    capabilities: { answer: false },
   });
 
   it('advertises the project name as og:site_name, localized by the active language', () => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueueNames } from '../constants';
+import { ERASURE_JOB_OPTIONS } from '../jobs/erasure';
 
 const mocks = vi.hoisted(() => ({ close: vi.fn(async () => undefined), queueConstructed: vi.fn(), queueEventsConstructed: vi.fn() }));
 
@@ -46,5 +47,13 @@ describe('producer queue lifecycle', () => {
 
     getQueue(QueueNames.PUBLISH);
     expect(mocks.queueConstructed).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives every erasure job the retry and retention options of its queue', () => {
+    getQueue(QueueNames.ERASURE);
+    expect(mocks.queueConstructed).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining('erasure'),
+      expect.objectContaining({ defaultJobOptions: expect.objectContaining(ERASURE_JOB_OPTIONS) }),
+    );
   });
 });

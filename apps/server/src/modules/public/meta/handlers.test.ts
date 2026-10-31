@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({
+  ai: { draft: false, answers: false },
   extras: {
     DISABLE_SIGNUP: false,
     MARKETING_GA4_ID: undefined as string | undefined,
@@ -12,6 +13,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/auth/providers', () => ({ googleOAuthEnabled: () => true }));
 vi.mock('@/env', () => ({ env: {} }));
+vi.mock('@/actions/ai', () => ({ aiDraftAvailable: () => mocks.ai.draft }));
+vi.mock('@/lib/ai-search/runtime', () => ({ answerSearchAvailable: () => mocks.ai.answers }));
 vi.mock('@/lib/env-extras', () => ({ envExtras: mocks.extras }));
 
 import handlers from './handlers';
@@ -20,6 +23,8 @@ const app = new Hono<HonoEnv>().route('/meta', handlers);
 
 describe('public instance metadata', () => {
   beforeEach(() => {
+    mocks.ai.draft = false;
+    mocks.ai.answers = false;
     mocks.extras.DISABLE_SIGNUP = false;
     mocks.extras.MARKETING_GA4_ID = undefined;
     mocks.extras.MARKETING_GTM_ID = undefined;
@@ -30,6 +35,7 @@ describe('public instance metadata', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       data: {
+        ai: { draft: false, answers: false },
         marketingAnalytics: { consentRequired: true, ga4MeasurementId: null, gtmContainerId: null },
         providers: { google: true },
         signupDisabled: false,
@@ -56,5 +62,13 @@ describe('public instance metadata', () => {
     };
 
     expect(body.data.marketingAnalytics).toEqual({ consentRequired: true, ga4MeasurementId: 'G-ABC123', gtmContainerId: 'GTM-ABC123' });
+  });
+
+  it('reports instance AI capabilities', async () => {
+    mocks.ai.draft = true;
+    mocks.ai.answers = true;
+    const body = (await (await app.request('/meta')).json()) as { data: { ai: { draft: boolean; answers: boolean } } };
+
+    expect(body.data.ai).toEqual({ draft: true, answers: true });
   });
 });
