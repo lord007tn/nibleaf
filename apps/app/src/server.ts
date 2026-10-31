@@ -741,8 +741,8 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Support: support@nibleaf.com
 - RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
 - Product documentation: https://docs.nibleaf.com
-- Integrated release notes: https://docs.nibleaf.com/releases/august-2026-capabilities
-- Ordered migration and rollback guide: https://docs.nibleaf.com/self-hosting/combined-release-migration
+- Release notes: https://docs.nibleaf.com/releases/v0-2-0
+- v0.1.2 to v0.2.0 upgrade and rollback guide: https://docs.nibleaf.com/self-hosting/upgrade-v0-2
 - Add-ons reference: https://docs.nibleaf.com/use-nibleaf/add-ons
 - MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
 - Public source: https://github.com/lord007tn/nibleaf

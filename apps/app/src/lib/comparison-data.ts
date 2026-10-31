@@ -512,7 +512,9 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       feature: 'Built-in search',
-      nibleaf: partial('Built-in Orama path; optional Qdrant hybrid path from v0.2.0 when you run Qdrant'),
+      nibleaf: partial(
+        'Built-in Orama path; optional self-hosted hybrid path from v0.2.0 that needs Qdrant, an AI provider key, and an evaluated cutover',
+      ),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
     {

@@ -43,10 +43,10 @@ Several capabilities ship in the image but stay off until you configure them:
 | Capability | Default | What it needs |
 | --- | --- | --- |
 | Hybrid search | Off; built-in search serves readers | A Qdrant service through the optional search overlay, an `OPENROUTER_API_KEY` for embeddings, and an evaluated `SEARCH_RUNTIME` cutover |
-| Grounded answers | Off | An AI provider key, `SEARCH_ANSWER_ENABLED=true`, and opt-in for each site |
+| Grounded answers | Off | Qdrant through the optional search overlay, `OPENROUTER_API_KEY`, `SEARCH_ANSWER_ENABLED=true`, and opt-in for each site |
 | AI writing assist | Hidden without a provider | `OPENROUTER_API_KEY` |
 | MCP endpoint | Off (`MCP_ENABLED=false`) | An operator to enable it and issue scoped keys |
-| ClickHouse analytics | Off | A ClickHouse service that you run |
+| ClickHouse analytics | Off | A ClickHouse service that you run, plus the credentials, migrations, and `ANALYTICS_MODE` rollout in the [ClickHouse guide](/self-hosting/clickhouse-analytics). `docker-compose.prod.yml` does not pass these settings, so add them yourself. |
 
 Usage metering does not enable billing or payments, and its entitlements remain
 advisory.
