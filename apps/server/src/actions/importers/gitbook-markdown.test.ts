@@ -328,3 +328,8 @@ it('bounds the echoed include reference', async () => {
 it('keeps indentation after extracting the page heading', () => {
   expect(extractGitBookTitle('# Title\n\n    literal')).toEqual({ title: 'Title', body: '    literal' });
 });
+
+it('keeps HTML attribute lookup case insensitive', () => {
+  expect(convert('<IMG SRC="image.png" ALT="Shot">').content).toBe('![Shot](image.png)');
+  expect(convert('<A HREF="/safe" CLASS="button">Go</A>').content).toBe('<Button href="/safe" variant="primary">Go</Button>');
+});

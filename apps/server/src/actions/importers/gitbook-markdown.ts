@@ -105,7 +105,7 @@ const tagAttributes = (source: string): Record<string, string> => {
 };
 
 const htmlAttribute = (tag: string, name: string): string | undefined => {
-  const value = tagAttributes(tag)[name];
+  const value = Object.entries(tagAttributes(tag)).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
   return value === undefined ? undefined : decodeEntities(value);
 };
 
