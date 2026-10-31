@@ -76,8 +76,14 @@ check_stamp_negative() {
 }
 schedule_assert() {
  python3 - "$log" "$1" <<'PY'
-import json,sys
-s=open(sys.argv[1]).read();data=json.loads(s[s.index('{'):]);a=data['schedules'];assert len(a)==4
+import json,sys,re
+s=open(sys.argv[1]).read();decoder=json.JSONDecoder();found=[]
+for match in re.finditer(r'\{',s):
+ try: item,_=decoder.raw_decode(s[match.start():])
+ except json.JSONDecodeError: continue
+ if isinstance(item,dict) and isinstance(item.get('schedules'),list): found.append(item)
+assert found, 'No schedule inventory found'
+a=found[-1]['schedules'];assert len(a)==4
 mode=sys.argv[2]
 if mode=='new':assert all(x['scheduler'] and not x['legacy'] for x in a)
 if mode=='old4':assert all(x['legacy'] and not x['scheduler'] for x in a)
