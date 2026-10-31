@@ -1,0 +1,70 @@
+name: GitBook importer rehearsal
+on:
+  push:
+    branches: [rehearsal/gitbook-importer]
+permissions:
+  contents: read
+jobs:
+  postgres-and-app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: gitbook_rehearsal
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gitbook_rehearsal"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports: [6379:6379]
+    env:
+      NODE_ENV: test
+      POSTGRES_URL: postgresql://postgres@127.0.0.1:5432/gitbook_rehearsal
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      ANALYTICS_MODE: disabled
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm --filter @nibleaf/database exec prisma migrate deploy
+      - run: pnpm typecheck
+      - name: Real PostgreSQL races and authenticated public-repository import
+        env:
+          GITBOOK_REHEARSAL: '1'
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook.postgres.test.ts --reporter=verbose
+      - name: Focused regressions
+        run: |
+          pnpm --filter @nibleaf/server test -- src/actions/importers src/actions/branches-import.test.ts src/modules/app/imports/limit.test.ts
+          pnpm --filter @nibleaf/app test -- src/components/markdown.test.ts src/components/settings/import-errors.test.ts
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@v3
+        with:
+          upload: never
+          output: ${{ runner.temp }}/codeql-results
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gitbook-codeql-results
+          path: ${{ runner.temp }}/codeql-results/*.sarif
+          if-no-files-found: error
