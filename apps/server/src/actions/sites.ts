@@ -37,7 +37,7 @@ import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-c
 import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
-import { resolvePublishedSearchContext, resolvePublishedSearchLanguages } from '@/lib/search-configuration';
+import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from '@/lib/search-configuration';
 import { trackProjectEvent } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
@@ -367,6 +367,7 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
       : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
+    capabilities: { answer: resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers && answerSearchAvailable() },
   };
 };
 

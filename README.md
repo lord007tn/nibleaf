@@ -38,7 +38,7 @@ your content stays in your database.
 
 - 🖋️ **Rich text _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
-- 🌍 **Multilingual & RTL-first** — 12 interface languages, arbitrary BCP-47 content
+- 🌍 **Multilingual & RTL-first** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content
   languages, per-language page trees, and right-to-left layout.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
@@ -87,7 +87,7 @@ Private customer documentation supports dedicated reader accounts, audience/page
   encrypted write-only project credentials, and clear project-versus-instance ownership.
 - **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
   validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
-- **Multilingual & RTL** — 12 interface languages, arbitrary BCP-47 content languages,
+- **Multilingual & RTL** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
   and host-based published-site routing.
@@ -141,13 +141,16 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
+> [!WARNING]
+> **Known issue:** the install command below fails with a checksum error until v0.2.0 is released, because the published v0.1.2 files no longer match the checksums on `main`. It stops before anything starts, and existing installations aren't affected.
+
 On a Linux server, the pinned bootstrap downloads the v0.1.2 installer, verifies
 its committed SHA-256 digest, and only then executes it. The verified installer
 also verifies the release's production Compose file before it writes a mode-600
 `.env` or starts the stack:
 
 ```bash
-set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "d23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "63c707791887025d44deddb105931b65341b242f46220ccc03637c9ea8ab2a7f" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 For manual setup, the recommended path below **pulls the prebuilt image** from

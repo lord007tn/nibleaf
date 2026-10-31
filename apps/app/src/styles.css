@@ -209,6 +209,19 @@
     border-inline-end-color: transparent;
   }
 
+  /* Reader sidebars scroll natively so the bar always tracks the nav's height
+   * as sections expand; a thin, theme-tinted bar keeps it visible but quiet. */
+  .documentation-sidebar-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+        in oklab,
+        var(--muted-foreground) 40%,
+        transparent
+      )
+      transparent;
+  }
+
   /* Rail sidebars are always drawn on the code surface, whatever the mode, so
    * they remap the design-system aliases to the on-code derived tokens. */
   .documentation-signal-rail {

@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
+import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import {
   AlertTriangle,
   Braces,
@@ -27,7 +28,6 @@ import {
   useState,
 } from 'react';
 import { z } from 'zod';
-import { type CalloutType, normalizeType } from '@/components/site/mdx-config';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 
 // ─── Callouts / admonitions ─────────────────────────────────────────────────

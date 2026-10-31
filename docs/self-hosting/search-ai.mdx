@@ -67,6 +67,13 @@ validates the complete structured response, rejects unknown citations and
 unsupported claims, and only then returns it. This avoids streaming unvalidated
 model text. Search results remain immediate and non-generative.
 
+AI controls stay hidden until the instance can serve them. The editor's AI tab
+appears only when `OPENROUTER_API_KEY` is set and `AI_DAILY_LIMIT` is above
+zero. The **Grounded AI answers** setting and the reader's AI answer mode appear
+only when Qdrant and `OPENROUTER_API_KEY` are configured and
+`SEARCH_ANSWER_ENABLED=true`. If the provider fails, drafting returns an error
+instead of placeholder text.
+
 ## Index and evaluate
 
 Publishing enqueues an idempotent deployment index job. A retry diffs chunk IDs
@@ -170,3 +177,22 @@ versioned collection under the configured alias prefix. Deployment cleanup uses
 the same sweep through `delete-deployment`. Confirm an exact project-scoped
 count of zero after the job, then apply your normal Qdrant backup-retention
 policy. Never delete a physical collection while its alias is serving traffic.
+
+Project deletion also enqueues an `erase-project-storage` job on its own
+`erasure` queue. The job waits until the project row is deleted, then removes
+every object under `projects/<projectId>/` (uploaded and imported assets and
+export artifacts). It runs even without Qdrant, is safe to repeat, and retries
+apart from the Qdrant delete. If `WORKER_QUEUES` is an allowlist, include
+`erasure`. Without a worker for that queue, jobs wait in Redis and nothing is
+erased.
+
+Failed attempts back off exponentially for about 45.5 hours. If every attempt
+fails, the job stays in the queue's failed set until you retry or remove it, and
+the worker logs one error with the project id. After the first pass succeeds,
+one final pass runs a day later, because an upload URL signed before the
+deletion stays valid for an hour and an export already running can still write.
+An object written after the final pass stays in storage.
+
+This applies to deletions made after upgrading. It does not clean up objects
+left by earlier deletions. Bucket versioning, replication, and backups follow
+your own retention policy.
