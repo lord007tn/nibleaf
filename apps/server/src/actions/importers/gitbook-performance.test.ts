@@ -92,7 +92,7 @@ const cases = [
   'include tokens',
   'label comparisons',
 ];
-it.each(cases)(
+it.skipIf(process.env.GITBOOK_PERFORMANCE !== '1').each(cases)(
   'processes two MiB: %s',
   async (name) => {
     const elapsed = await measure(name);
@@ -101,7 +101,7 @@ it.each(cases)(
   },
   25_000,
 );
-it.each(['shared code restore', 'pipeline code restore'])(
+it.skipIf(process.env.GITBOOK_PERFORMANCE !== '1').each(['shared code restore', 'pipeline code restore'])(
   'processes two MiB: %s',
   async (name) => {
     const elapsed = await measure(name);
