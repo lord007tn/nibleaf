@@ -10,7 +10,7 @@ manifest remains the authority for the latest published artifact.
 
 ### Highlights
 
-v0.2.0 adds optional hybrid search with grounded AI answers, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint, and published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag. Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`, and `deepmerge`, which the image includes through its email packages.
+v0.2.0 adds optional hybrid search with grounded AI answers, a GitBook importer, project add-ons, portable documentation themes, usage metering, project integrations, and a read-only MCP endpoint, and published sites now move between pages without a full reload. Upgrading from v0.1.2 takes two steps because of the move to BullMQ 6, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag. Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`, and `deepmerge`, which the image includes through its email packages.
 
 ### Upgrade actions
 
@@ -49,6 +49,9 @@ procedure.
 
 ### Added
 
+- A GitBook Git Sync importer, thanks to @Zhincore, that keeps sidebar sections and
+  URLs, maps GitBook blocks onto Nibleaf components, and copies images into project
+  storage (#235).
 - Published sites move between pages without a full reload, thanks to @Zhincore, with
   focus, announcements and page views handled for each navigation (#237).
 - Pages with subpages collapse in the published sidebar, with only the branch holding
