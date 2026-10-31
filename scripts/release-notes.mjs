@@ -125,15 +125,18 @@ function main() {
   const version = values.version ?? to;
   if (!/^v\d+\.\d+\.\d+(?:-[\w.-]+)?(?:\+[\w.-]+)?$/.test(version)) throw new Error('Use --version vX.Y.Z when --to is a branch or SHA.');
   if (!values.dry && to !== version) throw new Error('Publishing requires --to to equal the version tag.');
-  const from = values.from ?? git('describe', '--tags', '--abbrev=0', `${to}^`);
+  const toOid = git('rev-parse', '--verify', `${to}^{commit}`);
+  const from = values.from ?? git('describe', '--tags', '--abbrev=0', `${toOid}^`);
+  const fromOid = git('rev-parse', '--verify', `${from}^{commit}`);
+  console.error(`Release notes range: ${from} (${fromOid})..${to} (${toOid})`);
   const repo = git('remote', 'get-url', 'origin')
     .replace(/^.*github.com[:/]/, '')
     .replace(/\.git$/, '');
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) throw new Error('Origin must be a GitHub repository.');
   const intro = highlights(readFileSync('CHANGELOG.md', 'utf8'), version, values.dry);
   const readLog = (range) => parseLog(run('git', ['log', '--format=%H%x1f%an%x1f%ae%x1f%B%x1e', range]));
-  const commits = readLog(`${from}..${to}`);
-  const previous = readLog(from);
+  const commits = readLog(`${fromOid}..${toOid}`);
+  const previous = readLog(fromOid);
   for (const c of commits) if (!conventional.test(c.subject)) console.error(`Warning: non-conventional commit ${c.sha.slice(0, 7)}: ${c.subject}`);
   const summary = summarize(commits, previous, resolveLogins([...commits, ...previous], repo));
   const temp = mkdtempSync(join(tmpdir(), 'release-notes-'));
@@ -142,7 +145,7 @@ function main() {
     // --output returns before changelogithub's publishing path; --dry would skip writing the file.
     const pnpmPath = process.env.npm_execpath;
     if (!pnpmPath) throw new Error('Run this command through pnpm release:notes or pnpm release:notes:dry.');
-    const args = ['release:notes:engine', '--from', from, '--to', to, '--output', raw];
+    const args = ['release:notes:engine', '--from', fromOid, '--to', toOid, '--output', raw];
     if (/\.(?:c?js|mjs)$/.test(pnpmPath)) run(process.execPath, [pnpmPath, ...args]);
     else run(pnpmPath, args);
     const body = compose({ version, from, to, repo, intro, commits, summary, generated: readFileSync(raw, 'utf8') });
