@@ -6,6 +6,10 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+### Highlights
+
+<!-- Before releasing, add one to three reviewed user-facing sentences here. -->
+
 ### Added
 
 - Project-scoped add-ons with entitlement-aware availability, consent controls,

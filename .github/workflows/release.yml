@@ -49,8 +49,7 @@ jobs:
           fi
           node scripts/self-host-release.mjs --output "$RUNNER_TEMP/self-host-release"
 
-      # Generates the GitHub release notes from conventional commits since the
-      # previous tag and publishes the release for this tag.
+      # Compose reviewed highlights and generated commits; preserve published notes on retry.
       - name: Publish release notes
         run: pnpm release:notes
         env:
