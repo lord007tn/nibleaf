@@ -234,7 +234,8 @@ export const inferGitBookNavigation = (paths: readonly string[], root: string, r
   };
 
   const nodes = build('');
-  if (fileSet.has(readme)) nodes.unshift({ kind: 'page', path: readme, title: 'Introduction', children: [] });
+  const rootReadme = files.find((file) => file.toLowerCase() === readme.toLowerCase());
+  if (rootReadme) nodes.unshift({ kind: 'page', path: rootReadme, title: 'Introduction', children: [] });
   return nodes.length > 0 ? [{ nodes }] : [];
 };
 

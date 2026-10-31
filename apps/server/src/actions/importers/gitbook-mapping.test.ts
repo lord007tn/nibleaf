@@ -189,7 +189,7 @@ describe('GitBook assets', () => {
 });
 
 it('keeps fallback slugs unique across repeated collisions', () => {
-  const { nodes } = planGitBookNavigation(
+  const { nodes, warnings } = planGitBookNavigation(
     [
       {
         nodes: ['a/intro.md', 'b-intro.md', 'b/intro.md', 'b-intro-2.md'].map((path) => ({ kind: 'page' as const, path, title: path, children: [] })),
@@ -199,9 +199,16 @@ it('keeps fallback slugs unique across repeated collisions', () => {
   );
   expect(new Set(nodes.map((node) => node.slug)).size).toBe(4);
   expect(nodes.slice(0, 3).map((node) => node.slug)).toEqual(['intro', 'b-intro', 'b-intro-2']);
+  expect(warnings.find((warning) => warning.includes('b/intro.md'))).toContain('imported as "b-intro-2"');
 });
 
 it('decodes navigation labels before stripping markup', () => {
   const parsed = parseGitBookSummary('* [&lt;img src=x onerror=alert(1)&gt;Safe](safe.md)', 'SUMMARY.md');
   expect(parsed.sections[0]?.nodes[0]?.title).toBe('Safe');
+});
+
+it('infers a lowercase root readme using its actual repository path', () => {
+  expect(inferGitBookNavigation(['space/readme.md'], 'space', 'README.md', 'SUMMARY.md')[0]?.nodes).toEqual([
+    { kind: 'page', path: 'readme.md', title: 'Introduction', children: [] },
+  ]);
 });

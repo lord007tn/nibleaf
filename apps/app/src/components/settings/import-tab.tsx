@@ -173,7 +173,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
         return;
       }
       if (error.code === 'import:incomplete') {
-        toast.error(`${t('settings.import.incomplete')}${error.path ? ` (${error.path})` : ''}`);
+        toast.error(`${t('settings.import.incomplete')}${error.path ? ` (${error.sourceFile ? `${error.sourceFile}: ` : ''}${error.path})` : ''}`);
         return;
       }
       if (error.code === 'import:limit') {
