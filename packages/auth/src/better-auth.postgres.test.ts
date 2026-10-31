@@ -16,11 +16,20 @@ const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.ho
     GOOGLE_CLIENT_SECRET: 'google-client-secret',
     TRUSTED_ORIGINS: `${APP_ORIGIN},${ADMIN_ORIGIN}`,
   });
-  return { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks: { codes: new Map<string, string>(), googleIdToken: '' } };
+  return {
+    ADMIN_ORIGIN,
+    APP_ORIGIN,
+    AUTH_SECRET,
+    GOOGLE_CLIENT_ID,
+    mocks: { codes: new Map<string, string>(), emailsTo: [] as string[], googleIdToken: '' },
+  };
 });
 
 vi.mock('@nibleaf/bullmq', () => ({
   createJob: vi.fn(async (_queue: string, job: { data?: { auth?: unknown; text?: string; to?: string } }) => {
+    if (job.data?.to) {
+      mocks.emailsTo.push(job.data.to);
+    }
     if (job.data?.auth && job.data.to && job.data.text) {
       mocks.codes.set(job.data.to, job.data.text);
     }
@@ -133,6 +142,14 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   const expectSignedInRedirect = (response: Response) => {
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toBe('/app');
+  };
+
+  const createGoogleUser = async (label: string, state: { banned?: boolean; suspendedAt?: Date } = {}) => {
+    const email = addressFor(label);
+    const sub = `${label}-${run}`;
+    const user = await prisma.user.create({ data: { email, emailVerified: true, name: label, ...state } });
+    await prisma.account.create({ data: { accountId: sub, providerId: 'google', userId: user.id } });
+    return { email, sub, userId: user.id };
   };
 
   const signInAsOwner = async () => {
@@ -273,6 +290,8 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const supportSession = await readSession(sessionCookie(support));
     expect(supportSession?.user.id).toBe(customer.id);
     expect(supportSession?.session.impersonatedBy).toBe(operator.id);
+    const started = await prisma.platformEvent.findFirst({ where: { type: 'admin_impersonation_started', userId: customer.id } });
+    expect(started?.metadata).toEqual({ actorUserId: operator.id });
   });
 
   it('creates a Google account and finds the same user on the next sign-in', async () => {
@@ -290,6 +309,49 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expectSignedInRedirect(second);
     expect((await readSession(sessionCookie(second)))?.user.id).toBe(user?.user.id);
     expect(await prisma.account.count({ where: { accountId: sub, providerId: 'google' } })).toBe(1);
+
+    // Activation counts the sign-up once, and only the first device gets an alert.
+    const userId = user?.user.id as string;
+    expect(await prisma.platformEvent.count({ where: { type: 'signup_completed', userId } })).toBe(1);
+    expect(await prisma.platformEvent.count({ where: { type: 'publish_clicked', userId } })).toBe(1);
+    expect(mocks.emailsTo.filter((to) => to === email)).toHaveLength(1);
+  });
+
+  it.each([
+    ['banned', { banned: true }, 302],
+    ['suspended', { suspendedAt: new Date() }, 403],
+  ])('creates no session for a %s Google user', async (label, state, status) => {
+    const { email, sub, userId } = await createGoogleUser(label, state);
+    const response = await signInWithGoogle(sub, email);
+    expect(response.status).toBe(status);
+    expect(response.headers.get('location')).not.toBe('/app');
+    expect(setCookiePairs(response).some((pair) => pair?.startsWith(`${SESSION_COOKIE}=`))).toBe(false);
+    expect(await prisma.session.count({ where: { userId } })).toBe(0);
+  });
+
+  it('refuses a new Google user when sign-up is disabled, and keeps existing users signing in', async () => {
+    const existing = await createGoogleUser('closed-existing');
+    const openAuth = auth;
+    vi.resetModules();
+    vi.stubEnv('DISABLE_SIGNUP', 'true');
+    ({ auth } = await import('./server'));
+    try {
+      const email = addressFor('closed-new');
+      const sub = `closed-new-${run}`;
+      const refused = await signInWithGoogle(sub, email);
+      expect(refused.status).toBe(302);
+      expect(refused.headers.get('location')).toContain('error=signup_disabled');
+      expect(await prisma.user.count({ where: { email } })).toBe(0);
+      expect(await prisma.account.count({ where: { accountId: sub, providerId: 'google' } })).toBe(0);
+
+      const returning = await signInWithGoogle(existing.sub, existing.email);
+      expectSignedInRedirect(returning);
+      expect((await readSession(sessionCookie(returning)))?.user.id).toBe(existing.userId);
+    } finally {
+      auth = openAuth;
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
   });
 
   it('signs in a returning Google user whose account row Better Auth 1.6 wrote', async () => {

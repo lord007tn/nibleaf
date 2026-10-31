@@ -6,6 +6,10 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+### Highlights
+
+<!-- Before releasing, add one to three reviewed user-facing sentences here. -->
+
 ### Upgrade actions
 
 These apply when you upgrade a self-hosted v0.1.2 installation. New installations

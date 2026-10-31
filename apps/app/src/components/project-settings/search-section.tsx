@@ -7,7 +7,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
-import { useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { useGetPublicMeta, useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
 import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
@@ -121,6 +121,7 @@ function ProjectSearchConfigurationForm({
   const update = useUpdateProjectSearchConfiguration(projectId);
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
+  const { data: publicMeta } = useGetPublicMeta();
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
@@ -206,17 +207,19 @@ function ProjectSearchConfigurationForm({
         />
       </div>
 
-      <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
-        <Segmented
-          className="max-w-[240px]"
-          onChange={setAiAnswers}
-          options={[
-            { value: 'enabled', label: t('settings.search.aiAnswers.enabled') },
-            { value: 'disabled', label: t('settings.search.aiAnswers.disabled') },
-          ]}
-          value={aiAnswers}
-        />
-      </Field>
+      {publicMeta?.ai?.answers ? (
+        <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
+          <Segmented
+            className="max-w-[240px]"
+            onChange={setAiAnswers}
+            options={[
+              { value: 'enabled', label: t('settings.search.aiAnswers.enabled') },
+              { value: 'disabled', label: t('settings.search.aiAnswers.disabled') },
+            ]}
+            value={aiAnswers}
+          />
+        </Field>
+      ) : null}
 
       <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
         {([isDirty, values]) => (
