@@ -20,6 +20,7 @@ python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["composeSha256"]
   assert len(blocks)==30
   (out/'expected-migrations.txt').write_text('\n'.join(sorted(set(re.findall(r'`(202[0-9]{11}_[a-z_]+)`',data))))+'\n')
   assert 'LIMIT 8' in blocks[17]
+  (out/'recovery-pause-only.sh').write_text(blocks[8].splitlines(True)[0])
   # The prose authorizes skipping only this one logical command.
   logical=re.findall(r'(?:[^\n]*\\\n)*[^\n]*\n',blocks[24])
   skipped=[x for x in logical if '--rollback --apply' not in x]

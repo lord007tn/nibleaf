@@ -39,14 +39,14 @@ try {await q.add('cleanup-exports',{requestedAt:new Date().toISOString()},{jobId
 TS
  quiet env NIBLEAF_VERSION="$STAGED" docker compose run --rm --no-deps -T -v "$PWD/queue-busy.ts:/app/packages/bullmq/scripts/queue-busy.ts:ro" worker node --import tsx packages/bullmq/scripts/queue-busy.ts
  log="$PRIVATE/busy-pause.log"
- if NIBLEAF_VERSION="$STAGED" operator pause > "$log" 2>&1;then record recovery-busy FAIL 'unexpected pause success';exit 1;fi
+ if source "$PUBLIC/recovery-pause-only.sh" > "$log" 2>&1;then record recovery-busy FAIL 'unexpected pause success';exit 1;fi
  grep -q 'queues pause: FAIL' "$log";safe_errors;stopped
  test "$STAMP" = "$ORIGINAL_STAMP";cmp -s "$PRIVATE/pre-upgrade.env" "backups/env-$STAMP"
  record recovery-busy-stop PASS 'expected refusal; all app services stopped; queues not resumed; original STAMP retained'
  record recovery-busy-continuation NOT-RUN 'guide explicitly stops here; no destructive queue intervention'
 else
  CURRENT=recovery-pause;log="$PRIVATE/recovery-pause.log"
- NIBLEAF_VERSION="$STAGED" operator pause > "$log" 2>&1
+ source "$PUBLIC/recovery-pause-only.sh" > "$log" 2>&1
  record recovery-quiet-pause PASS 'both queues quiescent'
  for b in 11 12 13;do run upgrade "$b" "recovery-$b";done;schedule_assert new
  # Revised prose says skip step 5 and preserve the original pre-upgrade backup.

@@ -109,7 +109,7 @@ start_candidate() {
  run upgrade 18
  run upgrade 19
  run upgrade 20 candidate-digest;cp "$log" "$PUBLIC/candidate-digest.txt"
- quiet docker compose run --rm --no-deps -T server node -e 'console.log(JSON.parse(require("node:fs").readFileSync("apps/server/node_modules/better-auth/package.json","utf8")).version)'
+ quiet docker compose run --rm --no-deps -T server node -e 'console.log(JSON.parse(require("node:fs").readFileSync("packages/auth/node_modules/better-auth/package.json","utf8")).version)'
  grep -qx '1.7.14' "$PRIVATE/fixture.log"
  record better-auth PASS 'published candidate contains 1.7.14'
 }
