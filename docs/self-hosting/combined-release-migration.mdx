@@ -1,21 +1,26 @@
 ---
 title: 'Migrate and roll back the combined capability release'
 description: 'Apply the search, usage, add-on, integration, and MCP migrations in dependency order, verify degraded states, and reverse them safely.'
-audience: 'self-hosted Nibleaf operators preparing an upgrade from the published v0.1.2 artifact'
+audience: 'self-hosted Nibleaf operators running a reviewed source build of the combined capability set'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
+last_reviewed: '2026-10-30'
 verified_against: 'packages/database/prisma/migrations/20260823180000 through 20260823240000, packages/clickhouse/src/migrations.ts, and the feature operator guides'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/combined-release-migration'
 ---
 
-This runbook covers the capability set merged into `main` through MCP commit
-`9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c`. The published self-host manifest
-still identifies v0.1.2. Do not apply these instructions to a production v0.1.2
-installation until a matching image or reviewed source build exists. A merged
-branch is not a released container, and this documentation change performs no
-deployment.
+**Upgrading a v0.1.2 installation to v0.2.0? Use the
+[upgrade guide](/self-hosting/upgrade-v0-2), not this page.** The `pnpm` commands
+below need a source checkout, which installer directories do not have. On a release
+image, the `migrate` service applies every pending migration. A source build must
+also complete the staged scheduler migration before it starts BullMQ 6, and going
+back to v0.1.2 means restoring the pre-upgrade backup.
+
+This runbook records the dependency order and verification boundaries for the
+capability set merged through MCP commit
+`9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c`, for operators who run a reviewed source
+build. A merged branch is not a released container.
 
 ## Establish the recovery point
 
@@ -33,8 +38,11 @@ zero and not successful.
 ## Apply migrations in dependency order
 
 Install the exact application revision and generate the Prisma client before
-typechecking or starting services. The normal deployment command applies the
-five additive Postgres migrations in filename order:
+typechecking or starting services. The normal deployment command applies pending
+Postgres migrations in filename order. A v0.1.2 database has eight pending: first
+`20260823120000_add_git_file_ownership` and `20260823143000_native_better_auth_admin`,
+then these five capability migrations, and last
+`20261030120000_invitation_created_at`:
 
 1. `20260823180000_search_configuration_diagnostics`
 2. `20260823210000_usage_metering`
@@ -43,8 +51,8 @@ five additive Postgres migrations in filename order:
 5. `20260823240000_mcp_control_plane`
 
 The integrations migration owns nullable `ApiKey.expiresAt` as a shared
-authentication prerequisite. The MCP migration depends on it and must remain
-last. Do not copy that column into the MCP migration or remove it while MCP or
+authentication prerequisite. The MCP migration depends on it and must
+run after it. Do not copy that column into the MCP migration or remove it while MCP or
 another consumer still depends on it.
 
 ```bash
@@ -98,10 +106,14 @@ with the durable upgrade record.
 
 ## Roll back in reverse order
 
+This section is for backing out one capability while you stay on the same build. It
+does not take you back to v0.1.2: migrations are forward-only, so returning to v0.1.2
+means [restoring the pre-upgrade backup](/self-hosting/upgrade-v0-2#roll-back).
+
 Prefer runtime rollback over destructive schema reversal. Disable MCP and stop
 its clients first. Return search to `SEARCH_RUNTIME=legacy`, disable optional
 ClickHouse reads, deactivate affected plans or add-ons, and stop integration
-mutations while the prior application image is restored.
+mutations.
 
 If a schema rollback is still required, deploy code that no longer reads the
 affected schema, preserve required audit/export evidence, stop all writers, and

@@ -1,0 +1,556 @@
+---
+title: 'الترقية من v0.1.2 إلى v0.2.0'
+description: 'انقل تثبيت Nibleaf v0.1.2 المستضاف ذاتيًا إلى v0.2.0 على مرحلتين، مع ترحيل جداول المهام المتكررة قبل بدء الإصدار الجديد.'
+audience: 'مشغّلو Nibleaf المستضاف ذاتيًا على الإصدار v0.1.2'
+content_type: 'how-to'
+last_reviewed: '2026-10-30'
+verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
+lang: 'ar'
+dir: 'rtl'
+translation_key: 'self-hosting/upgrade-v0-2'
+---
+
+لا يمكنك الوصول إلى v0.2.0 من v0.1.2 بتغيير وسم الصورة فقط. يخزّن v0.1.2 مهامه
+المتكررة بوصفها تعريفات تكرار من BullMQ 5، بينما يعمل v0.2.0 على BullMQ 6 الذي
+يرفضها. تتم الترقية على مرحلتين: رحّل الجداول من صورة مرحلية، ثم انتقل إلى v0.2.0.
+عند الانتهاء تبقى بياناتك واسم مشروع Compose ومفاتيح التشفير ووحدات التخزين كما هي،
+وتعمل المهام المتكررة الأربع بوصفها Job Schedulers.
+
+## من يحتاج إلى هذا الدليل
+
+اتبع هذا الدليل إذا كنت تستضيف v0.1.2 ذاتيًا باستخدام برنامج التثبيت الموجّه أو
+`docker-compose.prod.yml`.
+
+- **تثبيت جديد:** لا تحتاج إلى أي من هذا. استخدم
+  [دليل البدء السريع للاستضافة الذاتية](/ar/getting-started/self-hosted).
+- **إصدار أقدم من v0.1.2:** انتقل إلى v0.1.2 أولًا، فهذا المسار يبدأ منه.
+- **عمليات نشر أخرى** مثل `docker-compose.coolify.yml` أو البناء من المصدر: الترتيب
+  نفسه، لكن أسماء الخدمات ووحدات التخزين تختلف. عدّل الأوامر وجرّبها على نسخة
+  أولًا.
+
+لا تبدأ إلا بعد ظهور v0.2.0 في
+[صفحة الإصدارات](https://github.com/lord007tn/nibleaf/releases). لا تُعد تشغيل
+برنامج التثبيت فوق وحدات تخزين قائمة مطلقًا، ولا تُعد توليد بيانات الاعتماد. أبقِ اسم
+مشروع Compose و`.env` ومفاتيح التشفير ووحدات التخزين كما هي.
+
+## ما الذي يتغير
+
+| المجال | التغيير | ما عليك فعله |
+| --- | --- | --- |
+| المهام المتكررة | تتحول تعريفات التكرار من BullMQ 5 إلى Job Schedulers في BullMQ 6. | شغّل الترحيل المرحلي. |
+| قاعدة البيانات | تُنفَّذ ثمانية ترحيلات Prisma عبر خدمة `migrate`، وهي أحادية الاتجاه. | أنشئ نسخة احتياطية. تُنفَّذ الترحيلات في الخطوة 11. |
+| ملف Compose | تمريرات جديدة `MCP_*` و`INTEGRATION_*`. لا يكفي تغيير الإصدار للحصول عليها. | استبدل الملف بالنسخة الموثّقة من الإصدار. |
+| التكاملات | تستخدم بيانات الاعتماد المخزنة مفتاح تشفير مخصصًا. | أضف `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` قبل استخدام التكاملات. راجع [بعد الترقية](#بعد-الترقية). |
+| المساعدة الكتابية بالذكاء الاصطناعي | يقرأ v0.2.0 المتغيّر `OPENROUTER_API_KEY` بدلًا من `OPENAI_API_KEY`. | راجع [بعد الترقية](#بعد-الترقية) إذا كنت تستخدمها. |
+| المنصة | أصبحت Prisma 7 وVite 8 وTypeScript 7 داخل الصورة. | لا شيء. |
+
+الترحيلات الثمانية هي:
+
+1. `20260823120000_add_git_file_ownership`
+2. `20260823143000_native_better_auth_admin`
+3. `20260823180000_search_configuration_diagnostics`
+4. `20260823210000_usage_metering`
+5. `20260823220000_project_addons`
+6. `20260823230000_add_project_integrations`
+7. `20260823240000_mcp_control_plane`
+8. `20261030120000_invitation_created_at`
+
+## قبل أن تبدأ
+
+تأكد أولًا من كل ما يلي:
+
+- **استعادة مجرّبة.** اتبع [النسخ الاحتياطي والاستعادة](/ar/self-hosting/backups-upgrades)
+  وأثبت نجاح الاستعادة في بيئة معزولة. تُنشأ النسخة الاحتياطية النهائية في الخطوة 5.
+- **نافذة صيانة.** تتوقف لوحة التحكم وAPI والمواقع المنشورة من الخطوة 3 إلى الخطوة
+  11، لأن خدمة `app` هي التي تقدّم المواقع المنشورة. استغرق التسلسل نحو أربع دقائق على
+  مشغّل اختبار بقاعدة بيانات اصطناعية صغيرة جدًا، لذا خطط لنافذة أطول مع البيانات
+  الحقيقية.
+- **مساحة قرص.** احتفظ بما لا يقل عن 15 GB فارغة، إضافة إلى مساحة لملف تفريغ قاعدة
+  البيانات وأرشيف التخزين. تستخدم الترقية ثلاث صور. استهلك مضيف اختبار جديد نحو
+  10.2 GiB إجمالًا، بما في ذلك v0.1.2، لكن ذروة فك الضغط لم تُقَس. تحقق باستخدام
+  `df -h .` و`docker system df`.
+- **بنية amd64.** يدعم v0.2.0 البنية `linux/amd64` فقط. يجب أن يطبع `uname -m` القيمة
+  `x86_64`.
+- **طريقة لتسجيل الدخول.** يستخدم تسجيل الدخول رموزًا عبر البريد الإلكتروني، أو
+  Google عند إعداده. يجب أن يحتوي `.env` على قيمة لـ`POSTMARK_API_KEY` أو `SMTP_URL`.
+  إذا كنت تعتمد على تسجيل الدخول عبر Google وحده، فاضبط أيضًا
+  `EMAIL_DELIVERY_REQUIRED=false`. وإلا فسيظهر عامل المعالجة (worker) غير سليم، إذ
+  يعيد فحص سلامته 503 عندما يكون تسليم البريد مطلوبًا من دون مزوّد.
+- **عدم وجود حسابات مرتبطة مكررة.** يرفض Better Auth في v0.2.0 تسجيل الدخول عندما يشترك
+  صفّان من الجدول `account` في المزوّد ومعرّف الحساب نفسيهما، ولا يوجد في الجدول فهرس
+  فريد على هذا الزوج. نفّذ هذا الفحص المخصص للقراءة فقط من مجلد عملية النشر. في نسخة
+  محلية من المستودع، نفّذ أولًا `export COMPOSE_FILE=docker-compose.prod.yml`:
+
+  ```bash
+  docker compose exec -T postgres psql -U nibleaf -d nibleaf -c 'SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;'
+  ```
+
+  **المتوقع:** `(0 rows)`. لا يمنع التكرار إلا تلك الهوية وحدها، لكن عليك معالجته قبل
+  الترقية. لا يقدّم هذا الدليل استعلام حذف أو دمج، لأن اختيار الصف الذي تبقيه قرار يخص
+  بياناتك.
+- **جلسة Bash واحدة.** نفّذ كل الخطوات في الصدفة نفسها من مجلد عملية النشر، لأن
+  الخطوات اللاحقة تستخدم المتغيرات والدوال المعرّفة في الخطوة 1. توقف عند أول أمر
+  يفشل.
+
+جرت تجربة هذه الترقية على مشغّلات مؤقتة بقاعدة بيانات اصطناعية صغيرة جدًا. لم تشمل
+التجربة استعادة نسخة احتياطية حقيقية، ولا تسليم البريد، ولا تسجيل الدخول عبر Google،
+ولا تشغيلات مجدولة حقيقية، ولا حمل الإنتاج، واقتصر فحص تسجيل الدخول فيها على تحميل
+الصفحة. عليك أنت إثبات الخطوتين 5 و13.
+
+## الترقية خطوة بخطوة
+
+### 1. جهّز الصدفة
+
+افتح مجلد عملية النشر. في نسخة محلية من المستودع، وجّه Compose إلى ملف الإنتاج، لأن
+`docker-compose.yml` هناك هو منظومة البناء من المصدر:
+
+```bash
+export COMPOSE_FILE=docker-compose.prod.yml
+```
+
+تخطَّ هذا الأمر في مجلد أنشأه برنامج التثبيت الموجّه، حيث يحمل الملف الاسم
+`docker-compose.yml` أصلًا.
+
+اعثر على اسم مشروعك الحالي:
+
+```bash
+docker compose ls
+```
+
+اضبطه مع الصورة المرحلية. اسم المشروع الافتراضي هو `nibleaf`. استخدم الاسم الذي رأيته
+للتو إذا كان مختلفًا، لأن الاسم الجديد ينشئ منظومة جديدة فارغة:
+
+```bash
+export COMPOSE_PROJECT_NAME=nibleaf # use the EXISTING project name
+export STAGED=sha-33cb19838cf8ea89889bcaafba5d63596e6f6c64
+```
+
+لا تتضمن الصورة أمرًا خاصًا بالطوابير، لذا أنشئ أداة مساعدة صغيرة بجوار ملف Compose. لا
+تتعامل هذه الأداة إلا مع الطابورين اللذين يحملان المهام المتكررة، ولا تطبع إلا `PASS`
+أو `FAIL`:
+
+```bash
+cat > nibleaf-queues.ts <<'EOF'
+import { Queue } from 'bullmq';
+import { producerConnectionConfig } from '../src/redis';
+import { getQueueName } from '../src/utils/queue';
+const mode = process.argv[2];
+const queues = ['analytics', 'export'].map(name => new Queue(getQueueName(name), { connection: producerConnectionConfig, skipMetasUpdate: true }));
+try {
+  for (const queue of queues) {
+    if (mode === 'pause') await queue.pause();
+    if (mode === 'resume') await queue.resume();
+    if (mode === 'pause') {
+      for (let attempt = 0; attempt < 60 && await queue.getActiveCount(); attempt++) await new Promise(resolve => setTimeout(resolve, 1000));
+      if (await queue.getActiveCount() || await queue.getWaitingCount()) throw new Error('Queue is not quiescent; do not drain user jobs.');
+    }
+    if (mode === 'legacy') {
+      const definitions = await queue.getRepeatableJobs();
+      if (definitions.length !== (queue.name.includes('analytics') ? 1 : 2)) throw new Error('Expected v0.1.2 legacy definitions.');
+    }
+    if (mode === 'inventory') {
+      const definitions = await queue.getJobSchedulers(0, -1, true);
+      const expected = queue.name.includes('analytics') ? ['rollup-analytics-daily', 'reconcile-usage-periods'] : ['dispatch-export-schedules', 'cleanup-exports'];
+      if (definitions.length !== 2 || definitions.some(entry => !expected.includes(entry.key))) throw new Error('Unexpected candidate scheduler inventory.');
+    }
+  }
+  console.log(`queues ${mode}: PASS`);
+} catch { console.error(`queues ${mode}: FAIL`); process.exitCode = 1; }
+finally { await Promise.all(queues.map(queue => queue.close())); }
+EOF
+operator() {
+  docker compose run --rm --no-deps -T \
+    -v "$PWD/nibleaf-queues.ts:/app/packages/bullmq/scripts/nibleaf-queues.ts:ro" \
+    worker node --import tsx packages/bullmq/scripts/nibleaf-queues.ts "$1"
+}
+```
+
+تأكد من نقطة البداية:
+
+```bash
+grep '^NIBLEAF_VERSION=' .env
+docker compose ps
+```
+
+**المتوقع:** الإصدار هو `v0.1.2` وجميع الخدمات طويلة التشغيل سليمة.
+
+### 2. نزّل الصورة المرحلية وتحقق من الجداول
+
+```bash
+NIBLEAF_VERSION="$STAGED" docker compose pull worker
+docker image inspect --format '{{json .RepoDigests}}' "ghcr.io/lord007tn/nibleaf:$STAGED"
+NIBLEAF_VERSION="$STAGED" operator legacy
+```
+
+**المتوقع:** الملخّص الرقمي للصورة المرحلية هو
+`sha256:880938a6ab865487f0b85733eeb2c20da06de34dcce1bdb5a8f35f694e4a3da8`، والسطر
+الأخير هو `queues legacy: PASS`، ويعني أن تعريفات التكرار الثلاثة من v0.1.2 موجودة.
+توقف إذا اختلف أي منهما.
+
+هذه الصورة بناء لالتزام وليست إصدارًا: استخدمها لترحيل الجداول فقط، ولا تشغّلها خدمةً
+لديك مطلقًا. أبقِها متاحة للتعافي حتى تنتهي الترقية.
+
+### 3. أوقف الخدمات التي تنشئ المهام
+
+يبدأ التوقف من هنا. أوقف كل عملية جدولة، بما في ذلك أي مُنتِج خارجي تشغّله على هذه
+الطوابير:
+
+```bash
+docker compose --profile admin stop app admin server
+```
+
+**المتوقع:** لا يعرض `docker compose ps` إلا `postgres` و`dragonfly` و`maxio`
+و`worker`.
+
+### 4. أوقف الطوابير مؤقتًا وأوقف عامل المعالجة
+
+```bash
+NIBLEAF_VERSION="$STAGED" operator pause
+docker compose stop worker
+```
+
+**المتوقع:** `queues pause: PASS`. ينتظر الأمر حتى دقيقة لإنهاء المهام النشطة، ثم يرفض
+المتابعة إذا بقيت أي مهمة نشطة أو منتظرة.
+
+لا يستطيع عامل المعالجة إنهاء المهام المنتظرة ما دام الطابور متوقفًا مؤقتًا. إذا أبلغ
+`pause` عن `FAIL`، أو أبلغت الخطوة 6 لاحقًا بأن أحد الطوابير ليس هادئًا، فاستأنف تحت
+الإصدار القديم، ودع العمل ينتهي، ثم كرر هذه الخطوة. يعمل مُرسِل التصدير كل دقيقة، لذا
+كررها بعد بداية دقيقة جديدة مباشرة. لا تُفرغ مهام المستخدمين ولا تحذفها للوصول إلى
+الصفر مطلقًا:
+
+```bash
+docker compose start worker
+NIBLEAF_VERSION="$STAGED" operator resume
+```
+
+بعد أي فشل آخر، أبقِ الطوابير متوقفة مؤقتًا وتوقف.
+
+### 5. أنشئ النسخة الاحتياطية النهائية
+
+احتفظ بقيمة `STAMP` من هذه الخطوة، فالتراجع يحتاج إليها:
+
+```bash
+mkdir -m 700 -p backups
+STAMP=$(date +%Y%m%d-%H%M%S)
+cp -p .env "backups/env-$STAMP"
+cp -p "${COMPOSE_FILE:-docker-compose.yml}" "backups/compose-$STAMP.yml"
+docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_nibleaf-maxio":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data .
+ls -lh backups
+```
+
+**المتوقع:** أربعة ملفات جديدة غير فارغة. إذا كنت تستخدم تخزين R2 أو S3 خارجيًا، فتخطَّ
+سطر `docker run` واعتمد على النسخ الاحتياطي لدى مزوّدك. انسخ الملفات إلى خارج هذا
+المضيف قبل المتابعة. يحتوي `backups/env-*` على أسرار، فاحمه بما يناسب ذلك.
+
+### 6. نفّذ الترحيل تجريبيًا
+
+من هنا حتى الخطوة 10، يجب أن يستخدم Compose الصورة المرحلية:
+
+```bash
+export NIBLEAF_VERSION="$STAGED"
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+```
+
+**المتوقع:** مخرجات JSON تحمل `"applied": false` وهذه الإدخالات الأربعة. لا يغيّر هذا
+الأمر شيئًا. ينشئ v0.1.2 ثلاثة تكرارات قديمة، أما الجدول الرابع فجديد في v0.2.0، لذا
+تكون قيمتاه `false`:
+
+| الجدول | `legacy` | `scheduler` |
+| --- | --- | --- |
+| `rollup-analytics-daily` | `true` | `false` |
+| `reconcile-usage-periods` | `false` | `false` |
+| `dispatch-export-schedules` | `true` | `false` |
+| `cleanup-exports` | `true` | `false` |
+
+توقف إذا أبلغ الأمر عن تهيئة مجهولة أو غير متوقعة، ولا تلتفّ حول ذلك.
+
+### 7. طبّق الترحيل
+
+```bash
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply
+```
+
+**المتوقع:** مخرجات JSON تحمل `"applied": true`. تنشئ الأداة كل جدول جديد وتتحقق منه
+قبل حذف أي جدول قديم، لذا يمكنك تشغيلها مجددًا بأمان بعد أي فشل. أبقِ الطوابير متوقفة
+مؤقتًا أثناء ذلك. أكمل الترحيل تحت الصورة المرحلية، ولا تنسخ السكربت إلى v0.2.0 مطلقًا.
+
+### 8. تحقق من الجداول
+
+```bash
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+```
+
+**المتوقع:** تعرض الإدخالات الأربعة جميعها `"scheduler": true` و`"legacy": false`. لا
+تتابع قبل ذلك.
+
+### 9. استبدل ملف Compose
+
+نزّل ملف Compose الخاص بالإصدار وتحقق منه:
+
+```bash
+d=$(mktemp -d)
+curl -fsSLo "$d/docker-compose.yml" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/docker-compose.yml
+curl -fsSLo "$d/SHA256SUMS" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/SHA256SUMS
+(cd "$d" && grep '  docker-compose.yml$' SHA256SUMS | sha256sum -c -)
+cp "$d/docker-compose.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+```
+
+**المتوقع:** `docker-compose.yml: OK`. توقف إذا فشل التحقق.
+
+### 10. ثبّت v0.2.0 في `.env`
+
+انسخ `.env` احتياطيًا وغيّر سطر `NIBLEAF_VERSION` فقط. ثم امسح الوسم المرحلي من الصدفة،
+لأن القيمة المصدَّرة تتجاوز `.env`:
+
+```bash
+cp -p .env "backups/env-before-version-$STAMP"
+sed -i "s/^NIBLEAF_VERSION=.*/NIBLEAF_VERSION='v0.2.0'/" .env
+unset NIBLEAF_VERSION
+grep '^NIBLEAF_VERSION=' .env
+docker compose config --images
+```
+
+**المتوقع:** قيمة `NIBLEAF_VERSION` هي `v0.2.0`، وكل صورة Nibleaf في القائمة تنتهي
+بـ`:v0.2.0`. لا تتخطَّ هذه الخطوة. فمن دونها، يلتقط أي أمر Compose لاحق من صدفة جديدة
+الوسم القديم ويعيد تشغيل المُنتِجات القديمة.
+
+### 11. شغّل v0.2.0
+
+```bash
+docker compose pull
+docker compose run --rm --no-deps -T migrate
+docker compose up -d
+```
+
+إذا كنت تشغّل لوحة الإدارة، فاستخدم `docker compose --profile admin up -d` بدلًا من
+ذلك.
+
+امنح الخدمات عدة دقائق، ثم تحقق منها ومن قاعدة البيانات. كرر الحلقة حتى تعرض الخدمات
+الثلاث `healthy`:
+
+```bash
+for svc in server worker app; do
+  docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")"
+done
+docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 8'
+```
+
+**المتوقع:**
+
+- ينتهي أمر `migrate` بالعبارة `[nibleaf] migrate complete`؛
+- تعرض `server` و`worker` و`app` جميعها `healthy`؛
+- يعرض الاستعلام الترحيلات الثمانية المذكورة أعلاه.
+
+### 12. تحقق من الجداول واستأنف الطوابير
+
+تبقى الطوابير متوقفة مؤقتًا طوال الترقية، ولا يكشف عامل المعالجة السليم ذلك. تحقق أولًا
+من الجداول الجديدة ونقاط النهاية:
+
+```bash
+operator inventory
+curl -fsS http://127.0.0.1:4310/sign-in >/dev/null
+docker compose exec -T server curl -fsS http://127.0.0.1:4311/health >/dev/null
+```
+
+**المتوقع:** `queues inventory: PASS`، ولا يطبع أي من أمرَي `curl` خطأ. إذا غيّرت
+`APP_PORT` أو `NIBLEAF_BIND`، فاستخدم عنوانك في أمر `curl` الأول. إذا فشل أي فحص، فأبقِ
+الطوابير متوقفة مؤقتًا وتوقف.
+
+ثم استأنف. إذا تخطيت هذا، فستتوقف مهام التصدير والتحليلات بصمت:
+
+```bash
+operator resume
+rm nibleaf-queues.ts
+```
+
+**المتوقع:** `queues resume: PASS`.
+
+### 13. اختبر المنتج
+
+سجّل الدخول برمز حقيقي، وبحساب Google إذا كنت قد ضبطته. ارفع صورة واحدة، وانشر مشروعًا
+من صفحتين، وابحث عن الصفحة الثانية بعد تسجيل الخروج، وافتح صفحة عامة، ونزّل عملية تصدير
+واحدة. ثم سجّل الملخّص الرقمي للصورة مع ملاحظات الترقية:
+
+```bash
+docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.0
+```
+
+احتفظ بالصورة المرحلية والنسخة الاحتياطية حتى ينتفي احتمال التراجع.
+
+## إذا تخطيت المرحلة الوسيطة
+
+إذا بدأ v0.2.0 على الجداول القديمة، تُرفض الجدولة. لا تصبح `server` و`worker` جاهزتين،
+وتنتظر `app` خدمة API. وتعرض السجلات:
+
+```text
+Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
+```
+
+يُبلغ عامل المعالجة عن الخطأ نفسه للطابور `export`. تكون خدمة `migrate` قد نُفّذت
+عند هذه النقطة، لذا تكون قاعدة البيانات على v0.2.0.
+
+لا تحذف وحدة تخزين Dragonfly، ولا تُزِل المهام، ولا تُعد تشغيل برنامج التثبيت، ولا تُعد
+توليد بيانات الاعتماد. بياناتك سليمة. جهّز الصدفة والأداة المساعدة كما في الخطوة 1، ثم
+أوقف الخدمات المتعطلة:
+
+```bash
+docker compose stop server worker
+```
+
+نفّذ أمر `operator pause` بالصورة المرحلية من الخطوة 4 فقط. لا يمكن مواصلة التعافي إلا إذا
+لم يكن في الطابورين عمل نشط أو منتظر. إذا فشل الأمر، فتوقف ولا تستخدم إعادة تشغيل عامل
+المعالجة الواردة في الخطوة 4؛ فتلك الحاوية على v0.2.0 بالفعل، لذا لا تُعد إعادة محاولة على
+v0.1.2. أبقِ الطوابير متوقفة مؤقتًا والخدمات متوقفة، ولا تتجاوز هذا الفحص. لا يغطي هذا الدليل
+التعافي من طوابير مشغولة بعد فشل تشغيل v0.2.0، لذا
+[افتح بلاغًا](https://github.com/lord007tn/nibleaf/issues) قبل أن تتابع.
+
+إذا نجح الأمر، فتخطَّ الخطوة 5 واحتفظ بالنسخة الاحتياطية الأصلية السابقة للترقية وقيمة
+`STAMP` الخاصة بها؛ لا تصلح نسخة
+تُنشأ الآن بديلًا عنهما للتراجع. نفّذ الخطوات من 6 إلى 8. تخطَّ الخطوة 9 فقط إذا كان ملف
+Compose الخاص بالإصدار مثبتًا بالفعل. نفّذ الخطوة 10، بما فيها `unset NIBLEAF_VERSION`
+وفحص الصور، ثم الخطوات من 11 إلى 13. يتطلب [التراجع](#التراجع-إلى-الإصدار-السابق)
+نسخة احتياطية أُنشئت قبل ترحيل قاعدة البيانات.
+
+قبل المتابعة، تحقق من وجود الملفات الأربعة من الخطوة 5 لقيمة `STAMP` لديك. إذا كانت نسخة
+`env` أو Compose مفقودة، فضع نسخ ما قبل الترقية في `backups/env-$STAMP` و
+`backups/compose-$STAMP.yml`، لأن التراجع يستعيدها من هناك.
+
+## التراجع إلى الإصدار السابق
+
+لا توجد ترحيلات عكسية، لذا يعني التراجع عن v0.2.0 استعادة النسخة الاحتياطية السابقة
+للترقية. لا يكفي التراجع عن الجداول وحده، ولا تكفي استعادة Postgres وحدها أيضًا، لأن
+الجداول موجودة في Dragonfly الذي لا تشمله النسخة الاحتياطية. لا تشغّل v0.1.2 مباشرة
+على جداول مرحَّلة مطلقًا. نفّذ الأمرين بهذا الترتيب.
+
+جهّز الصدفة والأداة المساعدة كما في الخطوة 1، ونفّذ `unset NIBLEAF_VERSION`، واضبط
+`STAMP` على القيمة من الخطوة 5.
+
+### استعد الجداول
+
+لا تتخطَّ هذا القسم لأن الخطوة 7 فشلت أو انقطعت؛ فقد تكون غيّرت بعض الجداول. أوقف خدمات
+التطبيق والطوابير مؤقتًا كما هو موضح أدناه، ثم افحص التعريفات بالتشغيل التجريبي للتراجع
+باستخدام الصورة المرحلية. تخطَّ أمر تطبيق التراجع وحده فقط إذا كانت قيمة `scheduler` هي
+`false` لكل الإدخالات وكانت تعريفات التكرار القديمة المتوقعة سليمة. استعد دائمًا ملف
+Compose السابق و`.env` قبل تشغيل v0.1.2.
+
+أوقف خدمات التطبيق وأوقف الطوابير مؤقتًا:
+
+```bash
+docker compose --profile admin stop app admin server worker
+NIBLEAF_VERSION="$STAGED" operator pause
+```
+
+**المتوقع:** `queues pause: PASS`. إذا أبلغ عن `FAIL`، فأوقف التراجع وأبقِ جميع خدمات
+التطبيق متوقفة والطوابير متوقفة مؤقتًا. لا تستخدم إعادة المحاولة من الخطوة 4 هنا؛ فهي
+تشغّل حاوية عامل المعالجة القائمة، وقد تكون على v0.2.0. لا تستعد قاعدة البيانات ولا تستأنف
+الطوابير قبل تحديد إجراء تعافٍ مُراجَع للمهام المنتظرة أو النشطة.
+
+أعد الجداول إلى وضعها السابق ثم تحقق منها:
+
+```bash
+export NIBLEAF_VERSION="$STAGED"
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+unset NIBLEAF_VERSION
+```
+
+**المتوقع:** إذا طبّقت التراجع، تعرض الإدخالات الأربعة جميعها `"legacy": true` و`"scheduler": false`.
+وإذا تخطّيت التطبيق لأن تعريفات التكرار القديمة الأصلية كانت سليمة، تعرض الإدخالات الثلاثة هذه
+القيم، أما `reconcile-usage-periods` فيعرض `false` لكلتا القيمتين. لا يعرف v0.1.2 الجدول
+`reconcile-usage-periods`، فيتعامل مع مهمته بوصفها تنظيف الاحتفاظ
+المعتاد، وتعيد الترقية التالية ترحيله.
+
+استعد الإعدادات السابقة:
+
+```bash
+cp -p "backups/compose-$STAMP.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+cp -p "backups/env-$STAMP" .env
+```
+
+### استعد البيانات
+
+لا تتخطَّ هذا القسم إلا إذا لم تصل إلى الخطوة 11 مطلقًا، لأن أي ترحيل لقاعدة البيانات
+لم يُنفَّذ حينها.
+
+انقل قاعدة البيانات المرقّاة جانبًا بدلًا من حذفها، ثم استعد النسخة في قاعدة فارغة.
+لا تستخدم `pg_restore --clean` هنا، فقد تعيقه الجداول التي أضافتها الترحيلات. يبقى ما
+كُتب بعد الخطوة 5 في القاعدة المعاد تسميتها ولا تجري استعادته:
+
+```bash
+docker compose exec -T postgres psql -U nibleaf -d postgres -c 'ALTER DATABASE nibleaf RENAME TO nibleaf_failed_upgrade'
+docker compose exec -T postgres psql -U nibleaf -d postgres -c 'CREATE DATABASE nibleaf'
+docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf < "backups/nibleaf-db-$STAMP.dump"
+```
+
+استعد التخزين المضمّن. يستبدل هذا الأمر الكائنات الحالية، لذا تُفقد الملفات المرفوعة
+بعد الخطوة 5. إذا كنت تستخدم تخزينًا خارجيًا، فاستعده عبر مزوّدك:
+
+```bash
+docker compose stop maxio
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_nibleaf-maxio":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
+```
+
+### شغّل v0.1.2
+
+```bash
+docker compose up -d
+NIBLEAF_VERSION="$STAGED" operator resume
+rm nibleaf-queues.ts
+```
+
+**المتوقع:** عادت قيمة `NIBLEAF_VERSION` إلى `v0.1.2`، والخدمات سليمة، ويطبع الأمر
+الأخير `queues resume: PASS`. ثم كرر اختبار المنتج من الخطوة 13. احتفظ بالقاعدة
+`nibleaf_failed_upgrade` حتى تنتهي من التحقيق.
+
+## بعد الترقية
+
+لا يفعّل v0.2.0 ما يلي تلقائيًا.
+
+- **التكاملات.** أضف المفتاح المخصص قبل استخدام التكاملات. يضيف الأمر المفتاح إلى `.env`
+  إذا كان مفقودًا أو فارغًا، ولا يطبعه مطلقًا. ثم يتحقق من أنه قيمة بطول 32 بايتًا بترميز
+  base64:
+
+  ```bash
+  _integration_key=$(sed -n 's/^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=//p' .env | tail -n 1)
+  case "$_integration_key" in
+    ''|"''"|'""')
+      printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+      ;;
+  esac
+  unset _integration_key
+  docker compose run --rm --no-deps -T server node -e '
+  const key = process.env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY;
+  if (!key || Buffer.from(key, "base64").length !== 32) {
+    console.error("Integration key must be a base64-encoded 32-byte value; preserve any existing key and investigate.");
+    process.exit(1);
+  }
+  console.log("Integration key format: PASS");'
+  docker compose up -d
+  ```
+
+  تعامل مع المفتاح كما تتعامل مع كلمة مرور قاعدة البيانات، واحفظه احتياطيًا مع `.env`.
+  لا تغيّره بعد بدء استخدام التكاملات، وإلا أصبحت بيانات الاعتماد المحفوظة غير قابلة
+  للقراءة. لاستبداله، اتبع [إجراء التدوير](/ar/reference/integrations-engine). لا تُعد
+  استخدام مفتاح Git.
+- **MCP.** تبقى نقطة النهاية معطّلة حتى تضبط `MCP_ENABLED=true`. اقرأ
+  [دليل MCP](/ar/self-hosting/mcp) قبل تفعيلها.
+- **البحث والذكاء الاصطناعي.** يحتاج الذكاء الاصطناعي إلى مفتاح مزوّد توفّره بنفسك: اضبط
+  `OPENROUTER_API_KEY` في `.env`، ويمرّره ملف Compose الخاص بالإصدار إلى الخدمات. ويحتاج
+  البحث الهجين أيضًا إلى Qdrant، ولا يتضمنه `docker-compose.prod.yml`. أضف لذلك الملف
+  الاختياري `docker-compose.search.yml`. يوجد هذا الملف في المستودع، لا في أصول
+  الإصدار. اتبع [البحث الهجين والإجابات الموثّقة](/ar/self-hosting/search-ai).
+- **طوابير عامل المعالجة.** إذا كنت تضبط `WORKER_QUEUES`، فأضف `erasure`، وإلا بقيت الملفات
+  المخزّنة للمشاريع المحذوفة في مكانها. ينطبق هذا فقط على المشاريع المحذوفة بعد الترقية.
+- **التحليلات.** لا يتضمن `docker-compose.prod.yml` خدمة ClickHouse، وتبقى التحليلات
+  في وضعها الحالي حتى تتبع [دليل ClickHouse](/ar/self-hosting/clickhouse-analytics).
+- **التنظيف.** بعد أن تتأكد من عدم حاجتك إلى التراجع، احذف الصورة المرحلية باستخدام
+  `docker image rm "ghcr.io/lord007tn/nibleaf:$STAGED"`، وانقل نسخك الاحتياطية إلى
+  تخزين طويل الأمد.

@@ -3,8 +3,8 @@ title: 'تشغيل البحث الهجين والإجابات الموثّقة'
 description: 'فهرسة التوثيق المنشور في Qdrant، وتقييم حركة الظل، والانتقال الآمن، وتشغيل إجابات الذكاء الاصطناعي الموثّقة اختيارياً.'
 audience: 'مشغلو Nibleaf بالاستضافة الذاتية'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, and apps/worker/src/processors/search.ts'
+last_reviewed: '2026-10-30'
+verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/search-ai'
@@ -44,8 +44,11 @@ BM25 والمتجهات الكثيفة، مع فرض نطاق المستأجر �
 docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 ```
 
-يبقى الملف منفصلاً حتى لا تتغير أصول الاستضافة الذاتية الموقعة للإصدار v0.1.2.
-ويتضمن إعداد Coolify وبيئة التطوير Qdrant مباشرة.
+لا يتضمن `docker-compose.prod.yml` خدمة Qdrant، لذا يحتاج البحث الهجين إلى هذا الملف الإضافي.
+ويمرّر ملف Compose الإنتاجي أصلًا `OPENROUTER_API_KEY` إلى API وعامل المعالجة. يوجد الملف الإضافي في المستودع لا في أصول
+الإصدار، لذا يجب في المجلد الذي أنشأه برنامج التثبيت الموجّه جلبه من وسم الإصدار
+المطابق واستخدام `docker-compose.yml` ملفًا أول. ويتضمن إعداد Coolify وبيئة التطوير
+Qdrant مباشرة.
 
 للإجابات، فعّل `SEARCH_ANSWER_ENABLED` وثبّت `SEARCH_ANSWER_MODEL`. تستخدم
 الإجابات بيانات اعتماد OpenRouter نفسها عبر حزمة TypeScript الرسمية من

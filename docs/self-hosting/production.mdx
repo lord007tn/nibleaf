@@ -3,7 +3,7 @@ title: 'Take a self-hosted installation to production'
 description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
 audience: 'operators responsible for production readiness'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
+last_reviewed: '2026-10-30'
 verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
@@ -32,7 +32,8 @@ ingress because Nibleaf uses it to select the project.
 
 ## Verify service health
 
-Run from the deployment directory:
+Run from the deployment directory. In a guided-installer directory, omit
+`-f docker-compose.prod.yml`:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -41,21 +42,23 @@ docker compose -f docker-compose.prod.yml logs --tail=200 server worker app
 ```
 
 The server and worker expose internal `/health` responses; the app health check
-requests `/sign-in`. Keep those checks on the internal network or loopback.
-Then test actual behavior: create and verify an account, upload an image, publish
-a two-page project, search the second page, request a missing page, and send a
-password-reset message.
+requests `/sign-in`. Keep those checks on the internal network or loopback. The
+worker returns 503 while email delivery is required and no provider is configured.
+Then test actual behavior: create an account and sign in with an emailed code,
+upload an image, publish a two-page project, search the second page, and request a
+missing page.
 
 For enabled optional workflows, also create and download one [export](/product/exports),
 exercise a [redirect](/redirects), complete one [Git push and preview](/git-authoring),
 and prove both authorized and unauthorized [private reader access](/private-reader-access).
 
-For a compatible build of the combined capability set, additionally verify
-search diagnostics without content leakage, complete/partial/unavailable usage
-states, one add-on consent cycle, one non-production integration lifecycle, and
-one least-privilege MCP key from creation through revocation. Follow the
-[combined migration guide](/self-hosting/combined-release-migration); do not
-claim these checks for the published v0.1.2 artifact.
+On v0.2.0 or later, additionally verify complete/partial/unavailable usage states,
+one add-on consent cycle, and, for each one you enable, search diagnostics without
+content leakage, one non-production integration lifecycle, and one least-privilege
+MCP key from creation through revocation. Search needs the
+[optional Qdrant overlay](/self-hosting/search-ai), integrations need
+`INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`, and [MCP](/self-hosting/mcp) is off by
+default.
 
 ## Verify security boundaries
 

@@ -3,8 +3,8 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, and apps/worker/src/processors/search.ts'
+last_reviewed: '2026-10-30'
+verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/search-ai'
@@ -51,8 +51,12 @@ operation (including pull, up, config checks, and backup automation):
 docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 ```
 
-The overlay is separate so the checksummed v0.1.2 self-host release artifacts
-remain immutable. Coolify and the development stack include Qdrant directly.
+`docker-compose.prod.yml` does not include Qdrant, so hybrid search needs this overlay.
+The production Compose file already passes `OPENROUTER_API_KEY` to the API and worker.
+The overlay is in the repository,
+not in the release assets, so a guided-installer directory must fetch it from the
+matching release tag and use `docker-compose.yml` as the first file. Coolify and the
+development stack include Qdrant directly.
 
 To offer answers, set `SEARCH_ANSWER_ENABLED=true` and pin
 `SEARCH_ANSWER_MODEL`. Answer generation uses the same OpenRouter credential
