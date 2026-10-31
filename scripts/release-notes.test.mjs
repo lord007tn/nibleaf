@@ -40,6 +40,7 @@ test('version highlights take precedence; only dry runs fall back; empty highlig
   assert.equal(highlights(md, 'v0.3.0', true), 'Preview.');
   assert.throws(() => highlights(md, 'v0.3.0', false), /Add 1–3.*### Highlights.*## v0.3.0/);
   assert.throws(() => highlights('## Unreleased\n\n### Highlights\n\n<!-- TODO -->\n', 'v0.2.0', true), /Highlights must not be empty/);
+  assert.throws(() => highlights('## Unreleased\n\n### Highlights\n\n<!-- outer <!-- nested --> -->\n', 'v0.2.0', true), /Add 1/);
 });
 
 test('layout has optional fix-only lines, compare last inside a closed fold, contributors after fold', () => {

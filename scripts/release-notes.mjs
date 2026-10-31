@@ -14,11 +14,8 @@ export function isPerson({ name = '', email = '', login = '' }) {
 export function highlights(markdown, version, dry) {
   const sections = [...markdown.matchAll(/^## (.+)\r?\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)];
   const section = sections.find((m) => m[1].replace(/^\[|\]$/g, '') === version) ?? (dry ? sections.find((m) => m[1] === 'Unreleased') : undefined);
-  const text = section?.[2]
-    .match(/^### Highlights\s*\r?\n([\s\S]*?)(?=^### |$(?![\s\S]))/m)?.[1]
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .trim();
-  if (!text)
+  const text = section?.[2].match(/^### Highlights\s*\r?\n([\s\S]*?)(?=^### |$(?![\s\S]))/m)?.[1].trim();
+  if (!text || /<!--|-->/.test(text))
     throw new Error(
       `Add 1–3 user-facing sentences under ### Highlights in CHANGELOG.md section ## ${version}${dry ? ' (or ## Unreleased for a dry run)' : ''}. Highlights must not be empty.`,
     );
