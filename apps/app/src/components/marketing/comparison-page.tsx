@@ -8,7 +8,7 @@ import { AS_OF, nibleafPricing } from '@/lib/comparison-data';
 const featureSources: Record<string, { label: string; href: string }[]> = {
   Mintlify: [
     { label: 'Editor', href: 'https://www.mintlify.com/docs/editor/tutorial' },
-    { label: 'Languages and RTL', href: 'https://www.mintlify.com/docs/guides/internationalization' },
+    { label: 'Languages', href: 'https://www.mintlify.com/docs/guides/internationalization' },
     { label: 'Self-hosted frontend boundary', href: 'https://www.mintlify.com/blog/custom-frontends-on-mintlify' },
   ],
   GitBook: [

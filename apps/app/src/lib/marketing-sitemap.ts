@@ -10,14 +10,14 @@ export interface MarketingSitemapEntry {
  * (rolled forward only when that page materially changes). Blog URLs are
  * appended from the article frontmatter registry. */
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
-  { path: '/', lastmod: '2026-10-31' },
+  { path: '/', lastmod: '2026-11-02' },
   { path: '/ar', lastmod: '2026-08-22' },
   { path: '/documentation-platforms', lastmod: '2026-09-03' },
   { path: '/ar/documentation-platforms', lastmod: '2026-10-30' },
   { path: '/guides', lastmod: '2026-11-02' },
   { path: '/ar/guides', lastmod: '2026-11-02' },
   { path: '/cloud', lastmod: '2026-07-13' },
-  { path: '/pricing', lastmod: '2026-10-31' },
+  { path: '/pricing', lastmod: '2026-11-02' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
   { path: '/about', lastmod: '2026-10-31' },
   { path: '/contact', lastmod: '2026-08-15' },

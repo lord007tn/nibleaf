@@ -38,8 +38,8 @@ export const GUIDES: GuideEntry[] = [
     href: { en: '/blog/nibleaf-integrations', ar: '/blog/nibleaf-integrations-ar' },
     title: { en: 'Choose a Nibleaf integration by its actual workflow', ar: 'اختر تكامل Nibleaf بحسب سير العمل الفعلي' },
     summary: {
-      en: 'GitHub sync, import-only providers, consent-gated analytics, and source-release boundaries.',
-      ar: 'مزامنة GitHub والاستيراد والتحليلات المرتبطة بالموافقة وحدود إصدار المصدر.',
+      en: 'GitHub sync, import-only providers, consent-gated analytics, and release and provider boundaries.',
+      ar: 'مزامنة GitHub والاستيراد والتحليلات المرتبطة بالموافقة وحدود الإصدار والمزوّدين.',
     },
     next: { en: 'Test one connection with one publishable page.', ar: 'اختبر اتصالًا واحدًا مع صفحة قابلة للنشر.' },
   },
