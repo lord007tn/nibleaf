@@ -3,6 +3,8 @@
 Captured November 2, 2026 in the owner's personal Chrome profile using the actual
 MermaidBlock component and synthetic diagrams in a local review harness.
 These captures are local source acceptance, not production deployment evidence.
+The screenshots and bundle measurement below belong to the isolated Mermaid
+upgrade. The replacement dependency PR records fresh checks of the combined graph.
 
 - [Flowchart at 390px](mermaid12-mobile.jpg)
 - [Dark theme](mermaid12-dark.jpg)
