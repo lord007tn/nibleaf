@@ -34,7 +34,9 @@ The manual Docker workflow pulls the current base image and bypasses only the
 `runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm
 store caching when their inputs are unchanged. Cached `RUN apk add/upgrade`
 layers do not query newer repository metadata just because a release is newer.
-Local manual builds must use the same pull/cache options shown below.
+The refresh guarantee applies to the manual workflow or the explicit local
+release-build command below. Ordinary cached development Compose builds do not
+provide that guarantee.
 
 Image scan dispositions must use the built image's installed versions and a
 fresh unfiltered scan. An available upstream fix is not proof that Alpine 3.24
