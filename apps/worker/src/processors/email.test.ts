@@ -57,7 +57,7 @@ describe('handleEmailJobs', () => {
     mocks.env.SMTP_URL = undefined;
     mocks.env.EMAIL_DELIVERY_REQUIRED = false;
     vi.clearAllMocks();
-    mocks.smtpCreate.mockReturnValue({ sendMail: mocks.smtpSend });
+    mocks.smtpCreate.mockReturnValue({ sendMail: mocks.smtpSend, close: vi.fn() });
   });
 
   it('fails a required delivery when no provider is configured', async () => {
@@ -105,7 +105,10 @@ describe('handleEmailJobs', () => {
     mocks.smtpSend.mockResolvedValue({ messageId: 'smtp-message-123' });
 
     await expect(handleEmailJobs(job)).resolves.toEqual({ sent: true });
-    expect(mocks.smtpCreate).toHaveBeenCalledWith(mocks.env.SMTP_URL);
+    const options = new URL(mocks.smtpCreate.mock.calls[0]?.[0]);
+    expect(options.hostname).toBe('localhost');
+    expect(options.searchParams.get('connectionTimeout')).toBe('5000');
+    expect(options.searchParams.get('socketTimeout')).toBe('5000');
     expect(mocks.smtpSend).toHaveBeenCalledWith({
       from: mocks.env.EMAIL_FROM,
       to: job.data.to,

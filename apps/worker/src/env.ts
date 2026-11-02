@@ -20,6 +20,7 @@ const parsedEnv = createEnv({
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     WORKBENCH_USER: z.string().optional(),
     WORKBENCH_PASS: z.string().optional(),
+    WORKER_ALERT_EMAIL: z.email().optional(),
     EXPORT_CHROMIUM_PATH: z.string().default('/usr/bin/chromium-browser'),
     EXPORT_MAX_ASSET_BYTES: z.coerce
       .number()

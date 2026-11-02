@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@nibleaf/database', () => ({ prisma: {}, Prisma: {}, assignDefaultUsagePlan: vi.fn() }));
-vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: {} }));
+vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), sendRequiredEmail: vi.fn(), QueueNames: {} }));
 vi.mock('@nibleaf/email', () => ({
   createEmailTranslator: vi.fn(),
   renderMemberJoinedEmail: vi.fn(),

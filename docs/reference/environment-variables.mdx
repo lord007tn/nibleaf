@@ -75,6 +75,7 @@ actually consumes. Never commit a populated `.env`.
 | `EMAIL_FROM` | For delivery | `nibleaf@localhost` | Provider-verified sender. |
 | `POSTMARK_API_KEY` | For Postmark | Empty | Server token; preferred when set. |
 | `POSTMARK_MESSAGE_STREAM` | No | Empty | Postmark stream. |
+| `WORKER_ALERT_EMAIL` | Recommended in production | Empty | Operations recipient. Pending emails older than 30 seconds or queue failures lasting 60 seconds trigger a direct provider alert, bypassing the email queue. Attempts are limited to one per worker container per 15 minutes, including restarts. |
 | `SMTP_URL` | For SMTP fallback | Empty | Full SMTP connection URL. Protect it as a secret. |
 | `EMAIL_DELIVERY_REQUIRED` | No | `true` in production | Return an unhealthy worker status and fail queued email jobs when no provider is configured. |
 

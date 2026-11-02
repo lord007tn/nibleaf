@@ -4,9 +4,12 @@ import { bootWorkers, closeQueueEvents, closeQueues, closeWorkers } from '@nible
 import { closeClickHouseClients, initializeClickHouseFn } from '@nibleaf/clickhouse';
 import { logger } from '@nibleaf/logger';
 import { env } from './env';
+import { createWorkerAlertSender } from './lib/worker-alerts';
 import systemApp, { setWorkerReady } from './modules/system/handlers';
 import { processors } from './processors';
 import { startDeploymentReaper } from './reaper';
+import { createWorkerShutdown } from './shutdown';
+import { startWorkerMonitor } from './worker-monitor';
 
 process.on('unhandledRejection', (reason) => {
   logger.error({ err: reason instanceof Error ? reason : new Error(String(reason)) }, 'unhandled rejection');
@@ -19,6 +22,15 @@ process.on('uncaughtException', (error) => {
 
 let server: ServerType | null = null;
 let reaperTimer: NodeJS.Timeout | null = null;
+let stopMonitor: (() => void) | undefined;
+
+const shutdown = createWorkerShutdown({
+  cleanup,
+  unready: () => {
+    setWorkerReady(false);
+    stopMonitor?.();
+  },
+});
 
 async function main() {
   await initializeClickHouseFn({ roles: ['reader', 'writer'] });
@@ -35,6 +47,10 @@ async function main() {
   // Sweep deployments stranded by a crash mid-build back to FAILED.
   reaperTimer = startDeploymentReaper();
   setWorkerReady(true);
+  stopMonitor = startWorkerMonitor({
+    alert: createWorkerAlertSender(),
+    restart: () => void shutdown('queue-unavailable', 1),
+  });
   logger.info('Queue workers started');
 }
 
@@ -45,12 +61,6 @@ async function cleanup() {
   }
   await Promise.allSettled([closeWorkers(), closeQueueEvents(), closeQueues(), closeClickHouseClients()]);
   server?.close();
-}
-
-async function shutdown(signal: string) {
-  logger.info({ signal }, 'shutting down worker');
-  await cleanup();
-  process.exit(0);
 }
 
 process.on('SIGTERM', () => {

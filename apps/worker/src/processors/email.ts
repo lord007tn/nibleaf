@@ -21,7 +21,11 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
     log.info({ jobId: job.id, reason: skipReason }, 'auth email skipped before delivery');
     return { sent: false };
   }
-  const { to, subject, html, text } = job.data;
+  return deliverEmail(job.data, job.id);
+}
+
+/** Also used directly for operations alerts when the email queue is unavailable. */
+export async function deliverEmail({ to, subject, html, text }: SendEmailJobData, jobId?: string): Promise<{ sent: boolean }> {
   const delivery = resolveEmailDelivery({
     postmarkApiKey: env.POSTMARK_API_KEY,
     smtpUrl: env.SMTP_URL,
@@ -30,7 +34,7 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
 
   try {
     if (delivery.provider === 'postmark' && env.POSTMARK_API_KEY) {
-      const client = new ServerClient(env.POSTMARK_API_KEY);
+      const client = new ServerClient(env.POSTMARK_API_KEY, { timeout: 5 });
       const response = await client.sendEmail({
         From: env.EMAIL_FROM,
         To: to,
@@ -40,7 +44,7 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
         ...postmarkPrivacyOptions,
         ...(env.POSTMARK_MESSAGE_STREAM ? { MessageStream: env.POSTMARK_MESSAGE_STREAM } : {}),
       });
-      log.info({ jobId: job.id, messageId: response.MessageID, provider: 'postmark' }, 'email sent');
+      log.info({ jobId, messageId: response.MessageID, provider: 'postmark' }, 'email sent');
       return { sent: true };
     }
 
@@ -49,7 +53,7 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
         throw new Error('Email delivery is required, but neither POSTMARK_API_KEY nor SMTP_URL is configured.');
       }
 
-      log.info({ jobId: job.id }, 'email delivery is optional and no provider is configured');
+      log.info({ jobId }, 'email delivery is optional and no provider is configured');
       return { sent: false };
     }
 
@@ -57,12 +61,21 @@ export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sen
       throw new Error('SMTP was selected but SMTP_URL is unavailable.');
     }
 
-    const transport = nodemailer.createTransport(env.SMTP_URL);
-    const response = await transport.sendMail({ from: env.EMAIL_FROM, to, subject, html, text });
-    log.info({ jobId: job.id, messageId: response.messageId, provider: 'smtp' }, 'email sent');
-    return { sent: true };
+    const smtpUrl = new URL(env.SMTP_URL);
+    for (const option of ['connectionTimeout', 'greetingTimeout', 'socketTimeout', 'dnsTimeout']) {
+      if (!smtpUrl.searchParams.has(option)) smtpUrl.searchParams.set(option, '5000');
+    }
+    const transport = nodemailer.createTransport(smtpUrl.href);
+    try {
+      const response = await transport.sendMail({ from: env.EMAIL_FROM, to, subject, html, text });
+      if (Array.isArray(response.accepted) && response.accepted.length === 0) throw new Error('SMTP did not accept the recipient.');
+      log.info({ jobId, messageId: response.messageId, provider: 'smtp' }, 'email sent');
+      return { sent: true };
+    } finally {
+      transport.close();
+    }
   } catch (error) {
-    log.error({ jobId: job.id, provider: delivery.provider ?? 'none' }, 'email delivery failed');
+    log.error({ jobId, provider: delivery.provider ?? 'none' }, 'email delivery failed');
     throw error;
   }
 }

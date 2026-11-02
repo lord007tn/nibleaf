@@ -1,8 +1,37 @@
 # Nibleaf deployment reliability contract
 
-This is the operator contract for Nibleaf Cloud releases. It separates what the
-repository can prove from what the hosting platform must prove. A healthy image
-or a completed provider job is not, by itself, a healthy production release.
+## Required email delivery and worker recovery
+
+OTP endpoints wait for the email worker's provider-acceptance result. A queue
+write alone is insufficient. Pending delivery times out after 10 seconds; the
+whole required delivery is bounded at 15 seconds, including enqueue. Missing,
+failed, expired, or undelivered jobs return the localized retryable
+`AUTH_EMAIL_UNAVAILABLE` response. Provider acceptance does not prove inbox
+placement. Expired OTPs remain ineligible for delivery after recovery.
+
+The worker checks its owned command and blocking connections every 10 seconds.
+Health reports queue names, connection states, and failure reasons without job
+contents. After 60 seconds of persistent queue failure it marks itself unready,
+drains, and exits nonzero so `restart: unless-stopped` can recover it. Drain is
+bounded at 30 seconds, below Compose's default 45-second grace; unfinished jobs
+remain subject to BullMQ's existing lock/retry and processor idempotency rules.
+Transient reconnects reset the recovery clock. Provider misconfiguration alone
+does not trigger a restart loop.
+
+Set `WORKER_ALERT_EMAIL` to an operations mailbox in production. Email backlog
+age of 30 seconds or sustained connection failure triggers a direct Postmark or
+SMTP alert, bypassing the queue. A timestamp-only file in the container's temp
+directory limits attempts to one per 15 minutes across process/container
+restarts; replacing the container resets that cooldown. Keep the temp directory
+writable. Alerts contain queue diagnostics and revision, never codes, message
+bodies, or customer recipients. Provider failure can prevent alert delivery and
+is logged as `worker_alert_failed`; it cannot block automatic recovery.
+
+CI exercises the real HTTP failure contract over Dragonfly, interrupts only a
+disposable worker's TCP proxy, verifies direct SMTP alert acceptance and a
+nonzero worker exit, then starts a replacement and verifies retained delivery.
+Production releases must additionally prove a fresh OTP request, provider/MX
+receipt, and successful sign-in on the exact new revision.
 
 ## Current Coolify Compose resource
 

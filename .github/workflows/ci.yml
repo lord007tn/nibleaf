@@ -119,6 +119,26 @@ jobs:
           AUTH_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/auth exec vitest run src/better-auth.postgres.test.ts
 
+      - name: Verify OTP delivery and consumer recovery against Dragonfly
+        env:
+          QUEUE_INTEGRATION: "1"
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+          REDIS_DB: "1"
+          QUEUE_CLUSTER: "true"
+        run: |
+          # Pull existing service images; this step never builds a Docker image.
+          trap 'docker rm -f nibleaf-queue-fixture nibleaf-mail-fixture >/dev/null 2>&1 || true' EXIT
+          docker run --detach --name nibleaf-queue-fixture -p 127.0.0.1:6379:6379 docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0 --cluster_mode=emulated --lock_on_hashtags
+          docker run --detach --name nibleaf-mail-fixture -p 127.0.0.1:1025:1025 axllent/mailpit:v1.32.0
+          for attempt in $(seq 1 30); do
+            if docker exec nibleaf-queue-fixture redis-cli ping | grep -qx PONG; then break; fi
+            sleep 1
+          done
+          docker exec nibleaf-queue-fixture redis-cli ping
+          pnpm --filter @nibleaf/auth exec vitest run src/auth-email-queue.integration.test.ts
+          pnpm --filter @nibleaf/worker exec vitest run src/worker-recovery.integration.test.ts
+
       - name: Verify publishing retention aggregates
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
