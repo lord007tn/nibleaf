@@ -18,7 +18,14 @@ export function MermaidBlock({ children }: { children?: React.ReactNode }) {
     (async () => {
       try {
         const mermaid = (await import('mermaid')).default;
-        mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: resolvedTheme === 'dark' ? 'dark' : 'default' });
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          suppressErrorRendering: true,
+          layout: 'dagre',
+          look: 'classic',
+          theme: resolvedTheme === 'dark' ? 'dark' : 'default',
+        });
         const { svg: rendered } = await mermaid.render(`mermaid-${rawId}`, chart.trim());
         if (!cancelled) {
           setSvg(rendered);
