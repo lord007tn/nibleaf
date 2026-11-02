@@ -22,9 +22,11 @@ TS/TSX with tsx/esbuild. Contributor builds retain the compiler. Other native
 optional dependencies, including sharp and Prisma, remain installed. The runner
 also omits the base image's unused npm/npx installer while retaining pnpm for
 existing migration/operator commands. Both the root package-manager pin and
-Corepack preparation use pnpm 10.34.7, whose bundled tar is 7.5.22 and
-http-cache-semantics is 4.3.0. Root dependency overrides do not update pnpm's
-separate bundled dependencies.
+Corepack preparation use pnpm 10.34.9, whose bundled `ip-address` is 10.7.4,
+tar is 7.5.22, and http-cache-semantics is 4.3.0. Its bundled glob 10.5.0 and
+minimatch 9.0.9 findings remain unresolved. Root dependency overrides do not
+update pnpm's separate bundled dependencies; verify the actual image after
+changing the toolchain pin.
 
 The base stays on Node 22 and Alpine 3.24. The runner upgrades all installed
 packages from that stable branch, including Chromium's native dependencies.
