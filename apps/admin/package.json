@@ -24,7 +24,7 @@
     "@tanstack/react-router": "1.170.46",
     "@tanstack/react-start": "1.169.4",
     "@t3-oss/env-core": "^0.13.11",
-    "lucide-react": "^1.62.0",
+    "lucide-react": "^1.65.0",
     "nitro": "3.0.260903-beta",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -32,7 +32,7 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "2.29.2",
+    "@inlang/paraglide-js": "2.29.3",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^22.20.5",
     "@types/react": "^19.3.0",
