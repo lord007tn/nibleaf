@@ -1,37 +1,28 @@
 # Nibleaf deployment reliability contract
 
-## Required email delivery and worker recovery
+## Required email delivery and worker health
 
 OTP endpoints wait for the email worker's provider-acceptance result. A queue
 write alone is insufficient. Pending delivery times out after 10 seconds; the
 whole required delivery is bounded at 15 seconds, including enqueue. Missing,
-failed, expired, or undelivered jobs return the localized retryable
+failed, expired, or undelivered jobs return the existing localized retryable
 `AUTH_EMAIL_UNAVAILABLE` response. Provider acceptance does not prove inbox
 placement. Expired OTPs remain ineligible for delivery after recovery.
 
-The worker checks its owned command and blocking connections every 10 seconds.
-Health reports queue names, connection states, and failure reasons without job
-contents. After 60 seconds of persistent queue failure it marks itself unready,
-drains, and exits nonzero so `restart: unless-stopped` can recover it. Drain is
-bounded at 30 seconds, below Compose's default 45-second grace; unfinished jobs
-remain subject to BullMQ's existing lock/retry and processor idempotency rules.
-Transient reconnects reset the recovery clock. Provider misconfiguration alone
-does not trigger a restart loop.
+Worker health probes the actual command and blocking connections and reports
+per-queue failure reasons without job contents. As in JoodCMS, application
+readiness and graceful draining remain separate from infrastructure operations.
+Shutdown marks the worker unready immediately and has a 30-second deadline,
+below Compose's 45-second grace. Unfinished jobs retain BullMQ's existing lock,
+retry, and processor idempotency rules.
 
-Set `WORKER_ALERT_EMAIL` to an operations mailbox in production. Email backlog
-age of 30 seconds or sustained connection failure triggers a direct Postmark or
-SMTP alert, bypassing the queue. A timestamp-only file in the container's temp
-directory limits attempts to one per 15 minutes across process/container
-restarts; replacing the container resets that cooldown. Keep the temp directory
-writable. Alerts contain queue diagnostics and revision, never codes, message
-bodies, or customer recipients. Provider failure can prevent alert delivery and
-is logged as `worker_alert_failed`; it cannot block automatic recovery.
-
-CI exercises the real HTTP failure contract over Dragonfly, interrupts only a
-disposable worker's TCP proxy, verifies direct SMTP alert acceptance and a
-nonzero worker exit, then starts a replacement and verifies retained delivery.
-Production releases must additionally prove a fresh OTP request, provider/MX
-receipt, and successful sign-in on the exact new revision.
+Use Coolify's existing container health checks, restart policy, and resource
+notifications. Docker's `restart: unless-stopped` recovers exited processes;
+an unhealthy status alone does not restart a live process. For a persistent
+queue failure, inspect worker and Dragonfly logs, restart only the affected
+worker through Coolify, and verify a fresh OTP through provider/MX receipt and
+successful sign-in. This release adds no in-process watchdog, alert sender,
+recovery fixture, or CI infrastructure.
 
 ## Current Coolify Compose resource
 
