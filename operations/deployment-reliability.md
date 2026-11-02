@@ -1,8 +1,28 @@
 # Nibleaf deployment reliability contract
 
-This is the operator contract for Nibleaf Cloud releases. It separates what the
-repository can prove from what the hosting platform must prove. A healthy image
-or a completed provider job is not, by itself, a healthy production release.
+## Required email delivery and worker health
+
+OTP endpoints wait for the email worker's provider-acceptance result. A queue
+write alone is insufficient. Pending delivery times out after 10 seconds; the
+whole required delivery is bounded at 15 seconds, including enqueue. Missing,
+failed, expired, or undelivered jobs return the existing localized retryable
+`AUTH_EMAIL_UNAVAILABLE` response. Provider acceptance does not prove inbox
+placement. Expired OTPs remain ineligible for delivery after recovery.
+
+Worker health probes the actual command and blocking connections and reports
+per-queue failure reasons without job contents. As in JoodCMS, application
+readiness and graceful draining remain separate from infrastructure operations.
+Shutdown marks the worker unready immediately and has a 30-second deadline,
+below Compose's 45-second grace. Unfinished jobs retain BullMQ's existing lock,
+retry, and processor idempotency rules.
+
+Use Coolify's existing container health checks, restart policy, and resource
+notifications. Docker's `restart: unless-stopped` recovers exited processes;
+an unhealthy status alone does not restart a live process. For a persistent
+queue failure, inspect worker and Dragonfly logs, restart only the affected
+worker through Coolify, and verify a fresh OTP through provider/MX receipt and
+successful sign-in. This release adds no in-process watchdog, alert sender,
+recovery fixture, or CI infrastructure.
 
 ## Current Coolify Compose resource
 

@@ -6,7 +6,7 @@ import { redisConnectionConfig } from '../redis';
 import type { ProcessorRegistry } from '../types';
 import { queueLogger } from '../utils/logger';
 import { getQueueName, QUEUE_CONFIGS } from '../utils/queue';
-import { workersConnected } from './readiness';
+import { inspectWorkerConnection, type WorkerConnectionHealth } from './readiness';
 
 export type { ProcessorRegistry } from '../types';
 
@@ -17,15 +17,25 @@ interface WorkerEntry {
 
 const activeWorkers: WorkerEntry[] = [];
 
-export const areWorkersConnected = (): Promise<boolean> =>
-  workersConnected(
-    activeWorkers.map(({ worker }) => ({
-      isRunning: () => worker.isRunning(),
-      key: worker.toKey('meta'),
-      client: worker.getBackend().client,
-      blockingClient: worker.getBackend().blockingClient,
+export type QueueWorkerHealth = WorkerConnectionHealth & { queue: QueueNames };
+
+export const getWorkerHealth = (): Promise<QueueWorkerHealth[]> =>
+  Promise.all(
+    activeWorkers.map(async ({ name, worker }) => ({
+      queue: name,
+      ...(await inspectWorkerConnection({
+        isRunning: () => worker.isRunning(),
+        key: worker.toKey('meta'),
+        client: worker.getBackend().client,
+        blockingClient: worker.getBackend().blockingClient,
+      })),
     })),
   );
+
+export const areWorkersConnected = async (): Promise<boolean> => {
+  const workers = await getWorkerHealth();
+  return workers.length > 0 && workers.every((worker) => worker.ready);
+};
 
 function createWorker(queueName: QueueNames, processor: (job: Job) => Promise<unknown>): Worker {
   const config = QUEUE_CONFIGS[queueName];
@@ -39,6 +49,24 @@ function createWorker(queueName: QueueNames, processor: (job: Job) => Promise<un
   };
 
   const worker = new Worker(getQueueName(queueName), processor, workerOptions);
+
+  // Observe both owned sockets. Logging a new probe client's health would hide
+  // exactly the failure where a consumer has lost its blocking connection.
+  const backend = worker.getBackend();
+  for (const [kind, connection] of [
+    ['command', backend.client],
+    ['blocking', backend.blockingClient],
+  ] as const) {
+    if (!connection) continue;
+    void connection.then(
+      (client) => {
+        for (const event of ['ready', 'close', 'reconnecting', 'end'] as const) {
+          client.on(event, () => queueLogger.info({ queue: queueName, connection: kind, event }, 'Worker connection changed'));
+        }
+      },
+      () => queueLogger.error({ queue: queueName, connection: kind }, 'Worker connection initialization failed'),
+    );
+  }
 
   worker.on('ready', () => queueLogger.info({ queue: queueName, concurrency: config.concurrency }, 'Worker ready'));
   worker.on('completed', (job) => {

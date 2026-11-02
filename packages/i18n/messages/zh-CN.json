@@ -2758,11 +2758,11 @@
   "settings_members_revokeconfirm": "要撤销发给 {email} 的邀请吗？此邀请链接将失效。",
   "settings_config_discarddescription": "您有未保存的设置更改。离开此部分将丢弃这些更改。",
   "editor_saveconfigfirst": "请先保存设置更改，再预览或发布。",
-  "settings_import_maystillrun": "The connection ended before the import result arrived. This import may still be running. Do not start it again; check your pages before retrying.",
-  "settings_import_incomplete": "Source content could not be loaded. The import stopped and your draft was preserved.",
-  "settings_import_limit": "The import exceeded its content or time limit. Your draft was preserved. Import a smaller space and try again.",
-  "settings_import_conflict": "Your draft changed during the import. Your edits were preserved. Review your pages before retrying.",
-  "settings_import_inprogress": "An import is already running for this project. Wait for it to finish before starting another.",
-  "settings_import_busy": "Import capacity is busy or the import could not complete in time. Try again shortly.",
-  "settings_import_nodelimit": "The import exceeds the limit of {limit} navigation entries. Import a smaller space. Your draft was preserved."
+  "settings_import_maystillrun": "在收到导入结果之前连接已断开。此导入可能仍在运行。请勿再次启动；重试前请先检查你的页面。",
+  "settings_import_incomplete": "无法加载源内容。导入已停止，你的草稿已保留。",
+  "settings_import_limit": "导入超出了内容或时间限制。你的草稿已保留。请导入较小的空间后重试。",
+  "settings_import_conflict": "导入期间你的草稿发生了更改。你的编辑已保留。重试前请检查你的页面。",
+  "settings_import_inprogress": "此项目已有导入正在运行。请等待其完成后再开始新的导入。",
+  "settings_import_busy": "导入容量繁忙，或导入未能及时完成。请稍后重试。",
+  "settings_import_nodelimit": "导入超出了 {limit} 个导航条目的限制。请导入较小的空间。你的草稿已保留。"
 }

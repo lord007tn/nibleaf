@@ -16,7 +16,6 @@ import {
   type ThemeColorKey,
   type ThemeComponents,
   type ThemeLayout,
-  type ThemeOwnedProjectConfig,
   type ThemePresetId,
   themeContrastIssues,
 } from '@nibleaf/shared/themes';
@@ -51,7 +50,7 @@ const fullPresetTheme = (preset: ThemePresetId): NibleafThemeConfig => {
 };
 
 const initialDraft = (project: Project): ThemeDraft => {
-  const resolved = resolveTheme(project.config as ThemeOwnedProjectConfig | null);
+  const resolved = resolveTheme(project.config);
   return {
     theme: project.config?.theme ?? { version: THEME_SCHEMA_VERSION, preset: resolved.id, metadata: resolved.metadata },
     appearance: project.config?.styling?.theme ?? 'light',
@@ -70,7 +69,7 @@ const downloadText = (fileName: string, contents: string) => {
 };
 
 export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; mode: PreviewMode; arabic: boolean }) {
-  const theme = resolveTheme(config as ThemeOwnedProjectConfig);
+  const theme = resolveTheme(config);
   const t = (key: MessageKey) => translateFn(key, undefined, arabic ? 'ar' : 'en');
   return (
     <DocumentationThemeProvider
@@ -286,7 +285,7 @@ export function ThemeSection({ project }: { project: Project }) {
   const importProjectTheme = useImportProjectTheme(project.id);
   const exportProjectTheme = useExportProjectTheme(project.id);
   const saved = useMemo(() => initialDraft(project), [project]);
-  const [draft, setDraft] = useState<ThemeDraft>(saved);
+  const [draft, setDraft] = useState(saved);
   const [history, setHistory] = useState<ThemeDraft[]>([]);
   const [previewMode, setPreviewMode] = useState<PreviewMode>(saved.appearance === 'dark' ? 'dark' : 'light');
   const [previewArabic, setPreviewArabic] = useState(false);
@@ -306,7 +305,7 @@ export function ThemeSection({ project }: { project: Project }) {
     theme: draft.theme,
     styling: { ...(project.config?.styling ?? {}), theme: draft.appearance },
   } satisfies ProjectConfig;
-  const resolved = resolveTheme(config as ThemeOwnedProjectConfig);
+  const resolved = resolveTheme(config);
   const contrastIssues = themeContrastIssues(resolved);
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved);
 
