@@ -435,7 +435,7 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
         }
       }
     } else if (openapi.has(token.name) && closing) {
-      warnings.add('OpenAPI blocks were converted to links ? import the specification under API reference to render it.');
+      warnings.add('OpenAPI blocks were converted to links — import the specification under API reference to render it.');
       if (token.name !== 'openapi-schemas') {
         const { src, spec, path = '', method = '' } = attributes;
         const title = `${method.toUpperCase()} ${path}`.trim() || 'API reference';

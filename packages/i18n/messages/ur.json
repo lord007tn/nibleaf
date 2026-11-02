@@ -2758,11 +2758,11 @@
   "settings_members_revokeconfirm": "{email} کی دعوت منسوخ کریں؟ دعوت کا یہ لنک کام کرنا بند کر دے گا۔",
   "settings_config_discarddescription": "آپ کی ترتیبات کی تبدیلیاں محفوظ نہیں ہوئیں۔ اس حصے سے جانے پر وہ ضائع ہو جائیں گی۔",
   "editor_saveconfigfirst": "پیش منظر دیکھنے یا شائع کرنے سے پہلے ترتیبات کی تبدیلیاں محفوظ کریں۔",
-  "settings_import_maystillrun": "The connection ended before the import result arrived. This import may still be running. Do not start it again; check your pages before retrying.",
-  "settings_import_incomplete": "Source content could not be loaded. The import stopped and your draft was preserved.",
-  "settings_import_limit": "The import exceeded its content or time limit. Your draft was preserved. Import a smaller space and try again.",
-  "settings_import_conflict": "Your draft changed during the import. Your edits were preserved. Review your pages before retrying.",
-  "settings_import_inprogress": "An import is already running for this project. Wait for it to finish before starting another.",
-  "settings_import_busy": "Import capacity is busy or the import could not complete in time. Try again shortly.",
-  "settings_import_nodelimit": "The import exceeds the limit of {limit} navigation entries. Import a smaller space. Your draft was preserved."
+  "settings_import_maystillrun": "امپورٹ کا نتیجہ آنے سے پہلے کنکشن ختم ہو گیا۔ ہو سکتا ہے یہ امپورٹ ابھی بھی چل رہا ہو۔ اسے دوبارہ شروع نہ کریں؛ دوبارہ کوشش کرنے سے پہلے اپنے صفحات چیک کریں۔",
+  "settings_import_incomplete": "سورس مواد لوڈ نہیں ہو سکا۔ امپورٹ رک گیا اور آپ کا مسودہ محفوظ رکھا گیا۔",
+  "settings_import_limit": "امپورٹ اپنی مواد یا وقت کی حد سے تجاوز کر گیا۔ آپ کا مسودہ محفوظ رکھا گیا۔ چھوٹی اسپیس امپورٹ کریں اور دوبارہ کوشش کریں۔",
+  "settings_import_conflict": "امپورٹ کے دوران آپ کا مسودہ تبدیل ہو گیا۔ آپ کی ترامیم محفوظ رکھی گئیں۔ دوبارہ کوشش کرنے سے پہلے اپنے صفحات دیکھیں۔",
+  "settings_import_inprogress": "اس پروجیکٹ کے لیے ایک امپورٹ پہلے سے چل رہا ہے۔ دوسرا شروع کرنے سے پہلے اس کے مکمل ہونے کا انتظار کریں۔",
+  "settings_import_busy": "امپورٹ کی گنجائش مصروف ہے یا امپورٹ وقت پر مکمل نہیں ہو سکا۔ تھوڑی دیر بعد دوبارہ کوشش کریں۔",
+  "settings_import_nodelimit": "امپورٹ {limit} نیویگیشن اندراجات کی حد سے تجاوز کرتا ہے۔ چھوٹی اسپیس امپورٹ کریں۔ آپ کا مسودہ محفوظ رکھا گیا۔"
 }

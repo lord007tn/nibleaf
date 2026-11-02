@@ -2758,11 +2758,11 @@
   "settings_members_revokeconfirm": "Cabut undangan untuk {email}? Tautan undangan ini tidak akan berfungsi lagi.",
   "settings_config_discarddescription": "Ada perubahan pengaturan yang belum disimpan. Meninggalkan bagian ini akan membuangnya.",
   "editor_saveconfigfirst": "Simpan perubahan pengaturan sebelum melihat pratinjau atau menerbitkan.",
-  "settings_import_maystillrun": "The connection ended before the import result arrived. This import may still be running. Do not start it again; check your pages before retrying.",
-  "settings_import_incomplete": "Source content could not be loaded. The import stopped and your draft was preserved.",
-  "settings_import_limit": "The import exceeded its content or time limit. Your draft was preserved. Import a smaller space and try again.",
-  "settings_import_conflict": "Your draft changed during the import. Your edits were preserved. Review your pages before retrying.",
-  "settings_import_inprogress": "An import is already running for this project. Wait for it to finish before starting another.",
-  "settings_import_busy": "Import capacity is busy or the import could not complete in time. Try again shortly.",
-  "settings_import_nodelimit": "The import exceeds the limit of {limit} navigation entries. Import a smaller space. Your draft was preserved."
+  "settings_import_maystillrun": "Koneksi terputus sebelum hasil impor diterima. Impor ini mungkin masih berjalan. Jangan memulainya lagi; periksa halaman Anda sebelum mencoba ulang.",
+  "settings_import_incomplete": "Konten sumber tidak dapat dimuat. Impor dihentikan dan draf Anda tetap tersimpan.",
+  "settings_import_limit": "Impor melampaui batas konten atau waktu. Draf Anda tetap tersimpan. Impor ruang yang lebih kecil lalu coba lagi.",
+  "settings_import_conflict": "Draf Anda berubah selama impor. Suntingan Anda tetap tersimpan. Tinjau halaman Anda sebelum mencoba ulang.",
+  "settings_import_inprogress": "Impor untuk proyek ini sedang berjalan. Tunggu hingga selesai sebelum memulai impor lain.",
+  "settings_import_busy": "Kapasitas impor sedang penuh atau impor tidak dapat selesai tepat waktu. Coba lagi sebentar lagi.",
+  "settings_import_nodelimit": "Impor melampaui batas {limit} entri navigasi. Impor ruang yang lebih kecil. Draf Anda tetap tersimpan."
 }
