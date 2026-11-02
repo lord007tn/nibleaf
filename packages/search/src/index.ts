@@ -117,14 +117,14 @@ function exactArabicSignal(doc: SearchDoc, query: string): number {
 /** Build an in-memory Orama index from a set of documentation pages, tokenized
  *  for the given language (defaults to English). */
 export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage = 'english'): Promise<DocIndex> => {
-  const db = (await create({
+  const db = await create({
     schema: docSchema,
     components: {
       // Orama stemming stays off. Arabic uses the deterministic light analyzer
       // in this package; other languages retain their existing tokenization.
       tokenizer: { language, stemming: false },
     },
-  })) as DocIndex;
+  });
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
   const searchable = (value: string) => (language === 'arabic' ? normalizeArabicSearchText(value) : value);
@@ -233,7 +233,7 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
       limit: directLimit,
     });
     return results.hits.slice(0, limit).map((hit) => {
-      const id = String((hit.document as unknown as { id: string }).id);
+      const id = String(hit.document.id);
       return toSearchHit(db, id, hit.score, rawQuery, false);
     });
   }
@@ -280,13 +280,13 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
     const stableHits = [...hits].sort((left, right) => {
       const scoreDifference = right.score - left.score;
       if (scoreDifference !== 0) return scoreDifference;
-      const leftId = String((left.document as unknown as { id: string }).id);
-      const rightId = String((right.document as unknown as { id: string }).id);
+      const leftId = String(left.document.id);
+      const rightId = String(right.document.id);
       return leftId.localeCompare(rightId);
     });
     const maximumScore = stableHits.reduce((maximum, hit) => Math.max(maximum, hit.score), 0) || 1;
     stableHits.forEach((hit, index) => {
-      const id = String((hit.document as unknown as { id: string }).id);
+      const id = String(hit.document.id);
       const current = fused.get(id) ?? { id, fusion: 0, exactSignal: exactArabicSignal(sourceDoc(db, id), query) };
       const reciprocalRank = 1 / (RRF_K + index + 1);
       const normalizedScore = hit.score / maximumScore;

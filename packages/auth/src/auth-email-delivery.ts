@@ -35,7 +35,7 @@ export function withRequiredAuthEmailScope<T extends { handler: (request: Reques
 
 /**
  * Better Auth catches errors from runInBackgroundOrAwait. Retain a request-only
- * acknowledgement so its public after hook can report a required enqueue
+ * acknowledgement so its public after hook can report a required delivery
  * failure. Optional notifications never register here and stay best-effort.
  */
 export async function trackRequiredAuthEmail(context: DeliveryContext | undefined, delivery: () => Promise<void>): Promise<void> {

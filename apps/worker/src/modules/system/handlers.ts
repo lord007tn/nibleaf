@@ -1,6 +1,6 @@
 import { workbench } from '@getworkbench/hono';
 import { queues } from '@nibleaf/bullmq/queues';
-import { areWorkersConnected } from '@nibleaf/bullmq/workers';
+import { getWorkerHealth } from '@nibleaf/bullmq/workers';
 import { clickHouseHealth } from '@nibleaf/clickhouse';
 import { Hono } from 'hono';
 import { env } from '../../env';
@@ -22,7 +22,8 @@ const app = new Hono()
       smtpUrl: env.SMTP_URL,
       required: env.EMAIL_DELIVERY_REQUIRED,
     });
-    const queuesReady = workerReady && (await areWorkersConnected());
+    const workers = workerReady ? await getWorkerHealth() : [];
+    const queuesReady = workerReady && workers.length > 0 && workers.every((worker) => worker.ready);
     const ready = queuesReady && email.ready;
     const status = !workerReady ? 'starting' : ready ? 'ok' : 'degraded';
 
@@ -32,7 +33,7 @@ const app = new Hono()
         status,
         service: 'worker',
         revision: process.env.NIBLEAF_REVISION ?? 'development',
-        queues: { status: queuesReady ? 'ok' : 'unavailable' },
+        queues: { status: queuesReady ? 'ok' : 'unavailable', workers },
         email: {
           status: email.provider ? 'ok' : email.required ? 'misconfigured' : 'disabled',
           provider: email.provider ?? 'none',
