@@ -205,6 +205,10 @@ jobs:
             VITE_API_URL=http://server:4311
             VITE_APP_URL=https://nibleaf.com
             VITE_SITE_BASE_DOMAIN=nibleaf.com
+          pull: true
+          # Query current stable OS packages on every manual build without
+          # disabling the build/runtime-deps stages or pnpm store caches.
+          no-cache-filters: runner
           cache-from: |
             type=gha,scope=nibleaf-image
           cache-to: |

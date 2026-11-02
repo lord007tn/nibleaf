@@ -6,7 +6,8 @@
 # adapter + workspace packages resolve cleanly that way); app and admin
 # run their self-contained Nitro SSR bundles.
 
-FROM node:22-alpine AS base
+# Refresh within the reviewed Alpine branch; distro upgrades need their own review.
+FROM node:22-alpine3.24 AS base
 ENV PNPM_HOME=/pnpm
 ENV PNPM_STORE_DIR=/pnpm/store
 ENV PATH=$PNPM_HOME:$PATH
@@ -14,7 +15,7 @@ WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
 # Chromium needs an Arabic font for readable RTL PDF exports.
-RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corepack enable && corepack prepare pnpm@10.34.7 --activate
+RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corepack enable && corepack prepare pnpm@10.34.9 --activate
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
@@ -75,7 +76,9 @@ COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 # Services and operator migrations use Node/tsx or pnpm. The base image's npm
 # installer is unused and carries a separate bundled dependency graph.
-RUN apk upgrade --no-cache zlib libexpat chromium chromium-common chromium-angle && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# Refresh every installed stable-branch package, including Chromium's native
+# dependencies. The manual workflow bypasses only this stage's layer cache.
+RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

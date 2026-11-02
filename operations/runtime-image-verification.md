@@ -12,8 +12,9 @@ TypeScript/TSX. Prisma's CLI is a runtime dependency of the database package for
 export, both Nitro outputs and their public assets must come from the same build.
 
 The repository lockfile still contains development dependencies for contributors.
-Runtime exclusion is verified from installed files in the final image; this does
-not claim that the source-lock development advisory has been fixed upstream.
+Runtime exclusion must be checked against installed files and scans of the final
+image; this does not claim that the source-lock development advisory has been
+fixed upstream.
 
 Production peers still install TypeScript and Vitest metadata. The runtime stage
 omits only TypeScript's unused optional native compiler packages; services execute
@@ -21,12 +22,28 @@ TS/TSX with tsx/esbuild. Contributor builds retain the compiler. Other native
 optional dependencies, including sharp and Prisma, remain installed. The runner
 also omits the base image's unused npm/npx installer while retaining pnpm for
 existing migration/operator commands. Both the root package-manager pin and
-Corepack preparation use pnpm 10.34.7, whose bundled tar is 7.5.22 and
-http-cache-semantics is 4.3.0. Root dependency overrides do not update pnpm's
-separate bundled dependencies.
+Corepack preparation use pnpm 10.34.9, whose bundled `ip-address` is 10.7.4,
+tar is 7.5.22, and http-cache-semantics is 4.3.0. Its bundled glob 10.5.0 and
+minimatch 9.0.9 findings remain unresolved. Root dependency overrides do not
+update pnpm's separate bundled dependencies; verify the actual image after
+changing the toolchain pin.
 
-The runner upgrades stable-branch zlib, libexpat and Chromium packages; image scan dispositions
-must use the built image's installed version rather than an earlier baseline.
+The base stays on Node 22 and Alpine 3.24. The runner upgrades all installed
+packages from that stable branch, including Chromium's native dependencies.
+The manual Docker workflow pulls the current base image and bypasses only the
+`runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm
+store caching when their inputs are unchanged. Cached `RUN apk add/upgrade`
+layers do not query newer repository metadata just because a release is newer.
+The refresh guarantee applies to the manual workflow or the explicit local
+release-build command below. Ordinary cached development Compose builds do not
+provide that guarantee.
+
+Image scan dispositions must use the built image's installed versions and a
+fresh unfiltered scan. An available upstream fix is not proof that Alpine 3.24
+ships it, and embedded Rust crates need a rebuilt containing native package.
+Do not add edge/testing repositories or suppress unresolved findings to make a
+report green. Keep findings without a compatible stable fix visible, then
+verify the exact candidate image and all four service roles before promotion.
 
 Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
 job or matching file checksum alone cannot establish that its text is readable.
@@ -47,7 +64,7 @@ headroom. Use a committed source revision for the final acceptance image.
 
 ```sh
 node scripts/docker-context-smoke.mjs
-docker build --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --build-arg VITE_APP_URL=http://localhost:4410 --build-arg VITE_API_URL=http://server:4311 --tag nibleaf-runtime:local .
+docker build --pull --no-cache-filter runner --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --build-arg VITE_APP_URL=http://localhost:4410 --build-arg VITE_API_URL=http://server:4311 --tag nibleaf-runtime:local .
 node scripts/runtime-image-audit.mjs nibleaf-runtime:local output/runtime-image/inventory.json
 ```
 
@@ -57,18 +74,24 @@ all canaries while retaining application source. It removes only its own files
 and temporary image tag. It never reads existing browser state or env contents.
 
 The image audit checks required artifacts, TypeScript/config/Prisma resolution,
-MCP runtime presence, and installed package inventory including nested and Nitro
-dependencies. It fails if Ultracite, braces, or a TypeScript native compiler
-package remains installed. No host env is
-forwarded into the probe container. Keep the JSON report with the exact image ID,
-source revision, build log, and acceptance evidence.
+MCP runtime presence, and packages reached by its normal `node_modules` and
+Nitro output traversal. It can miss embedded trees such as
+`nf3/dist/node_modules`; inspect embedded bundles separately and retain an
+unfiltered scan of the whole image. The audit fails when it finds Ultracite,
+braces, or a TypeScript native compiler package in its inventory. No host env is forwarded
+into the probe container. Keep the JSON report with the exact image ID, source
+revision, build log, and acceptance evidence.
 
 ## Disposable service acceptance
 
-Use a unique Compose project, new synthetic volumes, alternate ports, generated
-local-only secrets and a local SMTP catcher. Do not reuse customer or production
-data, credentials, provider accounts or existing service volumes. Do not infer
-deployment acceptance from a local image test.
+For the owner's local workflow, use the shared service helper to provision a
+project namespace on `productops-shared`. Reuse the individual `postgres`,
+`dragonfly`, `clickhouse`, `maxio`, and `qdrant` backing containers; preserve their
+existing keys and configuration. Use isolated containers for the application
+roles, alternate ports, synthetic namespace data, and a local SMTP catcher.
+Do not start duplicate backing services or a Compose stack per project. Keep
+customer or production data and provider accounts out of these tests; a local
+image test does not establish deployment acceptance.
 
 1. Run `migrate` and `clickhouse-migrate` twice. Both second runs must be
    idempotent. Default production migration must skip demo seeding; test explicit
@@ -90,5 +113,6 @@ deployment acceptance from a local image test.
    and queue shutdown without orphan child processes or abruptly lost jobs.
 
 Record each result separately. A health response does not prove publishing,
-migrations, email, PDF, Git, MCP or graceful shutdown. Remove only the temporary
-project's containers/volumes after preserving its reports.
+migrations, email, PDF, Git, MCP or graceful shutdown. Remove only owned
+application containers and synthetic fixtures after preserving reports; preserve
+shared backing containers, volumes, and keys.
