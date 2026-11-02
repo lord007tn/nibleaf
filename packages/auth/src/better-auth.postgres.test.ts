@@ -25,17 +25,21 @@ const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.ho
   };
 });
 
-vi.mock('@nibleaf/bullmq', () => ({
-  createJob: vi.fn(async (_queue: string, job: { data?: { auth?: unknown; text?: string; to?: string } }) => {
+vi.mock('@nibleaf/bullmq', () => {
+  const createJob = vi.fn(async (_queue: string, job: { data?: { auth?: unknown; text?: string; to?: string } }) => {
     if (job.data?.to) {
       mocks.emailsTo.push(job.data.to);
     }
     if (job.data?.auth && job.data.to && job.data.text) {
       mocks.codes.set(job.data.to, job.data.text);
     }
-  }),
-  QueueNames: { EMAIL: 'email', PUBLISH: 'publish', SEARCH: 'search' },
-}));
+  });
+  return {
+    createJob,
+    sendRequiredEmail: (data: { auth?: unknown; text?: string; to?: string }) => createJob('email', { data }),
+    QueueNames: { EMAIL: 'email', PUBLISH: 'publish', SEARCH: 'search' },
+  };
+});
 vi.mock('@nibleaf/clickhouse', () => ({
   clickHouseWritesEnabled: () => false,
   deleteProjectAnalytics: vi.fn(),

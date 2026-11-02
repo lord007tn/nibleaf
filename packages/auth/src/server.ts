@@ -1,4 +1,4 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { createJob, QueueNames, sendRequiredEmail } from '@nibleaf/bullmq';
 import { AUTH_OTP_EXPIRY_SECONDS, type SendEmailJobData } from '@nibleaf/bullmq/jobs/email';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
@@ -41,14 +41,13 @@ const sendMail = (to: string, email: RenderedEmail) =>
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
-/** Auth codes are required delivery: do not tell the browser a code was sent
- * until rendering succeeded and Redis accepted the email job. */
+/** Report success only after the worker confirms provider acceptance. */
 async function deliverRequiredAuthEmail(to: string, email: Promise<RenderedEmail>, auth: SendEmailJobData['auth']): Promise<void> {
   try {
     const message = await email;
-    await withTimeout(createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...message, auth } }), ENQUEUE_TIMEOUT_MS);
+    await withTimeout(sendRequiredEmail({ to, ...message, auth }), 15_000);
   } catch (error) {
-    log.error({ error: safeEmailError(error) }, 'required auth email enqueue failed');
+    log.error({ error: safeEmailError(error) }, 'required auth email delivery failed');
     throw error;
   }
 }

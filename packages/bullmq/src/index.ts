@@ -1,5 +1,7 @@
 import type { JobsOptions } from 'bullmq';
 import { QueueNames } from './constants';
+import type { SendEmailJobData } from './jobs/email';
+import { waitForEmailDelivery } from './queues/email-delivery';
 import { getQueue } from './queues/index';
 import { ensurePlatformSchedules } from './schedules';
 import type { CreateJobOptions, QueueJobMap } from './types';
@@ -23,6 +25,13 @@ export async function createJob<Q extends QueueNames>(
 
 export async function getJob<Q extends QueueNames>(queueName: Q, jobId: string) {
   return await getQueue(queueName).getJob(sanitizeJobId(jobId));
+}
+
+/** Auth must acknowledge provider acceptance, not just a successful Redis write. */
+export async function sendRequiredEmail(data: SendEmailJobData): Promise<void> {
+  const job = await createJob(QueueNames.EMAIL, { name: 'send-email', data });
+  if (!job.id) throw new Error('Required email job has no ID.');
+  await waitForEmailDelivery(getQueue(QueueNames.EMAIL), job.id);
 }
 
 export async function removeJob<Q extends QueueNames>(queueName: Q, jobId: string): Promise<boolean> {

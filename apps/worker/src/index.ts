@@ -19,6 +19,7 @@ process.on('uncaughtException', (error) => {
 
 let server: ServerType | null = null;
 let reaperTimer: NodeJS.Timeout | null = null;
+let stopping = false;
 
 async function main() {
   await initializeClickHouseFn({ roles: ['reader', 'writer'] });
@@ -48,9 +49,21 @@ async function cleanup() {
 }
 
 async function shutdown(signal: string) {
+  if (stopping) return;
+  stopping = true;
+  setWorkerReady(false);
   logger.info({ signal }, 'shutting down worker');
-  await cleanup();
-  process.exit(0);
+  const deadline = setTimeout(() => {
+    logger.error('Worker shutdown deadline exceeded; unfinished jobs remain for stalled-job recovery');
+    process.exit(1);
+  }, 30_000);
+  deadline.unref();
+  try {
+    await cleanup();
+    process.exit(0);
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 process.on('SIGTERM', () => {

@@ -10,6 +10,16 @@ interface ReadinessWorker {
   blockingClient?: Promise<{ status: string }>;
 }
 
+export interface WorkerConnectionHealth {
+  ready: boolean;
+  reason: 'ready' | 'not-running' | 'client-not-ready' | 'blocking-client-not-ready' | 'read-failed' | 'probe-timeout';
+  client: string | null;
+  blockingClient: string | null;
+}
+
+const connectionStatus = (status: string) =>
+  ['wait', 'connecting', 'connect', 'ready', 'close', 'reconnecting', 'end'].includes(status) ? status : 'unknown';
+
 const inFlightReads = new WeakMap<WorkerConnection, Promise<void>>();
 
 function readConnection(client: WorkerConnection, key: string): Promise<void> {
@@ -28,23 +38,32 @@ function readConnection(client: WorkerConnection, key: string): Promise<void> {
   return pending;
 }
 
-async function connected(worker: ReadinessWorker, timeoutMs: number): Promise<boolean> {
-  if (!worker.isRunning()) return false;
+export async function inspectWorkerConnection(worker: ReadinessWorker, timeoutMs = 1000): Promise<WorkerConnectionHealth> {
+  const status: WorkerConnectionHealth = { ready: false, reason: 'not-running', client: null, blockingClient: null };
+  if (!worker.isRunning()) return status;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       (async () => {
         const [client, blockingClient] = await Promise.all([worker.client, worker.blockingClient]);
-        if (client.status !== 'ready' || (blockingClient && blockingClient.status !== 'ready')) return false;
+        status.client = connectionStatus(client.status);
+        status.blockingClient = blockingClient ? connectionStatus(blockingClient.status) : null;
+        if (client.status !== 'ready') return { ...status, reason: 'client-not-ready' as const };
+        if (blockingClient && blockingClient.status !== 'ready') return { ...status, reason: 'blocking-client-not-ready' as const };
         await readConnection(client, worker.key);
-        return worker.isRunning() && client.status === 'ready' && (!blockingClient || blockingClient.status === 'ready');
+        status.client = connectionStatus(client.status);
+        status.blockingClient = blockingClient ? connectionStatus(blockingClient.status) : null;
+        if (!worker.isRunning()) return { ...status, reason: 'not-running' as const };
+        if (client.status !== 'ready') return { ...status, reason: 'client-not-ready' as const };
+        if (blockingClient && blockingClient.status !== 'ready') return { ...status, reason: 'blocking-client-not-ready' as const };
+        return { ...status, ready: true, reason: 'ready' as const };
       })(),
-      new Promise<false>((resolve) => {
-        timeout = setTimeout(() => resolve(false), timeoutMs);
+      new Promise<WorkerConnectionHealth>((resolve) => {
+        timeout = setTimeout(() => resolve({ ...status, reason: 'probe-timeout' }), timeoutMs);
       }),
     ]);
   } catch {
-    return false;
+    return { ...status, reason: 'read-failed' };
   } finally {
     clearTimeout(timeout);
   }
@@ -53,5 +72,5 @@ async function connected(worker: ReadinessWorker, timeoutMs: number): Promise<bo
 /** Probe owned worker connections; a fresh Redis client would hide broken ones. */
 export async function workersConnected(workers: readonly ReadinessWorker[], timeoutMs = 1000): Promise<boolean> {
   if (workers.length === 0) return false;
-  return (await Promise.all(workers.map((worker) => connected(worker, timeoutMs)))).every(Boolean);
+  return (await Promise.all(workers.map((worker) => inspectWorkerConnection(worker, timeoutMs)))).every((status) => status.ready);
 }
