@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fetchMarkdown, inspectSite } from './index';
 
-const responseFor = (url: string, accept: string | null): Response => {
+const responseFor = (url: string, accept: string | null) => {
   if (url.endsWith('nibleaf-cli-path-that-does-not-exist')) {
     return new Response('# 404\n\nSee llms.txt', { status: 404, headers: { 'content-type': 'text/markdown; charset=utf-8', vary: 'Accept' } });
   }
@@ -15,10 +15,10 @@ const responseFor = (url: string, accept: string | null): Response => {
 
 describe('inspectSite', () => {
   it('checks every agent entry point and real Markdown 404 behavior', async () => {
-    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
       const url = input instanceof Request ? input.url : input.toString();
       return responseFor(url, new Headers(init?.headers).get('accept'));
-    }) as unknown as typeof fetch;
+    });
 
     const result = await inspectSite('https://nibleaf.com', { fetchImpl });
     expect(result.ok).toBe(true);
@@ -27,14 +27,14 @@ describe('inspectSite', () => {
   });
 
   it('fails when Markdown can be cache-confused', async () => {
-    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const fetchImpl = vi.fn<typeof fetch>(async (input, init) => {
       const url = input instanceof Request ? input.url : input.toString();
       const response = responseFor(url, new Headers(init?.headers).get('accept'));
       if (new Headers(init?.headers).get('accept') === 'text/markdown' && !url.endsWith('nibleaf-cli-path-that-does-not-exist')) {
         response.headers.delete('vary');
       }
       return response;
-    }) as unknown as typeof fetch;
+    });
 
     const result = await inspectSite('https://nibleaf.com', { fetchImpl });
     expect(result.ok).toBe(false);
@@ -43,9 +43,7 @@ describe('inspectSite', () => {
 });
 
 it('fetches canonical pages as Markdown', async () => {
-  const fetchImpl = vi.fn(
-    async () => new Response('# Page', { headers: { 'content-type': 'text/markdown; charset=utf-8' } }),
-  ) as unknown as typeof fetch;
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response('# Page', { headers: { 'content-type': 'text/markdown; charset=utf-8' } }));
   const response = await fetchMarkdown('https://nibleaf.com/developers', fetchImpl);
   expect(await response.text()).toBe('# Page');
   expect(fetchImpl).toHaveBeenCalledWith(expect.any(URL), expect.objectContaining({ headers: { Accept: 'text/markdown' } }));

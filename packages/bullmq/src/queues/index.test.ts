@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({ close: vi.fn(async () => undefined), queueCons
 
 vi.mock('bullmq', () => ({
   Queue: class {
+    on = vi.fn();
     close = mocks.close;
     drain = vi.fn();
     pause = vi.fn();

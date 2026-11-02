@@ -7,12 +7,14 @@ import { queueLogger } from '../utils/logger';
 import { getQueueName, QUEUE_CONFIGS } from '../utils/queue';
 
 function makeQueue<Q extends QueueNames>(name: Q): Queue<QueueJobMap[Q]['data'], unknown, QueueJobMap[Q]['name']> {
-  return new Queue<QueueJobMap[Q]['data'], unknown, QueueJobMap[Q]['name']>(getQueueName(name), {
+  const queue = new Queue<QueueJobMap[Q]['data'], unknown, QueueJobMap[Q]['name']>(getQueueName(name), {
     // Fail fast: an unreachable redis must reject `add()` (so callers can fall
     // back), never buffer the command into a promise that hangs the request.
     connection: producerConnectionConfig,
     defaultJobOptions: QUEUE_CONFIGS[name].defaultJobOptions,
   });
+  queue.on('error', () => queueLogger.error({ queue: name }, 'Producer queue connection error'));
+  return queue;
 }
 
 const queueCache: Partial<Record<QueueNames, Queue>> = {};

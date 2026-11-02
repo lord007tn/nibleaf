@@ -1,5 +1,3 @@
-import type { AlternativesRoundup, Comparison } from './comparison-data';
-
 export type ComparisonDataKey =
   | 'gitbookAlternatives'
   | 'mintlifyAlternatives'
@@ -11,7 +9,7 @@ export type ComparisonDataKey =
 /** Keep the source-heavy comparison registry out of the shared router entry.
  * Explicit property selection avoids a variable import/glob that would eagerly
  * pull unrelated route modules into every public navigation. */
-export async function loadComparisonData(key: ComparisonDataKey): Promise<AlternativesRoundup | Comparison> {
+export async function loadComparisonData<Key extends ComparisonDataKey>(key: Key) {
   const catalog = await import('./comparison-data');
   return catalog[key];
 }
