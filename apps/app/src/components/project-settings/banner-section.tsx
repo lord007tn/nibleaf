@@ -178,12 +178,13 @@ function BannerScopeForm({
   // The two toggles live outside the form, so their dirtiness is tracked by value.
   const togglesDirty = enabled !== initial.enabled || dismissible !== initial.dismissible;
 
+  const defaultValues = {
+    message: initial.message,
+    linkLabel: initial.linkLabel,
+    linkUrl: initial.linkUrl,
+  };
   const form = useForm({
-    defaultValues: {
-      message: initial.message,
-      linkLabel: initial.linkLabel,
-      linkUrl: initial.linkUrl,
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       await onSave({ ...value, enabled, dismissible });
     },
@@ -254,13 +255,29 @@ function BannerScopeForm({
         />
       ) : null}
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || togglesDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => (
+          <DirtyStateReporter
+            values={values}
+            defaults={defaultValues}
+            extraDirty={togglesDirty}
+            dirty={isDirty || togglesDirty}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !togglesDirty} isSubmitting={isSubmitting} />}
+        <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+          {([isSubmitting, isDirty, values]) => (
+            <SaveBar
+              values={values}
+              defaults={defaultValues}
+              extraDirty={togglesDirty}
+              disabled={!isDirty && !togglesDirty}
+              isSubmitting={isSubmitting}
+            />
+          )}
         </form.Subscribe>
       </div>
     </form>

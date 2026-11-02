@@ -1,0 +1,153 @@
+{
+  "recordedAt": "2026-10-15T22:20:16.418Z",
+  "image": "nibleaf-runtime:bb72cddb32a6",
+  "sourceRevision": "bb72cddb32a6cb1744683034d26fdfe16b3dbfdb",
+  "imageId": "sha256:60032d759714ac29e3b37d5a668f1b5a334ebf2e78d52cebe5862497fc917064",
+  "imageBytes": 4175209721,
+  "localSyntheticAcceptanceOnly": true,
+  "productionDeploymentOrProviderAcceptance": false,
+  "productionReady": false,
+  "freshDisposableBackends": true,
+  "coreChecks": {
+    "migrations": {
+      "postgresImmutableMigrations": 30,
+      "postgresRerunIdempotent": true,
+      "clickhouseRerunIdempotent": true,
+      "generatedPrismaQuery": true,
+      "defaultSeedExcluded": true,
+      "seedOptInSeparateDatabaseIdempotent": true
+    },
+    "services": {
+      "apiWorkerAppAdminHealthy": true,
+      "exactRevisionChecked": true,
+      "signInSsrAndStaticAssets": true,
+      "sameOriginApiProxy": true
+    },
+    "reader": {
+      "publicPort": 4410,
+      "internalPort": 4310,
+      "originalPortMappingNoWorkaround": true,
+      "englishArabicPublicSsr": true,
+      "authenticatedDashboardSsr": 200,
+      "anonymousDashboardRedirect": 307,
+      "privateAuthenticated": 200,
+      "privateAnonymous": 404,
+      "privateCacheControl": "private, no-store",
+      "unpublished": 404,
+      "customDomainEnglishArabicSsr": true,
+      "customDomainHostFixtureOnlyNoDnsOrTlsProof": true
+    },
+    "emailRendering": {
+      "englishArabicHtmlAndPlainText": true,
+      "arabicRtl": true,
+      "actualTsxRuntime": true,
+      "externalMailSent": false
+    },
+    "mcp": {
+      "initializeAndReadOnlyScopedTools": true,
+      "crossProjectDenied": true,
+      "unauthenticated": 401,
+      "invalidOrigin": 403
+    },
+    "publishAndExports": {
+      "actualWorkerReady": true,
+      "pages": 2,
+      "markdownStaticHtmlAndPdfStored": true,
+      "objectBytesAndChecksumsVerified": true,
+      "pdfPages": 3,
+      "allPdfPagesVisuallyInspected": true,
+      "finalArabicTitleAndBodyReadableRtl": true,
+      "finalFontPackageNoImageMutation": true
+    },
+    "git": {
+      "publicReadOnlyFixture": "https://github.com/githubtraining/example-basic.git",
+      "firstImportThenUpdateWithoutDuplicates": true
+    },
+    "shutdown": {
+      "activePublishDrainedToReadyAndQueueCompleted": true,
+      "allFourServicesExitZero": true,
+      "oom": false
+    }
+  },
+  "redisOutage": {
+    "pass": false,
+    "issue": "https://github.com/lord007tn/nibleaf/issues/201",
+    "isolatedRedisNetworkDisconnectOnly": true,
+    "workerHealthIncorrectlyReady": {
+      "httpStatus": 200,
+      "status": "ok"
+    },
+    "requiredOtpIncorrectSuccess": {
+      "httpStatus": 200,
+      "enqueueTimeoutMs": 3000,
+      "responseElapsedMs": 3145,
+      "callbackFailureConfirmedInApiLogs": true
+    },
+    "acceptedJobAndNewJobCompletedAfterRecovery": true,
+    "manualWorkerRestart": false,
+    "sourceCorrection": {
+      "status": "separate changes pending; not included or verified in this image",
+      "regression": "Actual HTTP handler must return a failure when required OTP enqueue fails; queue readiness must reflect unavailable Redis."
+    }
+  },
+  "inventory": {
+    "trackedInstalledResolutionRoots": 1389,
+    "independentPhysicalManifestsIncludingNestedFixtures": 1592,
+    "scoutIndexedPackages": 1940,
+    "spdxPackagesIncludingImageRoot": 1941,
+    "installedBraces": 0,
+    "installedUltracite": 0,
+    "installedNativeTypescriptCompiler": 0,
+    "sourceLockStillRecordsDevelopmentBraces": true,
+    "optionalPeerWrappersRemain": ["typescript@7.0.2", "vitest@4.1.11"],
+    "appEnvironmentAndOutputExcluded": true,
+    "sourceLockMetadataDistinctFromInstalledBytes": true
+  },
+  "security": {
+    "applicationProductionAuditAdvisoryIds": 0,
+    "unfilteredImageUniqueAdvisories": 67,
+    "cvssScoreDerivedSeverity": {
+      "critical": 0,
+      "high": 23,
+      "moderate": 18,
+      "low": 26
+    },
+    "noSuppressions": true,
+    "imageScannerClean": false,
+    "dispositions": "final-security-dispositions.json"
+  },
+  "rawSpdx": {
+    "sha256": "dad9d779aca7b5cd1e5ddf22cef752ba7907f43a333acf76f35255a61f71dd60",
+    "bytes": 5220621,
+    "packages": 1941,
+    "publishedVersion": "derived privacy-minimized package inventory, retaining all package identities/purls",
+    "maintainerAndPerFileMetadataOmitted": true
+  },
+  "artifacts": [
+    {
+      "file": "final-image-cves.sarif.json.gz",
+      "description": "Byte-identical unfiltered Docker Scout SARIF, gzip compressed; all67 findings retained.",
+      "bytes": 9273,
+      "sha256": "cdf430285271349d4fd4379e3de97ee5aa89d7726e02063a166c24571591017b",
+      "uncompressedSha256": "8f6b028771eac7e5b5b59dbe23cc7c0ba134828d4f6ae8cb02dbad9b50b521e4"
+    },
+    {
+      "file": "final-image-packages.spdx.json.gz",
+      "description": "Derived privacy-minimized SPDX package inventory; all1941 packages retained, maintainer/per-file metadata omitted.",
+      "bytes": 125664,
+      "sha256": "3652dd1f6901bc0da8ebd80be2eaa70ac5dda22d48bceb4d3bd8cf6439600170",
+      "uncompressedSha256": "901c2389eb71dfb1a1685e2b2c625263f10b179c5282295b5c84b11015cfd362"
+    },
+    {
+      "file": "arabic-pdf-final.png",
+      "description": "Final-image synthetic Arabic PDF page, visually inspected.",
+      "bytes": 14846,
+      "sha256": "093650a872dd08000560ee7236fe9b38889e20c84b4e61995e3dd197b5c7367e"
+    }
+  ],
+  "limits": [
+    "No external email delivery, production deployment, customer acceptance, DNS or TLS provisioning is established.",
+    "The Redis outage is a retained failed acceptance stage tracked in issue201.",
+    "All findings belong to this exact image; later documentation, dependency or source commits require separate evidence."
+  ]
+}

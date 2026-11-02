@@ -5,9 +5,16 @@
     "apps/app/public/guides/fixtures/markdown-round-trip.mdx"
   ],
   "workspaces": {
+    "apps/custom-domain-edge": {
+      "entry": ["src/index.ts", "cloudflare.config.ts"],
+      "project": ["src/**/*.ts"]
+    },
     ".": {
       "entry": [
+        "changelogithub.config.mjs",
+        "scripts/docker-context-smoke.mjs",
         "scripts/graceful-web-service.mjs",
+        "scripts/runtime-image-audit.mjs",
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs"
@@ -19,6 +26,13 @@
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]
+    },
+    "packages/i18n": {
+      // Loaded from project.inlang/settings.json by the translation compiler.
+      "ignoreDependencies": [
+        "@inlang/plugin-message-format",
+        "@inlang/plugin-m-function-matcher"
+      ]
     },
     "packages/tsconfig": {
       "ignoreDependencies": ["vite"]

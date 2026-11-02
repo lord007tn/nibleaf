@@ -10,28 +10,35 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  publish:
-    name: Test and publish @nibleaf/cli
+  package:
+    name: Test and pack @nibleaf/cli
     runs-on: ubuntu-latest
     steps:
       - name: Check out the selected ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Require a reviewed main commit
+        run: |
+          git fetch "https://github.com/$GITHUB_REPOSITORY" main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse FETCH_HEAD)" || {
+            echo "Select the current reviewed main commit."
+            exit 1
+          }
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -39,7 +46,52 @@ jobs:
       - name: Verify package
         run: pnpm --filter @nibleaf/cli prepublishOnly
 
+      # pnpm rewrites workspace: ranges when packing; plain npm publish doesn't.
+      - name: Pack package
+        working-directory: packages/cli
+        run: |
+          mkdir -p "$RUNNER_TEMP/cli-package"
+          pnpm pack --pack-destination "$RUNNER_TEMP/cli-package"
+
+      - name: Upload the reviewed tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: cli-package
+          path: ${{ runner.temp }}/cli-package/*.tgz
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish the packed tarball
+    needs: package
+    runs-on: ubuntu-latest
+    # Only this job can request the publish credential, and it runs no repository code.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22.18.0"
+
+      - name: Pin npm for trusted publishing
+        run: npm install --global npm@11.6.2
+
+      - name: Download the reviewed tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-package
+          path: ${{ runner.temp }}/cli-package
+
+      # Checked here so the bytes checked are the bytes published.
+      - name: Refuse unresolved dependency ranges
+        run: |
+          tar -xzOf "$RUNNER_TEMP"/cli-package/*.tgz package/package.json > "$RUNNER_TEMP/packed-package.json"
+          if grep -nE '"(workspace|catalog|link|file):' "$RUNNER_TEMP/packed-package.json"; then
+            echo "::error::The packed package.json still contains a local dependency range."
+            exit 1
+          fi
+
       - name: Publish package
-        run: pnpm --filter @nibleaf/cli publish --access public --provenance --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "$RUNNER_TEMP"/cli-package/*.tgz --access public --provenance

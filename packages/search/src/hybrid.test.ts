@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   chunkSearchDocument,
+  collapseChunkHits,
   hybridTokens,
   registerSearchTokenAdapter,
   rerankHybridChunks,
   type SearchScope,
   searchCacheKey,
+  selectAnswerChunks,
   sparseVectorForChunk,
   sparseVectorForQuery,
 } from './hybrid';
@@ -62,8 +64,45 @@ describe('hybrid multilingual retrieval primitives', () => {
     const second = chunkSearchDocument(scope('tenant-a'), source, { maxChars: 80, overlapChars: 10 });
     expect(first).toEqual(second);
     expect(first[0]?.direction).toBe('rtl');
+    expect(first[0]?.headingPath).toEqual(['التثبيت']);
     expect(first.map((chunk) => chunk.content).join('\n')).toContain('pnpm dev');
     expect(new Set(first.map((chunk) => chunk.id)).size).toBe(first.length);
+  });
+
+  it('keeps skipped heading levels serializable without null ancestors', () => {
+    const chunks = chunkSearchDocument(scope('tenant-a'), {
+      id: 'headings',
+      title: 'Guide',
+      path: 'guide',
+      description: '',
+      headings: [],
+      content: '## Setup\n\nFirst.\n\n#### API_URL\n\nSecond.\n\n### Run\n\nThird.\n\n## Next\n\nFourth.',
+      language: 'en',
+      visible: true,
+    });
+    expect(chunks.map((chunk) => JSON.parse(JSON.stringify(chunk.headingPath)))).toEqual([
+      ['Setup'],
+      ['Setup', 'API_URL'],
+      ['Setup', 'Run'],
+      ['Next'],
+    ]);
+  });
+
+  it('retains definitions written entirely in adjacent headings', () => {
+    const chunks = chunkSearchDocument(scope('tenant-a'), {
+      id: 'definitions',
+      title: 'Booking modes',
+      path: 'booking-modes',
+      description: '',
+      headings: [],
+      content:
+        '## Automatic mode confirms bookings without approval.\n\n## Manual mode requires approval for every booking.\n\nChoose the mode when creating an allocation.',
+      language: 'en',
+      visible: true,
+    });
+    expect(chunks.find((chunk) => chunk.heading.startsWith('Automatic mode'))?.content).toContain('confirms bookings without approval');
+    expect(chunks.find((chunk) => chunk.heading.startsWith('Manual mode'))?.heading).toContain('requires approval for every booking');
+    expect(chunks.map((chunk) => chunk.content).join('\n')).toContain('Choose the mode when creating an allocation.');
   });
 
   it('weights title/headings/code in a stable sparse representation', () => {
@@ -121,5 +160,99 @@ describe('authorization-scoped cache keys', () => {
     expect(searchCacheKey(scope('tenant-a', ['page-b']), 'setup')).not.toBe(base);
     expect(searchCacheKey({ ...scope('tenant-a', ['page-a']), deploymentId: 'deployment-2' }, 'setup')).not.toBe(base);
     expect(searchCacheKey({ ...scope('tenant-a', ['page-a']), visibility: 'public' }, 'setup')).not.toBe(base);
+  });
+});
+
+describe('documentation passage selection', () => {
+  const chunks = (pageId: string, content: string) =>
+    chunkSearchDocument(
+      scope('tenant-a'),
+      {
+        id: pageId,
+        title: pageId,
+        path: pageId,
+        description: '',
+        headings: [],
+        content,
+        language: 'ar',
+        visible: true,
+      },
+      { maxChars: 100, overlapChars: 10 },
+    );
+
+  it('shows the matching Arabic passage and keeps technical identifiers from fenced code', () => {
+    const [chunk] = chunkSearchDocument(scope('tenant-a'), {
+      id: 'api',
+      title: 'API setup',
+      path: 'api',
+      description: '',
+      headings: [],
+      content: `${'Introductory context. '.repeat(20)}\n\n\`\`\`sh\nAPI_URL=http://localhost:4311\n\`\`\`\n\nإعدادات الحجوزات والغرف.`,
+      language: 'ar',
+      visible: true,
+    });
+    if (!chunk) throw new Error('Missing fixture');
+    const snippet = collapseChunkHits([{ chunk, score: 1 }], 1, 'API_URL الحجوزات')[0]?.snippet;
+    expect(snippet).toContain('API_URL');
+    expect(snippet).toContain('الحجوزات');
+    expect(snippet?.length).toBeLessThanOrEqual(240);
+    expect(snippet).not.toContain('```');
+  });
+
+  it('retains ranking order within a context limit and removes duplicate passages', () => {
+    const long = chunks('long-page', 'معلومات الحجوزات والغرف. '.repeat(60));
+    const other = chunks('another-page', 'إلغاء الحجز.');
+    const third = chunks('third-page', 'إضافة عميل.');
+    const hits = [...long, ...other, ...third].map((chunk, index) => ({ chunk, score: 1 - index / 100 }));
+    expect(selectAnswerChunks(hits, 3)).toEqual(long.slice(0, 3));
+    const firstHit = hits[0];
+    if (!firstHit) throw new Error('Missing ranked passage fixture');
+    const selected = selectAnswerChunks([firstHit, ...hits], 5);
+    expect(selected).toHaveLength(5);
+    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(5);
+    expect(
+      selectAnswerChunks(
+        hits.filter(({ chunk }) => chunk.pageId === 'long-page'),
+        3,
+      ),
+    ).toHaveLength(3);
+  });
+
+  it('retains complementary definitions after higher-ranked procedural passages', () => {
+    const normal = chunks(
+      'basic-contract',
+      '## Block\n\nFixed rooms each day, already confirmed.\n\n## Overview\n\nCreate a basic contract.\n\n## Nights\n\nA fixed night balance needs confirmation.\n\n## Save\n\nSave the contract.',
+    );
+    const advanced = chunks(
+      'advanced-contract',
+      '## Overview\n\nChoose a contract type.\n\n## Block\n\nFixed rooms each day, already confirmed.\n\n## Nights\n\nA fixed total of nights requires confirmation for each booking.\n\n## Note\n\nThe last day is checkout.',
+    );
+    const independent = ['comparison', 'pricing', 'company', 'appendix'].flatMap((page) => chunks(page, 'Related reference.'));
+    const ordered = [
+      normal[0],
+      advanced[0],
+      advanced[1],
+      normal[1],
+      independent[0],
+      advanced[3],
+      advanced[2],
+      normal[2],
+      independent[1],
+      normal[3],
+      independent[2],
+      independent[3],
+    ];
+    const hits = ordered.map((chunk, index) => {
+      if (!chunk) throw new Error('Missing comparative source fixture');
+      return { chunk, score: 0.8 - index * 0.05 };
+    });
+    const selected = selectAnswerChunks(hits);
+    expect(selected).toContain(advanced[2]);
+    expect(selected).toContain(advanced[1]);
+    expect(selected).toHaveLength(12);
+    expect(new Set(selected.map((chunk) => chunk.id)).size).toBe(12);
+    expect(new Set(selected.map((chunk) => chunk.pageId))).toEqual(
+      new Set(['basic-contract', 'advanced-contract', 'comparison', 'pricing', 'company', 'appendix']),
+    );
   });
 });

@@ -1,6 +1,17 @@
-import { createJob, QueueNames } from '@nibleaf/bullmq';
+import { createJob, getJob, QueueNames, removeJob } from '@nibleaf/bullmq';
+import { ERASE_PROJECT_STORAGE_START_DELAY_MS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/erasure';
 import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
+
+/** BullMQ ignores a new job whose id it still retains, so a retried deletion must
+ * clear an exhausted failed job to queue erasure again. A waiting, delayed, or
+ * active job is left alone: it already waits for the relational delete. */
+const enqueueProjectStorageErasure = async (projectId: string) => {
+  const jobId = eraseProjectStorageJobId(projectId);
+  const existing = await getJob(QueueNames.ERASURE, jobId);
+  if (await existing?.isFailed()) await removeJob(QueueNames.ERASURE, jobId);
+  await createJob(QueueNames.ERASURE, { name: 'erase-project-storage', data: { projectId } }, { jobId, delay: ERASE_PROJECT_STORAGE_START_DELAY_MS });
+};
 
 export class TenantUsageDeletionPendingError extends Error {
   constructor(readonly pendingCount: number) {
@@ -35,6 +46,7 @@ export const eraseProjectOrganization = async (organizationId: string, expectedP
   if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) || deletion.hadStorageMarker) {
     await Promise.all([deleteProjectAnalytics(organizationId, project.id), deleteProjectUsage(organizationId, project.id)]);
   }
+  await enqueueProjectStorageErasure(project.id);
   await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: project.id } }, { jobId: `search-delete-${project.id}` });
   await prisma.usageProviderCheckpoint.updateMany({
     where: { organizationId },

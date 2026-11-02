@@ -24,7 +24,8 @@ import {
   useRunExportSchedule,
   useUpdateExportSchedule,
 } from '@/hooks/api/exports';
-import { localeTag, useFormatters } from '@/lib/format';
+import { formatExportFileSize } from '@/lib/export-file-size';
+import { localeTag } from '@/lib/format';
 import { SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
@@ -32,16 +33,10 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
   PDF: 'settings.exports.workflow.format.pdf',
   STATIC_HTML: 'settings.exports.workflow.format.html',
 };
-const MEBIBYTE = 1024 * 1024;
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
-export function ExportsSection({ projectId }: { projectId: string }) {
+export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
-  const { number } = useFormatters();
-  const sizeLabel = (bytes: number) =>
-    bytes >= MEBIBYTE * 1024
-      ? t('settings.usage.unit.gb', { value: number(bytes / MEBIBYTE / 1024, { maximumFractionDigits: 1 }) })
-      : t('settings.usage.unit.mb', { value: number(bytes / MEBIBYTE, { maximumFractionDigits: bytes < MEBIBYTE ? 2 : 1 }) });
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
@@ -53,7 +48,15 @@ export function ExportsSection({ projectId }: { projectId: string }) {
   const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
       const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
-      window.location.assign(result.url);
+      const link = document.createElement('a');
+      link.href = result.fileUrl;
+      link.download = result.fileName;
+      document.body.append(link);
+      try {
+        link.click();
+      } finally {
+        link.remove();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t('settings.exports.workflow.downloadError'));
     }
@@ -131,14 +134,16 @@ export function ExportsSection({ projectId }: { projectId: string }) {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm">{t('settings.exports.workflow.archiveSchedules')}</div>
-            <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
-              <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
-            </Button>
+            {canManageSchedules ? (
+              <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
+                <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
+              </Button>
+            ) : null}
           </div>
-          {showSchedule ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
+          {showSchedule && canManageSchedules ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
           <div className="space-y-2">
             {schedules.data?.map((schedule) => (
-              <ScheduleRow key={schedule.id} projectId={projectId} schedule={schedule} />
+              <ScheduleRow canManage={canManageSchedules} key={schedule.id} projectId={projectId} schedule={schedule} />
             ))}
             {!schedules.isLoading && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
@@ -187,7 +192,7 @@ export function ExportsSection({ projectId }: { projectId: string }) {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {run.artifacts.map((artifact) => (
                       <Button key={artifact.id} onClick={() => downloadArtifact(run, artifact)} size="sm" variant="outline">
-                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {sizeLabel(artifact.size)}
+                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {formatExportFileSize(artifact.size, locale)}
                       </Button>
                     ))}
                   </div>
@@ -366,7 +371,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   );
 }
 
-function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: ExportSchedule }) {
+function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; schedule: ExportSchedule; canManage: boolean }) {
   const { locale, t } = useLocale();
   const update = useUpdateExportSchedule(projectId, schedule.id);
   const run = useRunExportSchedule(projectId, schedule.id);
@@ -391,29 +396,31 @@ function ScheduleRow({ projectId, schedule }: { projectId: string; schedule: Exp
           </div>
         ) : null}
       </div>
-      <div className="flex gap-2">
-        <Button
-          disabled={run.isPending}
-          onClick={() =>
-            run.mutate(undefined, {
-              onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
-              onError: (error) => toast.error(error.message),
-            })
-          }
-          size="sm"
-          variant="outline"
-        >
-          <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
-        </Button>
-        <Button
-          disabled={update.isPending}
-          onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
-          size="sm"
-          variant="outline"
-        >
-          {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
-        </Button>
-      </div>
+      {canManage ? (
+        <div className="flex gap-2">
+          <Button
+            disabled={run.isPending}
+            onClick={() =>
+              run.mutate(undefined, {
+                onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
+                onError: (error) => toast.error(error.message),
+              })
+            }
+            size="sm"
+            variant="outline"
+          >
+            <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
+          </Button>
+          <Button
+            disabled={update.isPending}
+            onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
+            size="sm"
+            variant="outline"
+          >
+            {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

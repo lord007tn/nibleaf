@@ -1,5 +1,5 @@
 {
-  "version": "v0.1.2",
-  "installerSha256": "d23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a",
-  "composeSha256": "1097cc899705fed843acd71eff11eed8ffa8c54d7edea4bba948ab4e84d4cce9"
+  "version": "v0.2.0",
+  "installerSha256": "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7",
+  "composeSha256": "950ea4d855355350e7d8a489844a5d4623b17d9f01a9e49a926d70ba6e2d6d62"
 }

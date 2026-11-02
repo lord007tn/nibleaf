@@ -160,13 +160,19 @@ function VerifyEmailPage() {
               </InputOTPGroup>
             </InputOTP>
           </div>
-          {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
+          {error ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
+              {error}
+            </p>
+          ) : null}
           <Button className="w-full" disabled={verifying || otp.length !== 6} type="submit">
             {verifying ? t('auth.verify.submitting') : t('auth.verify.submit')}
           </Button>
         </form>
       ) : error ? (
-        <p className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p>
+        <p className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
+          {error}
+        </p>
       ) : null}
 
       <Button className="mt-3 w-full" disabled={sending || verifying || !email} onClick={resend} type="button" variant="outline">

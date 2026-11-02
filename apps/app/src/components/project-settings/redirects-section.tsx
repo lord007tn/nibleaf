@@ -12,10 +12,11 @@ export function RedirectsSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
 
+  const defaultValues = {
+    redirects: (project.config?.redirects ?? []).map((pair) => ({ from: pair.from, to: pair.to })),
+  };
   const form = useForm({
-    defaultValues: {
-      redirects: (project.config?.redirects ?? []).map((pair) => ({ from: pair.from, to: pair.to })),
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       if (validateRedirectGraph(value.redirects).issues.length > 0) {
         return;
@@ -120,9 +121,14 @@ export function RedirectsSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty, state.values.redirects] as const}>
-        {([isSubmitting, isDirty, redirects]) => (
-          <SaveBar isSubmitting={isSubmitting} disabled={!isDirty || validateRedirectGraph(redirects).issues.length > 0} />
+      <form.Subscribe selector={(state) => [state.isSubmitting, state.values] as const}>
+        {([isSubmitting, values]) => (
+          <SaveBar
+            values={values}
+            defaults={defaultValues}
+            isSubmitting={isSubmitting}
+            invalid={validateRedirectGraph(values.redirects).issues.length > 0}
+          />
         )}
       </form.Subscribe>
     </form>

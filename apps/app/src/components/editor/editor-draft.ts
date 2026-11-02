@@ -12,8 +12,8 @@
  * - a server refresh re-hydrates only while the draft is clean, and only from a
  *   copy that is newer than the one we already have (the detail query is briefly
  *   stale right after a save);
- * - an automatic save only ever runs for the page the draft was hydrated from,
- *   never with an empty body over a non-empty page.
+ * - an automatic save only ever runs for the page the draft was hydrated from;
+ *   clearing that page is a valid edit, including an entirely empty body.
  */
 
 interface DraftSnapshot {
@@ -93,19 +93,24 @@ export function nextHydration(state: DraftState, page: ServerSnapshot | null | u
  * The draft is only ever saved to the page it was hydrated from.
  */
 export function shouldAutosave(state: DraftState, page: Pick<ServerSnapshot, 'id'> | null | undefined): boolean {
-  const { synced, draft } = state;
+  const { synced } = state;
   if (!page || !synced || synced.id !== page.id) {
     return false;
   }
   if (!isDirty(state)) {
     return false;
   }
-  // Data-loss guard: never let an AUTOMATIC save replace a page that has content
-  // with an empty body. Protects against a transient empty `content` state (e.g. a
-  // hot-reload/Fast-Refresh reset, or a load race) silently wiping the page. A real
-  // "clear the page" still persists the moment any character is typed.
-  if (draft.content.trim() === '' && synced.content.trim() !== '') {
-    return false;
-  }
+  // Hydration above checks page identity before saving. Empty content alone
+  // cannot distinguish a load race from a deliberate Select All → Delete.
   return true;
+}
+
+/** A pending older write can make a currently clean draft dirty on the server. */
+export function shouldFlushDraft(
+  state: DraftState,
+  page: Pick<ServerSnapshot, 'id'> | null | undefined,
+  hasPending: boolean,
+  saveFailed = false,
+): boolean {
+  return Boolean(page && state.synced?.id === page.id && (shouldAutosave(state, page) || hasPending || saveFailed));
 }

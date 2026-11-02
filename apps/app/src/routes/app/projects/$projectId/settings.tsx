@@ -4,7 +4,8 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { canAdminister } from '@nibleaf/shared/rbac';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Archive,
   Bell,
@@ -37,6 +38,7 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
+import { QueryErrorState } from '@/components/query-error-state';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
@@ -44,7 +46,8 @@ import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
-import { useProject } from '@/hooks/api';
+import { useProject, useProjectMembers } from '@/hooks/api';
+import { useSession } from '@/services/auth-client';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
 // (branding, styling, navbar, footer, banner, SEO, search, redirects, variables)
@@ -98,6 +101,9 @@ const SECTIONS = [
 ] as const satisfies ReadonlyArray<{ id: SectionId; group: SettingsGroupId; icon: LucideIcon }>;
 
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
+// Content languages, team visibility, usage and one-time exports are available
+// to editors. The other sections write operational settings guarded by ADMIN.
+const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
   component: ProjectSettingsPage,
@@ -112,8 +118,36 @@ function ProjectSettingsPage() {
   const { section } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const { data: project, isLoading } = useProject(projectId);
+  const {
+    data: memberData,
+    isPending: membersPending,
+    isError: membersError,
+    isFetching: membersFetching,
+    refetch: retryMembers,
+  } = useProjectMembers(projectId);
+  const { data: session, isPending: sessionPending } = useSession();
   const t = useT();
-  const sectionItems = SECTIONS.map((item) => ({ value: item.id, label: t(`settings.${item.id}` as MessageKey) }));
+  const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
+  const canManage = canAdminister(currentMember?.role ?? '');
+  const availableSections = SECTIONS.filter((item) => canManage || EDITOR_SECTIONS.has(item.id));
+  const sectionItems = availableSections.map((item) => ({ value: item.id, label: t(`settings.${item.id}` as MessageKey) }));
+  const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
+
+  if (membersError) {
+    return (
+      <div className="p-6">
+        <QueryErrorState onRetry={() => void retryMembers()} retrying={membersFetching} />
+      </div>
+    );
+  }
+
+  if (membersPending || sessionPending) {
+    return (
+      <div className="p-6">
+        <SectionSkeleton />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-background md:flex-row">
@@ -124,20 +158,22 @@ function ProjectSettingsPage() {
         <Select
           items={sectionItems}
           onValueChange={(next) => navigate({ search: { section: (next ?? section) as SectionId }, replace: true })}
-          value={section}
+          value={sectionAllowed ? section : ''}
         >
           <SelectTrigger aria-label={t('settings.heading')} className="h-10 w-full rounded-lg font-medium" id="mobile-settings-section">
-            <SelectValue />
+            <SelectValue placeholder={t('settings.heading')} />
           </SelectTrigger>
           <SelectContent>
-            {GROUPS.map((group) => (
+            {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
               <SelectGroup key={group.id}>
                 <SelectLabel>{t(group.labelKey)}</SelectLabel>
-                {SECTIONS.filter((item) => item.group === group.id).map((item) => (
-                  <SelectItem key={item.id} value={item.id}>
-                    {t(`settings.${item.id}` as MessageKey)}
-                  </SelectItem>
-                ))}
+                {availableSections
+                  .filter((item) => item.group === group.id)
+                  .map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {t(`settings.${item.id}` as MessageKey)}
+                    </SelectItem>
+                  ))}
               </SelectGroup>
             ))}
           </SelectContent>
@@ -146,29 +182,31 @@ function ProjectSettingsPage() {
       <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
         <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
         <nav className="flex flex-col gap-0.5">
-          {GROUPS.map((group) => (
+          {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
             <div key={group.id} className="mt-3 first:mt-0">
               <div className="px-3 pb-1 font-semibold text-[10.5px] text-muted-foreground/70 uppercase tracking-wider">{t(group.labelKey)}</div>
-              {SECTIONS.filter((item) => item.group === group.id).map((item) => {
-                const active = item.id === section;
-                const Icon = item.icon;
-                return (
-                  <Button
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
-                      active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
-                    )}
-                    key={item.id}
-                    onClick={() => navigate({ search: { section: item.id }, replace: true })}
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Icon aria-hidden className="size-4 shrink-0" />
-                    {t(`settings.${item.id}` as MessageKey)}
-                  </Button>
-                );
-              })}
+              {availableSections
+                .filter((item) => item.group === group.id)
+                .map((item) => {
+                  const active = item.id === section;
+                  const Icon = item.icon;
+                  return (
+                    <Button
+                      aria-current={active ? 'page' : undefined}
+                      className={cn(
+                        'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
+                        active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
+                      )}
+                      key={item.id}
+                      onClick={() => navigate({ search: { section: item.id }, replace: true })}
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Icon aria-hidden className="size-4 shrink-0" />
+                      {t(`settings.${item.id}` as MessageKey)}
+                    </Button>
+                  );
+                })}
             </div>
           ))}
         </nav>
@@ -176,14 +214,41 @@ function ProjectSettingsPage() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
-          {isLoading || !project ? <SectionSkeleton /> : <ActiveSection projectId={projectId} project={project} section={section} />}
+          {isLoading || !project ? (
+            <SectionSkeleton />
+          ) : !sectionAllowed ? (
+            <div className="rounded-xl border border-border bg-card p-6" role="status">
+              <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
+              <p className="mt-2 text-muted-foreground text-sm">{t('settings.permissions.body')}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button onClick={() => navigate({ search: { section: 'usage' }, replace: true })} type="button" variant="outline">
+                  {t('settings.usage')}
+                </Button>
+                <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
+                  {t('project.editor')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <ActiveSection canManageSchedules={canManage} projectId={projectId} project={project} section={section} />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function ActiveSection({ project, section, projectId }: { project: Project; section: SectionId; projectId: string }) {
+function ActiveSection({
+  project,
+  section,
+  projectId,
+  canManageSchedules,
+}: {
+  project: Project;
+  section: SectionId;
+  projectId: string;
+  canManageSchedules: boolean;
+}) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
@@ -201,7 +266,7 @@ function ActiveSection({ project, section, projectId }: { project: Project; sect
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
-    exports: <ExportsSection key={`exports-${projectId}`} projectId={projectId} />,
+    exports: <ExportsSection canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,
   };
   const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';

@@ -1,5 +1,6 @@
 import { createMcpHandler, hostHeaderValidationResponse, originValidationResponse, validateHostHeader } from '@modelcontextprotocol/server';
 import { createLogger } from '@nibleaf/logger';
+import { MAX_THEME_TEMPLATE_BYTES } from '@nibleaf/shared/themes';
 import type { Context } from 'hono';
 import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -9,6 +10,10 @@ import { checkMcpRateLimit, finalizeMcpRateLimitRejectionAudit } from './rate-li
 import { createNibleafMcpServer } from './server';
 
 const log = createLogger({ module: 'mcp-transport' });
+
+/** Room for the largest theme template in `preview_theme_import`, its JSON
+ * whitespace, and the JSON-RPC envelope. The SDK's own default is 4 MiB. */
+export const MAX_MCP_REQUEST_BODY_BYTES = MAX_THEME_TEMPLATE_BYTES + 64 * 1024;
 
 const transportError = (status: 400 | 403, message: string) =>
   new Response(JSON.stringify({ error: { code: 'mcp:invalid_request', message } }), {
@@ -157,6 +162,7 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
 
   const handler = createMcpHandler(() => createNibleafMcpServer(ctx, authenticated), {
     responseMode: 'json',
+    maxRequestBodySize: MAX_MCP_REQUEST_BODY_BYTES,
     onerror: (error) => log.error({ errorName: error.name, requestId: ctx.get('requestId') }, 'MCP protocol request failed'),
   });
   try {

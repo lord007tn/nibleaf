@@ -3,7 +3,7 @@ title: 'Why we built Nibleaf for teams that want to own their docs'
 metaTitle: 'Nibleaf: an open-source Mintlify alternative to evaluate'
 description: 'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.'
 datePublished: '2026-07-13'
-dateModified: '2026-08-31'
+dateModified: '2026-10-31'
 tags: ['announcement', 'open-source']
 related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl']
 readingMinutes: 12
@@ -13,7 +13,7 @@ faqs:
   - question: 'Does Nibleaf lock content into a proprietary format?'
     answer: 'Pages are stored as Markdown in the database and can be exported as Markdown. The live source is not a directory in Git unless the team exports and commits it.'
   - question: 'Does Nibleaf support Arabic and right-to-left documentation?'
-    answer: 'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.'
+    answer: 'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface offers 12 locale options, with some strings still in English.'
 ---
 
 Nibleaf is an open-source documentation platform for teams that want a browser editor and a portable, operator-controlled stack. It is not a drop-in winner for every Mintlify team. Mintlify is the stronger choice when a mature Git-first workflow, managed previews, integrations, API-documentation features, and an established hosted service matter more than running the complete application yourself.
@@ -57,7 +57,7 @@ Every publish creates an immutable snapshot of pages and site configuration. Rea
   <figcaption>The current English editor. The product also localizes the dashboard and editor for Arabic and applies RTL direction where appropriate.</figcaption>
 </figure>
 
-The built-in search path works without an external crawler. Source `main` also contains an optional, tenant-filtered hybrid-search path, but the published v0.1.2 image remains the release boundary: newer source capabilities are not presented here as if they already ship in that image.
+The built-in search path works without an external crawler. v0.2.0 adds an optional, tenant-filtered hybrid-search path that needs a Qdrant service and an AI provider key. This evaluation was rechecked against v0.1.2, so test the hybrid path on your own content before relying on it.
 
 For multilingual sites, each language gets its own page tree. The reader and editor support RTL layout, Arabic search uses a dedicated tokenizer, and generated pages include language metadata. The [Arabic documentation guide](/blog/arabic-documentation-rtl) contains the broader checklist.
 
@@ -76,7 +76,7 @@ That control creates responsibility. A self-hosting team owns TLS, DNS, email, s
 
 Nibleaf is in beta, has a smaller ecosystem, and has less operational history than Mintlify or long-established static generators. Its visual editor intentionally supports a bounded MDX model; teams with a large collection of custom React components must test round-trip fidelity before migrating. Git is an export/sync workflow, not the default live authoring store.
 
-The current public container is v0.1.2. Source `main` can be ahead of that artifact, so a source-level feature is not a release claim. Self-hosting also does not remove external dependencies you choose, such as an email provider, an external object store, analytics, or optional AI services.
+The current public container is v0.2.0, published for `linux/amd64` only. Source `main` can be ahead of that artifact, so a source-level feature is not a release claim. Self-hosting also does not remove external dependencies you choose, such as an email provider, an external object store, analytics, or optional AI services.
 
 These limits are reasons to run the fixture, not reasons to hide the comparison. Teams that only need a developer-owned static site should also test [Docusaurus](/compare/nibleaf-vs-docusaurus); it may be simpler than operating a platform.
 

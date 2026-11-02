@@ -50,23 +50,31 @@ function consented(): boolean {
 
 export function trackFirstPublishLanding(source: FirstPublishSource): boolean {
   if (!consented()) return false;
-  const dedupeKey = `${CONTEXT_KEY}.landing.${source}`;
-  if (window.sessionStorage.getItem(dedupeKey) === 'recorded') return false;
-  trackMarketingEvent('first_publish_landing_viewed', baseProperties(source));
-  window.sessionStorage.setItem(dedupeKey, 'recorded');
-  return true;
+  try {
+    const dedupeKey = `${CONTEXT_KEY}.landing.${source}`;
+    if (window.sessionStorage.getItem(dedupeKey) === 'recorded') return false;
+    window.sessionStorage.setItem(dedupeKey, 'recorded');
+    trackMarketingEvent('first_publish_landing_viewed', baseProperties(source));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function trackFirstPublishCta(source: FirstPublishSource): boolean {
   if (!consented()) return false;
-  const context: FirstPublishContext = { capturedAt: Date.now(), ...baseProperties(source) };
-  window.localStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
-  trackMarketingEvent('first_publish_cta_clicked', {
-    ...baseProperties(source),
-    destination: 'signup',
-    placement: source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge',
-  });
-  return true;
+  try {
+    const context: FirstPublishContext = { capturedAt: Date.now(), ...baseProperties(source) };
+    window.localStorage.setItem(CONTEXT_KEY, JSON.stringify(context));
+    trackMarketingEvent('first_publish_cta_clicked', {
+      ...baseProperties(source),
+      destination: 'signup',
+      placement: source === 'rtl_readiness_grader' ? 'result_bridge' : 'article_bridge',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Return the consented, privacy-minimized attribution that may accompany a
@@ -74,35 +82,43 @@ export function trackFirstPublishCta(source: FirstPublishSource): boolean {
  *  that exact job reaches the trusted terminal state. */
 export function readFirstPublishAttribution(): FirstPublishAttribution | null {
   if (!consented()) return null;
-  const raw = window.localStorage.getItem(CONTEXT_KEY);
-  const context = parseContext(raw);
-  if (!context) {
-    if (raw) window.localStorage.removeItem(CONTEXT_KEY);
+  try {
+    const raw = window.localStorage.getItem(CONTEXT_KEY);
+    const context = parseContext(raw);
+    if (!context) {
+      if (raw) window.localStorage.removeItem(CONTEXT_KEY);
+      return null;
+    }
+    return { entry_point: context.entry_point, intent: context.intent, source: context.source };
+  } catch {
     return null;
   }
-  return { entry_point: context.entry_point, intent: context.intent, source: context.source };
 }
 
 /** Consume attribution after the exact user-initiated deployment reaches
  *  READY. Session deduplication remains intact for earlier journey stages. */
 export function completeFirstPublishAttribution(expected: FirstPublishAttribution): void {
-  const context = parseContext(window.localStorage.getItem(CONTEXT_KEY));
-  if (context?.entry_point === expected.entry_point && context.intent === expected.intent && context.source === expected.source) {
-    window.localStorage.removeItem(CONTEXT_KEY);
+  try {
+    const context = parseContext(window.localStorage.getItem(CONTEXT_KEY));
+    if (context?.entry_point === expected.entry_point && context.intent === expected.intent && context.source === expected.source) {
+      window.localStorage.removeItem(CONTEXT_KEY);
+    }
+  } catch {
+    // Optional attribution cleanup must not interrupt a completed publish.
   }
 }
 
 export async function recordFirstPublishStage(stage: FirstPublishStage): Promise<boolean> {
   if (!consented()) return false;
-  const raw = window.localStorage.getItem(CONTEXT_KEY);
-  const context = parseContext(raw);
-  if (!context) {
-    if (raw) window.localStorage.removeItem(CONTEXT_KEY);
-    return false;
-  }
-  const dedupeKey = `${CONTEXT_KEY}.stage.${stage}.${context.source}`;
-  if (window.sessionStorage.getItem(dedupeKey) === 'recorded') return false;
   try {
+    const raw = window.localStorage.getItem(CONTEXT_KEY);
+    const context = parseContext(raw);
+    if (!context) {
+      if (raw) window.localStorage.removeItem(CONTEXT_KEY);
+      return false;
+    }
+    const dedupeKey = `${CONTEXT_KEY}.stage.${stage}.${context.source}`;
+    if (window.sessionStorage.getItem(dedupeKey) === 'recorded') return false;
     const response = await fetch('/api/app/activation-events', {
       body: JSON.stringify({
         stage,

@@ -1,16 +1,6 @@
+import { normalizeType } from '@nibleaf/shared/callouts';
 import type { Root } from 'mdast';
-import { defaultSchema } from 'rehype-sanitize';
-
-export type CalloutType = 'note' | 'info' | 'tip' | 'check' | 'warning' | 'danger';
-
-/** Normalize an admonition/callout keyword to one of our supported types. */
-export const normalizeType = (raw?: string): CalloutType => {
-  const t = (raw ?? 'note').toLowerCase();
-  if (t === 'caution') return 'danger';
-  if (t === 'important') return 'info';
-  if (['note', 'info', 'tip', 'check', 'warning', 'danger'].includes(t)) return t as CalloutType;
-  return 'note';
-};
+import { defaultSchema, type Options as SanitizeOptions } from 'rehype-sanitize';
 
 /** The custom component tag names the renderer understands (lowercased, as
  *  rehype-raw emits them). */
@@ -114,7 +104,7 @@ export function normalizeMdxBlocks(src: string): string {
  *  tags and their props, plus className/id passthrough for headings & code
  *  highlighting. Scripts, event handlers, and unknown attributes are still
  *  stripped — this is what makes raw component HTML safe to render. */
-export const sanitizeSchema = {
+export const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), ...COMPONENT_TAGS],
   attributes: {
@@ -147,7 +137,9 @@ export const sanitizeSchema = {
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.
     pre: [...(defaultSchema.attributes?.pre ?? []), 'dataTitle', 'dataLang'],
-    code: [...(defaultSchema.attributes?.code ?? []), 'className', 'dataTitle', 'dataLang'],
+    // Keep only the code classes used by highlighting and the trusted math
+    // renderer. MathML and layout styles are generated after sanitization.
+    code: [['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang'],
   },
 };
 

@@ -1,0 +1,489 @@
+{
+  "generatedAt": "2026-10-15T20:53:12.946Z",
+  "branch": "fix/dependency-security-patches",
+  "baseCommit": "d089331ceee7fee88fdfa1ea33c75071400d6c2b",
+  "sourceState": "Reviewed dependency and Markdown candidate; local checks and compiled browser proof complete. CI and deployment are separate gates.",
+  "runtime": {
+    "localNode": "v24.21.0",
+    "pnpm": "10.30.3",
+    "ciNode": "22; new batch CI pending push",
+    "qaEnvFilesIgnored": [".env", "apps/app/.env.production.local"]
+  },
+  "baselines": {
+    "beforeNodemailer": {
+      "file": "PR194 local audit, output/security-audit-prod.json",
+      "sourceRef": "abb8e3259fd00e73efb1217adcd947ee62865e24; dependency graph unchanged in squash 5c1d4d8f0b3517efb6f086e1ce3e35619dcc221a",
+      "sha256": "71fdffd14d3aeaf2e170ecbae86d2e4ab711f7e1153fe532c2c087a5fa0b0f11",
+      "uniqueAdvisoryIds": 50,
+      "uniqueAdvisoriesBySeverity": {
+        "critical": 4,
+        "high": 19,
+        "moderate": 19,
+        "low": 8,
+        "info": 0
+      },
+      "pnpmMetadataPathOccurrencesBySeverity": {
+        "info": 0,
+        "low": 9,
+        "moderate": 24,
+        "high": 22,
+        "critical": 7
+      }
+    },
+    "afterNodemailer": {
+      "file": "output/security-audit-prod.json",
+      "sourceRef": "a9e4cc7a5d13c3e97bfd023f941dc0090a5186b2; dependency graph matches squash d089331ceee7fee88fdfa1ea33c75071400d6c2b",
+      "sha256": "e56e2eea04955d0b43bfd5d5ea556e90d2b6b9000b997711ed704b1fac0797e0",
+      "uniqueAdvisoryIds": 45,
+      "uniqueAdvisoriesBySeverity": {
+        "critical": 4,
+        "high": 17,
+        "moderate": 16,
+        "low": 8,
+        "info": 0
+      },
+      "pnpmMetadataPathOccurrencesBySeverity": {
+        "info": 0,
+        "low": 9,
+        "moderate": 21,
+        "high": 20,
+        "critical": 7
+      }
+    }
+  },
+  "finalAudits": {
+    "production": {
+      "file": "output/security-audit-prod-final.json",
+      "sourceRef": "Current uncommitted batch",
+      "sha256": "c3751d1ede5c35029357dd31a0ceabd2bbf41a0860c1d17a25ff1ea9d09509ec",
+      "uniqueAdvisoryIds": 0,
+      "uniqueAdvisoriesBySeverity": {
+        "critical": 0,
+        "high": 0,
+        "moderate": 0,
+        "low": 0,
+        "info": 0
+      },
+      "pnpmMetadataPathOccurrencesBySeverity": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0
+      }
+    },
+    "allDependencies": {
+      "file": "output/security-audit-all-final.json",
+      "sourceRef": "Current uncommitted batch",
+      "sha256": "398e337697ea3da2b28adb97b052e55a812226f09cf66f8ee67d671db28806f4",
+      "uniqueAdvisoryIds": 1,
+      "uniqueAdvisoriesBySeverity": {
+        "critical": 0,
+        "high": 1,
+        "moderate": 0,
+        "low": 0,
+        "info": 0
+      },
+      "pnpmMetadataPathOccurrencesBySeverity": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 1,
+        "critical": 0
+      },
+      "remaining": [
+        {
+          "package": "braces",
+          "severity": "high",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "fixedVersions": "<0.0.0"
+        }
+      ]
+    },
+    "remainingDevelopmentChain": "root devDependency ultracite@7.10.7 -> fast-glob@3.3.3 (also via find-workspaces) -> micromatch@4.0.8 -> braces@3.0.3; no fixed version; tracked #195. Docker still copies dev dependency bytes.",
+    "osv": "Previous #165 scan reported 47 package/advisory rows. New-batch OSV CI has not run. All three expired Ghost exceptions removed; none renewed."
+  },
+  "lockVerification": {
+    "removedPackages": [
+      {
+        "name": "shadcn",
+        "lockEntries": 0,
+        "presentInLocalNodeModules": false
+      },
+      {
+        "name": "html-minifier",
+        "lockEntries": 0,
+        "presentInLocalNodeModules": false
+      },
+      {
+        "name": "@modelcontextprotocol/sdk",
+        "lockEntries": 0,
+        "presentInLocalNodeModules": false
+      },
+      {
+        "name": "ip-address",
+        "lockEntries": 0,
+        "presentInLocalNodeModules": false
+      },
+      {
+        "name": "postcss-selector-parser",
+        "lockEntries": 0,
+        "presentInLocalNodeModules": false
+      }
+    ],
+    "ghostEdges": [
+      {
+        "parent": "@tryghost/kg-default-nodes@2.1.5(@noble/hashes@2.4.0)",
+        "htmlMinifierDependencyPresent": false
+      },
+      {
+        "parent": "@tryghost/kg-default-nodes@2.2.0(@noble/hashes@2.4.0)",
+        "htmlMinifierDependencyPresent": false
+      }
+    ],
+    "patchedDependencies": {
+      "markdown-it-image-lazy-loading@2.0.1": {
+        "hash": "94044e4c23189f6af6e1a6070ef33b52b0b3b9ea1732b05f7edc2864b4c136b0",
+        "path": "patches/markdown-it-image-lazy-loading@2.0.1.patch"
+      }
+    },
+    "resolved": [
+      "hono@4.13.7",
+      "http-cache-semantics@4.3.0",
+      "image-size@2.0.3",
+      "katex@0.18.5",
+      "markdown-it@14.3.1",
+      "next@16.3.8",
+      "sharp@0.35.5",
+      "undici@7.29.1"
+    ]
+  },
+  "compatibility": {
+    "ownerFocusedTests": {
+      "math": 42,
+      "imageAndExistingGhostImporter": 44,
+      "note": "Included in full workspace test totals; do not add again."
+    },
+    "cacheProbe": {
+      "gotDefaultCacheUndefined": true,
+      "networkRequests": 2,
+      "distinctCallerBodies": true,
+      "cachePolicyPublicApiCompatible": true,
+      "source": "apps/app/src/server.ts Got calls do not configure cache; got/dist/source/core/options.js defaults cache to undefined."
+    },
+    "cacheCaveat": "http-cache-semantics 4.3.0 is authentic upstream (gitHead b1d4bd682fbab0252985de45219f4e7497c0067c) and outside advisory affected <=4.2.0. This is not proof that disputed shared-cache semantics are fixed. Application caching remains disabled.",
+    "undiciCaveat": "Retain existing global 7.x override at 7.29.1; avoid introducing Undici 8 Node>=22.19 requirement into root Node>=22.18 contract. Existing jsdom30 dependency declaration expects ^8.9 and higher Node minor; tracked mismatch preserved, importer regressions pass.",
+    "imageSizing": "Plugin keeps default lazy/async-decoding output. Optional image_size uses named v2 Uint8Array API, regular file descriptors and explicit 16 MiB allocation bound; default sizing remains off."
+  },
+  "artifacts": {
+    "stylesheet": {
+      "path": "packages/design-system/src/styles/vendor/shadcn-tailwind.css",
+      "bytes": 16041,
+      "sha256": "bc7d83425702955b4cb67cb14ede9d603f9d912376d57a2d81d661094d2a782a"
+    },
+    "imagePatch": {
+      "path": "patches/markdown-it-image-lazy-loading@2.0.1.patch",
+      "bytes": 4121,
+      "sha256": "94044e4c23189f6af6e1a6070ef33b52b0b3b9ea1732b05f7edc2864b4c136b0",
+      "carriageReturns": 0
+    }
+  },
+  "commands": [
+    {
+      "command": "pnpm install --frozen-lockfile",
+      "status": "passed",
+      "seconds": 48.7
+    },
+    {
+      "command": "pnpm build:server",
+      "status": "passed",
+      "tasks": 6,
+      "log": "output/dependency-build-server.log"
+    },
+    {
+      "command": "pnpm typecheck",
+      "status": "passed",
+      "tasks": 27,
+      "log": "output/dependency-typecheck.log"
+    },
+    {
+      "command": "pnpm lint",
+      "status": "passed",
+      "files": 994,
+      "log": "output/dependency-lint.log"
+    },
+    {
+      "command": "pnpm check:dead-code",
+      "status": "passed",
+      "log": "output/dependency-dead-code.log"
+    },
+    {
+      "command": "pnpm docs:check",
+      "status": "passed",
+      "englishArabicPairs": 29,
+      "navigatedPages": 58,
+      "log": "output/dependency-docs.log"
+    },
+    {
+      "command": "pnpm self-host:check",
+      "status": "passed",
+      "log": "output/dependency-self-host.log"
+    },
+    {
+      "command": "pnpm release:check",
+      "status": "passed",
+      "nodeTests": 8,
+      "log": "output/dependency-release.log"
+    },
+    {
+      "command": "pnpm test",
+      "status": "passed",
+      "vitestWorkspaces": 18,
+      "vitest": {
+        "passed": 1772,
+        "skipped": 9
+      },
+      "rootNode": {
+        "passed": 2,
+        "skipped": 2
+      },
+      "combined": {
+        "passed": 1774,
+        "skipped": 11
+      },
+      "log": "output/dependency-tests.log"
+    },
+    {
+      "command": "NODE_OPTIONS=--max-old-space-size=6144 pnpm build:app",
+      "status": "passed",
+      "seconds": 30.273,
+      "log": "output/dependency-build-app.log"
+    },
+    {
+      "command": "NODE_OPTIONS=--max-old-space-size=6144 pnpm --filter @nibleaf/admin build",
+      "status": "passed",
+      "log": "output/dependency-build-admin.log"
+    },
+    {
+      "command": "pnpm --filter @nibleaf/app bundle:check",
+      "status": "passed",
+      "profilesKiBGzip": {
+        "publicDocs": 380.1,
+        "publicDocsIndex": 379.51,
+        "budget": 380.86
+      },
+      "log": "output/dependency-public-budget.log"
+    },
+    {
+      "command": "pnpm check:react",
+      "status": "existing_analyzer_false_positive",
+      "errors": 1,
+      "warnings": 57,
+      "rule": "react-doctor/effect-needs-cleanup",
+      "source": "apps/app/src/routes/sites/$projectId/route.tsx:100",
+      "explanation": "Previously reviewed React 19 cleanup callback; this batch does not change that source. No runtime edit made.",
+      "log": "output/dependency-react-doctor.log"
+    }
+  ],
+  "workspaces": [
+    {
+      "workspace": "@nibleaf/custom-domain-edge",
+      "passed": 2,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/qdrant",
+      "passed": 7,
+      "skipped": 1
+    },
+    {
+      "workspace": "@nibleaf/logger",
+      "passed": 4,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/i18n",
+      "passed": 83,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/usage",
+      "passed": 8,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/shared",
+      "passed": 187,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/cli",
+      "passed": 4,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/validators",
+      "passed": 92,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/database",
+      "passed": 4,
+      "skipped": 3
+    },
+    {
+      "workspace": "@nibleaf/clickhouse",
+      "passed": 26,
+      "skipped": 3
+    },
+    {
+      "workspace": "@nibleaf/bullmq",
+      "passed": 18,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/auth",
+      "passed": 5,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/worker",
+      "passed": 78,
+      "skipped": 2
+    },
+    {
+      "workspace": "@nibleaf/search",
+      "passed": 105,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/email",
+      "passed": 3,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/admin",
+      "passed": 15,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/server",
+      "passed": 524,
+      "skipped": 0
+    },
+    {
+      "workspace": "@nibleaf/app",
+      "passed": 607,
+      "skipped": 0
+    }
+  ],
+  "primarySources": [
+    "https://pnpm.io/10.x/settings#overrides",
+    "https://github.com/nodejs/undici/releases/tag/v7.29.1",
+    "https://github.com/vercel/next.js/releases/tag/v16.3.8",
+    "https://github.com/lovell/sharp/releases/tag/v0.35.5",
+    "https://github.com/KaTeX/KaTeX/releases/tag/v0.18.0",
+    "https://github.com/advisories/GHSA-238p-pmpm-9mq7",
+    "https://github.com/image-size/image-size/releases/tag/v2.0.0",
+    "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+    "https://github.com/kornelski/http-cache-semantics/commit/b1d4bd682fbab0252985de45219f4e7497c0067c",
+    "https://github.com/sindresorhus/got/blob/v16.0.0/source/core/options.ts"
+  ],
+  "sourceFiles": [
+    {
+      "path": "apps/app/src/components/markdown-rich.test.ts",
+      "sha256": "4a4d644219754da7450e4fd7d0095effa633942b049c9dddb51b7a8e6092051a"
+    },
+    {
+      "path": "apps/app/src/components/markdown-rich.tsx",
+      "sha256": "e1b3c5cbb85854ca9f16d081195ed73714dee8864ef03dd6b9362bd61f1508e8"
+    },
+    {
+      "path": "apps/app/src/components/markdown.test.ts",
+      "sha256": "d424f6c5e89045fbd048b43e9f2308672957c0b84fb5a7bbe762efcbd4d5f417"
+    },
+    {
+      "path": "apps/app/src/components/markdown.tsx",
+      "sha256": "bfead7167c63e0bec31400a8a17e8ae181f67317e1094261c91594cd17452483"
+    },
+    {
+      "path": "apps/app/src/components/site/mdx-config.test.ts",
+      "sha256": "04033dce61179924f4693510cd7472d8b44a2e5ca51f92cf7c616e4bdf73864f"
+    },
+    {
+      "path": "apps/app/src/components/site/mdx-config.ts",
+      "sha256": "00879fbbe62d2ccedba51ba4841fa2898d44aead43c25a10138195c00efe3f18"
+    },
+    {
+      "path": "apps/server/src/actions/importers/markdown-image-compatibility.test.ts",
+      "sha256": "5f6db349a0103945322121e83dd38d270bfb9fa371d366e43ad871185e4653e2"
+    },
+    {
+      "path": "biome.jsonc",
+      "sha256": "b1b584ca8b3d8d54e1d53626230cc1e4e8a04743f94875b2463b0f23434fb236"
+    },
+    {
+      "path": "osv-scanner.toml",
+      "sha256": "d7af968d6ca820e91364de819946dbb4791f74509008914346f1a3be781c051b"
+    },
+    {
+      "path": "package.json",
+      "sha256": "8c578c68f675ea7371e9c7d0fb6eeabbd68b9a48268e46778f82f6c1a520e00a"
+    },
+    {
+      "path": "packages/design-system/package.json",
+      "sha256": "1ff50e9868c1570ce5f09190b3624b1c22e8dd59b9e33bbaa684d0dcf0379959"
+    },
+    {
+      "path": "packages/design-system/src/styles/globals.css",
+      "sha256": "e581932801a8cd78effa51d0a036ae1efb0bbfd7c0bba19c5dfcca4da0bb7747"
+    },
+    {
+      "path": "packages/design-system/src/styles/vendor/README.md",
+      "sha256": "30172fffa250c57d272e6abcc181b1211f5e069f4fe5c944453c9b39ca1dffcb"
+    },
+    {
+      "path": "packages/design-system/src/styles/vendor/shadcn-LICENSE.md",
+      "sha256": "1564074e13439397221ffd522e2e504d56561994a23d371aa5e3ad43e4f5423f"
+    },
+    {
+      "path": "packages/design-system/src/styles/vendor/shadcn-tailwind.css",
+      "sha256": "bc7d83425702955b4cb67cb14ede9d603f9d912376d57a2d81d661094d2a782a"
+    },
+    {
+      "path": "patches/markdown-it-image-lazy-loading@2.0.1.patch",
+      "sha256": "94044e4c23189f6af6e1a6070ef33b52b0b3b9ea1732b05f7edc2864b4c136b0"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "fcb5fae2092dc93aedb5a34030ef2d1ae2d662d371931d27526d3d1bd717b277"
+    }
+  ],
+  "remainingAcceptance": "Node22 exact-head CI, manual Docker runtime proof and production release/customer acceptance remain separate. Full source-lock audit retains 1 unfixed root-dev braces advisory tracked in #195.",
+  "compiledBrowser": {
+    "publish": "Storage getters denied; mobile Markdown edit; immediate Publish; worker READY; reader exact latest body; no page errors",
+    "video": "publish-mobile.webm",
+    "screenshotDirectory": ".github/assets/dependency-security",
+    "mathAfter": {
+      "pageErrors": 0,
+      "styles": 38,
+      "horizontalOverflow": false,
+      "viewports": ["1440x1000", "390x844"],
+      "visualAriaHidden": 2,
+      "mermaidNodes": 2,
+      "mathML": 2
+    },
+    "account": {
+      "horizontalOverflow": false,
+      "locale": "ar",
+      "direction": "rtl",
+      "viewport": "390x844"
+    },
+    "fixture": "Local synthetic data only; Docker datastores; updated app/API/worker dependencies",
+    "mathBefore": {
+      "mathML": 0,
+      "visualAriaHidden": 0,
+      "styles": 0
+    }
+  }
+}

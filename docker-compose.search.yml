@@ -1,5 +1,5 @@
-# Optional production overlay for Nibleaf v0.2 hybrid search. Keep the signed
-# v0.1.2 self-host artifact immutable; enable this overlay only with a v0.2 image.
+# Optional production overlay for Nibleaf v0.2 hybrid search. Use it only with a
+# v0.2.0 or later image; v0.1.2 has no hybrid search path.
 x-search-env: &search-env
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-}

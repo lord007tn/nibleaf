@@ -105,6 +105,8 @@ export const rateLimit = ({ windowMs, max }: RateLimitOptions): MiddlewareHandle
     const recent = (hits.get(key) ?? []).filter((ts) => ts > cutoff);
     if (recent.length >= max) {
       hits.set(key, recent);
+      const retrySeconds = Math.max(1, Math.ceil(((recent[0] ?? now) + windowMs - now) / 1000));
+      ctx.header('Retry-After', String(retrySeconds));
       throw new AppError({ code: 'http:rate_limited', message: 'Too many requests, please slow down.' });
     }
 

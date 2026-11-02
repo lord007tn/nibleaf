@@ -83,9 +83,9 @@ function ProjectSeoForm({ project, onDirtyChange }: { project: Project; onDirtyC
       onSave={(value) =>
         saveConfigSection(update, {
           seo: {
-            metaTitle: value.metaTitle.trim() || undefined,
-            metaDescription: value.metaDescription.trim() || undefined,
-            socialImage: value.socialImage.trim() || undefined,
+            metaTitle: value.metaTitle.trim(),
+            metaDescription: value.metaDescription.trim(),
+            socialImage: value.socialImage.trim(),
             allowIndex: value.allowIndex,
           },
         })
@@ -171,12 +171,13 @@ function SeoScopeForm({
   // The index toggle lives outside the form, so its dirtiness is tracked by value.
   const toggleDirty = allowIndex !== initial.allowIndex;
 
+  const defaultValues = {
+    metaTitle: initial.metaTitle,
+    metaDescription: initial.metaDescription,
+    socialImage: initial.socialImage,
+  };
   const form = useForm({
-    defaultValues: {
-      metaTitle: initial.metaTitle,
-      metaDescription: initial.metaDescription,
-      socialImage: initial.socialImage,
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       await onSave({ ...value, allowIndex });
     },
@@ -268,13 +269,29 @@ function SeoScopeForm({
         title={t('settings.seo.allowIndex.title')}
       />
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || toggleDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => (
+          <DirtyStateReporter
+            values={values}
+            defaults={defaultValues}
+            extraDirty={toggleDirty}
+            dirty={isDirty || toggleDirty}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !toggleDirty} isSubmitting={isSubmitting} />}
+        <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+          {([isSubmitting, isDirty, values]) => (
+            <SaveBar
+              values={values}
+              defaults={defaultValues}
+              extraDirty={toggleDirty}
+              disabled={!isDirty && !toggleDirty}
+              isSubmitting={isSubmitting}
+            />
+          )}
         </form.Subscribe>
       </div>
     </form>

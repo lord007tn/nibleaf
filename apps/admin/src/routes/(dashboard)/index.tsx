@@ -8,6 +8,7 @@ import { Activity, CheckCircle2, FileText, Filter, Globe2, Rocket, ShieldCheck, 
 import type { ComponentType, SVGProps } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { DataError } from '@/components/data-state';
+import { PublishRetentionReadout } from '@/components/publish-retention';
 import { type AdminUser, useAdminFunnel, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
 import { useFormatters } from '@/lib/format';
 
@@ -279,6 +280,7 @@ function OverviewPage() {
                   })}
             </p>
           ) : null}
+          {funnel.isSuccess ? <PublishRetentionReadout retention={funnel.data.publishRetention} /> : null}
         </CardContent>
       </Card>
 

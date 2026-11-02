@@ -1,0 +1,80 @@
+---
+title: 'Nibleaf v0.2.0 release notes'
+description: 'See what ships in Nibleaf v0.2.0, which capabilities need configuration, and how to install it or upgrade from v0.1.2.'
+audience: 'self-hosted operators, evaluators, and documentation teams choosing a Nibleaf release'
+content_type: 'reference'
+last_reviewed: '2026-10-31'
+verified_against: 'CHANGELOG.md v0.2.0, release/self-host.json, docker-compose.prod.yml, docker-compose.search.yml, and scripts/install.sh'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'releases/v0-2-0'
+---
+
+v0.2.0 is the current published self-host release. The guided installer, the
+production Compose file, and the pinned `ghcr.io/lord007tn/nibleaf:v0.2.0`
+image all point to it. The full list of changes, with pull request numbers, is in
+the repository's `CHANGELOG.md` and on the GitHub release page.
+
+## What ships in v0.2.0
+
+- **Hybrid search and grounded answers.** An optional tenant-filtered Qdrant
+  BM25 and dense-vector path for English, Arabic, and mixed content, with
+  privacy-safe index diagnostics and optional grounded AI answers. The built-in
+  Orama search stays the default. See [search and AI operations](/self-hosting/search-ai).
+- **Project add-ons** with entitlement-aware availability, consent controls,
+  reader actions, and publish checks. See [project add-ons](/product/add-ons).
+- **Documentation themes.** Harbor, Manuscript, and Signal, with safe template
+  exchange and runnable Git exports. See [documentation themes](/product/themes).
+- **Usage metering** with exact quantities and advisory entitlements. See
+  [usage metering](/self-hosting/usage-metering).
+- **Project integrations** with encrypted credentials, confirmations, audit,
+  and key rotation. See [integrations](/reference/integrations-engine).
+- **A read-only MCP endpoint**, project-bound and authenticated with expiring
+  scoped keys. See [MCP](/self-hosting/mcp).
+- **GitBook import.** Import a public GitBook Git Sync repository with its sections,
+  URLs, blocks, and images. See [migrate documentation](/product/migration).
+- **Faster published sites.** Readers move between pages without a full reload.
+
+The [August 2026 source capability notes](/releases/august-2026-capabilities)
+describe most of these capabilities as they were first merged.
+
+## What needs configuration
+
+Several capabilities ship in the image but stay off until you configure them:
+
+| Capability | Default | What it needs |
+| --- | --- | --- |
+| Hybrid search | Off; built-in search serves readers | A Qdrant service through the optional search overlay, an `OPENROUTER_API_KEY` for embeddings, and an evaluated `SEARCH_RUNTIME` cutover |
+| Grounded answers | Off | Qdrant through the optional search overlay, `OPENROUTER_API_KEY`, `SEARCH_ANSWER_ENABLED=true`, and opt-in for each site |
+| AI writing assist | Hidden without a provider | `OPENROUTER_API_KEY` |
+| MCP endpoint | Off (`MCP_ENABLED=false`) | An operator to enable it and issue scoped keys |
+| ClickHouse analytics | Off | A ClickHouse service that you run, plus the credentials, migrations, and `ANALYTICS_MODE` rollout in the [ClickHouse guide](/self-hosting/clickhouse-analytics). `docker-compose.prod.yml` does not pass these settings, so add them yourself. |
+
+Usage metering does not enable billing or payments, and its entitlements remain
+advisory.
+
+## Platform and interface limits
+
+- The published image supports `linux/amd64` only. The installer stops on other
+  architectures.
+- `docker-compose.prod.yml` includes neither Qdrant nor ClickHouse.
+- The interface offers 12 locale options, with some strings still in English.
+- Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`,
+  and `deepmerge`. The image includes them through its email packages. Nibleaf does
+  not import them directly, and removing them needs upstream changes.
+
+See [known limitations](/reference/known-limitations) for the wider product
+boundaries.
+
+## Install or upgrade
+
+- **New installation:** follow [self-hosted installation](/getting-started/self-hosted).
+  The README's pinned bootstrap command verifies the v0.2.0 installer's SHA-256
+  digest before it runs.
+- **From v0.1.2:** changing only the image tag does not work. Follow the
+  [v0.2.0 upgrade guide](/self-hosting/upgrade-v0-2), which migrates recurring job
+  schedules in two steps and covers the backup, Compose file, and new
+  environment settings.
+- **If you set `WORKER_QUEUES`:** add `erasure`; otherwise, files belonging to
+  projects deleted after the upgrade remain in storage.
+- **Something failed:** see [troubleshooting](/self-hosting/troubleshooting).

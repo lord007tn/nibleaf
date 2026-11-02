@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
@@ -21,7 +22,7 @@ import {
   themeTemplateFromConfig,
 } from '@nibleaf/shared/themes';
 import { strToU8, zipSync } from 'fflate';
-import { Marked } from 'marked';
+import { Marked, type Tokens } from 'marked';
 import { z } from 'zod';
 
 export interface ExportAsset {
@@ -66,14 +67,35 @@ const safeSegment = (value: string): string =>
     .trim() || 'untitled';
 const safePath = (value: string): string => value.split('/').map(safeSegment).filter(Boolean).join('/') || 'index';
 
+// The editor saves callouts as GitHub alerts (`> [!TIP]`). Match the reader's
+// remarkCallouts: strip the marker from the first paragraph and tag the quote.
+const CALLOUT_MARKER = /^\[!(\w+)\]\s*/;
+type CalloutBlockquote = Tokens.Blockquote & { callout?: CalloutType };
+
 const marked = new Marked({
   gfm: true,
   breaks: false,
+  walkTokens(token) {
+    if (token.type !== 'blockquote' || !token.tokens) return;
+    const [paragraph] = token.tokens;
+    if (paragraph?.type !== 'paragraph' || !paragraph.tokens) return;
+    const [first] = paragraph.tokens;
+    if (first?.type !== 'text') return;
+    const match = CALLOUT_MARKER.exec(first.text);
+    if (!match) return;
+    first.text = first.text.slice(match[0].length);
+    if (first.text === '' && paragraph.tokens.length === 1) token.tokens.shift();
+    (token as CalloutBlockquote).callout = normalizeType(match[1]);
+  },
   renderer: {
     // Published Markdown may contain MDX/HTML. Static exports display unknown
     // markup as source instead of executing scripts or event handlers.
     html(token) {
       return escapeHtml(token.text);
+    },
+    blockquote(token) {
+      const callout = (token as CalloutBlockquote).callout;
+      return callout ? `<blockquote data-callout="${callout}">\n${this.parser.parse(token.tokens)}</blockquote>\n` : false;
     },
   },
 });
@@ -89,7 +111,8 @@ const splitSuffix = (href: string): [string, string] => {
 };
 
 const resolvePageTarget = (snapshot: SiteSnapshot, page: SnapshotPage, href: string): SnapshotPage | undefined => {
-  const [raw] = splitSuffix(href);
+  const [raw, suffix] = splitSuffix(href);
+  const languageCode = new URLSearchParams(suffix.split('#')[0]?.replaceAll('&amp;', '&')).get('lang') ?? page.languageCode;
   const current = page.path.split('/').slice(0, -1);
   const normalized = path.posix
     .normalize(raw.startsWith('/') ? raw : [...current, raw].join('/'))
@@ -100,7 +123,7 @@ const resolvePageTarget = (snapshot: SiteSnapshot, page: SnapshotPage, href: str
     (candidate) =>
       candidate.kind === 'PAGE' &&
       candidate.versionId === page.versionId &&
-      candidate.languageCode === page.languageCode &&
+      candidate.languageCode === languageCode &&
       candidate.path.replace(/^\/+|\/+$/g, '') === normalized,
   );
 };
@@ -115,7 +138,7 @@ const rewriteUrl = (
   assets: ExportAsset[],
   kind: 'link' | 'image',
 ): string => {
-  const url = rawUrl.trim();
+  const url = rawUrl.trim().replaceAll('&amp;', '&');
   if (!url || url.startsWith('#')) return url;
   if (/^(?:javascript|data:text\/html|vbscript):/i.test(url)) return '#';
   const asset = assets.find((candidate) => url === candidate.url || url === `/${candidate.key}` || url.includes(candidate.key));
@@ -231,14 +254,14 @@ const exportThemeCss = (snapshot: SiteSnapshot, print = false): string => {
   const codeStack = codeFont ? `'${codeFont}',ui-monospace,"Cascadia Code",monospace` : 'ui-monospace,"Cascadia Code",monospace';
   return `
 :root{color-scheme:${print || appearance === 'light' ? 'light' : appearance === 'dark' ? 'dark' : 'light dark'};${initial};--radius:${radius};--content-max:${contentMax};--sidebar-width:${sidebarWidth};--font-size:${fontSize};--font-body:${bodyStack};--font-heading:${headingStack};--font-code:${codeStack};--leading:${leading};--flow:${flow}}${darkRule}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:5rem}body{margin:0;background:var(--bg);color:var(--fg);font:var(--font-size)/var(--leading) var(--font-body)}:is(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);text-wrap:balance}main :is(p,pre,table,blockquote){margin-block:var(--flow)}a{color:var(--accent)}:is(a,input,button,pre):focus-visible{outline:3px solid var(--focus);outline-offset:3px}.brand{color:var(--fg);font-weight:780;letter-spacing:-.02em;text-decoration:none}.meta{color:var(--muted);font-size:.82rem}.search{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--fg)}.nav a{color:var(--fg);text-decoration:none}.nav .active{color:var(--accent);font-weight:720}.article{min-width:0}.article-header{padding-block:2rem 1rem}.article-header h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.08;margin:0}.article-description{color:var(--muted);font-size:1.05rem}.prose{overflow-wrap:anywhere}.prose img{max-width:100%;height:auto;border-radius:var(--radius)}.prose pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--code);color:var(--code-fg);direction:ltr;text-align:left}.prose code{font-family:var(--font-code)}.prose table{display:block;max-width:100%;overflow:auto;border-collapse:collapse}.prose :is(th,td){border:1px solid var(--line);padding:8px 12px;text-align:start}.prose blockquote{border-inline-start:4px solid var(--info);margin-inline:0;padding:12px 16px;color:var(--muted);background:color-mix(in oklab,var(--info) 9%,transparent)}.toc{font-size:.84rem}.toc ol{list-style:none;margin:0;padding:0}.toc a{display:block;padding-block:.25rem;color:var(--muted);text-decoration:none}.toc a:hover{color:var(--accent)}.toc .depth-3{padding-inline-start:1rem}.pager{display:flex;justify-content:space-between;gap:1rem;margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--line)}.pager a{max-width:48%;text-decoration:none}.search-status:empty{visibility:hidden;height:0;padding:0}.search-status{display:block;padding-block:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:5rem}body{margin:0;background:var(--bg);color:var(--fg);font:var(--font-size)/var(--leading) var(--font-body)}:is(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);text-wrap:balance}main :is(p,pre,table,blockquote){margin-block:var(--flow)}a{color:var(--accent)}:is(a,input,button,pre):focus-visible{outline:3px solid var(--focus);outline-offset:3px}.brand{color:var(--fg);font-weight:780;letter-spacing:-.02em;text-decoration:none}.meta{color:var(--muted);font-size:.82rem}.search{width:100%;min-height:42px;padding:9px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--fg)}.nav a{color:var(--fg);text-decoration:none}.nav .active{color:var(--accent);font-weight:720}.article{min-width:0}.article-header{padding-block:2rem 1rem}.article-header h1{font-size:clamp(2rem,5vw,3.5rem);line-height:1.08;margin:0}.article-description{color:var(--muted);font-size:1.05rem}.prose{overflow-wrap:anywhere}.prose img{max-width:100%;height:auto;border-radius:var(--radius)}.prose pre{overflow:auto;padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--code);color:var(--code-fg);direction:ltr;text-align:left}.prose code{font-family:var(--font-code)}.prose table{display:block;max-width:100%;overflow:auto;border-collapse:collapse}.prose :is(th,td){border:1px solid var(--line);padding:8px 12px;text-align:start}.prose blockquote,blockquote[data-callout]{--callout:var(--info);border-inline-start:4px solid var(--callout);margin-inline:0;padding:12px 16px;color:var(--muted);background:color-mix(in oklab,var(--callout,var(--info)) 9%,transparent)}blockquote:is([data-callout="tip"],[data-callout="check"]){--callout:var(--success)}blockquote[data-callout="warning"]{--callout:var(--warning)}blockquote[data-callout="danger"]{--callout:var(--danger)}.toc{font-size:.84rem}.toc ol{list-style:none;margin:0;padding:0}.toc a{display:block;padding-block:.25rem;color:var(--muted);text-decoration:none}.toc a:hover{color:var(--accent)}.toc .depth-3{padding-inline-start:1rem}.pager{display:flex;justify-content:space-between;gap:1rem;margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--line)}.pager a{max-width:48%;text-decoration:none}.search-status:empty{visibility:hidden;height:0;padding:0}.search-status{display:block;padding-block:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
 /* Harbor: a three-column reference library with a persistent top utility bar. */
 .harbor-topbar{position:sticky;z-index:20;top:0;display:grid;grid-template-columns:var(--sidebar-width) minmax(16rem,1fr) auto;align-items:center;gap:2rem;min-height:68px;padding-inline:max(1.5rem,calc((100vw - var(--content-max))/2 + 1.5rem));border-bottom:1px solid var(--line);background:color-mix(in oklab,var(--bg) 92%,transparent);backdrop-filter:blur(14px)}.harbor-topbar .search-wrap{max-width:34rem}.harbor-edition{white-space:nowrap}.harbor-shell{display:grid;grid-template-columns:var(--sidebar-width) minmax(0,780px) minmax(160px,220px);gap:clamp(1.5rem,4vw,3.5rem);max-width:var(--content-max);margin:auto;padding:0 1.5rem}.harbor-library{position:sticky;top:68px;height:calc(100vh - 68px);overflow:auto;padding:2rem 1.25rem 4rem 0;border-inline-end:1px solid var(--line)}[dir="rtl"] .harbor-library{padding:2rem 0 4rem 1.25rem}.harbor-library .nav{display:grid;gap:.18rem}.harbor-library .nav a{padding:.42rem .65rem;border-radius:calc(var(--radius)/1.5)}.harbor-library .nav a:hover,.harbor-library .nav .active{background:var(--muted-surface)}.harbor-article{padding-bottom:6rem}.harbor-toc{position:sticky;top:92px;align-self:start;max-height:calc(100vh - 116px);overflow:auto;padding-top:2rem}
 /* Manuscript: an editorial masthead, horizontal chapters, and centered paper. */
 .manuscript-masthead{padding:2rem max(1.25rem,calc((100vw - var(--content-max))/2 + 1.25rem)) 1rem;border-bottom:1px solid var(--line)}.manuscript-masthead-row{display:flex;align-items:end;justify-content:space-between;gap:2rem}.manuscript-brand{font-family:var(--font-heading);font-size:clamp(1.65rem,4vw,2.8rem)}.manuscript-search{width:min(26rem,45vw)}.manuscript-chapters{display:flex;gap:1.5rem;max-width:var(--content-max);margin:auto;padding:.8rem 1.25rem;overflow-x:auto;border-bottom:1px solid var(--line);white-space:nowrap;scrollbar-width:thin}.manuscript-chapters a{padding:.35rem 0;border-bottom:2px solid transparent}.manuscript-chapters .active{border-color:var(--accent)}.manuscript-page{display:grid;grid-template-columns:minmax(150px,220px) minmax(0,760px);gap:clamp(2rem,6vw,6rem);max-width:1120px;margin:auto;padding:clamp(2rem,7vw,6rem) 1.25rem}.manuscript-margin{position:sticky;top:1.5rem;align-self:start}.manuscript-paper{padding:clamp(1.5rem,5vw,4rem);border:1px solid var(--line);border-radius:calc(var(--radius)*1.5);background:var(--surface);box-shadow:0 24px 70px color-mix(in oklab,var(--fg) 8%,transparent)}.manuscript-paper .article-header{padding-top:0}.manuscript-paper .prose{font-size:1.03em}.manuscript-paper .prose>p:first-of-type{font-size:1.12em}
 /* Signal: a dense command surface with independent rail, reader, and index. */
 .signal-commandbar{position:sticky;z-index:20;top:0;display:grid;grid-template-columns:190px minmax(12rem,620px) auto;align-items:center;gap:1.25rem;min-height:56px;padding:.5rem 1rem;border-bottom:1px solid var(--line);background:var(--surface)}.signal-commandbar .search{min-height:36px;border-radius:4px}.signal-state{justify-self:end;color:var(--muted);font:12px/1.2 var(--font-code)}.signal-workspace{display:grid;grid-template-columns:210px minmax(0,1fr) 210px;min-height:calc(100vh - 56px)}.signal-rail{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:1rem;border-inline-end:1px solid var(--line);background:var(--muted-surface)}.signal-rail .nav{display:grid;gap:.1rem}.signal-rail .nav a{padding:.34rem .5rem;border-radius:4px;font:13px/1.45 var(--font-code)}.signal-rail .nav a:hover,.signal-rail .nav .active{background:var(--surface)}.signal-content{min-width:0;padding:0 clamp(1.25rem,5vw,5rem) 5rem}.signal-content .article-header{display:grid;gap:.55rem;border-bottom:1px solid var(--line)}.signal-content .article-header h1{font-size:clamp(1.8rem,4vw,2.8rem)}.signal-content .prose{max-width:920px}.signal-index{position:sticky;top:56px;height:calc(100vh - 56px);overflow:auto;padding:1.5rem 1rem;border-inline-start:1px solid var(--line)}
-body[data-theme-code="vivid"] pre{box-shadow:inset 0 2px var(--accent)}body[data-theme-callouts="outline"] blockquote{background:transparent}body[data-theme-callouts="solid"] blockquote{background:var(--info);color:var(--accent-fg)}
+body[data-theme-code="vivid"] pre{box-shadow:inset 0 2px var(--accent)}body[data-theme-callouts="outline"] blockquote{background:transparent}body[data-theme-callouts="solid"] blockquote{background:var(--callout,var(--info));color:var(--accent-fg)}
 @media(max-width:1050px){.harbor-shell{grid-template-columns:var(--sidebar-width) minmax(0,1fr)}.harbor-toc{visibility:hidden;position:absolute}.signal-workspace{grid-template-columns:190px minmax(0,1fr)}.signal-index{visibility:hidden;position:absolute}}
 @media(max-width:760px){html{scroll-padding-top:4rem}.pager{flex-direction:column}.pager a{max-width:none}.harbor-topbar{grid-template-columns:1fr auto;gap:.75rem;min-height:60px;padding:.55rem 1rem}.harbor-topbar .search-wrap{grid-column:1/-1;grid-row:2}.harbor-shell{display:block;padding:0 1rem}.harbor-library{position:static;height:auto;margin-bottom:1rem;padding:1rem 0;border:0;border-bottom:1px solid var(--line)}[dir="rtl"] .harbor-library{padding:1rem 0}.harbor-library .nav{display:flex;gap:.35rem;overflow-x:auto;white-space:nowrap}.harbor-article{padding-bottom:4rem}.manuscript-masthead{padding:1rem}.manuscript-masthead-row{align-items:start;flex-direction:column;gap:.75rem}.manuscript-search{width:100%}.manuscript-chapters{padding-inline:1rem}.manuscript-page{display:block;padding:1.5rem 1rem}.manuscript-margin{position:static;margin-bottom:1.5rem}.manuscript-paper{padding:1.25rem;border-inline:0;border-radius:0;box-shadow:none}.signal-commandbar{grid-template-columns:1fr auto;min-height:52px}.signal-commandbar .search-wrap{grid-column:1/-1;grid-row:2}.signal-workspace{display:block}.signal-rail{position:static;height:auto;padding:.65rem 1rem;border:0;border-bottom:1px solid var(--line)}.signal-rail .nav{display:flex;overflow-x:auto;white-space:nowrap}.signal-content{padding:0 1rem 4rem}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
@@ -463,6 +486,7 @@ const themeJs = (searchEntries: Array<{ title: string; path: string; text: strin
 const plainText = (markdown: string): string =>
   markdown
     .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\[!\w+\]/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[#*_`>[\]()!-]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -625,22 +649,40 @@ export const renderMarkdownZip = (snapshot: SiteSnapshot, assets: ExportAsset[])
   return { bytes: zipSync(files, { level: 6 }), contentType: 'application/zip', extension: 'zip' };
 };
 
-export const renderPdfHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]): string => {
-  const assetData = new Map(assets.map((asset) => [asset.url, `data:${asset.contentType};base64,${Buffer.from(asset.bytes).toString('base64')}`]));
-  const pages = snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden);
+export const renderPdfHtml = (
+  snapshot: SiteSnapshot,
+  assets: ExportAsset[],
+  options: { pages?: SnapshotPage[]; includeCover?: boolean; internalLinkPrefix?: string } = {},
+): string => {
+  const assetsByUrl = new Map(assets.map((asset) => [asset.url, asset]));
+  const assetData = new Map<string, string>();
+  const pages = (options.pages ?? snapshot.pages).filter((page) => page.kind === 'PAGE' && !page.hidden);
   const content = pages
     .map((page) => {
       const direction = snapshot.project.languages.find((language) => language.code === page.languageCode)?.direction ?? 'LTR';
       let html = String(marked.parse(portablePublicMdxMarkdown(page.content)));
       html = html
-        .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => `${before}${assetData.get(url) ?? '#'}${after}`)
+        .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => {
+          const asset = assetsByUrl.get(url);
+          if (!asset) return `${before}#${after}`;
+          let data = assetData.get(url);
+          if (!data) {
+            data = `data:${asset.contentType};base64,${Buffer.from(asset.bytes).toString('base64')}`;
+            assetData.set(url, data);
+          }
+          return `${before}${data}${after}`;
+        })
         .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
           const target = resolvePageTarget(snapshot, page, href);
-          return `${before}${target ? `#page-${escapeHtml(target.id)}` : escapeHtml(href)}${after}`;
+          return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });
       return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(page.title)}</h1>${html}</article>`;
     })
     .join('');
   const theme = resolveTheme(themeConfigOf(snapshot));
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${exportThemeCss(snapshot, true)}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt}a{text-decoration:none}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}}</style></head><body data-theme-id="${escapeHtml(theme.id)}"><header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta"><time datetime="${escapeHtml(snapshot.generatedAt)}">${escapeHtml(snapshot.generatedAt)}</time></p></header>${content}</body></html>`;
+  const cover =
+    options.includeCover === false
+      ? ''
+      : `<header><h1>${escapeHtml(snapshot.project.name)}</h1><p>${escapeHtml(snapshot.project.description ?? '')}</p><p class="meta"><time datetime="${escapeHtml(snapshot.generatedAt)}">${escapeHtml(snapshot.generatedAt)}</time></p></header>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="author" content="Nibleaf"><meta name="generator" content="Nibleaf export"><title>${escapeHtml(snapshot.project.name)}</title><style>${exportThemeCss(snapshot, true)}body{max-width:none;padding:0 24px}article{break-before:page;page-break-before:always}article:first-child{break-before:auto;page-break-before:auto}h1,h2,h3{break-after:avoid;page-break-after:avoid}pre,table,img,blockquote{break-inside:avoid;page-break-inside:avoid}table{display:table;width:100%;font-size:10pt;border-collapse:collapse}th,td{padding:4pt 6pt;vertical-align:top}a{text-decoration:none}@page{size:A4;margin:18mm 16mm}@media print{body{font-size:10.5pt}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}}</style></head><body data-theme-id="${escapeHtml(theme.id)}">${cover}${content}</body></html>`;
 };

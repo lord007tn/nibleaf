@@ -1,23 +1,17 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { createServerEntry } from '@tanstack/react-start/server-entry';
 import { serverEnv } from '@/env.server';
 import { adminContentSecurityPolicy } from '@/lib/content-security-policy';
+import { ssrNonce } from '@/lib/ssr-nonce.server';
 
-const ssrNonce = new AsyncLocalStorage<string>();
 const appOrigin = serverEnv.VITE_APP_URL ?? (serverEnv.NODE_ENV === 'production' ? 'https://nibleaf.com' : 'http://localhost:4310');
 const revision = process.env.NIBLEAF_REVISION ?? 'development';
 const drainFile = process.env.NIBLEAF_DRAIN_FILE ?? '/tmp/nibleaf-draining';
 
-const startHandler = createStartHandler((context) => {
-  const nonce = ssrNonce.getStore();
-  if (nonce) {
-    context.router.update({ ssr: { ...context.router.options.ssr, nonce } });
-  }
-  return defaultStreamHandler(context);
-});
+const startHandler = createServerEntry({ fetch: createStartHandler(defaultStreamHandler) }).fetch;
 
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   if (new URL(request.url).pathname === '/health') {
@@ -42,4 +36,4 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   });
 };
 
-export default { fetch: handleRequest };
+export default createServerEntry({ fetch: handleRequest });

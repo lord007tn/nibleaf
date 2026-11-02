@@ -23,7 +23,7 @@ export function SectionCard({
   loading,
 }: {
   label: string;
-  value: number;
+  value: number | null;
   icon?: ReactNode;
   trend?: Trend;
   footer?: string;
@@ -45,7 +45,9 @@ export function SectionCard({
         {loading ? (
           <Skeleton className="mt-1 h-8 w-20" />
         ) : (
-          <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight @[200px]/card:text-3xl">{number(value)}</CardTitle>
+          <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight @[200px]/card:text-3xl">
+            {value === null ? '—' : number(value)}
+          </CardTitle>
         )}
         {trend ? (
           <CardAction>

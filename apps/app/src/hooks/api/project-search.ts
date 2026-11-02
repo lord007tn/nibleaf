@@ -49,7 +49,11 @@ export const useProjectSearchIndexDiagnostics = (projectId: string, cursor?: str
         }),
         'search index diagnostics',
       ).then((data) => searchIndexDiagnosticsResultSchema.parse(data)),
-    refetchInterval: (query) => (query.state.data?.health === 'indexing' ? 2000 : false),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // The first run can be active before its collection/alias is available.
+      return data?.health === 'indexing' || data?.latestRun?.status === 'PENDING' || data?.latestRun?.status === 'RUNNING' ? 2000 : false;
+    },
   });
 
 export const useCreateProjectSearchReindex = (projectId: string) => {

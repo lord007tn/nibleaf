@@ -1,20 +1,30 @@
+import rehypeSanitize from 'rehype-sanitize';
 import { describe, expect, it } from 'vitest';
-import { normalizeMdxBlocks, normalizeType } from './mdx-config';
+import { normalizeMdxBlocks, sanitizeSchema } from './mdx-config';
 
-describe('normalizeType', () => {
-  it('maps the GitHub caution keyword to danger', () => {
-    expect(normalizeType('caution')).toBe('danger');
-  });
-  it('maps important to info, case-insensitively', () => {
-    expect(normalizeType('IMPORTANT')).toBe('info');
-  });
-  it('passes known types through', () => {
-    expect(normalizeType('warning')).toBe('warning');
-    expect(normalizeType('tip')).toBe('tip');
-  });
-  it('defaults unknown or missing values to note', () => {
-    expect(normalizeType('zzz')).toBe('note');
-    expect(normalizeType(undefined)).toBe('note');
+describe('math sanitization boundary', () => {
+  it('preserves only recognized code markers and strips authored styling and handlers', () => {
+    const result = rehypeSanitize(sanitizeSchema)({
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'code',
+          properties: {
+            className: ['language-ts', 'math-inline', 'math-display', 'arbitrary-code-class'],
+            style: 'position:fixed',
+            onClick: 'alert(1)',
+          },
+          children: [{ type: 'text', value: 'x' }],
+        },
+      ],
+    });
+    const code = result.children[0];
+    if (code?.type !== 'element') throw new Error('Sanitized code element was not preserved');
+    expect(code.properties.className).toEqual(['language-ts', 'math-inline', 'math-display']);
+    expect(code.properties).not.toHaveProperty('style');
+    expect(code.properties).not.toHaveProperty('onClick');
+    expect(sanitizeSchema.tagNames).not.toContain('math');
   });
 });
 

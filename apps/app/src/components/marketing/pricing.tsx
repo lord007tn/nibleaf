@@ -36,7 +36,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
   {
     title: 'Languages',
     rows: [
-      { label: 'English + Arabic, full RTL', cloud: true, self: true },
+      { label: 'English and Arabic authoring with RTL; 12 interface locales, with some strings still in English', cloud: true, self: true },
       { label: 'Per-language page trees', cloud: true, self: true },
     ],
   },
@@ -45,7 +45,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     rows: [
       { label: 'Hosting', cloud: 'Managed for you', self: 'Your servers' },
       { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres, any S3-compatible store' },
-      { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new image; migrations run themselves' },
+      { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new release and follow its upgrade notes' },
       { label: 'Data ownership', cloud: 'Exportable Markdown, always', self: 'Everything stays on your infra' },
       { label: 'Support', cloud: 'support@nibleaf.com', self: 'Community support and your own operations' },
     ],
@@ -65,8 +65,8 @@ const betaPromises: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: strin
   },
   {
     icon: ShieldCheck,
-    title: 'No paid cloud plan today',
-    body: 'Cloud is free during active beta. No future price, launch date, or beta discount is offered here. Self-hosting uses the separate AGPL-3.0 release.',
+    title: 'Generous notice before paid plans',
+    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. The AGPL-3.0 self-hosted release remains separate.',
   },
 ];
 
@@ -113,7 +113,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
               'Managed database, queues, and storage',
               'Automatic deploys and upgrades',
               'Custom domains and analytics',
-              'Exportable Markdown content',
+              'Priority treatment when paid plans arrive',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -124,7 +124,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           <a className={`${primaryButton} mt-7`} href="/sign-up">
             Create free account <ArrowRight className="size-4" />
           </a>
-          <p className="mt-3 text-center text-muted-foreground text-xs">Create a project, write a page, then publish.</p>
+          <p className="mt-3 text-center text-muted-foreground text-xs">No credit card. Create a project and publish from your browser.</p>
         </div>
         <div className="flex flex-col rounded-xl border border-border bg-card p-8">
           <h2 className="flex items-center gap-2 font-semibold text-lg">
@@ -157,10 +157,10 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
         <div className="mx-auto max-w-4xl px-6 py-20">
           <div className="flex flex-col items-center text-center">
             <Eyebrow>What's included</Eyebrow>
-            <h2 className="mt-4 font-semibold text-3xl tracking-tight">Compare features and operating responsibility</h2>
+            <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Core authoring and publishing are available in both. Self-hosted features depend on the installed release; source main can contain
-              capabilities absent from the pinned v0.1.2 image.
+              Writing, publishing, search, custom domains, and Arabic/RTL work in Cloud and self-hosted. Newer capabilities such as hybrid search,
+              grounded answers, usage history, and MCP depend on the release in use and on which optional services are configured.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

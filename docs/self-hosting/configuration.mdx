@@ -3,7 +3,7 @@ title: 'Configure a production deployment'
 description: 'Set public origins, independent secrets, object storage, email, domain routing, proxy trust, and operator access for self-hosted Nibleaf.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-10-30'
 verified_against: '.env.production.example and docker-compose.prod.yml'
 lang: 'en'
 dir: 'ltr'
@@ -66,9 +66,14 @@ agree. Upload and open a real image before inviting writers.
 
 ## Configure sign-up and mail
 
-Production requires email verification by default. Set a verified `EMAIL_FROM`
-and configure Postmark or `SMTP_URL`. Send a verification and password-reset
-message to an external mailbox; a container health check cannot prove delivery.
+Sign-in uses email codes, or Google when `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` are configured. Set a verified `EMAIL_FROM` and configure
+Postmark or `SMTP_URL`. Send a sign-in code to an external mailbox; a container
+health check cannot prove delivery.
+
+`EMAIL_DELIVERY_REQUIRED` defaults to `true`, and the worker health check returns 503
+while no provider is configured. Set it to `false` only for an instance that signs in
+through Google: without a provider, the first owner cannot receive an email code.
 
 After creating the intended owners, set `DISABLE_SIGNUP=true` if registration
 should close. Existing accounts can still sign in.

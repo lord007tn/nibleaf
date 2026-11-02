@@ -13,7 +13,6 @@ const featureSources: Record<string, { label: string; href: string }[]> = {
   ],
   GitBook: [
     { label: 'Plans and capabilities', href: 'https://www.gitbook.com/pricing' },
-    { label: 'Editing and RTL limits', href: 'https://gitbook.com/docs/help-center/editing-content/writing-and-editing' },
     { label: 'Published-site renderer', href: 'https://github.com/GitbookIO/gitbook' },
   ],
   Docusaurus: [
@@ -125,8 +124,8 @@ function PageHero({ eyebrow, heading, paragraphs, asOf }: { eyebrow: string; hea
           as of {asOf} and links to its source, and everything Nibleaf doesn’t do yet is disclosed plainly.
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-          Nibleaf Cloud remains in active beta. Feature availability depends on the deployed release and configuration; the pinned v0.1.2 self-hosted
-          image predates newer source capabilities. Read the{' '}
+          Nibleaf Cloud remains in active beta. Feature availability depends on the deployed release and configuration. The self-hosted release
+          manifest targets v0.2.0; optional services still need operator configuration. Read the{' '}
           <a className="underline underline-offset-2" href="/blog/nibleaf-august-2026-source-release">
             release boundaries
           </a>{' '}

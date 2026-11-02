@@ -7,7 +7,7 @@ import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, Project } from '@/hooks/api';
-import { useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { useGetPublicMeta, useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
 import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
@@ -121,6 +121,7 @@ function ProjectSearchConfigurationForm({
   const update = useUpdateProjectSearchConfiguration(projectId);
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
+  const { data: publicMeta } = useGetPublicMeta();
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
@@ -128,8 +129,9 @@ function ProjectSearchConfigurationForm({
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
 
+  const defaultValues = { placeholder: configuration.placeholder ?? '', maxResults: String(configuration.maxResults) };
   const form = useForm({
-    defaultValues: { placeholder: configuration.placeholder ?? '', maxResults: String(configuration.maxResults) },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
       try {
@@ -205,24 +207,42 @@ function ProjectSearchConfigurationForm({
         />
       </div>
 
-      <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
-        <Segmented
-          className="max-w-[240px]"
-          onChange={setAiAnswers}
-          options={[
-            { value: 'enabled', label: t('settings.search.aiAnswers.enabled') },
-            { value: 'disabled', label: t('settings.search.aiAnswers.disabled') },
-          ]}
-          value={aiAnswers}
-        />
-      </Field>
+      {publicMeta?.ai?.answers ? (
+        <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
+          <Segmented
+            className="max-w-[240px]"
+            onChange={setAiAnswers}
+            options={[
+              { value: 'enabled', label: t('settings.search.aiAnswers.enabled') },
+              { value: 'disabled', label: t('settings.search.aiAnswers.disabled') },
+            ]}
+            value={aiAnswers}
+          />
+        </Field>
+      ) : null}
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || controlsDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => (
+          <DirtyStateReporter
+            values={values}
+            defaults={defaultValues}
+            extraDirty={controlsDirty}
+            dirty={isDirty || controlsDirty}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !controlsDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => (
+          <SaveBar
+            values={values}
+            defaults={defaultValues}
+            extraDirty={controlsDirty}
+            disabled={!isDirty && !controlsDirty}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </form.Subscribe>
     </form>
   );
@@ -245,8 +265,9 @@ function LanguageSearchForm({
   const update = useUpdateLanguage(project.id);
   const projectSearch = project.config?.search ?? {};
 
+  const defaultValues = { placeholder: language.config?.search?.placeholder ?? '' };
   const form = useForm({
-    defaultValues: { placeholder: language.config?.search?.placeholder ?? '' },
+    defaultValues,
     onSubmit: async ({ value }) => {
       const placeholder = value.placeholder.trim();
       try {
@@ -297,12 +318,12 @@ function LanguageSearchForm({
         />
       </Field>
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => <DirtyStateReporter values={values} defaults={defaultValues} dirty={isDirty} onDirtyChange={onDirtyChange} />}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );

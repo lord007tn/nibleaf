@@ -6,6 +6,7 @@ import { ArrowDownToLine, Check, Loader2, Replace, Sparkles, Wand2 } from 'lucid
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAiDraft } from '@/hooks/api';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 
 type AiMode = 'continue' | 'rephrase' | 'outline' | 'summarize';
 
@@ -57,7 +58,8 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
             setPreview({ mode, text: result.text });
           }
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.ai.draftError')),
+        onError: (e) =>
+          toast.error(e instanceof ApiResponseError && e.code === 'http:rate_limited' ? t('editor.ai.rateLimited') : t('editor.ai.draftError')),
         onSettled: () => setActiveMode(null),
       },
     );

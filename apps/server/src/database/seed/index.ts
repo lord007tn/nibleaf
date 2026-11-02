@@ -4,7 +4,7 @@ import { logger } from '@nibleaf/logger';
 import { buildSnapshot } from '@nibleaf/shared/site';
 import { env } from '@/env';
 
-const DEMO = { email: 'demo@nibleaf.test', password: 'nibleafdemo123', name: 'Ada Lovelace' };
+const DEMO = { email: 'demo@nibleaf.test', name: 'Ada Lovelace' };
 
 async function seed() {
   // Guard against clobbering a real environment with demo data.
@@ -12,11 +12,13 @@ async function seed() {
     throw new Error('Refusing to seed in production. Set ALLOW_SEED=1 to override.');
   }
 
-  // Sign up the demo user via better-auth (hashes the password + provisions a
-  // workspace and starter docs project through the create hook). Idempotent.
+  // Use the same passwordless provisioning path as customer sign-up. Creating
+  // the short-lived OTP is server-only and does not require a delivery provider.
+  // Consuming it runs the normal workspace/starter hooks. Idempotent.
   const existing = await prisma.user.findUnique({ where: { email: DEMO.email }, select: { id: true } });
   if (!existing) {
-    await auth.api.signUpEmail({ body: DEMO });
+    const otp = await auth.api.createVerificationOTP({ body: { email: DEMO.email, type: 'sign-in' } });
+    await auth.api.signInEmailOTP({ body: { ...DEMO, otp } });
   }
 
   const user = await prisma.user.findUnique({ where: { email: DEMO.email } });
@@ -88,7 +90,7 @@ async function seed() {
   logger.info(`  workspace : ${member.organizationId}`);
   logger.info(`  project   : ${project.name} (${project.id})`);
   logger.info(`  live site : /sites/${project.id}`);
-  logger.info(`  sign in   : ${DEMO.email} / ${DEMO.password}`);
+  logger.info(`  sign in   : ${DEMO.email} (email verification code)`);
 }
 
 seed()

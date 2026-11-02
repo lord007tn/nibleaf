@@ -7,7 +7,7 @@ const metaRoutes = {
   meta: createRouteConfig({
     guard: passthrough,
     tags: ['public'],
-    description: 'Public instance metadata: enabled auth providers, sign-up policy, and optional consent-gated marketing analytics.',
+    description: 'Public instance metadata: enabled auth providers, sign-up policy, AI capabilities, and optional consent-gated marketing analytics.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };

@@ -220,7 +220,7 @@ export const getProjectSearchIndexDiagnostics = async (ctx: Context<HonoEnv>, pr
   if (!deployment) return unavailableDiagnostics('not_published', null);
   const latestRun = await getLatestSearchRun(projectId, deployment.id);
   const qdrant = getQdrantClient();
-  if (!qdrant) return unavailableDiagnostics('not_configured', latestRun);
+  if (!(qdrant && env.OPENROUTER_API_KEY)) return unavailableDiagnostics('not_configured', latestRun);
 
   const filter = projectDeploymentFilter(projectId, deployment.id);
   const offset = readSearchDiagnosticsCursor(env.BETTER_AUTH_SECRET, resolvedQuery.cursor, projectId, deployment.id);

@@ -66,9 +66,33 @@ const lowlight = createLowlight(common);
 type MarkdownSerializeState = {
   write: (text: string) => void;
   text: (text: string, shouldEscape?: boolean) => void;
+  esc: (text: string) => string;
   ensureNewLine: () => void;
   closeBlock: (node: PMNode) => void;
 };
+
+/**
+ * Images are block nodes here (`inline: false`), but tiptap-markdown's default
+ * image serializer is the inline one and never closes the block — whatever
+ * follows (a paragraph, a closing `</Card>`) would be glued onto the image line.
+ */
+const BlockImage = Image.extend({
+  addStorage() {
+    return {
+      markdown: {
+        serialize(state: MarkdownSerializeState, node: PMNode) {
+          // Escape backslashes too, so a destination or title ending in `\`
+          // cannot swallow the closing delimiter when the page is reloaded.
+          const src = String(node.attrs.src ?? '').replace(/[\\()]/g, '\\$&');
+          const title = node.attrs.title ? ` "${String(node.attrs.title).replace(/[\\"]/g, '\\$&')}"` : '';
+          state.write(`![${state.esc(String(node.attrs.alt ?? ''))}](${src}${title})`);
+          state.closeBlock(node);
+        },
+        parse: {},
+      },
+    };
+  },
+});
 
 const fenceParsers = new WeakSet<object>();
 
@@ -245,7 +269,7 @@ export function buildEditorExtensions({ onUpload, getComments, getActiveId, dir 
     Subscript,
     Superscript,
     Typography,
-    Image.configure({ inline: false, allowBase64: true }),
+    BlockImage.configure({ inline: false, allowBase64: true }),
     TaskList,
     TaskItem.configure({ nested: true }),
     // Column resizing is LTR-only in prosemirror-tables — in RTL the drag

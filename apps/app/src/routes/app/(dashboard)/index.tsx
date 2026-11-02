@@ -1,23 +1,19 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
+import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
-import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
-import { Input } from '@nibleaf/design-system/components/ui/input';
-import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm } from '@tanstack/react-form';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { AlertTriangle, BarChart3, BookText, FileText, Plus, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
+import { NewProjectDialog } from '@/components/app/new-project-dialog';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
-import { useCreateProject, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
+import { useProjects, useWorkspaceAnalytics } from '@/hooks/api';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
-import { required } from '@/lib/form';
 import { useFormatters, viewsTrend } from '@/lib/format';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
@@ -28,95 +24,25 @@ export const Route = createFileRoute('/app/(dashboard)/')({
   }),
 });
 
-/** Controlled create dialog so multiple triggers (header button + the empty
- *  state's CTA) share one instance. Creating a project also mints its own
- *  workspace (organization) server-side, so this works even for a user whose
- *  sign-up provisioning failed and who belongs to no workspace at all. */
-function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const create = useCreateProject();
-  const t = useT();
-
-  const form = useForm({
-    defaultValues: { name: '' },
-    onSubmit: async ({ value }) => {
-      await new Promise<void>((resolve) => {
-        create.mutate(
-          { name: value.name.trim() },
-          {
-            onSuccess: () => {
-              toast.success(t('newSite.created'));
-              form.reset();
-              onOpenChange(false);
-              resolve();
-            },
-            onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('newSite.error'));
-              resolve();
-            },
-          },
-        );
-      });
-    },
-  });
-
-  return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            form.handleSubmit();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{t('newSite.title')}</DialogTitle>
-            <DialogDescription>{t('newSite.desc')}</DialogDescription>
-          </DialogHeader>
-          <div className="my-4 flex flex-col gap-1.5">
-            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('newSite.name'), t)(value) }}>
-              {(field) => (
-                <>
-                  <Label htmlFor="project-name">{t('newSite.name')}</Label>
-                  <Input
-                    autoFocus
-                    id="project-name"
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    placeholder="API Reference"
-                    value={field.state.value}
-                  />
-                  <FieldError errors={field.state.meta.errors} />
-                </>
-              )}
-            </form.Field>
-          </div>
-          <DialogFooter>
-            <form.Subscribe selector={(state) => [state.isSubmitting, state.values.name] as const}>
-              {([isSubmitting, name]) => (
-                <Button disabled={isSubmitting || !name.trim()} type="submit">
-                  {isSubmitting ? t('newSite.creating') : t('newSite.create')}
-                </Button>
-              )}
-            </form.Subscribe>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 function ProjectsPage() {
   const { firstPublish, newSite } = Route.useSearch();
-  const { data: projects, isPending } = useProjects();
+  const { data: projects, isPending, isError: projectsError, isFetching: projectsFetching, refetch: retryProjects } = useProjects();
   const [range, setRange] = useState<AnalyticsRange>('30d');
-  const { data: analytics, isPending: analyticsPending } = useWorkspaceAnalytics(range);
+  const {
+    data: analytics,
+    isPending: analyticsPending,
+    isError: analyticsError,
+    isFetching: analyticsFetching,
+    refetch: retryAnalytics,
+  } = useWorkspaceAnalytics(range);
   const [newProjectOpen, setNewProjectOpen] = useState(Boolean(newSite));
   const t = useT();
   const navigate = useNavigate();
   const { number } = useFormatters();
 
-  const totalPages = (projects ?? []).reduce((sum, p) => sum + (p._count?.pages ?? 0), 0);
-  const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
+  const totalPages = projects && !projectsError ? projects.reduce((sum, p) => sum + (p._count?.pages ?? 0), 0) : null;
+  const analyticsUnavailable = analyticsError || analytics?.availability === 'unavailable';
+  const trend = useMemo(() => (analyticsUnavailable ? null : viewsTrend(analytics?.timeseries ?? [])), [analytics?.timeseries, analyticsUnavailable]);
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
 
   useEffect(() => {
@@ -144,13 +70,28 @@ function ProjectsPage() {
         <NewProjectDialog open={newProjectOpen} onOpenChange={setNewProjectOpen} />
       </div>
 
+      {projectsError ? <QueryErrorState onRetry={() => void retryProjects()} retrying={projectsFetching} /> : null}
+      {analyticsError ? <QueryErrorState onRetry={() => void retryAnalytics()} retrying={analyticsFetching} /> : null}
+      {!analyticsError && (analyticsUnavailable || analytics?.availability === 'partial') ? (
+        <Alert variant="warning">
+          <AlertTriangle />
+          <AlertTitle>{t(analyticsUnavailable ? 'analytics.state.unavailable.title' : 'analytics.state.partial.title')}</AlertTitle>
+          <AlertDescription>{t(analyticsUnavailable ? 'analytics.state.unavailable.body' : 'analytics.state.partial.body')}</AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SectionCard label={t('dashboard.stats.projects')} value={projects?.length ?? 0} icon={<BookText className="size-4" />} loading={isPending} />
+        <SectionCard
+          label={t('dashboard.stats.projects')}
+          value={projectsError ? null : (projects?.length ?? null)}
+          icon={<BookText className="size-4" />}
+          loading={isPending}
+        />
         <SectionCard label={t('dashboard.stats.pages')} value={totalPages} icon={<FileText className="size-4" />} loading={isPending} />
         <SectionCard
           label={t('dashboard.stats.pageViews')}
-          value={analytics?.totalViews ?? 0}
+          value={analyticsUnavailable ? null : (analytics?.totalViews ?? null)}
           icon={<BarChart3 className="size-4" />}
           trend={trend}
           hint={trend ? t('analytics.vsPrevious') : undefined}
@@ -160,21 +101,27 @@ function ProjectsPage() {
             the page-views trend would be misleading on a visitors metric. */}
         <SectionCard
           label={t('dashboard.stats.visitors')}
-          value={analytics?.uniqueVisitors ?? 0}
+          value={analyticsUnavailable ? null : (analytics?.uniqueVisitors ?? null)}
           icon={<Users className="size-4" />}
           loading={analyticsPending}
         />
       </div>
 
       {/* Interactive views chart */}
-      <ViewsAreaChart
-        title={t('dashboard.viewsTitle')}
-        description={t('dashboard.viewsDesc')}
-        data={analytics?.timeseries ?? []}
-        range={range}
-        onRangeChange={setRange}
-        loading={analyticsPending}
-      />
+      {analyticsUnavailable ? (
+        <div className="grid min-h-64 place-items-center rounded-xl border border-border bg-card p-5 text-muted-foreground text-sm">
+          {t('analytics.state.unknown')}
+        </div>
+      ) : (
+        <ViewsAreaChart
+          title={t('dashboard.viewsTitle')}
+          description={t('dashboard.viewsDesc')}
+          data={analytics?.timeseries ?? []}
+          range={range}
+          onRangeChange={setRange}
+          loading={analyticsPending}
+        />
+      )}
 
       {/* Sites table */}
       <div className="rounded-xl border border-border bg-card">
@@ -187,7 +134,7 @@ function ProjectsPage() {
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : (projects ?? []).length === 0 ? (
+        ) : projectsError && !projects ? null : (projects ?? []).length === 0 ? (
           // Also the recovery path for a user whose workspace provisioning
           // failed at sign-up: creating a project mints a fresh workspace.
           <div className="grid place-items-center py-16 text-center">
@@ -210,23 +157,23 @@ function ProjectsPage() {
             </TableHeader>
             <TableBody>
               {(projects ?? []).map((project) => (
-                <TableRow
-                  key={project.id}
-                  className="cursor-pointer"
-                  onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: project.id } })}
-                >
+                <TableRow key={project.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <NibleafMark className="size-8 shrink-0" />
-                      <div className="min-w-0">
+                      <Link
+                        className="min-w-0 rounded-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        to="/app/projects/$projectId"
+                        params={{ projectId: project.id }}
+                      >
                         <div className="truncate font-medium">{project.name}</div>
                         <div className="truncate font-mono text-muted-foreground text-xs">/{project.slug}</div>
-                      </div>
+                      </Link>
                     </div>
                   </TableCell>
                   <TableCell className="text-end tabular-nums">{number(project._count?.pages ?? 0)}</TableCell>
                   <TableCell className="text-end tabular-nums">{number(project._count?.deployments ?? 0)}</TableCell>
-                  <TableCell className="text-end tabular-nums">{number(viewsByProject.get(project.id) ?? 0)}</TableCell>
+                  <TableCell className="text-end tabular-nums">{analyticsUnavailable ? '—' : number(viewsByProject.get(project.id) ?? 0)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

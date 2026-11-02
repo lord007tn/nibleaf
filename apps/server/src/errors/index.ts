@@ -26,6 +26,10 @@ export type ErrorCode =
   | 'import:invalid_document'
   | 'import:not_found'
   | 'import:unsupported'
+  | 'import:incomplete'
+  | 'import:limit'
+  | 'import:busy'
+  | 'import:in_progress'
   | 'provider:unavailable'
   | 'usage:invalid_period'
   | 'usage:unavailable'
@@ -82,6 +86,10 @@ const ERROR_STATUS = {
   'import:invalid_document': 422,
   'import:not_found': 404,
   'import:unsupported': 422,
+  'import:incomplete': 422,
+  'import:limit': 422,
+  'import:busy': 503,
+  'import:in_progress': 409,
   'provider:unavailable': 502,
   'usage:invalid_period': 400,
   'usage:unavailable': 503,
@@ -162,7 +170,11 @@ export const badRequest = (message: string, details?: Record<string, unknown>) =
 export const forbidden = (message: string, details?: Record<string, unknown>) => new AppError({ code: 'auth:insufficient_role', message, details });
 
 export class ImportError extends AppError {
-  constructor(options: Omit<AppErrorOptions, 'code'> & { code: 'import:invalid_document' | 'import:not_found' | 'import:unsupported' }) {
+  constructor(
+    options: Omit<AppErrorOptions, 'code'> & {
+      code: 'import:invalid_document' | 'import:not_found' | 'import:unsupported' | 'import:incomplete' | 'import:limit';
+    },
+  ) {
     super(options);
     this.name = 'ImportError';
   }

@@ -38,7 +38,7 @@ your content stays in your database.
 
 - 🖋️ **Rich text _and_ Markdown, round-tripped** — write visually or in raw MDX; content is
   Markdown end-to-end, so you're never locked into a proprietary format.
-- 🌍 **Multilingual & RTL-first** — 12 interface languages, arbitrary BCP-47 content
+- 🌍 **Multilingual & RTL-first** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content
   languages, per-language page trees, and right-to-left layout.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
@@ -79,15 +79,17 @@ Private customer documentation supports dedicated reader accounts, audience/page
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
 - **Tenant-safe search** — built-in Orama full-text/fuzzy search remains the default and
-  immediate rollback; source `main` also includes an optional Qdrant BM25+dense hybrid path,
-  privacy-safe diagnostics, and opt-in grounded answers for English, Arabic, and mixed content.
+  immediate rollback; v0.2.0 adds an optional Qdrant BM25+dense hybrid path, privacy-safe
+  diagnostics, and opt-in grounded answers for English, Arabic, and mixed content. The hybrid
+  path needs a Qdrant service, and embeddings and answers need an AI provider key.
 - **Usage and entitlements** — provider-neutral usage events, ClickHouse rollups, explicit
   unknown states, and advisory limits without a payment or billing claim.
 - **Project add-ons and integrations** — audited optional capabilities, consent controls,
   encrypted write-only project credentials, and clear project-versus-instance ownership.
 - **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
   validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
-- **Multilingual & RTL** — 12 interface languages, arbitrary BCP-47 content languages,
+  MCP is off by default (`MCP_ENABLED=false`) until an operator enables it.
+- **Multilingual & RTL** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,
   and host-based published-site routing.
@@ -141,13 +143,13 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
-On a Linux server, the pinned bootstrap downloads the v0.1.2 installer, verifies
+On a Linux `amd64` server, the pinned bootstrap downloads the v0.2.0 installer, verifies
 its committed SHA-256 digest, and only then executes it. The verified installer
 also verifies the release's production Compose file before it writes a mode-600
 `.env` or starts the stack:
 
 ```bash
-set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.1.2/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "d23da907556cc31ddd4d7b3a7f62ed933106bcef8b2e9439c15e7ab71a05e59a" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 For manual setup, the recommended path below **pulls the prebuilt image** from
@@ -160,6 +162,8 @@ cd nibleaf && cp .env.production.example .env
 
 # Edit .env — set APP_URL (your dashboard origin), the storage endpoints, and
 # fresh secrets (openssl rand -hex 32). The stack fails fast if one is missing.
+# Configure Postmark or SMTP too: sign-in uses email codes, so the first owner
+# can't sign in without it unless Google sign-in is configured.
 
 docker compose -f docker-compose.prod.yml pull
 docker compose -f docker-compose.prod.yml up -d
@@ -169,7 +173,10 @@ docker compose -f docker-compose.prod.yml up -d
 Database migrations run automatically (the one-shot `migrate` service), and the
 image tag is **pinned** via `NIBLEAF_VERSION`. Read the
 **[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
-before changing it. Open **`$APP_URL/sign-up`** and create the first
+before changing it, and don't re-run the installer to upgrade. Moving from v0.1.2 to
+v0.2.0 has a required staged step, covered in the
+**[upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2)**. Open
+**`$APP_URL/sign-up`** and create the first
 account — it's provisioned with a workspace and a starter docs project
 automatically (no demo credentials are seeded in production). The full production
 guide — reverse proxy, TLS, wildcard subdomains, custom-domain TLS automation,
@@ -202,7 +209,7 @@ docker compose up -d --build
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
   `SERVICE_*` secrets), set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`,
-  and deploy. Pin a build with `NIBLEAF_IMAGE=ghcr.io/lord007tn/nibleaf:v0.1.2`.
+  and deploy. Pin a build with `NIBLEAF_IMAGE_TAG=v0.2.0`.
 - **Nibleaf Cloud** — don't want to run servers? The hosted beta at
   [nibleaf.com](https://nibleaf.com) is free while in beta.
 
@@ -264,9 +271,10 @@ better-auth session cookies stay first-party with no CORS dance.
 TanStack Start · React 19 · Hono · better-auth · Prisma · PostgreSQL · BullMQ · Dragonfly ·
 Orama · optional Qdrant and ClickHouse · shadcn/ui (Base UI) · Tailwind CSS v4 · Zod · Pino · tsdown · Vite · Biome.
 
-> **Release boundary:** the integrated capabilities above are present in source `main`. The
-> checksummed installer and pinned public container remain v0.1.2 until a separate release is
-> published. Do not treat a source merge as an image or deployment receipt.
+> **Release boundary:** the capabilities above ship in v0.2.0, the release that the checksummed
+> installer and pinned public container install. The image is published for `linux/amd64` only.
+> Source `main` can move ahead of the latest release, so do not treat a source merge as an image
+> or deployment receipt.
 
 ## 💻 Local development
 
@@ -293,7 +301,9 @@ pnpm dev
 | API + docs | http://localhost:4311/docs   |
 | Worker ops | http://localhost:4312/jobs   |
 
-Demo login (after `pnpm db:seed`): `demo@nibleaf.test` / `nibleafdemo123`.
+Demo login (after `pnpm db:seed`): `demo@nibleaf.test`, using an email verification
+code. Without an email provider, read the code from the latest email job at
+http://localhost:4312/jobs in your local development environment.
 
 ## 📜 Scripts
 

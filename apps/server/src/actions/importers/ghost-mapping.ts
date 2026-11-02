@@ -350,9 +350,8 @@ export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHt
 /** Full page body for one Ghost item: optional leading feature image + converted HTML. */
 export const ghostItemToMarkdown = async (item: GhostContentItem, ghostSourceUrl?: string) => {
   const source = await storedGhostHtml(item);
-  const conversion = source.html
-    ? { ...convertGhostHtml(source.html, ghostSourceUrl), usedFallback: source.usedFallback }
-    : { markdown: '', usedFallback: source.usedFallback, hadGhostUrls: false };
+  const conversion = source.html ? convertGhostHtml(source.html, ghostSourceUrl) : { markdown: '', usedFallback: false, hadGhostUrls: false };
+  conversion.usedFallback ||= source.usedFallback;
   if (item.featureImage) {
     const rawImage = item.featureImage.replaceAll(GHOST_URL_PLACEHOLDER, ghostSourceUrl ?? '');
     const image = ghostSourceUrl && rawImage.startsWith('/') ? new URL(rawImage, ghostSourceUrl).toString() : rawImage;

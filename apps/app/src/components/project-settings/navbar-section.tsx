@@ -243,8 +243,9 @@ function NavbarScopeForm({
   extraDirty?: boolean;
 }) {
   const t = useT();
+  const defaultValues = initial;
   const form = useForm({
-    defaultValues: initial,
+    defaultValues,
     onSubmit: async ({ value }) => {
       await onSave(value);
     },
@@ -493,13 +494,29 @@ function NavbarScopeForm({
         </>
       ) : null}
 
-      <form.Subscribe selector={(state) => state.isDirty}>
-        {(isDirty) => <DirtyStateReporter dirty={isDirty || extraDirty} onDirtyChange={onDirtyChange} />}
+      <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
+        {([isDirty, values]) => (
+          <DirtyStateReporter
+            values={values}
+            defaults={defaultValues}
+            extraDirty={extraDirty}
+            dirty={isDirty || extraDirty}
+            onDirtyChange={onDirtyChange}
+          />
+        )}
       </form.Subscribe>
 
       <div className="mt-4">
-        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-          {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !extraDirty} isSubmitting={isSubmitting} />}
+        <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+          {([isSubmitting, isDirty, values]) => (
+            <SaveBar
+              values={values}
+              defaults={defaultValues}
+              extraDirty={extraDirty}
+              disabled={!isDirty && !extraDirty}
+              isSubmitting={isSubmitting}
+            />
+          )}
         </form.Subscribe>
       </div>
     </form>

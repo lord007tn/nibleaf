@@ -83,7 +83,7 @@ const adminRoutes = {
   funnel: createRouteConfig({
     guard: adminGuard,
     tags: ['admin'],
-    description: 'Activation funnel: signups -> edited -> published -> ready (last 30 days).',
+    description: 'Activation funnel: signups -> edited -> published -> ready, plus aggregate manual publishing retention (last 30 days).',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };

@@ -1,5 +1,5 @@
 import type { QdrantScoredPoint } from '@nibleaf/qdrant';
-import type { SearchScope } from '@nibleaf/search';
+import { chunkSearchDocument, type SearchScope } from '@nibleaf/search';
 import { describe, expect, it } from 'vitest';
 import { chunkFromPoint, filterForSearchScope } from './runtime';
 
@@ -69,5 +69,23 @@ describe('server-derived Qdrant scope', () => {
 
   it('returns only the authorized chunk and preserves RTL direction', () => {
     expect(chunkFromPoint(point(), scope())).toMatchObject({ chunk: { pageId: 'page-a', direction: 'rtl' }, score: 0.8 });
+  });
+
+  it('accepts serialized chunks from a page that begins with a second-level heading', () => {
+    const [chunk] = chunkSearchDocument(scope(), {
+      id: 'page-a',
+      title: 'الإعداد',
+      path: 'setup',
+      description: '',
+      headings: [],
+      content: '## إعداد API_URL\n\nاستخدم API_URL=http://localhost:4311.',
+      language: 'ar',
+      visible: true,
+    });
+    expect(chunk).toBeDefined();
+    const storedPath: unknown = JSON.parse(JSON.stringify(chunk?.headingPath));
+    expect(chunkFromPoint(point({ heading_path: storedPath }), scope())).toMatchObject({
+      chunk: { headingPath: ['إعداد API_URL'] },
+    });
   });
 });

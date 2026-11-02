@@ -91,24 +91,28 @@ export const ensureGroupPage = async (
 
 export type UpsertOutcome = 'imported' | 'updated';
 
+export interface ImportedPage {
+  parentId: string | null;
+  slug: string;
+  title: string;
+  content: string;
+  description?: string;
+  icon?: string;
+  config?: PageConfig;
+  translationKey?: string;
+  position?: number;
+  hidden?: boolean;
+}
+
 /**
  * Upsert one leaf page by (parent, slug). Optional fields are only written when
  * provided, so callers that omit them (e.g. the Git import) keep the stored values.
  */
-export const upsertLeafPage = async (
-  target: ImportTarget,
-  page: {
-    parentId: string | null;
-    slug: string;
-    title: string;
-    content: string;
-    description?: string;
-    icon?: string;
-    config?: PageConfig;
-    translationKey?: string;
-    position?: number;
-  },
-): Promise<UpsertOutcome> => {
+export const upsertLeafPage = async (target: ImportTarget, page: ImportedPage): Promise<UpsertOutcome> => (await upsertPage(target, page)).outcome;
+
+/** {@link upsertLeafPage} that also returns the row id, for importers whose
+ * pages have child pages of their own (GitBook nests pages under pages). */
+export const upsertPage = async (target: ImportTarget, page: ImportedPage): Promise<{ outcome: UpsertOutcome; id: string }> => {
   const { projectId, branchId, languageId } = target;
   // Scoped to kind PAGE so a leaf import can never overwrite a sibling GROUP
   // row that happens to carry the same slug — the create path below (via
@@ -130,11 +134,12 @@ export const upsertLeafPage = async (
         ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
         ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
         ...(page.position !== undefined ? { position: page.position } : {}),
+        ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
       },
     });
-    return 'updated';
+    return { outcome: 'updated', id: found.id };
   }
-  await createPage(projectId, {
+  const created = await createPage(projectId, {
     title: page.title,
     slug: page.slug,
     content: page.content,
@@ -147,5 +152,7 @@ export const upsertLeafPage = async (
     ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
     ...(page.position !== undefined ? { position: page.position } : {}),
   });
-  return 'imported';
+  // createPage has no visibility input; hidden pages are flagged right after.
+  if (page.hidden) await prisma.page.update({ where: { id: created.id }, data: { hidden: true } });
+  return { outcome: 'imported', id: created.id };
 };

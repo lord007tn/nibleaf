@@ -60,13 +60,14 @@
               "self-hosting/clickhouse-analytics",
               "self-hosting/usage-metering",
               "self-hosting/backups-upgrades",
+              "self-hosting/upgrade-v0-2",
               "self-hosting/troubleshooting"
             ]
           },
           {
             "group": "Releases",
             "x-nibleaf": { "slug": "releases" },
-            "pages": ["releases/august-2026-capabilities"]
+            "pages": ["releases/v0-2-0", "releases/august-2026-capabilities"]
           },
           {
             "group": "Reference",
@@ -145,13 +146,17 @@
               "ar/self-hosting/clickhouse-analytics",
               "ar/self-hosting/usage-metering",
               "ar/self-hosting/backups-upgrades",
+              "ar/self-hosting/upgrade-v0-2",
               "ar/self-hosting/troubleshooting"
             ]
           },
           {
             "group": "الإصدارات",
             "x-nibleaf": { "slug": "releases" },
-            "pages": ["ar/releases/august-2026-capabilities"]
+            "pages": [
+              "ar/releases/v0-2-0",
+              "ar/releases/august-2026-capabilities"
+            ]
           },
           {
             "group": "المرجع",

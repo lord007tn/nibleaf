@@ -1,0 +1,561 @@
+---
+title: 'Upgrade from v0.1.2 to v0.2.0'
+description: 'Move a self-hosted Nibleaf v0.1.2 installation to v0.2.0 in two hops, migrating recurring job schedules before the new release starts.'
+audience: 'self-hosted Nibleaf operators running v0.1.2'
+content_type: 'how-to'
+last_reviewed: '2026-10-30'
+verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'self-hosting/upgrade-v0-2'
+---
+
+You cannot reach v0.2.0 from v0.1.2 by changing the image tag. v0.1.2 stores its
+recurring jobs as BullMQ 5 repeat definitions, and v0.2.0 runs BullMQ 6, which
+refuses them. The upgrade is two hops: migrate the schedules from a staged image,
+then move to v0.2.0. When you finish, your data, Compose project name, encryption
+keys, and volumes are unchanged, and all four recurring jobs run as Job Schedulers.
+
+## Who needs this guide
+
+Follow this guide if you self-host v0.1.2 with the guided installer or
+`docker-compose.prod.yml`.
+
+- **New installation:** you need none of this. Use the
+  [self-hosted quickstart](/getting-started/self-hosted).
+- **Older than v0.1.2:** reach v0.1.2 first. This path starts from v0.1.2.
+- **Other deployments**, such as `docker-compose.coolify.yml` or a source build:
+  the order is the same, but service and volume names differ. Adapt the commands
+  and rehearse on a copy first.
+
+Start only after v0.2.0 appears on the
+[releases page](https://github.com/lord007tn/nibleaf/releases). Never re-run the
+installer over existing volumes, and never regenerate credentials. Keep the Compose
+project name, `.env`, encryption keys, and volumes.
+
+## What changes
+
+| Area | Change | What you do |
+| --- | --- | --- |
+| Recurring jobs | BullMQ 5 repeat definitions become BullMQ 6 Job Schedulers. | Run the staged migration. |
+| Database | Eight Prisma migrations run through the `migrate` service. They are forward-only. | Take a backup. Step 11 runs the migrations. |
+| Compose file | New `MCP_*` and `INTEGRATION_*` passthroughs. Changing only the version misses them. | Replace the file with the release's verified copy. |
+| Integrations | Stored credentials use a dedicated encryption key. | Add `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` before you use integrations. See [After the upgrade](#after-the-upgrade). |
+| AI writing assist | v0.2.0 reads `OPENROUTER_API_KEY`, not `OPENAI_API_KEY`. | See [After the upgrade](#after-the-upgrade) if you use it. |
+| Platform | Prisma 7, Vite 8, and TypeScript 7 are inside the image. | Nothing. |
+
+The eight migrations are:
+
+1. `20260823120000_add_git_file_ownership`
+2. `20260823143000_native_better_auth_admin`
+3. `20260823180000_search_configuration_diagnostics`
+4. `20260823210000_usage_metering`
+5. `20260823220000_project_addons`
+6. `20260823230000_add_project_integrations`
+7. `20260823240000_mcp_control_plane`
+8. `20261030120000_invitation_created_at`
+
+## Before you start
+
+Confirm each of these first:
+
+- **A tested restore.** Follow [back up and restore](/self-hosting/backups-upgrades)
+  and prove a restore in isolation. Step 5 takes the final backup.
+- **A maintenance window.** The dashboard, the API, and published sites are offline
+  from step 3 to step 11, because the `app` service serves published sites. The
+  sequence took about four minutes on a test runner with a tiny synthetic database,
+  so plan a longer window for real data.
+- **Disk space.** Keep at least 15 GB free, plus room for a database dump and a storage
+  archive. The upgrade uses three images. A fresh test host used about 10.2 GiB in
+  total, including v0.1.2, but peak extraction was not measured. Check with `df -h .`
+  and `docker system df`.
+- **The amd64 architecture.** v0.2.0 is `linux/amd64` only. `uname -m` must print
+  `x86_64`.
+- **A sign-in path.** Sign-in uses email codes, or Google when configured. `.env`
+  needs a value for `POSTMARK_API_KEY` or `SMTP_URL`. If you only use Google
+  sign-in, also set `EMAIL_DELIVERY_REQUIRED=false`. Otherwise the worker reports
+  unhealthy: its health check returns 503 when required email delivery has no
+  provider.
+- **No duplicate linked accounts.** Better Auth in v0.2.0 refuses a sign-in when two
+  `account` rows share the same provider and account ID, and the table has no unique
+  index on that pair. Run this read-only check from the deployment directory. In a
+  repository checkout, run `export COMPOSE_FILE=docker-compose.prod.yml` first:
+
+  ```bash
+  docker compose exec -T postgres psql -U nibleaf -d nibleaf -c 'SELECT "providerId", "accountId", count(*) FROM account GROUP BY 1, 2 HAVING count(*) > 1;'
+  ```
+
+  **Expected:** `(0 rows)`. A duplicate blocks only that one identity, but you must
+  resolve it before you upgrade. This guide gives no delete or merge query, because
+  which row to keep is a decision about your own data.
+- **One Bash session.** Run every step in the same shell from the deployment
+  directory, because later steps use the variables and functions from step 1. Stop
+  at the first command that fails.
+
+This upgrade was rehearsed on disposable runners with a tiny synthetic database. The
+rehearsal did not cover a real backup restore, email delivery, Google sign-in, real
+scheduled runs, or production load, and its sign-in check only loaded the page. Steps
+5 and 13 are yours to prove.
+
+## Upgrade step by step
+
+### 1. Prepare the shell
+
+Open the deployment directory. In a repository checkout, tell Compose to use the
+production file, because `docker-compose.yml` there is the source-build stack:
+
+```bash
+export COMPOSE_FILE=docker-compose.prod.yml
+```
+
+Skip that command in a guided-installer directory, where the file is already
+`docker-compose.yml`.
+
+Find your existing project name:
+
+```bash
+docker compose ls
+```
+
+Set it and the staged image. The default project name is `nibleaf`. Use the name you
+just saw if yours differs, because a new name would create a new, empty stack:
+
+```bash
+export COMPOSE_PROJECT_NAME=nibleaf # use the EXISTING project name
+export STAGED=sha-33cb19838cf8ea89889bcaafba5d63596e6f6c64
+```
+
+The image has no queue command, so create a small helper beside your Compose file. It
+touches only the two queues that hold recurring jobs, and it prints only `PASS` or
+`FAIL`:
+
+```bash
+cat > nibleaf-queues.ts <<'EOF'
+import { Queue } from 'bullmq';
+import { producerConnectionConfig } from '../src/redis';
+import { getQueueName } from '../src/utils/queue';
+const mode = process.argv[2];
+const queues = ['analytics', 'export'].map(name => new Queue(getQueueName(name), { connection: producerConnectionConfig, skipMetasUpdate: true }));
+try {
+  for (const queue of queues) {
+    if (mode === 'pause') await queue.pause();
+    if (mode === 'resume') await queue.resume();
+    if (mode === 'pause') {
+      for (let attempt = 0; attempt < 60 && await queue.getActiveCount(); attempt++) await new Promise(resolve => setTimeout(resolve, 1000));
+      if (await queue.getActiveCount() || await queue.getWaitingCount()) throw new Error('Queue is not quiescent; do not drain user jobs.');
+    }
+    if (mode === 'legacy') {
+      const definitions = await queue.getRepeatableJobs();
+      if (definitions.length !== (queue.name.includes('analytics') ? 1 : 2)) throw new Error('Expected v0.1.2 legacy definitions.');
+    }
+    if (mode === 'inventory') {
+      const definitions = await queue.getJobSchedulers(0, -1, true);
+      const expected = queue.name.includes('analytics') ? ['rollup-analytics-daily', 'reconcile-usage-periods'] : ['dispatch-export-schedules', 'cleanup-exports'];
+      if (definitions.length !== 2 || definitions.some(entry => !expected.includes(entry.key))) throw new Error('Unexpected candidate scheduler inventory.');
+    }
+  }
+  console.log(`queues ${mode}: PASS`);
+} catch { console.error(`queues ${mode}: FAIL`); process.exitCode = 1; }
+finally { await Promise.all(queues.map(queue => queue.close())); }
+EOF
+operator() {
+  docker compose run --rm --no-deps -T \
+    -v "$PWD/nibleaf-queues.ts:/app/packages/bullmq/scripts/nibleaf-queues.ts:ro" \
+    worker node --import tsx packages/bullmq/scripts/nibleaf-queues.ts "$1"
+}
+```
+
+Confirm where you are starting from:
+
+```bash
+grep '^NIBLEAF_VERSION=' .env
+docker compose ps
+```
+
+**Expected:** the version is `v0.1.2` and all long-running services are healthy.
+
+### 2. Download the staged image and check the schedules
+
+```bash
+NIBLEAF_VERSION="$STAGED" docker compose pull worker
+docker image inspect --format '{{json .RepoDigests}}' "ghcr.io/lord007tn/nibleaf:$STAGED"
+NIBLEAF_VERSION="$STAGED" operator legacy
+```
+
+**Expected:** the staged image digest is
+`sha256:880938a6ab865487f0b85733eeb2c20da06de34dcce1bdb5a8f35f694e4a3da8`, and the
+last line is `queues legacy: PASS`, which means the three v0.1.2 repeat definitions
+are present. Stop if either differs.
+
+This image is a commit build, not a release: use it for the schedule migration only
+and never run it as your service. Keep it available for recovery until the upgrade
+is finished.
+
+### 3. Stop the services that create jobs
+
+The outage starts here. Stop every scheduling process, including any external
+producer you run against these queues:
+
+```bash
+docker compose --profile admin stop app admin server
+```
+
+**Expected:** `docker compose ps` lists only `postgres`, `dragonfly`, `maxio`, and
+`worker`.
+
+### 4. Pause the queues and stop the worker
+
+```bash
+NIBLEAF_VERSION="$STAGED" operator pause
+docker compose stop worker
+```
+
+**Expected:** `queues pause: PASS`. The command waits up to a minute for active jobs
+to finish, then refuses if any job is still active or waiting.
+
+A paused worker cannot finish waiting work. If `pause` reports `FAIL`, or step 6 later
+reports that a queue is not quiet, resume under the old version, let the work finish,
+and repeat this step. The export dispatcher runs every minute, so repeat it just
+after the start of a minute. Never drain or delete user jobs to reach zero:
+
+```bash
+docker compose start worker
+NIBLEAF_VERSION="$STAGED" operator resume
+```
+
+After any other failure, keep the queues paused and stop.
+
+### 5. Take the final backup
+
+Keep `STAMP` from this step. A rollback needs it:
+
+```bash
+mkdir -m 700 -p backups
+STAMP=$(date +%Y%m%d-%H%M%S)
+cp -p .env "backups/env-$STAMP"
+cp -p "${COMPOSE_FILE:-docker-compose.yml}" "backups/compose-$STAMP.yml"
+docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_nibleaf-maxio":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data .
+ls -lh backups
+```
+
+**Expected:** four new non-empty files. If you use external R2 or S3 storage, skip the
+`docker run` line and rely on your provider's backup. Copy the files off this host
+before you continue. `backups/env-*` contains secrets, so protect it accordingly.
+
+### 6. Run the migration as a dry run
+
+From here until step 10, Compose must use the staged image:
+
+```bash
+export NIBLEAF_VERSION="$STAGED"
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+```
+
+**Expected:** JSON with `"applied": false` and these four entries. This command
+changes nothing. v0.1.2 creates three legacy repeats; the fourth schedule is new in
+v0.2.0, so both of its values are `false`:
+
+| Schedule | `legacy` | `scheduler` |
+| --- | --- | --- |
+| `rollup-analytics-daily` | `true` | `false` |
+| `reconcile-usage-periods` | `false` | `false` |
+| `dispatch-export-schedules` | `true` | `false` |
+| `cleanup-exports` | `true` | `false` |
+
+Stop if the command reports an unknown or unexpected configuration. Do not work
+around it.
+
+### 7. Apply the migration
+
+```bash
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply
+```
+
+**Expected:** JSON with `"applied": true`. The tool creates and verifies every new
+schedule before it removes any old one, so you can safely run it again after a
+failure. Keep the queues paused while you do. Finish the migration under the staged
+image, and never copy its script into v0.2.0.
+
+### 8. Verify the schedules
+
+```bash
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+```
+
+**Expected:** all four entries show `"scheduler": true` and `"legacy": false`. Do not
+continue until they do.
+
+### 9. Replace the Compose file
+
+Download the release's Compose file and verify it:
+
+```bash
+d=$(mktemp -d)
+curl -fsSLo "$d/docker-compose.yml" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/docker-compose.yml
+curl -fsSLo "$d/SHA256SUMS" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/SHA256SUMS
+(cd "$d" && grep '  docker-compose.yml$' SHA256SUMS | sha256sum -c -)
+cp "$d/docker-compose.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+```
+
+**Expected:** `docker-compose.yml: OK`. Stop if the check fails.
+
+### 10. Pin v0.2.0 in `.env`
+
+Back up `.env` and change only the `NIBLEAF_VERSION` line. Then clear the staged tag
+from the shell, because an exported value overrides `.env`:
+
+```bash
+cp -p .env "backups/env-before-version-$STAMP"
+sed -i "s/^NIBLEAF_VERSION=.*/NIBLEAF_VERSION='v0.2.0'/" .env
+unset NIBLEAF_VERSION
+grep '^NIBLEAF_VERSION=' .env
+docker compose config --images
+```
+
+**Expected:** `NIBLEAF_VERSION` is `v0.2.0` and every Nibleaf image in the list ends
+with `:v0.2.0`. Do not skip this step. Without it, a later Compose command from a new
+shell picks up the old tag and restarts legacy producers.
+
+### 11. Start v0.2.0
+
+```bash
+docker compose pull
+docker compose run --rm --no-deps -T migrate
+docker compose up -d
+```
+
+If you run the admin panel, use `docker compose --profile admin up -d` instead.
+
+Allow several minutes, then verify the services and the database. Run the loop again
+until all three report `healthy`:
+
+```bash
+for svc in server worker app; do
+  docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")"
+done
+docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 8'
+```
+
+**Expected:**
+
+- the `migrate` command ends with `[nibleaf] migrate complete`;
+- `server`, `worker`, and `app` all report `healthy`;
+- the query lists the eight migrations above.
+
+### 12. Check the schedules and resume the queues
+
+The queues stay paused through the upgrade, and a healthy worker does not reveal
+that. Check the new schedules and the endpoints first:
+
+```bash
+operator inventory
+curl -fsS http://127.0.0.1:4310/sign-in >/dev/null
+docker compose exec -T server curl -fsS http://127.0.0.1:4311/health >/dev/null
+```
+
+**Expected:** `queues inventory: PASS`, and neither `curl` prints an error. If you
+changed `APP_PORT` or `NIBLEAF_BIND`, use your own address in the first `curl`. If a
+check fails, keep the queues paused and stop.
+
+Then resume. If you skip this, exports and analytics jobs silently stop:
+
+```bash
+operator resume
+rm nibleaf-queues.ts
+```
+
+**Expected:** `queues resume: PASS`.
+
+### 13. Test the product
+
+Sign in with a real code, and with Google if you configured it. Upload one image,
+publish a two-page project, search for the second page while signed out, open a
+public page, and download one export. Then record the image digest with your upgrade
+notes:
+
+```bash
+docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.0
+```
+
+Keep the staged image and the backup until you no longer need to roll back.
+
+## If you skip the staged step
+
+If v0.2.0 starts on the old schedules, scheduling is refused. `server` and `worker`
+do not become ready, and `app` waits for the API. The logs show:
+
+```text
+Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
+```
+
+The worker reports the same error for the `export` queue. The `migrate` service has
+already run by this point, so the database is on v0.2.0.
+
+Do not delete the Dragonfly volume, remove jobs, re-run the installer, or regenerate
+credentials. Your data is intact. Set up the shell and the helper from step 1, then
+stop the failing services:
+
+```bash
+docker compose stop server worker
+```
+
+Run only the staged `operator pause` command from step 4. Recovery can continue only
+if both queues have no active or waiting work. If the command fails, stop, and do not
+use the worker restart from step 4: that container is already v0.2.0, so it is not a
+retry under v0.1.2. Keep the queues paused and the services stopped, and do not bypass
+the check. This guide does not cover recovery from busy queues after a failed v0.2.0
+start, so [open an issue](https://github.com/lord007tn/nibleaf/issues) before you go
+further.
+
+If the command passes, skip step 5 and keep your original pre-upgrade backup and `STAMP`. A backup taken now
+cannot replace them for rollback. Run steps 6 to 8. Skip step 9 only if the release
+Compose file is already installed. Run step 10, including `unset NIBLEAF_VERSION` and
+the image check, then steps 11 to 13. [Rolling back](#roll-back) requires a backup
+taken before the database migration.
+
+Before you continue, check that your `STAMP` has all four files from step 5. If the
+`env` or Compose copy is missing, put your pre-upgrade copies at `backups/env-$STAMP`
+and `backups/compose-$STAMP.yml`, because the rollback restores them from there.
+
+## Roll back
+
+There are no down migrations, so rolling back v0.2.0 means restoring the pre-upgrade
+backup. Rolling back the schedules alone is not enough. Restoring Postgres alone is
+not enough either, because the schedules live in Dragonfly, which the backup does not
+include. Never start v0.1.2 directly on migrated schedules. Do both, in this order.
+
+Set up the shell and the helper from step 1, run `unset NIBLEAF_VERSION`, and set
+`STAMP` to the value from step 5.
+
+### Restore the schedules
+
+Do not skip this section because step 7 failed or was interrupted: it may have changed
+some schedules. Stop the application services and pause the queues as shown below, then
+inspect the inventory with the staged rollback dry run. Skip only the rollback apply
+command if every entry has `scheduler: false` and the expected legacy definitions are
+intact. Always restore the previous Compose file and `.env` before starting v0.1.2.
+
+Stop the application services and pause the queues:
+
+```bash
+docker compose --profile admin stop app admin server worker
+NIBLEAF_VERSION="$STAGED" operator pause
+```
+
+**Expected:** `queues pause: PASS`. If it reports `FAIL`, stop the rollback with all
+application services stopped and the queues paused. Do not use the retry from step 4
+here: it starts the existing worker, which may be v0.2.0. Do not restore the database
+or resume queues until the waiting or active work has a reviewed recovery procedure.
+
+Move the schedules back, then check them:
+
+```bash
+export NIBLEAF_VERSION="$STAGED"
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
+docker compose run --rm --no-deps -T worker \
+  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+unset NIBLEAF_VERSION
+```
+
+**Expected:** if you applied the rollback, all four entries show `"legacy": true` and
+`"scheduler": false`. If you skipped the apply command because the original legacy
+definitions were intact, those three entries show these values, and
+`reconcile-usage-periods` shows `false` for both. v0.1.2 does not know
+`reconcile-usage-periods`. It handles that job as its normal retention
+cleanup, and the next upgrade migrates it again.
+
+Restore the previous configuration:
+
+```bash
+cp -p "backups/compose-$STAMP.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+cp -p "backups/env-$STAMP" .env
+```
+
+### Restore the data
+
+Skip this section only if you never reached step 11, because then no database
+migration ran.
+
+Move the upgraded database aside instead of dropping it, then restore into an empty
+one. Do not use `pg_restore --clean` here: tables added by the migrations can block
+it. Anything written after step 5 stays in the renamed database and is not restored:
+
+```bash
+docker compose exec -T postgres psql -U nibleaf -d postgres -c 'ALTER DATABASE nibleaf RENAME TO nibleaf_failed_upgrade'
+docker compose exec -T postgres psql -U nibleaf -d postgres -c 'CREATE DATABASE nibleaf'
+docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf < "backups/nibleaf-db-$STAMP.dump"
+```
+
+Restore bundled storage. This replaces the current objects, so uploads made after
+step 5 are lost. If you use external storage, restore it through your provider:
+
+```bash
+docker compose stop maxio
+docker run --rm -v "${COMPOSE_PROJECT_NAME}_nibleaf-maxio":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
+```
+
+### Start v0.1.2
+
+```bash
+docker compose up -d
+NIBLEAF_VERSION="$STAGED" operator resume
+rm nibleaf-queues.ts
+```
+
+**Expected:** `NIBLEAF_VERSION` is back to `v0.1.2`, services are healthy, and the
+last command prints `queues resume: PASS`. Then repeat the product test from step 13.
+Keep `nibleaf_failed_upgrade` until you have finished investigating.
+
+## After the upgrade
+
+v0.2.0 does not turn these on by itself.
+
+- **Integrations.** Add the dedicated key before you use integrations. The command
+  adds it to `.env` if it is missing or empty, and never prints it. It then checks that
+  the key is a base64-encoded 32-byte value:
+
+  ```bash
+  _integration_key=$(sed -n 's/^INTEGRATION_CREDENTIAL_ENCRYPTION_KEY=//p' .env | tail -n 1)
+  case "$_integration_key" in
+    ''|"''"|'""')
+      printf "INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='%s'\n" "$(openssl rand -base64 32)" >> .env
+      ;;
+  esac
+  unset _integration_key
+  docker compose run --rm --no-deps -T server node -e '
+  const key = process.env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY;
+  if (!key || Buffer.from(key, "base64").length !== 32) {
+    console.error("Integration key must be a base64-encoded 32-byte value; preserve any existing key and investigate.");
+    process.exit(1);
+  }
+  console.log("Integration key format: PASS");'
+  docker compose up -d
+  ```
+
+  Treat the key like a database password and back it up with `.env`. Do not change it
+  once integrations are in use: saved credentials become unreadable. To replace it,
+  follow the [rotation procedure](/reference/integrations-engine). Do not reuse the
+  Git key.
+- **MCP.** The endpoint stays off until you set `MCP_ENABLED=true`. Read the
+  [MCP guide](/self-hosting/mcp) before you enable it.
+- **Search and AI.** AI needs a provider key that you supply: set `OPENROUTER_API_KEY`
+  in `.env`, and the release Compose file passes it to the services. Hybrid search also
+  needs Qdrant, which `docker-compose.prod.yml` does not include. Add the optional
+  `docker-compose.search.yml` overlay for that. The overlay is in the repository, not in
+  the release assets. Follow [hybrid search and grounded answers](/self-hosting/search-ai).
+- **Worker queues.** If you set `WORKER_QUEUES`, add `erasure`, or the stored files of
+  deleted projects stay in place. This applies only to projects deleted after the
+  upgrade.
+- **Analytics.** `docker-compose.prod.yml` does not include ClickHouse, and analytics
+  stays in its existing mode until you follow the
+  [ClickHouse guide](/self-hosting/clickhouse-analytics).
+- **Clean up.** Once you are sure you will not roll back, remove the staged image with
+  `docker image rm "ghcr.io/lord007tn/nibleaf:$STAGED"`, and move your backups to
+  long-term storage.

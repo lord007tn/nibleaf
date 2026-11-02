@@ -1,10 +1,10 @@
 ---
 title: 'نسخ Nibleaf احتياطيًا واستعادته وترقيته'
-description: 'اجمع بيانات Postgres وتخزين الكائنات في مجموعة استعادة واحدة، واختبر الاستعادة في بيئة معزولة، ثم رقِّ إصدار Nibleaf المثبّت أو تراجع إلى الإصدار السابق.'
+description: 'اجمع بيانات Postgres وتخزين الكائنات في مجموعة استعادة واحدة، واختبر الاستعادة في بيئة معزولة، ثم رقِّ إصدار Nibleaf المثبّت أو تراجع إلى الإصدار السابق.'
 audience: 'مشغّلو Nibleaf المستضاف ذاتيًا'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
-verified_against: 'scripts/backup.sh, docker-compose.prod.yml, and packages/database/prisma/migrations'
+last_reviewed: '2026-10-30'
+verified_against: 'scripts/backup.sh, docker-compose.prod.yml, scripts/self-host-release.mjs, and packages/database/prisma/migrations'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/backups-upgrades'
@@ -15,27 +15,38 @@ translation_key: 'self-hosting/backups-upgrades'
 احتفظ بنسخ خارج المضيف والحساب المستخدمين للخدمة الحية، وأثبت نجاح الاستعادة
 قبل الاعتماد عليها.
 
+نفّذ أوامر هذه الصفحة من مجلد عملية النشر. يحتوي المجلد الذي أنشأه برنامج التثبيت
+الموجّه على `docker-compose.yml` و`.env` فقط، لذا يعثر `docker compose` على ملفه
+مباشرة. أما في نسخة محلية من المستودع، فنفّذ أولًا
+`export COMPOSE_FILE=docker-compose.prod.yml`، لأن `docker-compose.yml` هناك هو
+منظومة البناء من المصدر.
+
 ## إنشاء نسخة احتياطية
 
-عند التنفيذ من نسخة محلية للمستودع، يستخدم السكربت المضمّن افتراضيًا
-`docker-compose.prod.yml` و`./backups` ومدة احتفاظ محلية تبلغ 14 يومًا ووحدة
-تخزين maxio المضمّنة:
+أنشئ تفريغًا لـPostgres بالتنسيق المخصّص، ثم أرشف وحدة تخزين maxio المضمّنة:
 
 ```bash
-./scripts/backup.sh
+mkdir -m 700 -p backups
+STAMP=$(date +%Y%m%d-%H%M%S)
+docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
+test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \
+  || echo 'Stop: could not identify or archive the maxio volume.'
 ```
 
-في مجلد أنشأه المثبّت الإرشادي حيث يحمل ملف Compose الاسم
-`docker-compose.yml`، وجّه السكربت إلى ذلك الملف:
+تحدد هذه الأوامر وحدة التخزين المثبتة عند `/data` في حاوية maxio القائمة، لذا تعمل مع
+أي اسم لمشروع Compose وتتوقف إذا تعذّر تحديدها. لا توجد حاويات R2 أو S3
+الخارجية في هذه الوحدة، لذا تخطَّ هذه الأسطر واستخدم إمكانات المزوّد لإدارة
+الإصدارات أو النسخ المتماثل، أو أنشئ نسخة احتياطية مستقلة للحاوية.
 
-```bash
-COMPOSE_FILE=docker-compose.yml ./scripts/backup.sh
-```
+من نسخة محلية للمستودع، ينفّذ `./scripts/backup.sh` الخطوتين نفسيهما ويحذف النسخ
+المحلية بعد 14 يومًا. لا يُعد هذا السكربت من أصول الإصدار، لذا لا يوجد في المجلدات
+التي ينشئها برنامج التثبيت.
 
-ينشئ السكربت ملف `pg_dump` بتنسيق مخصّص، وينشئ أرشيف تخزين مضغوطًا عندما تكون
-وحدة تخزين Docker المهيّأة موجودة. لا تلتقط خطوة وحدة تخزين Docker حاويات R2
-أو S3 الخارجية؛ استخدم إمكانات المزوّد لإدارة الإصدارات أو النسخ المتماثل، أو
-أنشئ نسخة احتياطية مستقلة للحاوية.
+يحتوي `.env` على الأسرار التي تجعل الاستعادة قابلة للاستخدام، ومنها مفاتيح تشفير
+بيانات اعتماد Git والتكاملات. احتفظ بنسخة محمية منه بتحكم وصول مستقل. فمن دون هذه
+المفاتيح لا يمكن فك تشفير بيانات الاعتماد المخزنة.
 
 انقل الملفين إلى خارج المضيف باستخدام بيانات اعتماد منفصلة، وسجّل المعرّفات
 والأحجام والطوابع الزمنية وسياسة الاحتفاظ وإصدار التطبيق.
@@ -43,50 +54,78 @@ COMPOSE_FILE=docker-compose.yml ./scripts/backup.sh
 ## اختبار الاستعادة
 
 لا تستبدل بيئة الإنتاج مطلقًا عند إجراء تمرين. أنشئ قاعدة بيانات ووجهة تخزين
-ومصدر تطبيق معزولة. اتبع أوامر الاستعادة الموثّقة في أعلى
-`scripts/backup.sh`، ثم تحقق من المشاريع والعضويات وأشجار الصفحات والمسودات
-الحالية وعمليات النشر ذات الحالة `READY` والأصول المرفوعة وعزل المصادقة والبحث
-العام.
+ومصدر تطبيق معزولة، ثم استعد النسخة فيها. على مضيف منفصل يملك منظومته الخاصة،
+وباستخدام قيمة `$STAMP` نفسها:
+
+```bash
+docker compose --profile admin stop app admin server worker \
+  && docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump" \
+  && MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
+  && test -n "$MAXIO_VOLUME" \
+  && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker compose stop maxio \
+  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \
+  && docker compose up -d \
+  || echo 'Stop: restore failed; do not start application services.'
+```
+
+ثم تحقق من المشاريع والعضويات وأشجار الصفحات والمسودات الحالية وعمليات النشر ذات
+الحالة `READY` والأصول المرفوعة وعزل المصادقة والبحث العام.
 
 سجّل الزمن المنقضي وكل خطوة يدوية. لا يُعد رمز خروج ناجح لمهمة النسخ الاحتياطي
 دليلًا على قابلية الاستعادة من دون نجاح استعادة معزولة.
 
 ## ترقية إصدار مثبّت
 
-اقرأ ملاحظات كل إصدار وسيط، وتحقق من أي تغييرات خاصة بالإصدار في الترحيل أو
-التهيئة. أنشئ نسخة احتياطية واختبر استعادتها، ثم غيّر `NIBLEAF_VERSION` في
-`.env` إلى وسم إصدار موجود:
+لا تُعد تشغيل برنامج التثبيت للترقية. فهو مخصص للتثبيتات الجديدة فقط، واستبدال
+`.env` بأسرار مولّدة حديثًا يمنعك من الوصول إلى بياناتك الحالية.
 
-إمكانات أغسطس 2026 الست مدمجة حاليًا في المصدر، بينما يبقى بيان الاستضافة
-الذاتية المنشور على v0.1.2. لا تخترع وسمًا أحدث ولا تستبدل الملخصات الرقمية
-المثبتة لبرنامج التثبيت وCompose. عند توفر ناتج مستقبلي مطابق، استخدم
-[دليل ترحيل الإصدار المجمع](/ar/self-hosting/combined-release-migration)
-لترتيب اعتماد البحث والاستخدام والإضافات والتكاملات وMCP.
+**للانتقال من v0.1.2 إلى v0.2.0، اتبع [دليل الترقية](/ar/self-hosting/upgrade-v0-2).**
+تتضمن تلك الترقية مرحلة وسيطة إلزامية. إذا غيّرت الإصدار وحده، فستُرفض الجدولة ولن يصبح
+API وعامل المعالجة (worker) جاهزين.
 
-```dotenv
-NIBLEAF_VERSION=vX.Y.Z
-```
+في الترقيات الأخرى، اقرأ ملاحظات كل إصدار وسيط، وتحقق من أي تغييرات خاصة بالإصدار
+في الترحيل أو التهيئة. أنشئ نسخة احتياطية واختبر استعادتها. ثم:
 
-اسحب الخدمات وأعد إنشاءها:
+1. استبدل ملف Compose بالنسخة الموثّقة من الإصدار الهدف. أبقِ `.env` واسم مشروع
+   Compose وأسماء وحدات التخزين. لا يشمل تغيير الإصدار وحده الإعدادات التي يمررها
+   ملف Compose الجديد إلى الخدمات:
 
-```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-```
+   ```bash
+   VERSION=vX.Y.Z
+   d=$(mktemp -d)
+   curl -fsSLo "$d/docker-compose.yml" "https://github.com/lord007tn/nibleaf/releases/download/$VERSION/docker-compose.yml"
+   curl -fsSLo "$d/SHA256SUMS" "https://github.com/lord007tn/nibleaf/releases/download/$VERSION/SHA256SUMS"
+   (cd "$d" && grep '  docker-compose.yml$' SHA256SUMS | sha256sum -c -)
+   cp "$d/docker-compose.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+   ```
+
+2. اضبط `NIBLEAF_VERSION` في `.env` على وسم الإصدار الموجود نفسه:
+
+   ```dotenv
+   NIBLEAF_VERSION=vX.Y.Z
+   ```
+
+3. اسحب الخدمات وأعد إنشاءها:
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
 
 تحقق من ملخّص الصورة الرقمي، وسجل الترحيل، وسلامة الخدمات، وتسجيل الدخول،
 وعملية رفع واحدة، وعملية نشر واحدة، وعملية بحث واحدة، وصفحة عامة واحدة.
 
 ## التراجع الآمن إلى الإصدار السابق
 
-إذا لم يُنفّذ أي ترحيل للمخطط، فثبّت الصورة السابقة وأعد إنشاء الخدمات. وإذا
-غيّر ترحيل أحادي الاتجاه قاعدة البيانات، فأوقف عمليات الكتابة واستعد مجموعة
-الاستعادة السابقة للترقية قبل تشغيل التطبيق الأقدم.
+ترحيلات Prisma أحادية الاتجاه. إذا لم يُنفّذ أي ترحيل للمخطط، فثبّت الصورة السابقة،
+واستعد ملف Compose السابق، وأعد إنشاء الخدمات. وإذا غيّر ترحيل قاعدة البيانات، فأوقف
+عمليات الكتابة واستعد مجموعة الاستعادة السابقة للترقية قبل تشغيل التطبيق الأقدم. لا
+تشغّل التطبيق الأقدم على المخطط المرحَّل.
 
-بالنسبة إلى مخطط الإمكانات المجمع، فضّل التراجع في وقت التشغيل واعكس MCP ثم
-التكاملات ثم الإضافات ثم الاستخدام وأخيرًا البحث، ولا تفعل ذلك إلا بعد نشر شيفرة
-لا تقرأ الحالة المحذوفة. يملك ترحيل التكاملات الحقل الاختياري المشترك
-`ApiKey.expiresAt`؛ فلا تحذفه ما دام MCP أو مستهلك آخر يعتمد عليه.
+يحتاج الرجوع من v0.2.0 أيضًا إلى التراجع عن الجداول الموضّح في
+[دليل الترقية](/ar/self-hosting/upgrade-v0-2#التراجع-إلى-الإصدار-السابق). لا يكفي التراجع عن الجداول
+وحده، ولا استعادة قاعدة البيانات وحدها.
 
 لا تجمع ترقية التطبيق مع تغيير الإصدار الرئيسي لـPostgreSQL. تعامل مع ترقية
 قاعدة البيانات على أنها مشروع مستقل للتفريغ والاستعادة.

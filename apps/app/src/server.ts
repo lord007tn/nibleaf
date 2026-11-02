@@ -11,6 +11,7 @@ import {
 } from '@nibleaf/shared/markdown-discovery';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
+import { createServerEntry } from '@tanstack/react-start/server-entry';
 import got from 'got';
 import { z } from 'zod';
 import { serverEnv } from '@/env.server';
@@ -21,6 +22,7 @@ import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/
 import { marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
+import { readerRateLimitResponse } from '@/lib/reader-rate-limit';
 import {
   acceptsHtml,
   appendVary,
@@ -31,6 +33,8 @@ import {
   preferredRepresentation,
 } from '@/lib/request-negotiation';
 import { renderSelfHostInstaller } from '@/lib/self-host-release';
+import { ssrNonce } from '@/lib/ssr-nonce.server';
+import { apiOrigin } from '@/services/api-origin';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
 import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 
@@ -49,20 +53,22 @@ import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
  *    so the API rate-limiter doesn't key every SSR render on this container.
  */
 
-const ssrNonce = new AsyncLocalStorage<string>();
-
-const startHandler = createStartHandler((context) => {
-  const nonce = ssrNonce.getStore();
-  if (nonce) {
-    context.router.update({ ssr: { ...context.router.options.ssr, nonce } });
-  }
-  return defaultStreamHandler(context);
-});
+// Rewritten published-site requests own a separate Start request context. Convert
+// errors inside that context before leaving it, preserving headers and cookies.
+const startHandler = createServerEntry({
+  fetch: createStartHandler(async (context) => {
+    const result = await defaultStreamHandler(context);
+    return readerRateLimitResponse(
+      result,
+      context.router.state.matches.map((match) => match.error),
+    );
+  }),
+}).fetch;
 
 // Reach the API through the app's own same-origin /api proxy — this is the path
 // that works both in the container (where the server is a separate host) and in
 // dev, matching how the SSR data loaders fetch.
-const SELF = `http://localhost:${serverEnv.PORT}`;
+const SELF = apiOrigin();
 
 const ownHosts = new Set(
   [serverEnv.APP_URL, 'localhost:4310', '127.0.0.1:4310'].map(
@@ -309,6 +315,7 @@ interface SiteMeta {
 }
 
 const siteMetaCache = new Map<string, { meta: SiteMeta | null; at: number }>();
+const siteMetaRequests = new Map<string, Promise<SiteMeta | null>>();
 const SITE_META_TTL = 60_000;
 
 /** Fetch (and TTL-cache) the site shell's metadata. Returns null when the site
@@ -320,6 +327,21 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
   if (hit && Date.now() - hit.at < SITE_META_TTL) {
     return hit.meta;
   }
+  // A cold reader burst shares only anonymous metadata. Each credentialed
+  // request still resolves its own viewer-dependent result.
+  if (requestHasCredentials) return loadSiteMeta(projectId, true);
+  const existing = siteMetaRequests.get(projectId);
+  if (existing) return existing;
+  const pending = loadSiteMeta(projectId, false);
+  siteMetaRequests.set(projectId, pending);
+  try {
+    return await pending;
+  } finally {
+    siteMetaRequests.delete(projectId);
+  }
+}
+
+async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): Promise<SiteMeta | null> {
   let meta: SiteMeta | null = null;
   try {
     const response = await got(`${SELF}/api/public/sites/${projectId}`, {
@@ -327,6 +349,7 @@ async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
       responseType: 'json',
       retry: { limit: 0 },
       throwHttpErrors: false,
+      timeout: { request: 5000 },
     });
     if (response.ok) {
       const parsed = z
@@ -570,7 +593,7 @@ function marketingLlms(origin: string): string {
 
 > Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
 
-Last reviewed: 2026-09-03
+Last reviewed: 2026-10-31
 
 ## Key facts
 
@@ -579,8 +602,8 @@ Last reviewed: 2026-09-03
 - Notion-style WYSIWYG editor over plain Markdown/MDX - content round-trips losslessly, no proprietary format
 - First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
 - Versioned publishing: every publish is an immutable snapshot, rollback is atomic
-- Built-in Orama full-text/fuzzy search remains the default and immediate rollback; source main adds an optional tenant-filtered Qdrant hybrid path, privacy-safe diagnostics, and opt-in grounded answers
-- Usage, add-ons, integrations, themes, and MCP below are source-main-only capabilities and are absent from the pinned v0.1.2 artifact
+- Built-in Orama full-text/fuzzy search remains the default and immediate rollback; v0.2.0 adds an optional tenant-filtered Qdrant hybrid path, privacy-safe diagnostics, and opt-in grounded answers. The hybrid path needs a Qdrant service, and embeddings and answers need an AI provider key
+- Usage, add-ons, integrations, themes, and MCP below ship in the pinned v0.2.0 self-host release, whose image is published for linux/amd64 only. Self-hosted MCP is off until an operator enables it
 - Provider-neutral usage events and ClickHouse rollups keep missing state unknown and limits advisory; they do not implement payments
 - Audited project add-ons and integrations expose explicit availability, consent, credential ownership, and health without returning stored secrets
 - Harbor, Manuscript, and Signal support validated theme exchange and runnable Git-native repositories
@@ -673,14 +696,14 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 - Versioned publishing: every publish is an immutable snapshot with atomic roll-forward; readers never see a half-written page.
 - Branches: git-style, database-backed branches - fork, edit in isolation, and merge into main.
 - Anchored comments: review comments pinned to the exact block, Figma-style.
-- Search: the built-in Orama full-text/fuzzy path remains the default and immediate rollback. Source main adds an optional tenant-filtered Qdrant BM25+dense path, privacy-safe diagnostics, and opt-in grounded answers. Operators begin with SEARCH_RUNTIME=shadow and must evaluate their configured providers before cutover.
-- The usage, add-on, integration, theme, and MCP capabilities below are source-main-only and are absent from the pinned v0.1.2 self-host artifact.
+- Search: the built-in Orama full-text/fuzzy path remains the default and immediate rollback. v0.2.0 adds an optional tenant-filtered Qdrant BM25+dense path, privacy-safe diagnostics, and opt-in grounded answers. The hybrid path needs a Qdrant service, and embeddings and answers need an AI provider key. Operators begin with SEARCH_RUNTIME=shadow and must evaluate their configured providers before cutover.
+- The usage, add-on, integration, theme, and MCP capabilities below ship in the pinned v0.2.0 self-host release. Self-hosted MCP is off until an operator sets MCP_ENABLED=true.
 - Usage and entitlements: provider-neutral events, exact ClickHouse rollups, deletion fences, and explicit unknown states. Limits remain advisory and no payment flow is present.
 - Project add-ons: audited feedback, edit/issue links, consent presentation, publishing checks, grammar-lint preview, and preview-deployment controls with current plan/entitlement availability.
 - Integrations: project-managed encrypted write-only webhook credentials and instance-managed provider status with explicit ownership and health states.
 - Documentation themes: Harbor, Manuscript, and Signal structural templates, bounded JSON exchange, and runnable Git-native repositories with platform/shared/customer ownership.
 - MCP: project-bound, expiring scoped API keys expose read-only content, search, usage, add-on, integration, operation, and theme adapters. Theme import is preview-only and cannot apply changes.
-- Bilingual and RTL: per-language page trees, RTL layout, hreflang, and localized dashboard/editor/site chrome in English and Arabic.
+- Multilingual and RTL: per-language page trees, RTL layout, hreflang, and 12 interface locale options. Some interface strings remain in English. English and Arabic authoring include RTL support.
 - Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
 - SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
 - Per-site teams: each site is its own workspace with role-based members (owner/admin/editor).
@@ -689,7 +712,7 @@ Nibleaf was built with English and Arabic authoring as core features, including 
 
 ## Self-hosting
 
-The codebase is licensed under AGPL-3.0. Its public repository, pinned GHCR release, guided installer, and production Docker Compose file are anonymously accessible. The stack contains the app, API, worker, PostgreSQL, cache, and object storage. Operators remain responsible for DNS, TLS, backups, monitoring, and restore testing; see ${origin}/self-hosting for the verified installation path and production checklist.
+The codebase is licensed under AGPL-3.0. Its public repository, pinned GHCR release, guided installer, and production Docker Compose file are anonymously accessible. The pinned release is v0.2.0, and its image is published for linux/amd64 only. The stack contains the app, API, worker, PostgreSQL, cache, and object storage. Operators remain responsible for DNS, TLS, backups, monitoring, and restore testing; see ${origin}/self-hosting for the verified installation path and production checklist.
 
 ## Nibleaf Cloud
 
@@ -718,8 +741,8 @@ AGPL-3.0. The license governs your rights to use, copy, modify, and distribute t
 - Support: support@nibleaf.com
 - RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
 - Product documentation: https://docs.nibleaf.com
-- Integrated release notes: https://docs.nibleaf.com/releases/august-2026-capabilities
-- Ordered migration and rollback guide: https://docs.nibleaf.com/self-hosting/combined-release-migration
+- Release notes: https://docs.nibleaf.com/releases/v0-2-0
+- v0.1.2 to v0.2.0 upgrade and rollback guide: https://docs.nibleaf.com/self-hosting/upgrade-v0-2
 - Add-ons reference: https://docs.nibleaf.com/use-nibleaf/add-ons
 - MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
 - Public source: https://github.com/lord007tn/nibleaf
@@ -899,7 +922,16 @@ function withoutHeadBody(response: Response, method: string): Response {
   return method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response;
 }
 
-const handleRequestInner: RequestHandler<Register> = async (request, ...rest) => {
+/** Drop any client-sent `x-nibleaf-site-origin`; only the custom-domain rewrite may set it. */
+function withoutClientSiteOrigin(request: Request): Request {
+  if (!request.headers.has('x-nibleaf-site-origin')) return request;
+  const sanitized = new Request(request.url, request);
+  sanitized.headers.delete('x-nibleaf-site-origin');
+  return sanitized;
+}
+
+const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) => {
+  const request = withoutClientSiteOrigin(incoming);
   const url = new URL(request.url);
   const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
@@ -1138,4 +1170,4 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   return ssrNonce.run(nonce, () => withSecurityHeaders(handleRequestInner(request, ...rest), nonce));
 };
 
-export default { fetch: handleRequest };
+export default createServerEntry({ fetch: handleRequest });

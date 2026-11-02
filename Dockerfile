@@ -13,7 +13,8 @@ ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
-RUN apk add --no-cache chromium curl git openssl && corepack enable && corepack prepare pnpm@10.30.3 --activate
+# Chromium needs an Arabic font for readable RTL PDF exports.
+RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corepack enable && corepack prepare pnpm@10.34.7 --activate
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
@@ -33,7 +34,31 @@ ENV VITE_SITE_BASE_DOMAIN=$VITE_SITE_BASE_DOMAIN
 # bundles are optimized together. Keep this aligned with the 5-6 GiB build
 # requirement documented in docker-compose.yml.
 ENV NODE_OPTIONS=--max-old-space-size=6144
-RUN pnpm exec turbo run build --concurrency=1
+# Build only container services and their workspace dependencies. The separately
+# deployed Cloudflare edge uses workerd, whose Linux binary is not Alpine-native.
+RUN pnpm exec turbo run build --concurrency=1 \
+  --filter=@nibleaf/app... \
+  --filter=@nibleaf/admin... \
+  --filter=@nibleaf/server... \
+  --filter=@nibleaf/worker...
+
+# Install a clean production graph instead of copying the builder's tooling.
+# Keep the workspace layout: server/worker and their workspace dependencies run
+# through tsx, and the migration commands still use pnpm's workspace filters.
+FROM base AS runtime-deps
+COPY . .
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
+# Production peers pull TypeScript's optional native compiler into this graph.
+# Runtime TS/TSX executes through tsx/esbuild; no service invokes tsc. Exclude
+# only that unused compiler, retaining sharp/esbuild/Prisma optional binaries.
+RUN rm -rf /app/node_modules/@typescript/typescript-*
+# These ignored/generated files are runtime inputs, not development tooling.
+COPY --from=build /app/packages/database/src/generated /app/packages/database/src/generated
+COPY --from=build /app/packages/i18n/src/paraglide /app/packages/i18n/src/paraglide
+COPY --from=build /app/packages/search/dist /app/packages/search/dist
+COPY --from=build /app/apps/server/dist /app/apps/server/dist
+COPY --from=build /app/apps/app/.output /app/apps/app/.output
+COPY --from=build /app/apps/admin/.output /app/apps/admin/.output
 
 FROM base AS runner
 ARG VERSION=0.1.1
@@ -46,8 +71,11 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.source="https://github.com/lord007tn/nibleaf" \
   org.opencontainers.image.version=$VERSION \
   org.opencontainers.image.revision=$REVISION
-COPY --from=build /app /app
+COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
+# Services and operator migrations use Node/tsx or pnpm. The base image's npm
+# installer is unused and carries a separate bundled dependency graph.
+RUN apk upgrade --no-cache zlib libexpat chromium chromium-common chromium-angle && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]

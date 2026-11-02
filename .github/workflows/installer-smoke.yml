@@ -25,8 +25,9 @@ jobs:
           NIBLEAF_INSTALL_DIR: ${{ runner.temp }}/nibleaf-installer-smoke
           NIBLEAF_APP_URL: http://127.0.0.1:4310
           NIBLEAF_STORAGE_PUBLIC_ENDPOINT: http://127.0.0.1:9300
-          NIBLEAF_VERSION: v0.1.2
         run: |
+          NIBLEAF_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('release/self-host.json')).version")
+          export NIBLEAF_VERSION
           INSTALL_COMMAND=$(node scripts/self-host-release.mjs --print-command)
           export INSTALL_COMMAND
           cat >"$RUNNER_TEMP/run-installer.exp" <<'EXPECT'
@@ -43,6 +44,9 @@ jobs:
           send "\r"
           expect "Enable transactional email delivery for sign-in codes and invitations?"
           send "n\r"
+          # The v0.2.0 installer requires this acknowledgement without email delivery.
+          expect "Continue without email delivery and configure Google sign-in separately?"
+          send "y\r"
           expect eof
           catch wait result
           exit [lindex $result 3]

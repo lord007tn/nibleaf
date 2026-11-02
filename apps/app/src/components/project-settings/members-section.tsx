@@ -10,8 +10,18 @@ import { useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Crown, Link2, Mail, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/settings/api-key-alert-dialog';
 import { GradientAvatar } from '@/components/settings/section';
 import {
   useCancelProjectInvitation,
@@ -55,6 +65,7 @@ function CopyLinkButton({ link, label }: { link: string; label: string }) {
 /** Grantable roles — `owner` is intentionally absent: there is exactly one
  *  owner, and ownership only moves via the transfer-ownership flow. */
 type AssignableRole = 'admin' | 'member';
+type MemberAction = { kind: 'remove'; id: string; name: string } | { kind: 'revoke'; id: string; email: string };
 const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
   owner: 'settings.members.role.owner',
   admin: 'settings.members.role.admin',
@@ -80,6 +91,46 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const isCurrentOwner = currentMember?.role === 'owner';
   const canManageMembers = canAdminister(currentMember?.role ?? '');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
+  const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const actionInFlight = useRef(false);
+
+  const requestMemberAction = (action: MemberAction) => {
+    if (actionInFlight.current || !canManageMembers) return;
+    setActionError(null);
+    setMemberAction(action);
+  };
+
+  const submitMemberAction = () => {
+    if (!memberAction || actionInFlight.current || !canManageMembers) return;
+    const action = memberAction;
+    actionInFlight.current = true;
+    setActionPending(true);
+    setActionError(null);
+    const options = {
+      onSuccess: () => {
+        toast.success(t(action.kind === 'remove' ? 'settings.members.toast.removed' : 'settings.members.toast.invitationRevoked'));
+        if (action.kind === 'revoke') {
+          setLastInvite((previous) => (previous?.email.toLowerCase() === action.email.toLowerCase() ? null : previous));
+        }
+        setMemberAction(null);
+      },
+      onError: (error: unknown) => {
+        setActionError(
+          error instanceof Error
+            ? error.message
+            : t(action.kind === 'remove' ? 'settings.members.toast.removeError' : 'settings.members.toast.revokeError'),
+        );
+      },
+      onSettled: () => {
+        actionInFlight.current = false;
+        setActionPending(false);
+      },
+    };
+    if (action.kind === 'remove') remove.mutate(action.id, options);
+    else cancelInvite.mutate(action.id, options);
+  };
   // No `owner` option: invitations and role changes can never grant ownership.
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const roleOptions = [
@@ -288,12 +339,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       variant="ghost"
                       aria-label={t('settings.members.remove')}
                       title={t('settings.members.remove')}
-                      onClick={() =>
-                        remove.mutate(member.id, {
-                          onSuccess: () => toast.success(t('settings.members.toast.removed')),
-                          onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.removeError')),
-                        })
-                      }
+                      disabled={actionPending || remove.isPending || cancelInvite.isPending}
+                      onClick={() => requestMemberAction({ kind: 'remove', id: member.id, name: member.user.name || member.user.email })}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -324,12 +371,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <div className="ms-auto flex items-center gap-1">
                       <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
                       <Button
-                        onClick={() =>
-                          cancelInvite.mutate(inv.id, {
-                            onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
-                            onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.revokeError')),
-                          })
-                        }
+                        disabled={actionPending || remove.isPending || cancelInvite.isPending}
+                        onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
                         size="icon-sm"
                         variant="ghost"
                         aria-label={t('settings.members.revokeInvite')}
@@ -345,6 +388,40 @@ export function MembersSection({ projectId }: { projectId: string }) {
           ) : null}
         </>
       )}
+
+      <AlertDialog
+        onOpenChange={(open) => {
+          if (!open && !actionInFlight.current) {
+            setMemberAction(null);
+            setActionError(null);
+          }
+        }}
+        open={Boolean(memberAction)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t(memberAction?.kind === 'revoke' ? 'settings.members.revokeInvite' : 'settings.members.remove')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberAction?.kind === 'remove'
+                ? t('settings.members.removeConfirm', { name: memberAction.name })
+                : memberAction?.kind === 'revoke'
+                  ? t('settings.members.revokeConfirm', { email: memberAction.email })
+                  : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {actionError ? (
+            <p className="text-destructive text-sm" role="alert">
+              {actionError}
+            </p>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={actionPending}>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction disabled={actionPending} onClick={submitMemberAction}>
+              {actionPending ? t('common.loading') : t(memberAction?.kind === 'revoke' ? 'settings.members.revokeInvite' : 'settings.members.remove')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

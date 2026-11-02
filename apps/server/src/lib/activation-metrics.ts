@@ -54,3 +54,77 @@ export function activationTiming(signups: TimedActivationEvent[], readyEvents: T
   const readyWithin24Hours = durations.filter((duration) => duration <= 24 * 60 * 60 * 1000).length;
   return { medianHoursToReady, readyWithin24Hours };
 }
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/** A project counts as retained when its second manual publish lands in this range, both ends inclusive. */
+export const RETENTION_MIN_HOURS = 24;
+export const RETENTION_MAX_HOURS = 168;
+/** Below this cohort size a rate says more about individual projects than about the product. */
+const MIN_COHORT_FOR_RATE = 5;
+
+export interface PublishRetentionWindows {
+  /** Start of the funnel's reporting window; first manual publishes count from here to `now`. */
+  firstPublishSince: Date;
+  /** Earliest first publish in the retention cohort. */
+  cohortSince: Date;
+  /** Latest first publish in the retention cohort: the first moment its full window has elapsed. */
+  cohortUntil: Date;
+}
+
+/**
+ * Cohort rule: the funnel's `days` window shifted back by the 168-hour measuring
+ * window, so every project in it had its full chance to return and the readout
+ * covers as many days as the funnel does: with 30 days, first publishes from 37
+ * to 7 days ago, inclusive.
+ */
+export function publishRetentionWindows(days: number, now: Date): PublishRetentionWindows {
+  const cohortUntil = new Date(now.getTime() - RETENTION_MAX_HOURS * HOUR_MS);
+  return {
+    firstPublishSince: new Date(now.getTime() - days * DAY_MS),
+    cohortSince: new Date(cohortUntil.getTime() - days * DAY_MS),
+    cohortUntil,
+  };
+}
+
+export interface PublishRetentionCounts {
+  observationStart: Date | null;
+  firstManualPublishes: number;
+  cohortSize: number;
+  retained: number;
+}
+
+/** Aggregate publishing-retention readout. `null` always means Unknown, never zero. */
+export interface PublishRetention {
+  /** Projects whose earliest manual publish falls in the funnel window. */
+  firstManualPublishes: number | null;
+  /** Projects in the retention cohort (see `publishRetentionWindows`). */
+  cohortSize: number | null;
+  /** Cohort projects whose second manual publish came 24 to 168 hours after the first. */
+  retained: number | null;
+  /** `retained / cohortSize` as a 0-1 fraction; null below the minimum cohort size. */
+  rate: number | null;
+  /** ISO time of the earliest deployment receipt; nothing before it is counted. */
+  observationStart: string | null;
+  /** ISO time this readout was computed. */
+  computedAt: string;
+}
+
+/**
+ * Turn raw counts into a readout that never reports missing coverage as zero:
+ * with no receipts everything is Unknown, and a cohort window that closed before
+ * the first receipt was written stays Unknown rather than an empty cohort.
+ */
+export function publishRetentionReadout(counts: PublishRetentionCounts, windows: PublishRetentionWindows, computedAt: Date): PublishRetention {
+  const { observationStart, firstManualPublishes, cohortSize, retained } = counts;
+  const unknown = { firstManualPublishes: null, cohortSize: null, retained: null, rate: null };
+  if (!observationStart) {
+    return { ...unknown, observationStart: null, computedAt: computedAt.toISOString() };
+  }
+  const base = { firstManualPublishes, observationStart: observationStart.toISOString(), computedAt: computedAt.toISOString() };
+  if (observationStart > windows.cohortUntil) {
+    return { ...unknown, ...base };
+  }
+  return { ...base, cohortSize, retained, rate: cohortSize >= MIN_COHORT_FOR_RATE ? retained / cohortSize : null };
+}

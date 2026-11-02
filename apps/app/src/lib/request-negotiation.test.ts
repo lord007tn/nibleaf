@@ -74,14 +74,37 @@ describe('isDocumentPath', () => {
 });
 
 describe('isAppOwnedPath', () => {
-  it.each(['/api/public/sites/project', '/assets/app.js', '/favicon.ico', '/sites/project', '/_serverFn/handler', '/_tanstack/start'])(
-    'keeps %s on the application runtime',
-    (pathname) => expect(isAppOwnedPath(pathname)).toBe(true),
-  );
+  it.each([
+    '/api',
+    '/api/x',
+    '/assets/x',
+    '/sites/x',
+    '/_serverFn/x',
+    '/api/public/sites/project',
+    '/assets/app.js',
+    '/favicon.ico',
+    '/favicon.svg',
+    '/favicon-32x32.png',
+    '/sites',
+    '/sites/project',
+    '/_serverFn/handler',
+    '/_tanstack/start',
+  ])('keeps %s on the application runtime', (pathname) => expect(isAppOwnedPath(pathname)).toBe(true));
 
-  it.each(['/', '/getting-started', '/ar/use-nibleaf/authoring'])('allows %s to resolve as published content', (pathname) =>
-    expect(isAppOwnedPath(pathname)).toBe(false),
-  );
+  it.each([
+    '/',
+    '/getting-started',
+    '/ar/use-nibleaf/authoring',
+    '/api-reference',
+    '/apis',
+    '/sites-guide',
+    '/api.v2',
+    '/assets-guide',
+    '/sites-overview',
+    '/favicon-guide',
+    '/favicons',
+    '/apis/rest',
+  ])('allows %s to resolve as published content', (pathname) => expect(isAppOwnedPath(pathname)).toBe(false));
 });
 
 it('returns a crawler-safe 406 response', async () => {

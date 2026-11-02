@@ -3,8 +3,8 @@ title: 'استكشاف أخطاء عملية نشر مستضافة ذاتيًا 
 description: 'شخّص أعطال بدء التشغيل والترحيل والتخزين والبريد والنشر والنطاق والوكيل والبحث من دون إتلاف حالة يمكن استعادتها.'
 audience: 'المشغّلون المستجيبون لتعطل مسار عمل مستضاف ذاتيًا'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'docker-compose.prod.yml, scripts/install.sh, and apps/server/src/env.ts'
+last_reviewed: '2026-10-30'
+verified_against: 'docker-compose.prod.yml, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/troubleshooting'
@@ -16,7 +16,8 @@ translation_key: 'self-hosting/troubleshooting'
 
 ## جمع لقطة تشخيصية آمنة
 
-نفّذ من مجلد عملية النشر:
+نفّذ من مجلد عملية النشر. في مجلد أنشأه برنامج التثبيت الموجّه، احذف
+`-f docker-compose.prod.yml`:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
@@ -37,8 +38,24 @@ docker compose -f docker-compose.prod.yml config --services
 | ينتظر التطبيق الخادم | فحص سلامة الخادم يفشل أو لم يكتمل `migrate`. | اقرأ سجل `migrate` ثم أول خطأ للخادم. |
 | ترفض بيئة الإنتاج سر المصادقة | القيمة فارغة أو ضعيفة أو قيمة تجريبية افتراضية معروفة. | أنشئ قيمة مستقلة جديدة، ولا تعد التشغيل إلا بعد تحديث `.env`. |
 | سحب الصورة مرفوض أو الصورة مفقودة | الوسم غير موجود أو فشل الوصول إلى السجل. | تحقق من الوسم في صفحة الإصدار ونفّذ `docker compose pull` مباشرة. |
+| يبلّغ السحب عن عدم وجود بيان مطابق، أو تخرج حاوية مع `exec format error` | المضيف ليس `linux/amd64`. لا تدعم الصورة المنشورة غير هذه البنية. | نفّذ `uname -m`. أي قيمة غير `x86_64` تحتاج إلى مضيف amd64. |
+| يتوقف برنامج التثبيت مع `Unsupported architecture` | المضيف ليس `linux/amd64`. | استخدم مضيف amd64، ولا تلتفّ حول هذا الفحص. |
+| يتوقف برنامج التثبيت مع `Existing installation` | يحتوي المجلد أو Docker على تثبيت Nibleaf قائم. | لا تحذفه لتجاوز الفحص. استخدم [دليل الترقية](/ar/self-hosting/upgrade-v0-2). |
 
 لا تتخطَّ عمليات الترحيل بإزالة الاعتماديات من ملف Compose.
+
+## لا يصبح API وعامل المعالجة جاهزين بعد الترقية
+
+لا تصبح `server` و`worker` جاهزتين، وتنتظر `app` خدمة API، وتعرض السجلات:
+
+```text
+Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
+```
+
+بدأ v0.2.0 على جداول من v0.1.2، وغالبًا لأن الإصدار تغيّر من دون الترحيل المرحلي.
+بياناتك سليمة. لا تحذف وحدة تخزين Dragonfly، ولا تُزِل المهام، ولا تُعد تشغيل برنامج
+التثبيت. اتبع
+[إذا تخطيت المرحلة الوسيطة](/ar/self-hosting/upgrade-v0-2#إذا-تخطيت-المرحلة-الوسيطة).
 
 ## فشل عمليات الرفع في المتصفح
 
@@ -56,7 +73,9 @@ DNS وTLS وCORS للحاوية وبيانات الاعتماد ووضع نمط 
 الدخول دون كلمة مرور تسليم رمز لمرة واحدة. في غياب Postmark أو SMTP، يسجّل
 عامل المعالجة رسائل بريد التطوير بدلًا من تسليمها في بيئة التطوير أو عندما
 يكون التسليم اختياريًا فقط. يفشل التسليم المطلوب في الإنتاج إذا لم يُضبط
-Postmark أو SMTP.
+Postmark أو SMTP، ويعيد فحص سلامة عامل المعالجة 503 حتى يُضبط أحدهما. القيمة
+الافتراضية لـ`EMAIL_DELIVERY_REQUIRED` هي `true`. لا تضبطها على `false` إلا عند إعداد
+تسجيل الدخول عبر Google، إذ لا يمكن لأحد تلقي رمز بريدي من دون مزوّد.
 
 ## عملية نشر تبقى في طابور المهام أو تفشل
 

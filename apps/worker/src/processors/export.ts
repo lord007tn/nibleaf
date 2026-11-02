@@ -7,16 +7,14 @@ import { exportScheduleSlotKey, nextExportRunAt } from '@nibleaf/shared/export-s
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { deleteObject, deletePrefix, getObjectStream, putObject } from '@nibleaf/storage';
 import type { Job } from 'bullmq';
-import { PDFDocument } from 'pdf-lib';
-import { chromium } from 'playwright-core';
 import { env } from '../env';
 import { expiredRunIds, isFinalExportAttempt } from '../exports/lifecycle';
+import { renderPdf } from '../exports/pdf';
 import {
   type ExportAsset,
   type ExportAssetManifestItem,
   type RenderedArtifact,
   renderMarkdownZip,
-  renderPdfHtml,
   renderStaticHtml,
   selectPublishedAssets,
 } from '../exports/render';
@@ -59,48 +57,10 @@ const loadReferencedAssets = async (snapshot: SiteSnapshot, manifest: ExportAsse
   return assets;
 };
 
-const renderPdf = async (snapshot: SiteSnapshot, assets: ExportAsset[]): Promise<RenderedArtifact> => {
-  const browser = await chromium.launch({
-    executablePath: env.EXPORT_CHROMIUM_PATH,
-    headless: true,
-    args: ['--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  try {
-    const page = await browser.newPage();
-    // Prevent published Markdown from turning PDF rendering into an SSRF
-    // primitive. All approved project assets are embedded as data URLs.
-    await page.route('**/*', (route) => {
-      const protocol = new URL(route.request().url()).protocol;
-      return ['about:', 'data:'].includes(protocol) ? route.continue() : route.abort();
-    });
-    await page.setContent(renderPdfHtml(snapshot, assets), { waitUntil: 'load' });
-    const browserBytes = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: '<span></span>',
-      footerTemplate:
-        '<div style="font-size:8px;width:100%;text-align:center"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',
-    });
-    const document = await PDFDocument.load(browserBytes);
-    document.setTitle(snapshot.project.name);
-    document.setAuthor('Nibleaf');
-    document.setSubject(snapshot.project.description ?? 'Published documentation export');
-    document.setProducer('Nibleaf');
-    document.setCreator('Nibleaf export worker');
-    document.setCreationDate(new Date(snapshot.generatedAt));
-    document.setKeywords(snapshot.project.languages.map((language) => language.code));
-    const bytes = await document.save();
-    return { bytes, contentType: 'application/pdf', extension: 'pdf' };
-  } finally {
-    await browser.close();
-  }
-};
-
-const rendererFor = async (format: ExportFormat, snapshot: SiteSnapshot, assets: ExportAsset[]): Promise<RenderedArtifact> => {
+const rendererFor = async (format: ExportFormat, snapshot: SiteSnapshot, assets: ExportAsset[], exportJobId: string): Promise<RenderedArtifact> => {
   if (format === 'MARKDOWN') return renderMarkdownZip(snapshot, assets);
   if (format === 'STATIC_HTML') return renderStaticHtml(snapshot, assets);
-  return renderPdf(snapshot, assets);
+  return renderPdf(snapshot, assets, { executablePath: env.EXPORT_CHROMIUM_PATH, checkCancelled: () => checkCancelled(exportJobId) });
 };
 
 const fileLabel = (format: ExportFormat): string => (format === 'MARKDOWN' ? 'markdown' : format === 'STATIC_HTML' ? 'static-html' : 'pdf');
@@ -139,7 +99,7 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
     const assets = await loadReferencedAssets(snapshot, row.snapshot.assets as unknown as ExportAssetManifestItem[], exportJobId);
     for (const format of row.formats) {
       await checkCancelled(exportJobId);
-      const artifact = await rendererFor(format, snapshot, assets);
+      const artifact = await rendererFor(format, snapshot, assets, exportJobId);
       await checkCancelled(exportJobId);
       const label = fileLabel(format);
       const fileName = `${snapshot.project.slug}-v${row.snapshot.deploymentVersion}-${label}.${artifact.extension}`;

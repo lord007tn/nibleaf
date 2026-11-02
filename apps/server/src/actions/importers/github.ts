@@ -1,16 +1,37 @@
 import { Octokit, RequestError } from 'octokit';
-import { badRequest } from '@/errors';
+import { badRequest, ImportError } from '@/errors';
 
-const github = new Octokit({ userAgent: 'nibleaf-importer' });
+const github = new Octokit({
+  userAgent: 'nibleaf-importer',
+  throttle: { enabled: false },
+  retry: { enabled: false },
+  request: {
+    fetch: (url: Parameters<typeof fetch>[0], options?: Parameters<typeof fetch>[1]) =>
+      fetch(url, { ...options, signal: AbortSignal.timeout(30_000) }),
+  },
+});
+
+const MAX_RETRY_WAIT_MS = 86_400_000;
+
+const githubRetryMinutes = ({ status, response }: RequestError) => {
+  if (status !== 403 && status !== 429) return;
+  const headers = response?.headers;
+  const retryAfter = Number(headers?.['retry-after']) * 1000;
+  const reset = Number(headers?.['x-ratelimit-reset']) * 1000 - Date.now();
+  const wait = retryAfter > 0 ? retryAfter : headers?.['x-ratelimit-remaining'] === '0' ? reset : 0;
+  return wait > 0 && wait <= MAX_RETRY_WAIT_MS ? Math.ceil(wait / 60_000) : undefined;
+};
+
+const githubFailureMessage = (error: RequestError) => {
+  if (error.status === 404) return 'Repository or branch not found. Imports support public GitHub repositories only.';
+  const minutes = githubRetryMinutes(error);
+  if (minutes === undefined) return `GitHub API error (${error.status}). Try again shortly.`;
+  return `GitHub rate limit reached. Try again in about ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+};
 
 const githubFailure = (error: unknown) => {
   if (error instanceof RequestError) {
-    return badRequest(
-      error.status === 404
-        ? 'Repository or branch not found. Imports support public GitHub repositories only.'
-        : `GitHub API error (${error.status}). Try again shortly.`,
-      { provider: 'github', providerStatus: error.status },
-    );
+    return badRequest(githubFailureMessage(error), { provider: 'github', providerStatus: error.status });
   }
   return badRequest('Could not reach GitHub. Try again shortly.', { provider: 'github' });
 };
@@ -22,6 +43,17 @@ export const listGitHubFiles = async (owner: string, repo: string, branch: strin
     return response.data.tree.flatMap((entry) =>
       entry.path && (entry.type === 'blob' || entry.type === 'tree') ? [{ path: entry.path, type: entry.type }] : [],
     );
+  } catch (error) {
+    throw githubFailure(error);
+  }
+};
+
+/** Resolve a mutable ref once; raw content must use a commit, not a tree object ID. */
+export const getGitHubSnapshot = async (owner: string, repo: string, ref: string) => {
+  try {
+    const commit = await github.rest.repos.getCommit({ owner, repo, ref });
+    const revision = commit.data.sha;
+    return { revision, files: await listGitHubFiles(owner, repo, revision) };
   } catch (error) {
     throw githubFailure(error);
   }
@@ -48,6 +80,7 @@ export const getGitHubTextFile = async (owner: string, repo: string, branch: str
     response = await fetch(githubRawUrl(owner, repo, branch, filePath), {
       headers: { Accept: 'text/plain', 'User-Agent': 'nibleaf-importer' },
       redirect: 'error',
+      signal: AbortSignal.timeout(20_000),
     });
   } catch (error) {
     throw githubFailure(error);
@@ -59,7 +92,25 @@ export const getGitHubTextFile = async (owner: string, repo: string, branch: str
       providerStatus: response.status,
     });
   }
-  return await response.text();
+  const reader = response.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 2 * 1024 * 1024) throw new ImportError({ code: 'import:limit', message: 'Repository text file exceeds 2 MiB; import stopped.' });
+      chunks.push(value);
+    }
+    return Buffer.concat(chunks).toString('utf8');
+  } catch (error) {
+    if (error instanceof ImportError) throw error;
+    throw githubFailure(error);
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
 };
 
 /** raw.githubusercontent.com URL for a browser-reachable repository asset. */

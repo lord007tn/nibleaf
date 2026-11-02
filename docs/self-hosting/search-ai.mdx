@@ -3,8 +3,8 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, and apps/worker/src/processors/search.ts'
+last_reviewed: '2026-10-30'
+verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/search-ai'
@@ -51,8 +51,12 @@ operation (including pull, up, config checks, and backup automation):
 docker compose -f docker-compose.prod.yml -f docker-compose.search.yml up -d
 ```
 
-The overlay is separate so the checksummed v0.1.2 self-host release artifacts
-remain immutable. Coolify and the development stack include Qdrant directly.
+`docker-compose.prod.yml` does not include Qdrant, so hybrid search needs this overlay.
+The production Compose file already passes `OPENROUTER_API_KEY` to the API and worker.
+The overlay is in the repository,
+not in the release assets, so a guided-installer directory must fetch it from the
+matching release tag and use `docker-compose.yml` as the first file. Coolify and the
+development stack include Qdrant directly.
 
 To offer answers, set `SEARCH_ANSWER_ENABLED=true` and pin
 `SEARCH_ANSWER_MODEL`. Answer generation uses the same OpenRouter credential
@@ -66,6 +70,13 @@ Answer generation is intentionally non-streaming in this release. Nibleaf first
 validates the complete structured response, rejects unknown citations and
 unsupported claims, and only then returns it. This avoids streaming unvalidated
 model text. Search results remain immediate and non-generative.
+
+AI controls stay hidden until the instance can serve them. The editor's AI tab
+appears only when `OPENROUTER_API_KEY` is set and `AI_DAILY_LIMIT` is above
+zero. The **Grounded AI answers** setting and the reader's AI answer mode appear
+only when Qdrant and `OPENROUTER_API_KEY` are configured and
+`SEARCH_ANSWER_ENABLED=true`. If the provider fails, drafting returns an error
+instead of placeholder text.
 
 ## Index and evaluate
 
@@ -170,3 +181,22 @@ versioned collection under the configured alias prefix. Deployment cleanup uses
 the same sweep through `delete-deployment`. Confirm an exact project-scoped
 count of zero after the job, then apply your normal Qdrant backup-retention
 policy. Never delete a physical collection while its alias is serving traffic.
+
+Project deletion also enqueues an `erase-project-storage` job on its own
+`erasure` queue. The job waits until the project row is deleted, then removes
+every object under `projects/<projectId>/` (uploaded and imported assets and
+export artifacts). It runs even without Qdrant, is safe to repeat, and retries
+apart from the Qdrant delete. If `WORKER_QUEUES` is an allowlist, include
+`erasure`. Without a worker for that queue, jobs wait in Redis and nothing is
+erased.
+
+Failed attempts back off exponentially for about 45.5 hours. If every attempt
+fails, the job stays in the queue's failed set until you retry or remove it, and
+the worker logs one error with the project id. After the first pass succeeds,
+one final pass runs a day later, because an upload URL signed before the
+deletion stays valid for an hour and an export already running can still write.
+An object written after the final pass stays in storage.
+
+This applies to deletions made after upgrading. It does not clean up objects
+left by earlier deletions. Bucket versioning, replication, and backups follow
+your own retention policy.

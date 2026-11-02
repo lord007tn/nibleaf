@@ -2,7 +2,7 @@ import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
-import { handleMcpRequest } from './transport';
+import { handleMcpRequest, MAX_MCP_REQUEST_BODY_BYTES } from './transport';
 
 const mocks = vi.hoisted(() => ({ audit: vi.fn(), authenticate: vi.fn(), finalizeRateLimitAudit: vi.fn(), rateLimit: vi.fn() }));
 
@@ -36,7 +36,19 @@ const initializeBody = JSON.stringify({
   params: { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' } },
 });
 
-const request = (headers: Record<string, string>) => {
+/** An `initialize` request padded to exactly `bytes`, so the size is the only variable. */
+const paddedInitializeBody = (bytes: number) => {
+  const body = (padding: string) =>
+    JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: LATEST_PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'test', version: '1.0.0' }, _meta: { padding } },
+    });
+  return body('x'.repeat(bytes - body('').length));
+};
+
+const request = (headers: Record<string, string>, body = initializeBody) => {
   const app = new Hono<HonoEnv>().post('/mcp', async (ctx) => {
     ctx.set('requestId', 'request-1');
     return handleMcpRequest(ctx);
@@ -44,7 +56,7 @@ const request = (headers: Record<string, string>) => {
   return app.request('/mcp', {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...headers },
-    body: initializeBody,
+    body,
   });
 };
 
@@ -91,6 +103,14 @@ describe('MCP HTTP transport boundary', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('x-ratelimit-limit')).toBe('120');
     expect(await response.text()).toContain('nibleaf');
+  });
+
+  it('accepts a request at the body limit and refuses one byte more', async () => {
+    const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
+    expect((await request(headers, paddedInitializeBody(MAX_MCP_REQUEST_BODY_BYTES))).status).toBe(200);
+    const refused = await request(headers, paddedInitializeBody(MAX_MCP_REQUEST_BODY_BYTES + 1));
+    expect(refused.status).toBe(413);
+    expect(refused.headers.get('x-ratelimit-limit')).toBe('120');
   });
 
   it('rejects invalid hosts, origins, and ambiguous forwarded hosts before authentication', async () => {

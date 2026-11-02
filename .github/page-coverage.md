@@ -1,6 +1,6 @@
 # Public page coverage
 
-Reviewed: **2026-09-11**. Canonical origin: **https://nibleaf.com**.
+Reviewed: **2026-11-02**. Canonical origin: **https://nibleaf.com**.
 This is a contributor-facing inventory of reader decisions and public product evidence, not a traffic forecast or a deployment record. Paths below are canonical owners; `/blog/…-ar` pairs are real Arabic translations. English-only comparison pages do not advertise Arabic alternates.
 
 | Type | Canonical owner(s) | Decision / action | Reason and public proof |
@@ -20,12 +20,12 @@ This is a contributor-facing inventory of reader decisions and public product ev
 | 7. Problems | `/tools/rtl-documentation-readiness`, `/blog/arabic-technical-documentation-rtl-checklist` | **Keep**: diagnose Arabic/RTL readiness | Existing tool and practical checklist own diagnostic intent. The tool is a self-assessment, not a certification or crawling service. |
 | 8. Differentiating features | `/blog/docs-should-live-in-plain-markdown`, `/blog/docs-should-live-in-plain-markdown-ar` | **Keep**: combine visual authoring with portable source | Concrete round-trip workflow and fixture. Proof: Markdown editor persistence and exports. Does not claim other tools lack Markdown. |
 | 8. Differentiating features | `/blog/arabic-documentation-rtl`, `/blog/arabic-technical-documentation-rtl-checklist` | **Keep**: author and review Arabic documentation | Existing English explanation and Arabic checklist. Differentiation is the authoring/search workflow; Mintlify and Docusaurus also support RTL. |
-| 8. Differentiating features | `/blog/versioned-documentation-release-lifecycle` and `-ar` pair; `/blog/documentation-templates-harbor-manuscript-signal` and `-ar` pair | **Keep**: decide publication lifecycle or template structure | Existing meaningful decisions. New source capabilities remain bounded by the source-release notice; no universal image-parity or AI-inclusion claim. |
+| 8. Differentiating features | `/blog/versioned-documentation-release-lifecycle` and `-ar` pair; `/blog/documentation-templates-harbor-manuscript-signal` and `-ar` pair | **Keep**: decide publication lifecycle or template structure | Existing meaningful decisions. The self-hosted release manifest targets v0.2.0; availability still depends on credentials, optional services, and project settings. |
 | 9. Company size | No dedicated owner | **Not applicable**: startup/SMB/enterprise keyword pages | Team size alone does not change the verified workflow or offer. Use editorial roles, access needs, and operating responsibility in existing guides. No doorway pages, invented enterprise plan, SLA, or SAML/SCIM support. |
 
 ## Vendor references
 
-Checked September 11, 2026. Prices are vendor-controlled and must be rechecked when editing these pages. GitBook's displayed starting prices use annual billing; ReadMe Pro is one project with unlimited published versions. Do not convert a displayed monthly equivalent into a month-to-month offer.
+Checked November 2, 2026. Prices are vendor-controlled and must be rechecked when editing these pages. GitBook's displayed starting prices use annual billing; ReadMe Pro is one project with unlimited published versions. Do not convert a displayed monthly equivalent into a month-to-month offer. The former GitBook editing/RTL help URL now returns 404, so the comparison marks the unverified RTL editing guarantee as unknown and recommends a representative trial.
 
 - [Mintlify pricing](https://www.mintlify.com/pricing), [editor](https://www.mintlify.com/docs/editor/tutorial), [internationalization](https://www.mintlify.com/docs/guides/internationalization), [custom frontend boundary](https://www.mintlify.com/blog/custom-frontends-on-mintlify).
 - [GitBook pricing](https://www.gitbook.com/pricing), [published-site renderer](https://github.com/GitbookIO/gitbook).

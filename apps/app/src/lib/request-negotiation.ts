@@ -98,11 +98,11 @@ export function isDocumentPath(pathname: string): boolean {
 }
 
 /** Paths owned by the application runtime must never be rewritten beneath a
- * published site's custom-domain route. In particular, TanStack server
- * functions use `/_serverFn/*`; `_` and the following letter are both regex
- * word characters, so a shared trailing `\b` does not match that prefix. */
+ * published site's custom-domain route: whole `/api`, `/assets` and `/sites`
+ * segments, favicon files, and every `/_*` runtime path (e.g. `/_serverFn/*`).
+ * Slugs such as `/api-reference` stay published content. */
 export function isAppOwnedPath(pathname: string): boolean {
-  return /^\/(?:(?:api|assets|favicon|sites)\b|_)/.test(pathname);
+  return /^\/(?:(?:api|assets|sites)(?:\/|$)|favicon(?:-\d+x\d+)?\.[a-z0-9]+$|_)/.test(pathname);
 }
 
 export function notAcceptableHtmlResponse(): Response {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isCustomDomainSite, siteBasePath, siteHref, siteLanguageParam } from './site-paths';
+import { isCustomDomainSite, siteBasePath, siteHref, siteLanguageParam, siteRoutePath } from './site-paths';
 
 // site-origin reads the custom-domain origin the server entry stamped on the
 // request; swap it for a controllable value so both serving modes are covered.
@@ -14,6 +14,24 @@ describe('siteBasePath', () => {
   it('hangs app-origin sites off /sites/:projectId and custom domains off the root', () => {
     expect(siteBasePath('p1', false)).toBe('/sites/p1');
     expect(siteBasePath('p1', true)).toBe('');
+  });
+});
+
+describe('siteRoutePath', () => {
+  it.each(['qa-site', '$projectId', '%24projectId', '[', '%5B', 'a+b', 'a%2Bb', 'a.b'])(
+    'consumes exactly one project segment: %s',
+    (projectSegment) => {
+      expect(siteRoutePath(`/sites/${projectSegment}`)).toBe('');
+      expect(siteRoutePath(`/sites/${projectSegment}/`)).toBe('');
+      expect(siteRoutePath(`/sites/${projectSegment}/v2/guide/`)).toBe('v2/guide/');
+      expect(siteRoutePath(`/sites/${projectSegment}/sites/another/guide`)).toBe('sites/another/guide');
+    },
+  );
+
+  it('keeps encoded content segments intact until the caller decodes them', () => {
+    expect(siteRoutePath('/sites/%24projectId/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9')).toBe('%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9');
+    expect(siteRoutePath('/sites/qa-site/v%2F2/guide')).toBe('v%2F2/guide');
+    expect(siteRoutePath('/sites/qa-site/guide%2F')).toBe('guide%2F');
   });
 });
 

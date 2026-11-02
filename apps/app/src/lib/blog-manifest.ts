@@ -1,4 +1,18 @@
-import { translateFn } from '@nibleaf/i18n';
+import {
+  blog_arabicchecklist_description,
+  blog_arabicchecklist_faqdirectionanswer,
+  blog_arabicchecklist_faqdirectionquestion,
+  blog_arabicchecklist_faqsearchanswer,
+  blog_arabicchecklist_faqsearchquestion,
+  blog_arabicchecklist_faqsupportanswer,
+  blog_arabicchecklist_faqsupportquestion,
+  blog_arabicchecklist_faqtreeanswer,
+  blog_arabicchecklist_faqtreequestion,
+  blog_arabicchecklist_metatitle,
+  blog_arabicchecklist_tagarabic,
+  blog_arabicchecklist_tagproductdocs,
+  blog_arabicchecklist_title,
+} from '@nibleaf/i18n/messages';
 import type { BlogEntry } from './blog';
 
 /** Lightweight article metadata. Keep this in sync with MDX frontmatter.
@@ -10,8 +24,8 @@ export const BLOG_MANIFEST = [
     metaTitle: 'Nibleaf integrations: GitHub, analytics and provider limits',
     description:
       'Understand GitHub sync versus GitLab imports, site analytics, webhook availability, and operator-managed providers before connecting a Nibleaf project.',
-    datePublished: '2026-09-11',
-    dateModified: '2026-09-11',
+    datePublished: '2026-11-02',
+    dateModified: '2026-11-02',
     tags: ['integrations', 'GitHub', 'workflow'],
     related: ['nibleaf-integrations-ar', 'docs-should-live-in-plain-markdown', 'documentation-migration-seo-cutover-lab'],
     translationOf: 'nibleaf-integrations-ar',
@@ -23,8 +37,8 @@ export const BLOG_MANIFEST = [
     metaTitle: 'تكاملات Nibleaf: GitHub والتحليلات وحدود المزوّدين',
     description: 'افهم الفرق بين مزامنة GitHub واستيراد GitLab وتحليلات الموقع وتوافر webhooks والخدمات التي يديرها المشغّل قبل ربط مشروعك.',
     language: 'ar',
-    datePublished: '2026-09-11',
-    dateModified: '2026-09-11',
+    datePublished: '2026-11-02',
+    dateModified: '2026-11-02',
     tags: ['التكاملات', 'GitHub', 'سير العمل'],
     related: ['nibleaf-integrations', 'docs-should-live-in-plain-markdown-ar', 'documentation-migration-seo-cutover-lab-ar'],
     translationOf: 'nibleaf-integrations',
@@ -36,8 +50,8 @@ export const BLOG_MANIFEST = [
     metaTitle: 'Customer support knowledge base workflow | Nibleaf',
     description:
       'Turn recurring support questions into searchable help articles, with a practical page pattern, editorial review, Arabic parity, and a first-publish checklist.',
-    datePublished: '2026-09-11',
-    dateModified: '2026-09-11',
+    datePublished: '2026-11-02',
+    dateModified: '2026-11-02',
     tags: ['use-cases', 'support', 'knowledge-base'],
     related: ['customer-support-knowledge-base-ar', 'documentation-information-architecture-collaboration', 'arabic-documentation-rtl'],
     translationOf: 'customer-support-knowledge-base-ar',
@@ -49,8 +63,8 @@ export const BLOG_MANIFEST = [
     metaTitle: 'سير عمل قاعدة معرفة لدعم العملاء | Nibleaf',
     description: 'حوّل أسئلة الدعم المتكررة إلى مقالات مساعدة قابلة للبحث، مع قالب عملي ومراجعة تحريرية وتكافؤ العربية وفحص أول نشر.',
     language: 'ar',
-    datePublished: '2026-09-11',
-    dateModified: '2026-09-11',
+    datePublished: '2026-11-02',
+    dateModified: '2026-11-02',
     tags: ['حالات الاستخدام', 'الدعم', 'قاعدة المعرفة'],
     related: [
       'customer-support-knowledge-base',
@@ -67,7 +81,7 @@ export const BLOG_MANIFEST = [
     description: 'اجعل التوثيق العام قابلاً للاكتشاف عبر HTML وMarkdown متكافئين وفهارس llms موجزة وجرد كامل واختبارات منع التسريب.',
     language: 'ar',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['الذكاء الاصطناعي', 'llms.txt', 'Markdown'],
     related: ['ai-ready-documentation', 'docs-should-live-in-plain-markdown-ar', 'arabic-technical-documentation-rtl-checklist'],
     translationOf: 'ai-ready-documentation',
@@ -206,7 +220,7 @@ export const BLOG_MANIFEST = [
       'مسار موثق من التثبيت إلى أول نشر يدوي في Nibleaf، مع سلامة الإصدار والنسخ والاستعادة والترقية والتراجع والأمان والمراقبة وتحديد الموارد.',
     language: 'ar',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['الاستضافة الذاتية', 'Docker', 'دليل'],
     related: ['self-host-documentation-site-docker-compose', 'coolify-documentation-502-503-recovery-ar', 'open-source-documentation-tools-ar'],
     translationOf: 'self-host-documentation-site-docker-compose',
@@ -350,7 +364,7 @@ export const BLOG_MANIFEST = [
     description:
       'Make public documentation reliably discoverable by assistants through equivalent HTML and Markdown, concise llms indexes, complete inventories, and leakage tests.',
     datePublished: '2026-09-03',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['ai', 'llms-txt', 'markdown'],
     related: ['docs-should-live-in-plain-markdown', 'documentation-production-readiness-decision', 'arabic-documentation-rtl'],
     translationOf: 'ai-ready-documentation-ar',
@@ -481,7 +495,7 @@ export const BLOG_MANIFEST = [
       'إعلان تقني عن القدرات المدمجة في فرع Nibleaf الرئيسي: البحث الهجين والاستخدام والإضافات والتكاملات والسمات المحمولة وMCP للقراءة فقط.',
     language: 'ar',
     datePublished: '2026-08-24',
-    dateModified: '2026-08-24',
+    dateModified: '2026-10-31',
     tags: ['إعلان', 'إصدار', 'العمليات'],
     related: [
       'documentation-templates-harbor-manuscript-signal-ar',
@@ -498,7 +512,7 @@ export const BLOG_MANIFEST = [
     description:
       'A technical launch note for the capabilities merged into Nibleaf main: hybrid search, usage, add-ons, integrations, portable themes, and read-only MCP.',
     datePublished: '2026-08-24',
-    dateModified: '2026-08-24',
+    dateModified: '2026-10-31',
     tags: ['announcement', 'release', 'operations'],
     related: [
       'documentation-templates-harbor-manuscript-signal',
@@ -570,36 +584,32 @@ export const BLOG_MANIFEST = [
   },
   {
     slug: 'arabic-technical-documentation-rtl-checklist',
-    title: translateFn('blog.arabicChecklist.title', undefined, 'ar'),
-    metaTitle: translateFn('blog.arabicChecklist.metaTitle', undefined, 'ar'),
-    description: translateFn('blog.arabicChecklist.description', undefined, 'ar'),
+    title: blog_arabicchecklist_title({}, { locale: 'ar' }),
+    metaTitle: blog_arabicchecklist_metatitle({}, { locale: 'ar' }),
+    description: blog_arabicchecklist_description({}, { locale: 'ar' }),
     language: 'ar',
     datePublished: '2026-08-15',
     dateModified: '2026-09-03',
-    tags: [
-      translateFn('blog.arabicChecklist.tagArabic', undefined, 'ar'),
-      'RTL',
-      translateFn('blog.arabicChecklist.tagProductDocs', undefined, 'ar'),
-    ],
+    tags: [blog_arabicchecklist_tagarabic({}, { locale: 'ar' }), 'RTL', blog_arabicchecklist_tagproductdocs({}, { locale: 'ar' })],
     related: ['arabic-documentation-rtl', 'docs-should-live-in-plain-markdown-ar', 'self-host-documentation-site-docker-compose-ar'],
     translationOf: 'arabic-documentation-rtl',
     readingMinutes: 8,
     faqs: [
       {
-        question: translateFn('blog.arabicChecklist.faqDirectionQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqDirectionAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqdirectionquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqdirectionanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqSearchQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqSearchAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqsearchquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqsearchanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqTreeQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqTreeAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqtreequestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqtreeanswer({}, { locale: 'ar' }),
       },
       {
-        question: translateFn('blog.arabicChecklist.faqSupportQuestion', undefined, 'ar'),
-        answer: translateFn('blog.arabicChecklist.faqSupportAnswer', undefined, 'ar'),
+        question: blog_arabicchecklist_faqsupportquestion({}, { locale: 'ar' }),
+        answer: blog_arabicchecklist_faqsupportanswer({}, { locale: 'ar' }),
       },
     ],
   },
@@ -610,7 +620,7 @@ export const BLOG_MANIFEST = [
     description:
       'A source-backed GitBook and Mintlify comparison covering editors, Git workflows, API docs, pricing, multilingual content, and self-hosting.',
     datePublished: '2026-08-15',
-    dateModified: '2026-08-17',
+    dateModified: '2026-10-30',
     tags: ['comparison', 'gitbook', 'mintlify'],
     related: ['open-source-documentation-tools', 'docs-should-live-in-plain-markdown', 'introducing-nibleaf-open-source-mintlify-alternative'],
     readingMinutes: 8,
@@ -679,7 +689,7 @@ export const BLOG_MANIFEST = [
     description:
       'Why plain Markdown is the portability contract for documentation: greppable, diffable, AI-ready, and compatible with a visual editor.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['markdown', 'content-ownership'],
     related: [
       'open-source-documentation-tools',
@@ -717,7 +727,7 @@ export const BLOG_MANIFEST = [
     description:
       'A dated, hands-on evaluation of Nibleaf as an open-source Mintlify alternative: ownership, authoring, publishing, search, Arabic, limits, and first publish.',
     datePublished: '2026-07-13',
-    dateModified: '2026-08-31',
+    dateModified: '2026-10-31',
     tags: ['announcement', 'open-source'],
     related: ['docs-should-live-in-plain-markdown', 'self-host-documentation-site-docker-compose', 'arabic-documentation-rtl'],
     readingMinutes: 12,
@@ -735,7 +745,7 @@ export const BLOG_MANIFEST = [
       {
         question: 'Does Nibleaf support Arabic and right-to-left documentation?',
         answer:
-          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface is localized in English and Arabic.',
+          'Yes. Each language has its own page tree, RTL layout is built into the reader and editor, search uses an Arabic tokenizer, and the interface offers 12 locale options, with some strings still in English.',
       },
     ],
   },
@@ -746,7 +756,7 @@ export const BLOG_MANIFEST = [
     description:
       'Compare Docusaurus, MkDocs Material, Starlight, Fumadocs, BookStack, Wiki.js, and Nibleaf by authoring model, search, i18n, and hosting.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['comparison', 'open-source'],
     related: [
       'self-host-documentation-site-docker-compose',
@@ -779,7 +789,7 @@ export const BLOG_MANIFEST = [
     description:
       'A verified install-to-first-publish workflow for Nibleaf with Docker Compose, including release integrity, backups, restores, upgrades, rollback, security, and monitoring.',
     datePublished: '2026-07-13',
-    dateModified: '2026-09-03',
+    dateModified: '2026-10-31',
     tags: ['self-hosting', 'docker', 'guide'],
     related: ['introducing-nibleaf-open-source-mintlify-alternative', 'open-source-documentation-tools', 'docs-should-live-in-plain-markdown'],
     translationOf: 'self-host-documentation-site-docker-compose-ar',

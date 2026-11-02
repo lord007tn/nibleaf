@@ -48,6 +48,8 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6
@@ -55,8 +57,32 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22.13.0
+          node-version: 22
           cache: pnpm
+
+      - name: Test installer safety boundaries
+        run: node --test scripts/installer.test.mjs
+
+      - name: Test release notes
+        run: node --test scripts/release-notes.test.mjs
+
+      - name: Preview release notes on Linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A temporary checkout copy supplies sample prose until the release PR
+          # fills Highlights. Never treat this CI fixture as reviewed release copy.
+          preview_dir=$(mktemp -d)
+          trap 'rm -rf "$preview_dir"' EXIT
+          git clone --shared --no-checkout . "$preview_dir"
+          git -C "$preview_dir" checkout --detach "$GITHUB_SHA"
+          git -C "$preview_dir" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+          cd "$preview_dir"
+          node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const path="CHANGELOG.md"; const text=readFileSync(path,"utf8"); writeFileSync(path, "## Unreleased\n\n### Highlights\n\nPreview release notes from the checked-out source.\n\n" + text.replace(/^## Unreleased$/m,"## Source changes"));'
+          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.0 --output "$RUNNER_TEMP/release-notes-preview.md"
+
+      - name: Test production email diagnostic boundaries
+        run: node --test scripts/production-email-diagnostic.test.mjs
 
       - name: Test immutable image verification
         run: node --test scripts/verify-published-image.test.mjs scripts/reject-existing-immutable-tags.test.mjs
@@ -86,6 +112,18 @@ jobs:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ACTIVATION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/worker exec vitest run src/lib/publish-activation.postgres.test.ts
+
+      - name: Verify Better Auth on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          AUTH_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/auth exec vitest run src/better-auth.postgres.test.ts
+
+      - name: Verify publishing retention aggregates
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ACTIVATION_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/platform-events.postgres.test.ts
 
       - name: Exercise ClickHouse analytics migrations
         env:
@@ -132,6 +170,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify importer timings
+        env:
+          GITBOOK_PERFORMANCE: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/gitbook-performance.test.ts --reporter=verbose
+
       - name: Build production app
         env:
           # The integrated app's route graph exceeds V8's default ~4 GiB heap
@@ -149,7 +192,7 @@ jobs:
           trap 'kill "$app_pid" 2>/dev/null || true' EXIT
           ready=0
           for _ in {1..30}; do
-            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --dump-header /tmp/nibleaf-release-en.headers --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release > /tmp/nibleaf-release-en.html; then
               ready=1
               break
             fi
@@ -166,6 +209,8 @@ jobs:
           curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
+          node apps/app/scripts/check-ssr-nonce.mjs /tmp/nibleaf-release-en.html /tmp/nibleaf-release-en.headers
+          test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --header 'Host: nibleaf.com' 'http://127.0.0.1:3000/%E0%A4%A')" = 400
 
       - name: Build production admin
         env:
@@ -183,7 +228,7 @@ jobs:
           trap 'kill "$admin_pid" 2>/dev/null || true' EXIT
           ready=0
           for attempt in {1..30}; do
-            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error http://127.0.0.1:4315/sign-in > /tmp/nibleaf-admin-sign-in.html; then
+            if curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --dump-header /tmp/nibleaf-admin-sign-in.headers http://127.0.0.1:4315/sign-in > /tmp/nibleaf-admin-sign-in.html; then
               ready=1
               break
             fi
@@ -198,6 +243,8 @@ jobs:
             exit 1
           fi
           grep --fixed-strings --quiet "<title>Nibleaf Admin</title>" /tmp/nibleaf-admin-sign-in.html
+          node apps/app/scripts/check-ssr-nonce.mjs /tmp/nibleaf-admin-sign-in.html /tmp/nibleaf-admin-sign-in.headers
+          test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' 'http://127.0.0.1:4315/%E0%A4%A')" = 400
           if grep --fixed-strings --quiet "__exportAll is not a function" /tmp/nibleaf-admin-runtime.log; then
             cat /tmp/nibleaf-admin-runtime.log
             exit 1

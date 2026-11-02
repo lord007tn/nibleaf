@@ -9,6 +9,7 @@ dist
 .nitro
 .turbo
 .cache
+.cloudflare
 .tanstack
 **/src/generated
 **/src/paraglide

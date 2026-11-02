@@ -1,0 +1,251 @@
+{
+  "syntheticOnly": true,
+  "before": {
+    "sourceRevision": "25a4b3e92726c9a5f07c5337c3a15f857f754009",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "source": "Fresh anonymous public reader navigation; independent measurement before this fix.",
+    "originalHtmlSha256": "39f4e289c92b1aef8c6f96f437e85c2fd0528e2e6c7ee47ac7178b8e30a442cc",
+    "actualArticleParagraphMatchesInOriginalHtml": 1,
+    "serializedPayloadMatches": 2,
+    "blankIntervalsAfterFirstVisible": [
+      {
+        "startMs": 1270.3,
+        "endMs": 1439.8,
+        "durationMs": 169.5
+      }
+    ],
+    "timeline": [
+      {
+        "ms": 408.6,
+        "readyState": "loading",
+        "articleParagraphCount": 0,
+        "paragraphVisible": false
+      },
+      {
+        "ms": 413.5,
+        "readyState": "loading",
+        "articleParagraphCount": 0,
+        "paragraphVisible": false
+      },
+      {
+        "ms": 930.3,
+        "readyState": "loading",
+        "articleParagraphCount": 1,
+        "paragraphVisible": true
+      },
+      {
+        "ms": 959,
+        "readyState": "interactive",
+        "articleParagraphCount": 1,
+        "paragraphVisible": true
+      },
+      {
+        "ms": 1214.9,
+        "readyState": "complete",
+        "articleParagraphCount": 1,
+        "paragraphVisible": true
+      },
+      {
+        "ms": 1270.3,
+        "readyState": "complete",
+        "articleParagraphCount": 0,
+        "paragraphVisible": false
+      },
+      {
+        "ms": 1439.8,
+        "readyState": "complete",
+        "articleParagraphCount": 1,
+        "paragraphVisible": true
+      }
+    ],
+    "pageErrors": []
+  },
+  "after": {
+    "sourceBase": "c0f2e43597109a7e70c723224ca0d3fb75b7c4fd",
+    "componentSha256": "2abd24813c267f0e02952dff21324093ae51412e16cfacfc3970d0c1dd9dcfed",
+    "source": "Local production app build with this component fix; separate fictional fixture.",
+    "noExternalRequestsOrAuthState": true,
+    "probe": "MutationObserver plus 25 ms sampling; 1200 ms delay on every first-party JavaScript request; 5000 ms observation after DOMContentLoaded.",
+    "reports": [
+      {
+        "name": "en-mobile",
+        "language": "en",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "delayedJavaScriptMillisecondsPerRequest": 1200,
+        "delayedScriptRequests": 134,
+        "pageErrors": [],
+        "hydrationConsoleErrors": [],
+        "blankIntervalsAfterFirstVisible": 0,
+        "duplicateArticleParagraphs": false,
+        "finalDirection": "ltr",
+        "noHorizontalOverflow": true,
+        "measuredMs": 5212.8,
+        "timeline": [
+          {
+            "ms": 122,
+            "paragraphCount": 0,
+            "paragraphVisible": false,
+            "readyState": "loading"
+          },
+          {
+            "ms": 191.5,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "loading"
+          },
+          {
+            "ms": 195.7,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "interactive"
+          },
+          {
+            "ms": 1499.7,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "complete"
+          }
+        ]
+      },
+      {
+        "name": "ar-mobile",
+        "language": "ar",
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "delayedJavaScriptMillisecondsPerRequest": 1200,
+        "delayedScriptRequests": 132,
+        "pageErrors": [],
+        "hydrationConsoleErrors": [],
+        "blankIntervalsAfterFirstVisible": 0,
+        "duplicateArticleParagraphs": false,
+        "finalDirection": "rtl",
+        "noHorizontalOverflow": true,
+        "measuredMs": 5142.3,
+        "timeline": [
+          {
+            "ms": 59.7,
+            "paragraphCount": 0,
+            "paragraphVisible": false,
+            "readyState": "loading"
+          },
+          {
+            "ms": 125.7,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "loading"
+          },
+          {
+            "ms": 129.3,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "interactive"
+          },
+          {
+            "ms": 1437,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "complete"
+          }
+        ]
+      },
+      {
+        "name": "en-desktop",
+        "language": "en",
+        "viewport": {
+          "width": 1280,
+          "height": 900
+        },
+        "delayedJavaScriptMillisecondsPerRequest": 1200,
+        "delayedScriptRequests": 134,
+        "pageErrors": [],
+        "hydrationConsoleErrors": [],
+        "blankIntervalsAfterFirstVisible": 0,
+        "duplicateArticleParagraphs": false,
+        "finalDirection": "ltr",
+        "noHorizontalOverflow": true,
+        "measuredMs": 5174.1,
+        "timeline": [
+          {
+            "ms": 82.6,
+            "paragraphCount": 0,
+            "paragraphVisible": false,
+            "readyState": "loading"
+          },
+          {
+            "ms": 157.2,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "loading"
+          },
+          {
+            "ms": 162.5,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "interactive"
+          },
+          {
+            "ms": 1457.6,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "complete"
+          }
+        ]
+      },
+      {
+        "name": "ar-desktop",
+        "language": "ar",
+        "viewport": {
+          "width": 1280,
+          "height": 900
+        },
+        "delayedJavaScriptMillisecondsPerRequest": 1200,
+        "delayedScriptRequests": 132,
+        "pageErrors": [],
+        "hydrationConsoleErrors": [],
+        "blankIntervalsAfterFirstVisible": 0,
+        "duplicateArticleParagraphs": false,
+        "finalDirection": "rtl",
+        "noHorizontalOverflow": true,
+        "measuredMs": 5174.7,
+        "timeline": [
+          {
+            "ms": 88.2,
+            "paragraphCount": 0,
+            "paragraphVisible": false,
+            "readyState": "loading"
+          },
+          {
+            "ms": 162.6,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "loading"
+          },
+          {
+            "ms": 166.1,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "interactive"
+          },
+          {
+            "ms": 1451.4,
+            "paragraphCount": 1,
+            "paragraphVisible": true,
+            "readyState": "complete"
+          }
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "These are different fictional documents and environments; absolute load times are not a performance comparison.",
+    "The after proof is a local compiled source check, not a deployment claim."
+  ]
+}

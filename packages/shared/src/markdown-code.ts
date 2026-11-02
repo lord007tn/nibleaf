@@ -75,8 +75,9 @@ export const protectMarkdownCode = (source: string, { fences = true, maxFenceInd
     } else prose += raw;
   }
   content += code ? (fences ? hide(code) : code) : protectInline(prose);
+  const placeholder = new RegExp(`${prefix}(\\d+)\uE001`, 'g');
   return {
     content,
-    restore: (value: string) => literals.reduce((text, literal, index) => text.replaceAll(`${prefix}${index}\uE001`, () => literal), value),
+    restore: (value: string) => value.replace(placeholder, (match, index: string) => literals[Number(index)] ?? match),
   };
 };

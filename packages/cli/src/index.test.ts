@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fetchMarkdown, inspectSite } from './index';
 
 const responseFor = (url: string, accept: string | null): Response => {
-  if (url.endsWith('__nibleaf_cli_path_that_does_not_exist__')) {
+  if (url.endsWith('nibleaf-cli-path-that-does-not-exist')) {
     return new Response('# 404\n\nSee llms.txt', { status: 404, headers: { 'content-type': 'text/markdown; charset=utf-8', vary: 'Accept' } });
   }
   if (url.endsWith('llms.txt')) return new Response('# Nibleaf', { headers: { 'content-type': 'text/plain; charset=utf-8' } });
@@ -30,7 +30,7 @@ describe('inspectSite', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = input instanceof Request ? input.url : input.toString();
       const response = responseFor(url, new Headers(init?.headers).get('accept'));
-      if (new Headers(init?.headers).get('accept') === 'text/markdown' && !url.endsWith('__nibleaf_cli_path_that_does_not_exist__')) {
+      if (new Headers(init?.headers).get('accept') === 'text/markdown' && !url.endsWith('nibleaf-cli-path-that-does-not-exist')) {
         response.headers.delete('vary');
       }
       return response;

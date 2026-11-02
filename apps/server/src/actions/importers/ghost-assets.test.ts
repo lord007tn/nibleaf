@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../assets', () => ({ findImportedAsset: vi.fn(), storeAsset: vi.fn() }));
+vi.mock('node:dns/promises', () => ({ lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]) }));
 
 import { findImportedAsset } from '../assets';
 import { RemoteAssetMigrator, remoteImageSources } from './ghost-assets';

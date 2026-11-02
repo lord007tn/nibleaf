@@ -2,8 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { Markdown } from '@/components/markdown';
+import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
@@ -11,6 +10,8 @@ import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
+
+const Markdown = lazy(() => import('@/components/markdown').then((module) => ({ default: module.Markdown })));
 
 const applyUrlTemplate = (template: string | undefined, path: string, fallbackUrl: string): string | null => {
   const trimmed = template?.trim();
@@ -131,8 +132,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const { setAlternates } = useSitePageAlternates();
 
   useEffect(() => {
-    setAlternates(data?.languages ?? []);
-    return () => setAlternates([]);
+    // Language-switcher metadata must not interrupt a still-hydrating article.
+    startTransition(() => setAlternates(data?.languages ?? []));
+    return () => startTransition(() => setAlternates([]));
   }, [data?.languages, setAlternates]);
 
   const { page, breadcrumbs, prev, next } = data;
@@ -190,7 +192,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           ))}
         </div>
       ) : null}
-      <h1 className="font-semibold text-3xl tracking-tight md:text-4xl">{page.title}</h1>
+      <h1 tabIndex={-1} className="outline-none font-semibold text-3xl tracking-tight md:text-4xl">
+        {page.title}
+      </h1>
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
       <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label={tArticle('articleDetails')}>
         <li className="inline-flex items-center gap-1.5">
@@ -215,10 +219,20 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </ul>
       ) : null}
       <div className="mt-8">
-        <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+        <Suspense fallback={null}>
+          <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
+        </Suspense>
       </div>
 
-      {readerActionsAfterNavigation ? null : <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} />}
+      {readerActionsAfterNavigation ? null : (
+        <ReaderActions
+          key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
+          projectId={projectId}
+          path={page.path}
+          language={language}
+          addons={addons}
+        />
+      )}
 
       {prev || next ? (
         <nav
@@ -252,7 +266,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           )}
         </nav>
       ) : null}
-      {readerActionsAfterNavigation ? <ReaderActions projectId={projectId} path={page.path} language={language} addons={addons} /> : null}
+      {readerActionsAfterNavigation ? (
+        <ReaderActions
+          key={JSON.stringify([projectId, page.path, language, data.activeVersion])}
+          projectId={projectId}
+          path={page.path}
+          language={language}
+          addons={addons}
+        />
+      ) : null}
     </article>
   );
 

@@ -3,7 +3,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, preservedOpeningTag, sourceMetadataAttributes } from './mdx-roundtrip';
+import { preservedClosingTag, preservedOpeningTag, sourceMetadataAttributes, writeBlockTag } from './mdx-roundtrip';
 import { TitledBlockView } from './titled-block-view';
 
 /**
@@ -21,6 +21,7 @@ import { TitledBlockView } from './titled-block-view';
 type SerializeState = {
   write: (text: string) => void;
   closeBlock: (node: PMNode) => void;
+  atBlank?: () => boolean;
   renderContent: (node: PMNode) => void;
   renderInline: (node: PMNode) => void;
 };
@@ -29,11 +30,9 @@ type SerializeState = {
 const mdxBlockSerializer =
   (tag: string, attrKeys: string[]) =>
   (state: SerializeState, node: PMNode): void => {
-    state.write(preservedOpeningTag(node, tag, attrKeys));
-    state.closeBlock(node); // forces a blank line before the inner content
+    writeBlockTag(state, node, preservedOpeningTag(node, tag, attrKeys));
     state.renderContent(node);
-    state.write(preservedClosingTag(node, tag));
-    state.closeBlock(node);
+    writeBlockTag(state, node, preservedClosingTag(node, tag));
   };
 
 const markdownStorage = (tag: string, attrKeys: string[]) => ({
@@ -108,8 +107,7 @@ const atomNode = (config: { name: string; tag: string; className: string; attrs:
     addStorage: () => ({
       markdown: {
         serialize(state: SerializeState, node: PMNode) {
-          state.write(preservedOpeningTag(node, config.tag, config.attrKeys, true));
-          state.closeBlock(node);
+          writeBlockTag(state, node, preservedOpeningTag(node, config.tag, config.attrKeys, true));
         },
         parse: {},
       } satisfies MarkdownNodeSpec,

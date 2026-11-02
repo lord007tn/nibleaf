@@ -9,6 +9,7 @@ import type {
   CreateLanguageBody,
   CreatePageBody,
   CreateProjectBody,
+  GitbookImportBody,
   InviteMemberBody,
   MarkNotificationsReadBody,
   MintlifyImportBody,
@@ -138,10 +139,11 @@ export const useUpdateProjectConfig = (projectId: string) => {
         await api.app.projects[':id'].$patch({ param: { id: projectId }, json: icon === undefined ? { config } : { config, icon } }),
         'Could not update the site configuration.',
       ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-    },
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) }),
+      ]),
   });
 };
 
@@ -201,6 +203,7 @@ export const useUpdatePage = (projectId: string) => {
     onSuccess: (_data, { pageId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
+      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
     },
   });
 };
@@ -652,6 +655,24 @@ export const useImportFromMintlify = (projectId: string) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
       // The importer may also fill empty project-config keys (branding, navbar, …).
+      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+    },
+  });
+};
+
+/** One-way import of a public GitBook Git Sync GitHub repo (.gitbook.yaml / SUMMARY.md). */
+export const useImportFromGitbook = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: GitbookImportBody) =>
+      mutateData(
+        await api.app.projects[':projectId'].settings.import.gitbook.$post({ param: { projectId }, json: body }),
+        'Could not import from GitBook.',
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+      // Redirects from .gitbook.yaml may be written to the project config.
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
     },

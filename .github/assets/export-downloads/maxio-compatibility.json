@@ -1,0 +1,52 @@
+{
+  "kind": "synthetic-provider-compatibility",
+  "provider": "MaxIO",
+  "version": "0.4.2",
+  "tagCommit": "1aa9fa5c486b372e865f565a8053bb4ca36c3a23",
+  "source": "https://github.com/coollabsio/maxio/blob/v0.4.2/src/api/object.rs#L741-L924",
+  "bodyBytes": 60,
+  "cases": [
+    {
+      "label": "baseline",
+      "requestedDisposition": null,
+      "signedQueryContainsExactOverride": true,
+      "status": 200,
+      "actualDisposition": null,
+      "contentType": "application/pdf",
+      "bodySha256": "7aaae2eceb03a161abb5a8638fcd04944df9a74ede28aca463da3433bbdf3e04",
+      "bodyUnchanged": true
+    },
+    {
+      "label": "english-attachment",
+      "requestedDisposition": "attachment; filename=\"product-guide.pdf\"",
+      "signedQueryContainsExactOverride": true,
+      "status": 200,
+      "actualDisposition": null,
+      "contentType": "application/pdf",
+      "bodySha256": "7aaae2eceb03a161abb5a8638fcd04944df9a74ede28aca463da3433bbdf3e04",
+      "bodyUnchanged": true
+    },
+    {
+      "label": "arabic-attachment",
+      "requestedDisposition": "attachment; filename=\"export.pdf\"; filename*=UTF-8''%D8%AF%D9%84%D9%8A%D9%84%20%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC.pdf",
+      "signedQueryContainsExactOverride": true,
+      "status": 200,
+      "actualDisposition": null,
+      "contentType": "application/pdf",
+      "bodySha256": "7aaae2eceb03a161abb5a8638fcd04944df9a74ede28aca463da3433bbdf3e04",
+      "bodyUnchanged": true
+    },
+    {
+      "label": "put-object-content-disposition",
+      "status": 200,
+      "actualDisposition": null,
+      "contentType": "application/pdf",
+      "bodySha256": "7aaae2eceb03a161abb5a8638fcd04944df9a74ede28aca463da3433bbdf3e04",
+      "bodyUnchanged": true
+    }
+  ],
+  "probeExecuted": true,
+  "signedGetAttachmentSupported": false,
+  "persistedAttachmentSupported": false,
+  "fixtureStopped": true
+}

@@ -1,0 +1,193 @@
+{
+  "kind": "synthetic-compiled-download-acceptance",
+  "source": {
+    "baseRevision": "42ac499717c8b22867ed210756ed8cc762f4f495",
+    "candidateWorkingTreeCompiled": true,
+    "sha256": {
+      "apps/app/src/components/project-settings/exports-section.tsx": "11d8313c9b77e8d4f1a80bb8ed4195f847b2c25bc327e862f3504099897f89c3",
+      "apps/app/src/lib/export-file-size.ts": "a92ee2e23adcb5a1c401f7b67badb2d762b778744bcc42ea5289587716a62898",
+      "apps/server/src/actions/exports.ts": "f6d6e349d207009ca5731813aa89a5fd3c75007326e43d136e70bf3ccd64a7e9",
+      "apps/server/src/modules/app/exports/handlers.ts": "172df3016035211fa758b503685b900ebb0f2b108ef76f55a27ca06f51abb62f",
+      "apps/server/src/modules/app/exports/routes.ts": "f24846301f841eeead66a33d2e799c20d567648f4b6765786c803ec70cfdfde4",
+      "apps/server/src/lib/export-file-response.ts": "f06759586d52241c8c86c421a31cafdcd1afd494969057afa887258097218104",
+      "packages/storage/src/index.ts": "c4595fddcd39bc07d23b28977882dcae8585a2ced308b6dd19fb5afbd091bfdf",
+      "packages/i18n/src/message-ids.ts": "4193906fbfef007481362b00e1a7e250846391b4a3bfcf9c383e255383750d42",
+      "packages/i18n/messages/en.json": "37f1ab677372075e7873c15a68a9eb002210926a7abd822602ac061e13d2823b",
+      "packages/i18n/messages/ar.json": "24750862c129fba06a62acee50f903a2db951a3ce4482115088cc7bf9fd45419"
+    }
+  },
+  "http": {
+    "sourceCompiledOnly": true,
+    "realApiAndDatabaseAndMaxio": true,
+    "syntheticOpaquePayloadsOnly": true,
+    "formatValidityOrPdfRenderingNotClaimed": true,
+    "downloads": [
+      {
+        "format": "MARKDOWN",
+        "fileName": "Synthetic Product Guide.zip",
+        "status": 200,
+        "contentType": "application/zip",
+        "contentDisposition": "attachment; filename=\"Synthetic Product Guide.zip\"; filename*=UTF-8''Synthetic%20Product%20Guide.zip",
+        "contentLength": null,
+        "bytes": 44,
+        "bodySha256": "422c27a55299d655588f11b3fb88922d3638b85810d29620ea82580b6e7f7ca6",
+        "exactBytesAndStoredSizeMatch": true,
+        "cacheControl": "private, no-store",
+        "nosniff": true
+      },
+      {
+        "format": "STATIC_HTML",
+        "fileName": "دليل المنتج — HTML.zip",
+        "status": 200,
+        "contentType": "application/zip",
+        "contentDisposition": "attachment; filename=\"____ ______ _ HTML.zip\"; filename*=UTF-8''%D8%AF%D9%84%D9%8A%D9%84%20%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC%20%E2%80%94%20HTML.zip",
+        "contentLength": null,
+        "bytes": 47,
+        "bodySha256": "b3cd1f205b548fc29c5656d8790094c558700c9092a2fd8e34af4b3fcd082c73",
+        "exactBytesAndStoredSizeMatch": true,
+        "cacheControl": "private, no-store",
+        "nosniff": true
+      },
+      {
+        "format": "PDF",
+        "fileName": "دليل المنتج.pdf",
+        "status": 200,
+        "contentType": "application/pdf",
+        "contentDisposition": "attachment; filename=\"____ ______.pdf\"; filename*=UTF-8''%D8%AF%D9%84%D9%8A%D9%84%20%D8%A7%D9%84%D9%85%D9%86%D8%AA%D8%AC.pdf",
+        "contentLength": null,
+        "bytes": 50,
+        "bodySha256": "ab6c4eae21d6e04fb66ccd150060146990095023e0d2fdb812863698061a7e48",
+        "exactBytesAndStoredSizeMatch": true,
+        "cacheControl": "private, no-store",
+        "nosniff": true
+      }
+    ],
+    "denied": [
+      {
+        "name": "anonymous",
+        "status": 401,
+        "noAttachmentHeader": true,
+        "noArtifactBytes": true
+      },
+      {
+        "name": "foreign-workspace",
+        "status": 404,
+        "noAttachmentHeader": true,
+        "noArtifactBytes": true
+      },
+      {
+        "name": "expired",
+        "status": 404,
+        "noAttachmentHeader": true,
+        "noArtifactBytes": true
+      }
+    ],
+    "realSignedSessionThroughProxy": true,
+    "pass": true
+  },
+  "browsers": [
+    {
+      "language": "en",
+      "sourceCompiledOnly": true,
+      "reports": [
+        {
+          "format": "MARKDOWN",
+          "suggestedFilename": "Synthetic Product Guide.zip",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 44,
+          "sha256": "422c27a55299d655588f11b3fb88922d3638b85810d29620ea82580b6e7f7ca6",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        },
+        {
+          "format": "STATIC_HTML",
+          "suggestedFilename": "دليل المنتج — HTML.zip",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 47,
+          "sha256": "b3cd1f205b548fc29c5656d8790094c558700c9092a2fd8e34af4b3fcd082c73",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        },
+        {
+          "format": "PDF",
+          "suggestedFilename": "دليل المنتج.pdf",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 50,
+          "sha256": "ab6c4eae21d6e04fb66ccd150060146990095023e0d2fdb812863698061a7e48",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        }
+      ],
+      "expiredPreflightNoDownload": true,
+      "expiredPreflightWorkspaceUnchanged": true,
+      "pageErrors": []
+    },
+    {
+      "language": "ar",
+      "sourceCompiledOnly": true,
+      "reports": [
+        {
+          "format": "MARKDOWN",
+          "suggestedFilename": "Synthetic Product Guide.zip",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 44,
+          "sha256": "422c27a55299d655588f11b3fb88922d3638b85810d29620ea82580b6e7f7ca6",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        },
+        {
+          "format": "STATIC_HTML",
+          "suggestedFilename": "دليل المنتج — HTML.zip",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 47,
+          "sha256": "b3cd1f205b548fc29c5656d8790094c558700c9092a2fd8e34af4b3fcd082c73",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        },
+        {
+          "format": "PDF",
+          "suggestedFilename": "دليل المنتج.pdf",
+          "failure": null,
+          "workspaceUnchanged": true,
+          "bytes": 50,
+          "sha256": "ab6c4eae21d6e04fb66ccd150060146990095023e0d2fdb812863698061a7e48",
+          "matchesStorageBytesAndDatabaseChecksum": true
+        }
+      ],
+      "expiredPreflightNoDownload": true,
+      "expiredPreflightWorkspaceUnchanged": true,
+      "pageErrors": []
+    }
+  ],
+  "limits": {
+    "transportMarkersAreNotValidPdfOrArchives": true,
+    "noImmutableImageOrProductionAcceptance": true,
+    "originalProductionCancellationCause": "unknown"
+  },
+  "lateExpiryBrowser": {
+    "setup": "Successful preflight was controlled to return the existing expired fixture fileUrl",
+    "nativeDownloadFailure": "canceled",
+    "workspaceUnchanged": true,
+    "noSuccessfulArtifact": true,
+    "browserStorageStatus": null,
+    "limit": "Browser did not expose request/response events for this failed native download; direct authenticated HTTP separately verified expired endpoint404"
+  },
+  "localNode": "v24.21.0",
+  "artifactFiles": [
+    {
+      "name": "en-history.png",
+      "bytes": 108228,
+      "sha256": "31315ca6a36cc67c02fedc36e367f45201fdf941b3a52f2c4541abe65c6a3650"
+    },
+    {
+      "name": "ar-history.png",
+      "bytes": 98708,
+      "sha256": "b130273015abf45e10beb492030197120fd5fe2cd24ad1503ffa3d52a4b9f93e"
+    },
+    {
+      "name": "ar-downloads.webm",
+      "bytes": 186741,
+      "sha256": "9f5e01ed4fea966e072beca532ed69c6aedfe84b4a1eee261f3838970b23b1ee"
+    }
+  ]
+}

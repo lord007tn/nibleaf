@@ -3,6 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({
+  env: {
+    BETTER_AUTH_SECRET: 'test-secret-with-at-least-thirty-two-characters',
+    SEARCH_RUNTIME: 'shadow',
+    QDRANT_COLLECTION_VERSION: 'v1',
+    SEARCH_EMBEDDING_MODEL: 'test-embedding',
+    SEARCH_EMBEDDING_DIMENSIONS: 1536,
+    OPENROUTER_API_KEY: 'provider-key' as string | undefined,
+  },
   access: {
     role: 'admin',
     organizationId: 'org-a',
@@ -23,16 +31,7 @@ const mocks = vi.hoisted(() => ({
   facets: vi.fn(),
 }));
 
-vi.mock('@/env', () => ({
-  env: {
-    BETTER_AUTH_SECRET: 'test-secret-with-at-least-thirty-two-characters',
-    SEARCH_RUNTIME: 'shadow',
-    QDRANT_COLLECTION_VERSION: 'v1',
-    SEARCH_EMBEDDING_MODEL: 'test-embedding',
-    SEARCH_EMBEDDING_DIMENSIONS: 1536,
-    OPENROUTER_API_KEY: 'provider-key',
-  },
-}));
+vi.mock('@/env', () => ({ env: mocks.env }));
 
 vi.mock('@nibleaf/database', () => ({
   Prisma: {
@@ -78,6 +77,7 @@ const context = (
 describe('tenant-safe search actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.env.OPENROUTER_API_KEY = 'provider-key';
     mocks.access.role = 'admin';
     mocks.access.organizationId = 'org-a';
     mocks.access.project = { id: 'project-a', config: {} };
@@ -124,6 +124,14 @@ describe('tenant-safe search actions', () => {
     expect(result).toMatchObject({ availability: { reason: 'not_published' }, latestRun: null });
     expect(mocks.findRun).not.toHaveBeenCalled();
     expect(mocks.listMetadata).not.toHaveBeenCalled();
+  });
+
+  it('reports missing embedding credentials as configuration absence, without probing the provider', async () => {
+    mocks.env.OPENROUTER_API_KEY = undefined;
+    const result = await getProjectSearchIndexDiagnostics(context({ user: { id: 'user-a' } }), 'project-a', { limit: 10 });
+    expect(result).toMatchObject({ availability: { configured: false, reason: 'not_configured' }, corpus: { chunks: null, pages: null } });
+    expect(mocks.listMetadata).not.toHaveBeenCalled();
+    expect(mocks.count).not.toHaveBeenCalled();
   });
 
   it('scopes exact counts, facets, and bounded samples to the authorized current revision without private fields', async () => {

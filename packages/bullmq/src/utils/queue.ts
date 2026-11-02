@@ -1,5 +1,6 @@
 import type { JobsOptions, Queue } from 'bullmq';
 import { QueueNames } from '../constants';
+import { ERASURE_JOB_OPTIONS } from '../jobs/erasure';
 import { keys } from '../keys';
 
 const env = keys();
@@ -88,6 +89,16 @@ export const QUEUE_CONFIGS: Record<QueueNames, QueueConfigEntry> = {
     // must remain exclusive beyond that boundary, then become recoverable if
     // either the worker or API process died before recording failure.
     operationClaimTimeout: 12 * MINUTE_MS,
+    stalledInterval: 30_000,
+    maxStalledCount: 2,
+  },
+  [QueueNames.ERASURE]: {
+    concurrency: 2,
+    // BullMQ trims a failed set by the options of whichever job fails last, so
+    // failed erasures are only safe on a queue of their own. A worker from before
+    // this queue existed can't consume it, so jobs wait for a new worker.
+    defaultJobOptions: { ...DEFAULT_JOB_OPTIONS, ...ERASURE_JOB_OPTIONS },
+    lockDuration: 5 * MINUTE_MS,
     stalledInterval: 30_000,
     maxStalledCount: 2,
   },

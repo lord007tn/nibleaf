@@ -35,4 +35,5 @@ export const redisConnectionConfig = {
 export const producerConnectionConfig = {
   ...redisConnectionConfig,
   enableOfflineQueue: false,
+  commandTimeout: 3000,
 } satisfies ConnectionOptions;

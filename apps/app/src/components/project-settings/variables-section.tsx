@@ -11,10 +11,11 @@ export function VariablesSection({ project }: { project: Project }) {
   const t = useT();
   const update = useUpdateProjectConfig(project.id);
 
+  const defaultValues = {
+    variables: (project.config?.variables ?? []).map((pair) => ({ key: pair.key, value: pair.value })),
+  };
   const form = useForm({
-    defaultValues: {
-      variables: (project.config?.variables ?? []).map((pair) => ({ key: pair.key, value: pair.value })),
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
         variables: value.variables.filter((pair) => pair.key.trim()),
@@ -96,8 +97,8 @@ export function VariablesSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );

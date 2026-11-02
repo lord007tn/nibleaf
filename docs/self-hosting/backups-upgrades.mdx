@@ -3,8 +3,8 @@ title: 'Back up, restore, and upgrade Nibleaf'
 description: 'Capture Postgres and object storage as one recovery set, test restoration in isolation, and upgrade or roll back a pinned Nibleaf release.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
-verified_against: 'scripts/backup.sh, docker-compose.prod.yml, and packages/database/prisma/migrations'
+last_reviewed: '2026-10-30'
+verified_against: 'scripts/backup.sh, docker-compose.prod.yml, scripts/self-host-release.mjs, and packages/database/prisma/migrations'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/backups-upgrades'
@@ -15,27 +15,38 @@ operational window. A database dump without uploaded assets is incomplete. Keep
 copies outside the live host and account, and prove restoration before relying
 on them.
 
+Run the commands on this page from the deployment directory. A guided-installer
+directory contains only `docker-compose.yml` and `.env`, so `docker compose` finds
+its file directly. In a repository checkout, first run
+`export COMPOSE_FILE=docker-compose.prod.yml`, because `docker-compose.yml` there is
+the source-build stack.
+
 ## Create a backup
 
-From a repository checkout, the bundled script defaults to
-`docker-compose.prod.yml`, `./backups`, 14-day local retention, and the bundled
-maxio volume:
+Dump Postgres in custom format, then archive the bundled maxio volume:
 
 ```bash
-./scripts/backup.sh
+mkdir -m 700 -p backups
+STAMP=$(date +%Y%m%d-%H%M%S)
+docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
+test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \
+  || echo 'Stop: could not identify or archive the maxio volume.'
 ```
 
-For a guided-installer directory where the Compose file is named
-`docker-compose.yml`, point the script at that file:
+These commands find the volume mounted at `/data` in the running maxio container, so
+they work with any Compose project name and stop if it cannot be identified. External
+R2 or S3 buckets are not in this volume, so skip those lines and use provider versioning,
+replication, or an independent bucket backup.
 
-```bash
-COMPOSE_FILE=docker-compose.yml ./scripts/backup.sh
-```
+From a repository checkout, `./scripts/backup.sh` runs the same two steps and prunes
+local backups after 14 days. The script is not a release asset, so installer
+directories do not have it.
 
-The script creates a custom-format `pg_dump` and, when the configured Docker
-volume exists, a compressed storage archive. External R2 or S3 buckets are not
-captured by the Docker-volume step; use provider versioning, replication, or an
-independent bucket backup.
+`.env` holds the secrets that make a restore usable, including the encryption keys
+for Git and integration credentials. Keep a protected copy with its own access
+control. Without those keys, stored credentials cannot be decrypted.
 
 Ship both artifacts off-host with separate credentials and record identifiers,
 sizes, timestamps, retention, and the application release.
@@ -43,51 +54,79 @@ sizes, timestamps, retention, and the application release.
 ## Test a restore
 
 Never overwrite production for a drill. Create an isolated database, storage
-target, and application origin. Follow the restore commands documented at the
-top of `scripts/backup.sh`, then verify projects, memberships, page trees,
-current drafts, ready deployments, uploaded assets, authentication isolation,
-and public search.
+target, and application origin, then restore into them. On a separate host with its
+own stack, using the same `$STAMP`:
+
+```bash
+docker compose --profile admin stop app admin server worker \
+  && docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump" \
+  && MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
+  && test -n "$MAXIO_VOLUME" \
+  && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
+  && docker compose stop maxio \
+  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \
+  && docker compose up -d \
+  || echo 'Stop: restore failed; do not start application services.'
+```
+
+Then verify projects, memberships, page trees, current drafts, ready deployments,
+uploaded assets, authentication isolation, and public search.
 
 Record elapsed time and every manual step. A backup job exit code without a
 successful isolated restore is not recovery evidence.
 
 ## Upgrade a pinned release
 
-Read each intervening release note and check for release-specific migration or
-configuration changes. Create and restore-test a backup, then change
-`NIBLEAF_VERSION` to an existing release tag in `.env`:
+Do not re-run the installer to upgrade. It is for new installations only, and
+replacing `.env` with newly generated secrets locks you out of existing data.
 
-The six August 2026 capabilities are currently merged source, while the
-published self-host manifest remains v0.1.2. Do not invent a newer tag or replace
-the committed installer and Compose digests. When a matching future artifact is
-available, use the [combined release migration guide](/self-hosting/combined-release-migration)
-for its search, usage, add-on, integration, and MCP dependency order.
+**From v0.1.2 to v0.2.0, follow the [upgrade guide](/self-hosting/upgrade-v0-2).**
+That upgrade has a required staged step. If you change only the version, scheduling
+is refused and the API and worker do not become ready.
 
-```dotenv
-NIBLEAF_VERSION=vX.Y.Z
-```
+For other upgrades, read each intervening release note and check for
+release-specific migration or configuration changes. Create and restore-test a
+backup. Then:
 
-Pull and recreate the services:
+1. Replace the Compose file with the verified copy from the target release. Keep
+   `.env`, the Compose project name, and the volume names. A version-only change
+   misses settings that the new Compose file passes to the services:
 
-```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-```
+   ```bash
+   VERSION=vX.Y.Z
+   d=$(mktemp -d)
+   curl -fsSLo "$d/docker-compose.yml" "https://github.com/lord007tn/nibleaf/releases/download/$VERSION/docker-compose.yml"
+   curl -fsSLo "$d/SHA256SUMS" "https://github.com/lord007tn/nibleaf/releases/download/$VERSION/SHA256SUMS"
+   (cd "$d" && grep '  docker-compose.yml$' SHA256SUMS | sha256sum -c -)
+   cp "$d/docker-compose.yml" "${COMPOSE_FILE:-docker-compose.yml}"
+   ```
+
+2. Set `NIBLEAF_VERSION` to the same existing release tag in `.env`:
+
+   ```dotenv
+   NIBLEAF_VERSION=vX.Y.Z
+   ```
+
+3. Pull and recreate the services:
+
+   ```bash
+   docker compose pull
+   docker compose up -d
+   ```
 
 Confirm the image digest, migration log, service health, sign-in, one upload,
 one publish, one search, and one public page.
 
 ## Roll back safely
 
-If no schema migration ran, pin the prior image and recreate the services. If a
-forward-only migration changed the database, stop writes and restore the
-pre-upgrade recovery set before starting the older application.
+Prisma migrations are forward-only. If no schema migration ran, pin the prior image,
+restore the prior Compose file, and recreate the services. If a migration changed the
+database, stop writes and restore the pre-upgrade recovery set before starting the
+older application. Do not run the older application against the migrated schema.
 
-For the combined capability schema, prefer runtime rollback and reverse MCP,
-integrations, add-ons, usage, then search only after deploying code that no
-longer reads the removed state. The integrations migration owns the shared
-nullable `ApiKey.expiresAt`; do not remove it while MCP or another consumer
-depends on it.
+Going back from v0.2.0 also needs the schedule rollback in the
+[upgrade guide](/self-hosting/upgrade-v0-2#roll-back). Neither the schedule rollback
+nor the database restore is enough alone.
 
 Do not combine an application upgrade with a PostgreSQL major-version change.
 Treat the database upgrade as a separate dump-and-restore project.

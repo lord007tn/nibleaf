@@ -18,7 +18,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { useUpdatePage } from '@/hooks/api';
@@ -82,9 +82,16 @@ export function PageSettingsDialog({
     { value: 'center', label: t('editor.pageSettings.mode.center') },
   ] as const satisfies ReadonlyArray<{ value: PageMode; label: string }>;
 
-  // Re-seed the form from the page each time the dialog opens.
+  const pageRef = useRef(page);
+  useLayoutEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+  const pageId = page.id;
+  // Seed only when opening or selecting another page. An autosave/list refetch
+  // must not erase settings the author is currently typing.
   useEffect(() => {
-    if (!open) {
+    const page = pageRef.current;
+    if (!open || page.id !== pageId) {
       return;
     }
     setTitle(page.title);
@@ -107,7 +114,7 @@ export function PageSettingsDialog({
     setTranslationKey(page.translationKey ?? '');
     setMode(page.config?.mode ?? 'default');
     setHideToc(page.config?.hideToc ?? false);
-  }, [open, page]);
+  }, [open, pageId]);
 
   const save = () => {
     // A complete config object so the server merge replaces every managed key
@@ -178,13 +185,13 @@ export function PageSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogDescription className="sr-only">{t('editor.pageSettings.desc')}</DialogDescription>
-        <div className="flex h-[min(560px,80vh)]">
+        <div className="flex h-[min(620px,85dvh)] flex-col sm:flex-row">
           {/* Left settings sidebar */}
-          <aside className="flex w-48 shrink-0 flex-col border-border border-e bg-muted/30 p-2.5">
+          <aside className="flex w-full shrink-0 flex-col border-border border-b bg-muted/30 p-2.5 sm:w-48 sm:border-e sm:border-b-0">
             <DialogHeader className="px-2 pt-1.5 pb-3">
               <DialogTitle className="text-start text-base">{t('editor.pageSettings.title')}</DialogTitle>
             </DialogHeader>
-            <nav className="flex flex-col gap-0.5">
+            <nav className="flex gap-0.5 overflow-x-auto sm:flex-col">
               {PAGE_SETTINGS_SECTIONS.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -193,7 +200,7 @@ export function PageSettingsDialog({
                     type="button"
                     onClick={() => setSection(item.id)}
                     className={cn(
-                      'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                      'flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
                       section === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
@@ -206,7 +213,7 @@ export function PageSettingsDialog({
           </aside>
 
           {/* Content + footer */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {section === 'general' ? (
                 <div className="flex flex-col gap-4">
@@ -244,7 +251,7 @@ export function PageSettingsDialog({
                   <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
                     <Input id="page-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Getting started, Guide" />
                   </Field>
-                  <div className="grid grid-cols-[minmax(0,1fr)_8rem] gap-3">
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
                     <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
                       <Input id="page-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Getting started" />
                     </Field>

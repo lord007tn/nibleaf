@@ -17,6 +17,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useProjectUsage } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
@@ -79,7 +80,11 @@ function UsageSkeleton() {
 export function UsageTab({ project }: { project: Project }) {
   const t = useT();
   const { date, number } = useFormatters();
-  const { data: usage, isLoading } = useProjectUsage(project.id);
+  const { data: usage, isPending, isError, isFetching, refetch } = useProjectUsage(project.id);
+
+  if (isError || (!isPending && !usage)) {
+    return <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} />;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -111,7 +116,7 @@ export function UsageTab({ project }: { project: Project }) {
         return (
           <SettingsSection description={t(group.description)} key={group.title} title={t(group.title)}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {isLoading || !usage
+              {isPending || !usage
                 ? group.keys.slice(0, 3).map((key) => <UsageSkeleton key={key} />)
                 : metrics.map((metric) => {
                     const presentation = meterPresentation[metric.key] ?? {

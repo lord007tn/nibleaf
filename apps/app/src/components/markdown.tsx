@@ -397,9 +397,12 @@ export function MarkdownRenderer({
   site,
   extraRemarkPlugins = [],
   extraRehypePlugins = [],
+  afterSanitizePlugins = [],
 }: MarkdownProps & {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
+  /** Internal trusted renderers only: authored HTML must be sanitized first. */
+  afterSanitizePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
 }) {
   const components = useMemo(() => {
     const localizedMdxComponents: DocumentationComponents = {
@@ -478,6 +481,7 @@ export function MarkdownRenderer({
           ...extraRehypePlugins,
           rehypeAuthoredComponentProps,
           [rehypeSanitize, sanitizeSchema],
+          ...afterSanitizePlugins,
           rehypeMermaid,
           rehypeSlug,
           // `heading-anchor` class lets the anchor renderer keep heading styling

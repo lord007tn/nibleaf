@@ -24,6 +24,12 @@ export default {
     description: 'Create a short-lived private artifact download URL.',
     responses: ok,
   }),
+  file: createRouteConfig({
+    guard: [...member],
+    tags: ['exports'],
+    description: 'Stream a retained export artifact as a private attachment.',
+    responses: ok,
+  }),
   schedules: createRouteConfig({ guard: [...member], tags: ['exports'], description: 'List archive schedules and run counts.', responses: ok }),
   createSchedule: createRouteConfig({
     guard: [...admin],

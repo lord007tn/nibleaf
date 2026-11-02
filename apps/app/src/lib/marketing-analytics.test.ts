@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   declineMarketingAnalytics,
+  FIRST_PUBLISH_CONTEXT_KEY,
   GTM_MARKETING_EVENT,
   initializeMarketingAnalytics,
   isGa4MeasurementId,
@@ -11,6 +12,7 @@ import {
   MARKETING_ANALYTICS_CONSENT_KEY,
   marketingAnalyticsCookieExpirations,
   persistMarketingAnalyticsConsent,
+  readMarketingAnalyticsConsent,
   selectMarketingAnalyticsTarget,
   sendMarketingAnalyticsEvent,
   sendMarketingCtaEvent,
@@ -40,15 +42,16 @@ const GTM_MARKETING_EVENT_NAMES_FOR_TEST = new Set([
 describe('marketing analytics', () => {
   beforeEach(() => persistMarketingAnalyticsConsent('accepted'));
   afterEach(() => {
+    vi.restoreAllMocks();
     suspendMarketingAnalytics(GA4_TARGET);
     suspendMarketingAnalytics(GTM_TARGET);
     document.head.replaceChildren();
     window.history.replaceState({}, '', '/');
+    persistMarketingAnalyticsConsent('declined');
     window.localStorage.clear();
     Reflect.deleteProperty(window, 'dataLayer');
     Reflect.deleteProperty(window, 'gtag');
     Reflect.deleteProperty(window, 'ga-disable-G-ABC123');
-    vi.restoreAllMocks();
   });
 
   it('does not send marketing events through an unrelated pre-existing gtag client', () => {
@@ -385,5 +388,81 @@ describe('marketing analytics', () => {
     expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
     expect(window.dataLayer).toHaveLength(before ?? 0);
     expect(gtagCommandValues()).toContainEqual(['consent', 'update', expect.objectContaining({ analytics_storage: 'denied' })]);
+  });
+
+  it('keeps blocked consent unknown and does not load or send analytics', () => {
+    vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
+      throw new DOMException('Storage access denied', 'SecurityError');
+    });
+
+    expect(readMarketingAnalyticsConsent()).toBe('pending');
+    expect(() => persistMarketingAnalyticsConsent('accepted')).not.toThrow();
+    expect(readMarketingAnalyticsConsent()).toBe('pending');
+    expect(initializeMarketingAnalytics(GA4_TARGET)).toBe(false);
+    sendMarketingPageView('/pricing', 'en');
+    expect(document.head.querySelector('script')).toBeNull();
+    expect(window.dataLayer).toBeUndefined();
+  });
+
+  it('honors refusal in this page when the old saved acceptance cannot be overwritten', () => {
+    initializeMarketingAnalytics(GA4_TARGET);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage writes denied', 'SecurityError');
+    });
+
+    expect(() => declineMarketingAnalytics(GA4_TARGET)).not.toThrow();
+    expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('accepted');
+    expect(readMarketingAnalyticsConsent()).toBe('declined');
+    expect(window['ga-disable-G-ABC123']).toBe(true);
+    const before = window.dataLayer?.length;
+    sendMarketingPageView('/pricing', 'en');
+    expect(window.dataLayer).toHaveLength(before ?? 0);
+    expect(initializeMarketingAnalytics(GA4_TARGET)).toBe(false);
+  });
+
+  it('keeps acceptance unknown if its write fails rather than using an older saved acceptance', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage is full', 'QuotaExceededError');
+    });
+
+    expect(() => persistMarketingAnalyticsConsent('accepted')).not.toThrow();
+    expect(readMarketingAnalyticsConsent()).toBe('pending');
+    expect(initializeMarketingAnalytics(GA4_TARGET)).toBe(false);
+  });
+
+  it('retries failed withdrawal cleanup before accepting so an old journey cannot reappear', () => {
+    window.localStorage.setItem(FIRST_PUBLISH_CONTEXT_KEY, 'earlier-journey');
+    const remove = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new DOMException('Storage writes denied', 'SecurityError');
+    });
+
+    expect(() => persistMarketingAnalyticsConsent('declined')).not.toThrow();
+    expect(readMarketingAnalyticsConsent()).toBe('declined');
+    expect(() => persistMarketingAnalyticsConsent('accepted')).not.toThrow();
+    expect(readMarketingAnalyticsConsent()).toBe('pending');
+    expect(window.localStorage.getItem(MARKETING_ANALYTICS_CONSENT_KEY)).toBe('declined');
+
+    remove.mockRestore();
+    persistMarketingAnalyticsConsent('accepted');
+    expect(readMarketingAnalyticsConsent()).toBe('accepted');
+    expect(window.localStorage.getItem(FIRST_PUBLISH_CONTEXT_KEY)).toBeNull();
+  });
+
+  it('allows refusal when session storage enumeration throws and keeps pending events withdrawn', () => {
+    sendMarketingAnalyticsEvent('first_publish_landing_viewed', {
+      entry_point: 'organic_content',
+      intent: 'first_publish',
+      source: 'docker_compose_guide',
+    });
+    const session = vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(() => {
+      throw new DOMException('Session storage denied', 'SecurityError');
+    });
+
+    expect(() => persistMarketingAnalyticsConsent('declined')).not.toThrow();
+    expect(readMarketingAnalyticsConsent()).toBe('declined');
+    session.mockRestore();
+    persistMarketingAnalyticsConsent('accepted');
+    initializeMarketingAnalytics(GTM_TARGET);
+    expect(gtmMarketingEvents()).toEqual([]);
   });
 });

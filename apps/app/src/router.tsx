@@ -1,14 +1,22 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router';
+import { createIsomorphicFn } from '@tanstack/react-start';
 import { ErrorPage } from '@/components/error-page';
 import { NotFound } from '@/components/not-found';
 import { PageLoader } from '@/components/page-loader';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
+import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
+
+const requestNonce = createIsomorphicFn()
+  .server(() => ssrNonce.getStore())
+  .client(() => undefined);
 
 export function getRouter() {
   const customDomainProjectId = hydratedCustomDomainProjectId();
   const router = createTanStackRouter({
     routeTree,
+    // Start captures the hydration nonce before invoking the stream callback.
+    ssr: { nonce: requestNonce() },
     defaultNotFoundComponent: NotFound,
     defaultErrorComponent: ErrorPage,
     // Branded loading screen for route transitions that resolve loaders/data.

@@ -66,13 +66,14 @@ export function BrandingSection({ project }: { project: Project }) {
   const [uploadingField, setUploadingField] = useState<BrandingField | null>(null);
   const branding = project.config?.branding ?? {};
 
+  const defaultValues = {
+    logoLight: branding.logoLight ?? '',
+    logoDark: branding.logoDark ?? '',
+    favicon: branding.favicon ?? '',
+    logoHref: branding.logoHref ?? '',
+  };
   const form = useForm({
-    defaultValues: {
-      logoLight: branding.logoLight ?? '',
-      logoDark: branding.logoDark ?? '',
-      favicon: branding.favicon ?? '',
-      logoHref: branding.logoHref ?? '',
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
         branding: {
@@ -168,8 +169,8 @@ export function BrandingSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => <SaveBar values={values} defaults={defaultValues} disabled={!isDirty} isSubmitting={isSubmitting} />}
       </form.Subscribe>
     </form>
   );

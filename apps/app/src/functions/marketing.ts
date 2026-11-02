@@ -1,11 +1,11 @@
 import { createServerFn } from '@tanstack/react-start';
-import { Octokit } from 'octokit';
+import type { Octokit } from 'octokit';
 
 const STARS_TTL_MS = 60 * 60 * 1000;
 const STARS_ERROR_TTL_MS = 60 * 1000;
 let starsCache: { fetchedAt: number; value: number } | null = null;
 let inFlight: Promise<number> | null = null;
-const github = new Octokit({ request: { timeout: 2000 }, userAgent: 'nibleaf-marketing' });
+let github: Octokit | undefined;
 
 export const getGithubStars = async () => {
   const now = Date.now();
@@ -14,8 +14,11 @@ export const getGithubStars = async () => {
     if (now - starsCache.fetchedAt < ttl) return starsCache.value;
   }
   if (!inFlight) {
-    inFlight = github.rest.repos
-      .get({ owner: 'lord007tn', repo: 'nibleaf' })
+    inFlight = import('octokit')
+      .then(({ Octokit: GithubClient }) => {
+        github ??= new GithubClient({ request: { timeout: 2000 }, userAgent: 'nibleaf-marketing' });
+        return github.rest.repos.get({ owner: 'lord007tn', repo: 'nibleaf' });
+      })
       .then((response) => {
         const value = response.data.stargazers_count;
         starsCache = { value, fetchedAt: Date.now() };

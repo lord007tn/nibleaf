@@ -54,6 +54,7 @@ describe('SiteAnalyticsConsent', () => {
     act(() => root.unmount());
     container.remove();
     document.head.replaceChildren();
+    vi.restoreAllMocks();
     window.localStorage.clear();
   });
 
@@ -95,5 +96,20 @@ describe('SiteAnalyticsConsent', () => {
 
     expect(window.localStorage.getItem('nibleaf.analytics.consent.project-withdraw')).toBe('declined');
     expect(reloadPage).toHaveBeenCalledOnce();
+  });
+
+  it('keeps analytics consent optional and the reader usable when storage getters throw', async () => {
+    for (const storage of ['localStorage', 'sessionStorage'] as const) {
+      vi.spyOn(window, storage, 'get').mockImplementation(() => {
+        throw new DOMException('Storage access denied', 'SecurityError');
+      });
+    }
+    await act(async () => root.render(createElement(SiteAnalyticsConsent, { projectId: 'private-reader', config: consentConfig, lang: 'en' })));
+
+    expect(document.head.querySelectorAll('script')).toHaveLength(0);
+    const decline = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Decline');
+    await act(async () => decline?.click());
+    expect(container.textContent).toContain('Privacy choices');
+    expect(document.head.querySelectorAll('script')).toHaveLength(0);
   });
 });

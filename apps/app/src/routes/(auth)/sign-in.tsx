@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
+import { authEmailErrorMessage } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -53,7 +54,7 @@ function SignInPage() {
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
       if (result.error) {
-        setError(result.error.message ?? t('auth.otp.sendError'));
+        setError(authEmailErrorMessage(result.error, t('auth.otp.sendError')));
         return;
       }
       setCodeSent(true);
@@ -156,7 +157,11 @@ function SignInPage() {
             <p className="text-center text-muted-foreground text-xs">{t('auth.otp.hint')}</p>
           </div>
         )}
-        {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
+        {error ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
+            {error}
+          </p>
+        ) : null}
         <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent ? otp.length !== 6 : !normalizedEmail)} type="submit">
           {isSubmitting
             ? codeSent

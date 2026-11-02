@@ -120,12 +120,13 @@ export function TypographySection({ project }: { project: Project }) {
     setFlow(PRESETS[name].flow);
   };
 
+  const defaultValues = {
+    headingFont: typography.headingFont ?? 'Geist',
+    bodyFont: typography.bodyFont ?? 'Geist',
+    codeFont: typography.codeFont ?? 'Geist Mono',
+  };
   const form = useForm({
-    defaultValues: {
-      headingFont: typography.headingFont ?? 'Geist',
-      bodyFont: typography.bodyFont ?? 'Geist',
-      codeFont: typography.codeFont ?? 'Geist Mono',
-    },
+    defaultValues,
     onSubmit: async ({ value }) => {
       await saveConfigSection(update, {
         typography: { headingFont: value.headingFont, bodyFont: value.bodyFont, codeFont: value.codeFont, baseSize, leading, flow },
@@ -254,8 +255,16 @@ export function TypographySection({ project }: { project: Project }) {
         )}
       </form.Subscribe>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
-        {([isSubmitting, isDirty]) => <SaveBar disabled={!isDirty && !rhythmDirty} isSubmitting={isSubmitting} />}
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue, state.values] as const}>
+        {([isSubmitting, isDirty, values]) => (
+          <SaveBar
+            values={values}
+            defaults={defaultValues}
+            extraDirty={rhythmDirty}
+            disabled={!isDirty && !rhythmDirty}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </form.Subscribe>
     </form>
   );

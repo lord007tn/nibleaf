@@ -24,7 +24,7 @@ name: nibleaf
 # The internal admin panel is behind the "admin" profile:
 #   docker compose -f docker-compose.prod.yml --profile admin up -d
 
-x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.1.2}
+x-image: &image ghcr.io/lord007tn/nibleaf:${NIBLEAF_VERSION:-v0.2.0}
 
 x-service-env: &service-env
   NODE_ENV: production
@@ -52,9 +52,9 @@ x-service-env: &service-env
   BETTER_AUTH_URL: ${BETTER_AUTH_URL:-${APP_URL:-}}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
   GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-  # Public-instance defaults: verified email required before sign-in. Needs
-  # POSTMARK_API_KEY or SMTP_URL so the verification mail can be delivered;
-  # set to "false" for a private instance without email.
+  # Registration is enabled by default. Set DISABLE_SIGNUP=true after the
+  # first owner registers to close registration. Email-code sign-in needs
+  # POSTMARK_API_KEY or SMTP_URL; Google sign-in requires its own credentials.
   DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
   MARKETING_GTM_ID: ${MARKETING_GTM_ID:-}
   MARKETING_GA4_ID: ${MARKETING_GA4_ID:-}
@@ -85,7 +85,7 @@ x-service-env: &service-env
   SMTP_URL: ${SMTP_URL:-}
   EMAIL_DELIVERY_REQUIRED: ${EMAIL_DELIVERY_REQUIRED:-true}
   # Optional AI writing assist (off unless a key is set).
-  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   # Two-way Git: envelope encryption plus API/worker callback authentication.
   GIT_CREDENTIAL_ENCRYPTION_KEY: ${GIT_CREDENTIAL_ENCRYPTION_KEY:-}
   INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: ${INTEGRATION_CREDENTIAL_ENCRYPTION_KEY:-}

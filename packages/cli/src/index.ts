@@ -76,7 +76,7 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
     llms: new URL('llms.txt', base),
     sitemap: new URL('sitemap.xml', base),
     openapi: new URL('openapi.json', base),
-    notFound: new URL('__nibleaf_cli_path_that_does_not_exist__', base),
+    notFound: new URL('nibleaf-cli-path-that-does-not-exist', base),
   };
 
   const checks = await Promise.all([

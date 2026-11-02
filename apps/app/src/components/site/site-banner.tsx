@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { ExternalLink, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 
 export interface SiteBannerConfig {
   enabled?: boolean;
@@ -24,11 +25,11 @@ export function SiteBanner({ projectId, banner, lang }: { projectId: string; ban
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !dismissible) {
+    if (!banner?.enabled || !message || !dismissible) {
       return;
     }
-    setDismissed(window.localStorage.getItem(storageKey) === '1');
-  }, [storageKey, dismissible]);
+    setDismissed(readSiteStorage('localStorage', storageKey) === '1');
+  }, [banner?.enabled, message, storageKey, dismissible]);
 
   if (!banner?.enabled || !message || (dismissible && dismissed)) {
     return null;
@@ -36,11 +37,7 @@ export function SiteBanner({ projectId, banner, lang }: { projectId: string; ban
 
   const dismiss = () => {
     setDismissed(true);
-    try {
-      window.localStorage.setItem(storageKey, '1');
-    } catch {
-      // ignore persistence failures (private mode)
-    }
+    writeSiteStorage('localStorage', storageKey, '1');
   };
 
   return (

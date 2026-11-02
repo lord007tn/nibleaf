@@ -1,0 +1,219 @@
+{
+  "kind": "synthetic-source-regressions",
+  "baselineRevision": "42ac499717c8b22867ed210756ed8cc762f4f495",
+  "baselineUI": {
+    "total": 7,
+    "passed": 4,
+    "failed": 3,
+    "tests": [
+      {
+        "name": "lets an editor request a one-time export through the mocked mutation",
+        "status": "passed"
+      },
+      {
+        "name": "lets an editor read schedules while hiding every administrator mutation control",
+        "status": "passed"
+      },
+      {
+        "name": "offers schedule management to administrators without executing a mutation on render",
+        "status": "passed"
+      },
+      {
+        "name": "downloads the selected artifact with the returned filename using a native anchor",
+        "status": "failed"
+      },
+      {
+        "name": "shows a nonzero small artifact size in en",
+        "status": "failed"
+      },
+      {
+        "name": "shows a nonzero small artifact size in ar",
+        "status": "failed"
+      },
+      {
+        "name": "keeps the workspace and reports a failed download preflight without clicking a link",
+        "status": "passed"
+      }
+    ]
+  },
+  "candidateApp": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "tests": [
+      {
+        "name": "formats 0 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1023 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1024 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 4096 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1536 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1048575 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1048576 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1073741823 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "formats 1073741824 bytes in English and Arabic with binary units",
+        "status": "passed"
+      },
+      {
+        "name": "lets an editor request a one-time export through the mocked mutation",
+        "status": "passed"
+      },
+      {
+        "name": "lets an editor read schedules while hiding every administrator mutation control",
+        "status": "passed"
+      },
+      {
+        "name": "offers schedule management to administrators without executing a mutation on render",
+        "status": "passed"
+      },
+      {
+        "name": "downloads the selected artifact with the returned filename using a native anchor",
+        "status": "passed"
+      },
+      {
+        "name": "shows a nonzero small artifact size in en",
+        "status": "passed"
+      },
+      {
+        "name": "shows a nonzero small artifact size in ar",
+        "status": "passed"
+      },
+      {
+        "name": "keeps the workspace and reports a failed download preflight without clicking a link",
+        "status": "passed"
+      }
+    ]
+  },
+  "candidateServer": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "tests": [
+      {
+        "name": "keeps schedule identity, trigger, and retention on an immediate run",
+        "status": "passed"
+      },
+      {
+        "name": "streams attachment bytes independently of storage response metadata",
+        "status": "passed"
+      },
+      {
+        "name": "preserves the signed URL API and adds a first-party file link",
+        "status": "passed"
+      },
+      {
+        "name": "keeps ordinary asset signed GETs unchanged",
+        "status": "passed"
+      },
+      {
+        "name": "requires authentication before artifact or storage access",
+        "status": "passed"
+      },
+      {
+        "name": "requires membership in the target project organization",
+        "status": "passed"
+      },
+      {
+        "name": "rejects missing, foreign or expired artifacts before storage",
+        "status": "passed"
+      },
+      {
+        "name": "rejects missing, foreign or expired artifacts before storage",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"bad\\r\\nInjected: value.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"../private.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"path/file.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"path\\\\file.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"bad\\u0000name.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "rejects unsafe filenames before streaming: \"badname.pdf\"",
+        "status": "passed"
+      },
+      {
+        "name": "sends ZIP content as an attachment too",
+        "status": "passed"
+      },
+      {
+        "name": "delivers a chunk before the object stream finishes",
+        "status": "passed"
+      },
+      {
+        "name": "cancels storage when the client cancels the body",
+        "status": "passed"
+      },
+      {
+        "name": "passes request cancellation to storage and destroys an opened stream",
+        "status": "passed"
+      },
+      {
+        "name": "does not substitute an HTML page for a storage failure",
+        "status": "passed"
+      },
+      {
+        "name": "propagates a mid-stream failure instead of completing a truncated file",
+        "status": "passed"
+      }
+    ]
+  },
+  "checks": {
+    "storageTypecheck": "passed",
+    "serverTypecheck": "passed",
+    "appTypecheck": "passed",
+    "scopedBiome": "passed",
+    "knip": "passed",
+    "backendBuild": "passed",
+    "scopedReactDoctor": {
+      "errors": 0,
+      "warnings": 5,
+      "classification": "existing-date-formatting-complexity-array-lookup-and-state-initializer-warnings"
+    }
+  },
+  "productionDownloadAcceptance": "not-performed"
+}

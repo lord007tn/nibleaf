@@ -1,0 +1,103 @@
+{
+  "syntheticFixturesOnly": true,
+  "localAcceptanceOnly": true,
+  "productionDeploymentOrProviderAcceptance": false,
+  "image": "nibleaf-runtime:887cb0d766ef",
+  "imageId": "sha256:fdd149e128891703222d6e0493bb13d56c7f4d79d04ef472c46c953e30ffe3ac",
+  "sourceRevision": "887cb0d766ef28150b5da4113cf69fdd87cc8fe2",
+  "generatedAt": "2026-10-15T21:47:47.826Z",
+  "checks": {
+    "postgresMigrations": 30,
+    "postgresIdempotent": true,
+    "clickhouseIdempotent": true,
+    "defaultSeedExcluded": true,
+    "explicitSeedIdempotent": true,
+    "servicesHealthy": 4,
+    "signInSsrAndStaticAssets": true,
+    "englishArabicTsxEmailRendering": true,
+    "mcpScopedTenantFence": true,
+    "mcpUnauthenticatedStatus": 401,
+    "mcpInvalidOriginStatus": 403,
+    "exports": [
+      {
+        "format": "MARKDOWN",
+        "checksumVerified": true
+      },
+      {
+        "format": "STATIC_HTML",
+        "checksumVerified": true
+      },
+      {
+        "format": "PDF",
+        "checksumVerified": true
+      }
+    ],
+    "gitIdempotent": true,
+    "activePublishDrained": true,
+    "serviceExitCodes": [
+      {
+        "service": "app",
+        "exitCode": 0,
+        "oomKilled": false
+      },
+      {
+        "service": "admin",
+        "exitCode": 0,
+        "oomKilled": false
+      },
+      {
+        "service": "worker",
+        "exitCode": 0,
+        "oomKilled": false
+      },
+      {
+        "service": "server",
+        "exitCode": 0,
+        "oomKilled": false
+      }
+    ],
+    "workerPublication": {
+      "status": "READY",
+      "pages": 2
+    }
+  },
+  "inventory": {
+    "trackedResolutionRoots": 1390,
+    "rawManifestsIncludingNestedFixtures": 1593,
+    "installedBraces": 0,
+    "installedUltracite": 0,
+    "sbomPackages": 2055,
+    "sbomBraces": 0,
+    "sourceDevelopmentLockStillContainsBraces": true,
+    "productionOptionalPeers": ["typescript", "vitest"]
+  },
+  "security": {
+    "applicationWorkspaceProductionAdvisories": 0,
+    "unfilteredImageSeverity": {
+      "critical": 4,
+      "high": 62,
+      "moderate": 41,
+      "low": 31,
+      "unknown": 0
+    },
+    "scannerClean": false
+  },
+  "gates": [
+    {
+      "id": "mapped-port-ssr",
+      "baseline": "Reader HTTP 500 with public port 4410 and container port 4310; the same image passes when both use 4410.",
+      "needsFinalImageRetest": true
+    },
+    {
+      "id": "arabic-pdf-font",
+      "baseline": "Arabic page blank",
+      "experiment": "disposable container with font-noto-naskh-arabic renders RTL text; immutable image unchanged",
+      "needsFinalImageRetest": true
+    },
+    {
+      "id": "unfiltered-image-cves",
+      "baseline": "4 critical and 62 high findings.",
+      "needsFinalImageRetest": true
+    }
+  ]
+}

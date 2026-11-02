@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer';
 import { ServerClient } from 'postmark';
 import { env } from '@/env';
 import { resolveEmailDelivery } from './email-delivery';
+import { authEmailSkipReason } from './email-expiry';
 import { postmarkPrivacyOptions } from './email-options';
 
 const log = createLogger({ processor: 'email' });
@@ -15,6 +16,11 @@ const log = createLogger({ processor: 'email' });
  * provider is configured so BullMQ can retry and surface the outage.
  */
 export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sent: boolean }> {
+  const skipReason = authEmailSkipReason(job.data, job.timestamp);
+  if (skipReason) {
+    log.info({ jobId: job.id, reason: skipReason }, 'auth email skipped before delivery');
+    return { sent: false };
+  }
   const { to, subject, html, text } = job.data;
   const delivery = resolveEmailDelivery({
     postmarkApiKey: env.POSTMARK_API_KEY,

@@ -37,6 +37,8 @@ export interface HybridQueryInput {
   idfCorpus: QdrantFilter;
   limit: number;
   candidateLimit?: number;
+  /** Minimum cosine relevance before dense candidates enter rank fusion. */
+  denseScoreThreshold?: number;
 }
 
 export interface QdrantScoredPoint {
@@ -312,6 +314,12 @@ export class QdrantClient {
       throw new TypeError('Hybrid query IDF corpus must equal the authorized retrieval filter.');
     }
     if (input.dense.length !== this.vectorSize) throw new TypeError('Hybrid query dense vector has the wrong dimension.');
+    if (
+      input.denseScoreThreshold !== undefined &&
+      (!Number.isFinite(input.denseScoreThreshold) || input.denseScoreThreshold < -1 || input.denseScoreThreshold > 1)
+    ) {
+      throw new RangeError('Dense score threshold must be a finite cosine score between -1 and 1.');
+    }
     ensureNotAborted(signal);
     const candidateLimit = Math.max(input.limit, input.candidateLimit ?? input.limit * 4);
     const result = await this.sdk.query(this.alias, {
@@ -323,7 +331,13 @@ export class QdrantClient {
           params: { idf: { corpus: input.idfCorpus } },
           limit: candidateLimit,
         },
-        { query: input.dense, using: 'dense', filter: input.filter, limit: candidateLimit },
+        {
+          query: input.dense,
+          using: 'dense',
+          filter: input.filter,
+          limit: candidateLimit,
+          ...(input.denseScoreThreshold === undefined ? {} : { score_threshold: input.denseScoreThreshold }),
+        },
       ],
       query: { rrf: {} },
       filter: input.filter,

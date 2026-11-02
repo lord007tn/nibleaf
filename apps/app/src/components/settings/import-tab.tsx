@@ -7,19 +7,24 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ghostImportBody } from '@nibleaf/validators';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowUpRight, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
+import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { type ContentImportSummary, useImportFromGhost, useImportFromMintlify } from '@/hooks/api';
+import { type ContentImportSummary, useImportFromGhost, useImportFromGitbook, useImportFromMintlify } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { importMayStillRun } from './import-errors';
 import { SettingsSection } from './section';
 
 /** Matches the server-side body cap for Ghost exports. */
 const MAX_GHOST_FILE_BYTES = 15 * 1024 * 1024;
-type ImportSource = 'mintlify' | 'ghost';
+type ImportSource = 'mintlify' | 'gitbook' | 'ghost';
+/** Sources imported from a public GitHub repository (owner/repo + branch). */
+type RepoImportSource = Extract<ImportSource, 'mintlify' | 'gitbook'>;
+const isRepoSource = (source: ImportSource | null): source is RepoImportSource => source === 'mintlify' || source === 'gitbook';
 
 const IMPORT_SOURCE_TABS = [
   { id: 'mintlify', icon: Leaf, label: 'settings.import.mintlify.title' },
+  { id: 'gitbook', icon: BookOpen, label: 'settings.import.gitbook.title' },
   { id: 'ghost', icon: Ghost, label: 'settings.import.ghost.title' },
   { id: 'git', icon: GitBranch, label: 'settings.import.git.title' },
 ] as const;
@@ -134,17 +139,19 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const t = useT();
   const navigate = useNavigate();
   const mintlify = useImportFromMintlify(projectId ?? '');
+  const gitbook = useImportFromGitbook(projectId ?? '');
   const ghost = useImportFromGhost(projectId ?? '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('');
+  const [spacePath, setSpacePath] = useState('');
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
 
-  const pending = mintlify.isPending || ghost.isPending;
+  const pending = mintlify.isPending || gitbook.isPending || ghost.isPending;
   const chooseSource = (next: ImportSource) => {
     setSource(next);
     setResult(null);
@@ -156,6 +163,32 @@ export function ImportTab({ projectId }: { projectId?: string }) {
     toast.success(t('settings.import.success'));
   };
   const handleError = (error: unknown) => {
+    if (error instanceof ApiResponseError) {
+      if (error.code === 'import:in_progress') {
+        toast.error(t('settings.import.inProgress'));
+        return;
+      }
+      if (error.code === 'import:busy') {
+        toast.error(t('settings.import.busy'));
+        return;
+      }
+      if (error.code === 'import:incomplete') {
+        toast.error(`${t('settings.import.incomplete')}${error.path ? ` (${error.sourceFile ? `${error.sourceFile}: ` : ''}${error.path})` : ''}`);
+        return;
+      }
+      if (error.code === 'import:limit') {
+        toast.error(error.limit === undefined ? t('settings.import.limit') : t('settings.import.nodeLimit', { limit: error.limit }));
+        return;
+      }
+      if (error.status === 409) {
+        toast.error(t('settings.import.conflict'));
+        return;
+      }
+    }
+    if (!(error instanceof ImportFileReadError) && importMayStillRun(error)) {
+      toast.error(t('settings.import.mayStillRun'), { duration: 20_000 });
+      return;
+    }
     if (error instanceof ApiResponseError && error.code === 'import:invalid_document') {
       toast.error(source === 'ghost' ? t('settings.import.ghost.invalidJson') : t('settings.import.error'));
       return;
@@ -168,17 +201,21 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   };
 
   const runImport = async () => {
-    if (source === 'mintlify') {
+    if (isRepoSource(source)) {
       const normalizedRepo = normalizeGithubRepo(repo);
       if (!/^[\w.-]+\/[\w.-]+$/.test(normalizedRepo)) {
         toast.error(t('settings.import.mintlify.invalidRepo'));
         return;
       }
       const trimmedBranch = branch.trim();
-      mintlify.mutate(
-        { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}), replaceExisting },
-        { onSuccess: handleSuccess, onError: handleError },
-      );
+      const body = { repo: normalizedRepo, ...(trimmedBranch ? { branch: trimmedBranch } : {}), replaceExisting };
+      const callbacks = { onSuccess: handleSuccess, onError: handleError };
+      if (source === 'mintlify') {
+        mintlify.mutate(body, callbacks);
+        return;
+      }
+      const trimmedPath = spacePath.trim().replace(/^\/+|\/+$/g, '');
+      gitbook.mutate({ ...body, ...(trimmedPath ? { path: trimmedPath } : {}) }, callbacks);
       return;
     }
     if (source !== 'ghost' || !ghostFile) return;
@@ -208,7 +245,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const canImport =
     Boolean(projectId) &&
     !pending &&
-    ((source === 'mintlify' && Boolean(repo.trim())) || (source === 'ghost' && Boolean(ghostFile && ghostUrl.trim())));
+    ((isRepoSource(source) && Boolean(repo.trim())) || (source === 'ghost' && Boolean(ghostFile && ghostUrl.trim())));
 
   return (
     <SettingsSection description={t('settings.import.description')} title={t('settings.import.title')}>
@@ -231,48 +268,62 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                 </div>
               ) : null}
 
-              {source === 'mintlify' ? (
+              {isRepoSource(source) ? (
                 <div className="flex flex-col gap-4">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <Leaf className="size-4" />
+                        {source === 'gitbook' ? <BookOpen className="size-4" /> : <Leaf className="size-4" />}
                       </span>
                       <div>
-                        <p className="font-medium text-sm">{t('settings.import.mintlify.title')}</p>
-                        <p className="text-muted-foreground text-xs">{t('settings.import.mintlify.description')}</p>
+                        <p className="font-medium text-sm">{t(`settings.import.${source}.title`)}</p>
+                        <p className="text-muted-foreground text-xs">{t(`settings.import.${source}.description`)}</p>
                       </div>
                     </div>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
                     <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="import-mintlify-repo">{t('settings.import.mintlify.repo')}</Label>
+                      <Label htmlFor="import-repo">{t('settings.import.mintlify.repo')}</Label>
                       <Input
                         className="bg-background font-mono"
                         dir="ltr"
-                        id="import-mintlify-repo"
+                        id="import-repo"
                         onChange={(event) => setRepo(event.target.value)}
                         placeholder="github.com/acme/docs"
                         value={repo}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="import-mintlify-branch">{t('settings.import.mintlify.branch')}</Label>
+                      <Label htmlFor="import-branch">{t('settings.import.mintlify.branch')}</Label>
                       <Input
                         className="bg-background font-mono"
                         dir="ltr"
-                        id="import-mintlify-branch"
+                        id="import-branch"
                         onChange={(event) => setBranch(event.target.value)}
                         placeholder="main"
                         value={branch}
                       />
                     </div>
                   </div>
+                  {source === 'gitbook' ? (
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="import-gitbook-path">{t('settings.import.gitbook.path')}</Label>
+                      <Input
+                        className="bg-background font-mono"
+                        dir="ltr"
+                        id="import-gitbook-path"
+                        onChange={(event) => setSpacePath(event.target.value)}
+                        placeholder="docs"
+                        value={spacePath}
+                      />
+                      <p className="text-muted-foreground text-xs">{t('settings.import.gitbook.pathHint')}</p>
+                    </div>
+                  ) : null}
                   <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-3 py-2.5">
-                    <Label className="leading-snug" htmlFor="import-mintlify-replace">
+                    <Label className="leading-snug" htmlFor="import-replace">
                       {t('settings.import.mintlify.replaceExisting')}
                     </Label>
-                    <Switch checked={replaceExisting} id="import-mintlify-replace" onCheckedChange={setReplaceExisting} />
+                    <Switch checked={replaceExisting} id="import-replace" onCheckedChange={setReplaceExisting} />
                   </div>
                 </div>
               ) : null}

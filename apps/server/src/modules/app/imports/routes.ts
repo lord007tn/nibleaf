@@ -5,13 +5,19 @@ import { isAuthenticated, requireProjectRole } from '@/middlewares/guard';
 
 const ok = { 200: { description: 'ok' }, ...errorResponses };
 
-// One-way content imports from other documentation systems (Mintlify, Ghost, …).
+// One-way content imports from other documentation systems (Mintlify, GitBook, Ghost, …).
 // Admin-gated like the Git import — importing rewrites pages and site settings.
 const importsRoutes = {
   mintlify: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
     tags: ['projects'],
     description: 'Import pages and site settings from a public Mintlify GitHub repository (docs.json or mint.json).',
+    responses: ok,
+  }),
+  gitbook: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN)],
+    tags: ['projects'],
+    description: 'Import pages, assets, and redirects from a public GitBook Git Sync GitHub repository (.gitbook.yaml / SUMMARY.md).',
     responses: ok,
   }),
   ghost: createRouteConfig({

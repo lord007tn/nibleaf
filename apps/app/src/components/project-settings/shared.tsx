@@ -9,7 +9,18 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfigUpdate } from '@nibleaf/validators';
-import { cloneElement, isValidElement, type ReactElement, type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
+import {
+  cloneElement,
+  createContext,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+} from 'react';
 import { toast } from 'sonner';
 
 type ConfigMutation = {
@@ -17,6 +28,12 @@ type ConfigMutation = {
 };
 
 const localizedFn = (key: MessageKey): string => translateFn(key);
+
+const ConfigDirtyContext = createContext<((source: string, dirty: boolean) => void) | null>(null);
+
+export function ConfigDirtyProvider({ report, children }: { report: (source: string, dirty: boolean) => void; children: ReactNode }) {
+  return <ConfigDirtyContext.Provider value={report}>{children}</ConfigDirtyContext.Provider>;
+}
 
 /**
  * Wraps `useUpdateProjectConfig(...).mutate` in a promise + toast so a TanStack
@@ -273,11 +290,32 @@ export function LanguageScopePicker({
  * flag re-renders; the flag resets to clean when the scope form unmounts
  * (keyed remount on scope switch).
  */
-export function DirtyStateReporter({ dirty, onDirtyChange }: { dirty: boolean; onDirtyChange?: (dirty: boolean) => void }) {
+export function DirtyStateReporter({
+  dirty,
+  onDirtyChange,
+  values,
+  defaults,
+  extraDirty = false,
+}: {
+  dirty: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+  values?: unknown;
+  defaults?: unknown;
+  extraDirty?: boolean;
+}) {
+  const report = useContext(ConfigDirtyContext);
+  const source = useId();
+  // Explicit subscribed values keep changes visible to the React Compiler.
+  // Reading through a stable mutable form object can memoize stale dirtiness.
+  const changed = values !== undefined ? JSON.stringify(values) !== JSON.stringify(defaults) || extraDirty : dirty;
   useEffect(() => {
-    onDirtyChange?.(dirty);
-    return () => onDirtyChange?.(false);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(changed);
+    report?.(source, changed);
+    return () => {
+      onDirtyChange?.(false);
+      report?.(source, false);
+    };
+  }, [changed, onDirtyChange, report, source]);
   return null;
 }
 
@@ -310,11 +348,29 @@ export function useScopeDirtyGuard(): { guard: () => Promise<boolean>; setDirty:
 }
 
 /** The right-aligned Save button row used at the bottom of each form section. */
-export function SaveBar({ isSubmitting, disabled = false }: { isSubmitting: boolean; disabled?: boolean }) {
+export function SaveBar({
+  isSubmitting,
+  disabled = false,
+  dirty,
+  values,
+  defaults,
+  extraDirty = false,
+  invalid = false,
+}: {
+  isSubmitting: boolean;
+  disabled?: boolean;
+  dirty?: boolean;
+  values?: unknown;
+  defaults?: unknown;
+  extraDirty?: boolean;
+  invalid?: boolean;
+}) {
   const t = useT();
+  const saveDisabled = invalid || (values !== undefined ? JSON.stringify(values) === JSON.stringify(defaults) && !extraDirty : disabled);
   return (
     <div className="mt-2 flex justify-end">
-      <Button disabled={isSubmitting || disabled} type="submit">
+      <DirtyStateReporter dirty={dirty ?? !disabled} values={values} defaults={defaults} extraDirty={extraDirty} />
+      <Button disabled={isSubmitting || saveDisabled} type="submit">
         {isSubmitting ? t('common.saving') : t('common.save')}
       </Button>
     </div>

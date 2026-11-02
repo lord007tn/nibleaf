@@ -3,6 +3,7 @@ import { api, type InferResponseType } from '@/services/api';
 
 export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data'][number];
 export type AdminSite = InferResponseType<typeof api.admin.sites.$get>['data'][number];
+export type AdminPublishRetention = InferResponseType<typeof api.admin.funnel.$get>['data']['publishRetention'];
 
 /** Typed failure used by the admin role gate without parsing error messages. */
 export class AdminApiError extends Error {

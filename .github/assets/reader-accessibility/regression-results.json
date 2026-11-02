@@ -1,0 +1,235 @@
+{
+  "kind": "synthetic real-component DOM regression results",
+  "baselineRevision": "25a4b3e92726c9a5f07c5337c3a15f857f754009",
+  "scope": "Published reader mobile drawer close and search accessible names",
+  "before": {
+    "totalTests": 22,
+    "passedTests": 18,
+    "failedTests": 4,
+    "tests": [
+      {
+        "name": "keeps configured reader destinations and the CTA available in the mobile drawer (RTL: false)",
+        "status": "passed"
+      },
+      {
+        "name": "keeps configured reader destinations and the CTA available in the mobile drawer (RTL: true)",
+        "status": "failed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in en, independently of a custom placeholder",
+        "status": "failed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in ar, independently of a custom placeholder",
+        "status": "failed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in ar-SA, independently of a custom placeholder",
+        "status": "failed"
+      },
+      {
+        "name": "published reader search distinguishes an unavailable search from a successful empty result and hides cached results on failure",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search does not show old results while waiting for the typed query debounce or after the input is cleared",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search submits an AI question with Enter and provides a visible search close action",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in en",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ar",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in he",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in fa",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ur",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ar-SA",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in he-IL",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in fa-IR",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ur-PK",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search honors the published language direction without changing the requested answer language",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search returns to keyword search if AI answers are disabled while its panel is open",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their query scope changes",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their language scope changes",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their version scope changes",
+        "status": "passed"
+      }
+    ]
+  },
+  "after": {
+    "totalTests": 24,
+    "passedTests": 24,
+    "failedTests": 0,
+    "tests": [
+      {
+        "name": "published-site reader localization localizes reader controls and MDX defaults for Arabic language variants",
+        "status": "passed"
+      },
+      {
+        "name": "published-site reader localization localizes shipped LTR languages and uses English for unshipped locales",
+        "status": "passed"
+      },
+      {
+        "name": "keeps configured reader destinations and the CTA available in the mobile drawer (RTL: false)",
+        "status": "passed"
+      },
+      {
+        "name": "keeps configured reader destinations and the CTA available in the mobile drawer (RTL: true)",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in en, independently of a custom placeholder",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in ar, independently of a custom placeholder",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search names the combobox and controlled result list in ar-SA, independently of a custom placeholder",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search distinguishes an unavailable search from a successful empty result and hides cached results on failure",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search does not show old results while waiting for the typed query debounce or after the input is cleared",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search submits an AI question with Enter and provides a visible search close action",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in en",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ar",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in he",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in fa",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ur",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ar-SA",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in he-IL",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in fa-IR",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search supports keyboard mode tabs and the content direction in ur-PK",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search honors the published language direction without changing the requested answer language",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search returns to keyword search if AI answers are disabled while its panel is open",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their query scope changes",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their language scope changes",
+        "status": "passed"
+      },
+      {
+        "name": "published reader search hides AI answers and citations when their version scope changes",
+        "status": "passed"
+      }
+    ]
+  },
+  "contracts": {
+    "drawer": {
+      "englishDefault": "Close",
+      "arabic": "إغلاق",
+      "closeReturnsFocusToTrigger": true
+    },
+    "search": [
+      {
+        "locale": "en",
+        "combobox": "Search documentation",
+        "listbox": "Results"
+      },
+      {
+        "locale": "ar",
+        "combobox": "البحث في الوثائق",
+        "listbox": "النتائج"
+      },
+      {
+        "locale": "ar-SA",
+        "combobox": "البحث في الوثائق",
+        "listbox": "النتائج"
+      }
+    ],
+    "customPlaceholderPreserved": true,
+    "inputControlsResultsList": true,
+    "populatedResultsPreserved": true
+  },
+  "limits": [
+    "DOM label assertions, not a browser AX snapshot",
+    "No visible X/layout change",
+    "No production request, customer content, authenticated state or provider request"
+  ]
+}

@@ -1,10 +1,10 @@
 import { getLocale, REQUEST_LOCALE_HEADER } from '@nibleaf/i18n';
 import { hcWithType } from '@nibleaf/server/rpc';
-import { APP_URL } from '@/lib/links';
+import { apiOrigin } from './api-origin';
 
-// Admin authentication and API calls use the app origin. Better Auth's native
+// Browser authentication and API calls use the app origin. Better Auth's native
 // impersonation cookie is therefore first-party when the operator enters /app.
-const API_URL = APP_URL;
+const API_URL = apiOrigin();
 
 const client = hcWithType(API_URL, {
   init: { credentials: 'include' },

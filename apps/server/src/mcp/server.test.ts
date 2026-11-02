@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
-import { createNibleafMcpServer } from './server';
+import { createNibleafMcpServer, MAX_MCP_TOOL_INPUT_ELEMENTS } from './server';
 import type { McpPrincipal } from './types';
 
 const mocks = vi.hoisted(() => ({
@@ -626,6 +626,32 @@ describe('Nibleaf MCP protocol surface', () => {
       limit: null,
       enforcement: 'advisory',
     });
+    await clientTransport.close();
+    await server.close();
+  });
+
+  it('refuses a tool call over the element limit before running the tool', async () => {
+    const { server, clientTransport, request } = await createProtocolClient();
+    // `mode`, `template`, and `items` already count as three elements.
+    const template = { items: Array.from({ length: MAX_MCP_TOOL_INPUT_ELEMENTS - 2 }, () => 0) };
+    const response = await request<{ content: Array<{ text: string }>; isError?: boolean }>('tools/call', {
+      name: 'preview_theme_import',
+      arguments: { mode: 'merge', template },
+    });
+    expect(response.result?.isError).toBe(true);
+    expect(response.result?.content[0]?.text).toContain(`maximum of ${MAX_MCP_TOOL_INPUT_ELEMENTS} elements`);
+    expect(mocks.importProjectTheme).not.toHaveBeenCalled();
+    await clientTransport.close();
+    await server.close();
+  });
+
+  it('runs the largest theme preview a template can be', async () => {
+    mocks.importProjectTheme.mockResolvedValueOnce({ template: {}, summary: {} });
+    const { server, clientTransport, request } = await createProtocolClient();
+    // The template's own limit counts the root too, so 600 nodes is 599 elements.
+    const template = { items: Array.from({ length: 598 }, () => 0) };
+    await request('tools/call', { name: 'preview_theme_import', arguments: { mode: 'merge', template } });
+    expect(mocks.importProjectTheme).toHaveBeenCalledOnce();
     await clientTransport.close();
     await server.close();
   });

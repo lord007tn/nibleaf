@@ -133,6 +133,18 @@ afterEach(() => {
 });
 
 describe('MDX round trips', () => {
+  it.each([
+    '```python\nimport requests\nexport_token = "demo"\n```',
+    '~~~sh\nexport API_URL=http://localhost:4311\n~~~',
+    '<CodeGroup>\n\n```python\nimport requests\n```\n\n</CodeGroup>',
+  ])('preserves import/export statements inside documentation code examples', (source) => {
+    const editor = createEditor(source);
+    const output = getMarkdown(editor);
+    expect(output).not.toContain('nibleaf-mdx-opaque');
+    expect(output).toContain(source.includes('import requests') ? 'import requests' : 'export API_URL=http://localhost:4311');
+    expect(JSON.stringify(editor.getJSON())).not.toContain('MDX module');
+  });
+
   it('keeps rendered built-ins structured while preserving extra props and expressions', () => {
     const editor = createEditor(supportedSample);
     const json = editor.getJSON();

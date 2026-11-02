@@ -52,6 +52,8 @@ x-service-env: &service-env
   CLICKHOUSE_WRITER_USERNAME: ${CLICKHOUSE_WRITER_USERNAME:-nibleaf}
   CLICKHOUSE_WRITER_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}}
   QUEUE_CLUSTER: "true"
+  # Render one export at a time on the shared production host.
+  EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
   STORAGE_PROVIDER: ${STORAGE_PROVIDER:-maxio}
   STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://maxio:9000}
   STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT:-https://storage.nibleaf.com}
@@ -259,6 +261,8 @@ services:
     pull_policy: always
     command: ["worker"]
     init: true
+    mem_limit: 1g
+    cpus: "1.0"
     stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-45s}
     environment: *service-env
     expose:

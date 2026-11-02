@@ -83,6 +83,7 @@ describe('ThemeProvider', () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+    vi.restoreAllMocks();
   });
 
   it('injects a pre-hydration script that resolves the stored theme before content', () => {
@@ -173,6 +174,38 @@ describe('ThemeProvider', () => {
     expect(probe()?.dataset.theme).toBe('system');
     expect(probe()?.dataset.resolvedTheme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+  });
+
+  it('keeps theme rendering and switching functional when browser storage getters throw', async () => {
+    for (const storage of ['localStorage', 'sessionStorage'] as const) {
+      vi.spyOn(window, storage, 'get').mockImplementation(() => {
+        throw new DOMException('Storage access denied', 'SecurityError');
+      });
+    }
+    systemDark = true;
+    await renderProvider();
+
+    expect(probe()?.dataset.resolvedTheme).toBe('dark');
+    await choose('light');
+    expect(probe()?.dataset.theme).toBe('light');
+    expect(document.documentElement.style.colorScheme).toBe('light');
+  });
+
+  it('applies the bootstrap default even when accessing global localStorage throws', () => {
+    systemDark = true;
+    renderToStaticMarkup(
+      <ThemeProvider>
+        <div>content</div>
+      </ThemeProvider>,
+    );
+    const browserContext = Object.defineProperty({ document, window }, 'localStorage', {
+      get: () => {
+        throw new DOMException('Storage access denied', 'SecurityError');
+      },
+    });
+
+    expect(() => runInNewContext(scriptOnce.children, browserContext)).not.toThrow();
     expect(document.documentElement.style.colorScheme).toBe('dark');
   });
 });
