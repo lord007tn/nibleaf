@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.18.0",
+    "node": ">=22.22.2",
     "pnpm": ">=10.0.0"
   },
   "packageManager": "pnpm@10.34.7",
@@ -22,12 +22,14 @@
       "dompurify@>=3.0.0 <3.4.17": "3.4.17",
       "engine.io@>=6.0.0 <6.6.10": "6.6.10",
       "fast-uri@>=3.0.0 <3.1.9": "3.1.9",
+      "glob@>=13.0.0 <14.0.2": "14.0.2",
       "hono@>=4.0.0 <4.13.11": "4.13.11",
       "http-cache-semantics@>=4.0.0 <4.3.0": "4.3.0",
       "katex@<0.18.2": "0.18.5",
       "markdown-it@>=14.0.0 <14.3.3": "14.3.3",
       "markdown-it-image-lazy-loading@2.0.1>image-size": "2.0.3",
       "mysql2": "3.23.1",
+      "minimatch@>=10.0.0 <11.0.1": "11.0.1",
       "next@>=16.0.0 <16.4.1": "16.4.1",
       "proxy-addr@>=2.0.0 <2.0.8": "2.0.8",
       "qs": "6.16.1",
@@ -83,15 +85,15 @@
   },
   "dependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "tsx": "4.23.13"
+    "tsx": "4.23.15"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
-    "knip": "6.34.0",
-    "react-doctor": "0.9.13",
-    "turbo": "^2.10.12",
+    "knip": "6.43.0",
+    "react-doctor": "0.9.18",
+    "turbo": "^2.11.10",
     "typescript": "^7.0.2",
     "ultracite": "7.10.7",
     "vitest": "^4.1.12"
