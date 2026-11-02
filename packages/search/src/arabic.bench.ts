@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { describe, test } from 'vitest';
 import { createDocIndex, normalizeArabicMorphologyText, type SearchDoc, searchDocs } from './index';
 
 const sample = 'والمستخدمين إعداداتهم API-v2 `المكتبات` واجهات المطورين. '.repeat(1000);
@@ -10,23 +10,17 @@ const docs: SearchDoc[] = Array.from({ length: 500 }, (_, index) => ({
   headings: 'واجهات المطورين',
   content: 'شرح للمستخدمين عن الحسابات والإشعارات والمكتبات.',
 }));
-const indexPromise = createDocIndex(docs, 'arabic');
-
 describe('Arabic morphology throughput', () => {
-  bench(
-    'analyze 1,000 mixed documentation tokens',
-    () => {
+  test('analyze 1,000 mixed documentation tokens', async ({ bench }) => {
+    await bench('normalize mixed documentation', () => {
       normalizeArabicMorphologyText(sample);
-    },
-    { time: 500, warmupTime: 100 },
-  );
+    }).run({ time: 500, warmupTime: 100 });
+  });
 
-  bench(
-    'query a 500-document Arabic index',
-    async () => {
-      const index = await indexPromise;
+  test('query a 500-document Arabic index', async ({ bench }) => {
+    const index = await createDocIndex(docs, 'arabic');
+    await bench('search Arabic documents', async () => {
       await searchDocs(index, 'مستخدم', { tolerance: 1 });
-    },
-    { time: 500, warmupTime: 100 },
-  );
+    }).run({ time: 500, warmupTime: 100 });
+  });
 });
