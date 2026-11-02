@@ -15,6 +15,9 @@ export const renderPdf = async (
   const browser = await chromium.launch({
     executablePath: options.executablePath,
     headless: true,
+    // The worker owns the bounded signal drain; Playwright must not close Chromium early.
+    handleSIGTERM: false,
+    handleSIGINT: false,
     args: ['--no-sandbox', '--disable-dev-shm-usage'],
   });
   try {
