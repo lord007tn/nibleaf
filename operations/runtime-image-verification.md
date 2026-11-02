@@ -75,8 +75,8 @@ The image audit checks required artifacts, TypeScript/config/Prisma resolution,
 MCP runtime presence, and packages reached by its normal `node_modules` and
 Nitro output traversal. It can miss embedded trees such as
 `nf3/dist/node_modules`; inspect embedded bundles separately and retain an
-unfiltered scan of the whole image. The audit fails when it finds Ultracite, braces, or
-a TypeScript native compiler package in its inventory. No host env is forwarded
+unfiltered scan of the whole image. The audit fails when it finds Ultracite,
+braces, or a TypeScript native compiler package in its inventory. No host env is forwarded
 into the probe container. Keep the JSON report with the exact image ID, source
 revision, build log, and acceptance evidence.
 
@@ -88,8 +88,8 @@ project namespace on `productops-shared`. Reuse the individual `postgres`,
 existing keys and configuration. Use isolated containers for the application
 roles, alternate ports, synthetic namespace data, and a local SMTP catcher.
 Do not start duplicate backing services or a Compose stack per project. Keep
-customer or production data and provider accounts out of these tests; a local image
-test does not establish deployment acceptance.
+customer or production data and provider accounts out of these tests; a local
+image test does not establish deployment acceptance.
 
 1. Run `migrate` and `clickhouse-migrate` twice. Both second runs must be
    idempotent. Default production migration must skip demo seeding; test explicit
@@ -111,6 +111,6 @@ test does not establish deployment acceptance.
    and queue shutdown without orphan child processes or abruptly lost jobs.
 
 Record each result separately. A health response does not prove publishing,
-migrations, email, PDF, Git, MCP or graceful shutdown. After preserving reports,
-remove only owned application containers and synthetic fixtures through the
-namespace helper; preserve shared backing containers, volumes, and keys.
+migrations, email, PDF, Git, MCP or graceful shutdown. Remove only owned
+application containers and synthetic fixtures after preserving reports; preserve
+shared backing containers, volumes, and keys.
