@@ -25,8 +25,20 @@ Corepack preparation use pnpm 10.34.7, whose bundled tar is 7.5.22 and
 http-cache-semantics is 4.3.0. Root dependency overrides do not update pnpm's
 separate bundled dependencies.
 
-The runner upgrades stable-branch zlib, libexpat and Chromium packages; image scan dispositions
-must use the built image's installed version rather than an earlier baseline.
+The base stays on Node 22 and Alpine 3.24. The runner upgrades all installed
+packages from that stable branch, including Chromium's native dependencies.
+The manual Docker workflow pulls the current base image and bypasses only the
+`runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm
+store caching when their inputs are unchanged. Cached `RUN apk add/upgrade`
+layers do not query newer repository metadata just because a release is newer.
+Local manual builds must use the same pull/cache options shown below.
+
+Image scan dispositions must use the built image's installed versions and a
+fresh unfiltered scan. An available upstream fix is not proof that Alpine 3.24
+ships it, and embedded Rust crates need a rebuilt containing native package.
+Do not add edge/testing repositories or suppress unresolved findings to make a
+report green. Keep findings without a compatible stable fix visible, then
+verify the exact candidate image and all four service roles before promotion.
 
 Chromium's Arabic PDF output needs `font-noto-naskh-arabic`. A successful export
 job or matching file checksum alone cannot establish that its text is readable.
@@ -47,7 +59,7 @@ headroom. Use a committed source revision for the final acceptance image.
 
 ```sh
 node scripts/docker-context-smoke.mjs
-docker build --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --build-arg VITE_APP_URL=http://localhost:4410 --build-arg VITE_API_URL=http://server:4311 --tag nibleaf-runtime:local .
+docker build --pull --no-cache-filter runner --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --build-arg VITE_APP_URL=http://localhost:4410 --build-arg VITE_API_URL=http://server:4311 --tag nibleaf-runtime:local .
 node scripts/runtime-image-audit.mjs nibleaf-runtime:local output/runtime-image/inventory.json
 ```
 
