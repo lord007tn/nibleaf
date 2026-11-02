@@ -12,8 +12,9 @@ TypeScript/TSX. Prisma's CLI is a runtime dependency of the database package for
 export, both Nitro outputs and their public assets must come from the same build.
 
 The repository lockfile still contains development dependencies for contributors.
-Runtime exclusion is verified from installed files in the final image; this does
-not claim that the source-lock development advisory has been fixed upstream.
+Runtime exclusion must be checked against installed files and scans of the final
+image; this does not claim that the source-lock development advisory has been
+fixed upstream.
 
 Production peers still install TypeScript and Vitest metadata. The runtime stage
 omits only TypeScript's unused optional native compiler packages; services execute
@@ -69,18 +70,24 @@ all canaries while retaining application source. It removes only its own files
 and temporary image tag. It never reads existing browser state or env contents.
 
 The image audit checks required artifacts, TypeScript/config/Prisma resolution,
-MCP runtime presence, and installed package inventory including nested and Nitro
-dependencies. It fails if Ultracite, braces, or a TypeScript native compiler
-package remains installed. No host env is
-forwarded into the probe container. Keep the JSON report with the exact image ID,
-source revision, build log, and acceptance evidence.
+MCP runtime presence, and packages reached by its normal `node_modules` and
+Nitro output traversal. It can miss embedded trees such as
+`nf3/dist/node_modules`; inspect embedded bundles separately and retain an
+unfiltered scan of the whole image. The audit fails when it finds Ultracite, braces, or
+a TypeScript native compiler package in its inventory. No host env is forwarded
+into the probe container. Keep the JSON report with the exact image ID, source
+revision, build log, and acceptance evidence.
 
 ## Disposable service acceptance
 
-Use a unique Compose project, new synthetic volumes, alternate ports, generated
-local-only secrets and a local SMTP catcher. Do not reuse customer or production
-data, credentials, provider accounts or existing service volumes. Do not infer
-deployment acceptance from a local image test.
+For the owner's local workflow, use the shared service helper to provision a
+project namespace on `productops-shared`. Reuse the individual `postgres`,
+`dragonfly`, `clickhouse`, `maxio`, and `qdrant` backing containers; preserve their
+existing keys and configuration. Use isolated containers for the application
+roles, alternate ports, synthetic namespace data, and a local SMTP catcher.
+Do not start duplicate backing services or a Compose stack per project. Keep
+customer or production data and provider accounts out of these tests; a local image
+test does not establish deployment acceptance.
 
 1. Run `migrate` and `clickhouse-migrate` twice. Both second runs must be
    idempotent. Default production migration must skip demo seeding; test explicit
@@ -102,5 +109,6 @@ deployment acceptance from a local image test.
    and queue shutdown without orphan child processes or abruptly lost jobs.
 
 Record each result separately. A health response does not prove publishing,
-migrations, email, PDF, Git, MCP or graceful shutdown. Remove only the temporary
-project's containers/volumes after preserving its reports.
+migrations, email, PDF, Git, MCP or graceful shutdown. After preserving reports,
+remove only owned application containers and synthetic fixtures through the
+namespace helper; preserve shared backing containers, volumes, and keys.
