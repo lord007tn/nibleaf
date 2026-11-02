@@ -9,7 +9,7 @@ const copy = {
     eyebrow: 'Nibleaf guide academy',
     title: 'Make the next documentation decision with evidence',
     intro:
-      'Neutral, task-complete guides for choosing, migrating, operating, and publishing documentation. Each answer works without Nibleaf; product-specific paths appear only after the decision method.',
+      'Neutral, task-complete guides for choosing, migrating, operating, and publishing documentation. Choose a general decision guide or a clearly named Nibleaf workflow.',
     featured: 'Start with a foundational answer',
     browse: 'Browse by job',
     all: 'All guides',
@@ -27,8 +27,7 @@ const copy = {
   ar: {
     eyebrow: 'أكاديمية أدلة Nibleaf',
     title: 'اتخذ قرار التوثيق التالي بناءً على دليل',
-    intro:
-      'أدلة محايدة ومكتملة لاختيار التوثيق وترحيله وتشغيله ونشره. تعمل الإجابة من دون Nibleaf، ولا يظهر المسار الخاص بالمنتج إلا بعد منهج القرار.',
+    intro: 'أدلة محايدة ومكتملة لاختيار التوثيق وترحيله وتشغيله ونشره. اختر دليل قرار عامًا أو سير عمل يذكر Nibleaf بوضوح.',
     featured: 'ابدأ بإجابة تأسيسية',
     browse: 'تصفح حسب المهمة',
     all: 'كل الأدلة',
