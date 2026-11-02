@@ -37,10 +37,10 @@ export const closeClickHouseClients = async (): Promise<void> => {
   await Promise.allSettled(closing);
 };
 
-const payloadValue = (payload: AnalyticsPayload, key: string): unknown => (payload as unknown as Record<string, unknown>)[key];
-const asNumber = (value: unknown): number => (typeof value === 'number' ? value : 0);
-const hasNumber = (value: unknown): number => (typeof value === 'number' ? 1 : 0);
-const asString = (value: unknown): string => (typeof value === 'string' ? value : '');
+const payloadValue = (payload: AnalyticsPayload, key: string) => (payload as Record<string, unknown>)[key];
+const asNumber = (value: unknown) => (typeof value === 'number' ? value : 0);
+const hasNumber = (value: unknown) => (typeof value === 'number' ? 1 : 0);
+const asString = (value: unknown) => (typeof value === 'string' ? value : '');
 
 export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
   const payload = event.payload;
