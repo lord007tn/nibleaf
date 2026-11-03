@@ -108,6 +108,12 @@ const PROVIDER_META: Record<IntegrationProviderId, { name: MessageKey; descripti
     icon: Bot,
     tint: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300',
   },
+  openai: {
+    name: 'settings.integrations.provider.openai',
+    description: 'settings.integrations.openai.description',
+    icon: Bot,
+    tint: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  },
   qdrant: {
     name: 'settings.integrations.provider.qdrant',
     description: 'settings.integrations.qdrant.description',
@@ -285,8 +291,9 @@ function ConfigRows({ config }: { config: IntegrationPublicConfig }) {
       case 'zapier':
         return [[t('settings.integrations.field.label'), config.label ?? t('settings.integrations.value.notSet')]];
       case 'openrouter':
+      case 'openai':
         return [
-          [t('settings.integrations.field.draftModel'), config.draftModel],
+          ...(config.draftModel ? [[t('settings.integrations.field.draftModel'), config.draftModel]] : []),
           [t('settings.integrations.field.answerModel'), config.answerModel],
           [t('settings.integrations.field.embeddingModel'), config.embeddingModel],
         ];

@@ -3,7 +3,7 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-03'
 verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
@@ -13,7 +13,7 @@ translation_key: 'self-hosting/search-ai'
 Nibleaf v0.2 can retrieve published English, Arabic, and mixed-language content
 with a tenant-filtered BM25 and dense-vector hybrid index. Results mode remains
 available without an answer model. Grounded answers are a separate, explicit
-instance and site opt-in.
+site opt-in, using either a workspace connection or the instance provider.
 
 ## Understand the boundary
 
@@ -35,6 +35,39 @@ vector uses an IDF corpus restricted by the same tenant and authorization filter
 as the query.
 
 ## Configure providers
+
+Administrators can open **Site settings → Workspace → Smart AI** to connect
+OpenAI or OpenRouter with a workspace API key. **Verify and load models** checks
+the key and the provider catalog using GET requests; it does not run a paid
+inference request or prove that the account has credit. Choose an answer model
+that supports strict structured outputs, save the connection, then choose
+**Use this provider**. Saving alone does not enable it. Existing keys stay hidden;
+leaving the key blank preserves it, and replacement requires explicit confirmation.
+
+Workspace credentials use the existing encrypted project integration store.
+Set the same `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` on the API and worker through
+your normal Coolify environment configuration. Keep it and prior decrypt keys
+backed up securely. Never store provider keys in public site configuration.
+An explicitly selected workspace provider never falls back to the instance key.
+Disabling Smart AI preserves saved connections and keeps ordinary search available.
+
+The embedding model is fixed by the instance so all workspaces use the existing
+index format and dimensions. Direct OpenAI connections require an OpenAI embedding
+model. After enabling, publish documentation or choose **Rebuild search index**.
+The reader offers AI answers only after the current publication has a READY index
+with searchable chunks. The settings screen reports index readiness separately
+from the saved provider selection. Indexing sends published documentation to the
+selected provider; answering sends the question and authorized source excerpts.
+Provider usage is billed to the connected account, subject to its limits and
+Nibleaf's existing answer quotas. There is no automatic purchase or top-up.
+
+OpenAI/ChatGPT OAuth is unavailable until Nibleaf has approval for hosted use.
+The [OpenAI token-sharing guidance](https://developers.openai.com/siwc/token-sharing-open-source)
+distinguishes local open-source use from remotely hosted applications. Do not
+reuse a user's Codex or ChatGPT session token. API keys work independently of
+that registration.
+
+For an instance-managed provider, use the existing environment setup below.
 
 Start from `.env.production.example`. Keep `SEARCH_RUNTIME=shadow`. Set a
 Qdrant API key when Qdrant is reachable outside a private container network.
@@ -74,8 +107,9 @@ model text. Search results remain immediate and non-generative.
 AI controls stay hidden until the instance can serve them. The editor's AI tab
 appears only when `OPENROUTER_API_KEY` is set and `AI_DAILY_LIMIT` is above
 zero. The **Grounded AI answers** setting and the reader's AI answer mode appear
-only when Qdrant and `OPENROUTER_API_KEY` are configured and
-`SEARCH_ANSWER_ENABLED=true`. If the provider fails, drafting returns an error
+when the site has a usable provider and a ready published index. Instance-managed
+answers additionally require `SEARCH_ANSWER_ENABLED=true`; a verified workspace
+connection uses the administrator's explicit Smart AI selection. If the provider fails, drafting returns an error
 instead of placeholder text.
 
 ## Index and evaluate

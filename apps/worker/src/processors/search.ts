@@ -4,7 +4,8 @@ import { keys as clickHouseKeys, clickHouseWritesEnabled } from '@nibleaf/clickh
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
-import { chunkSearchDocument, OpenRouterEmbeddingProvider, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
+import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
+import { resolveWorkspaceAi, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
 import type { Job } from 'bullmq';
@@ -304,6 +305,8 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
         select: { id: true, version: true, snapshot: true },
       });
   if (!deployment?.snapshot) throw new Error(`READY deployment for project ${job.data.projectId} was not found.`);
+  // Resolve credentials before claiming a run so a database read failure cannot strand its claim.
+  const ai = await resolveWorkspaceAi(job.data.projectId);
   const durableJobId = String(job.id ?? `${job.name}:${job.data.projectId}:${deployment.id}`);
   const claim = await claimRun(job.data, deployment, durableJobId);
   if (claim.kind === 'terminal') {
@@ -320,7 +323,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
   }
   const run = claim;
 
-  if (!(client && env.OPENROUTER_API_KEY)) {
+  if (!(client && ai)) {
     const errorCode = client ? 'embedding_provider_not_configured' : 'index_provider_not_configured';
     const disabled = await prisma.searchIndexRun.updateMany({
       where: { id: run.id, claimToken: run.claimToken },
@@ -348,15 +351,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     ]);
     if (!project) throw new SearchIndexFailure('project_not_found', 0, []);
     const snapshot = deployment.snapshot as unknown as SiteSnapshot;
-    const provider = new OpenRouterEmbeddingProvider({
-      apiKey: env.OPENROUTER_API_KEY,
-      model: env.SEARCH_EMBEDDING_MODEL,
-      dimensions: env.SEARCH_EMBEDDING_DIMENSIONS,
-      timeoutMs: env.SEARCH_EMBEDDING_TIMEOUT_MS,
-      maxBatchSize: BATCH_SIZE,
-      siteUrl: env.APP_URL,
-      title: 'Nibleaf',
-    });
+    const provider = workspaceEmbeddingProvider(ai);
     if (provider.dimensions !== client.vectorSize) throw new SearchIndexFailure('vector_size_mismatch', 0, []);
 
     const visibility = project.accessMode === 'PUBLIC' ? 'public' : 'private';

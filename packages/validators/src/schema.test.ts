@@ -93,6 +93,7 @@ describe('projectConfigSchema', () => {
       filtersEnabled: true,
       versionFilterEnabled: true,
       aiAnswers: false,
+      aiProvider: 'instance',
       hotkey: 'cmdk',
     });
     expect(searchConfigurationSchema.safeParse({ maxResults: 0 }).success).toBe(false);

@@ -1,0 +1,264 @@
+import { Prisma, prisma } from '@nibleaf/database';
+import { getQdrantClient } from '@nibleaf/qdrant';
+import { aiConnectionConfigSchema, aiCredentialSchema, aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
+import { MemberRole } from '@nibleaf/shared/constants';
+import { roleAtLeast } from '@nibleaf/shared/rbac';
+import {
+  type SaveWorkspaceAiConnectionBody,
+  saveWorkspaceAiConnectionBody,
+  type WorkspaceAiModelsBody,
+  type WorkspaceAiSelectionBody,
+  workspaceAiModelsBody,
+  workspaceAiOverviewSchema,
+  workspaceAiSelectionBody,
+} from '@nibleaf/validators';
+import type { Context } from 'hono';
+import { z } from 'zod';
+import { env } from '@/env';
+import { AppError, conflict, forbidden } from '@/errors';
+import type { HonoEnv } from '@/lib/hono/context';
+import { decryptIntegrationSecret, encryptIntegrationSecret } from './integrations/crypto';
+import { updateProjectConfigSection } from './project-config';
+import { assertProjectAccess } from './projects';
+import { invalidatePublishedSiteConfig } from './sites';
+
+const providerModelsSchema = z.object({
+  data: z.array(
+    z.object({
+      id: z.string(),
+      architecture: z.object({ output_modalities: z.array(z.string()).optional() }).optional(),
+      supported_parameters: z.array(z.string()).optional(),
+    }),
+  ),
+});
+const keyMetadataSchema = z.object({ data: z.object({ is_management_key: z.boolean().optional(), is_provisioning_key: z.boolean().optional() }) });
+const selectionSchema = z.object({
+  search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
+});
+
+const authorize = async (ctx: Context<HonoEnv>, projectId: string) => {
+  if (ctx.get('apiKey')) throw forbidden('AI credentials require a dashboard administrator session.');
+  const user = ctx.get('user');
+  if (!user) throw new AppError({ code: 'auth:no_user' });
+  const access = await assertProjectAccess(user.id, projectId);
+  if (!roleAtLeast(access.role, MemberRole.ADMIN)) throw forbidden('Administrator access is required.');
+  return { ...access, actorId: user.id };
+};
+
+const readCredential = (projectId: string, providerId: z.infer<typeof aiProviderIdSchema>, ciphertext: string) => {
+  try {
+    const value = aiCredentialSchema.parse(JSON.parse(decryptIntegrationSecret(ciphertext)));
+    if (value.projectId === projectId && value.providerId === providerId) return value.apiKey;
+  } catch {
+    /* Use the same secret-free error for invalid envelopes and bindings. */
+  }
+  throw new AppError({ code: 'integration:credentials_invalid' });
+};
+
+/** Fixed provider origins, bounded GET-only checks, and allowlisted response
+ * fields. Never expose an SDK error containing authorization headers or a key. */
+const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdSchema>, apiKey: string) => {
+  const base = providerId === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1';
+  const get = async (path: string) => {
+    const response = await fetch(base + path, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      redirect: 'error',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (response.status === 401 || response.status === 403) throw new AppError({ code: 'integration:credentials_invalid' });
+    if (!response.ok) throw new AppError({ code: 'integration:provider_unavailable' });
+    return response.json();
+  };
+  try {
+    if (providerId === 'openrouter') {
+      const key = keyMetadataSchema.parse(await get('/key'));
+      if (key.data.is_management_key || key.data.is_provisioning_key) throw new AppError({ code: 'integration:credentials_invalid' });
+    }
+    const catalog = providerModelsSchema.parse(await get('/models'));
+    const embeddingId = providerId === 'openai' ? env.SEARCH_EMBEDDING_MODEL.replace(/^openai\//, '') : env.SEARCH_EMBEDDING_MODEL;
+    const embeddings = providerId === 'openrouter' ? providerModelsSchema.parse(await get('/embeddings/models')) : catalog;
+    if (!embeddings.data.some((model) => model.id === embeddingId))
+      throw new AppError({
+        code: 'integration:provider_unavailable',
+        message: 'The configured embedding model is not available for this connection.',
+      });
+    if (providerId === 'openai' && !env.SEARCH_EMBEDDING_MODEL.startsWith('openai/'))
+      throw new AppError({ code: 'integration:provider_unavailable', message: 'This instance uses an embedding model that requires OpenRouter.' });
+    return catalog.data
+      .filter((model) =>
+        providerId === 'openai'
+          ? /^(gpt-|o[1-9])/.test(model.id) &&
+            !/^(gpt-3\.5|gpt-4(?:-|$)|gpt-4o-2024-05-13|o1-(?:mini|preview))/.test(model.id) &&
+            !/embedding|audio|realtime|image|transcri|tts|codex|deep-research|search|pro(?:-|$)/.test(model.id)
+          : model.architecture?.output_modalities?.includes('text') &&
+            (model.supported_parameters?.includes('response_format') || model.supported_parameters?.includes('structured_outputs')),
+      )
+      .map((model) => ({ id: model.id }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError({ code: 'integration:provider_unavailable', message: 'The provider could not verify this connection.' });
+  }
+};
+
+export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) => {
+  const { project } = await authorize(ctx, projectId);
+  const [connections, deployment] = await Promise.all([
+    prisma.projectIntegration.findMany({ where: { projectId, providerId: { in: ['openai', 'openrouter'] } } }),
+    prisma.deployment.findFirst({ where: { projectId, status: 'READY' }, orderBy: { version: 'desc' }, select: { id: true } }),
+  ]);
+  const run = deployment
+    ? await prisma.searchIndexRun.findFirst({
+        where: { projectId, deploymentId: deployment.id },
+        orderBy: { createdAt: 'desc' },
+        select: { status: true, indexedPages: true, indexedChunks: true },
+      })
+    : null;
+  const selection = selectionSchema.safeParse(project.config);
+  return workspaceAiOverviewSchema.parse({
+    selectedProvider: selection.success ? (selection.data.search?.aiProvider ?? 'instance') : 'instance',
+    answersEnabled: selection.success && selection.data.search?.aiAnswers === true,
+    encryptionConfigured: Boolean(env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY),
+    instanceConfigured: Boolean(env.OPENROUTER_API_KEY),
+    instanceAnswersEnabled: env.SEARCH_ANSWER_ENABLED,
+    embeddingModel: env.SEARCH_EMBEDDING_MODEL,
+    infrastructureConfigured: Boolean(getQdrantClient()),
+    providers: aiProviderIdSchema.options.map((id) => {
+      const connection = connections.find((item) => item.providerId === id);
+      const config = aiConnectionConfigSchema.safeParse(connection?.config);
+      return {
+        id,
+        configured: Boolean(connection),
+        revision: connection?.revision ?? 0,
+        verified: connection?.status === 'ACTIVE' && connection.lastVerificationStatus === 'HEALTHY',
+        verifiedAt: connection?.lastVerifiedAt?.toISOString() ?? null,
+        answerModel: config.success ? config.data.answerModel : null,
+      };
+    }),
+    index: { published: Boolean(deployment), status: run?.status ?? null, pages: run?.indexedPages ?? 0, chunks: run?.indexedChunks ?? 0 },
+    openaiOAuth: {
+      available: false,
+      reason: 'registration_required' as const,
+      documentation: 'https://developers.openai.com/siwc/token-sharing-open-source',
+    },
+  });
+};
+
+export const getWorkspaceAiModels = async (ctx: Context<HonoEnv>, projectId: string, input: WorkspaceAiModelsBody) => {
+  await authorize(ctx, projectId);
+  const body = workspaceAiModelsBody.parse(input);
+  const connection = body.apiKey
+    ? null
+    : await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
+  const apiKey = body.apiKey ?? (connection ? readCredential(projectId, body.providerId, connection.credentialEncrypted) : null);
+  if (!apiKey) throw new AppError({ code: 'integration:credentials_invalid' });
+  return { models: await discoverAiProviderModels(body.providerId, apiKey) };
+};
+
+export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId: string, input: SaveWorkspaceAiConnectionBody) => {
+  const { organizationId, actorId } = await authorize(ctx, projectId);
+  const body = saveWorkspaceAiConnectionBody.parse(input);
+  if (!env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY)
+    throw new AppError({ code: 'integration:provider_unavailable', message: 'Credential encryption is not configured.' });
+  const current = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
+  if ((current?.revision ?? 0) !== body.expectedRevision) throw conflict('The provider connection changed. Reload before saving.');
+  const apiKey = body.apiKey ?? (current ? readCredential(projectId, body.providerId, current.credentialEncrypted) : null);
+  if (!apiKey) throw new AppError({ code: 'integration:credentials_invalid' });
+  const models = await discoverAiProviderModels(body.providerId, apiKey);
+  if (!models.some((model) => model.id === body.answerModel))
+    throw new AppError({ code: 'validation:failed', message: 'Choose an available structured-answer model.' });
+  const ciphertext = body.apiKey
+    ? encryptIntegrationSecret(JSON.stringify({ kind: 'workspace-ai', projectId, providerId: body.providerId, apiKey }))
+    : current?.credentialEncrypted;
+  if (!ciphertext) throw new AppError({ code: 'integration:credentials_invalid' });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const data = {
+        credentialEncrypted: ciphertext,
+        config: { answerModel: body.answerModel, embeddingModel: env.SEARCH_EMBEDDING_MODEL },
+        status: 'ACTIVE',
+        lastVerificationStatus: 'HEALTHY',
+        lastVerificationCode: null,
+        lastVerifiedAt: new Date(),
+      };
+      let connectionId = current?.id;
+      if (current) {
+        const updated = await tx.projectIntegration.updateMany({
+          where: { id: current.id, projectId, revision: body.expectedRevision },
+          data: { ...data, revision: { increment: 1 } },
+        });
+        if (updated.count !== 1) throw conflict('The provider connection changed. Reload before saving.');
+      } else {
+        const created = await tx.projectIntegration.create({ data: { ...data, projectId, providerId: body.providerId, createdById: actorId } });
+        connectionId = created.id;
+      }
+      await tx.integrationAuditEvent.create({
+        data: {
+          connectionId,
+          projectId,
+          providerId: body.providerId,
+          organizationId,
+          principalType: 'session',
+          principalId: actorId,
+          action: 'ai.connection.saved',
+          result: 'success',
+          metadata: { answerModel: body.answerModel },
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+      throw conflict('The provider connection changed. Reload before saving.');
+    throw error;
+  }
+  invalidatePublishedSiteConfig(projectId);
+  return getWorkspaceAi(ctx, projectId);
+};
+
+export const selectWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string, input: WorkspaceAiSelectionBody) => {
+  const { project, organizationId, actorId } = await authorize(ctx, projectId);
+  const body = workspaceAiSelectionBody.parse(input);
+  const previous = selectionSchema.safeParse(project.config);
+  const selectedProvider = body.providerId === 'disabled' && previous.success ? previous.data.search?.aiProvider : body.providerId;
+  const auditProvider = selectedProvider === 'openai' ? 'openai' : 'openrouter';
+  if (body.providerId !== 'disabled') {
+    if (!getQdrantClient()) throw new AppError({ code: 'search:unavailable', message: 'Search infrastructure is not configured.' });
+    if (body.providerId === 'instance') {
+      if (!env.OPENROUTER_API_KEY || (body.answersEnabled && !env.SEARCH_ANSWER_ENABLED)) throw new AppError({ code: 'search:unavailable' });
+    } else {
+      const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
+      if (
+        !connection ||
+        connection.revision !== body.expectedRevision ||
+        connection.status !== 'ACTIVE' ||
+        connection.lastVerificationStatus !== 'HEALTHY'
+      )
+        throw conflict('Verify this provider connection before enabling it.');
+      const config = aiConnectionConfigSchema.safeParse(connection.config);
+      if (!config.success || config.data.embeddingModel !== env.SEARCH_EMBEDDING_MODEL)
+        throw conflict('Verify the current embedding model before enabling it.');
+      readCredential(projectId, body.providerId, connection.credentialEncrypted);
+    }
+  }
+  await prisma.$transaction(async (tx) => {
+    await updateProjectConfigSection(tx, organizationId, projectId, 'search', (current) => ({
+      ...z.record(z.string(), z.unknown()).parse(current ?? {}),
+      aiProvider: body.providerId,
+      aiAnswers: body.providerId !== 'disabled' && body.answersEnabled,
+    }));
+    await tx.integrationAuditEvent.create({
+      data: {
+        projectId,
+        providerId: auditProvider,
+        organizationId,
+        principalType: 'session',
+        principalId: actorId,
+        action: 'ai.selection.updated',
+        result: 'success',
+        metadata: { selectedProvider: body.providerId, answersEnabled: body.providerId !== 'disabled' && body.answersEnabled },
+      },
+    });
+  });
+  invalidatePublishedSiteConfig(project.id);
+  return getWorkspaceAi(ctx, projectId);
+};

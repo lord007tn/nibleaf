@@ -56,6 +56,7 @@ const mocks = vi.hoisted(() => ({
     }
   },
   apiKey: 'embedding-key' as string | undefined,
+  resolveAi: vi.fn(),
   loseDisabledClaim: false,
   accessMode: 'READERS' as 'PUBLIC' | 'WORKSPACE' | 'READERS',
   currentPoints: [] as QdrantIndexedPoint[],
@@ -221,12 +222,12 @@ vi.mock('@nibleaf/search', async () => {
   const hybrid = await import('../../../../packages/search/src/hybrid');
   return {
     ...hybrid,
-    OpenRouterEmbeddingProvider: class {
-      dimensions = 2;
-      embed = mocks.embed;
-    },
   };
 });
+vi.mock('@nibleaf/search/workspace', () => ({
+  resolveWorkspaceAi: mocks.resolveAi,
+  workspaceEmbeddingProvider: () => ({ dimensions: 2, model: 'test-embedding', embed: mocks.embed }),
+}));
 
 import { handleSearchJobs } from './search';
 
@@ -242,6 +243,9 @@ const firstUpsertedPoint = () => {
 
 describe('hybrid search differential indexing jobs', () => {
   beforeEach(() => {
+    mocks.resolveAi.mockImplementation(async () =>
+      mocks.apiKey ? { providerId: 'openrouter', apiKey: mocks.apiKey, embeddingModel: 'test-embedding' } : null,
+    );
     vi.clearAllMocks();
     mocks.apiKey = 'embedding-key';
     mocks.loseDisabledClaim = false;
@@ -386,6 +390,13 @@ describe('hybrid search differential indexing jobs', () => {
     expect(mocks.deleteByFilterAllVersions).toHaveBeenCalledWith({ must: [{ key: 'project_id', match: { value: 'tenant-a' } }] });
     expect(JSON.stringify(mocks.deleteByFilterAllVersions.mock.calls)).not.toContain('tenant-b');
     expect(mocks.embed).not.toHaveBeenCalled();
+  });
+
+  it('does not claim an indexing run when workspace credential lookup fails', async () => {
+    mocks.resolveAi.mockRejectedValueOnce(new Error('database unavailable'));
+    await expect(handleSearchJobs(job('index-deployment'))).rejects.toThrow('database unavailable');
+    expect(mocks.runs).toHaveLength(0);
+    expect(mocks.upsert).not.toHaveBeenCalled();
   });
 
   it('rejects a disabled result when the worker lost its durable run claim', async () => {
