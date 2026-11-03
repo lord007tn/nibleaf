@@ -13,7 +13,7 @@ export const resolveWorkspaceAi = async (projectId: string) => {
   const env = keys();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { config: true } });
   if (!project) return null;
-  const configuration = configurationSchema.safeParse(project.config);
+  const configuration = configurationSchema.safeParse(project.config ?? {});
   if (!configuration.success) return null;
   const selection = configuration.data.search?.aiProvider ?? 'instance';
   if (selection === 'disabled') return null;

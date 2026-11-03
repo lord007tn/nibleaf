@@ -74,8 +74,8 @@ describe('workspace AI credential ownership', () => {
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
   });
 
-  it('preserves the existing instance provider for unmodified workspaces', async () => {
-    db.project.mockResolvedValue({ config: {} });
+  it.each([{}, null])('preserves the instance provider for an unmodified workspace with config %j', async (config) => {
+    db.project.mockResolvedValue({ config });
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toMatchObject({
       providerId: 'openrouter',
       apiKey: 'instance-secret-must-not-be-used',
