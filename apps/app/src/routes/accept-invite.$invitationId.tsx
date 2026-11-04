@@ -7,6 +7,7 @@ import { AuthProviders } from '@/components/auth-providers';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetInvitationInfo } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { AuthLayout } from '@/layouts/auth';
 import { clearPendingInvitation, readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
@@ -23,9 +24,11 @@ export const Route = createFileRoute('/accept-invite/$invitationId')({
 /** Top-level so it resolves whether or not the user is authenticated. */
 function AcceptInvitePage() {
   return (
-    <AuthProviders>
-      <AcceptInviteContent />
-    </AuthProviders>
+    <QueryProvider>
+      <AuthProviders>
+        <AcceptInviteContent />
+      </AuthProviders>
+    </QueryProvider>
   );
 }
 
