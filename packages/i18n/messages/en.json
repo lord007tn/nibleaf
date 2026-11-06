@@ -2855,7 +2855,7 @@
   "analytics_search_enable_action": "Turn on search terms",
   "analytics_search_enable_title": "Turn on search terms?",
   "analytics_search_enable_description": "You'll see what readers type into search, so you can write the articles they can't find.",
-  "analytics_search_enable_retention": "What readers type is kept for {days} days, then deleted.",
+  "analytics_search_enable_retention": "What readers type is deleted automatically after {days} days by default (your server administrator can change this).",
   "analytics_search_enable_threshold": "A term is only shown once at least {count} different visits have searched for it.",
   "analytics_search_enable_redaction": "Email addresses, web addresses and long numbers are removed before anything is stored.",
   "analytics_search_enable_forward": "Only searches made from now on can be shown; earlier ones were never stored.",

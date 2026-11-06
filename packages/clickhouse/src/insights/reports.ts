@@ -63,6 +63,7 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
     topCrawledPages: pages.map((row) => ({ ...row, title: reader.title(row.path) })),
     assistantReferrals: referrals
       .filter((row) => row.current)
+      .sort((left, right) => right.visits - left.visits || left.source.localeCompare(right.source))
       .map((row) => ({
         source: row.source,
         visits: row.visits,

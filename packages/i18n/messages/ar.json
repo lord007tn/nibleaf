@@ -2855,7 +2855,7 @@
   "analytics_search_enable_action": "تفعيل عبارات البحث",
   "analytics_search_enable_title": "تفعيل عبارات البحث؟",
   "analytics_search_enable_description": "سترى ما يكتبه القرّاء في البحث، لتكتب المقالات التي لا يجدونها.",
-  "analytics_search_enable_retention": "تُحفظ العبارات التي يكتبها القرّاء مدة {days} يومًا ثم تُحذف.",
+  "analytics_search_enable_retention": "تُحذف العبارات التي يكتبها القرّاء تلقائيًا بعد {days} يومًا افتراضيًا (يمكن لمسؤول الخادم تغيير هذه المدة).",
   "analytics_search_enable_threshold": "لا تظهر العبارة إلا بعد أن تبحث عنها {count} زيارات مختلفة على الأقل.",
   "analytics_search_enable_redaction": "تُزال عناوين البريد الإلكتروني وعناوين المواقع والأرقام الطويلة قبل تخزين أي شيء.",
   "analytics_search_enable_forward": "لا تظهر إلا عمليات البحث من الآن فصاعدًا؛ فالعمليات السابقة لم تُخزَّن قط.",
