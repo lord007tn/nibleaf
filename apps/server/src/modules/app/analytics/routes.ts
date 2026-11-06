@@ -15,6 +15,12 @@ const analyticsRoutes = {
     description: 'Export content-free analytical events for a project.',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
+  insights: createRouteConfig({
+    guard: [isAuthenticated, requireProjectMember()],
+    tags: ['analytics'],
+    description: 'Docs-owner analytics insights (overview, pages, search, feedback, AI visibility, performance).',
+    responses: { 200: { description: 'ok' }, ...errorResponses },
+  }),
 };
 
 export default analyticsRoutes;

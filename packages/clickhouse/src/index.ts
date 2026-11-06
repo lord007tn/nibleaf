@@ -1,6 +1,7 @@
 export * from './client';
 export * from './events';
 export * from './initialization';
+export * from './insights';
 export * from './keys';
 export * from './migrations';
 export * from './privacy';
