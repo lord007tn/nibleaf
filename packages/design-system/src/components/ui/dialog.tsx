@@ -7,6 +7,20 @@ import { cn } from '../../lib/utils'
 import { Button } from './button'
 import { XIcon } from "lucide-react"
 
+/** Localized labels for the close controls rendered inside dialogs and sheets.
+ *  Mount once near the app root; an explicit `closeLabel` prop still wins. */
+const DialogLabelsContext = React.createContext<{ close?: string }>({})
+
+function DialogLabelsProvider({ close, children }: { close?: string; children: React.ReactNode }) {
+  const value = React.useMemo(() => ({ close }), [close])
+  return <DialogLabelsContext value={value}>{children}</DialogLabelsContext>
+}
+
+function useDialogCloseLabel(closeLabel?: string): string {
+  const labels = React.useContext(DialogLabelsContext)
+  return closeLabel ?? labels.close ?? "Close"
+}
+
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
 }
@@ -43,17 +57,20 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  closeLabel,
   ...props
 }: DialogPrimitive.Popup.Props & {
+  closeLabel?: string
   showCloseButton?: boolean
 }) {
+  const resolvedCloseLabel = useDialogCloseLabel(closeLabel)
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "fixed top-1/2 start-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 gap-6 rounded-xl bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 start-1/2 z-50 grid w-full grid-cols-[minmax(0,1fr)] max-w-[calc(100%-2rem)] -translate-x-1/2 rtl:translate-x-1/2 -translate-y-1/2 gap-6 rounded-xl bg-popover p-6 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-md data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
@@ -72,7 +89,7 @@ function DialogContent({
           >
             <XIcon
             />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{resolvedCloseLabel}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -93,11 +110,14 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({
   className,
   showCloseButton = false,
+  closeLabel,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
+  closeLabel?: string
   showCloseButton?: boolean
 }) {
+  const resolvedCloseLabel = useDialogCloseLabel(closeLabel)
   return (
     <div
       data-slot="dialog-footer"
@@ -110,7 +130,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close render={<Button variant="outline" />}>
-          Close
+          {resolvedCloseLabel}
         </DialogPrimitive.Close>
       )}
     </div>
@@ -150,9 +170,11 @@ export {
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogLabelsProvider,
   DialogOverlay,
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  useDialogCloseLabel,
 }
 

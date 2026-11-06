@@ -9,8 +9,10 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link as LinkIcon, Strikethrough, Unlink } from 'lucide-react';
-import { type ComponentType, useEffect, useState } from 'react';
+import { type ComponentType, lazy, Suspense, useEffect, useState } from 'react';
 import { normalizeLinkUrl } from './link-utils';
+
+const PageLinkPicker = lazy(() => import('./extensions/page-link-picker'));
 
 interface EditorBubbleMenuProps {
   editor: Editor;
@@ -44,6 +46,7 @@ export function LinkEditorPanel({
 }) {
   const t = useT();
   const [draft, setDraft] = useState(initialUrl);
+
   const [invalid, setInvalid] = useState(false);
   // Re-seed when the caret moves to a different link (the prefilled URL changes).
   useEffect(() => {
@@ -73,7 +76,12 @@ export function LinkEditorPanel({
   const iconButton = 'size-7 shrink-0 text-foreground/80';
 
   return (
-    <div className="flex items-center gap-1 p-0.5">
+    <div className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 p-0.5">
+      {invalid ? (
+        <p role="alert" className="w-full text-sm text-destructive">
+          {t('editor.link.invalid')}
+        </p>
+      ) : null}
       <Input
         autoFocus={autoFocus}
         value={draft}
@@ -91,9 +99,9 @@ export function LinkEditorPanel({
             editor.commands.focus();
           }
         }}
-        dir="ltr"
-        placeholder="https://…  /page  #anchor"
-        aria-label={t('editor.format.linkPrompt')}
+        dir="auto"
+        placeholder={t('editor.link.search')}
+        aria-label={t('editor.link.search')}
         aria-invalid={invalid}
         title={invalid ? t('editor.link.invalid') : undefined}
         className="h-7 w-56 bg-background px-2 font-mono text-[12px] placeholder:text-muted-foreground/60 md:text-[12px]"
@@ -125,6 +133,9 @@ export function LinkEditorPanel({
       >
         <ExternalLink className="size-4" />
       </Button>
+      <Suspense fallback={null}>
+        <PageLinkPicker editor={editor} query={draft} onDone={onDone} />
+      </Suspense>
       {editor.isActive('link') ? (
         <Button
           aria-label={t('editor.link.remove')}
@@ -187,7 +198,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
     <BubbleMenu
       editor={editor}
       pluginKey="nibleaf-text-menu"
-      options={{ placement: 'top' }}
+      options={{ placement: 'bottom' }}
       // Show for a text selection (the classic formatting bar) or whenever the
       // caret is inside a link (link inspector). Never inside code blocks —
       // those have their own language menu and marks don't apply there.
@@ -212,7 +223,9 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
         <div className="flex items-center gap-0.5">
           {buttons.map((button) => {
             const Icon = button.icon;
-            const label = t(button.labelKey);
+            const key = button.labelKey === 'editor.format.bold' ? 'B' : button.labelKey === 'editor.format.italic' ? 'I' : null;
+            const modifier = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+            const label = `${t(button.labelKey)}${key ? ` (${modifier}${key})` : ''}`;
             return (
               <Button
                 aria-label={label}

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AuthLayout } from '@/layouts/auth';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
@@ -96,7 +97,7 @@ function VerifyEmailPage() {
     setVerifying(true);
     const result = await authClient.emailOtp.verifyEmail({ email, otp });
     if (result.error) {
-      setError(result.error.message ?? t('auth.verify.invalidCode'));
+      setError(friendlyAuthError(result.error, t, t('auth.verify.invalidCode')));
       setVerifying(false);
       return;
     }
@@ -111,7 +112,8 @@ function VerifyEmailPage() {
         <div className="mx-auto mb-5 grid size-14 place-items-center rounded-full bg-primary/10 text-primary">
           <Mail className="size-6" />
         </div>
-        <h1 className="font-semibold text-2xl tracking-tight">{t('auth.verify.title')}</h1>
+        {/* The layout's subtitle is the page h1; this is its heading level below. */}
+        <h2 className="font-semibold text-2xl tracking-tight">{t('auth.verify.title')}</h2>
         <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
           {verifying ? (
             t('auth.verify.verifying')

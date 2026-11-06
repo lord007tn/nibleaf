@@ -17,10 +17,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { usePendingChanges, usePublish } from '@/hooks/api';
+import { useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
-import { siteHref } from '@/lib/links';
+import { canonicalSiteBase } from '@/lib/site-seo';
 
 interface PublishModalProps {
   project: Project;
@@ -38,11 +38,107 @@ const STATUS_META: Record<PendingChange['status'], { icon: LucideIcon; dot: stri
   removed: { icon: Minus, dot: 'bg-rose-500', chip: 'text-rose-600 dark:text-rose-400', labelKey: 'publish.removed', order: 2 },
 };
 
+type ChangeLine = PendingChange['lines'][number];
+export type ReviewRow = { kind: 'line'; line: ChangeLine } | { kind: 'gap'; key: string };
+
+/** The changed lines of a page with a few unchanged lines around each change.
+ *  Longer unchanged stretches collapse into a gap, so a one-word fix in a long
+ *  article is on screen at once instead of somewhere in the whole page. */
+export const reviewRows = (lines: readonly ChangeLine[], context = 3): ReviewRow[] => {
+  const keep = lines.map(() => false);
+  lines.forEach((line, index) => {
+    if (line.type === 'unchanged') return;
+    for (let near = Math.max(0, index - context); near <= Math.min(lines.length - 1, index + context); near++) keep[near] = true;
+  });
+  const rows: ReviewRow[] = [];
+  let skipped = false;
+  lines.forEach((line, index) => {
+    if (!keep[index]) {
+      skipped = true;
+      return;
+    }
+    if (skipped) rows.push({ kind: 'gap', key: `gap-${index}` });
+    skipped = false;
+    rows.push({ kind: 'line', line });
+  });
+  if (skipped) rows.push({ kind: 'gap', key: 'gap-end' });
+  return rows;
+};
+
+const LINE_META = {
+  added: {
+    marker: '+',
+    labelKey: 'publish.added',
+    row: 'border-emerald-500 bg-emerald-500/10 text-foreground',
+    mark: 'text-emerald-700 dark:text-emerald-400',
+  },
+  removed: {
+    marker: '−',
+    labelKey: 'publish.removed',
+    row: 'border-rose-500 bg-rose-500/10 text-foreground',
+    mark: 'text-rose-700 dark:text-rose-400',
+  },
+} as const satisfies Record<'added' | 'removed', { marker: string; labelKey: MessageKey; row: string; mark: string }>;
+
+/** What changed in one page's text, line by line. Theme tokens only (readable in
+ *  light and dark), each line takes its own direction (an Arabic sentence in an
+ *  English page reads right to left and the reverse), and an added/removed line
+ *  says so in words for screen readers, not only by colour and sign. */
+function ChangeLines({ change }: { change: PendingChange }) {
+  const t = useT();
+  const hasTextChanges = change.lines.some((line) => line.type !== 'unchanged');
+  return (
+    <div className="overflow-hidden rounded-lg border border-border bg-background text-[13px] leading-6">
+      {hasTextChanges ? (
+        reviewRows(change.lines).map((row) => {
+          if (row.kind === 'gap') {
+            return (
+              <div aria-hidden className="border-border border-y bg-muted/60 text-center text-muted-foreground leading-5" key={row.key}>
+                ⋯
+              </div>
+            );
+          }
+          const { line } = row;
+          const meta = line.type === 'unchanged' ? null : LINE_META[line.type];
+          return (
+            <div
+              className={cn(
+                'grid grid-cols-[2.75rem_1.5rem_minmax(0,1fr)] border-s-2 pe-3',
+                meta ? meta.row : 'border-transparent text-muted-foreground',
+              )}
+              key={`${line.type}-${line.oldLine ?? 'x'}-${line.newLine ?? 'x'}`}
+            >
+              <span aria-hidden className="select-none pe-2 text-end font-mono text-[11.5px] text-muted-foreground/70 tabular-nums">
+                {line.newLine ?? line.oldLine ?? ''}
+              </span>
+              <span className={cn('select-none text-center font-mono', meta?.mark)}>
+                {meta ? (
+                  <>
+                    <span aria-hidden>{meta.marker}</span>
+                    <span className="sr-only">{t(meta.labelKey)}</span>
+                  </>
+                ) : null}
+              </span>
+              <span className="min-w-0 whitespace-pre-wrap break-words" dir="auto">
+                {line.text || ' '}
+              </span>
+            </div>
+          );
+        })
+      ) : (
+        <p className="px-3 py-8 text-center text-muted-foreground text-sm">{t('publish.noLineDiff')}</p>
+      )}
+      {change.truncated ? <p className="border-border border-t px-3 py-2 text-muted-foreground text-xs">{t('publish.diffTruncated')}</p> : null}
+    </div>
+  );
+}
+
 /** Confirmation dialog before publishing — shows a Mintlify-style diff of which
  *  pages will change since the last deploy, plus an optional release message. */
 export function PublishModal({ project, open, onOpenChange, onPublished, beforePublish }: PublishModalProps) {
   const t = useT();
   const publish = usePublish(project.id);
+  const domains = useDomains(project.id);
   // Only compute the diff while the dialog is open (it re-reads on each open).
   const {
     data: pending,
@@ -139,7 +235,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
           onOpenChange(false);
           onPublished(deployment, firstPublishAttribution);
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
+        onError: () => toast.error(t('publish.failed')),
         onSettled: () => {
           if (!isCurrentAttempt()) return;
           publishInFlight.current = false;
@@ -152,6 +248,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const count = sorted.length;
   const redirectIssues = pending?.redirectIssues ?? [];
   const checkingChanges = loadingChanges || refreshingChanges;
+  // An empty article diff is not "nothing to publish": the preflight only compares
+  // pages, while redirects and language settings also ship with a publish.
   const publishBlocked = preparing || checkingChanges || preflightFailed || redirectIssues.length > 0;
   const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
@@ -223,8 +321,12 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                             <Icon className="size-3" strokeWidth={2.5} />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{change.title || change.path}</span>
-                            <span className="block truncate font-mono text-[11px]">/{change.path}</span>
+                            <span className="block truncate font-medium">
+                              <bdi>{change.title || change.path}</bdi>
+                            </span>
+                            <span className="block truncate text-start font-mono text-[11px]" dir="ltr">
+                              /{change.path}
+                            </span>
                           </span>
                         </button>
                       </li>
@@ -233,49 +335,27 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                 </ul>
               </ScrollArea>
             </aside>
-            <section className="min-w-0 bg-[#0b0b0b] text-[#ededed]">
-              <div className="border-white/10 border-b px-7 py-5">
-                <div className="flex items-center gap-2 text-white/60 text-xs">
-                  <FileText className="size-3.5" />
-                  <span className="font-mono">/{selectedChange.path}</span>
-                  <span className={cn('ms-auto font-medium', STATUS_META[selectedChange.status].chip)}>
-                    {t(STATUS_META[selectedChange.status].labelKey)}
+            <section className="flex min-w-0 flex-col bg-muted/30 text-foreground">
+              <div className="border-border border-b px-6 py-5">
+                <p className={cn('text-sm font-medium', STATUS_META[selectedChange.status].chip)}>{t(STATUS_META[selectedChange.status].labelKey)}</p>
+                <h2 className="mt-2 break-words text-2xl font-semibold" dir="auto">
+                  {selectedChange.title || selectedChange.path}
+                </h2>
+                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-sm">
+                  <span className="break-all" dir="ltr">
+                    /{selectedChange.path}
                   </span>
-                </div>
-                <h2 className="mt-2 max-w-2xl font-semibold text-2xl tracking-tight">{selectedChange.title || selectedChange.path}</h2>
-                <div className="mt-2 flex gap-3 text-xs">
-                  <span className="text-emerald-300">+{selectedChange.additions}</span>
-                  <span className="text-rose-300">-{selectedChange.deletions}</span>
-                  {selectedChange.fields.length > 0 ? <span className="text-white/45">{selectedChange.fields.join(', ')}</span> : null}
-                </div>
+                  {selectedChange.additions > 0 || selectedChange.deletions > 0 ? (
+                    <span className="flex gap-2 font-mono text-xs tabular-nums" dir="ltr">
+                      <span className="text-emerald-700 dark:text-emerald-400">+{selectedChange.additions}</span>
+                      <span className="text-rose-700 dark:text-rose-400">−{selectedChange.deletions}</span>
+                    </span>
+                  ) : null}
+                </p>
               </div>
-              <ScrollArea className="h-[40dvh] sm:h-[430px]">
-                <div className="px-7 py-6">
-                  <div className="overflow-hidden rounded-md border border-white/10 bg-black/25 font-mono text-[12.5px] leading-6">
-                    {selectedChange.lines.length > 0 ? (
-                      selectedChange.lines.map((line) => (
-                        <div
-                          key={`${line.type}-${line.oldLine ?? 'x'}-${line.newLine ?? 'x'}-${line.text}`}
-                          className={cn(
-                            'grid grid-cols-[48px_1fr] border-s-2 px-3',
-                            line.type === 'added' && 'border-emerald-300 bg-emerald-400/15 text-emerald-50',
-                            line.type === 'removed' && 'border-rose-300 bg-rose-400/15 text-rose-50',
-                            line.type === 'unchanged' && 'border-transparent text-white/55',
-                          )}
-                        >
-                          <span className="select-none text-white/30">{line.newLine ?? line.oldLine ?? ''}</span>
-                          <span className={cn('whitespace-pre-wrap break-words', line.type === 'removed' && 'line-through decoration-rose-200/70')}>
-                            {line.text || ' '}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-3 py-8 text-center text-white/45">{t('publish.noLineDiff')}</div>
-                    )}
-                    {selectedChange.truncated ? (
-                      <div className="border-white/10 border-t px-3 py-2 text-white/45">{t('publish.diffTruncated')}</div>
-                    ) : null}
-                  </div>
+              <ScrollArea className="h-[40dvh] sm:h-[400px]">
+                <div className="p-4 sm:p-6">
+                  <ChangeLines change={selectedChange} />
                 </div>
               </ScrollArea>
             </section>
@@ -286,7 +366,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               <NibleafMark className="size-9 shrink-0" />
               <div className="min-w-0 leading-tight">
                 <div className="truncate font-semibold text-[13.5px]">{project.name}</div>
-                <div className="truncate font-mono text-[12.5px] text-muted-foreground">{siteHref(project.id)}</div>
+                {/* A web address reads left to right in every language (otherwise Arabic
+                    shows "…/docs.example.com" with the scheme clipped). */}
+                <div className="truncate text-start font-mono text-[12.5px] text-muted-foreground" dir="ltr">
+                  {canonicalSiteBase(project.id, {
+                    slug: project.slug,
+                    primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
+                  })}
+                </div>
               </div>
             </div>
 
@@ -359,7 +446,9 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                             >
                               {change.title || change.path}
                             </span>
-                            <span className="block truncate font-mono text-[11px] text-muted-foreground">/{change.path}</span>
+                            <span className="block truncate text-start font-mono text-[11px] text-muted-foreground" dir="ltr">
+                              /{change.path}
+                            </span>
                           </span>
                           {multiLang && change.languageCode ? (
                             <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground uppercase">

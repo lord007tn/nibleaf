@@ -105,11 +105,32 @@ describe('required auth email delivery feedback', () => {
     expect(container.querySelector('[data-input-otp]')).toBeNull();
   });
 
-  it('retains an unrelated server error instead of classifying it as a delivery outage', async () => {
+  it('shows a localized rate-limit message instead of the English server text', async () => {
     mocks.send.mockResolvedValue({ error: { code: 'TOO_MANY_REQUESTS', message: 'Please wait before requesting another code.' } });
     await render(signIn);
     await submit();
-    expect(container.textContent).toContain('Please wait before requesting another code.');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('محاولات كثيرة جدًا. انتظر دقيقة ثم حاول مجددًا.');
+    expect(container.textContent).not.toContain('Please wait before requesting another code.');
+  });
+
+  it('tells a suspended account to contact support instead of calling a valid code invalid', async () => {
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.verify.mockResolvedValue({
+      error: { status: 403, message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.' },
+    });
+    await render(signIn);
+    await submit();
+    await enter('[data-input-otp]', '123456');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('تم إيقاف هذا الحساب. تواصل مع support@nibleaf.com إن كنت تعتقد أن ذلك خطأ.');
+  });
+
+  it('does not call the code invalid when the request never reached the server', async () => {
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.verify.mockRejectedValue(new TypeError('Failed to fetch'));
+    await render(signIn);
+    await submit();
+    await enter('[data-input-otp]', '123456');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('حدث خطأ ما. تحقّق من اتصالك ثم حاول مجددًا.');
   });
 
   it('uses the existing English translation when the interface is English', async () => {

@@ -9,6 +9,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfigUpdate } from '@nibleaf/validators';
+import { useBlocker } from '@tanstack/react-router';
 import {
   cloneElement,
   createContext,
@@ -19,7 +20,9 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
+  useState,
 } from 'react';
 import { toast } from 'sonner';
 
@@ -33,6 +36,48 @@ const ConfigDirtyContext = createContext<((source: string, dirty: boolean) => vo
 
 export function ConfigDirtyProvider({ report, children }: { report: (source: string, dirty: boolean) => void; children: ReactNode }) {
   return <ConfigDirtyContext.Provider value={report}>{children}</ConfigDirtyContext.Provider>;
+}
+
+/** Aggregate independently mounted forms without duplicating their dirty policy. */
+export function useDirtySources() {
+  const [sources, setSources] = useState<Set<string>>(() => new Set());
+  const currentSources = useRef(sources);
+  const report = useCallback((source: string, dirty: boolean) => {
+    const current = currentSources.current;
+    if (current.has(source) === dirty) return;
+    const next = new Set(current);
+    if (dirty) next.add(source);
+    else next.delete(source);
+    currentSources.current = next;
+    setSources(next);
+  }, []);
+  // The browser's installed handler must see reports before React's next effect.
+  const isDirty = useCallback(() => currentSources.current.size > 0, []);
+  return { sources, report, isDirty };
+}
+
+export function useConfirmSettingsDiscard() {
+  const t = useT();
+  const confirm = useConfirm();
+  return () =>
+    confirm({
+      title: t('settings.unsaved.title'),
+      description: t('settings.unsaved.description'),
+      cancelLabel: t('settings.unsaved.keep'),
+      confirmLabel: t('settings.chrome.scope.discardConfirm'),
+      destructive: true,
+    });
+}
+
+/** Protect explicit-save forms, including search-param section navigation. */
+export function useSettingsDirtyGuard() {
+  const confirmDiscard = useConfirmSettingsDiscard();
+  const { isDirty, report } = useDirtySources();
+  useBlocker({
+    shouldBlockFn: async () => isDirty() && !(await confirmDiscard()),
+    enableBeforeUnload: isDirty,
+  });
+  return report;
 }
 
 /**
@@ -308,7 +353,8 @@ export function DirtyStateReporter({
   // Explicit subscribed values keep changes visible to the React Compiler.
   // Reading through a stable mutable form object can memoize stale dirtiness.
   const changed = values !== undefined ? JSON.stringify(values) !== JSON.stringify(defaults) || extraDirty : dirty;
-  useEffect(() => {
+  // flushSync resets must update the route guard before a successful email reload.
+  useLayoutEffect(() => {
     onDirtyChange?.(changed);
     report?.(source, changed);
     return () => {
@@ -389,3 +435,18 @@ export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
  *  background and read as wells instead of border-on-border frames. */
 export const FIELD_COMPACT = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background text-[13px]';
 export const FIELD_COMPACT_MONO = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background font-mono text-[13px]';
+
+export function useDraftRowUndo() {
+  const t = useT();
+  const toastId = useRef<string | number | undefined>(undefined);
+  const clearUndo = useCallback(() => {
+    if (toastId.current !== undefined) toast.dismiss(toastId.current);
+    toastId.current = undefined;
+  }, []);
+  useEffect(() => clearUndo, [clearUndo]);
+  const offerUndo = (restore: () => void) => {
+    clearUndo();
+    toastId.current = toast(t('publish.removed'), { action: { label: t('settings.theme.undo'), onClick: restore } });
+  };
+  return { offerUndo, clearUndo };
+}

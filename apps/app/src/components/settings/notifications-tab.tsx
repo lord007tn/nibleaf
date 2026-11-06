@@ -4,6 +4,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { Bell } from 'lucide-react';
 import { useId } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/services/auth-client';
 import { SettingsSection } from './section';
@@ -108,7 +109,8 @@ const GROUPS: Array<{ titleKey: MessageKey; items: NotifItem[] }> = [
 
 export function NotificationsTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings(projectId);
+  const query = useWorkspaceSettings(projectId);
+  const { data } = query;
   const update = useUpdateWorkspaceSettings(projectId);
   const { data: session } = useSession();
   const stored = (data?.notifications ?? {}) as Record<string, boolean>;
@@ -120,13 +122,18 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
     update.mutate(
       { notifications: next },
       {
+        onSuccess: () => toast.success(t('common.saved')),
         onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.notifications.toast.updateError')),
       },
     );
   };
 
+  if (query.isError && !data) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+  if (!data) return <p role="status">{t('common.loading')}</p>;
+
   return (
     <div className="flex flex-col gap-6">
+      {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <p className="text-muted-foreground text-sm">
         {t('settings.notifications.introBefore')}{' '}
         <span className="font-medium text-foreground" dir={session?.user?.email ? 'ltr' : undefined}>
@@ -144,7 +151,7 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
             {group.items.map((item) => (
               <NotificationPreference
                 checked={isOn(item.id)}
-                disabled={update.isPending}
+                disabled={update.isPending || query.isError}
                 item={item}
                 key={item.id}
                 onCheckedChange={() => toggle(item.id)}

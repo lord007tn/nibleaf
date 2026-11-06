@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
@@ -7,7 +8,7 @@ import { Check, Loader2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
-import { useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
+import { friendlyErrorMessage, useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { useSession } from '@/services/auth-client';
 
@@ -66,6 +67,7 @@ export function CommentsPanel({
   commentMode,
 }: CommentsPanelProps) {
   const t = useT();
+  const confirm = useConfirm();
   const { relativeTime } = useFormatters();
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
@@ -92,7 +94,7 @@ export function CommentsPanel({
             onClearPending?.();
           }
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.comments.postError')),
+        onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.comments.postError')),
       },
     );
   };
@@ -208,11 +210,18 @@ export function CommentsPanel({
                       aria-label={t('editor.comments.deleteAria')}
                       className="ms-auto size-6 text-muted-foreground hover:text-destructive"
                       disabled={deleteComment.isPending}
-                      onClick={() =>
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: t('editor.comments.deleteAria'),
+                          description: t('editor.comments.deleteConfirm'),
+                          confirmLabel: t('common.delete'),
+                          destructive: true,
+                        });
+                        if (!ok) return;
                         deleteComment.mutate(comment.id, {
-                          onError: (err) => toast.error(err instanceof Error ? err.message : t('editor.comments.deleteError')),
-                        })
-                      }
+                          onError: (err) => toast.error(friendlyErrorMessage(t, err, 'editor.comments.deleteError')),
+                        });
+                      }}
                       size="icon-xs"
                       variant="ghost"
                     >

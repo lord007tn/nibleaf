@@ -5,10 +5,12 @@ import { describe, expect, it } from 'vitest';
 import {
   createSlashItems,
   nextSlashSelection,
+  rankSlashItems,
   resolveSlashAnchor,
   scaffoldLocaleOf,
   shouldHandleSlashTrigger,
   slashPageLocale,
+  slashSection,
   slashTriggerOffset,
 } from './extensions/slash-command';
 
@@ -168,5 +170,31 @@ describe('slash command scaffolds', () => {
       expect(insertedBy('editor.slash.icon.title', locale)).toMatchObject({ attrs: { icon: 'star' } });
       expect(insertedBy('editor.slash.codeGroup.title', locale)).toMatchObject({ content: [{ attrs: { language: 'bash' } }] });
     }
+  });
+});
+
+describe('writer block search', () => {
+  it('lists everyday blocks first, then images and tables, with each section shown once', () => {
+    const items = createSlashItems();
+    expect(items.slice(0, 8).map((item) => item.titleKey)).toEqual([
+      'editor.slash.text.title',
+      'editor.slash.h1.title',
+      'editor.slash.h2.title',
+      'editor.slash.h3.title',
+      'editor.slash.bulletList.title',
+      'editor.slash.numberedList.title',
+      'editor.slash.image.title',
+      'editor.slash.table.title',
+    ]);
+    const sections = items.map(slashSection).filter((section, index, all) => index === 0 || all[index - 1] !== section);
+    expect(new Set(sections).size).toBe(sections.length);
+  });
+  it('ranks exact labels above description matches in English and Arabic', () => {
+    const items = createSlashItems();
+    expect(rankSlashItems(items, 'warning')[0]?.titleKey).toBe('editor.slash.warning.title');
+    expect(rankSlashItems(items, 'image')[0]?.titleKey).toBe('editor.slash.image.title');
+    expect(rankSlashItems(items, translateFn('editor.slash.warning.title', undefined, 'ar'), 'ar')[0]?.titleKey).toBe('editor.slash.warning.title');
+    expect(rankSlashItems(items, 'upl')[0]?.titleKey).toBe('editor.slash.image.title');
+    expect(rankSlashItems(items, translateFn('editor.slash.image.title', undefined, 'de'), 'de')[0]?.titleKey).toBe('editor.slash.image.title');
   });
 });

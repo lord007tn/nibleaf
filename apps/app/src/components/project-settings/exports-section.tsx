@@ -26,7 +26,7 @@ import {
 } from '@/hooks/api/exports';
 import { formatExportFileSize } from '@/lib/export-file-size';
 import { localeTag } from '@/lib/format';
-import { SectionHeader } from './shared';
+import { DirtyStateReporter, SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
   MARKDOWN: 'settings.exports.workflow.format.markdown',
@@ -239,6 +239,10 @@ function StatusBadge({ status }: { status: ExportStatus }) {
 function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
   const { t } = useLocale();
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const timezoneOptions = [...new Set(['UTC', timezone, ...Intl.supportedValuesOf('timeZone')])].map((value) => ({
+    value,
+    label: value.replaceAll('_', ' '),
+  }));
   const [name, setName] = useState(() => t('settings.exports.workflow.defaultScheduleName'));
   const [cadence, setCadence] = useState<ExportSchedule['cadence']>('DAILY');
   const [time, setTime] = useState('02:00');
@@ -291,62 +295,140 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
     );
   };
   return (
-    <div className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2">
-      <Input aria-label={t('settings.exports.workflow.scheduleName')} onChange={(event) => setName(event.target.value)} value={name} />
-      <Input aria-label={t('settings.exports.workflow.timezone')} dir="ltr" onChange={(event) => setTimezone(event.target.value)} value={timezone} />
-      <Select items={cadenceOptions} onValueChange={(next) => setCadence(next ?? 'DAILY')} value={cadence}>
-        <SelectTrigger aria-label={t('settings.exports.workflow.schedules')} className="w-full">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {cadenceOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Input aria-label={t('settings.exports.workflow.localTime')} onChange={(event) => setTime(event.target.value)} type="time" value={time} />
-      {cadence === 'WEEKLY' ? (
-        <Select items={weekdayOptions} onValueChange={(next) => setWeekday(next ?? 1)} value={weekday}>
-          <SelectTrigger aria-label={t('settings.exports.workflow.weekday')} className="w-full">
+    <form
+      className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        createSchedule();
+      }}
+    >
+      <DirtyStateReporter
+        dirty={
+          name !== t('settings.exports.workflow.defaultScheduleName') ||
+          timezone !== (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') ||
+          cadence !== 'DAILY' ||
+          time !== '02:00' ||
+          weekday !== 1 ||
+          monthday !== 1 ||
+          retentionCount !== 12 ||
+          retentionDays !== 90 ||
+          scheduleFormats.join(',') !== 'MARKDOWN,PDF,STATIC_HTML'
+        }
+      />
+      <label htmlFor="schedule-scheduleName" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.scheduleName')}</span>
+        <Input
+          id="schedule-scheduleName"
+          aria-label={t('settings.exports.workflow.scheduleName')}
+          onChange={(event) => setName(event.target.value)}
+          value={name}
+        />
+      </label>
+      <label htmlFor="schedule-timezone" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.timezone')}</span>
+        <Select
+          items={timezoneOptions}
+          value={timezone}
+          onValueChange={(next) => {
+            if (next) setTimezone(next);
+          }}
+        >
+          <SelectTrigger id="schedule-timezone" className="w-full" dir="ltr">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {weekdayOptions.map((option) => (
+            {timezoneOptions.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+      </label>
+      <label htmlFor="schedule-schedules" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.schedules')}</span>
+        <Select items={cadenceOptions} onValueChange={(next) => setCadence(next ?? 'DAILY')} value={cadence}>
+          <SelectTrigger id="schedule-schedules" aria-label={t('settings.exports.workflow.schedules')} className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {cadenceOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </label>
+      <label htmlFor="schedule-localTime" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.localTime')}</span>
+        <Input
+          id="schedule-localTime"
+          aria-label={t('settings.exports.workflow.localTime')}
+          onChange={(event) => setTime(event.target.value)}
+          required
+          type="time"
+          value={time}
+        />
+      </label>
+      {cadence === 'WEEKLY' ? (
+        <label htmlFor="schedule-weekday" className="grid gap-1.5 text-sm">
+          <span>{t('settings.exports.workflow.weekday')}</span>
+          <Select items={weekdayOptions} onValueChange={(next) => setWeekday(next ?? 1)} value={weekday}>
+            <SelectTrigger id="schedule-weekday" aria-label={t('settings.exports.workflow.weekday')} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {weekdayOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
       ) : null}
       {cadence === 'MONTHLY' ? (
-        <Input
-          aria-label={t('settings.exports.workflow.monthDay')}
-          max={31}
-          min={1}
-          onChange={(event) => setMonthday(Number(event.target.value))}
-          type="number"
-          value={monthday}
-        />
+        <label htmlFor="schedule-monthDay" className="grid gap-1.5 text-sm">
+          <span>{t('settings.exports.workflow.monthDay')}</span>
+          <Input
+            id="schedule-monthDay"
+            aria-label={t('settings.exports.workflow.monthDay')}
+            max={31}
+            min={1}
+            onChange={(event) => setMonthday(Number(event.target.value))}
+            required
+            type="number"
+            value={monthday}
+          />
+        </label>
       ) : null}
-      <Input
-        aria-label={t('settings.exports.workflow.retainRuns')}
-        max={100}
-        min={1}
-        onChange={(event) => setRetentionCount(Number(event.target.value))}
-        type="number"
-        value={retentionCount}
-      />
-      <Input
-        aria-label={t('settings.exports.workflow.retentionDays')}
-        max={3650}
-        min={1}
-        onChange={(event) => setRetentionDays(Number(event.target.value))}
-        type="number"
-        value={retentionDays}
-      />
+      <label htmlFor="schedule-retainRuns" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.retainRuns')}</span>
+        <Input
+          id="schedule-retainRuns"
+          aria-label={t('settings.exports.workflow.retainRuns')}
+          max={100}
+          min={1}
+          onChange={(event) => setRetentionCount(Number(event.target.value))}
+          required
+          type="number"
+          value={retentionCount}
+        />
+      </label>
+      <label htmlFor="schedule-retentionDays" className="grid gap-1.5 text-sm">
+        <span>{t('settings.exports.workflow.retentionDays')}</span>
+        <Input
+          id="schedule-retentionDays"
+          aria-label={t('settings.exports.workflow.retentionDays')}
+          max={3650}
+          min={1}
+          onChange={(event) => setRetentionDays(Number(event.target.value))}
+          required
+          type="number"
+          value={retentionDays}
+        />
+      </label>
       <div className="flex flex-wrap gap-2 sm:col-span-2">
         {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
           <div className="flex items-center gap-1.5 text-xs" key={format}>
@@ -363,11 +445,11 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         ))}
       </div>
       <div className="flex items-center justify-end sm:col-span-2">
-        <Button disabled={!name.trim() || !timezone.trim() || create.isPending} onClick={createSchedule} size="sm">
+        <Button disabled={!name.trim() || !timezone.trim() || create.isPending} type="submit" size="sm">
           {t('settings.exports.workflow.createSchedule')}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }
 

@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
 import {
   Dialog,
   DialogClose,
@@ -16,12 +17,12 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { slugify } from '@nibleaf/shared/utils';
-import { CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck } from 'lucide-react';
+import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
+import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, TriangleAlert } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
-import { useUpdatePage } from '@/hooks/api';
+import { friendlyErrorMessage, useUpdatePage } from '@/hooks/api';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -42,14 +43,18 @@ export function PageSettingsDialog({
   page,
   open,
   onOpenChange,
+  published = false,
 }: {
   projectId: string;
   page: PageNode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The page is live for readers, so changing its address breaks old links. */
+  published?: boolean;
 }) {
   const t = useT();
   const update = useUpdatePage(projectId);
+  const isGroup = page.kind === 'GROUP';
 
   // General
   const [title, setTitle] = useState(page.title);
@@ -176,7 +181,7 @@ export function PageSettingsDialog({
           toast.success(t('editor.pageSettings.saved'));
           onOpenChange(false);
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.pageSettings.saveError')),
+        onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.pageSettings.saveError')),
       },
     );
   };
@@ -189,7 +194,7 @@ export function PageSettingsDialog({
           {/* Left settings sidebar */}
           <aside className="flex w-full shrink-0 flex-col border-border border-b bg-muted/30 p-2.5 sm:w-48 sm:border-e sm:border-b-0">
             <DialogHeader className="px-2 pt-1.5 pb-3">
-              <DialogTitle className="text-start text-base">{t('editor.pageSettings.title')}</DialogTitle>
+              <DialogTitle className="text-start text-base">{isGroup ? t('editor.groupSettings') : t('editor.pageSettings.title')}</DialogTitle>
             </DialogHeader>
             <nav className="flex gap-0.5 overflow-x-auto sm:flex-col">
               {PAGE_SETTINGS_SECTIONS.map((item) => {
@@ -225,7 +230,7 @@ export function PageSettingsDialog({
                         const nextTitle = e.target.value;
                         setTitle(nextTitle);
                         if (!slugTouched && PLACEHOLDER_SLUG_RE.test(slug)) {
-                          setSlug(slugify(nextTitle));
+                          setSlug(slugifyUnicode(nextTitle));
                         }
                       }}
                       placeholder={page.title}
@@ -234,6 +239,7 @@ export function PageSettingsDialog({
                   <Field label={t('editor.pageSettings.slug')} hint={t('editor.pageSettings.slugHint')} htmlFor="page-slug">
                     <Input
                       id="page-slug"
+                      dir="auto"
                       value={slug}
                       onChange={(e) => {
                         setSlugTouched(true);
@@ -241,37 +247,18 @@ export function PageSettingsDialog({
                       }}
                       placeholder="getting-started"
                     />
-                  </Field>
-                  <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
-                    <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
-                  </Field>
-                  <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
-                    <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
-                  </Field>
-                  <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
-                    <Input id="page-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Getting started, Guide" />
-                  </Field>
-                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
-                    <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
-                      <Input id="page-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Getting started" />
-                    </Field>
-                    <Field label={t('editor.pageSettings.categoryOrder')} htmlFor="page-category-order">
-                      <Input
-                        id="page-category-order"
-                        type="number"
-                        min={0}
-                        max={999}
-                        value={categoryOrder}
-                        onChange={(e) => setCategoryOrder(e.target.value)}
-                        placeholder="0"
-                      />
-                    </Field>
-                  </div>
-                  <Field label={t('editor.pageSettings.categoryIcon')} hint={t('editor.pageSettings.categoryIconHint')} htmlFor="page-category-icon">
-                    <Input id="page-category-icon" value={categoryIcon} onChange={(e) => setCategoryIcon(e.target.value)} placeholder="rocket" />
-                  </Field>
-                  <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
-                    <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />
+                    <p className="text-start text-muted-foreground text-xs">
+                      {t('editor.pageSettings.addressPreview')} {/* An address reads left to right even in an Arabic interface. */}
+                      <bdi dir="ltr" className="break-all font-mono text-foreground">
+                        {pageAddressPreview(page, slug, title)}
+                      </bdi>
+                    </p>
+                    {published && slug.trim() !== page.slug ? (
+                      <p className="flex items-start gap-1.5 text-warning text-xs" role="status">
+                        <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+                        {t('editor.pageSettings.slugChangeWarning')}
+                      </p>
+                    ) : null}
                   </Field>
                   <Field label={t('editor.pageSettings.description')} htmlFor="page-desc">
                     <Textarea
@@ -289,6 +276,50 @@ export function PageSettingsDialog({
                     checked={hidden}
                     onCheckedChange={setHidden}
                   />
+                  {/* Rarely needed fields stay out of the way until asked for. */}
+                  <Collapsible className="border-border border-t pt-3" defaultOpen={hasMoreOptions(page)}>
+                    <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-1.5 rounded-sm py-1 text-start font-medium text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50">
+                      <ChevronRight aria-hidden className="size-4 transition-transform group-data-[panel-open]:rotate-90 rtl:-scale-x-100" />
+                      {t('editor.pageSettings.more')}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="flex flex-col gap-4 pt-3">
+                      <Field label={t('editor.pageSettings.sidebarTitle')} hint={t('editor.pageSettings.sidebarTitleHint')} htmlFor="page-sidebar">
+                        <Input id="page-sidebar" value={sidebarTitle} onChange={(e) => setSidebarTitle(e.target.value)} placeholder={page.title} />
+                      </Field>
+                      <Field label={t('editor.pageSettings.tag')} hint={t('editor.pageSettings.tagHint')} htmlFor="page-tag">
+                        <Input id="page-tag" value={tag} onChange={(e) => setTag(e.target.value)} placeholder="New" maxLength={20} />
+                      </Field>
+                      <Field label={t('editor.pageSettings.tags')} hint={t('editor.pageSettings.tagsHint')} htmlFor="page-tags">
+                        <Input id="page-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Getting started, Guide" />
+                      </Field>
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+                        <Field label={t('editor.pageSettings.category')} hint={t('editor.pageSettings.categoryHint')} htmlFor="page-category">
+                          <Input id="page-category" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Getting started" />
+                        </Field>
+                        <Field label={t('editor.pageSettings.categoryOrder')} htmlFor="page-category-order">
+                          <Input
+                            id="page-category-order"
+                            type="number"
+                            min={0}
+                            max={999}
+                            value={categoryOrder}
+                            onChange={(e) => setCategoryOrder(e.target.value)}
+                            placeholder="0"
+                          />
+                        </Field>
+                      </div>
+                      <Field
+                        label={t('editor.pageSettings.categoryIcon')}
+                        hint={t('editor.pageSettings.categoryIconHint')}
+                        htmlFor="page-category-icon"
+                      >
+                        <Input id="page-category-icon" value={categoryIcon} onChange={(e) => setCategoryIcon(e.target.value)} placeholder="rocket" />
+                      </Field>
+                      <Field label={t('editor.pageSettings.icon')} htmlFor="page-icon">
+                        <Input id="page-icon" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="rocket" />
+                      </Field>
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               ) : null}
 
@@ -377,6 +408,27 @@ export function PageSettingsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Open "More options" straight away when the page already uses one of them. */
+function hasMoreOptions(page: PageNode): boolean {
+  const config = page.config;
+  return Boolean(
+    page.icon ||
+      config?.sidebarTitle ||
+      config?.tag ||
+      config?.tags?.length ||
+      config?.category ||
+      config?.categoryIcon ||
+      config?.categoryOrder !== undefined,
+  );
+}
+
+/** The page's address on the published site, as it will be after saving. */
+function pageAddressPreview(page: PageNode, slug: string, title: string): string {
+  const segment = slugifyUnicode(slug.trim() || title.trim()) || page.slug;
+  const parentPath = page.path.endsWith(page.slug) ? page.path.slice(0, page.path.length - page.slug.length).replace(/\/$/, '') : '';
+  return `/${joinPath(parentPath || null, segment)}`;
 }
 
 function Field({ label, hint, htmlFor, children }: { label: string; hint?: string; htmlFor: string; children: React.ReactNode }) {

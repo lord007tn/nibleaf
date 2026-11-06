@@ -1,17 +1,20 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { ChevronDown, Eye, FileText } from 'lucide-react';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { ArrowLeft, ChevronDown, Eye, FileText } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
+import { publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { Markdown } from '@/components/markdown';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
 import type { PageNode } from '@/hooks/api/types';
+import { PublishControl } from '@/layouts/project';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
@@ -97,7 +100,7 @@ function ProjectPreview() {
 
   if (!previewEnabled) {
     return (
-      <div className="mx-auto max-w-2xl px-8 py-12">
+      <div className="mx-auto max-w-2xl px-8 py-12 outline-none" id="main-content" tabIndex={-1}>
         <div className="mb-3 flex items-center gap-2 font-semibold text-lg">
           <Eye className="size-5 text-muted-foreground" /> {t('preview.title')}
         </div>
@@ -210,7 +213,36 @@ function ProjectPreview() {
           </>
         }
         content={
-          <main className="min-h-0 flex-1 overflow-y-auto bg-background" data-theme-region="preview-main">
+          // The site shell (SidebarInset) is already the page's <main>; this is the
+          // skip target, past the preview's own page list.
+          <div className="min-h-0 flex-1 overflow-y-auto bg-background outline-none" data-theme-region="preview-main" id="main-content" tabIndex={-1}>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b p-3">
+              {/* Back to the page being previewed, not the first page of the site. */}
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link to="/app/projects/$projectId/editor" params={{ projectId }} search={page ? { page: page.id } : {}} />}
+              >
+                <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
+                {t('preview.backToEditor')}
+              </Button>
+              {project ? (
+                <PublishControl
+                  project={project}
+                  currentPage={
+                    page
+                      ? {
+                          path: page.path,
+                          title: page.title,
+                          languageCode: activeLanguage?.code,
+                          // A non-default version lives under its own prefix (`/v2/…`).
+                          versionSlug: publishedVersionSlugFor(branches, page.branchId ?? activeBranchId),
+                        }
+                      : undefined
+                  }
+                />
+              ) : null}
+            </div>
             {/* Same typography variables the published site sets on its chrome, so
             the preview reads exactly like production. */}
             <article className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10" data-theme-region="article" dir={contentDir}>
@@ -223,11 +255,16 @@ function ProjectPreview() {
               ) : page ? (
                 <>
                   <div className="mb-8 border-border border-b pb-5">
+                    {/* The page's web address (the title is the heading right below). */}
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <PageIcon className="size-4" name={page.icon} />
-                      {page.path || '/'}
+                      <PageIcon className="size-4 shrink-0" name={page.icon} />
+                      <span className="min-w-0 truncate font-mono text-xs" dir="ltr">
+                        /{page.path}
+                      </span>
                     </div>
-                    <h1 className="mt-2 font-semibold text-3xl tracking-tight">{page.title}</h1>
+                    <h1 className="mt-2 font-semibold text-3xl tracking-tight" dir="auto">
+                      {page.title}
+                    </h1>
                     {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}
                   </div>
                   <Markdown content={page.content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId }} />
@@ -236,7 +273,7 @@ function ProjectPreview() {
                 <div className="text-muted-foreground text-sm">{t('preview.empty')}</div>
               )}
             </article>
-          </main>
+          </div>
         }
       />
     </DocumentationThemeProvider>

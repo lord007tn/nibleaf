@@ -9,16 +9,19 @@ import { useT } from '@nibleaf/i18n/react';
 import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { getDomain } from 'tldts';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
-import { FIELD_MONO, SectionHeader } from './shared';
+import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
   const confirm = useConfirm();
-  const { data: domains } = useDomains(project.id);
+  const query = useDomains(project.id);
+  const { data: domains } = query;
   const add = useAddDomain(project.id);
   const verify = useVerifyDomain(project.id);
   const setPrimary = useSetPrimaryDomain(project.id);
@@ -49,13 +52,21 @@ export function DomainSection({ project }: { project: Project }) {
     window.setTimeout(() => setCopiedRecord((current) => (current === key ? null : current)), 1600);
   };
 
+  if (query.isError && !domains) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+  if (!domains) return <p role="status">{t('common.loading')}</p>;
   return (
     <div>
+      {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
+      <DirtyStateReporter dirty={Boolean(domain.trim())} />
       <SectionHeader icon={<Globe2 className="size-4" />} title={t('settings.domain.title')} />
-      <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.domain.description')}</p>
+      <ol className="mb-4 list-decimal space-y-1 ps-5 text-[13.5px] text-muted-foreground leading-relaxed">
+        {(['settings.domain.guide.step1', 'settings.domain.guide.step2', 'settings.domain.guide.step3'] as const).map((key) => (
+          <li key={key}>{t(key)}</li>
+        ))}
+      </ol>
 
       <form
-        className="flex gap-2.5"
+        className="flex flex-wrap gap-2.5"
         onSubmit={(e) => {
           e.preventDefault();
           if (!domain.trim()) {
@@ -77,7 +88,7 @@ export function DomainSection({ project }: { project: Project }) {
           {t('settings.domain.title')}
         </Label>
         <Input
-          className={cn(FIELD_MONO, 'flex-1')}
+          className={cn(FIELD_MONO, 'min-w-0 flex-1')}
           dir="ltr"
           id="custom-domain"
           onChange={(e) => setDomain(e.target.value)}
@@ -96,11 +107,11 @@ export function DomainSection({ project }: { project: Project }) {
             defaultOpen={d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE'}
             key={d.id}
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-start">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <a
-                    className="inline-flex items-center gap-1.5 truncate font-medium font-mono text-sm hover:text-primary"
+                    className="inline-flex items-center gap-1.5 break-all font-medium font-mono text-sm hover:text-primary"
                     dir="ltr"
                     href={`https://${d.domain}`}
                     rel="noreferrer"
@@ -115,7 +126,9 @@ export function DomainSection({ project }: { project: Project }) {
                       label={
                         d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR'
                           ? t('settings.domain.status.needsAttention')
-                          : t('settings.domain.status.provisioning')
+                          : verify.isPending && verify.variables === d.id
+                            ? t('common.loading')
+                            : t('settings.domain.status.provisioning')
                       }
                       tone={d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR' ? 'error' : 'pending'}
                     />
@@ -132,7 +145,7 @@ export function DomainSection({ project }: { project: Project }) {
                   </p>
                 ) : null}
               </div>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
                     {t('settings.domain.configuration')}
@@ -142,19 +155,19 @@ export function DomainSection({ project }: { project: Project }) {
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
-                    disabled={verify.isPending}
+                    disabled={verify.isPending && verify.variables === d.id}
                     onClick={() =>
                       verify.mutate(d.id, {
                         onSuccess: (result) =>
-                          toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.toast.provisioning')),
+                          toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.status.provisioning')),
                         onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.domain.toast.verifyError')),
                       })
                     }
                     size="sm"
                     variant="outline"
                   >
-                    <RefreshCw className={cn('size-3.5', verify.isPending && 'animate-spin')} />
-                    {d.lastCheckedAt ? t('settings.domain.retry') : t('settings.domain.verifyDns')}
+                    <RefreshCw className={cn('size-3.5', verify.isPending && verify.variables === d.id && 'animate-spin')} />
+                    {verify.isPending && verify.variables === d.id ? t('common.loading') : t('settings.domain.retry')}
                   </Button>
                 ) : null}
                 {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
@@ -185,41 +198,49 @@ export function DomainSection({ project }: { project: Project }) {
                   <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
                     {t('settings.domain.dns.heading')}
                   </div>
-                  <div className="overflow-hidden rounded-xl border border-border font-mono text-[12.5px]" dir="ltr">
-                    <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] border-border border-b bg-muted/40 px-3.5 py-2.5 text-muted-foreground">
-                      <span>{t('settings.domain.dns.type')}</span>
-                      <span>{t('settings.domain.dns.name')}</span>
-                      <span>{t('settings.domain.dns.value')}</span>
-                      <span className="sr-only">{t('settings.domain.dns.copy')}</span>
-                    </div>
+                  <div className="space-y-3">
                     {d.records.map((record) => {
                       const key = `${record.type}:${record.name}:${record.value}`;
+                      const zone = getDomain(d.domain);
+                      const fullName = record.name.replace(/\.$/, '');
+                      const host = zone && fullName.endsWith(`.${zone}`) ? fullName.slice(0, -(zone.length + 1)) : fullName === zone ? '@' : fullName;
                       return (
-                        <div className="grid grid-cols-[72px_minmax(0,1fr)_minmax(0,1.35fr)_36px] items-center gap-2 px-3.5 py-2.5" key={key}>
-                          <span className="font-semibold">{record.type}</span>
-                          <span className="truncate" title={record.name}>
-                            {record.name}
-                          </span>
-                          <span className="truncate text-primary" title={record.value}>
-                            {record.value}
-                          </span>
-                          <Button
-                            aria-label={t('settings.domain.dns.copy')}
-                            className="size-8 cursor-pointer p-0"
-                            onClick={() => void copyRecord(key, `${record.type} ${record.name} ${record.value}`)}
-                            size="sm"
-                            title={t('settings.domain.dns.copy')}
-                            type="button"
-                            variant="ghost"
-                          >
-                            {copiedRecord === key ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                          </Button>
+                        <div className="rounded-lg border border-border p-3" key={key}>
+                          {[
+                            { label: t('settings.domain.dns.type'), value: record.type },
+                            { label: t('settings.domain.dns.name'), value: host },
+                            { label: t('settings.domain.dns.value'), value: record.value },
+                          ].map(({ label, value }) => {
+                            const fieldKey = `${key}:${label}`;
+                            return (
+                              <div className="flex items-start gap-2 py-1" key={label}>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-muted-foreground text-xs">{label}</div>
+                                  <code className="block select-all break-all text-sm" dir="ltr">
+                                    {value}
+                                  </code>
+                                </div>
+                                <Button
+                                  aria-label={`${t('settings.domain.dns.copy')}: ${label}`}
+                                  onClick={() => void copyRecord(fieldKey, value)}
+                                  size="icon-sm"
+                                  type="button"
+                                  variant="ghost"
+                                >
+                                  {copiedRecord === fieldKey ? <Check /> : <Copy />}
+                                </Button>
+                              </div>
+                            );
+                          })}
+                          <code className="mt-2 block select-all break-all text-muted-foreground text-xs" dir="ltr">
+                            {fullName}
+                          </code>
                         </div>
                       );
                     })}
                   </div>
                   <p className="mt-3 text-[13px] text-muted-foreground">
-                    {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.dns.propagation')}
+                    {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.status.provisioning')}
                   </p>
                 </div>
               ) : null}

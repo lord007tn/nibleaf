@@ -6,7 +6,7 @@ import { useForm } from '@tanstack/react-form';
 import { ArrowRight, Plus, Route, TriangleAlert, X } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
+import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection, useDraftRowUndo } from './shared';
 
 export function RedirectsSection({ project }: { project: Project }) {
   const t = useT();
@@ -15,6 +15,7 @@ export function RedirectsSection({ project }: { project: Project }) {
   const defaultValues = {
     redirects: (project.config?.redirects ?? []).map((pair) => ({ from: pair.from, to: pair.to })),
   };
+  const { offerUndo, clearUndo } = useDraftRowUndo();
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
@@ -31,6 +32,7 @@ export function RedirectsSection({ project }: { project: Project }) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        clearUndo();
         form.handleSubmit();
       }}
     >
@@ -49,7 +51,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                     <div className="mb-3 overflow-hidden rounded-xl border border-border">
                       {redirects.map((_, index) => (
                         <div
-                          className="grid grid-cols-[1fr_24px_1fr_32px] items-center gap-2.5 border-border border-b p-3 last:border-b-0"
+                          className="grid grid-cols-[minmax(0,1fr)_24px_minmax(0,1fr)_auto] items-center gap-2.5 border-border border-b p-3 last:border-b-0"
                           // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
                           key={index}
                         >
@@ -83,7 +85,12 @@ export function RedirectsSection({ project }: { project: Project }) {
                           <Button
                             aria-label={t('settings.redirects.remove')}
                             className="text-muted-foreground"
-                            onClick={() => field.removeValue(index)}
+                            onClick={() => {
+                              const removed = field.state.value[index];
+                              if (!removed) return;
+                              field.removeValue(index);
+                              offerUndo(() => field.insertValue(index, removed));
+                            }}
                             size="icon-xs"
                             type="button"
                             variant="ghost"
