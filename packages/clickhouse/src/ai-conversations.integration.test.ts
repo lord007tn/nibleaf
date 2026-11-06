@@ -320,6 +320,21 @@ integration('AI archive SQL integration', () => {
       expect((await queryAiConversationSummary(partialScope, {})).usage).toEqual(partialUsage);
       const [partialDetail] = (await queryAiConversation(partialScope, partialTurn.conversation_id))?.turns ?? [];
       expect(partialDetail).toMatchObject({ inputTokens: null, outputTokens: null, costUsd: null });
+      // A vote on a day without questions still shows in the daily series.
+      const voteScope = { tenantId: tenant, projectId: randomUUID() };
+      const voteTurn = { ...base, project_id: voteScope.projectId, conversation_id: randomUUID(), turn_id: randomUUID() };
+      await client.insert({ table: 'ai_conversation_turns', format: 'JSONEachRow', values: [voteTurn] });
+      await client.insert({
+        table: 'ai_conversation_feedback',
+        format: 'JSONEachRow',
+        values: [{ ...feedback(0, 'up', 48), project_id: voteScope.projectId, conversation_id: voteTurn.conversation_id, turn_id: voteTurn.turn_id }],
+      });
+      const voted = await queryAiConversationSummary(voteScope, {});
+      expect(voted.feedback).toMatchObject({ up: 1, down: 0 });
+      expect(voted.timeseries).toEqual([
+        expect.objectContaining({ date: at(0).slice(0, 10), questions: 1, up: 0 }),
+        expect.objectContaining({ date: at(48).slice(0, 10), questions: 0, up: 1 }),
+      ]);
       await deleteAiConversation(scope, c1, client);
       expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBeNull();
       // c2, the hidden conversation and the scripted turn remain.

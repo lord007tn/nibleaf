@@ -8,20 +8,24 @@ type ChatBudgetLimits = Pick<
   'SEARCH_CHAT_HISTORY_MESSAGES' | 'SEARCH_CHAT_HISTORY_MAX_TOKENS' | 'SEARCH_CHAT_MAX_CONVERSATION_TOKENS' | 'SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'
 >;
 
-/** Token budgets below the largest reservation a turn makes before it runs (the
- * longest question with a full history) refuse every such turn. Reported at
- * startup so an operator can raise them; null when both budgets fit it. */
+/** Token budgets below the most room one question can need (the longest question
+ * with a full history) refuse every such question (`refused`); below twice that,
+ * a conversation or day admits only a few (`few`). Reported at startup so an
+ * operator can raise them; null when both budgets fit two such questions. */
 export const chatBudgetWarning = (limits: ChatBudgetLimits = envExtras) => {
   const largestTurnTokens = largestChatTurnTokens({
     questionMax: AI_CHAT_LIMITS.questionMax,
     historyLimits: { maxMessages: limits.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: limits.SEARCH_CHAT_HISTORY_MAX_TOKENS },
   });
-  const daily = limits.SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT;
-  const settings = [
-    ...(limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS < largestTurnTokens ? ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS'] : []),
-    ...(daily > 0 && daily < largestTurnTokens ? ['SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'] : []),
-  ];
-  return settings.length ? { settings, largestTurnTokens } : null;
+  const budgets = [
+    ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS', limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS],
+    ['SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT', limits.SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT],
+  ] as const;
+  // 0 turns the daily budget off.
+  const set = budgets.filter(([, tokens]) => tokens > 0);
+  const settings = set.filter(([, tokens]) => tokens < largestTurnTokens).map(([name]) => name);
+  const few = set.filter(([, tokens]) => tokens >= largestTurnTokens && tokens < 2 * largestTurnTokens).map(([name]) => name);
+  return settings.length || few.length ? { settings, few, largestTurnTokens } : null;
 };
 
 /** Conversation counters outlive any realistic reading session; daily token

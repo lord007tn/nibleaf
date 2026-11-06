@@ -41,12 +41,19 @@ describe('chat budgets', () => {
     const low = chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 5000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 9000 });
     expect(low).toEqual({
       settings: ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS', 'SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'],
+      few: [],
       largestTurnTokens: expect.any(Number),
     });
     expect(low?.largestTurnTokens).toBeGreaterThan(9000);
     expect(limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS / (low?.largestTurnTokens ?? Number.POSITIVE_INFINITY)).toBeGreaterThan(2);
+    // The previous 60,000 default admits a question, but only a few per conversation.
+    expect(chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000 })).toEqual({
+      settings: [],
+      few: ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS'],
+      largestTurnTokens: low?.largestTurnTokens,
+    });
     // A longer history needs a larger reservation; 0 turns the daily budget off.
-    const justFits = { ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: (low?.largestTurnTokens ?? 0) + 1 };
+    const justFits = { ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 2 * (low?.largestTurnTokens ?? 0) };
     expect(chatBudgetWarning(justFits)).toBeNull();
     const longHistory = chatBudgetWarning({ ...justFits, SEARCH_CHAT_HISTORY_MAX_TOKENS: 16_000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 0 });
     expect(longHistory?.settings).toEqual(['SEARCH_CHAT_MAX_CONVERSATION_TOKENS']);

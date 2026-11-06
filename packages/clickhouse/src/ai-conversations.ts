@@ -394,9 +394,9 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
  countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,${usageSql} FROM turns GROUP BY date),
  feedback_days AS (SELECT toString(toDate(updated_at,{timezone:String})) AS date,
  countIf(rating='up') AS up,countIf(rating='down') AS down FROM active GROUP BY date)
- SELECT t.date AS date,t.questions AS questions,t.answered AS answered,t.noAnswer AS noAnswer,
+ SELECT date,t.questions AS questions,t.answered AS answered,t.noAnswer AS noAnswer,
  t.inputTokens AS inputTokens,t.outputTokens AS outputTokens,t.costMicros AS costMicros,t.knownCosts AS knownCosts,
- f.up AS up,f.down AS down FROM turn_days t LEFT JOIN feedback_days f ON t.date=f.date ORDER BY date`,
+ f.up AS up,f.down AS down FROM turn_days t FULL OUTER JOIN feedback_days f USING (date) ORDER BY date`,
       queryParams,
     ),
     archiveRows<{ language: string; questions: Count }>(`${ctes} SELECT language,count() AS questions FROM turns GROUP BY language`, queryParams),

@@ -69,7 +69,9 @@ async function main() {
   // whose publish/email/export jobs would only fail after accepting requests.
   await scheduleAnalyticsRollup();
   const chatBudget = chatBudgetWarning();
-  if (chatBudget) logger.warn(chatBudget, 'AI chat token budgets are below the largest turn reservation; such turns will be refused');
+  if (chatBudget?.settings.length)
+    logger.warn(chatBudget, 'AI chat token budgets are below the most room one question can need; such questions will be refused');
+  else if (chatBudget) logger.warn(chatBudget, 'AI chat token budgets leave room for only a few questions; consider raising them');
   ready = true;
   logger.info({ revision: process.env.NIBLEAF_REVISION ?? 'development' }, 'API ready');
 }

@@ -350,12 +350,14 @@ per UTF-8 byte, the most a byte-level tokenizer produces for any text (digits an
 characters included), never at an estimate. A turn reserves in two steps:
 
 - Before any provider call, every call's prompt without the documentation it will read
-  (the question, the bounded history, the reader's page and the instructions), every
-  output cap, and the least documentation worth answering from (3,000 tokens). That is
-  about 7,000 tokens for a first question and up to about 24,000 with the default
-  history limits. The API logs a warning at startup when
-  `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is
-  below the most room a question can need (about 52,000 with the defaults).
+  (the question, the bounded history, the reader's page, the instructions and the
+  longest answer the suggestions read), every output cap, and the least documentation
+  worth answering from (3,000 tokens). That is about 12,000 tokens for a first question
+  and up to about 29,000 with the default history limits. The API logs a warning at
+  startup when `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or
+  `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is below the most room a question can need
+  (about 55,000 with the defaults), or leaves room for only a few questions (below
+  twice that).
 - Once retrieval has found the best matches, what reading them adds: up to 24,000
   tokens of documentation and the topics suggestions list.
 
@@ -380,6 +382,12 @@ its cost is known only when every response billed to it reported one. When
 `SEARCH_CHAT_UTILITY_MODEL` routes rewriting and suggestions to another model, their
 tokens and cost are recorded under that model, which appears in per-model usage with no
 questions of its own.
+
+Suggested next questions are asked for only after a checked answer, and read that
+answer with the question and the sources' topics, so they never ask what it already
+says. Readers get the answer first; the suggestions follow when they arrive, and a new
+question asked meanwhile takes their place. A suggestions call whose output holds no
+readable questions is recorded as a provider error (`follow_ups`).
 
 `ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
 tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from

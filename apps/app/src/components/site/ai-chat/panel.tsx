@@ -125,8 +125,12 @@ export default function Panel(
       }
     },
   });
+  // The checked answer ends the wait: a run still bringing its suggestions is not
+  // answering, so the reader can read, stop nothing, and ask the next question.
+  const latest = chat.messages.at(-1);
+  const answering = chat.isLoading && !(latest && latest.role !== 'user' && finals[latest.id]);
   const send = (question: string, context: PageContext | null = page ?? null) => {
-    if (chat.isLoading) return;
+    if (answering) return;
     setLastQuestion(question);
     setCode(undefined);
     setAnnouncement('');
@@ -149,13 +153,15 @@ export default function Panel(
         consent: consent(),
         sessionId,
       },
+      // Suggestions still loading for the last answer give way to the new question.
+      ...(chat.isLoading ? { whenBusy: 'interrupt' as const } : {}),
     });
   };
   const sendRequest = useEffectEvent(send);
   const trackOpen = useEffectEvent((source: ChatOpenRequest['source']) => track({ name: 'chat_opened', source, conversationId }));
   useEffect(() => {
     const request = options.request;
-    if (!request || request.id === lastRequest.current || (request.question && chat.isLoading)) return;
+    if (!request || request.id === lastRequest.current || (request.question && answering)) return;
     // A send issued in the panel's first commit (deep link, search hand-off) is
     // cancelled while the chat client finishes attaching. Wait one task, and
     // only mark the request consumed once it is actually sent.
@@ -166,7 +172,20 @@ export default function Panel(
       if (request.question) sendRequest(request.question, request.page ?? null);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [options.request, chat.isLoading]);
+  }, [options.request, answering]);
+  // A question refused for the conversation limit is asked again in the new chat.
+  const carried = useRef<string | undefined>(undefined);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once the new conversation is in place.
+  useEffect(() => {
+    const question = carried.current;
+    if (!question) return;
+    // Like a hand-off: wait one task while the chat client attaches to the new conversation.
+    const timer = window.setTimeout(() => {
+      carried.current = undefined;
+      sendRequest(question);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [conversationId]);
   useEffect(() => {
     if (chat.error && !code) {
       setCode(navigator.onLine ? 'failed' : 'offline');
@@ -187,7 +206,7 @@ export default function Panel(
   /** Ask a question again. When it is the last exchange and never got a checked
    * answer (stopped or failed), that exchange is replaced rather than repeated. */
   const askAgain = (question: string) => {
-    if (chat.isLoading || !question) return;
+    if (answering || !question) return;
     const lastUser = chat.messages.findLastIndex((message) => message.role === 'user');
     const asked = chat.messages[lastUser];
     const reply = chat.messages[lastUser + 1];
@@ -205,6 +224,10 @@ export default function Panel(
     setCode(undefined);
     setAnnouncement('');
     setConversationId(crypto.randomUUID());
+  };
+  const askInNewChat = (question: string) => {
+    reset();
+    carried.current = question || undefined;
   };
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
@@ -288,7 +311,7 @@ export default function Panel(
                   {wasStopped && (
                     <div className="space-y-2 rounded-xl border border-dashed p-4 text-muted-foreground text-sm">
                       <p>{t('aiStopped')}</p>
-                      <Button size="sm" variant="outline" disabled={chat.isLoading} onClick={() => askAgain(text)}>
+                      <Button size="sm" variant="outline" disabled={answering} onClick={() => askAgain(text)}>
                         {t('aiRetry')}
                       </Button>
                     </div>
@@ -319,7 +342,7 @@ export default function Panel(
                 busy={chat.isLoading && !final}
                 consent={consent()}
                 close={() => options.onOpenChange(false)}
-                followUps={!chat.isLoading && message.id === latestAnswer?.id ? followUps[message.id] : undefined}
+                followUps={!answering && message.id === latestAnswer?.id ? followUps[message.id] : undefined}
                 onFollowUp={(question, position) => {
                   track({ name: 'follow_up_clicked', conversationId, turnId: message.id, position });
                   send(question);
@@ -333,7 +356,7 @@ export default function Panel(
               />
             );
           })}
-          {chat.isLoading &&
+          {answering &&
             (streaming ? (
               <p aria-hidden className="text-muted-foreground text-sm">
                 {phaseLabel}
@@ -345,10 +368,10 @@ export default function Panel(
             <div className="space-y-2 rounded-lg bg-muted p-3">
               <p>{t(errorKey(code))}</p>
               {code === 'conversation_limit' ? (
-                <Button onClick={reset}>{t('aiNew')}</Button>
+                <Button onClick={() => askInNewChat(lastQuestion)}>{t('aiNew')}</Button>
               ) : (
                 !['quota_exhausted', 'budget_exhausted'].includes(code) && (
-                  <Button disabled={chat.isLoading} onClick={() => askAgain(lastQuestion)}>
+                  <Button disabled={answering} onClick={() => askAgain(lastQuestion)}>
                     {t('aiRetry')}
                   </Button>
                 )
@@ -361,7 +384,7 @@ export default function Panel(
           {announcement}
         </div>
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Composer lang={options.lang} busy={chat.isLoading} send={send} stop={stop} />
+          <Composer lang={options.lang} busy={answering} send={send} stop={stop} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
           {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
         </footer>

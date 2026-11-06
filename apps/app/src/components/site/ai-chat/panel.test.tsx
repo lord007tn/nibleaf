@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type Message = { id: string; role: 'user' | 'assistant'; parts: Array<{ type: 'text'; content: string }> };
 const mocks = vi.hoisted(() => ({
+  // The options the panel gave useChat, to deliver its custom events.
+  options: undefined as undefined | { onCustomEvent: (name: string, value: unknown) => void },
   chat: {
     messages: [] as Message[],
     isLoading: false,
@@ -16,7 +19,12 @@ const mocks = vi.hoisted(() => ({
     setMessages: vi.fn(),
   },
 }));
-vi.mock('@tanstack/ai-react', () => ({ useChat: () => mocks.chat }));
+vi.mock('@tanstack/ai-react', () => ({
+  useChat: (options: typeof mocks.options) => {
+    mocks.options = options;
+    return mocks.chat;
+  },
+}));
 vi.mock('@/functions/site-chat', () => ({ chatSiteFn: vi.fn(), trackChatEventsFn: vi.fn(async () => undefined) }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 Element.prototype.scrollIntoView = vi.fn();
@@ -36,10 +44,15 @@ const mount = async () => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   roots.push(() => act(async () => root.unmount()));
   const render = () =>
     act(async () =>
-      root.render(<Panel projectId="docs" lang="en" direction="ltr" config={null} open onOpenChange={vi.fn()} requiresConsent={false} />),
+      root.render(
+        <QueryClientProvider client={client}>
+          <Panel projectId="docs" lang="en" direction="ltr" config={null} open onOpenChange={vi.fn()} requiresConsent={false} />
+        </QueryClientProvider>,
+      ),
     );
   await render();
   return render;
@@ -51,7 +64,64 @@ const stopAndSettle = async (render: () => Promise<void>) => {
   await render();
 };
 
+const ANSWER_ID = '7c1d0b6e-2f4a-4c8e-9b1d-3e5f6a7b8c9d';
+/** Sends a starter question and returns the conversation id the panel used. */
+const askStarter = async () => {
+  await act(async () => button('How do I get started?')[0]?.click());
+  const call = mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: { conversationId: string } }];
+  return { question: call[0], conversationId: call[1].body.conversationId };
+};
+const deliver = (name: string, value: unknown) => act(async () => mocks.options?.onCustomEvent(name, value));
+const finalFor = (conversationId: string) => ({
+  conversationId,
+  turnId: ANSWER_ID,
+  status: 'answered',
+  answer: 'Run the installer. [S1]',
+  citations: [],
+  suggestions: [],
+  feedbackToken: 'token-token-token-token',
+  language: 'en',
+  limits: { turnsRemaining: 18, quotaRemaining: 40 },
+});
+
 describe('chat panel', () => {
+  it('ends the wait at the checked answer, shows suggestions that arrive after it, and lets a new question through', async () => {
+    mocks.chat.messages = [];
+    const render = await mount();
+    const { question, conversationId } = await askStarter();
+    mocks.chat.isLoading = true;
+    mocks.chat.messages = [text('u1', 'user', question), text(ANSWER_ID, 'assistant', 'Run the installer. [S1]')];
+    await render();
+    expect(button('Stop generating')).toHaveLength(1);
+    await deliver('nibleaf.chat.final', finalFor(conversationId));
+    await render();
+    // Still loading suggestions, but the answer is done: no Stop, no progress line.
+    expect(button('Stop generating')).toHaveLength(0);
+    expect(document.body.textContent).not.toContain('Checking');
+    await deliver('nibleaf.chat.followups', { turnId: ANSWER_ID, questions: ['Can I install it offline?'] });
+    await render();
+    await act(async () => button('Can I install it offline?')[0]?.click());
+    // The next question interrupts the suggestions still loading.
+    expect(mocks.chat.sendMessage).toHaveBeenLastCalledWith('Can I install it offline?', expect.objectContaining({ whenBusy: 'interrupt' }));
+  });
+
+  it('asks the refused question again in a new chat after the conversation limit', async () => {
+    mocks.chat.messages = [];
+    const render = await mount();
+    const { question, conversationId } = await askStarter();
+    mocks.chat.messages = [text('u1', 'user', question)];
+    await deliver('nibleaf.chat.error', { code: 'conversation_limit' });
+    await render();
+    // The notice's button, not the header's plain "New chat".
+    expect(button('New chat')).toHaveLength(2);
+    await act(async () => button('New chat').at(-1)?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(mocks.chat.clear).toHaveBeenCalledOnce();
+    const [again, options] = mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: { conversationId: string } }];
+    expect(again).toBe(question);
+    expect(options.body.conversationId).not.toBe(conversationId);
+  });
+
   it.each([
     ['before any answer exists', [text('u1', 'user', 'How do I export one notebook?')]],
     ['with an empty answer shell', [text('u1', 'user', 'How do I export one notebook?'), text('a1', 'assistant', '')]],

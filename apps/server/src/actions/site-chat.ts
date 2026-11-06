@@ -372,8 +372,9 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
   const sideCalls = new AbortController();
-  // Suggestions, once started: the turn is recorded after they settle.
-  let suggesting: Promise<unknown> = Promise.resolve();
+  // Suggestions, once started: they follow the checked answer, and the turn is
+  // recorded after they settle.
+  let suggesting: Promise<{ questions: string[] }> = Promise.resolve({ questions: [] });
   const sideSignal = AbortSignal.any([signal, sideCalls.signal]);
   let phase: 'condense' | 'retrieval' | 'generation' = 'condense';
   let textStarted = false;
@@ -441,7 +442,6 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     yield { type: EventType.TEXT_MESSAGE_START, messageId: turnId, role: 'assistant', timestamp: Date.now() };
     textStarted = true;
     let final: Omit<AiChatFinalEvent, 'conversationId' | 'turnId' | 'feedbackToken' | 'language' | 'limits'>;
-    let followUps: AiChatFollowUpsEvent['questions'] = [];
     const noAnswer = (answer: string, noAnswerReason: AiChatNoAnswerReason) => ({
       status: 'no_answer' as const,
       answer,
@@ -462,30 +462,6 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       phase = 'generation';
       const expected = chatCallInputTokens(shape, sources);
       const bounds = chatCallInputBounds(shape, sources);
-      // Prepared while the answer streams, so suggestions add no wait. Their usage
-      // counts as soon as they settle, whatever happens to the answer.
-      outcome.unreported.set('follow_ups', {
-        input: expected.followUps,
-        output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
-        inputBound: bounds.followUps,
-        outputBound: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
-      });
-      const suggested = suggestFollowUps({
-        adapter: utilityAdapter,
-        question: body.question,
-        chunks: sources,
-        language,
-        signal: sideSignal,
-        modelOptions,
-        asked: history.filter((message) => message.role === 'user').map((message) => message.content),
-      }).then((suggestions) => {
-        if (suggestions.usage) outcome.unreported.delete('follow_ups');
-        if (outcome.utility) outcome.utility.usage = addUsage(outcome.utility.usage, suggestions.usage);
-        else outcome.usage = addUsage(outcome.usage, suggestions.usage);
-        if (suggestions.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
-        return suggestions;
-      });
-      suggesting = suggested;
       outcome.unreported.set('generation', {
         input: expected.generation,
         output: CHAT_OUTPUT_TOKEN_LIMITS.answer,
@@ -519,11 +495,33 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         result.status === 'answered'
           ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
-      if (result.status === 'answered') followUps = (await suggested).questions;
-      else {
-        // Not shown after a declined answer: stop them now rather than wait.
-        sideCalls.abort();
-        await suggested;
+      if (result.status === 'answered') {
+        // Suggestions read the checked answer, so they never ask what it already
+        // says. The reader gets the answer first; they arrive after it. Their usage
+        // counts as soon as they settle, however the turn ends.
+        const answer = result.answer;
+        outcome.unreported.set('follow_ups', {
+          input: chatCallInputTokens(shape, sources, answer).followUps,
+          output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+          inputBound: chatCallInputBounds(shape, sources, answer).followUps,
+          outputBound: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+        });
+        suggesting = suggestFollowUps({
+          adapter: utilityAdapter,
+          question: body.question,
+          answer,
+          chunks: sources,
+          language,
+          signal: sideSignal,
+          modelOptions,
+          asked: history.filter((message) => message.role === 'user').map((message) => message.content),
+        }).then((suggestions) => {
+          if (suggestions.usage) outcome.unreported.delete('follow_ups');
+          if (outcome.utility) outcome.utility.usage = addUsage(outcome.utility.usage, suggestions.usage);
+          else outcome.usage = addUsage(outcome.usage, suggestions.usage);
+          if (suggestions.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
+          return suggestions;
+        });
       }
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
@@ -536,6 +534,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       language,
       limits: { turnsRemaining: reservation.turnsRemaining, quotaRemaining: quota.remaining },
     } satisfies AiChatFinalEvent);
+    const { questions: followUps } = await suggesting;
     if (followUps.length) yield custom(AI_CHAT_EVENT.followUps, { turnId, questions: followUps } satisfies AiChatFollowUpsEvent);
     yield { type: EventType.RUN_FINISHED, threadId, runId, finishReason: 'stop', timestamp: Date.now() };
   } catch (error) {

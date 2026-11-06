@@ -333,7 +333,8 @@ describe('a bounded context and strict reservations', () => {
     const base = { question: shape.question, history: shape.history, language: shape.language, historyLimits: shape.historyLimits };
     await condenseFollowUp({ adapter: capture(), ...base });
     await streamGroundedChat({ adapter: capture(), model: 'fake', ...base, chunks: read, pageContext: shape.pageContext }).result;
-    await suggestFollowUps({ adapter: capture(), question: shape.question, chunks: read, language: shape.language });
+    // Suggestions read the checked answer, here as long as one can be.
+    await suggestFollowUps({ adapter: capture(), question: shape.question, answer: digits(1500), chunks: read, language: shape.language });
     expect(calls).toHaveLength(3);
     // Each text is its own message: real tokens plus the framing a provider adds.
     const real = calls.map((call) => call.texts.reduce((sum, text) => sum + realTokens(text) + 8, 0));
@@ -479,6 +480,11 @@ describe('follow-up suggestions', () => {
     [{ text: 'not json' }, true],
     [{ text: '["broken' }, true],
     [{ text: '[]' }, undefined],
+    // A complete array that holds no strings is output the call does not accept.
+    [{ text: '[123, null]' }, true],
+    [{ text: '[{"question":"Can I export?"}]' }, true],
+    // Only repeats of the question: nothing to show, but nothing wrong with the output.
+    [{ text: '["How?"]' }, undefined],
   ] as const)('yields none when the model fails or answers badly (%j)', async (response, failed) => {
     const adapter = fakeText();
     adapter.setResponses([response]);
@@ -492,6 +498,12 @@ describe('follow-up suggestions', () => {
     const result = await suggestFollowUps({ adapter, question: 'How?', chunks, language: 'en' });
     expect(result.questions).toEqual(['Can I export to PDF?', 'Does "sync" work offline?']);
     expect(result.failed).toBeUndefined();
+    // Only the array's own items count, never strings nested in objects or arrays.
+    expect(parseFollowUpQuestions('["Can I export?", ["Nested one?"], {"q": "Object one?"}, "Is it free', 'How?')).toEqual({
+      questions: ['Can I export?'],
+      unreadable: false,
+    });
+    expect(parseFollowUpQuestions('[{"question": "Can I export?"', 'How?')).toEqual({ questions: [], unreadable: true });
     // A short cut-off output with nothing complete is unreadable.
     const cut = fakeText();
     cut.setResponses([{ text: `["${'\\"'.repeat(200)}` }]);

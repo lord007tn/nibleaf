@@ -147,6 +147,17 @@ const readEvents = async (response: Response) =>
     .map((line) => JSON.parse(line.slice(6)) as { type: string; name?: string; value?: unknown; delta?: string; code?: string });
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+/** Reads a response's events as they arrive, up to the first that matches. */
+const readUntil = async (reader: ReadableStreamDefaultReader<Uint8Array>, done: (text: string) => boolean) => {
+  const decoder = new TextDecoder();
+  let text = '';
+  while (!done(text)) {
+    const { value, done: ended } = await reader.read();
+    if (ended) break;
+    text += decoder.decode(value, { stream: true });
+  }
+  return text;
+};
 const reservation = { allowed: true, turnIndex: 0, turnsRemaining: 19, reservedTokens: 9000, reservedAt: new Date('2026-11-06T10:00:00.000Z') };
 /** Every content-free event recorded so far, in order. */
 const recorded = () => mocks.recordEvents.mock.calls.flatMap(([, , events]) => events as Array<{ name: string } & Record<string, unknown>>);
@@ -311,8 +322,42 @@ describe('reader AI chat stream', () => {
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'no_answer', reason: 'low_confidence', retrievalCacheHit: true });
   });
 
-  it('withholds suggestions after a declined answer and reports a failed suggestion call', async () => {
-    mocks.suggest.mockResolvedValue({ questions: [], failed: true });
+  it('sends the checked answer before its suggestions, which read it, and reports a failed suggestion call', async () => {
+    let finish: (value: unknown) => void = () => undefined;
+    mocks.suggest.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/gpt-5.6-luna',
+      }),
+    });
+    const reader = (await chatSite('project-1', body())).body?.getReader();
+    if (!reader) throw new Error('expected a stream');
+    // The final answer arrives while the suggestions call is still running.
+    const first = await readUntil(reader, (text) => text.includes(AI_CHAT_EVENT.final));
+    expect(first).toContain(AI_CHAT_EVENT.final);
+    expect(first).not.toContain('RUN_FINISHED');
+    expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ answer: 'Run the installer. [S1]' });
+    finish({ questions: [], failed: true });
+    const rest = await readUntil(reader, () => false);
+    expect(rest).toContain('RUN_FINISHED');
+    expect(rest).not.toContain(AI_CHAT_EVENT.followUps);
+    await settle();
+    expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+  });
+
+  it('asks for no suggestions after a declined answer', async () => {
     mocks.stream.mockReturnValue({
       deltas: (async function* () {
         // The model declines without streaming any text.
@@ -329,10 +374,9 @@ describe('reader AI chat stream', () => {
     });
     const events = await readEvents(await chatSite('project-1', body()));
     expect(events.some((event) => event.name === AI_CHAT_EVENT.followUps)).toBe(false);
-    // Suggestions are not shown after a declined answer, so they are stopped.
-    expect(mocks.suggest.mock.calls[0]?.[0].signal.aborted).toBe(true);
-    await settle();
-    expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+    expect(events.at(-1)).toMatchObject({ type: 'RUN_FINISHED' });
+    // Suggestions follow a checked answer; a declined one gets none, and none are paid for.
+    expect(mocks.suggest).not.toHaveBeenCalled();
   });
 
   it('routes rewriting and suggestions to the utility model on OpenRouter only', async () => {
@@ -340,13 +384,12 @@ describe('reader AI chat stream', () => {
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, failed: true });
     mocks.stream.mockReturnValue({
       deltas: (async function* () {
-        // The model declines without streaming any text.
+        yield 'Run the installer. [S1]';
       })(),
       result: Promise.resolve({
-        status: 'no_answer',
-        noAnswerReason: 'empty',
-        answer: '',
-        citations: [],
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         model: 'm',
         latencyMs: 1,
@@ -564,7 +607,48 @@ describe('reader AI chat stream', () => {
     }
   });
 
-  it.each(['failed', 'cancelled'] as const)("keeps the suggestions' reported usage and cost when the answer is %s", async (status) => {
+  it("keeps an answered turn and its suggestions' reported usage when the reader leaves before they arrive", async () => {
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
+      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
+      return { kind: runtime.answerModel };
+    });
+    const leave = new AbortController();
+    mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST', signal: leave.signal });
+    // The provider reports the suggestions' usage just as the reader leaves.
+    mocks.suggest.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((resolve) =>
+          signal.addEventListener('abort', () => resolve({ questions: [], usage: { inputTokens: 37, outputTokens: 11 } }), { once: true }),
+        ),
+    );
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/gpt-5.6-luna',
+      }),
+    });
+    const reader = (await chatSite('project-1', body())).body?.getReader();
+    if (!reader) throw new Error('expected a stream');
+    await readUntil(reader, (text) => text.includes(AI_CHAT_EVENT.final));
+    leave.abort();
+    await reader.cancel().catch(() => undefined);
+    for (let i = 0; i < 5; i++) await settle();
+    const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
+    expect(turn).toMatchObject({ status: 'answered', utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
+    expect(turn).not.toHaveProperty('usageEstimated');
+    expect(turn).not.toHaveProperty('utilityUsageEstimated');
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
+  });
+
+  it.each(['failed', 'cancelled'] as const)('starts no suggestions for an answer that is %s', async (status) => {
     mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
       if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
@@ -593,8 +677,10 @@ describe('reader AI chat stream', () => {
     await readEvents(await chatSite('project-1', body())).catch(() => []);
     for (let i = 0; i < 5; i++) await settle();
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
-    expect(turn).toMatchObject({ status, usageEstimated: true, utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
-    expect(turn).not.toHaveProperty('utilityUsageEstimated');
+    expect(turn).toMatchObject({ status, usageEstimated: true });
+    // Nothing ran on the utility model (a first question makes no rewrite call).
+    expect(mocks.suggest).not.toHaveBeenCalled();
+    expect(turn).not.toHaveProperty('utilityModel');
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
   });
 
@@ -667,12 +753,14 @@ describe('reader AI chat stream', () => {
     // Far more than the rewrite's 100 tokens: the answer read the question, history and 12 sources.
     expect(Number(turn.inputTokens)).toBeGreaterThan(3600);
     // Budgets are charged the rewrite's reported 100 tokens and, for the stopped
-    // answer and suggestions, the most they could have used; the record keeps estimates.
+    // answer, the most it could have used; the record keeps estimates. A stopped
+    // answer starts no suggestions.
     const spent = mocks.settle.mock.calls.at(-1)?.[3] as number;
     const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
     expect(read).toHaveLength(12);
     const bounds = chatCallInputBounds(chatTurnShape(body({ question: 'And only one notebook?', history }), 'en'), read);
-    expect(spent).toBe(100 + bounds.generation + CHAT_OUTPUT_TOKEN_LIMITS.answer + bounds.followUps + CHAT_OUTPUT_TOKEN_LIMITS.followUps);
+    expect(spent).toBe(100 + bounds.generation + CHAT_OUTPUT_TOKEN_LIMITS.answer);
+    expect(mocks.suggest).not.toHaveBeenCalled();
     expect(spent).toBeGreaterThan(Number(turn.inputTokens) + Number(turn.outputTokens));
     // Analytics events carry provider-reported facts only.
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'cancelled' });
