@@ -642,6 +642,9 @@ describe('create_page_draft', () => {
     expect(response.structuredContent.data).toMatchObject({ possibleDuplicates: null, possibleDuplicatesUnavailable: true });
     const replay = await client.call('create_page_draft', { title: 'Webhooks', markdown: '# Webhooks', clientRequestId: 'draft-webhooks-1' });
     expect(replay.structuredContent.meta?.replayed).toBe(true);
+    // The retry is told the duplicate check didn't run, as the first answer was.
+    expect(replay.structuredContent.data).toMatchObject({ replayed: true, possibleDuplicatesUnavailable: true });
+    expect(replay.structuredContent.data).not.toHaveProperty('possibleDuplicateIds');
     expect(mocks.createPage).toHaveBeenCalledOnce();
     await client.close();
   });
@@ -736,7 +739,14 @@ describe('clientRequestId idempotency', () => {
   });
 
   it.each([
-    ['create_page_draft', () => ({ title: 'Refunds', markdown: 'How refunds work', clientRequestId: 'parity-create-01' })],
+    [
+      'create_page_draft',
+      () => {
+        // Placement fails after the page is committed, so the answer carries a placement warning.
+        mocks.pageUpdateMany.mockRejectedValueOnce(new Error('placement write failed'));
+        return { title: 'Refunds', markdown: 'How refunds work', position: 0, clientRequestId: 'parity-create-01' };
+      },
+    ],
     [
       'update_page',
       () => ({ pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: 'Installing', clientRequestId: 'parity-update-01' }),
@@ -771,6 +781,10 @@ describe('clientRequestId idempotency', () => {
     const second = await client.call(tool, args);
     expectReplayParity(first, second);
     if (tool === 'translate_page') expect(String(second.structuredContent.data.parentNote)).toContain('top level');
+    if (tool === 'create_page_draft') {
+      expect(first.structuredContent.data).toMatchObject({ placement: 'failed' });
+      expect(second.structuredContent.data).toMatchObject({ placement: 'failed', placementNote: expect.stringContaining('use move_page') });
+    }
     await client.close();
   });
 
