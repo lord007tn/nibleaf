@@ -904,6 +904,7 @@ const markReads = overlappingWrites<MarkReadState>(() => ({ claims: new Map(), c
  * answer may or may not include a write that has not answered yet: an inverse
  * change could be wrong either way. Instead, once the last write has finished,
  * the inbox and the count are refetched, so the badge is the server's own number.
+ * After a failure the badge may read low until then.
  */
 export const useMarkNotificationsRead = () => {
   const qc = useQueryClient();

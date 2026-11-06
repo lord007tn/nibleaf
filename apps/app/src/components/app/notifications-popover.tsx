@@ -39,6 +39,9 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (it
   );
 }
 
+// After a failed "Mark all read" the rows show unread again before the refetched count arrives.
+const anyUnread = (count: number, items: NotificationItem[]) => count > 0 || items.some((item) => item.readAt === null);
+
 /**
  * The header bell: unread badge (polled every 60s) + a popover inbox. The list
  * itself is only fetched once the popover opens. Lives in BOTH shells — the
@@ -56,6 +59,7 @@ export function NotificationsPopover() {
 
   const unreadCount = unread?.count ?? 0;
   const items = inbox?.items ?? [];
+  const hasUnread = anyUnread(unreadCount, items);
 
   const openItem = (item: NotificationItem) => {
     if (item.readAt === null) {
@@ -86,7 +90,7 @@ export function NotificationsPopover() {
           <span className="font-semibold text-sm">{t('notifications.title')}</span>
           <Button
             className="h-7 px-2 text-xs"
-            disabled={unreadCount === 0}
+            disabled={!hasUnread}
             loading={markingAll}
             onClick={() => markRead.mutate({ all: true })}
             size="sm"

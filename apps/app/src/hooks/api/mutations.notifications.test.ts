@@ -208,12 +208,11 @@ describe('useMarkNotificationsRead', () => {
 
     await row.respond(json(200, { data: { updated: 1 } }));
     await all.respond(failure());
-    // n1 stays read (its write succeeded), n2 comes back, and nothing is subtracted or added by guesswork:
-    // the badge is refetched, and the server answers 3.
+    // n1 stays read (its write succeeded) and n2 comes back. Nothing is added back by guesswork (that undercounted):
+    // the optimistic 0 stays until the refetched count, the server's 3, replaces it.
     expect(readIds()).toEqual(['n1', 'n3']);
+    expect(count()).toBe(0);
     expect(countRefetched()).toBe(true);
-    await pollCount(3);
-    expect(count()).toBe(3);
     act(() => root.unmount());
   });
 });
