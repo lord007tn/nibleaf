@@ -99,3 +99,28 @@ Review the complete [environment-variable reference](/reference/environment-vari
 then run the [production checklist](/self-hosting/production). If the site will
 be private, complete the [reader-access recovery procedure](/private-reader-access)
 before sending invitations.
+
+## Analytics environment
+
+| Variable | Default | Guidance |
+| --- | --- | --- |
+| `ANALYTICS_MODE` | `disabled` in production template | Advance through `dual_write`, `shadow_read`, then `clickhouse` after reconciliation. |
+| `ANALYTICS_HASH_SALT` | unset | Required for enabled ClickHouse ingestion: missing salt drops events. Generate only for new installations with `openssl rand -hex 32`; preserve existing values. |
+| `CLICKHOUSE_URL` | `http://localhost:8123` in code | Compose uses `http://clickhouse:8123`; protect remote transport with TLS. |
+| `CLICKHOUSE_DATABASE` | `nibleaf_analytics` | Same value for API, worker and migration CLI. |
+| `CLICKHOUSE_READER_USERNAME` / `CLICKHOUSE_READER_PASSWORD` | `default` / unset in code | Production: separate SELECT-only reader; Compose bootstrap defaults differ. |
+| `CLICKHOUSE_WRITER_USERNAME` / `CLICKHOUSE_WRITER_PASSWORD` | `default` / unset in code | INSERT plus SELECT on tombstones; add reader/erasure roles for worker duties and schema privileges for boot migrations, or use a dedicated CLI identity. |
+| `CLICKHOUSE_REQUEST_TIMEOUT_MS` | `5000` | 250–60000; bounds each transport request. |
+| `CLICKHOUSE_MAX_BATCH_SIZE` | `500` | 1–10000 events. |
+| `CLICKHOUSE_MAX_BUFFERED_EVENTS` | `10000` | 100–100000 events; queue persistence remains necessary. |
+| `CLICKHOUSE_FLUSH_INTERVAL_MS` | `1000` | 25–30000 milliseconds. |
+| `CLICKHOUSE_RAW_RETENTION_DAYS` | `180` | 7–730; raw human events. |
+| `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | `90` | 7–730; raw crawler events. |
+| `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | `730` | 30–3650; aggregates. |
+| `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | `30` | 1–90; opted-in public search text. |
+| `CLICKHOUSE_MIGRATE_ON_BOOT` | `true` | Worker retries in background; false requires explicit migrations. |
+
+`CLICKHOUSE_USERNAME` and `CLICKHOUSE_PASSWORD` bootstrap bundled Compose only;
+Coolify uses `SERVICE_PASSWORD_64_CLICKHOUSE`. They are not application client
+settings. Set explicit reader/writer credentials consistently with provisioned
+users. See [analytics operations](/self-hosting/clickhouse-analytics).

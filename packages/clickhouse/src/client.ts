@@ -45,6 +45,22 @@ const asString = (value: unknown) => (typeof value === 'string' ? value : '');
 export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
   const payload = event.payload;
   return {
+    actor_type: event.actorType ?? 'human',
+    bot_name: event.botName ?? '',
+    bot_operator: event.botOperator ?? '',
+    bot_category: event.botCategory ?? '',
+    verification: event.verification ?? 'claimed',
+    channel: event.channel ?? 'direct',
+    ai_source: event.aiSource ?? '',
+    search_id: asString(payloadValue(payload, 'searchId')),
+    status_code: asNumber(payloadValue(payload, 'statusCode')),
+    crawled_resource: asString(payloadValue(payload, 'resource')),
+    content_type: asString(payloadValue(payload, 'contentType')),
+    lcp_ms: payloadValue(payload, 'lcpMs') ?? null,
+    inp_ms: payloadValue(payload, 'inpMs') ?? null,
+    cls_milli: payloadValue(payload, 'clsMilli') ?? null,
+    fcp_ms: payloadValue(payload, 'fcpMs') ?? null,
+    ttfb_ms: payloadValue(payload, 'ttfbMs') ?? null,
     event_id: event.eventId,
     schema_version: event.schemaVersion,
     occurred_at: event.occurredAt,
@@ -111,30 +127,54 @@ const retryable = (error: unknown): boolean => {
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
-const excludeTombstonedAnalytics = async (events: AnalyticsEventEnvelope[], client: ClickHouseClient) => {
-  const scopes = [...new Map(events.map((event) => [JSON.stringify([event.tenantId, event.projectId]), event])).values()];
-  const result = await client.query({
-    query: `SELECT tenant_id AS tenantId, project_id AS projectId
-      FROM analytics_deletion_tombstones FINAL
-      WHERE (tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)})`,
-    query_params: {
-      tenant_ids: scopes.map((event) => event.tenantId),
-      project_ids: scopes.map((event) => event.projectId),
-    },
-    format: 'JSONEachRow',
-  });
-  const tombstoned = new Set(
-    (await result.json<{ tenantId: string; projectId: string }>()).map((row) => JSON.stringify([row.tenantId, row.projectId])),
-  );
-  return events.filter((event) => !tombstoned.has(JSON.stringify([event.tenantId, event.projectId])));
+const tombstoneCaches = new WeakMap<ClickHouseClient, Map<string, { deleted: boolean; expires: number }>>();
+const scopeKey = (event: Pick<AnalyticsEventEnvelope, 'tenantId' | 'projectId'>) => JSON.stringify([event.tenantId, event.projectId]);
+const excludeTombstonedAnalytics = async (events: AnalyticsEventEnvelope[], client: ClickHouseClient, cacheMs: number) => {
+  let cache = tombstoneCaches.get(client);
+  if (!cache) {
+    cache = new Map();
+    tombstoneCaches.set(client, cache);
+  }
+  const scopes = [...new Map(events.map((event) => [scopeKey(event), event])).values()];
+  const missing = scopes.filter((event) => !cacheMs || (cache.get(scopeKey(event))?.expires ?? 0) <= Date.now());
+  const deleted = new Set(scopes.filter((event) => cacheMs && cache?.get(scopeKey(event))?.deleted).map(scopeKey));
+  if (missing.length) {
+    const result = await client.query({
+      query: `SELECT tenant_id AS tenantId, project_id AS projectId FROM analytics_deletion_tombstones FINAL
+        WHERE (tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)})`,
+      query_params: { tenant_ids: missing.map((event) => event.tenantId), project_ids: missing.map((event) => event.projectId) },
+      format: 'JSONEachRow',
+    });
+    const tombstoned = new Set((await result.json<{ tenantId: string; projectId: string }>()).map(scopeKey));
+    for (const event of missing) {
+      const key = scopeKey(event);
+      if (tombstoned.has(key)) deleted.add(key);
+      else deleted.delete(key);
+      if (cacheMs) cache.set(key, { deleted: tombstoned.has(key), expires: Date.now() + cacheMs });
+    }
+    while (cache.size > 2048) {
+      const oldest = cache.keys().next().value;
+      if (oldest) cache.delete(oldest);
+      else break;
+    }
+  }
+  return events.filter((event) => !deleted.has(scopeKey(event)));
 };
 
 /** Low-level ClickHouse transport. Production runtime callers must hold the
  * Postgres tenant analytics write fence; the tombstone query is only a
- * defense-in-depth filter. */
+ * defense-in-depth filter. A brief negative tombstone cache is permitted ONLY
+ * while runtime callers hold that fence (default: no cache).
+ *
+ * Idempotency: immutable event ids + FINAL reads make facts and the new batch
+ * snapshots duplicate-safe. Existing MVs use uniq states / replacing event rows,
+ * not additive counts. Do not use block dedup tokens: microbatch membership can
+ * change on replay, and async/non-replicated insert dedup is deployment-dependent.
+ * Reusing an id with different dimensions can leave old MV dimension states;
+ * an explicit fenced rebuild repairs those legacy projections. */
 export const insertAnalyticsEvents = async (
   events: AnalyticsEventEnvelope[],
-  options: { client?: ClickHouseClient; attempts?: number } = {},
+  options: { client?: ClickHouseClient; attempts?: number; tombstoneCacheMs?: number } = {},
 ): Promise<void> => {
   if (events.length === 0) return;
   const client = options.client ?? getClickHouseClient('writer');
@@ -142,7 +182,7 @@ export const insertAnalyticsEvents = async (
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const accepted = await excludeTombstonedAnalytics(events, client);
+      const accepted = await excludeTombstonedAnalytics(events, client, options.tombstoneCacheMs ?? 0);
       if (accepted.length === 0) return;
       await client.insert({ table: 'analytics_events', format: 'JSONEachRow', values: accepted.map(eventToClickHouseRow) });
       const sensitive = accepted

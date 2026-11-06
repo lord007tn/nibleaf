@@ -1,9 +1,9 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ connected: vi.fn() }));
+const mocks = vi.hoisted(() => ({ connected: vi.fn(), analytics: vi.fn() }));
 vi.mock('@nibleaf/bullmq/queues', () => ({ queues: {} }));
 vi.mock('@nibleaf/bullmq/workers', () => ({ getWorkerHealth: mocks.connected }));
-vi.mock('@nibleaf/clickhouse', () => ({ clickHouseHealth: vi.fn(async () => ({ status: 'ok' })) }));
+vi.mock('@nibleaf/clickhouse', () => ({ getAnalyticsHealth: mocks.analytics }));
 vi.mock('@getworkbench/hono', async () => {
   const { Hono } = await import('hono');
   return { workbench: () => new Hono() };
@@ -14,6 +14,7 @@ import app, { setWorkerReady } from './handlers';
 
 beforeEach(() => {
   mocks.connected.mockReset();
+  mocks.analytics.mockResolvedValue({ configured: true, latencyMs: 1, status: 'ok' });
   setWorkerReady(false);
 });
 
@@ -38,4 +39,13 @@ it('reports a lost worker connection as unavailable and recognizes recovery', as
     queues: { status: 'unavailable', workers: [{ queue: 'email', reason: 'blocking-client-not-ready' }] },
   });
   expect((await app.request('/health')).status).toBe(200);
+});
+
+it.each(['unavailable', 'migrating', 'schema_outdated', 'disabled'])('keeps core health ready when analytics is %s', async (status) => {
+  setWorkerReady(true);
+  mocks.connected.mockResolvedValue([{ queue: 'email', ready: true, reason: 'ready' }]);
+  mocks.analytics.mockResolvedValue({ configured: status !== 'disabled', latencyMs: null, status });
+  const response = await app.request('/health');
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ status: 'ok', analytics: { status } });
 });
