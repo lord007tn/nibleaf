@@ -46,12 +46,13 @@ and explicitly public workflows. They do not grant dashboard privileges.
 Operator and worker credentials are separate from reader and workspace access.
 
 The authenticated HTTP MCP endpoint is a separate, explicit integration
-contract. It is disabled by default, accepts project-bound API keys with
-`mcp:connect` and exact read scopes, and does not turn undocumented dashboard
-routes into a supported public write API. Its read adapters cover bounded
-content, search, usage, entitlement, add-on, theme, integration, and operational
-summaries. Theme-import preview validates without writing; publishing, reindex,
-usage export, provider credentials, and new-domain mutations remain unavailable.
+contract. It is disabled by default, accepts personal project-bound API keys
+with `mcp:connect` and exact scopes, re-checks the key owner's current role on
+every request, and does not turn undocumented dashboard routes into a supported
+public write API. Its read adapters cover bounded content, search, usage,
+entitlement, add-on, theme, integration, and operational summaries. Its only
+writes are page drafts and a preview-then-confirm publish; reindex, usage
+export, deletion, provider credentials, and other mutations remain unavailable.
 See [Connect MCP clients securely](/self-hosting/mcp).
 
 ## Integrate safely

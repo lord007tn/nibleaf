@@ -3,8 +3,8 @@ title: 'Production environment variables'
 description: 'Look up the production image, origin, domain, secret, storage, authentication, email, proxy, worker, and lifecycle settings Nibleaf consumes.'
 audience: 'self-hosted operators and infrastructure reviewers'
 content_type: 'reference'
-last_reviewed: '2026-08-22'
-verified_against: '.env.production.example and docker-compose.prod.yml'
+last_reviewed: '2026-11-06'
+verified_against: '.env.production.example, docker-compose.prod.yml, and apps/server/src/env.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'reference/environment-variables'
@@ -112,11 +112,14 @@ When `MARKETING_GTM_ID` is enabled, configure one Google tag in GTM with automat
 | --- | --- | --- | --- |
 | `MCP_ENABLED` | No | `false` | Enables the authenticated project-bound `/api/mcp` endpoint. Keep it disabled until proxy and key-lifecycle checks pass. |
 | `MCP_ALLOWED_HOSTS` | No | Empty | Comma-separated additional public hostnames. `API_URL` and `APP_URL` hosts are already allowed. Schemes, paths, wildcard values, and ambiguous forwarded chains are rejected. |
-| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-key requests accepted by one API process per minute. Add an ingress/shared-edge limit for deployment-wide enforcement. |
+| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-key requests of any kind accepted by one API process per minute. Add an ingress/shared-edge limit for deployment-wide enforcement. |
+| `MCP_WRITE_RATE_LIMIT_PER_MIN` | No | `20` | Per-key write tool calls (page drafts, edits, moves, translations, visibility) accepted by one API process per minute. |
+| `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` | No | `6` | Per-key publish calls accepted by one API process per hour. |
 
 See [secure MCP client setup and operations](/self-hosting/mcp) before enabling
-the endpoint. API-key secrets are project-admin managed, displayed once, and
-must not be stored in environment examples or repository configuration.
+the endpoint. API keys are personal: each member creates their own, admins can
+revoke any, and secrets are displayed once. They must not be stored in
+environment examples or repository configuration.
 
 ### Export workers
 
