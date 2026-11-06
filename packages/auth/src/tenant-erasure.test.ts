@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   removeJob: vi.fn(),
   beginUsageDeletion: vi.fn(),
   deleteProjectAnalytics: vi.fn(),
+  deleteProjectAiConversations: vi.fn(),
   deleteProjectUsage: vi.fn(),
   projectFindUnique: vi.fn(),
   markerFindUnique: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock('@nibleaf/clickhouse', () => ({
   clickHouseWritesEnabled: () => true,
   keys: () => ({ ANALYTICS_MODE: 'clickhouse' }),
   deleteProjectAnalytics: mocks.deleteProjectAnalytics,
+  deleteProjectAiConversations: mocks.deleteProjectAiConversations,
   deleteProjectUsage: mocks.deleteProjectUsage,
 }));
 vi.mock('@nibleaf/database', () => ({
@@ -43,6 +45,7 @@ describe('shared tenant privacy erasure', () => {
     mocks.projectFindUnique.mockResolvedValue({ id: 'project-a' });
     mocks.beginUsageDeletion.mockResolvedValue({ exists: true, hadStorageMarker: true, pendingCount: 0 });
     mocks.deleteProjectAnalytics.mockResolvedValue(undefined);
+    mocks.deleteProjectAiConversations.mockResolvedValue(undefined);
     mocks.deleteProjectUsage.mockResolvedValue(undefined);
     mocks.createJob.mockResolvedValue(undefined);
     mocks.getJob.mockResolvedValue(undefined);

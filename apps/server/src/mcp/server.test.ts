@@ -335,7 +335,17 @@ describe('Nibleaf MCP protocol surface', () => {
     ['pages:read', ['get_capabilities', 'get_page', 'list_pages']],
     ['languages:read', ['get_capabilities', 'list_languages']],
     ['versions:read', ['get_capabilities', 'list_versions']],
-    ['analytics:read', ['get_analytics_overview', 'get_capabilities']],
+    [
+      'analytics:read',
+      [
+        'get_ai_conversation',
+        'get_ai_feedback_summary',
+        'get_analytics_overview',
+        'get_capabilities',
+        'list_ai_content_gaps',
+        'list_ai_conversations',
+      ],
+    ],
     ['search:read', ['get_capabilities', 'get_search_configuration', 'get_search_index_diagnostics']],
     ['usage:read', ['get_capabilities', 'get_usage_summary']],
     ['entitlements:read', ['check_entitlement', 'get_capabilities', 'get_entitlements']],

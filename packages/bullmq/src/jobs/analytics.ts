@@ -1,8 +1,15 @@
 import type { AnalyticsEventEnvelope } from '@nibleaf/clickhouse';
 import { canonicalUsageEventBatch, deterministicUsageEventId, type usageEventBatchSchema } from '@nibleaf/usage';
 import { z } from 'zod';
+import type { AiConversationJobData } from './ai-conversations';
 
-export type AnalyticsJobName = 'ingest-usage' | 'reconcile-usage' | 'rollup-analytics' | 'track-event';
+export type AnalyticsJobName =
+  | 'ai-conversation-turn'
+  | 'ai-conversation-feedback'
+  | 'ingest-usage'
+  | 'reconcile-usage'
+  | 'rollup-analytics'
+  | 'track-event';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export type RollupAnalyticsJobData = Record<string, never>;
@@ -50,4 +57,9 @@ export const analyticsIngestJobId = (event: Pick<AnalyticsEventEnvelope, 'eventI
 
 /** Discriminated union of every job the ANALYTICS queue carries. Rollup jobs
  *  have no payload, so discriminate on the presence of `kind`. */
-export type AnalyticsJobData = IngestUsageJobData | RollupAnalyticsJobData | TrackAnalyticsEventJobData | LegacyTrackAnalyticsEventJobData;
+export type AnalyticsJobData =
+  | AiConversationJobData
+  | IngestUsageJobData
+  | RollupAnalyticsJobData
+  | TrackAnalyticsEventJobData
+  | LegacyTrackAnalyticsEventJobData;

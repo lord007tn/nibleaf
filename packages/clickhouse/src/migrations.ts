@@ -1,4 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client';
+import { aiConversationMigrations } from './ai-conversations';
 
 export interface ClickHouseMigration {
   version: number;
@@ -341,7 +342,7 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
   const appliedRows = await result.json<{ version: number }>();
   const applied = new Set(appliedRows.map((row) => Number(row.version)));
   const completed: number[] = [];
-  for (const migration of migrations) {
+  for (const migration of [...migrations, ...aiConversationMigrations]) {
     if (applied.has(migration.version)) continue;
     for (const statement of migration.statements) {
       await client.command({

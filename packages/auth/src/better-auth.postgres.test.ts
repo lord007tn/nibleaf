@@ -42,6 +42,7 @@ vi.mock('@nibleaf/bullmq', () => {
 });
 vi.mock('@nibleaf/clickhouse', () => ({
   clickHouseWritesEnabled: () => false,
+  deleteProjectAiConversations: vi.fn(),
   deleteProjectAnalytics: vi.fn(),
   deleteProjectUsage: vi.fn(),
   keys: () => ({ ANALYTICS_MODE: 'postgres' }),

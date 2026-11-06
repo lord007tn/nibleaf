@@ -3,13 +3,13 @@ import { prisma } from '@nibleaf/database';
 import { siteT } from '@nibleaf/i18n/site';
 import { createLogger } from '@nibleaf/logger';
 import {
-  type ChatUsage,
+  boundChatHistory,
   CHAT_PROMPT_VERSION,
+  type ChatUsage,
   citationsToSources,
   condenseFollowUp,
   estimateTokens,
   type GroundedChatResult,
-  boundChatHistory,
   streamGroundedChat,
   suggestedArticles,
 } from '@nibleaf/search';
@@ -29,7 +29,7 @@ import { EventType, type StreamChunk, toServerSentEventsResponse } from '@tansta
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError } from '@/errors';
-import { releaseChatTurn, recordChatSpend, reserveChatTurn } from '@/lib/ai-search/chat-budget';
+import { recordChatSpend, releaseChatTurn, reserveChatTurn } from '@/lib/ai-search/chat-budget';
 import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
@@ -81,7 +81,7 @@ export const aiChatConsentRequired = (config: unknown): boolean => {
  * active language/version. Anything else is ignored rather than rejected. */
 const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) => {
   const path = pagePath?.trim().replace(/^\/+|\/+$/g, '');
-  if (!path) return undefined;
+  if (!path) return;
   const page = context.versionPages.find(
     (candidate) => candidate.kind === 'PAGE' && !candidate.hidden && candidate.languageCode === context.scope.language && candidate.path === path,
   );
@@ -89,7 +89,8 @@ const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) 
 };
 
 const usageTokens = (usage?: ChatUsage): number | undefined =>
-  usage?.totalTokens ?? (usage?.inputTokens !== undefined || usage?.outputTokens !== undefined ? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) : undefined);
+  usage?.totalTokens ??
+  (usage?.inputTokens !== undefined || usage?.outputTokens !== undefined ? (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0) : undefined);
 
 const addUsage = (left?: ChatUsage, right?: ChatUsage): ChatUsage | undefined => {
   if (!left) return right;
@@ -124,6 +125,23 @@ interface ChatTurnInput {
   dimensions: { device: string; country?: string };
 }
 
+/** Availability and spend gates, all before any provider call. Any failure to
+ * reach the counter store refuses the turn (fail closed, like the answer quota). */
+const openChatTurn = async (context: PublishedAnswerContext, conversationId: string) => {
+  const projectId = context.scope.projectId;
+  if (!context.available) return { ok: false as const, code: 'unavailable' as const };
+  const runtime = await resolveChatRuntime(projectId).catch(() => null);
+  if (!runtime) return { ok: false as const, code: 'unavailable' as const };
+  const reservation = await reserveChatTurn(projectId, conversationId);
+  if (!reservation.allowed) return { ok: false as const, code: reservation.reason };
+  const quota = await consumeAnswerQuota(projectId).catch(() => null);
+  if (!quota?.allowed) {
+    await releaseChatTurn(projectId, conversationId).catch(() => undefined);
+    return { ok: false as const, code: quota ? ('quota_exhausted' as const) : ('unavailable' as const) };
+  }
+  return { ok: true as const, runtime, reservation, quota };
+};
+
 async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnInput): AsyncGenerator<StreamChunk> {
   const projectId = context.scope.projectId;
   const threadId = body.conversationId;
@@ -137,19 +155,9 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
   ];
 
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
-  if (!context.available) return yield* fail('unavailable');
-  const runtime = await resolveChatRuntime(projectId).catch(() => null);
-  if (!runtime) return yield* fail('unavailable');
-
-  // Spend gates run before any provider call and fail closed when Redis is down.
-  const reservation = await reserveChatTurn(projectId, body.conversationId).catch(() => null);
-  if (!reservation) return yield* fail('unavailable');
-  if (!reservation.allowed) return yield* fail(reservation.reason);
-  const quota = await consumeAnswerQuota(projectId).catch(() => null);
-  if (!quota?.allowed) {
-    await releaseChatTurn(projectId, body.conversationId).catch(() => undefined);
-    return yield* fail(quota ? 'quota_exhausted' : 'unavailable');
-  }
+  const gate = await openChatTurn(context, body.conversationId).catch(() => ({ ok: false as const, code: 'unavailable' as const }));
+  if (!gate.ok) return yield* fail(gate.code);
+  const { runtime, reservation, quota } = gate;
 
   const started = performance.now();
   const analytics = {

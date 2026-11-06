@@ -36,13 +36,16 @@ vi.mock('@nibleaf/search', () => ({
   estimateTokens: (text: string) => Math.ceil(text.length / 3),
   condenseFollowUp: mocks.condense,
   streamGroundedChat: mocks.stream,
-  citationsToSources: (citations: Array<Record<string, unknown>>) => citations.map((citation) => ({ ...citation, snippet: 'snippet', direction: 'ltr' })),
+  citationsToSources: (citations: Array<Record<string, unknown>>) =>
+    citations.map((citation) => ({ ...citation, snippet: 'snippet', direction: 'ltr' })),
   suggestedArticles: (chunks: Array<{ pageId: string; title: string; path: string }>) =>
-    chunks.slice(0, 1).map((chunk, index) => ({ id: `P${index + 1}`, pageId: chunk.pageId, title: chunk.title, path: chunk.path, snippet: 's', direction: 'ltr' })),
+    chunks
+      .slice(0, 1)
+      .map((chunk, index) => ({ id: `P${index + 1}`, pageId: chunk.pageId, title: chunk.title, path: chunk.path, snippet: 's', direction: 'ltr' })),
 }));
 
-import { aiChatConsentRequired, chatSite, submitSiteChatFeedback } from './site-chat';
 import { chatFeedbackToken } from '@/lib/ai-search/feedback-token';
+import { aiChatConsentRequired, chatSite, submitSiteChatFeedback } from './site-chat';
 
 const chunk = { id: 'c1', pageId: 'page-1', title: 'Install', path: 'guides/install', content: 'Run the installer.', heading: '', direction: 'ltr' };
 const context = (overrides: Record<string, unknown> = {}) => ({
@@ -82,6 +85,7 @@ describe('reader AI chat stream', () => {
     mocks.condense.mockResolvedValue({ query: 'How do I install it?', rewritten: false });
     mocks.retrieve.mockResolvedValue({ chunks: [chunk], hits: [{ chunk, score: 0.9 }], confidence: 0.8 });
     mocks.spend.mockResolvedValue(undefined);
+    mocks.release.mockResolvedValue(undefined);
     mocks.recordTurn.mockResolvedValue(undefined);
     mocks.track.mockResolvedValue(undefined);
   });
@@ -129,7 +133,11 @@ describe('reader AI chat stream', () => {
     expect(mocks.recordTurn).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: 'org-1', status: 'answered', turnId: final.turnId, pagePath: 'guides/install', inputTokens: 100 }),
     );
-    expect(mocks.track).toHaveBeenCalledWith('project-1', expect.objectContaining({ name: 'answer_completed', promptTokens: 100 }), expect.anything());
+    expect(mocks.track).toHaveBeenCalledWith(
+      'project-1',
+      expect.objectContaining({ name: 'answer_completed', promptTokens: 100 }),
+      expect.anything(),
+    );
   });
 
   it('never calls the model when retrieval is not confident and offers articles instead', async () => {
@@ -178,7 +186,18 @@ describe('reader AI chat stream', () => {
   });
 
   it('ignores a page context the reader cannot see', async () => {
-    mocks.stream.mockReturnValue({ deltas: (async function* () {})(), result: Promise.resolve({ status: 'no_answer', noAnswerReason: 'model_declined', answer: 'No.', citations: [], droppedParagraphs: 0, model: 'm', latencyMs: 1 }) });
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {})(),
+      result: Promise.resolve({
+        status: 'no_answer',
+        noAnswerReason: 'model_declined',
+        answer: 'No.',
+        citations: [],
+        droppedParagraphs: 0,
+        model: 'm',
+        latencyMs: 1,
+      }),
+    });
     await readEvents(await chatSite('project-1', body({ pagePath: 'internal/secret' })));
     expect(mocks.retrieve.mock.calls[0]?.[3]).toMatchObject({ page: undefined });
   });
@@ -220,7 +239,11 @@ describe('reader AI chat feedback', () => {
       }),
     ).resolves.toEqual({ saved: true });
     expect(mocks.recordFeedback).toHaveBeenCalledWith(expect.objectContaining({ rating: 'down', reason: 'outdated', language: 'en' }));
-    expect(mocks.track).toHaveBeenCalledWith('project-1', expect.objectContaining({ name: 'feedback_submitted', feedback: 'not_helpful' }), expect.anything());
+    expect(mocks.track).toHaveBeenCalledWith(
+      'project-1',
+      expect.objectContaining({ name: 'feedback_submitted', feedback: 'not_helpful' }),
+      expect.anything(),
+    );
   });
 });
 

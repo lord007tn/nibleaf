@@ -3,6 +3,7 @@ import { MAX_THEME_TEMPLATE_NODES } from '@nibleaf/shared/themes';
 import type { Context } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 import { registerAddonSurface } from './addons';
+import { registerAiConversationSurface } from './ai-conversations';
 import { registerCapabilitySurface } from './capabilities';
 import { registerContentSurface } from './content';
 import { registerInsightSurface } from './insights';
@@ -30,6 +31,7 @@ export const createNibleafMcpServer = (ctx: Context<HonoEnv>, principal: McpPrin
   registerCapabilitySurface(server, ctx, principal);
   registerContentSurface(server, ctx, principal);
   registerInsightSurface(server, ctx, principal);
+  registerAiConversationSurface(server, ctx, principal);
   registerSearchSurface(server, ctx, principal);
   registerUsageSurface(server, ctx, principal);
   registerAddonSurface(server, ctx, principal);
