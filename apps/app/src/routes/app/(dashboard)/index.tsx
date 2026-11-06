@@ -4,6 +4,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
+import { useQueries } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { AlertTriangle, BarChart3, BookText, Check, FileText, Plus, Users, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
@@ -13,9 +14,14 @@ import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
+import { getData } from '@/hooks/api/client-helpers';
+import { queryKeys } from '@/hooks/api/query-keys';
+import type { Deployment, PageNode } from '@/hooks/api/types';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { useFormatters, viewsTrend } from '@/lib/format';
-import { type StartHereProgress, startHereProgress } from '@/lib/start-here';
+import { type SiteActivity, type StartHereProgress, startHereProgress, startHereRequests } from '@/lib/start-here';
+import { api } from '@/services/api';
+import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
   component: ProjectsPage,
@@ -26,14 +32,50 @@ export const Route = createFileRoute('/app/(dashboard)/')({
 });
 
 const subscribeToHydration = () => () => undefined;
-const START_HERE_DISMISSED_KEY = 'nibleaf.startHere.dismissed';
-const readStartHereDismissed = () => {
+/** Per user, so a colleague signing up on a shared desk machine still gets the path. */
+const startHereDismissedKey = (userId: string | undefined) => (userId ? `nibleaf.startHere.dismissed.${userId}` : null);
+const readStartHereDismissed = (key: string | null) => {
+  // Hidden until the signed-in user is known, so it never flashes for someone who dismissed it.
+  if (!key) return true;
   try {
-    return window.localStorage.getItem(START_HERE_DISMISSED_KEY) === '1';
+    return window.localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 };
+const isInFlight = (deployments: Deployment[] | undefined) => deployments?.some((d) => d.status === 'PENDING' || d.status === 'BUILDING') ?? false;
+
+/**
+ * The publish history and (for the sample) page list the checklist needs. They
+ * share cache entries with the editor's own deployments/pages queries, refetch
+ * on every visit, and poll while a publish is still building, so a publish
+ * finishing — or failing — shows up here without a reload.
+ */
+function useStartHereActivity(deploymentSiteIds: string[], pageSiteIds: string[]): ReadonlyMap<string, SiteActivity> {
+  const deploymentResults = useQueries({
+    queries: deploymentSiteIds.map((projectId) => ({
+      queryKey: queryKeys.deployments.all(projectId),
+      staleTime: 0,
+      queryFn: async () => getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments'),
+      refetchInterval: (query: { state: { data?: Deployment[] } }) => (isInFlight(query.state.data) ? 2500 : false),
+    })),
+  });
+  const pageResults = useQueries({
+    queries: pageSiteIds.map((projectId) => ({
+      queryKey: queryKeys.pages.all(projectId),
+      staleTime: 0,
+      queryFn: async () => getData<PageNode[]>(await api.app.projects[':projectId'].pages.$get({ param: { projectId }, query: {} }), 'pages'),
+    })),
+  });
+  const activity = new Map<string, SiteActivity>();
+  deploymentSiteIds.forEach((projectId, index) => {
+    activity.set(projectId, { ...activity.get(projectId), deployments: deploymentResults[index]?.data });
+  });
+  pageSiteIds.forEach((projectId, index) => {
+    activity.set(projectId, { ...activity.get(projectId), pages: pageResults[index]?.data });
+  });
+  return activity;
+}
 
 function ProjectsPage() {
   const { firstPublish, newSite } = Route.useSearch();
@@ -55,7 +97,13 @@ function ProjectsPage() {
     refetch: retryAnalytics,
   } = useWorkspaceAnalytics(range);
   const [newProjectOpen, setNewProjectOpen] = useState(Boolean(newSite));
-  const storedDismissed = useSyncExternalStore(subscribeToHydration, readStartHereDismissed, () => true);
+  const { data: session } = useSession();
+  const dismissedKey = startHereDismissedKey(session?.user?.id);
+  const storedDismissed = useSyncExternalStore(
+    subscribeToHydration,
+    () => readStartHereDismissed(dismissedKey),
+    () => true,
+  );
   const [dismissedNow, setDismissedNow] = useState(false);
   const t = useT();
   const navigate = useNavigate();
@@ -65,7 +113,9 @@ function ProjectsPage() {
   const focusId = useMemo(() => startHereProgress(siteList, undefined).focus?.id, [siteList]);
   const { data: team } = useProjectMembers(focusId);
   const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : undefined;
-  const progress = useMemo(() => startHereProgress(siteList, teamSize), [siteList, teamSize]);
+  const requests = useMemo(() => startHereRequests(siteList), [siteList]);
+  const activity = useStartHereActivity(requests.deploymentSiteIds, requests.pageSiteIds);
+  const progress = startHereProgress(siteList, teamSize, activity);
 
   const totalPages = projects && !projectsError ? projects.reduce((sum, p) => sum + (p._count?.pages ?? 0), 0) : null;
   const analyticsUnavailable = analyticsError || analytics?.availability === 'unavailable';
@@ -91,8 +141,9 @@ function ProjectsPage() {
 
   const dismissStartHere = () => {
     setDismissedNow(true);
+    if (!dismissedKey) return;
     try {
-      window.localStorage.setItem(START_HERE_DISMISSED_KEY, '1');
+      window.localStorage.setItem(dismissedKey, '1');
     } catch {
       // Storage can be unavailable (private mode); the card stays hidden for this visit.
     }

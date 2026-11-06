@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, type ComponentType, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -116,12 +117,26 @@ describe('site settings permissions', () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     const blocker = mocks.blocker.mock.lastCall?.[0];
-    expect(blocker.enableBeforeUnload).toBe(true);
+    expect(blocker.enableBeforeUnload()).toBe(true);
     mocks.confirm.mockResolvedValueOnce(false);
     await expect(blocker.shouldBlockFn()).resolves.toBe(true);
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ cancelLabel: 'settings.unsaved.keep', destructive: true }));
     mocks.confirm.mockResolvedValueOnce(true);
     await expect(blocker.shouldBlockFn()).resolves.toBe(false);
+  });
+
+  it('clears the unload guard synchronously before a successful email reload', async () => {
+    mocks.dirty = true;
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(mocks.blocker.mock.lastCall?.[0].enableBeforeUnload()).toBe(true);
+    const installedUnloadGuard = mocks.blocker.mock.lastCall?.[0].enableBeforeUnload;
+    act(() => {
+      mocks.dirty = false;
+      flushSync(() => root.render(<SettingsPage />));
+      // The reload runs here, with no passive-effect tick or await in between.
+      expect(installedUnloadGuard()).toBe(false);
+    });
   });
 
   it('offers recovery when permission lookup fails instead of mounting editable settings', async () => {

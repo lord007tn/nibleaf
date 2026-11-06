@@ -1,23 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { authEmailErrorMessage, isEmailNotVerifiedError } from './auth-errors';
+import { friendlyAuthError, isAccountSuspendedError, isEmailNotVerifiedError } from './auth-errors';
 
-describe('authEmailErrorMessage', () => {
-  it('uses translated delivery feedback only for the stable unavailable code', () => {
-    expect(authEmailErrorMessage({ code: 'AUTH_EMAIL_UNAVAILABLE', message: 'English backend message' }, 'Localized delivery error')).toBe(
-      'Localized delivery error',
+const t = (key: string) => `t:${key}`;
+
+describe('friendlyAuthError', () => {
+  it('tells a suspended or banned account to contact support instead of blaming the code', () => {
+    const suspended = { status: 403, message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.' };
+    expect(friendlyAuthError(suspended, t, 'Invalid code')).toBe('t:auth.error.suspended');
+    expect(friendlyAuthError({ status: 403, code: 'BANNED_USER', message: 'You have been banned from this application' }, t, 'Invalid code')).toBe(
+      't:auth.error.suspended',
+    );
+    expect(isAccountSuspendedError({ status: 403, code: 'INVALID_ORIGIN', message: 'Invalid origin' })).toBe(false);
+  });
+
+  it('localizes rate limits and server failures, and never shows the English server text', () => {
+    expect(friendlyAuthError({ status: 429, message: 'Too many requests' }, t, 'Fallback')).toBe('t:auth.otp.tooManyAttempts');
+    expect(friendlyAuthError({ code: 'TOO_MANY_ATTEMPTS', message: 'Too many attempts' }, t, 'Fallback')).toBe('t:auth.otp.tooManyAttempts');
+    expect(friendlyAuthError({ status: 500, message: 'Internal Server Error' }, t, 'Fallback')).toBe('t:auth.error.tryAgain');
+    expect(friendlyAuthError({ status: 503, code: 'AUTH_EMAIL_UNAVAILABLE', message: 'Unable to send a code.' }, t, 'Could not send')).toBe(
+      'Could not send',
     );
   });
 
-  it('preserves useful messages for unrelated errors', () => {
-    expect(authEmailErrorMessage({ code: 'TOO_MANY_REQUESTS', message: 'Wait before retrying' }, 'Delivery error')).toBe('Wait before retrying');
-    expect(authEmailErrorMessage({ message: 'AUTH_EMAIL_UNAVAILABLE is only message text' }, 'Delivery error')).toBe(
-      'AUTH_EMAIL_UNAVAILABLE is only message text',
-    );
-  });
-
-  it('preserves an operation-specific fallback when no message is available', () => {
-    expect(authEmailErrorMessage({ code: 'INVALID_OTP' }, 'Delivery error', 'Verification error')).toBe('Verification error');
-    expect(authEmailErrorMessage(undefined, 'Delivery error')).toBe('Delivery error');
+  it("keeps the operation's own message for everything else", () => {
+    expect(friendlyAuthError({ status: 400, code: 'INVALID_OTP', message: 'Invalid OTP' }, t, 'That code is invalid')).toBe('That code is invalid');
+    expect(friendlyAuthError(undefined, t, 'Fallback')).toBe('Fallback');
   });
 });
 

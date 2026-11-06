@@ -12,7 +12,7 @@ import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
-import { friendlyAuthError } from '@/lib/auth-friendly-error';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -68,13 +68,13 @@ function SignUpPage() {
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
       if (result.error) {
-        setError(friendlyAuthError(result.error, { fallback: t('auth.otp.sendError'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
+        setError(friendlyAuthError(result.error, t, t('auth.otp.sendError')));
         return;
       }
       setCodeSent(true);
       startCountdown();
     } catch {
-      setError(t('auth.otp.sendError'));
+      setError(t('auth.error.tryAgain'));
     } finally {
       setIsSubmitting(false);
     }
@@ -86,12 +86,12 @@ function SignUpPage() {
     try {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), name: name.trim() });
       if (result.error) {
-        setError(friendlyAuthError(result.error, { fallback: t('auth.otp.invalid'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
+        setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
         return;
       }
       await finishSignUp();
     } catch {
-      setError(t('auth.otp.invalid'));
+      setError(t('auth.error.tryAgain'));
     } finally {
       setIsSubmitting(false);
     }
@@ -102,7 +102,7 @@ function SignUpPage() {
     setIsGoogleSubmitting(true);
     const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath });
     if (result.error) {
-      setError(friendlyAuthError(result.error, { fallback: t('auth.signUp.error'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
+      setError(friendlyAuthError(result.error, t, t('auth.signUp.error')));
       setIsGoogleSubmitting(false);
     }
   };
