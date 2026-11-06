@@ -1,6 +1,6 @@
 # Evidence for the support MCP pull request
 
-Captured on 2026-11-06 from a local stack built from this branch: dashboard, API and worker, with Postgres, ClickHouse (`ANALYTICS_MODE=clickhouse`), Dragonfly and MaxIO. Accounts and data are seeded test fixtures (`demo@nibleaf.test` is the owner, `support@nibleaf.test` is a plain `member`), not real people. Visitor searches and feedback were sent through the public site endpoints.
+Captured on 2026-11-06 (key screen, sign-in and integrations refreshed after the Support writer wording changed to "publish after a fresh preview is confirmed") from a local stack built from this branch: dashboard, API and worker, with Postgres, ClickHouse (`ANALYTICS_MODE=clickhouse`), Dragonfly and MaxIO. Accounts and data are seeded test fixtures (`demo@nibleaf.test` is the owner, `support@nibleaf.test` is a plain `member`), not real people. Visitor searches and feedback were sent through the public site endpoints.
 
 ## Secrets
 
@@ -33,6 +33,19 @@ Every API key in the screenshots and videos is masked in the page before it is p
 | `key-setup-walkthrough-{en-desktop,ar-mobile390}.gif` | In order: preset, key created (masked), setup for Claude Desktop, VS Code and ChatGPT, Test connection, then the AI app's first request. |
 | `key-setup-{en-desktop,ar-mobile390}.webm` | Continuous recordings of the same flow (Playwright video). |
 | `walk-{en-desktop,ar-mobile390}-5-ai-app-connected.png` | "Connected · 26 tools available" from the dashboard's own test. Below it, "Your AI app is using this key." appears only after a separate MCP SDK client used the key. |
+
+### Integrations: loading and error states (#288 conventions)
+
+Captured with the catalog request held for six seconds and the connect request
+answered by the browser with a canned `integration:credentials_invalid` error,
+so no webhook was registered and no real URL was used. `before` is main's tab
+and hooks; `after` is this branch.
+
+| File | What it shows |
+|---|---|
+| `integrations-{before,after}-{en-desktop,ar-mobile390}.gif` | First load, the catalog, Connect while the request runs, then the failure toast. |
+| `integrations-{before,after}-1-loading-{en-desktop,ar-mobile390}.png` | Before: four grey blocks. After: card-shaped skeletons grouped like the catalog, with one status for screen readers. |
+| `integrations-{before,after}-4-error-{en-desktop,ar-mobile390}.png` | Before: a generic "could not be completed". After: what to do, worded from the error code ("That webhook URL wasn't accepted…"). |
 
 ### The support journey
 
