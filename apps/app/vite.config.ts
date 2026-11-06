@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import mdx from '@mdx-js/rollup';
 import { createEnv } from '@t3-oss/env-core';
@@ -23,9 +24,17 @@ const SECURITY_HEADERS = {
 };
 
 /** Message files only the published reader's lazily loaded search dialog and article
- * renderer import (packages/i18n/src/site-search.ts and site-content.ts). */
-const LAZY_SITE_MESSAGES =
-  /\/paraglide\/messages\/site_(?:answer|answerfailed|askai|checking|closeimage|closesearch|copied|copycode|copyfailed|copysectionlink|defaultvalue|deprecated|details|groundedanswerbody|groundedanswertitle|noanswer|required|results|searchaskaiabout|searchaskaihint|searchbacktoresults|searchclearrecent|searchdescription|searchfailed|searchfilterversion|searching|searchkeysclose|searchkeysnavigate|searchkeysopen|searchnoresultsfor|searchnoresultshint|searchpages|searchprompt|searchrecent|searchresultcount|searchretry|searchsuggested|searchversionlabel|showproperties|tab|viewfullsize|viewfullsizeof)\.js$/;
+ * renderer import, read from those translators' own imports so the list can't drift
+ * (packages/i18n/src/site-search.ts and site-content.ts). */
+const LAZY_SITE_MESSAGES = new RegExp(
+  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts']
+    .flatMap((file) =>
+      [...readFileSync(new URL(`../../packages/i18n/src/${file}`, import.meta.url), 'utf8').matchAll(/paraglide\/messages\/site_(\w+)\.js/g)].map(
+        (match) => match[1],
+      ),
+    )
+    .join('|')})\\.js$`,
+);
 
 export default defineConfig(({ mode }) => {
   const configEnv = createEnv({
