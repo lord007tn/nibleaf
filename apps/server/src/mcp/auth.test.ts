@@ -19,6 +19,7 @@ const key = (overrides: Record<string, unknown> = {}) => ({
   scopes: ['mcp:connect', 'projects:read'],
   expiresAt: new Date('2030-01-01T00:00:00.000Z'),
   revokedAt: null,
+  createdById: 'user-1',
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
   ...overrides,
 });
@@ -36,6 +37,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.env.MCP_ENABLED = true;
   mocks.update.mockResolvedValue({ id: 'key-1' });
+  // Default: the creator is still a plain member in good standing.
+  mocks.memberFindUnique.mockResolvedValue({ role: 'member', user: { suspendedAt: null } });
 });
 
 describe('MCP bearer authentication', () => {
@@ -121,14 +124,15 @@ describe('MCP key actor binding', () => {
     expect(mocks.update).not.toHaveBeenCalled();
   });
 
-  it('keeps reads but strips write scopes from a key without a creator', async () => {
+  it('revokes a key whose creator was deleted instead of keeping its reads', async () => {
+    // Deleting the user nulls createdById (onDelete: SetNull). The orphaned key
+    // must not regain access that its former owner lost.
     mocks.findUnique.mockResolvedValue(key({ createdById: null, scopes: writerScopes }));
     const response = await requestAuth(`Bearer ${secret}`);
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as AuthBody;
-    expect(body.actor).toBeNull();
-    expect(body.apiKey.scopes).toEqual(['mcp:connect', 'projects:read', 'pages:read']);
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: { code: 'auth:invalid_api_key', message: 'The API key is invalid, expired, or revoked.' } });
     expect(mocks.memberFindUnique).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
   });
 
   it('intersects key scopes with what the creator role allows', async () => {

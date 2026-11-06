@@ -35,11 +35,12 @@ const constantTimeHashMatch = (candidate: string, stored: string) => {
  * organization, read on every request (never cached on the key). A creator who
  * has left the organization or been suspended revokes the key outright, the
  * same lockout `isAuthenticated` applies to their dashboard session. A key with
- * no creator (legacy, or the user was deleted) has no actor: it keeps its read
- * scopes and can never write.
+ * no creator is revoked too: the dashboard has always recorded the creator, so
+ * a null `createdById` means the user was deleted (`onDelete: SetNull`), and an
+ * orphaned key must not outlive its owner's access.
  */
 const resolveKeyActor = async (createdById: string | null, organizationId: string): Promise<McpPrincipal['actor'] | 'revoked'> => {
-  if (!createdById) return null;
+  if (!createdById) return 'revoked';
   const member = await prisma.member.findUnique({
     where: { organizationId_userId: { organizationId, userId: createdById } },
     select: { role: true, user: { select: { suspendedAt: true } } },

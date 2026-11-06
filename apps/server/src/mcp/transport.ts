@@ -6,6 +6,7 @@ import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
 import { recordMcpAudit } from './audit';
 import { authenticateMcpRequest, mcpAuthInfo } from './auth';
+import { auditDeniedWriteCalls, bufferMcpRequest, mayMakeDeniedWriteCalls } from './denied-calls';
 import { checkMcpRateLimit, finalizeMcpRateLimitRejectionAudit } from './rate-limit';
 import { createNibleafMcpServer } from './server';
 
@@ -160,13 +161,27 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
     );
   }
 
+  // Keys without every write scope get their body read once so denied write
+  // calls are audited; the handler then receives a request rebuilt from the
+  // same bytes. Keys holding every write scope skip the extra copy.
+  let forwarded = request;
+  if (mayMakeDeniedWriteCalls(authenticated)) {
+    const buffered = await bufferMcpRequest(request, MAX_MCP_REQUEST_BODY_BYTES);
+    forwarded = buffered.request;
+    try {
+      await auditDeniedWriteCalls(ctx, authenticated, buffered.text);
+    } catch {
+      return auditUnavailableResponse();
+    }
+  }
+
   const handler = createMcpHandler(() => createNibleafMcpServer(ctx, authenticated), {
     responseMode: 'json',
     maxRequestBodySize: MAX_MCP_REQUEST_BODY_BYTES,
     onerror: (error) => log.error({ errorName: error.name, requestId: ctx.get('requestId') }, 'MCP protocol request failed'),
   });
   try {
-    return withTransportHeaders(await handler.fetch(request, { authInfo: mcpAuthInfo(authenticated) }), limit);
+    return withTransportHeaders(await handler.fetch(forwarded, { authInfo: mcpAuthInfo(authenticated) }), limit);
   } finally {
     try {
       await handler.close();

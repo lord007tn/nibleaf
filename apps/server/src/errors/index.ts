@@ -28,6 +28,7 @@ export type ErrorCode =
   | 'mcp:preview_stale'
   | 'mcp:nothing_to_publish'
   | 'mcp:publish_blocked'
+  | 'mcp:publish_in_progress'
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
@@ -99,6 +100,7 @@ const ERROR_STATUS = {
   'mcp:preview_stale': 409,
   'mcp:nothing_to_publish': 409,
   'mcp:publish_blocked': 409,
+  'mcp:publish_in_progress': 409,
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,

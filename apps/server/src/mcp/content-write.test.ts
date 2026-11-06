@@ -45,7 +45,7 @@ type IdempotencyRow = {
 const state = vi.hoisted(() => ({
   pages: [] as PageRow[],
   records: new Map<string, IdempotencyRow>(),
-  deployments: [] as Array<{ id: string; version: number; status: string; commitMessage: string | null }>,
+  deployments: [] as Array<{ id: string; version: number; status: string; commitMessage: string | null; createdAt?: Date }>,
   redirectIssues: [] as Array<{ code: string; message: string; sequence: string[]; rowIndexes: number[] }>,
   tick: 0,
   sequence: 0,
@@ -65,6 +65,8 @@ const mocks = vi.hoisted(() => ({
   assertBranchInProject: vi.fn(),
   getDefaultBranch: vi.fn(),
   pageFindMany: vi.fn(),
+  pageUpdateMany: vi.fn(),
+  deploymentFindFirst: vi.fn(),
   domainFindFirst: vi.fn(),
   idempotency: { deleteMany: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   env: {
@@ -80,7 +82,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/env', () => ({ env: mocks.env }));
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
 vi.mock('@nibleaf/database', () => ({
-  prisma: { page: { findMany: mocks.pageFindMany }, domain: { findFirst: mocks.domainFindFirst }, mcpIdempotencyRecord: mocks.idempotency },
+  prisma: {
+    page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany },
+    deployment: { findFirst: mocks.deploymentFindFirst },
+    domain: { findFirst: mocks.domainFindFirst },
+    mcpIdempotencyRecord: mocks.idempotency,
+    $transaction: (operations: Promise<unknown>[]) => Promise.all(operations),
+  },
 }));
 vi.mock('@/actions/pages', () => ({
   getPage: mocks.getPage,
@@ -315,6 +323,14 @@ beforeEach(() => {
       }
       return [];
     },
+  );
+  mocks.pageUpdateMany.mockImplementation(async ({ where, data }: { where: Record<string, unknown>; data: Partial<PageRow> }) => {
+    const rows = state.pages.filter((row) => matches(row, where));
+    for (const row of rows) Object.assign(row, data, { updatedAt: nextDate() });
+    return { count: rows.length };
+  });
+  mocks.deploymentFindFirst.mockImplementation(
+    async () => state.deployments.find((deployment) => deployment.status === 'PENDING' || deployment.status === 'BUILDING') ?? null,
   );
   mocks.getCurrentSnapshot.mockImplementation(async () => snapshot());
   mocks.getPendingChanges.mockImplementation(async (_projectId: string, current: ReturnType<typeof snapshot>) => ({
@@ -551,14 +567,26 @@ describe('create_page_draft', () => {
     state.pages.push(page({ id: 'page-2', slug: 'b', path: 'b', title: 'B', position: 1 }));
     const client = await connect(makePrincipal());
     const response = await client.call('create_page_draft', { title: 'First', markdown: '', position: 0 });
-    expect(mocks.reorderPages).toHaveBeenCalledWith('project-1', {
-      items: [
-        { id: 'page-new-1', parentId: null, position: 0 },
-        { id: 'page-1', parentId: null, position: 1 },
-        { id: 'page-2', parentId: null, position: 2 },
-      ],
-    });
+    // Positions only, each guarded by the expected parent: a concurrent move is never reverted.
+    const guard = { projectId: 'project-1', branchId: 'version-1', languageId: 'lang-en', parentId: null };
+    expect(mocks.pageUpdateMany.mock.calls.map(([call]) => call)).toEqual([
+      { where: { ...guard, id: 'page-new-1' }, data: { position: 0 } },
+      { where: { ...guard, id: 'page-1' }, data: { position: 1 } },
+      { where: { ...guard, id: 'page-2' }, data: { position: 2 } },
+    ]);
     expect(response.structuredContent.data.page).toMatchObject({ position: 0 });
+    await client.close();
+  });
+
+  it('keeps a committed draft when the follow-up duplicate check fails', async () => {
+    const client = await connect(makePrincipal());
+    mocks.pageFindMany.mockRejectedValueOnce(new Error('database hiccup'));
+    const response = await client.call('create_page_draft', { title: 'Webhooks', markdown: '# Webhooks', clientRequestId: 'draft-webhooks-1' });
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent.data).toMatchObject({ possibleDuplicates: null, possibleDuplicatesUnavailable: true });
+    const replay = await client.call('create_page_draft', { title: 'Webhooks', markdown: '# Webhooks', clientRequestId: 'draft-webhooks-1' });
+    expect(replay.structuredContent.meta?.replayed).toBe(true);
+    expect(mocks.createPage).toHaveBeenCalledOnce();
     await client.close();
   });
 
@@ -752,14 +780,48 @@ describe('move_page', () => {
     expect(mocks.updatePage).toHaveBeenCalledWith('project-1', 'page-1', { parentId: 'group-1' }, 'user-1', {
       expectedUpdatedAt: new Date('2026-11-02T00:00:00.000Z'),
     });
-    expect(mocks.reorderPages).toHaveBeenCalledWith('project-1', {
-      items: [
-        { id: 'page-1', parentId: 'group-1', position: 1 },
-        { id: 'child-2', parentId: 'group-1', position: 2 },
-      ],
-    });
+    const guard = { projectId: 'project-1', branchId: 'version-1', languageId: 'lang-en', parentId: 'group-1' };
+    expect(mocks.pageUpdateMany.mock.calls.map(([call]) => call)).toEqual([
+      { where: { ...guard, id: 'page-1' }, data: { position: 1 } },
+      { where: { ...guard, id: 'child-2' }, data: { position: 2 } },
+    ]);
     expect(response.structuredContent.data.page).toMatchObject({ parentId: 'group-1', position: 1, path: 'guides/install-guide' });
     expect(lastAudit()).toMatchObject({ operation: 'move_page', outcome: 'succeeded', target: { type: 'page', id: 'page-1' } });
+    await client.close();
+  });
+
+  it('reports a conflict instead of undoing a move someone made between the move and the placement', async () => {
+    state.pages.push(page({ id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides', content: '', position: 1 }));
+    state.pages.push(page({ id: 'group-2', kind: 'GROUP', title: 'FAQ', slug: 'faq', path: 'faq', content: '', position: 2 }));
+    state.pages.push(page({ id: 'child-1', parentId: 'group-1', title: 'A', slug: 'a', path: 'guides/a', position: 0 }));
+    const original = mocks.updatePage.getMockImplementation();
+    mocks.updatePage.mockImplementationOnce(async (...args: unknown[]) => {
+      const result = await original?.(...(args as Parameters<NonNullable<typeof original>>));
+      // A person moves the page elsewhere right after our conditional write.
+      Object.assign(state.pages.find((row) => row.id === 'page-1') as PageRow, { parentId: 'group-2', updatedAt: nextDate() });
+      return result;
+    });
+    const client = await connect(makePrincipal());
+    const response = await client.call('move_page', {
+      pageId: 'page-1',
+      expectedRevision: '2026-11-02T00:00:00.000Z',
+      parentId: 'group-1',
+      position: 0,
+    });
+    expect(response.structuredContent.error?.code).toBe('mcp:revision_conflict');
+    // Their move stands: placement never writes parentId.
+    expect((state.pages.find((row) => row.id === 'page-1') as PageRow).parentId).toBe('group-2');
+    expect(mocks.pageUpdateMany.mock.calls.every(([call]) => !('parentId' in call.data))).toBe(true);
+    await client.close();
+  });
+
+  it('refuses page writes while a publish is being built', async () => {
+    state.deployments.push({ id: 'deployment-9', version: 9, status: 'BUILDING', commitMessage: null });
+    const client = await connect(makePrincipal());
+    const response = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: 'Later' });
+    expect(response.structuredContent.error).toMatchObject({ code: 'mcp:publish_in_progress', retryable: true });
+    expect(mocks.updatePage).not.toHaveBeenCalled();
+    expect(lastAudit()).toMatchObject({ operation: 'update_page', outcome: 'failed', errorCode: 'mcp:publish_in_progress' });
     await client.close();
   });
 
@@ -1070,11 +1132,39 @@ describe('preview and publish', () => {
     await other.close();
   });
 
+  it('lets one preview token publish only once, even when the project did not change', async () => {
+    const principal = makePrincipal();
+    const client = await connect(principal);
+    const approved = await preview(client);
+    // Another request already consumed this exact token (for example a concurrent retry).
+    await mocks.idempotency.create({
+      data: {
+        projectId: 'project-1',
+        apiKeyId: principal.apiKey.id,
+        operation: 'publish_changes:preview_token',
+        clientRequestId: (await import('node:crypto')).createHash('sha256').update(String(approved.previewToken)).digest('hex'),
+        argsHash: 'preview-token',
+        status: 'consumed',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    const response = await client.call('publish_changes', { confirm: true, previewToken: approved.previewToken });
+    expect(response.structuredContent.error?.code).toBe('mcp:preview_stale');
+    expect(response.structuredContent.error?.message).toContain('already used');
+    expect(mocks.createDeployment).not.toHaveBeenCalled();
+    await client.close();
+  });
+
   it('reports nothing to publish and enforces the hourly publish budget', async () => {
     mocks.env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR = 1;
     const client = await connect(makePrincipal());
     const first = await preview(client);
     expect((await client.call('publish_changes', { confirm: true, previewToken: first.previewToken })).isError).not.toBe(true);
+    // While that publish is still building, another publish (or page write) waits.
+    const second0 = await preview(client);
+    const busy = await client.call('publish_changes', { confirm: true, previewToken: second0.previewToken });
+    expect(busy.structuredContent.error).toMatchObject({ code: 'mcp:publish_in_progress', retryable: true });
+    (state.deployments[0] as { status: string }).status = 'READY';
     (state.pages[0] as PageRow).content = 'second edit';
     const second = await preview(client);
     const limited = await client.call('publish_changes', { confirm: true, previewToken: second.previewToken });

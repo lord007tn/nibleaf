@@ -107,6 +107,50 @@ describe('MCP HTTP transport boundary', () => {
     expect(await response.text()).toContain('nibleaf');
   });
 
+  it('audits a write call that the key is not allowed to make, then answers it as an unknown tool', async () => {
+    mocks.authenticate.mockResolvedValue({
+      ...principal,
+      apiKey: { ...principal.apiKey, scopes: ['mcp:connect', 'pages:read'] },
+      actor: { userId: 'user-1', role: 'member' },
+    });
+    const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
+    const call = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'update_page', arguments: { pageId: 'page-7', expectedRevision: 'x', title: 'Hi', clientRequestId: 'retry-abc-123' } },
+    });
+    const response = await request(headers, call);
+    expect(mocks.audit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        operation: 'update_page',
+        capability: 'pages:write',
+        outcome: 'failed',
+        errorCode: 'mcp:scope_required',
+        target: { type: 'page', id: 'page-7' },
+        clientRequestId: 'retry-abc-123',
+      }),
+    );
+    // Nothing about the arguments' content is recorded.
+    expect(JSON.stringify(mocks.audit.mock.calls)).not.toContain('Hi');
+    expect(response.status).not.toBe(503);
+  });
+
+  it('does not audit read calls or permitted tools as denied writes', async () => {
+    const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
+    await request(headers, JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'get_capabilities', arguments: {} } }));
+    expect(mocks.audit.mock.calls.some(([, , event]) => event.errorCode === 'mcp:scope_required')).toBe(false);
+  });
+
+  it('fails closed when the denied-write audit cannot be stored', async () => {
+    mocks.audit.mockRejectedValueOnce(new Error('db down'));
+    const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
+    const call = JSON.stringify({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'publish_changes', arguments: { confirm: true } } });
+    expect((await request(headers, call)).status).toBe(503);
+  });
+
   it('accepts a request at the body limit and refuses one byte more', async () => {
     const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
     expect((await request(headers, paddedInitializeBody(MAX_MCP_REQUEST_BODY_BYTES))).status).toBe(200);

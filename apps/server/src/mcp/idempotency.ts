@@ -40,7 +40,7 @@ export const hashMcpArguments = (args: Record<string, unknown>) => {
   return canonicalHash(rest);
 };
 
-const isUniqueViolation = (error: unknown) =>
+export const isUniqueViolation = (error: unknown) =>
   typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2002';
 
 interface IdempotencyScope {

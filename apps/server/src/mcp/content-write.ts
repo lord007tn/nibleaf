@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
 import { prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
 import type { McpScope } from '@nibleaf/shared/mcp';
 import type { UpdatePageBody } from '@nibleaf/validators';
 import type { Context } from 'hono';
@@ -7,11 +9,11 @@ import { z } from 'zod';
 import { assertBranchInProject, getDefaultBranch } from '@/actions/branches';
 import { createDeployment } from '@/actions/deployments';
 import { assertLanguageInProject } from '@/actions/languages';
-import { createPage, getPage, reorderPages, updatePage } from '@/actions/pages';
+import { createPage, getPage, updatePage } from '@/actions/pages';
 import { AppError, badRequest } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { pageRevision } from './dto';
-import { clientRequestIdSchema } from './idempotency';
+import { clientRequestIdSchema, isUniqueViolation } from './idempotency';
 import { MAX_MCP_MARKDOWN_BYTES, normalizeMcpLine, type PreparedMarkdown, prepareMcpMarkdown } from './markdown';
 import { createPublishPreviewToken, publishedSiteUrl, publishPreviewSummary, readPublishPreviewToken, readPublishState } from './publish';
 import { checkMcpPublishRateLimit } from './rate-limit';
@@ -31,6 +33,8 @@ export const contentWriteTools: ReadonlyArray<readonly [string, McpScope]> = [
 ];
 
 type Page = Awaited<ReturnType<typeof getPage>>;
+
+const log = createLogger({ module: 'mcp-content-write' });
 
 const UNPUBLISHED_NOTE =
   'Saved to the working copy only. Readers see nothing until someone publishes: call preview_publish, show its summary to the person you are helping, and call publish_changes only after they approve.';
@@ -200,8 +204,10 @@ const pageTarget = (pageId: string | null): McpAuditTarget => ({ type: 'page', i
 const prepare = (markdown: string | undefined): PreparedMarkdown | null => (markdown === undefined ? null : prepareMcpMarkdown(markdown));
 
 /** Put `page` at a 0-based `position` among its siblings by renumbering them
- *  0..n through the dashboard's reorder action (same tree rules and path
- *  recompute). Returns the page as stored afterwards. */
+ *  0..n. Only `position` is written, and every row is guarded by the parent we
+ *  expect, so a concurrent move by someone else is never reverted: a sibling
+ *  that moved away is skipped, and if the page itself moved we report a
+ *  revision conflict. Positions do not affect paths, so no recompute is needed. */
 const placeAmongSiblings = async (projectId: string, page: Page, position: number | undefined): Promise<Page> => {
   const siblings = await prisma.page.findMany({
     where: { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId, id: { not: page.id } },
@@ -215,8 +221,14 @@ const placeAmongSiblings = async (projectId: string, page: Page, position: numbe
     .filter((item) => item.changed)
     .map(({ changed: _changed, ...item }) => item);
   if (items.length === 0) return page;
-  await reorderPages(projectId, { items });
-  return getPage(projectId, page.id);
+  const guard = { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId };
+  const results = await prisma.$transaction(
+    items.map((item) => prisma.page.updateMany({ where: { ...guard, id: item.id }, data: { position: item.position } })),
+  );
+  const placed = await getPage(projectId, page.id);
+  const ownIndex = items.findIndex((item) => item.id === page.id);
+  if ((ownIndex >= 0 && results[ownIndex]?.count === 0) || placed.parentId !== page.parentId) throw revisionConflict(placed);
+  return placed;
 };
 
 const comparableTitle = (title: string) =>
@@ -380,11 +392,34 @@ const createPageDraft = async (projectId: string, args: z.output<typeof createPa
     },
     actor.userId,
   );
-  const page = args.position === undefined ? created : await placeAmongSiblings(projectId, created, args.position);
+  // The page is committed from here on. Placement and the duplicate check are
+  // best-effort: failing them must not fail the call, or the runner would drop
+  // the idempotency claim and a retry with the same clientRequestId would
+  // create a second page.
+  let page = created;
+  let placementFailed = false;
+  if (args.position !== undefined) {
+    try {
+      page = await placeAmongSiblings(projectId, created, args.position);
+    } catch (error) {
+      placementFailed = true;
+      log.warn({ pageId: created.id, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'MCP draft placement failed after create');
+    }
+  }
+  let duplicates: Awaited<ReturnType<typeof possibleDuplicates>> | null = null;
+  try {
+    duplicates = await possibleDuplicates(projectId, page);
+  } catch (error) {
+    log.warn({ pageId: page.id, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'MCP duplicate check failed after create');
+  }
   return {
     data: {
       page: pageSummary(page),
-      possibleDuplicates: await possibleDuplicates(projectId, page),
+      possibleDuplicates: duplicates,
+      ...(duplicates === null ? { possibleDuplicatesUnavailable: true } : {}),
+      ...(placementFailed
+        ? { placement: 'failed', placementNote: 'The page was created but left at the end of its siblings; use move_page to reposition it.' }
+        : {}),
       publishState: 'unpublished',
       note: UNPUBLISHED_NOTE,
     },
@@ -594,6 +629,56 @@ const previewPublish = async (principal: McpPrincipal): Promise<McpWriteOutcome>
   };
 };
 
+const PUBLISH_IN_FLIGHT_WINDOW_MS = 15 * 60_000;
+const TOKEN_CONSUMED = 'publish_changes:preview_token';
+
+/** While a deployment is queued or building, the worker has not yet read the
+ *  pages it will ship. An MCP edit landing in that window would go live
+ *  without anyone having reviewed it in a preview, so page writes wait. The
+ *  window is bounded so a stuck job cannot block writes forever. */
+const assertNoPublishInFlight = async (projectId: string) => {
+  const inFlight = await prisma.deployment.findFirst({
+    where: { projectId, status: { in: ['PENDING', 'BUILDING'] }, createdAt: { gte: new Date(Date.now() - PUBLISH_IN_FLIGHT_WINDOW_MS) } },
+    select: { id: true, version: true },
+  });
+  if (inFlight) {
+    throw new AppError({
+      code: 'mcp:publish_in_progress',
+      message: `A publish (version ${inFlight.version}) is being built. Nothing was saved. Wait until get_deployment reports READY or FAILED, then retry.`,
+      details: { deploymentId: inFlight.id },
+    });
+  }
+};
+
+/** Atomically mark a preview token as used (unique per key + token), so two
+ *  concurrent publish_changes calls cannot both ship the same approval, even
+ *  across API instances. */
+const consumePreviewToken = async (principal: McpPrincipal, token: string) => {
+  try {
+    await prisma.mcpIdempotencyRecord.create({
+      data: {
+        projectId: principal.project.id,
+        apiKeyId: principal.apiKey.id,
+        operation: TOKEN_CONSUMED,
+        clientRequestId: createHash('sha256').update(token).digest('hex'),
+        argsHash: 'preview-token',
+        status: 'consumed',
+        completedAt: new Date(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new AppError({
+        code: 'mcp:preview_stale',
+        message: 'This preview was already used to publish. Nothing was published. Call preview_publish again and publish only after a new approval.',
+      });
+    }
+    throw error;
+  }
+};
+
 const publishMessage = (message: string | undefined, keyName: string) => {
   const note = normalizeMcpLine(message ?? '') || 'Published';
   return `${note} (via MCP key "${normalizeMcpLine(keyName).slice(0, 60)}")`.slice(0, 300);
@@ -625,6 +710,7 @@ const publishChanges = async (
       details: { redirectIssues: pending.redirectIssues.length },
     });
   }
+  await assertNoPublishInFlight(projectId);
   const limit = checkMcpPublishRateLimit(principal.apiKey.id);
   if (!limit.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000));
@@ -634,6 +720,7 @@ const publishChanges = async (
       details: { retryAfterSeconds },
     });
   }
+  await consumePreviewToken(principal, args.previewToken);
   const deployment = await createDeployment(
     principal.project.organizationId,
     projectId,
@@ -667,7 +754,21 @@ const writeTool = <Schema extends z.ZodType>(
   server.registerTool(
     spec.operation,
     { title: config.title, description: config.description, inputSchema: auditedInputSchema(spec.schema), annotations: config.annotations },
-    (input) => runMcpWriteTool(ctx, principal, spec, input),
+    (input) =>
+      runMcpWriteTool(
+        ctx,
+        principal,
+        spec.capability === 'pages:write'
+          ? {
+              ...spec,
+              run: async (args, actor) => {
+                await assertNoPublishInFlight(principal.project.id);
+                return spec.run(args, actor);
+              },
+            }
+          : spec,
+        input,
+      ),
   );
 
 const editAnnotations = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false } as const;
