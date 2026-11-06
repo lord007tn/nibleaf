@@ -35,6 +35,25 @@ describe.skipIf(!enabled)('chat budgets (real Redis)', () => {
     expect(Number(await redis.get(daily))).toBe(8000);
   });
 
+  it('grows an admitted turn only by what the budgets still have room for, even concurrently', async () => {
+    const projectId = `budget-test-${run}-extend`;
+    const conversationId = randomUUID();
+    const daily = `{search-chat:${projectId}}:tokens:${new Date().toISOString().slice(0, 10)}`;
+    const hold = await budget.reserveChatTurn(projectId, conversationId, 6000);
+    if (!hold.allowed) throw new Error('expected the turn to be admitted');
+    // The daily budget is 10,000: 6,000 reserved leaves room for 4,000.
+    expect(await budget.extendChatTurn(projectId, conversationId, hold, 3000)).toBe(3000);
+    expect(await budget.extendChatTurn(projectId, conversationId, hold, 3000)).toBe(1000);
+    expect(await budget.extendChatTurn(projectId, conversationId, hold, 3000)).toBe(0);
+    expect(hold.reservedTokens).toBe(10_000);
+    expect(Number(await redis.get(daily))).toBe(10_000);
+    // Settled to 2,000 spent: concurrent extensions share the 8,000 left, never more.
+    await budget.settleChatSpend(projectId, conversationId, hold, 2000);
+    const granted = await Promise.all(Array.from({ length: 5 }, () => budget.extendChatTurn(projectId, conversationId, { ...hold }, 3000)));
+    expect(granted.reduce((sum, tokens) => sum + tokens, 0)).toBe(8000);
+    expect(Number(await redis.get(daily))).toBe(10_000);
+  });
+
   it('refuses a turn whose reservation alone would pass a cap', async () => {
     const projectId = `budget-test-${run}-oversized`;
     const daily = await budget.reserveChatTurn(projectId, randomUUID(), 10_001);

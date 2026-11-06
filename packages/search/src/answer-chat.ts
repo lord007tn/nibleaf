@@ -26,7 +26,7 @@ export interface GroundedChatResult {
   firstTokenMs?: number;
 }
 export const estimateTokens = (text: string): number => Math.ceil(new TextEncoder().encode(text).length / 3);
-const stripMarkers = (text: string) => text.replace(/\[S\d+(?:\s*[,;،]\s*S\d+)*\]/g, '');
+const stripMarkers = (text: string) => text.replace(/\[S\d+(?:\s*[,;،؛]\s*S\d+)*\]/g, '');
 export const boundChatHistory = (
   history: ChatHistoryMessage[],
   { maxMessages, maxTokens }: { maxMessages: number; maxTokens: number },
@@ -128,31 +128,35 @@ const usageFrom = (usage: TokenUsage): ChatUsage => ({
 const DEFAULT_HISTORY_LIMITS = { maxMessages: 6, maxTokens: 1500 };
 /** Output caps of a turn's three provider calls, so callers can bound a turn's spend before it runs. */
 export const CHAT_OUTPUT_TOKEN_LIMITS = { condense: 120, followUps: 200, answer: 1200 } as const;
-/** Retrieved documentation one answer reads, in estimated tokens (sources with
- * their framing). Bounding it is what makes a turn's reservation an upper bound. */
-export const CHAT_CONTEXT_TOKENS = 8000;
-/** Covers the gap between estimateTokens and a provider's tokenizer. */
-const RESERVATION_MARGIN = 1.25;
+/** The most tokens a text can be: one per UTF-8 byte, the most a byte-level
+ * tokenizer (or a byte-fallback one) produces for any text, digits and rare
+ * characters included. Budgets reserve against this, never against estimates. */
+export const tokenBound = (text: string): number => new TextEncoder().encode(text).length;
+/** Documentation one answer reads, at its token bound (sources with their framing). */
+export const CHAT_CONTEXT_TOKENS = 24_000;
+/** The least documentation worth answering from, reserved with the rest of a turn
+ * before it runs, so an admitted question can always read some. */
+export const CHAT_MIN_SOURCES_TOKENS = 3000;
 /** Per-message framing a provider adds around each prompt message. */
 const MESSAGE_FRAMING_TOKENS = 8;
 
-const sourceTokens = (chunk: SearchChunk) => estimateTokens(answerUserPrompt('', [chunk]));
-/** The longest beginning of a source that fits the budget on its own, or
- * nothing when even its metadata does not. Searched rather than computed, since
- * source escaping makes the prompt longer than the raw text. */
-const cutToFit = (chunk: SearchChunk, budget: number): SearchChunk | undefined => {
-  const fits = (length: number) => sourceTokens({ ...chunk, content: chunk.content.slice(0, length) }) <= budget;
-  if (!fits(0)) return;
+const sourceTokens = (chunk: SearchChunk) => tokenBound(answerUserPrompt('', [chunk]));
+/** The longest beginning of a source whose `cost` fits the budget, or nothing when
+ * even its metadata does not. Searched rather than computed, since source
+ * escaping makes the prompt longer than the raw text. */
+const cutToFit = (chunk: SearchChunk, fits: (cut: SearchChunk) => boolean): SearchChunk | undefined => {
+  const at = (length: number) => ({ ...chunk, content: chunk.content.slice(0, length) });
+  if (!fits(at(0))) return;
   let low = 0;
   let high = chunk.content.length;
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);
-    if (fits(middle)) low = middle;
+    if (fits(at(middle))) low = middle;
     else high = middle - 1;
   }
   // Never end on half of a surrogate pair.
   const code = chunk.content.charCodeAt(low - 1);
-  return { ...chunk, content: chunk.content.slice(0, code >= 0xd8_00 && code <= 0xdb_ff ? low - 1 : low) };
+  return at(code >= 0xd8_00 && code <= 0xdb_ff ? low - 1 : low);
 };
 
 /** The sources an answer reads: the best matches, in rank order, while they fit
@@ -164,7 +168,7 @@ export const fitChatContext = (chunks: SearchChunk[], budget = CHAT_CONTEXT_TOKE
   for (const chunk of chunks) {
     const tokens = sourceTokens(chunk);
     if (used + tokens > budget) {
-      const cut = kept.length ? undefined : cutToFit(chunk, budget);
+      const cut = kept.length ? undefined : cutToFit(chunk, (candidate) => sourceTokens(candidate) <= budget);
       if (cut) kept.push(cut);
       break;
     }
@@ -183,43 +187,66 @@ export interface ChatTurnShape {
   historyLimits?: { maxMessages: number; maxTokens: number };
 }
 
-/** Each call's prompt in estimated tokens, measured from the prompts it sends.
- * Given the retrieved chunks, the answer and the suggestions are sized for the
- * sources they read; without them, for a full context budget and the most
- * topics suggestions can list. A first question makes no rewrite call (0). */
-export const chatCallInputTokens = (shape: ChatTurnShape, chunks?: SearchChunk[]) => {
+const callInputs = (shape: ChatTurnShape, sources: SearchChunk[], measure: (text: string) => number) => {
   const history = boundChatHistory(shape.history, shape.historyLimits ?? DEFAULT_HISTORY_LIMITS);
-  const historyTokens = history.reduce((sum, message) => sum + estimateTokens(message.content) + MESSAGE_FRAMING_TOKENS, 0);
-  const sources = chunks && fitChatContext(chunks);
-  const answerPrompt = sources
-    ? estimateTokens(chatUserPrompt(shape.question, sources, shape.pageContext, shape.language))
-    : estimateTokens(chatUserPrompt(shape.question, [], shape.pageContext, shape.language)) + CHAT_CONTEXT_TOKENS;
-  // Without sources: the most topics, each as long as a topic can be, in a 3-byte script.
-  const topics = sources ? followUpTopics(sources) : Array.from({ length: FOLLOW_UP_TOPIC_LIMIT }, () => '文'.repeat(FOLLOW_UP_TOPIC_CHARS));
+  const historyTokens = history.reduce((sum, message) => sum + measure(message.content) + MESSAGE_FRAMING_TOKENS, 0);
   return {
     condense: history.length
-      ? estimateTokens(condenseSystemPrompt(shape.language)) + historyTokens + estimateTokens(shape.question) + 2 * MESSAGE_FRAMING_TOKENS
+      ? measure(condenseSystemPrompt(shape.language)) + historyTokens + measure(shape.question) + 2 * MESSAGE_FRAMING_TOKENS
       : 0,
-    generation: estimateTokens(chatSystemPrompt(shape.language)) + historyTokens + answerPrompt + 2 * MESSAGE_FRAMING_TOKENS,
+    generation:
+      measure(chatSystemPrompt(shape.language)) +
+      historyTokens +
+      measure(chatUserPrompt(shape.question, sources, shape.pageContext, shape.language)) +
+      2 * MESSAGE_FRAMING_TOKENS,
     followUps:
-      estimateTokens(followUpSystemPrompt(shape.question, shape.language)) +
-      estimateTokens(followUpUserPrompt(shape.question, undefined, topics)) +
+      measure(followUpSystemPrompt(shape.question, shape.language)) +
+      measure(followUpUserPrompt(shape.question, undefined, followUpTopics(sources))) +
       2 * MESSAGE_FRAMING_TOKENS,
   };
 };
 
-/** The most a turn can spend, reserved against the budgets before it runs:
- * each call's prompt at its largest plus its output cap, with a margin for
- * tokenizer differences. Suggestions are prepared from the question alone. */
-export const estimateChatTurnTokens = (shape: ChatTurnShape): number => {
-  const input = chatCallInputTokens(shape);
+/** Each call's prompt, estimated: what a call that never reported its usage
+ * probably read, for records flagged as estimates. A first question makes no
+ * rewrite call (0); the answer and suggestions read these sources. */
+export const chatCallInputTokens = (shape: ChatTurnShape, sources: SearchChunk[] = []) => callInputs(shape, sources, estimateTokens);
+
+/** Each call's prompt at its token bound: the most it can read. Budgets reserve
+ * and settle against these. */
+export const chatCallInputBounds = (shape: ChatTurnShape, sources: SearchChunk[] = []) => callInputs(shape, sources, tokenBound);
+
+/** What a turn reserves before it runs: every call at its bound without the
+ * documentation it will read, every output cap, and the least documentation an
+ * answer reads. Once retrieval found the sources, the turn reserves what reading
+ * more of them adds (chatSourcesTokens, beyond CHAT_MIN_SOURCES_TOKENS). */
+export const chatTurnReservation = (shape: ChatTurnShape): number => {
+  const input = chatCallInputBounds(shape);
   const outputs = (input.condense ? CHAT_OUTPUT_TOKEN_LIMITS.condense : 0) + CHAT_OUTPUT_TOKEN_LIMITS.answer + CHAT_OUTPUT_TOKEN_LIMITS.followUps;
-  return Math.ceil((input.condense + input.generation + input.followUps + outputs) * RESERVATION_MARGIN);
+  return input.condense + input.generation + input.followUps + outputs + CHAT_MIN_SOURCES_TOKENS;
 };
 
-/** The largest reservation any turn can make under these limits: the longest
- * question, a full history and the longest page context, all in a 3-byte
- * script. Token budgets below it refuse every such turn. */
+/** What reading these sources adds to the answer and suggestion prompts, at its bound. */
+export const chatSourcesTokens = (shape: ChatTurnShape, sources: SearchChunk[]): number => {
+  const without = chatCallInputBounds(shape);
+  const reading = chatCallInputBounds(shape, sources);
+  return reading.generation - without.generation + reading.followUps - without.followUps;
+};
+
+/** The best sources, in rank order, whose reading fits `budget` tokens at its
+ * bound; a best match too large on its own keeps the beginning that fits. Used
+ * when a budget has less room left than the full context. */
+export const fitChatSources = (shape: ChatTurnShape, sources: SearchChunk[], budget: number): SearchChunk[] => {
+  let count = 0;
+  while (count < sources.length && chatSourcesTokens(shape, sources.slice(0, count + 1)) <= budget) count += 1;
+  if (count) return sources.slice(0, count);
+  const [best] = sources;
+  const cut = best && cutToFit(best, (candidate) => chatSourcesTokens(shape, [candidate]) <= budget);
+  return cut ? [cut] : [];
+};
+
+/** The largest reservation a turn makes before it runs under these limits: the
+ * longest question, a full history and the longest page context, in characters
+ * that take the most bytes. Token budgets below it refuse every such turn. */
 export const largestChatTurnTokens = ({
   questionMax,
   historyLimits,
@@ -232,7 +259,7 @@ export const largestChatTurnTokens = ({
   const messages = Math.max(0, Math.floor(historyLimits.maxMessages));
   // As many messages as are kept, together as long as the history may be.
   const each = messages ? Math.max(1, Math.floor(historyLimits.maxTokens / messages)) : 0;
-  return estimateChatTurnTokens({
+  return chatTurnReservation({
     question: '文'.repeat(questionMax),
     // Oldest first and opening with a question, so bounding keeps every message.
     history: Array.from({ length: messages }, (_, index) => ({
@@ -240,7 +267,8 @@ export const largestChatTurnTokens = ({
       content: '文'.repeat(each),
     })),
     language,
-    pageContext: { title: '文'.repeat(CHAT_PAGE_CONTEXT_LIMITS.title), path: 'p'.repeat(CHAT_PAGE_CONTEXT_LIMITS.path) },
+    // Control characters, which the prompt's JSON escapes to six bytes each.
+    pageContext: { title: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.title), path: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.path) },
     historyLimits,
   });
 };

@@ -4,17 +4,22 @@ import { siteT } from '@nibleaf/i18n/site';
 import { createLogger } from '@nibleaf/logger';
 import {
   boundChatHistory,
+  CHAT_MIN_SOURCES_TOKENS,
   CHAT_OUTPUT_TOKEN_LIMITS,
   CHAT_PROMPT_VERSION,
   type ChatTurnShape,
   type ChatUsage,
+  chatCallInputBounds,
   chatCallInputTokens,
+  chatSourcesTokens,
+  chatTurnReservation,
   citationsToSources,
   condenseFollowUp,
-  estimateChatTurnTokens,
   estimateTokens,
   fitChatContext,
+  fitChatSources,
   type GroundedChatResult,
+  type SearchChunk,
   streamGroundedChat,
   suggestedArticles,
   suggestFollowUps,
@@ -39,7 +44,7 @@ import { getContext } from 'hono/context-storage';
 import { z } from 'zod';
 import { env } from '@/env';
 import { AppError } from '@/errors';
-import { type ChatTurnHold, releaseChatTurn, reserveChatTurn, settleChatSpend } from '@/lib/ai-search/chat-budget';
+import { type ChatTurnHold, extendChatTurn, releaseChatTurn, reserveChatTurn, settleChatSpend } from '@/lib/ai-search/chat-budget';
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
@@ -159,9 +164,11 @@ interface TurnOutcome {
    * usage is kept apart so each model's spend is attributed to it. */
   utility?: { model: string; usage?: ChatUsage };
   /** Provider calls that started but never reported usage (stopped, failed, or a
-   * provider that omits it), with conservative estimates. A call leaves this
-   * list only once it reports its usage. */
-  unreported: Map<ProviderCall, { input: number; output: number }>;
+   * provider that omits it): what each probably used, for records flagged as
+   * estimates, and the most it could have used (its prompt at its token bound and
+   * its output cap), which the budgets are charged. A call leaves this list only
+   * once it reports its usage. */
+  unreported: Map<ProviderCall, { input: number; output: number; inputBound: number; outputBound: number }>;
   /** The answer text streamed so far, to estimate an interrupted answer. */
   streamed: string;
   errorCode?: AiChatErrorCode;
@@ -190,6 +197,7 @@ interface ModelUsage {
   usage: ChatUsage;
   estimated: boolean;
 }
+const NOTHING_SPENT: ModelUsage = { usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costUsd: 0 }, estimated: false };
 
 /** A turn's usage for budgets and records, per model: the answer model's calls,
  * and the utility model's when rewriting and suggestions run on one. Reported
@@ -200,7 +208,7 @@ interface ModelUsage {
 const turnUsage = (
   outcome: Pick<TurnOutcome, 'usage' | 'utility' | 'unreported'>,
   sinks: { answer: ChatCostSink; utility: ChatCostSink },
-): { answer?: ModelUsage; utility?: ModelUsage & { model: string }; tokens: number } => {
+): { answer?: ModelUsage; utility?: ModelUsage & { model: string }; chargedTokens: number } => {
   const part = (reported: ChatUsage | undefined, calls: ProviderCall[], sink: ChatCostSink): ModelUsage | undefined => {
     const estimated = calls.some((call) => outcome.unreported.has(call));
     let input = reported?.inputTokens;
@@ -220,12 +228,20 @@ const turnUsage = (
     return { usage: { ...counts, ...(costUsd !== undefined ? { costUsd } : {}) }, estimated };
   };
   const separate = outcome.utility;
-  const answer = part(outcome.usage, separate ? ['generation'] : ['condense', 'generation', 'follow_ups'], sinks.answer);
+  // A turn that made no call on the answer model (nothing relevant was found)
+  // cost it nothing, which is known rather than missing.
+  const answer =
+    part(outcome.usage, separate ? ['generation'] : ['condense', 'generation', 'follow_ups'], sinks.answer) ??
+    (sinks.answer.calls ? undefined : NOTHING_SPENT);
   const utility = separate ? part(separate.usage, ['condense', 'follow_ups'], sinks.utility) : undefined;
+  // Budgets are charged reported usage, and the most each unreported call could
+  // have used, never an estimate that may fall short.
+  let chargedTokens = (usageTokens(outcome.usage) ?? 0) + (usageTokens(separate?.usage) ?? 0);
+  for (const pending of outcome.unreported.values()) chargedTokens += pending.inputBound + pending.outputBound;
   return {
     ...(answer ? { answer } : {}),
     ...(separate && utility ? { utility: { ...utility, model: separate.model } } : {}),
-    tokens: (usageTokens(answer?.usage) ?? 0) + (usageTokens(utility?.usage) ?? 0),
+    chargedTokens,
   };
 };
 
@@ -306,7 +322,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const page = resolvePageContext(context, body.pagePath);
   // Sized from the prompts the turn's calls send, so the budgets hold.
   const shape = chatTurnShape(body, language, page);
-  const gate = await openChatTurn(context, body.conversationId, estimateChatTurnTokens(shape)).catch(() => ({
+  const gate = await openChatTurn(context, body.conversationId, chatTurnReservation(shape)).catch(() => ({
     ok: false as const,
     code: 'unavailable' as const,
   }));
@@ -350,6 +366,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
   const sideCalls = new AbortController();
+  // Suggestions, once started: the turn is recorded after they settle.
+  let suggesting: Promise<unknown> = Promise.resolve();
   const sideSignal = AbortSignal.any([signal, sideCalls.signal]);
   let phase: 'condense' | 'retrieval' | 'generation' = 'condense';
   let textStarted = false;
@@ -372,7 +390,13 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
     // A first question is not rewritten, so it makes no call here.
-    if (history.length) outcome.unreported.set('condense', { input: chatCallInputTokens(shape).condense, output: CHAT_OUTPUT_TOKEN_LIMITS.condense });
+    if (history.length)
+      outcome.unreported.set('condense', {
+        input: chatCallInputTokens(shape).condense,
+        output: CHAT_OUTPUT_TOKEN_LIMITS.condense,
+        inputBound: chatCallInputBounds(shape).condense,
+        outputBound: CHAT_OUTPUT_TOKEN_LIMITS.condense,
+      });
     const condensed = await condenseFollowUp({
       adapter: utilityAdapter,
       question: body.question,
@@ -390,6 +414,16 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     phase = 'retrieval';
     const retrieval = await retrieveChatContext(context.scope, condensed.query, runtime, { page, signal });
     outcome.retrieval = retrieval;
+    // The sources the answer reads: the best matches that fit the context, and
+    // only as many as the budgets have room for. The least of them was reserved
+    // before the turn ran; reserve what reading the rest adds, or read less.
+    let sources: SearchChunk[] = [];
+    if (retrieval.chunks.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
+      const fitted = fitChatContext(retrieval.chunks);
+      const wanted = chatSourcesTokens(shape, fitted) - CHAT_MIN_SOURCES_TOKENS;
+      const granted = wanted > 0 ? await extendChatTurn(projectId, body.conversationId, reservation, wanted).catch(() => 0) : 0;
+      sources = granted >= wanted ? fitted : fitChatSources(shape, fitted, CHAT_MIN_SOURCES_TOKENS + granted);
+    }
 
     yield { type: EventType.TEXT_MESSAGE_START, messageId: turnId, role: 'assistant', timestamp: Date.now() };
     textStarted = true;
@@ -403,7 +437,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       suggestions: anchored(suggestedArticles(retrieval.chunks, condensed.query)),
       ...(supportUrl ? { supportUrl } : {}),
     });
-    if (retrieval.chunks.length === 0 || retrieval.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) {
+    if (!sources.length) {
       // Nothing relevant enough: never let the model improvise.
       const answer = t('noAnswerGrounded');
       firstText();
@@ -413,12 +447,17 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     } else {
       yield custom(AI_CHAT_EVENT.status, { phase: 'writing' });
       phase = 'generation';
-      // The sources the answer reads; suggestions come from the same ones.
-      const sources = fitChatContext(retrieval.chunks);
-      const sent = chatCallInputTokens(shape, retrieval.chunks);
-      // Prepared while the answer streams, so suggestions add no wait.
-      outcome.unreported.set('follow_ups', { input: sent.followUps, output: CHAT_OUTPUT_TOKEN_LIMITS.followUps });
-      const suggesting = suggestFollowUps({
+      const expected = chatCallInputTokens(shape, sources);
+      const bounds = chatCallInputBounds(shape, sources);
+      // Prepared while the answer streams, so suggestions add no wait. Their usage
+      // counts as soon as they settle, whatever happens to the answer.
+      outcome.unreported.set('follow_ups', {
+        input: expected.followUps,
+        output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+        inputBound: bounds.followUps,
+        outputBound: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+      });
+      const suggested = suggestFollowUps({
         adapter: utilityAdapter,
         question: body.question,
         chunks: sources,
@@ -426,14 +465,26 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         signal: sideSignal,
         modelOptions,
         asked: history.filter((message) => message.role === 'user').map((message) => message.content),
+      }).then((suggestions) => {
+        if (suggestions.usage) outcome.unreported.delete('follow_ups');
+        if (outcome.utility) outcome.utility.usage = addUsage(outcome.utility.usage, suggestions.usage);
+        else outcome.usage = addUsage(outcome.usage, suggestions.usage);
+        if (suggestions.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
+        return suggestions;
       });
-      outcome.unreported.set('generation', { input: sent.generation, output: CHAT_OUTPUT_TOKEN_LIMITS.answer });
+      suggesting = suggested;
+      outcome.unreported.set('generation', {
+        input: expected.generation,
+        output: CHAT_OUTPUT_TOKEN_LIMITS.answer,
+        inputBound: bounds.generation,
+        outputBound: CHAT_OUTPUT_TOKEN_LIMITS.answer,
+      });
       const generation = streamGroundedChat({
         adapter,
         model: runtime.answerModel,
         question: body.question,
         history,
-        chunks: retrieval.chunks,
+        chunks: sources,
         language,
         ...(page ? { pageContext: { title: page.title, path: page.path } } : {}),
         signal,
@@ -455,12 +506,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         result.status === 'answered'
           ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
-      const suggested = await suggesting;
-      if (suggested.usage) outcome.unreported.delete('follow_ups');
-      if (outcome.utility) outcome.utility.usage = addUsage(outcome.utility.usage, suggested.usage);
-      else outcome.usage = addUsage(outcome.usage, suggested.usage);
-      if (suggested.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
-      if (result.status === 'answered') followUps = suggested.questions;
+      if (result.status === 'answered') followUps = (await suggested).questions;
+      else await suggested;
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
     textStarted = false;
@@ -489,7 +536,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     sideCalls.abort();
     // A reader pressing "Stop" ends iteration from outside, skipping catch.
     if (signal.aborted && outcome.status === 'failed') outcome.status = 'cancelled';
-    // An answer cut off mid-stream was billed for what it wrote, not its cap.
+    // An answer cut off mid-stream probably used what it wrote, not its cap (the
+    // budgets are still charged its cap).
     const generation = outcome.unreported.get('generation');
     if (generation && outcome.status !== 'answered' && outcome.status !== 'no_answer')
       outcome.unreported.set('generation', {
@@ -510,6 +558,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       runtime,
       cost,
       utilityCost,
+      suggesting,
       tenant,
       emit,
     });
@@ -530,6 +579,7 @@ const finishTurn = async ({
   runtime,
   cost,
   utilityCost,
+  suggesting,
   tenant,
   emit,
 }: {
@@ -545,16 +595,20 @@ const finishTurn = async ({
   runtime: { providerId: string; answerModel: string };
   cost: ChatCostSink;
   utilityCost: ChatCostSink;
+  /** Suggestions still settling (stopped with the turn); their usage counts. */
+  suggesting: Promise<unknown>;
   tenant: Promise<string | null>;
   emit: EmitChatEvents;
 }): Promise<void> => {
   const projectId = context.scope.projectId;
+  await Promise.allSettled([suggesting]);
   // Provider-reported spend (OpenRouter) is read from the response bodies.
   await Promise.allSettled([...(cost.pending ?? []), ...(utilityCost.pending ?? [])]);
-  const { answer, utility, tokens } = turnUsage(outcome, { answer: cost, utility: utilityCost });
+  const { answer, utility, chargedTokens } = turnUsage(outcome, { answer: cost, utility: utilityCost });
   const usage = answer?.usage;
-  // Replaces the reservation with what the turn spent, estimates included.
-  await settleChatSpend(projectId, body.conversationId, reservation, tokens).catch(() =>
+  // Replaces the reservation with what the turn is charged: reported usage, and
+  // the most each unreported call could have used.
+  await settleChatSpend(projectId, body.conversationId, reservation, chargedTokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
   );
 

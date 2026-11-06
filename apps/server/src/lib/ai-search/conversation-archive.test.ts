@@ -108,6 +108,12 @@ describe('capture policy', () => {
       utility_tokens_known: 0,
       utility_cost_known: 0,
     });
+    // A turn that made no provider call is known to have cost nothing.
+    expect(buildAiTurnRow({ ...capture, inputTokens: 0, outputTokens: 0, costUsd: 0 })).toMatchObject({
+      tokens_known: 1,
+      cost_known: 1,
+      cost_micros: 0,
+    });
   });
   it('withdraws feedback text and rating', () => {
     const row = buildAiFeedbackRow({ ...capture, rating: null, comment: 'private' });

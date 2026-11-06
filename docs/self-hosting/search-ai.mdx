@@ -344,28 +344,36 @@ Turns also record `actor_type`, so automated traffic never inflates reader metri
 a provider billed counts against the AI budgets and in usage and cost, scripted
 traffic included.
 
-Each turn reserves the most it can spend against the conversation and daily budgets
-before any provider call, and settles to what it actually used when it ends. The
-reservation is measured from the prompts the turn's calls send: the question, the
-bounded history, the reader's page, at most 8,000 estimated tokens of documentation
-(an answer reads the best matches that fit), the most topics suggestions can list,
-and each call's output cap, plus a 25% margin because providers count tokens
-differently from the estimate. A question is admitted only if its reservation fits
-under each budget, so neither one question nor several at once can take spend past
-it, unless a provider counts more than a quarter above the estimate. A reservation
-is about 15,000 tokens for a first question and up to about 22,000 with the default
-history limits; the API logs a warning at startup when
-`SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is
-below the largest one. Unused reservation comes back only when a turn ends, so a
-conversation close to its cap is refused before its spend reaches it.
+Each turn reserves the most it can spend against the conversation and daily budgets,
+and settles to what it actually used when it ends. Every prompt counts at one token
+per UTF-8 byte, the most a byte-level tokenizer produces for any text (digits and rare
+characters included), never at an estimate. A turn reserves in two steps:
 
-A turn that is stopped or fails partway is charged an estimate for the calls that
-never reported usage. Each model is judged on its own calls: its stored token
-totals are flagged as estimates, and its cost as unknown, only when one of its own
-calls never reported, and its cost is known only when every response billed to it
-reported one. When `SEARCH_CHAT_UTILITY_MODEL` routes rewriting and suggestions to
-another model, their tokens and cost are recorded under that model, which appears
-in per-model usage with no questions of its own.
+- Before any provider call, every call's prompt without the documentation it will read
+  (the question, the bounded history, the reader's page and the instructions), every
+  output cap, and the least documentation worth answering from (3,000 tokens). That is
+  about 7,000 tokens for a first question and up to about 24,000 with the default
+  history limits. The API logs a warning at startup when
+  `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is
+  below the largest of these.
+- Once retrieval has found the best matches, what reading them adds: up to 24,000
+  tokens of documentation and the topics suggestions list, as much as the budgets still
+  have room for. With less room, the answer reads fewer sources instead of overspending.
+
+Each step is atomic and checked against both budgets, so neither one question nor
+several at once can take spend past a budget, as long as providers honor the output
+caps. Unused reservation comes back when the turn ends.
+
+A call that is stopped or fails before reporting its usage is charged to the budgets at
+the most it could have used: its prompt at that bound and its full output cap. Its
+stored token totals are an estimate instead, flagged as such, with its cost unknown.
+A turn that made no provider call (nothing relevant was found) is recorded as costing
+nothing. Each model is judged on its own calls: its stored token totals are flagged as
+estimates, and its cost as unknown, only when one of its own calls never reported, and
+its cost is known only when every response billed to it reported one. When
+`SEARCH_CHAT_UTILITY_MODEL` routes rewriting and suggestions to another model, their
+tokens and cost are recorded under that model, which appears in per-model usage with no
+questions of its own.
 
 `ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
 tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from

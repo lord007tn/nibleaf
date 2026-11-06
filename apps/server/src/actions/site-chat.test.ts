@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   suggest: vi.fn(),
   recordEvents: vi.fn(),
+  extend: vi.fn(),
   adapter: vi.fn((runtime: { answerModel: string }) => ({ kind: runtime.answerModel })),
   extras: { SEARCH_CHAT_HISTORY_MESSAGES: 6, SEARCH_CHAT_HISTORY_MAX_TOKENS: 1500, SEARCH_CHAT_UTILITY_MODEL: undefined as string | undefined },
   request: { current: new Request('http://localhost/api/public/sites/p/chat', { method: 'POST' }) },
@@ -28,7 +29,12 @@ vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: vi.fn(asy
 vi.mock('./sites', () => ({ resolvePublishedAnswerContext: mocks.context, deviceFromUserAgent: () => 'desktop' }));
 vi.mock('./analytics', () => ({ trackProjectEvent: mocks.track }));
 vi.mock('@/lib/ai-search/runtime', () => ({ resolveChatRuntime: mocks.runtime, retrieveChatContext: mocks.retrieve }));
-vi.mock('@/lib/ai-search/chat-budget', () => ({ reserveChatTurn: mocks.reserve, releaseChatTurn: mocks.release, settleChatSpend: mocks.settle }));
+vi.mock('@/lib/ai-search/chat-budget', () => ({
+  reserveChatTurn: mocks.reserve,
+  extendChatTurn: mocks.extend,
+  releaseChatTurn: mocks.release,
+  settleChatSpend: mocks.settle,
+}));
 vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
@@ -48,9 +54,13 @@ vi.mock('@nibleaf/search', async (importOriginal) => {
     CHAT_OUTPUT_TOKEN_LIMITS: actual.CHAT_OUTPUT_TOKEN_LIMITS,
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,
-    estimateChatTurnTokens: actual.estimateChatTurnTokens,
+    CHAT_MIN_SOURCES_TOKENS: actual.CHAT_MIN_SOURCES_TOKENS,
+    chatTurnReservation: actual.chatTurnReservation,
     chatCallInputTokens: actual.chatCallInputTokens,
+    chatCallInputBounds: actual.chatCallInputBounds,
+    chatSourcesTokens: actual.chatSourcesTokens,
     fitChatContext: actual.fitChatContext,
+    fitChatSources: actual.fitChatSources,
     condenseFollowUp: mocks.condense,
     streamGroundedChat: mocks.stream,
     suggestFollowUps: mocks.suggest,
@@ -63,7 +73,17 @@ vi.mock('@nibleaf/search', async (importOriginal) => {
   };
 });
 
-import { chatCallInputTokens, estimateChatTurnTokens, fitChatContext, type SearchChunk } from '@nibleaf/search';
+import {
+  CHAT_MIN_SOURCES_TOKENS,
+  CHAT_OUTPUT_TOKEN_LIMITS,
+  chatCallInputBounds,
+  chatCallInputTokens,
+  chatSourcesTokens,
+  chatTurnReservation,
+  fitChatContext,
+  fitChatSources,
+  type SearchChunk,
+} from '@nibleaf/search';
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { chatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { chatSite, chatTurnShape, recordChatRateLimited, submitSiteChatFeedback } from './site-chat';
@@ -77,6 +97,19 @@ const chunk = {
   heading: 'With npm',
   direction: 'ltr',
 };
+/** A retrieved chunk with every field the search package reads. */
+const searchChunk = (index: number, content: string): SearchChunk => ({
+  ...chunk,
+  id: `c${index}`,
+  ordinal: index,
+  description: '',
+  headingPath: [],
+  contentHash: `h${index}`,
+  language: 'en',
+  direction: 'ltr',
+  visible: true,
+  content,
+});
 const context = (overrides: Record<string, unknown> = {}) => ({
   snapshot: { project: { config: {}, languages: [{ code: 'en', isDefault: true, enabled: true }] } },
   deploymentId: 'deploy-1',
@@ -122,7 +155,11 @@ describe('reader AI chat stream', () => {
     mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST' });
     mocks.context.mockResolvedValue(context());
     mocks.runtime.mockResolvedValue({ providerId: 'openrouter', answerModel: 'openai/gpt-5.6-luna', answersEnabled: true });
-    mocks.reserve.mockResolvedValue(reservation);
+    mocks.reserve.mockImplementation(async () => ({ ...reservation }));
+    mocks.extend.mockImplementation(async (_project: string, _conversation: string, hold: { reservedTokens: number }, wanted: number) => {
+      hold.reservedTokens += wanted;
+      return wanted;
+    });
     mocks.quota.mockResolvedValue({ allowed: true, remaining: 41 });
     mocks.condense.mockResolvedValue({ query: 'How do I install it?', rewritten: false });
     mocks.retrieve.mockResolvedValue({ chunks: [chunk], hits: [{ chunk, score: 0.9 }], confidence: 0.8, cacheHit: false });
@@ -181,11 +218,14 @@ describe('reader AI chat stream', () => {
     // The page the reader asked from is passed as a narrowing hint only.
     expect(mocks.retrieve.mock.calls[0]?.[3]).toMatchObject({ page: { id: 'page-1', title: 'Install' } });
     await settle();
-    // The turn reserved its estimate up front, measured from the prompts it sends
-    // (the reader's page included), then settles to what the answer and suggestion calls spent.
-    const reserved = estimateChatTurnTokens(chatTurnShape(body(), 'en', { title: 'Install', path: 'guides/install' }));
+    // The turn reserved the most it can read and write before it ran, measured
+    // from the prompts it sends (the reader's page included), then settles to what
+    // the answer and suggestion calls spent. One short source fits the least
+    // documentation reserved up front, so nothing more was reserved.
+    const reserved = chatTurnReservation(chatTurnShape(body(), 'en', { title: 'Install', path: 'guides/install' }));
     expect(mocks.reserve).toHaveBeenCalledWith('project-1', final.conversationId, reserved);
-    expect(reserved).toBeGreaterThan(estimateChatTurnTokens(chatTurnShape(body(), 'en')));
+    expect(reserved).toBeGreaterThan(chatTurnReservation(chatTurnShape(body(), 'en')));
+    expect(mocks.extend).not.toHaveBeenCalled();
     expect(mocks.settle).toHaveBeenCalledWith('project-1', final.conversationId, reservation, 160);
     expect(recorded().map((event) => event.name)).toEqual(['question_asked', 'first_token', 'answer_completed']);
     expect(recorded()[0]).toMatchObject({ turnId: final.turnId, turnIndex: 0, followUp: false, pageContext: true });
@@ -220,6 +260,39 @@ describe('reader AI chat stream', () => {
     expect(final.supportUrl).toBeUndefined();
     expect(events.filter((event) => event.type === 'TEXT_MESSAGE_CONTENT')).toHaveLength(1);
     expect(mocks.suggest).not.toHaveBeenCalled();
+    for (let i = 0; i < 3; i++) await settle();
+    // Nothing was billed, and that is known: the turn cost exactly nothing.
+    const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
+    expect(turn).toMatchObject({ inputTokens: 0, outputTokens: 0, costUsd: 0 });
+    expect(turn).not.toHaveProperty('usageEstimated');
+    expect(turn).not.toHaveProperty('utilityModel');
+    expect(mocks.extend).not.toHaveBeenCalled();
+    expect(mocks.settle.mock.calls.at(-1)?.[3]).toBe(0);
+  });
+
+  it('records a low-confidence follow-up as known: the rewrite on the utility model, nothing on the answer model', async () => {
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
+      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.0001, calls: 1, costed: 1 });
+      return { kind: runtime.answerModel };
+    });
+    mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
+    mocks.retrieve.mockResolvedValue({ chunks: [chunk], hits: [{ chunk, score: 0.05 }], confidence: 0.05 });
+    await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
+    for (let i = 0; i < 3; i++) await settle();
+    const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
+    expect(turn).toMatchObject({
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      utilityModel: 'openai/gpt-5.6-luna-mini',
+      utilityInputTokens: 50,
+      utilityOutputTokens: 10,
+      utilityCostUsd: 0.0001,
+    });
+    expect(turn).not.toHaveProperty('usageEstimated');
+    expect(turn).not.toHaveProperty('utilityUsageEstimated');
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
   });
 
   it('offers the site support link and section-level articles when the docs do not cover it', async () => {
@@ -433,13 +506,85 @@ describe('reader AI chat stream', () => {
     const read = fitChatContext(sources);
     expect(read.length).toBeLessThan(sources.length);
     expect(mocks.suggest.mock.calls[0]?.[0].chunks).toEqual(read);
-    // The full list goes to the answer call, which reads the same bounded context.
-    expect(mocks.stream.mock.calls[0]?.[0].chunks).toBe(sources);
+    expect(mocks.stream.mock.calls[0]?.[0].chunks).toEqual(read);
+    // Reading them was reserved beyond the least reserved up front.
+    const shape = chatTurnShape(body(), 'en');
+    expect(mocks.extend.mock.calls[0]?.[3]).toBe(chatSourcesTokens(shape, read) - CHAT_MIN_SOURCES_TOKENS);
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0] as Record<string, number | boolean>;
     expect(turn.usageEstimated).toBe(true);
-    // Reported suggestions plus the answer's prompt as sent, both within the reservation.
-    expect(turn.inputTokens).toBe(30 + chatCallInputTokens(chatTurnShape(body(), 'en'), sources).generation);
-    expect(mocks.settle.mock.calls.at(-1)?.[3]).toBeLessThanOrEqual(mocks.reserve.mock.calls.at(-1)?.[2]);
+    // The record: reported suggestions plus the answer's estimated prompt as sent.
+    expect(turn.inputTokens).toBe(30 + chatCallInputTokens(shape, read).generation);
+    // The budgets: never charged more than the turn reserved.
+    const [, , hold, charged] = mocks.settle.mock.calls.at(-1) ?? [];
+    expect(charged).toBe(40 + chatCallInputBounds(shape, read).generation + CHAT_OUTPUT_TOKEN_LIMITS.answer);
+    expect(charged).toBeLessThanOrEqual(hold.reservedTokens);
+  });
+
+  it('reads fewer sources when the budgets have less room, and still answers an admitted question', async () => {
+    const sources = Array.from({ length: 6 }, (_, index) => searchChunk(index, 'x'.repeat(2000)));
+    mocks.retrieve.mockResolvedValue({ chunks: sources, hits: [], confidence: 0.8, cacheHit: false });
+    const shape = chatTurnShape(body(), 'en');
+    for (const granted of [1000, 0]) {
+      mocks.stream.mockClear();
+      mocks.extend.mockImplementationOnce(async (_project: string, _conversation: string, hold: { reservedTokens: number }) => {
+        hold.reservedTokens += granted;
+        return granted;
+      });
+      mocks.stream.mockReturnValue({
+        deltas: (async function* () {
+          yield 'Run the installer. [S1]';
+        })(),
+        result: Promise.resolve({
+          status: 'answered',
+          answer: 'Run the installer. [S1]',
+          citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+          droppedParagraphs: 0,
+          usage: { inputTokens: 900, outputTokens: 120 },
+          model: 'openai/gpt-5.6-luna',
+        }),
+      });
+      await readEvents(await chatSite('project-1', body()));
+      for (let i = 0; i < 3; i++) await settle();
+      const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
+      expect(read).toEqual(fitChatSources(shape, sources, CHAT_MIN_SOURCES_TOKENS + granted));
+      expect(read.length).toBeGreaterThan(0);
+      expect(read.length).toBeLessThan(sources.length);
+      expect(chatSourcesTokens(shape, read)).toBeLessThanOrEqual(CHAT_MIN_SOURCES_TOKENS + granted);
+    }
+  });
+
+  it.each(['failed', 'cancelled'] as const)("keeps the suggestions' reported usage and cost when the answer is %s", async (status) => {
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
+      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
+      return { kind: runtime.answerModel };
+    });
+    const reader = new AbortController();
+    mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST', signal: reader.signal });
+    // Suggestions finish first, with their usage reported.
+    mocks.suggest.mockResolvedValue({ questions: ['Can I install it offline?'], usage: { inputTokens: 37, outputTokens: 11 } });
+    let rejectResult: (error: Error) => void = () => undefined;
+    const result = new Promise((_, reject) => {
+      rejectResult = reject;
+    });
+    // Like streamGroundedChat: an aborted result rejects, with a handler attached.
+    result.catch(() => undefined);
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        yield 'Run the ';
+        if (status === 'failed') throw new Error('provider down');
+        reader.abort();
+        rejectResult(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      })(),
+      result,
+    });
+    await readEvents(await chatSite('project-1', body())).catch(() => []);
+    for (let i = 0; i < 5; i++) await settle();
+    const turn = mocks.recordTurn.mock.calls.at(-1)?.[0];
+    expect(turn).toMatchObject({ status, usageEstimated: true, utilityInputTokens: 37, utilityOutputTokens: 11, utilityCostUsd: 0.000_123 });
+    expect(turn).not.toHaveProperty('utilityUsageEstimated');
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
   });
 
   it.each([
@@ -480,7 +625,11 @@ describe('reader AI chat stream', () => {
       confidence: 0.8,
       cacheHit: false,
     });
-    mocks.suggest.mockReturnValue(new Promise(() => undefined));
+    // Like suggestFollowUps: a stopped suggestions call settles without usage.
+    mocks.suggest.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((resolve) => signal.addEventListener('abort', () => resolve({ questions: [] }), { once: true })),
+    );
     let rejectResult: (error: Error) => void = () => undefined;
     const result = new Promise((_, reject) => {
       rejectResult = reject;
@@ -505,9 +654,15 @@ describe('reader AI chat stream', () => {
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0] as Record<string, number | boolean | string>;
     expect(turn).toMatchObject({ status: 'cancelled', usageEstimated: true });
     // Far more than the rewrite's 100 tokens: the answer read the question, history and 12 sources.
+    expect(Number(turn.inputTokens)).toBeGreaterThan(3600);
+    // Budgets are charged the rewrite's reported 100 tokens and, for the stopped
+    // answer and suggestions, the most they could have used; the record keeps estimates.
     const spent = mocks.settle.mock.calls.at(-1)?.[3] as number;
-    expect(spent).toBeGreaterThan(3600);
-    expect(spent).toBe(Number(turn.inputTokens) + Number(turn.outputTokens));
+    const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
+    expect(read).toHaveLength(12);
+    const bounds = chatCallInputBounds(chatTurnShape(body({ question: 'And only one notebook?', history }), 'en'), read);
+    expect(spent).toBe(100 + bounds.generation + CHAT_OUTPUT_TOKEN_LIMITS.answer + bounds.followUps + CHAT_OUTPUT_TOKEN_LIMITS.followUps);
+    expect(spent).toBeGreaterThan(Number(turn.inputTokens) + Number(turn.outputTokens));
     // Analytics events carry provider-reported facts only.
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', outcome: 'cancelled' });
     expect(recorded().at(-1)).not.toHaveProperty('inputTokens');

@@ -22,9 +22,9 @@ export function citationParts(text: string) {
 /** Citation markers (`[S1]`, `[S1, S2]`) only mean something once the answer is checked. */
 // Every repetition consumes a separator and an S id, and the marker starts at a
 // literal bracket (one optional space before it), so matching stays linear.
-const CITATION_MARKERS = / ?\[S\d+(?:[ \t]*[,;،][ \t]*S\d+)*\]/g;
+const CITATION_MARKERS = / ?\[S\d+(?:[ \t]*[,;،؛][ \t]*S\d+)*\]/g;
 /** Characters a marker can hold before its closing bracket (one class, no nesting). */
-const MARKER_BODY = /^[S\d,;،\s]*$/;
+const MARKER_BODY = /^[S\d,;،؛\s]*$/;
 /** Drops a marker still arriving at the end of the stream ("[", "[S", "[S6",
  * "[S6, S"). Text like `items[0` is left alone: a marker starts with S. */
 const withoutUnfinishedMarker = (text: string) => {

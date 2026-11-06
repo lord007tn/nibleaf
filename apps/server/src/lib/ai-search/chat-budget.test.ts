@@ -6,7 +6,7 @@ vi.mock('@/lib/env-extras', () => ({
   envExtras: { SEARCH_CHAT_MAX_TURNS: 20, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 2_000_000 },
 }));
 
-import { chatBudgetWarning, releaseChatTurn, reserveChatTurn, settleChatSpend } from './chat-budget';
+import { chatBudgetWarning, extendChatTurn, releaseChatTurn, reserveChatTurn, settleChatSpend } from './chat-budget';
 
 const now = new Date('2026-11-06T10:00:00.000Z');
 const keys = ['{search-chat:project-1}:conversation:conversation-1', '{search-chat:project-1}:tokens:2026-11-06'];
@@ -14,6 +14,19 @@ const keys = ['{search-chat:project-1}:conversation:conversation-1', '{search-ch
 describe('chat budgets', () => {
   beforeEach(() => {
     mocks.eval.mockReset();
+  });
+
+  it('grows an admitted turn by what the budgets still have room for', async () => {
+    mocks.eval.mockResolvedValue(1500);
+    const hold = { reservedTokens: 9000, reservedAt: now };
+    await expect(extendChatTurn('project-1', 'conversation-1', hold, 4000.2)).resolves.toBe(1500);
+    expect(hold.reservedTokens).toBe(10_500);
+    const [script, ...args] = mocks.eval.mock.calls[0] ?? [];
+    expect(String(script)).toContain('math.min');
+    expect(args).toEqual([2, ...keys, 4001, 60_000, 2_000_000, 86_400, 172_800]);
+    mocks.eval.mockClear();
+    await expect(extendChatTurn('project-1', 'conversation-1', hold, 0)).resolves.toBe(0);
+    expect(mocks.eval).not.toHaveBeenCalled();
   });
 
   it('warns at startup about token budgets no full-size turn fits under', () => {

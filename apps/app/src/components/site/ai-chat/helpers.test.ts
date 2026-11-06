@@ -35,6 +35,7 @@ describe('reader chat boundaries', () => {
     // Streamed in pieces, a marker never flashes before it closes.
     for (const piece of ['[', '[S', '[S6', '[S6,', '[S6, ', '[S6, S', '[S6, S2', '[S6]']) expect(answerText(`Run it ${piece}`)).toBe('Run it');
     expect(answerText('نعم [S1، S2] تم [S3،')).toBe('نعم تم');
+    expect(answerText('نعم [S1؛ S2] تم [S3؛')).toBe('نعم تم');
     // Hostile input stays linear (CodeQL: no backtracking on "[S, , , ...").
     const started = performance.now();
     expect(answerText(`x [S${', '.repeat(50_000)}y`)).toBe(`x [S${', '.repeat(50_000)}y`);

@@ -1,23 +1,30 @@
 ﻿import { fakeText } from '@tanstack/ai/testing';
+import { Tiktoken } from 'js-tiktoken/lite';
+import cl100k_base from 'js-tiktoken/ranks/cl100k_base';
+import o200k_base from 'js-tiktoken/ranks/o200k_base';
 import { describe, expect, it } from 'vitest';
 import { answerUserPrompt } from './answer';
 import {
   boundChatHistory,
-  CHAT_CONTEXT_TOKENS,
+  CHAT_MIN_SOURCES_TOKENS,
   CHAT_OUTPUT_TOKEN_LIMITS,
   type ChatTurnShape,
+  chatCallInputBounds,
   chatCallInputTokens,
+  chatSourcesTokens,
+  chatTurnReservation,
   chatUserPrompt,
   condenseFollowUp,
-  estimateChatTurnTokens,
   estimateTokens,
   fitChatContext,
+  fitChatSources,
   largestChatTurnTokens,
   NO_ANSWER_SENTINEL,
   replyLanguage,
   streamGroundedChat,
   suggestedArticles,
   suggestFollowUps,
+  tokenBound,
 } from './answer-chat';
 import { validateCitedAnswer } from './answer-validation';
 import type { SearchChunk } from './hybrid';
@@ -51,11 +58,11 @@ const collect = async (deltas: AsyncIterable<string>) => {
 };
 
 describe('chat citation policy', () => {
-  it.each(['[S1, S2]', '[S1,S2]', '[S1; S2]', '[S1، S2]', '[S1،S2]'])('normalizes %s and preserves first appearance', (marker) => {
+  it.each(['[S1, S2]', '[S1,S2]', '[S1; S2]', '[S1، S2]', '[S1،S2]', '[S1؛ S2]'])('normalizes %s and preserves first appearance', (marker) => {
     expect(validate(`Use s3 ${marker}`)).toMatchObject({ status: 'answered', answer: 'Use s3 [S1][S2]', citations: [{ id: 'S1' }, { id: 'S2' }] });
   });
-  it('checks every id in a group joined by Arabic commas', () => {
-    expect(validate('Supported [S1]\n\nAlso [S1، S99]')).toEqual({ status: 'no_answer', reason: 'unknown_citation' });
+  it.each(['[S1، S99]', '[S1؛ S99]'])('checks every id in a group joined by Arabic punctuation: %s', (group) => {
+    expect(validate(`Supported [S1]\n\nAlso ${group}`)).toEqual({ status: 'no_answer', reason: 'unknown_citation' });
   });
   it('handles Arabic and deduplicates citations', () =>
     expect(validate('استخدم التخزين [S2][S1][S2]')).toMatchObject({ status: 'answered', citations: [{ id: 'S2' }, { id: 'S1' }] }));
@@ -223,7 +230,7 @@ describe('history and follow-up queries', () => {
   });
 });
 
-describe('a bounded context and an honest reservation', () => {
+describe('a bounded context and strict reservations', () => {
   const sized = (index: number, content: string): SearchChunk => ({
     ...chunk,
     id: `c${index}`,
@@ -231,26 +238,45 @@ describe('a bounded context and an honest reservation', () => {
     title: `Page ${index}`,
     content,
   });
-  const sourcesTokens = (list: SearchChunk[]) => estimateTokens(answerUserPrompt('', list));
+  const sourcesTokens = (list: SearchChunk[]) => tokenBound(answerUserPrompt('', list));
+  // Real tokenizers, to check the bound against rather than the estimate.
+  const encoders = [new Tiktoken(o200k_base), new Tiktoken(cl100k_base)];
+  const realTokens = (text: string) => Math.max(...encoders.map((encoder) => encoder.encode(text).length));
+
+  it('bounds any text at one token per byte, digits and rare characters included', () => {
+    for (const text of [
+      '1 '.repeat(3000),
+      '0.1,'.repeat(1500),
+      '😀'.repeat(500),
+      '𠀀'.repeat(500),
+      'م'.repeat(2000),
+      '\u0001'.repeat(300),
+      'Run acme export.',
+    ]) {
+      expect(realTokens(text)).toBeLessThanOrEqual(tokenBound(text));
+    }
+    // The estimate is not a bound: digit runs take far more tokens than bytes / 3.
+    expect(realTokens('1 '.repeat(3000))).toBeGreaterThan(2 * estimateTokens('1 '.repeat(3000)));
+  });
 
   it('reads the best matches in rank order while they fit', () => {
     const list = Array.from({ length: 6 }, (_, index) => sized(index, 'x'.repeat(800)));
-    const kept = fitChatContext(list, 1000);
-    expect(kept.map((item) => item.id)).toEqual(['c0', 'c1', 'c2']);
-    expect(sourcesTokens(kept)).toBeLessThanOrEqual(1000);
-    expect(fitChatContext(list).length).toBe(6);
+    const kept = fitChatContext(list, 2000);
+    expect(kept.map((item) => item.id)).toEqual(['c0', 'c1']);
+    expect(sourcesTokens(kept)).toBeLessThanOrEqual(2000);
+    expect(fitChatContext(list)).toHaveLength(6);
     expect(fitChatContext([])).toEqual([]);
   });
 
   it('keeps the beginning of a best match larger than the whole budget, escaping included', () => {
-    const [cut] = fitChatContext([sized(0, `${'</source>'.repeat(400)}${'م'.repeat(5000)}`), sized(1, 'small')], 300);
+    const [cut] = fitChatContext([sized(0, `${'</source>'.repeat(400)}${'م'.repeat(5000)}`), sized(1, 'small')], 900);
     expect(cut?.id).toBe('c0');
     expect(cut?.content.startsWith('</source>')).toBe(true);
-    expect(sourcesTokens(cut ? [cut] : [])).toBeLessThanOrEqual(300);
-    expect(sourcesTokens(cut ? [{ ...cut, content: `${cut.content}مم` }] : [])).toBeGreaterThan(300);
-    expect(fitChatContext([sized(0, '😀'.repeat(2000))], 100)[0]?.content).toMatch(/^(?:😀)+$/u);
+    expect(sourcesTokens(cut ? [cut] : [])).toBeLessThanOrEqual(900);
+    expect(sourcesTokens(cut ? [{ ...cut, content: `${cut.content}م` }] : [])).toBeGreaterThan(900);
+    expect(fitChatContext([sized(0, '😀'.repeat(2000))], 300)[0]?.content).toMatch(/^(?:😀)+$/u);
     // Even its metadata does not fit: nothing is read rather than a budget overrun.
-    expect(fitChatContext([{ ...sized(0, 'x'), title: 'x'.repeat(3000) }], 300)).toEqual([]);
+    expect(fitChatContext([{ ...sized(0, 'x'), title: 'x'.repeat(3000) }], 900)).toEqual([]);
   });
 
   it('never lets an answer cite a source it did not read', async () => {
@@ -271,64 +297,92 @@ describe('a bounded context and an honest reservation', () => {
     expect(sent.join('\n')).not.toContain(`id="S${read.length + 1}"`);
   });
 
-  it('reserves at least what every call of a turn sends and may write', async () => {
-    const list = Array.from({ length: 12 }, (_, index) => ({ ...sized(index, 'ش'.repeat(2100)), title: 'ع'.repeat(160), heading: 'ح'.repeat(160) }));
+  it('reserves at least what every call of a turn reads and writes, counted by real tokenizers', async () => {
+    // Text built to defeat estimates: digit runs everywhere a reader or the docs control.
+    const digits = (characters: number) => '1 '.repeat(Math.floor(characters / 2));
+    const list = Array.from({ length: 12 }, (_, index) => ({ ...sized(index, digits(2100)), title: digits(160), heading: digits(160) }));
     const shape: ChatTurnShape = {
-      question: 'س'.repeat(500),
-      // Six messages filling the history bound, and the longest question.
-      history: Array.from({ length: 6 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: 'ج'.repeat(375) })),
-      language: 'ar',
-      pageContext: { title: 'ص'.repeat(500), path: 'p'.repeat(500) },
+      question: digits(500),
+      // Six messages filling the history bound.
+      history: Array.from({ length: 6 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: digits(750) })),
+      language: 'en',
+      pageContext: { title: '\u0001'.repeat(500), path: digits(500) },
       historyLimits: { maxMessages: 6, maxTokens: 1500 },
     };
-    const calls: { system: string[]; messages: string[]; maxTokens: number }[] = [];
+    const calls: { texts: string[]; maxTokens: number }[] = [];
     const capture = () => {
       const adapter = fakeText();
       adapter.setResponses([{ text: '["Is there more?"]' }, { text: 'Use s3 [S1]' }]);
       const original = adapter.chatStream.bind(adapter);
       adapter.chatStream = (options) => {
         calls.push({
-          system: (options.systemPrompts ?? []).map(String),
-          messages: options.messages.map((message) => String(message.content)),
+          texts: [...(options.systemPrompts ?? []).map(String), ...options.messages.map((message) => String(message.content))],
           maxTokens: Number((options.modelOptions as { max_tokens?: number } | undefined)?.max_tokens),
         });
         return original(options);
       };
       return adapter;
     };
+    const read = fitChatContext(list);
     const base = { question: shape.question, history: shape.history, language: shape.language, historyLimits: shape.historyLimits };
     await condenseFollowUp({ adapter: capture(), ...base });
-    await streamGroundedChat({ adapter: capture(), model: 'fake', ...base, chunks: list, pageContext: shape.pageContext }).result;
-    await suggestFollowUps({ adapter: capture(), question: shape.question, chunks: fitChatContext(list), language: shape.language });
+    await streamGroundedChat({ adapter: capture(), model: 'fake', ...base, chunks: read, pageContext: shape.pageContext }).result;
+    await suggestFollowUps({ adapter: capture(), question: shape.question, chunks: read, language: shape.language });
     expect(calls).toHaveLength(3);
-    const sent = calls.map((call) => [...call.system, ...call.messages].reduce((sum, text) => sum + estimateTokens(text), 0));
-    const sizes = chatCallInputTokens(shape, list);
-    expect(sizes.condense).toBeGreaterThanOrEqual(sent[0] ?? Number.POSITIVE_INFINITY);
-    expect(sizes.generation).toBeGreaterThanOrEqual(sent[1] ?? Number.POSITIVE_INFINITY);
-    expect(sizes.followUps).toBeGreaterThanOrEqual(sent[2] ?? Number.POSITIVE_INFINITY);
-    // Before retrieval, the turn is sized for a full context and the widest topics.
-    const ahead = chatCallInputTokens(shape);
-    expect(ahead.generation).toBeGreaterThanOrEqual(sizes.generation);
-    expect(ahead.followUps).toBeGreaterThanOrEqual(sizes.followUps);
+    // Each text is its own message: real tokens plus the framing a provider adds.
+    const real = calls.map((call) => call.texts.reduce((sum, text) => sum + realTokens(text) + 8, 0));
+    const bounds = chatCallInputBounds(shape, read);
+    expect(bounds.condense).toBeGreaterThanOrEqual(real[0] ?? Number.POSITIVE_INFINITY);
+    expect(bounds.generation).toBeGreaterThanOrEqual(real[1] ?? Number.POSITIVE_INFINITY);
+    expect(bounds.followUps).toBeGreaterThanOrEqual(real[2] ?? Number.POSITIVE_INFINITY);
+    // Estimates, kept for records of calls that never reported, are no bound here.
+    expect(chatCallInputTokens(shape, read).generation).toBeLessThan(real[1] ?? 0);
     expect(calls.map((call) => call.maxTokens)).toEqual([
       CHAT_OUTPUT_TOKEN_LIMITS.condense,
       CHAT_OUTPUT_TOKEN_LIMITS.answer,
       CHAT_OUTPUT_TOKEN_LIMITS.followUps,
     ]);
-    const spent = sent.reduce((sum, tokens) => sum + tokens, 0) + calls.reduce((sum, call) => sum + call.maxTokens, 0);
-    // A margin over the estimate covers a provider's own tokenizer.
-    expect(estimateChatTurnTokens(shape)).toBeGreaterThanOrEqual(Math.ceil(spent * 1.2));
-    expect(estimateChatTurnTokens(shape)).toBeLessThanOrEqual(
-      largestChatTurnTokens({ questionMax: 500, historyLimits: shape.historyLimits ?? { maxMessages: 0, maxTokens: 0 }, language: 'ar' }),
-    );
+    // Reserved before the turn runs, then for the sources it reads beyond the least.
+    const reserved = chatTurnReservation(shape) + Math.max(0, chatSourcesTokens(shape, read) - CHAT_MIN_SOURCES_TOKENS);
+    const spent = real.reduce((sum, tokens) => sum + tokens, 0) + calls.reduce((sum, call) => sum + call.maxTokens, 0);
+    expect(reserved).toBeGreaterThanOrEqual(spent);
+  });
+
+  it('reads fewer sources when a budget has less room, never more than it reserved', () => {
+    const list = Array.from({ length: 6 }, (_, index) => sized(index, 'x'.repeat(800)));
+    const shape: ChatTurnShape = { question: 'How?', history: [], language: 'en' };
+    expect(fitChatSources(shape, list, chatSourcesTokens(shape, list))).toEqual(list);
+    expect(fitChatSources(shape, list, chatSourcesTokens(shape, list.slice(0, 2)))).toEqual(list.slice(0, 2));
+    const half = Math.floor(chatSourcesTokens(shape, list.slice(0, 1)) / 2);
+    const cut = fitChatSources(shape, list, half);
+    expect(cut).toHaveLength(1);
+    expect(cut[0]?.content.length).toBeLessThan(800);
+    expect(chatSourcesTokens(shape, cut)).toBeLessThanOrEqual(half);
+    // Not even one source's metadata fits.
+    expect(fitChatSources(shape, list, 10)).toEqual([]);
+    expect(chatSourcesTokens(shape, [])).toBe(0);
   });
 
   it('reserves less for a first question, which makes no rewrite call', () => {
-    const first = estimateChatTurnTokens({ question: 'How do I export?', history: [], language: 'en' });
-    const followUp = estimateChatTurnTokens({ question: 'How do I export?', history: [{ role: 'user', content: 'Hi' }], language: 'en' });
-    expect(chatCallInputTokens({ question: 'How do I export?', history: [], language: 'en' }).condense).toBe(0);
-    expect(first).toBeLessThan(followUp);
-    expect(first).toBeGreaterThan(CHAT_CONTEXT_TOKENS);
+    const first: ChatTurnShape = { question: 'How do I export?', history: [], language: 'en' };
+    expect(chatCallInputBounds(first).condense).toBe(0);
+    expect(chatTurnReservation(first)).toBeLessThan(chatTurnReservation({ ...first, history: [{ role: 'user', content: 'Hi' }] }));
+    expect(chatTurnReservation(first)).toBeGreaterThan(CHAT_MIN_SOURCES_TOKENS + CHAT_OUTPUT_TOKEN_LIMITS.answer);
+  });
+
+  it('bounds the largest reservation any turn makes under the limits', () => {
+    const historyLimits = { maxMessages: 6, maxTokens: 1500 };
+    const largest = largestChatTurnTokens({ questionMax: 500, historyLimits });
+    const hostile: ChatTurnShape = {
+      question: '文'.repeat(500),
+      history: Array.from({ length: 6 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: '1 '.repeat(375) })),
+      language: 'en',
+      // Page metadata the prompt escapes.
+      pageContext: { title: '\u0000'.repeat(500), path: '"'.repeat(500) },
+      historyLimits,
+    };
+    expect(chatTurnReservation(hostile)).toBeLessThanOrEqual(largest);
+    expect(largestChatTurnTokens({ questionMax: 500, historyLimits: { maxMessages: 12, maxTokens: 16_000 } })).toBeGreaterThan(largest);
   });
 });
 

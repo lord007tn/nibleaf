@@ -8,9 +8,9 @@ type ChatBudgetLimits = Pick<
   'SEARCH_CHAT_HISTORY_MESSAGES' | 'SEARCH_CHAT_HISTORY_MAX_TOKENS' | 'SEARCH_CHAT_MAX_CONVERSATION_TOKENS' | 'SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'
 >;
 
-/** Token budgets below the largest reservation a turn can make (the longest
- * question with a full history) refuse every such turn. Reported at startup so
- * an operator can raise them; null when both budgets fit it. */
+/** Token budgets below the largest reservation a turn makes before it runs (the
+ * longest question with a full history) refuse every such turn. Reported at
+ * startup so an operator can raise them; null when both budgets fit it. */
 export const chatBudgetWarning = (limits: ChatBudgetLimits = envExtras) => {
   const largestTurnTokens = largestChatTurnTokens({
     questionMax: AI_CHAT_LIMITS.questionMax,
@@ -68,6 +68,23 @@ if daily < 0 then redis.call('INCRBY', KEYS[2], -daily) end
 redis.call('EXPIRE', KEYS[2], ARGV[3])
 return 1`;
 
+// Reserve up to ARGV[1] more tokens for a turn already admitted: as many as both
+// caps still have room for, possibly none, in one atomic step so concurrent turns
+// never pass a cap together. Returns the tokens granted.
+const EXTEND = `
+local tokens = tonumber(redis.call('HGET', KEYS[1], 'tokens') or '0')
+local grant = math.min(tonumber(ARGV[1]), tonumber(ARGV[2]) - tokens)
+if tonumber(ARGV[3]) > 0 then
+  local daily = tonumber(redis.call('GET', KEYS[2]) or '0')
+  grant = math.min(grant, tonumber(ARGV[3]) - daily)
+end
+if grant <= 0 then return 0 end
+redis.call('HINCRBY', KEYS[1], 'tokens', grant)
+redis.call('EXPIRE', KEYS[1], ARGV[4])
+redis.call('INCRBY', KEYS[2], grant)
+redis.call('EXPIRE', KEYS[2], ARGV[5])
+return grant`;
+
 // Undo a turn and its reservation.
 const RELEASE = `
 local turns = tonumber(redis.call('HGET', KEYS[1], 'turns') or '0')
@@ -120,6 +137,35 @@ export const reserveChatTurn = async (
     reservedTokens,
     reservedAt: now,
   };
+};
+
+/** Reserve more for an admitted turn once it knows what it will read: up to
+ * `wantedTokens`, as many as the conversation and daily budgets still have room
+ * for (possibly none). The hold grows by what is granted, so settling replaces
+ * the whole reservation. */
+export const extendChatTurn = async (projectId: string, conversationId: string, hold: ChatTurnHold, wantedTokens: number): Promise<number> => {
+  const wanted = whole(wantedTokens);
+  if (wanted === 0) return 0;
+  const keys = keysFor(projectId, conversationId, hold.reservedAt);
+  const client = await aiSpendRedis();
+  const granted = Math.max(
+    0,
+    Number(
+      await client.eval(
+        EXTEND,
+        2,
+        keys.conversation,
+        keys.dailyTokens,
+        wanted,
+        envExtras.SEARCH_CHAT_MAX_CONVERSATION_TOKENS,
+        envExtras.SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT,
+        CONVERSATION_TTL_SECONDS,
+        DAY_TTL_SECONDS,
+      ),
+    ),
+  );
+  hold.reservedTokens += granted;
+  return granted;
 };
 
 /** Undo a reservation when a later gate (the daily answer quota) refuses the turn. */
