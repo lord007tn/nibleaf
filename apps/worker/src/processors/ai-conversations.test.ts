@@ -6,7 +6,6 @@ const mocks = vi.hoisted(() => ({
   insert: vi.fn(),
   project: vi.fn(),
   refresh: vi.fn(),
-  events: vi.fn(),
   row: {} as Record<string, unknown>,
 }));
 vi.mock('../env', () => ({ env: {} }));
@@ -26,7 +25,6 @@ vi.mock('@nibleaf/bullmq/jobs/ai-conversations', async (original) => ({
 vi.mock('@nibleaf/clickhouse', async (original) => ({
   ...(await original<object>()),
   refreshAiUsageDaily: mocks.refresh,
-  insertAiChatEvents: mocks.events,
   aiTurnRowSchema: { parse: (r: unknown) => r },
   aiFeedbackRowSchema: { parse: (r: unknown) => r },
   getClickHouseClient: () => ({ insert: mocks.insert }),
@@ -81,47 +79,4 @@ it('refreshes the turn UTC day after a durable insert', async () => {
   mocks.row.occurred_at = '2026-11-01T23:00:00.000Z';
   expect(await handleAiConversationJob(job)).toEqual({ inserted: 1 });
   expect(mocks.refresh).toHaveBeenCalledWith({ tenantId: 'tenant', projectId: 'project' }, ['2026-11-01'], expect.anything());
-});
-it('validates unsealed events, rejects scope substitution and drops tombstones', async () => {
-  const row = {
-    tenant_id: 'tenant',
-    project_id: 'project',
-    event_id: '00000000-0000-4000-8000-000000000001',
-    event_name: 'copy',
-    occurred_at: '2026-11-01T00:00:00.000Z',
-    received_at: '2026-11-01T00:00:00.000Z',
-    conversation_id: '00000000-0000-4000-8000-000000000002',
-    turn_id: '00000000-0000-4000-8000-000000000003',
-    language: 'en',
-    visibility: 'public',
-    consent_state: 'unknown',
-    session_hash: null,
-    source: '',
-    outcome: '',
-    reason: '',
-    quota_kind: '',
-    provider_phase: '',
-    citation_id: '',
-    position: 0,
-    ttft_ms: 0,
-    latency_ms: 0,
-    provider: '',
-    model: '',
-    input_tokens: 0,
-    output_tokens: 0,
-    tokens_known: 0,
-    cost_micros: 0,
-    cost_known: 0,
-    retrieval_cache_hit: 0,
-    rating: '',
-    previous_rating: '',
-    feedback_reason: '',
-  };
-  const events = { kind: 'ai-chat-events', tenantId: 'tenant', projectId: 'project', rows: [row] };
-  expect(await handleAiConversationJob(events)).toEqual({ inserted: 1 });
-  expect(mocks.events).toHaveBeenCalledOnce();
-  await expect(handleAiConversationJob({ ...events, rows: [{ ...row, question: 'sensitive' }] })).rejects.toThrow('validation failed');
-  await expect(handleAiConversationJob({ ...events, tenantId: 'other' })).rejects.toThrow('validation failed');
-  mocks.deleted.mockResolvedValue(true);
-  expect(await handleAiConversationJob(events)).toEqual({ inserted: 0 });
 });

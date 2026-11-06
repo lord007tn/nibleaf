@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  aiConversationMigrations,
   buildAiConversationQuery,
   deleteAiConversation,
   queryAiChatEngagement,
@@ -9,7 +8,9 @@ import {
   queryAiConversations,
   refreshAiUsageDaily,
 } from './ai-conversations';
-import { redactConversationText } from './redaction';
+import { migrations } from './migrations';
+import { redactConversationText, redactReaderText } from './redaction';
+import { ANALYTICS_PROJECT_TABLES } from './tables';
 
 const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('./client', () => ({ getClickHouseClient: () => ({ query: mocks.query }) }));
@@ -57,8 +58,21 @@ describe('AI archive', () => {
     expect(q.query).toContain('FINAL');
     expect(q.query).toContain('ai_conversation_deletions FINAL');
   });
-  it('uses additive idempotent migrations above the analytics range', () => {
-    expect(aiConversationMigrations.every((m) => m.version >= 1001 && m.statements.every((s) => s.includes('IF NOT EXISTS')))).toBe(true);
+  it('appends date-versioned, idempotent AI chat migrations and registers every AI table', () => {
+    const versions = migrations.map((migration) => migration.version);
+    expect(new Set(versions).size).toBe(versions.length);
+    const ai = migrations.filter((migration) => migration.version > 2_026_110_605);
+    expect(ai.map((migration) => migration.version)).toEqual([2_026_110_606, 2_026_110_607]);
+    expect(ai.flatMap((migration) => migration.statements).every((statement) => statement.includes('IF NOT EXISTS'))).toBe(true);
+    const registered = new Map(ANALYTICS_PROJECT_TABLES.map((table) => [table.name, table]));
+    expect(registered.get('ai_conversation_turns')).toMatchObject({ time: 'occurred_at', retention: 'conversation' });
+    expect(registered.get('ai_conversation_feedback')).toMatchObject({ time: 'updated_at', retention: 'conversation' });
+    expect(registered.get('ai_usage_daily')).toMatchObject({ time: 'day', retention: 'rollup' });
+    expect(registered.get('ai_conversation_deletions')).toMatchObject({ preserve: true });
+  });
+  it('redacts links and long numbers only in text people type', () => {
+    expect(redactReaderText('see https://acme.example/a?b=1 or www.acme.example, order 1234567')).toBe('see [URL] or [URL] order [REDACTED]');
+    expect(redactConversationText('see https://docs.example/export?ref=1')).toBe('see https://docs.example/export');
   });
   it('writes the tombstone before physical purges', async () => {
     const calls: string[] = [];
@@ -197,11 +211,16 @@ it('maps engagement medians, opens and counts without content', async () => {
   mocks.query.mockResolvedValue(
     reply([
       { event_name: 'chat_opened', source: 'launcher', n: '2', median: 0 },
-      { event_name: 'first_token', source: '', n: '1', median: 125 },
-      { event_name: 'citation_clicked', source: '', n: '3', median: 0 },
+      { event_name: 'chat_first_token', source: '', n: '1', median: 125 },
+      { event_name: 'chat_citation_clicked', source: '', n: '3', median: 0 },
     ]),
   );
-  expect(await queryAiChatEngagement(scope, {})).toMatchObject({
+  const engagement = await queryAiChatEngagement(scope, {});
+  const query = mocks.query.mock.calls.at(-1)?.[0];
+  expect(query.query).toContain('FROM analytics_events FINAL');
+  expect(query.query).toContain("actor_type = 'human'");
+  expect(query.query_params.events).toContain('chat_opened');
+  expect(engagement).toMatchObject({
     opens: 2,
     opensBySource: [{ source: 'launcher', count: 2 }],
     citationClicks: 3,

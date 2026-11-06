@@ -1,5 +1,4 @@
 import type { ClickHouseClient } from '@clickhouse/client';
-import { aiConversationMigrations } from './ai-conversations';
 import { keys } from './keys';
 import { ANALYTICS_PROJECT_TABLES, insightsRollups } from './tables';
 
@@ -468,6 +467,55 @@ export const migrations: ClickHouseMigration[] = [
         GROUP BY tenant_id, project_id`,
     ],
   },
+  {
+    // AI chat (#279): reader conversations, editable feedback, deletion tombstones
+    // and exact daily usage. Text columns hold redacted, consent-gated content.
+    // Sources are JSON arrays of {id?,pageId,title,path}; snippets are never stored.
+    version: 2_026_110_606,
+    name: 'ai_conversations',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ai_conversation_turns (tenant_id LowCardinality(String), project_id String, conversation_id String, turn_id String, expires_at DateTime64(3, 'UTC'), turn_index UInt32,
+        occurred_at DateTime64(3, 'UTC'), received_at DateTime64(3, 'UTC'), deployment_id String, version_slug String,
+        language String, visibility String, consent_state String, content_captured UInt8, session_hash Nullable(FixedString(64)),
+        page_path String, status String, no_answer_reason String, question String, rewritten_query String, answer String,
+        question_key FixedString(64), citations String, suggestions String, provider String, model String, prompt_version String,
+        input_tokens UInt64, output_tokens UInt64, tokens_known UInt8, cost_micros UInt64, cost_known UInt8,
+        latency_ms Nullable(UInt64), first_token_ms Nullable(UInt64), retrieval_confidence Float32, chunk_count UInt32,
+        retrieval_cache_hit UInt8 DEFAULT 0, actor_type LowCardinality(String) DEFAULT 'human')
+        ENGINE = ReplacingMergeTree(received_at) PARTITION BY toYYYYMM(occurred_at)
+        ORDER BY (tenant_id, project_id, conversation_id, turn_id)
+        TTL occurred_at + toIntervalDay({conversation_retention_days:UInt16}) DELETE`,
+      // Databases created by pre-release builds of this feature lack the newer columns.
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS retrieval_cache_hit UInt8 DEFAULT 0',
+      "ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS actor_type LowCardinality(String) DEFAULT 'human'",
+      `CREATE TABLE IF NOT EXISTS ai_conversation_feedback (tenant_id LowCardinality(String), project_id String, conversation_id String, turn_id String, expires_at DateTime64(3, 'UTC'), rating String, reason String,
+        comment String, content_captured UInt8, language String, consent_state String,
+        created_at DateTime64(3, 'UTC'), updated_at DateTime64(3, 'UTC'))
+        ENGINE = ReplacingMergeTree(updated_at) ORDER BY (tenant_id, project_id, turn_id)
+        TTL updated_at + toIntervalDay({conversation_retention_days:UInt16}) DELETE`,
+      `CREATE TABLE IF NOT EXISTS ai_conversation_deletions (tenant_id LowCardinality(String), project_id String,
+        conversation_id String, deleted_at DateTime64(3, 'UTC'))
+        ENGINE = ReplacingMergeTree(deleted_at) ORDER BY (tenant_id, project_id, conversation_id)
+        TTL toDateTime(deleted_at) + INTERVAL 400 DAY DELETE`,
+      `CREATE TABLE IF NOT EXISTS ai_usage_daily (tenant_id LowCardinality(String), project_id String, day Date,
+        provider String, model String, questions UInt64, answered UInt64, no_answer UInt64, failed UInt64, cancelled UInt64,
+        input_tokens UInt64, output_tokens UInt64, cost_micros UInt64, cost_known_turns UInt64, latency_ms_sum UInt64,
+        latency_turns UInt64, first_token_ms_sum UInt64, first_token_turns UInt64, retrieval_cache_hits UInt64,
+        updated_at DateTime64(3, 'UTC'))
+        ENGINE = ReplacingMergeTree(updated_at) ORDER BY (tenant_id, project_id, day, provider, model)
+        TTL day + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+    ],
+  },
+  {
+    // AI chat reader events (chat_*) travel the analytics_events pipeline.
+    version: 2_026_110_607,
+    name: 'ai_chat_event_columns',
+    statements: [
+      "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS conversation_id String DEFAULT ''",
+      "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS turn_id String DEFAULT ''",
+      "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS previous_feedback LowCardinality(String) DEFAULT ''",
+    ],
+  },
 ];
 
 export interface MigrationOptions {
@@ -475,6 +523,8 @@ export interface MigrationOptions {
   rollupRetentionDays: number;
   sensitiveRetentionDays: number;
   crawlerRetentionDays?: number;
+  /** AI chat conversations; defaults to AI_CONVERSATION_RETENTION_DAYS. */
+  conversationRetentionDays?: number;
 }
 
 export const runClickHouseMigrations = async (client: ClickHouseClient, options: MigrationOptions): Promise<number[]> => {
@@ -487,7 +537,7 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
   const appliedRows = await result.json<{ version: number }>();
   const applied = new Set(appliedRows.map((row) => Number(row.version)));
   const completed: number[] = [];
-  for (const migration of [...migrations, ...aiConversationMigrations]) {
+  for (const migration of migrations) {
     if (applied.has(migration.version)) continue;
     for (const statement of migration.statements) {
       await client.command({
@@ -496,6 +546,7 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
           raw_retention_days: options.rawRetentionDays,
           rollup_retention_days: options.rollupRetentionDays,
           sensitive_retention_days: options.sensitiveRetentionDays,
+          conversation_retention_days: options.conversationRetentionDays ?? keys().AI_CONVERSATION_RETENTION_DAYS,
         },
       });
     }
@@ -510,7 +561,12 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
   // not materialize old parts here: that would turn a config edit into a costly
   // synchronous rewrite. Background merges enforce the new policy.
   const crawlerDays = options.crawlerRetentionDays ?? keys().CLICKHOUSE_CRAWLER_RETENTION_DAYS;
-  const periods = { raw: options.rawRetentionDays, rollup: options.rollupRetentionDays, sensitive: options.sensitiveRetentionDays };
+  const periods = {
+    raw: options.rawRetentionDays,
+    rollup: options.rollupRetentionDays,
+    sensitive: options.sensitiveRetentionDays,
+    conversation: options.conversationRetentionDays ?? keys().AI_CONVERSATION_RETENTION_DAYS,
+  };
   for (const table of ANALYTICS_PROJECT_TABLES) {
     if (!table.time || !table.retention) continue;
     const days = periods[table.retention];

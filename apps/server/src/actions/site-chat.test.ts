@@ -33,8 +33,8 @@ vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({
   recordAiChatTurn: mocks.recordTurn,
   recordAiChatFeedback: mocks.recordFeedback,
-  recordAiChatEvents: mocks.recordEvents,
 }));
+vi.mock('./site-chat-events', () => ({ recordAiChatEvents: mocks.recordEvents }));
 vi.mock('@nibleaf/search/workspace', () => ({ workspaceChatAdapter: mocks.adapter, workspaceChatModelOptions: () => () => ({}) }));
 vi.mock('@nibleaf/search', () => ({
   CHAT_PROMPT_VERSION: 'chat-v3',
@@ -51,8 +51,9 @@ vi.mock('@nibleaf/search', () => ({
       .map((chunk, index) => ({ id: `P${index + 1}`, pageId: chunk.pageId, title: chunk.title, path: chunk.path, snippet: 's', direction: 'ltr' })),
 }));
 
+import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { chatFeedbackToken } from '@/lib/ai-search/feedback-token';
-import { aiChatConsentRequired, chatSite, submitSiteChatFeedback, trustedChatConsent } from './site-chat';
+import { chatSite, submitSiteChatFeedback } from './site-chat';
 
 const chunk = {
   id: 'c1',
@@ -99,7 +100,7 @@ const readEvents = async (response: Response) =>
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 /** Every content-free event recorded so far, in order. */
-const recorded = () => mocks.recordEvents.mock.calls.flatMap(([, events]) => events as Array<{ name: string } & Record<string, unknown>>);
+const recorded = () => mocks.recordEvents.mock.calls.flatMap(([, , events]) => events as Array<{ name: string } & Record<string, unknown>>);
 
 describe('reader AI chat stream', () => {
   beforeEach(() => {
@@ -179,12 +180,8 @@ describe('reader AI chat stream', () => {
       outputTokens: 30,
       retrievalCacheHit: false,
     });
-    expect(mocks.recordEvents.mock.calls[0]?.[0]).toMatchObject({
-      tenantId: 'org-1',
-      projectId: 'project-1',
-      visibility: 'public',
-      consent: 'not_required',
-    });
+    expect(mocks.recordEvents.mock.calls[0]?.[0]).toBe('project-1');
+    expect(mocks.recordEvents.mock.calls[0]?.[1]).toMatchObject({ consent: 'not_required', language: 'en', device: 'desktop' });
     expect(mocks.recordTurn).toHaveBeenCalledWith(
       expect.objectContaining({ tenantId: 'org-1', status: 'answered', turnId: final.turnId, pagePath: 'guides/install', inputTokens: 130 }),
     );

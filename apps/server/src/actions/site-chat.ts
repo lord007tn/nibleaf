@@ -33,13 +33,15 @@ import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError } from '@/errors';
 import { recordChatSpend, releaseChatTurn, reserveChatTurn } from '@/lib/ai-search/chat-budget';
-import { type AiChatServerEvent, recordAiChatEvents, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
+import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
+import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatContext } from '@/lib/ai-search/runtime';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
 import { trackProjectEvent } from './analytics';
+import { type AiChatServerEvent, type ChatEventContext, recordAiChatEvents } from './site-chat-events';
 import { deviceFromUserAgent, resolvePublishedAnswerContext } from './sites';
 
 const log = createLogger({ component: 'ai-chat' });
@@ -64,26 +66,6 @@ const ANALYTICS_NO_ANSWER_REASON: Record<AiChatNoAnswerReason, 'low_confidence' 
 };
 
 type PublishedAnswerContext = Awaited<ReturnType<typeof resolvePublishedAnswerContext>>;
-
-/** Mirrors the reader's consent banner rule (apps/app site-analytics-consent):
- * consent is required only when the banner applies, i.e. consent delivery is on
- * and third-party analytics scripts are configured. */
-export const aiChatConsentRequired = (config: unknown): boolean => {
-  const value = (config ?? {}) as {
-    addons?: { consentBanner?: { enabled?: boolean } };
-    analytics?: { cookieConsent?: boolean; ga4?: string; plausible?: string };
-  };
-  const banner = value.addons?.consentBanner;
-  const consentMode = banner ? banner.enabled === true : value.analytics?.cookieConsent === true;
-  const ga4 = value.analytics?.ga4?.trim();
-  const plausible = value.analytics?.plausible?.trim();
-  return consentMode && Boolean((ga4 && /^[\w-]+$/.test(ga4)) || (plausible && /^[\w.-]+$/.test(plausible)));
-};
-
-/** The reader's consent as analytics may trust it: a client cannot claim consent
- * is not required on a site whose banner applies. */
-export const trustedChatConsent = (config: unknown, consent: AiChatConsent): AiChatConsent =>
-  consent === 'not_required' && aiChatConsentRequired(config) ? 'unknown' : consent;
 
 /** The article the reader asked from, if it is a page they may read in the
  * active language/version. Anything else is ignored rather than rejected. */
@@ -172,10 +154,17 @@ interface ChatTurnInput {
   context: PublishedAnswerContext;
   body: SiteChatBody;
   signal: AbortSignal;
-  dimensions: { device: string; country?: string };
+  reader: ReaderDimensions;
 }
 
-/** The workspace that owns the project; null skips analytics rows. */
+/** The reader's browser, as the app server forwards it. */
+interface ReaderDimensions {
+  userAgent?: string;
+  device: string;
+  country?: string;
+}
+
+/** The workspace that owns the project; null skips the conversation archive. */
 const tenantOf = (projectId: string): Promise<string | null> =>
   prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }).then(
     (project) => project?.organizationId ?? null,
@@ -184,27 +173,20 @@ const tenantOf = (projectId: string): Promise<string | null> =>
 
 type EmitChatEvents = (events: AiChatServerEvent[]) => Promise<void>;
 
-/** Content-free chat events. Never blocks or fails the reader's stream. */
+/** Content-free chat events for this reader. Never blocks or fails the stream. */
 const chatEventRecorder =
-  (context: PublishedAnswerContext, reader: { consent: AiChatConsent; sessionId?: string }, tenant: Promise<string | null>): EmitChatEvents =>
-  (events) =>
-    tenant
-      .then((tenantId) =>
-        tenantId
-          ? recordAiChatEvents(
-              {
-                tenantId,
-                projectId: context.scope.projectId,
-                visibility: context.scope.visibility,
-                consent: trustedChatConsent(context.snapshot.project.config, reader.consent),
-                ...(reader.sessionId ? { sessionId: reader.sessionId } : {}),
-                language: context.scope.language,
-              },
-              events,
-            )
-          : undefined,
-      )
-      .catch(() => undefined);
+  (context: PublishedAnswerContext, body: { consent: AiChatConsent; sessionId?: string }, reader: ReaderDimensions): EmitChatEvents =>
+  (events) => {
+    const eventContext: ChatEventContext = {
+      consent: trustedChatConsent(context.snapshot.project.config, body.consent),
+      ...(body.sessionId ? { sessionId: body.sessionId } : {}),
+      language: context.scope.language,
+      ...(reader.userAgent ? { userAgent: reader.userAgent } : {}),
+      device: reader.device,
+      ...(reader.country ? { country: reader.country } : {}),
+    };
+    return recordAiChatEvents(context.scope.projectId, eventContext, events);
+  };
 
 /** Availability and spend gates, all before any provider call. Any failure to
  * reach the counter store refuses the turn (fail closed, like the answer quota). */
@@ -223,7 +205,7 @@ const openChatTurn = async (context: PublishedAnswerContext, conversationId: str
   return { ok: true as const, runtime, reservation, quota };
 };
 
-async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnInput): AsyncGenerator<StreamChunk> {
+async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput): AsyncGenerator<StreamChunk> {
   const projectId = context.scope.projectId;
   const threadId = body.conversationId;
   const runId = randomUUID();
@@ -237,7 +219,7 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
 
   const started = performance.now();
   const tenant = tenantOf(projectId);
-  const emit = chatEventRecorder(context, body, tenant);
+  const emit = chatEventRecorder(context, body, reader);
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
   const gate = await openChatTurn(context, body.conversationId).catch(() => ({ ok: false as const, code: 'unavailable' as const }));
   if (!gate.ok) {
@@ -265,8 +247,9 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
     source: 'public_site' as const,
     consentState: body.consent,
     ...(body.sessionId ? { sessionId: body.sessionId } : {}),
-    device: dimensions.device,
-    ...(dimensions.country ? { country: dimensions.country } : {}),
+    device: reader.device,
+    ...(reader.country ? { country: reader.country } : {}),
+    ...(reader.userAgent ? { userAgent: reader.userAgent } : {}),
   };
   void trackProjectEvent(projectId, { name: 'answer_started', provider: runtime.providerId, model: runtime.answerModel }, analytics).catch(
     () => undefined,
@@ -485,6 +468,7 @@ const finishTurn = async ({
   const suggestions = outcome.status === 'no_answer' && outcome.retrieval ? suggestedArticles(outcome.retrieval.chunks, body.question) : [];
   await recordAiChatTurn({
     tenantId,
+    ...(analytics?.userAgent ? { userAgent: analytics.userAgent } : {}),
     projectId,
     conversationId: body.conversationId,
     turnId,
@@ -532,15 +516,18 @@ export const chatSite = async (identifier: string, body: SiteChatBody): Promise<
   const request = getContext<HonoEnv>().req.raw;
   const abortController = new AbortController();
   request.signal.addEventListener('abort', () => abortController.abort(), { once: true });
-  const headers = request.headers;
-  const dimensions = {
-    device: deviceFromUserAgent(headers.get('user-agent')),
-    country: headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined,
-  };
-  return toServerSentEventsResponse(chatTurnEvents({ context, body, signal: abortController.signal, dimensions }), {
+  return toServerSentEventsResponse(chatTurnEvents({ context, body, signal: abortController.signal, reader: readerDimensions(request.headers) }), {
     abortController,
     headers: { 'Cache-Control': 'private, no-store, no-transform', Vary: 'Cookie, Authorization', 'X-Accel-Buffering': 'no' },
   });
+};
+
+/** The reader's browser. The app server forwards its user agent, so actor and
+ * device classification describe the reader rather than the proxy. */
+export const readerDimensions = (headers: Headers): ReaderDimensions => {
+  const userAgent = headers.get('user-agent')?.slice(0, 2048) || undefined;
+  const country = headers.get('cf-ipcountry') ?? headers.get('x-vercel-ip-country') ?? undefined;
+  return { ...(userAgent ? { userAgent } : {}), device: deviceFromUserAgent(userAgent ?? null), ...(country ? { country } : {}) };
 };
 
 /** Save (or change, or withdraw) a reader's rating of one answer. */
@@ -573,8 +560,8 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
   // nothing, is not a new rating (the feedback row above still keeps it).
   const changed = body.previousRating != null;
   if ((body.rating || changed) && body.previousRating !== body.rating) {
-    const eventConsent = trustedChatConsent(context.snapshot.project.config, consent);
-    await recordAiChatEvents({ tenantId: project.organizationId, projectId, visibility: context.scope.visibility, consent: eventConsent, language }, [
+    const reader = readerDimensions(getContext<HonoEnv>().req.raw.headers);
+    await recordAiChatEvents(projectId, { consent: trustedChatConsent(context.snapshot.project.config, consent), language, ...reader }, [
       {
         name: changed ? 'feedback_changed' : 'feedback_given',
         conversationId: body.conversationId,

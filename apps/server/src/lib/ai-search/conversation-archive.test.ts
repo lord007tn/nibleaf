@@ -19,7 +19,6 @@ import {
   buildAiFeedbackRow,
   buildAiTurnRow,
   type ChatTurnCapture,
-  recordAiChatEvents,
   recordAiChatTurn,
 } from './conversation-archive';
 
@@ -96,15 +95,19 @@ describe('capture policy', () => {
   });
 });
 
-it('captures content-free events with scoped, consent-gated session hashes', async () => {
-  const event = { name: 'chat_opened', conversationId: capture.conversationId, source: 'launcher' } as const;
-  await recordAiChatEvents({ ...capture, sessionId: 'session1', consent: 'unknown' }, [event]);
-  const first = mocks.createJob.mock.calls[0]?.[1].data.rows[0];
-  expect(first.session_hash).toBeNull();
-  expect(first).not.toHaveProperty('question');
-  await recordAiChatEvents({ ...capture, sessionId: 'session1' }, [event]);
-  await recordAiChatEvents({ ...capture, projectId: 'other', sessionId: 'session1' }, [event]);
-  expect(mocks.createJob.mock.calls[1]?.[1].data.rows[0].session_hash).not.toBe(mocks.createJob.mock.calls[2]?.[1].data.rows[0].session_hash);
-  mocks.createJob.mockRejectedValueOnce(new Error('private'));
-  await expect(recordAiChatEvents(capture, [event])).resolves.toBeUndefined();
+it('records declared bots apart from readers', () => {
+  expect(buildAiTurnRow(capture).actor_type).toBe('human');
+  expect(buildAiTurnRow({ ...capture, userAgent: 'Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)' }).actor_type).toBe('bot');
+});
+
+it('redacts links and long numbers in what readers type, keeping answer links to the docs', () => {
+  const row = buildAiTurnRow({
+    ...capture,
+    question: 'My site https://acme.example/account?id=7 shows order 1234567 at www.acme.example',
+    answer: 'See https://docs.acme.example/export?ref=chat for steps.',
+  });
+  expect(row.question).not.toContain('acme.example');
+  expect(row.question).not.toContain('1234567');
+  expect(row.answer).toContain('https://docs.acme.example/export');
+  expect(row.answer).not.toContain('ref=chat');
 });

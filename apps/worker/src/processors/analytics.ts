@@ -261,8 +261,7 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
 async function processAnalyticsJob(
   job: Job<AnalyticsJobData, unknown, AnalyticsJobName>,
 ): Promise<{ inserted: number } | { pruned: number } | { reconciled: number }> {
-  if (job.name === 'ai-chat-events' || job.name === 'ai-conversation-turn' || job.name === 'ai-conversation-feedback')
-    return handleAiConversationJob(job.data);
+  if (job.name === 'ai-conversation-turn' || job.name === 'ai-conversation-feedback') return handleAiConversationJob(job.data);
   if (job.name === 'ingest-usage') {
     const data = ingestUsageJobDataSchema.safeParse(job.data);
     if (!data.success) throw new Error('Usage ingestion job failed contract validation.');

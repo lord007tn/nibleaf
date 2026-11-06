@@ -117,6 +117,9 @@ export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
     query_hash: event.queryHash,
     query_length: event.queryLength ?? 0,
     query_token_count: event.queryTokenCount ?? 0,
+    conversation_id: asString(payloadValue(payload, 'conversationId')),
+    turn_id: asString(payloadValue(payload, 'turnId')),
+    previous_feedback: asString(payloadValue(payload, 'previousFeedback')),
   };
 };
 

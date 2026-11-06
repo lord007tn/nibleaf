@@ -1,5 +1,4 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
-import { aiChatEventRowSchema } from '@nibleaf/clickhouse';
 import { z } from 'zod';
 
 const keySchema = z.string().refine((value) => Buffer.from(value, 'base64').length === 32);
@@ -20,15 +19,7 @@ export const aiConversationJobSchema = z
     sealed: z.string().min(1),
   })
   .strict();
-export const aiChatEventsJobSchema = z
-  .object({
-    kind: z.literal('ai-chat-events'),
-    tenantId: z.string().min(1),
-    projectId: z.string().min(1),
-    rows: z.array(aiChatEventRowSchema).min(1).max(20),
-  })
-  .strict();
-export type AiConversationJobData = z.infer<typeof aiConversationJobSchema> | z.infer<typeof aiChatEventsJobSchema>;
+export type AiConversationJobData = z.infer<typeof aiConversationJobSchema>;
 // The existing shared credential envelope does not support authenticated associated data.
 export const sealAiConversation = (value: unknown, tenantId: string, projectId: string, key: Buffer): string => {
   const iv = randomBytes(12);

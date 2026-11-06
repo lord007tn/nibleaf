@@ -15,7 +15,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/actions/site-chat-events', () => ({ recordSiteChatEvents: mocks.recordSiteChatEvents }));
-vi.mock('@/actions/site-chat', () => ({ chatSite: mocks.chatSite, submitSiteChatFeedback: mocks.submitSiteChatFeedback }));
+vi.mock('@/actions/site-chat', () => ({
+  chatSite: mocks.chatSite,
+  submitSiteChatFeedback: mocks.submitSiteChatFeedback,
+  readerDimensions: (headers: Headers) => ({ userAgent: headers.get('user-agent') ?? undefined, device: 'desktop' }),
+}));
 
 vi.mock('@/actions/sites', () => ({
   recordCrawlerRequest: mocks.recordCrawlerRequest,

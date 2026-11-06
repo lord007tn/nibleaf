@@ -2,10 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   type AiTurnRow,
-  aiChatEventRowSchema,
   deleteAiConversation,
   deleteProjectAiConversations,
-  insertAiChatEvents,
   queryAiChatEngagement,
   queryAiContentGaps,
   queryAiConversationSummary,
@@ -13,7 +11,8 @@ import {
   queryAiUsageDaily,
   refreshAiUsageDaily,
 } from './ai-conversations';
-import { getClickHouseClient } from './client';
+import { eventToClickHouseRow, getClickHouseClient } from './client';
+import { buildAnalyticsEvent } from './events';
 
 // Never run synthetic writes against a default or production database.
 const integration = process.env.CLICKHOUSE_URL ? describe : describe.skip;
@@ -146,41 +145,33 @@ integration('AI archive SQL integration', () => {
         format: 'JSONEachRow',
         values: [{ tenant_id: tenant, project_id: project, conversation_id: deleted, deleted_at: at(0) }],
       });
-      const event = aiChatEventRowSchema.parse({
-        tenant_id: tenant,
-        project_id: project,
-        event_id: randomUUID(),
-        event_name: 'first_token',
-        occurred_at: at(0),
-        received_at: at(0),
-        conversation_id: c1,
-        turn_id: base.turn_id,
-        language: 'en',
-        visibility: 'public',
-        consent_state: 'unknown',
-        session_hash: null,
-        source: '',
-        outcome: '',
-        reason: '',
-        quota_kind: '',
-        provider_phase: '',
-        citation_id: '',
-        position: 0,
-        ttft_ms: 125,
-        latency_ms: 0,
-        provider: '',
-        model: '',
-        input_tokens: 0,
-        output_tokens: 0,
-        tokens_known: 0,
-        cost_micros: 0,
-        cost_known: 0,
-        retrieval_cache_hit: 0,
-        rating: '',
-        previous_rating: '',
-        feedback_reason: '',
-      });
-      await insertAiChatEvents([event, event], client);
+      // Chat events travel the shared analytics_events pipeline; a retried insert is deduplicated.
+      const context = {
+        tenantId: tenant,
+        projectId: project,
+        siteId: project,
+        source: 'public_site' as const,
+        userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/150.0 Safari/537.36',
+        privacy: { visibility: 'public' as const, allowCampaignDimensions: false, allowRawPublicSearchQueries: false },
+        hashSalt: 'integration-only-salt',
+      };
+      const firstToken = eventToClickHouseRow(
+        buildAnalyticsEvent(
+          {
+            consentState: 'unknown',
+            occurredAt: at(0),
+            payload: { name: 'chat_first_token', conversationId: c1, turnId: base.turn_id, durationMs: 125 },
+          },
+          context,
+        ),
+      );
+      const bot = eventToClickHouseRow(
+        buildAnalyticsEvent(
+          { consentState: 'unknown', occurredAt: at(0), payload: { name: 'chat_first_token', conversationId: c2, durationMs: 9000 } },
+          { ...context, userAgent: 'GPTBot/1.2' },
+        ),
+      );
+      await client.insert({ table: 'analytics_events', format: 'JSONEachRow', values: [firstToken, firstToken, bot] });
       expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBe(125);
       const days = [at(0).slice(0, 10), at(24).slice(0, 10)];
       await refreshAiUsageDaily(scope, days, client);
@@ -267,7 +258,7 @@ integration('AI archive SQL integration', () => {
       await deleteProjectAiConversations(tenant, project);
       expect(await queryAiUsageDaily(scope, {})).toEqual([]);
     } finally {
-      for (const table of ['ai_conversation_turns', 'ai_conversation_feedback', 'ai_chat_events', 'ai_usage_daily', 'ai_conversation_deletions']) {
+      for (const table of ['ai_conversation_turns', 'ai_conversation_feedback', 'analytics_events', 'ai_usage_daily', 'ai_conversation_deletions']) {
         await client.command({
           query: `ALTER TABLE ${table} DELETE WHERE tenant_id={tenant:String} SETTINGS mutations_sync=2`,
           query_params: { tenant },

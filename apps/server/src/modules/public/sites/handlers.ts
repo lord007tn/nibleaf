@@ -4,7 +4,7 @@ import { searchAnswerBody, searchQuery, siteChatBody, siteChatEventsBody, siteCh
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
-import { chatSite, submitSiteChatFeedback } from '@/actions/site-chat';
+import { chatSite, readerDimensions, submitSiteChatFeedback } from '@/actions/site-chat';
 import { recordSiteChatEvents } from '@/actions/site-chat-events';
 import {
   answerSite,
@@ -104,7 +104,7 @@ const app = new Hono<HonoEnv>()
   })
   .post('/:id/chat/events', ...sitesRoutes.chatEvents, validator('json', siteChatEventsBody), async (ctx) => {
     ctx.header('Cache-Control', 'private, no-store');
-    return ctx.json({ data: await recordSiteChatEvents(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
+    return ctx.json({ data: await recordSiteChatEvents(ctx.req.param('id'), ctx.req.valid('json'), readerDimensions(ctx.req.raw.headers)) }, 200);
   })
   .get('/:id', ...sitesRoutes.site, validator('query', siteQuery), async (ctx) => {
     const { lang, version } = ctx.req.valid('query');

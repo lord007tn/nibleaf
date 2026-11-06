@@ -6,6 +6,13 @@ import { errorSse, upstreamError } from '@/components/site/ai-chat/helpers';
 import { apiOrigin } from '@/services/api-origin';
 
 const project = { projectId: z.string().min(1) };
+/** The reader's user agent, so the API classifies the reader (device, declared
+ * bots) rather than this server. Credentials and the client IP are forwarded by
+ * the SSR fetch patch in src/server.ts. */
+const readerHeaders = () => {
+  const userAgent = getRequest().headers.get('user-agent');
+  return { 'content-type': 'application/json', ...(userAgent ? { 'user-agent': userAgent.slice(0, 2048) } : {}) };
+};
 const streamHeaders = { 'content-type': 'text/event-stream; charset=utf-8', 'cache-control': 'no-store, no-transform', 'x-accel-buffering': 'no' };
 export const chatSiteFn = createServerFn({ method: 'POST' })
   .validator(siteChatBody.extend(project))
@@ -13,7 +20,7 @@ export const chatSiteFn = createServerFn({ method: 'POST' })
     const { projectId, ...body } = data;
     const upstream = await fetch(`${apiOrigin()}/api/public/sites/${encodeURIComponent(projectId)}/chat`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: readerHeaders(),
       body: JSON.stringify(body),
       signal: getRequest().signal,
     });
@@ -29,7 +36,7 @@ export const submitChatFeedbackFn = createServerFn({ method: 'POST' })
     const { projectId, ...body } = data;
     const result = await fetch(`${apiOrigin()}/api/public/sites/${encodeURIComponent(projectId)}/chat/feedback`, {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: readerHeaders(),
       body: JSON.stringify(body),
       signal: getRequest().signal,
     });
@@ -44,7 +51,7 @@ export const trackChatEventsFn = createServerFn({ method: 'POST' })
       const { projectId, ...body } = data;
       const result = await fetch(`${apiOrigin()}/api/public/sites/${encodeURIComponent(projectId)}/chat/events`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: readerHeaders(),
         body: JSON.stringify(body),
       });
       await result.body?.cancel();

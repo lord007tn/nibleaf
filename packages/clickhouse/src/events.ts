@@ -37,6 +37,19 @@ export const analyticsEventNames = [
   'citation_shown',
   'citation_clicked',
   'feedback_submitted',
+  'chat_opened',
+  'chat_question_asked',
+  'chat_first_token',
+  'chat_answer_completed',
+  'chat_citation_clicked',
+  'chat_follow_up_clicked',
+  'chat_copy',
+  'chat_stop',
+  'chat_new_chat',
+  'chat_feedback_given',
+  'chat_feedback_changed',
+  'chat_quota_reached',
+  'chat_provider_error',
 ] as const;
 
 export const analyticsEventNameSchema = z.enum(analyticsEventNames);
@@ -121,6 +134,52 @@ const aiPayload = z
   })
   .strict();
 
+/** Reader AI chat (#279). Server-built and content-free: ids, enums, counts and
+ * timings only. Columns are shared with the other events:
+ * - placement: where the chat was opened, or `page_context` for a question asked from a page;
+ * - outcomeReason: answer outcome, follow-up flag, limit kind or failing phase;
+ * - noAnswerReason: why an answer was refused or withheld;
+ * - durationMs: time to the first answer text; resultPosition: suggestion position. */
+const aiChatPayload = z
+  .object({
+    name: z.enum([
+      'chat_opened',
+      'chat_question_asked',
+      'chat_first_token',
+      'chat_answer_completed',
+      'chat_citation_clicked',
+      'chat_follow_up_clicked',
+      'chat_copy',
+      'chat_stop',
+      'chat_new_chat',
+      'chat_feedback_given',
+      'chat_feedback_changed',
+      'chat_quota_reached',
+      'chat_provider_error',
+    ]),
+    conversationId: z.uuid(),
+    turnId: z.uuid().optional(),
+    language: z.string().trim().max(35).optional(),
+    placement: z.enum(['launcher', 'page_button', 'search_handoff', 'deep_link', 'page_context']).optional(),
+    outcomeReason: boundedDimension.optional(),
+    noAnswerReason: boundedDimension.optional(),
+    provider: boundedDimension.optional(),
+    model: boundedDimension.optional(),
+    latencyMs: z.number().int().min(0).max(3_600_000).optional(),
+    durationMs: z.number().int().min(0).max(3_600_000).optional(),
+    promptTokens: z.number().int().min(0).max(100_000_000).optional(),
+    completionTokens: z.number().int().min(0).max(100_000_000).optional(),
+    costMicros: z.number().int().min(0).max(10_000_000_000).optional(),
+    cacheStatus: z.enum(['hit', 'miss']).optional(),
+    citationId: z.string().trim().max(16).optional(),
+    citationPosition: z.number().int().min(1).max(1000).optional(),
+    resultPosition: z.number().int().min(1).max(1000).optional(),
+    feedback: z.enum(['helpful', 'not_helpful']).optional(),
+    previousFeedback: z.enum(['helpful', 'not_helpful']).optional(),
+    target: z.literal('answer').optional(),
+  })
+  .strict();
+
 const feedbackPayload = z
   .object({
     name: z.literal('feedback_submitted'),
@@ -158,6 +217,7 @@ export const analyticsPayloadSchema = z.discriminatedUnion('name', [
   lifecyclePayload,
   searchPayload,
   aiPayload,
+  aiChatPayload,
   feedbackPayload,
   webVitalsPayload,
   crawlerPayload,

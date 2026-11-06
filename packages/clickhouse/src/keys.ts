@@ -29,6 +29,8 @@ export const keys = () =>
       CLICKHOUSE_ROLLUP_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(730),
       CLICKHOUSE_MIGRATE_ON_BOOT: z.stringbool().default(true),
       CLICKHOUSE_SENSITIVE_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(30),
+      /** AI chat conversations, feedback and their content-free turn facts. */
+      AI_CONVERSATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(90),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,

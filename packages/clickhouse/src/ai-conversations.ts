@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { getClickHouseClient } from './client';
-import type { ClickHouseMigration } from './migrations';
 
 const scope = {
   tenant_id: z.string().min(1),
@@ -46,6 +45,7 @@ export const aiTurnRowSchema = z
     retrieval_confidence: z.number().finite(),
     chunk_count: uint,
     retrieval_cache_hit: uint.max(1).default(0),
+    actor_type: z.enum(['human', 'bot']).default('human'),
   })
   .strict();
 export const aiFeedbackRowSchema = z
@@ -64,19 +64,6 @@ export const aiFeedbackRowSchema = z
 export type AiTurnRow = z.input<typeof aiTurnRowSchema>;
 export type AiFeedbackRow = z.infer<typeof aiFeedbackRowSchema>;
 
-const common = `tenant_id String, project_id String, conversation_id String, turn_id String, expires_at DateTime64(3, 'UTC')`;
-// Sources are JSON arrays of {id?,pageId,title,path}; never store source snippets.
-export const aiConversationMigrations: ClickHouseMigration[] = [
-  {
-    version: 1001,
-    name: 'ai_conversations_v1',
-    statements: [
-      `CREATE TABLE IF NOT EXISTS ai_conversation_turns (${common}, turn_index UInt32, occurred_at DateTime64(3, 'UTC'), received_at DateTime64(3, 'UTC'), deployment_id String, version_slug String, language String, visibility String, consent_state String, content_captured UInt8, session_hash Nullable(FixedString(64)), page_path String, status String, no_answer_reason String, question String, rewritten_query String, answer String, question_key FixedString(64), citations String, suggestions String, provider String, model String, prompt_version String, input_tokens UInt64, output_tokens UInt64, tokens_known UInt8, cost_micros UInt64, cost_known UInt8, latency_ms Nullable(UInt64), first_token_ms Nullable(UInt64), retrieval_confidence Float32, chunk_count UInt32) ENGINE = ReplacingMergeTree(received_at) PARTITION BY toYYYYMM(occurred_at) ORDER BY (tenant_id, project_id, conversation_id, turn_id) TTL toDateTime(expires_at) DELETE`,
-      `CREATE TABLE IF NOT EXISTS ai_conversation_feedback (${common}, rating String, reason String, comment String, content_captured UInt8, language String, consent_state String, created_at DateTime64(3, 'UTC'), updated_at DateTime64(3, 'UTC')) ENGINE = ReplacingMergeTree(updated_at) ORDER BY (tenant_id, project_id, turn_id) TTL toDateTime(expires_at) DELETE`,
-      `CREATE TABLE IF NOT EXISTS ai_conversation_deletions (tenant_id String, project_id String, conversation_id String, deleted_at DateTime64(3, 'UTC')) ENGINE = ReplacingMergeTree(deleted_at) ORDER BY (tenant_id, project_id, conversation_id) TTL toDateTime(deleted_at) + INTERVAL 180 DAY DELETE`,
-    ],
-  },
-];
 export interface AiConversationScope {
   tenantId: string;
   projectId: string;
@@ -91,9 +78,16 @@ export const isAiConversationDeleted = async (s: AiConversationScope, conversati
   return (await result.json<{ n: string }>()).some((r) => Number(r.n) > 0);
 };
 export const purgeAiConversation = async (s: AiConversationScope, conversationId: string, client = getClickHouseClient('writer')) => {
-  for (const table of ['ai_conversation_turns', 'ai_conversation_feedback', 'ai_chat_events'])
+  for (const table of ['ai_conversation_turns', 'ai_conversation_feedback'])
     await client.command({
       query: `ALTER TABLE ${table} DELETE WHERE tenant_id={tenant:String} AND project_id={project:String} AND ({conversation:String}='' OR conversation_id={conversation:String}) SETTINGS mutations_sync=2`,
+      query_params: params(s, conversationId),
+    });
+  // A whole project's analytics_events are erased through the table registry.
+  if (conversationId)
+    await client.command({
+      query:
+        'ALTER TABLE analytics_events DELETE WHERE tenant_id={tenant:String} AND project_id={project:String} AND conversation_id={conversation:String} SETTINGS mutations_sync=2',
       query_params: params(s, conversationId),
     });
 };
@@ -173,11 +167,11 @@ const archiveParams = (s: AiConversationScope, q: AiReadQuery) => ({
   since: new Date(Date.now() - Number.parseInt(q.range ?? '30d', 10) * 86_400_000).toISOString(),
   language: q.language ?? '',
 });
-const turnsWhere = `${archiveWhere} AND occurred_at>=parseDateTime64BestEffort({since:String})
+const turnsWhere = `${archiveWhere} AND actor_type='human' AND occurred_at>=parseDateTime64BestEffort({since:String})
  AND ({language:String}='' OR language={language:String})`;
 const feedbackSource = `SELECT conversation_id,turn_id,rating,reason,updated_at FROM ai_conversation_feedback FINAL
  WHERE ${archiveWhere} AND created_at>=parseDateTime64BestEffort({since:String}) AND rating!=''`;
-const archiveRows = async <T>(query: string, queryParams: Record<string, string | number>) => {
+const archiveRows = async <T>(query: string, queryParams: Record<string, unknown>) => {
   const result = await getClickHouseClient('reader').query({ query, query_params: queryParams, format: 'JSONEachRow' });
   return result.json<T>();
 };
@@ -442,79 +436,7 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
   return out;
 };
 
-const eventNames = [
-  'chat_opened',
-  'question_asked',
-  'first_token',
-  'answer_completed',
-  'citation_clicked',
-  'follow_up_clicked',
-  'copy',
-  'stop',
-  'new_chat',
-  'feedback_given',
-  'feedback_changed',
-  'quota_reached',
-  'provider_error',
-] as const;
 const openSources = ['launcher', 'page_button', 'search_handoff', 'deep_link'] as const;
-export const aiChatEventRowSchema = z
-  .object({
-    tenant_id: z.string().min(1),
-    project_id: z.string().min(1),
-    event_id: z.uuid(),
-    event_name: z.enum(eventNames),
-    occurred_at: z.iso.datetime(),
-    received_at: z.iso.datetime(),
-    conversation_id: z.uuid(),
-    turn_id: z.union([z.uuid(), z.literal('')]),
-    language: z.string().max(35),
-    visibility: z.enum(['public', 'private']),
-    consent_state: z.enum(['denied', 'granted', 'not_required', 'unknown']),
-    session_hash: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/u)
-      .nullable(),
-    source: z.enum(['', ...openSources]),
-    outcome: z.enum(['', 'answered', 'no_answer', 'blocked', 'failed', 'cancelled']),
-    reason: z.string().max(120),
-    quota_kind: z.enum(['', 'daily_quota', 'token_budget', 'conversation_limit', 'rate_limited']),
-    provider_phase: z.enum(['', 'condense', 'retrieval', 'generation', 'follow_ups']),
-    citation_id: z.string().max(16),
-    position: uint.max(65_535),
-    ttft_ms: uint.max(4_294_967_295),
-    latency_ms: uint.max(4_294_967_295),
-    provider: z.string().max(120),
-    model: z.string().max(120),
-    input_tokens: uint,
-    output_tokens: uint,
-    tokens_known: uint.max(1),
-    cost_micros: uint,
-    cost_known: uint.max(1),
-    retrieval_cache_hit: uint.max(1),
-    rating: z.enum(['', 'up', 'down']),
-    previous_rating: z.enum(['', 'up', 'down']),
-    feedback_reason: z.string().max(120),
-  })
-  .strict()
-  .superRefine((r, ctx) => {
-    if (r.session_hash && !['granted', 'not_required'].includes(r.consent_state))
-      ctx.addIssue({ code: 'custom', message: 'Identity requires consent' });
-  });
-export type AiChatEventRow = z.infer<typeof aiChatEventRowSchema>;
-aiConversationMigrations.push({
-  version: 1002,
-  name: 'ai_chat_engagement_usage',
-  statements: [
-    'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS retrieval_cache_hit UInt8 DEFAULT 0',
-    `CREATE TABLE IF NOT EXISTS ai_chat_events (tenant_id String, project_id String, event_id UUID, event_name LowCardinality(String), occurred_at DateTime64(3,'UTC'), received_at DateTime64(3,'UTC'), conversation_id String, turn_id String, language String, visibility String, consent_state String, session_hash Nullable(FixedString(64)), source String, outcome String, reason String, quota_kind String, provider_phase String, citation_id String, position UInt16, ttft_ms UInt32, latency_ms UInt32, provider String, model String, input_tokens UInt64, output_tokens UInt64, tokens_known UInt8, cost_micros UInt64, cost_known UInt8, retrieval_cache_hit UInt8, rating String, previous_rating String, feedback_reason String) ENGINE = ReplacingMergeTree(received_at) PARTITION BY toYYYYMM(occurred_at) ORDER BY (tenant_id,project_id,event_id) TTL occurred_at + toIntervalDay({raw_retention_days:UInt16}) DELETE`,
-    `CREATE TABLE IF NOT EXISTS ai_usage_daily (tenant_id String, project_id String, day Date, provider String, model String, questions UInt64, answered UInt64, no_answer UInt64, failed UInt64, cancelled UInt64, input_tokens UInt64, output_tokens UInt64, cost_micros UInt64, cost_known_turns UInt64, latency_ms_sum UInt64, latency_turns UInt64, first_token_ms_sum UInt64, first_token_turns UInt64, retrieval_cache_hits UInt64, updated_at DateTime64(3,'UTC')) ENGINE = ReplacingMergeTree(updated_at) ORDER BY (tenant_id,project_id,day,provider,model) TTL day + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
-  ],
-});
-export const insertAiChatEvents = async (rows: AiChatEventRow[], client = getClickHouseClient('writer')) => {
-  const parsed = rows.map((r) => aiChatEventRowSchema.parse(r));
-  if (parsed.length) await client.insert({ table: 'ai_chat_events', format: 'JSONEachRow', values: parsed });
-};
 export const emptyAiEngagement = () => ({
   opens: 0,
   opensBySource: [] as { source: (typeof openSources)[number]; count: number }[],
@@ -530,29 +452,62 @@ export const emptyAiEngagement = () => ({
   medianFirstTokenMs: null as number | null,
   medianLatencyMs: null as number | null,
 });
+/** Reader chat events in analytics_events (see aiChatPayload in ./events). */
+export const AI_CHAT_ANALYTICS_EVENTS = [
+  'chat_opened',
+  'chat_question_asked',
+  'chat_first_token',
+  'chat_answer_completed',
+  'chat_citation_clicked',
+  'chat_follow_up_clicked',
+  'chat_copy',
+  'chat_stop',
+  'chat_new_chat',
+  'chat_feedback_given',
+  'chat_feedback_changed',
+  'chat_quota_reached',
+  'chat_provider_error',
+] as const;
 export const queryAiChatEngagement = async (s: AiConversationScope, q: AiReadQuery) => {
-  const rows = await archiveRows<{ event_name: (typeof eventNames)[number]; source: (typeof openSources)[number]; n: Count; median: number | null }>(
-    `SELECT event_name,source,count() AS n,quantileExact(0.5)(if(event_name='first_token',ttft_ms,latency_ms)) AS median FROM ai_chat_events FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND occurred_at>=parseDateTime64BestEffort({since:String}) AND ({language:String}='' OR language={language:String}) AND conversation_id NOT IN (SELECT conversation_id FROM ai_conversation_deletions FINAL WHERE tenant_id={tenant:String} AND project_id={project:String}) AND {project:String} NOT IN (SELECT project_id FROM ai_conversation_deletions FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND conversation_id='') GROUP BY event_name,source`,
-    { ...archiveParams(s, q), timezone: q.timezone ?? 'UTC' },
+  const rows = await archiveRows<{
+    event_name: (typeof AI_CHAT_ANALYTICS_EVENTS)[number];
+    source: string;
+    n: Count;
+    median: number | null;
+  }>(
+    `SELECT event_name, placement AS source, count() AS n,
+      quantileExact(0.5)(if(event_name = 'chat_first_token', duration_ms, latency_ms)) AS median
+     FROM analytics_events FINAL
+     WHERE tenant_id = {tenant:String} AND project_id = {project:String} AND actor_type = 'human'
+       AND event_name IN {events:Array(String)}
+       AND occurred_at >= parseDateTime64BestEffort({since:String}) AND ({language:String} = '' OR language = {language:String})
+       AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
+       AND conversation_id NOT IN (SELECT conversation_id FROM ai_conversation_deletions FINAL
+         WHERE tenant_id = {tenant:String} AND project_id = {project:String})
+       AND {project:String} NOT IN (SELECT project_id FROM ai_conversation_deletions FINAL
+         WHERE tenant_id = {tenant:String} AND project_id = {project:String} AND conversation_id = '')
+     GROUP BY event_name, source`,
+    { ...archiveParams(s, q), events: [...AI_CHAT_ANALYTICS_EVENTS] },
   );
   const out = emptyAiEngagement();
   const fields = {
-    citation_clicked: 'citationClicks',
-    follow_up_clicked: 'followUpClicks',
-    copy: 'copies',
-    stop: 'stops',
-    new_chat: 'newChats',
-    feedback_given: 'feedbackGiven',
-    feedback_changed: 'feedbackChanged',
-    quota_reached: 'quotaReached',
-    provider_error: 'providerErrors',
+    chat_citation_clicked: 'citationClicks',
+    chat_follow_up_clicked: 'followUpClicks',
+    chat_copy: 'copies',
+    chat_stop: 'stops',
+    chat_new_chat: 'newChats',
+    chat_feedback_given: 'feedbackGiven',
+    chat_feedback_changed: 'feedbackChanged',
+    chat_quota_reached: 'quotaReached',
+    chat_provider_error: 'providerErrors',
   } as const;
   for (const r of rows) {
     if (r.event_name === 'chat_opened') {
       out.opens += Number(r.n);
-      if (openSources.includes(r.source)) out.opensBySource.push({ source: r.source, count: Number(r.n) });
-    } else if (r.event_name === 'first_token') out.medianFirstTokenMs = Math.round(Number(r.median));
-    else if (r.event_name === 'answer_completed') out.medianLatencyMs = Math.round(Number(r.median));
+      const source = openSources.find((candidate) => candidate === r.source);
+      if (source) out.opensBySource.push({ source, count: Number(r.n) });
+    } else if (r.event_name === 'chat_first_token') out.medianFirstTokenMs = Math.round(Number(r.median));
+    else if (r.event_name === 'chat_answer_completed') out.medianLatencyMs = Math.round(Number(r.median));
     else if (r.event_name in fields) out[fields[r.event_name as keyof typeof fields]] += Number(r.n);
   }
   return out;
@@ -579,7 +534,7 @@ export const refreshAiUsageDaily = async (s: AiConversationScope, days: string[]
   // Include old keys so deletion or a provider/model correction replaces obsolete totals with zero.
   await client.command({
     query: `INSERT INTO ai_usage_daily SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map((c) => `sum(${c})`).join(',')},now64(3) FROM (
- SELECT tenant_id,project_id,toDate(occurred_at,'UTC') AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${archiveWhere} AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)} GROUP BY tenant_id,project_id,day,provider,model
+ SELECT tenant_id,project_id,toDate(occurred_at,'UTC') AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${archiveWhere} AND actor_type='human' AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)} GROUP BY tenant_id,project_id,day,provider,model
  UNION ALL SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map(() => 'toUInt64(0)').join(',')} FROM ai_usage_daily FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND toString(day) IN {days:Array(String)}
  ) GROUP BY tenant_id,project_id,day,provider,model`,
     query_params: { ...params(s), days: parsed },

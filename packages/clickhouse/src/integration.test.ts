@@ -13,7 +13,7 @@ const integration = process.env.CLICKHOUSE_INTEGRATION === '1' ? describe : desc
 integration('ClickHouse schema integration', () => {
   it('registers every project table and materialized view for erasure/rebuild', async () => {
     const result = await getClickHouseClient().query({
-      query: `SELECT DISTINCT table FROM system.columns WHERE database = currentDatabase() AND name = 'project_id' AND table NOT LIKE 'usage_%' AND table NOT LIKE 'ai_conversation%'`,
+      query: `SELECT DISTINCT table FROM system.columns WHERE database = currentDatabase() AND name = 'project_id' AND table NOT LIKE 'usage_%'`,
       format: 'JSONEachRow',
     });
     const tables = await result.json<{ table: string }>();
