@@ -41,6 +41,17 @@ describe('chat heading detection', () => {
     });
   });
 
+  it('removes an uncited opening summary instead of withdrawing cited steps (live model output)', () => {
+    const chunks = [chunk, { ...chunk, id: 'c2', pageId: 'p2' }, { ...chunk, id: 'c3', pageId: 'p3' }];
+    const steps =
+      '**From the app**\n\n1. Open a notebook.\n2. Select **Download**. One export can include up to 500 notes. [S3]\n\n**From the CLI**\n\nTo export a single notebook, add `--notebook <name>`. [S2]';
+    expect(validateCitedAnswer(`You can export from the app or with the CLI.\n\n${steps}`, chunks, 'export', 'chat')).toMatchObject({
+      status: 'answered',
+      answer: steps,
+      droppedParagraphs: 1,
+    });
+  });
+
   it('still drops a trailing uncited heading but keeps cited ones', () => {
     expect(validateCitedAnswer('## Setup\n\nUse s3 [S1]\n\n##\tNext steps', [chunk], 'storage', 'chat')).toMatchObject({
       status: 'answered',

@@ -87,11 +87,10 @@ export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query
       if (list(block) && !idsIn(block).length && next && !heading(next) && idsIn(next).length) return false;
       return true;
     });
-    const first = substantive.findIndex(Boolean);
-    // Never salvage an unsupported opening claim. Later omissions may account
-    // for at most one third of substantive blocks (including cited lists).
-    if (first >= 0 && !idsIn(blocks[first] ?? '').length && !blocks.slice(0, first).some((block) => idsIn(block).length))
-      return { status: 'no_answer', reason: 'uncited' };
+    // Uncited substantive blocks are removed, never shown; an uncited opening
+    // summary is removed like any other. Removals may account for at most one
+    // third of substantive blocks (including cited lists), or the answer is
+    // withdrawn.
     const kept = blocks.filter((block, index) => {
       if (substantive[index] && !idsIn(block).length) {
         droppedParagraphs++;
