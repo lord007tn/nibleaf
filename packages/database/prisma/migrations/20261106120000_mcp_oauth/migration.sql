@@ -269,7 +269,8 @@ CREATE INDEX "mcp_oauth_grant_sessionId_clientId_idx" ON "mcp_oauth_grant"("sess
 CREATE INDEX "mcp_oauth_grant_clientId_idx" ON "mcp_oauth_grant"("clientId");
 
 -- CreateIndex
-CREATE INDEX "mcp_audit_event_oauthGrantId_createdAt_idx" ON "mcp_audit_event"("oauthGrantId", "createdAt");
+-- The grant index on the existing mcp_audit_event table is built CONCURRENTLY
+-- in 20261106130100_mcp_audit_oauth_grant_index, so audit inserts keep flowing.
 
 -- CreateIndex
 CREATE UNIQUE INDEX "mcp_idempotency_record_oauthGrantId_operation_clientRequest_key" ON "mcp_idempotency_record"("oauthGrantId", "operation", "clientRequestId");

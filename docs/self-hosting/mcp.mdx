@@ -4,7 +4,7 @@ description: 'Enable the project-bound Nibleaf MCP endpoint, connect clients by 
 audience: 'self-hosted Nibleaf operators and project administrators'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
-verified_against: 'apps/server/src/mcp, packages/auth/src/mcp-oauth.ts, packages/shared/src/mcp.ts, migrations 20261106090000_mcp_write_audit_idempotency and 20261106120000_mcp_oauth, better-auth, @better-auth/mcp and @better-auth/cimd 1.7.18, and the official Model Context Protocol server SDK 2.0.0'
+verified_against: 'apps/server/src/mcp, packages/auth/src/mcp-oauth.ts, packages/shared/src/mcp.ts, migrations 20261106090000_mcp_write_audit_idempotency, 20261106120000_mcp_oauth, 20261106130000_mcp_audit_actor_index and 20261106130100_mcp_audit_oauth_grant_index, better-auth, @better-auth/mcp and @better-auth/cimd 1.7.18, and the official Model Context Protocol server SDK 2.0.0'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/mcp'
@@ -130,6 +130,16 @@ origin rather than another host listed in `MCP_ALLOWED_HOSTS`.
   key owner's. The client must call `preview_publish`, a person reviews the
   list, and the client then calls `publish_changes` with `confirm: true` and the
   preview token. The deployment message records the MCP key name.
+- **What the server can and cannot check.** The server verifies that a
+  confirmation matches a fresh preview for the same person and project. It
+  cannot verify that a person read the preview: the review depends on the
+  client asking. Issue **Read only** keys for unattended automation.
+- **Complete review.** The preview lists at most 50 changed pages and sets
+  `changesTruncated` when more are pending; its `nextStep` then tells the client
+  to send the person to the dashboard's publish dialog for the full list. Site
+  settings that would change (project fields and `config` sections such as the
+  theme) are listed by name under `settings.changedFields`, and a settings-only
+  change can be published the same way.
 - **Bound preview token.** The token is bound to the key's owner, the project, and a
   digest of everything the publish would ship plus the last published and
   newest deployment version. It expires after 10 minutes
@@ -297,10 +307,15 @@ migrate step of your deployment). The first adds nullable provenance columns and
 two indexes to the existing, operator-managed `api_key` table, then creates the
 initially empty audit table. The write-path migration
 `20261106090000_mcp_write_audit_idempotency` adds the nullable `actorUserId`,
-`targetType`, `targetId`, and `clientRequestId` columns and an actor index to
-`mcp_audit_event`, and creates the `mcp_idempotency_record` replay cache, which
-stores an arguments hash and a compact result summary but never inputs or
-content.
+`targetType`, `targetId`, and `clientRequestId` columns to `mcp_audit_event`,
+and creates the `mcp_idempotency_record` replay cache, which stores an
+arguments hash and a compact result summary but never inputs or content. The
+two new indexes on `mcp_audit_event` (by actor and by OAuth grant) are built
+with `CREATE INDEX CONCURRENTLY` in their own migrations,
+`20261106130000_mcp_audit_actor_index` and
+`20261106130100_mcp_audit_oauth_grant_index`, so audit writes are not blocked
+while they build. If a concurrent build is interrupted, drop the `INVALID` index
+it leaves and run the migration step again.
 PostgreSQL's standard index and foreign-key DDL can briefly block API-key
 create, rotate, or revoke writes. Check the table size and active locks first,
 pause those dashboard operations during the migration, and keep MCP disabled

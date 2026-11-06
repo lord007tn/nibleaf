@@ -39,7 +39,8 @@ describe('MCP write-path migration contract', () => {
       expect(writeMigration).toMatch(new RegExp(`ADD COLUMN "${column}" TEXT[,;]\n`));
     }
     expect(writeMigration).not.toMatch(/ALTER TABLE "mcp_audit_event"[^;]*NOT NULL/);
-    expect(writeMigration).toContain('CREATE INDEX "mcp_audit_event_actorUserId_createdAt_idx" ON "mcp_audit_event"("actorUserId", "createdAt")');
+    // No blocking index build on the existing audit table in a migration that also does other work.
+    expect(writeMigration).not.toMatch(/CREATE INDEX[^;]*ON "mcp_audit_event"/);
   });
 
   it('keys the replay cache uniquely per key, operation, and clientRequestId and never stores content columns', () => {
@@ -54,6 +55,26 @@ describe('MCP write-path migration contract', () => {
     );
     for (const column of ['actorUserId', 'targetType', 'targetId', 'clientRequestId'])
       expect(writeRollback).toContain(`DROP COLUMN IF EXISTS "${column}"`);
+  });
+});
+
+describe('MCP audit index migrations', () => {
+  const migrationsRoot = new URL('../../../../packages/database/prisma/migrations/', import.meta.url);
+  it.each([
+    ['20261106130000_mcp_audit_actor_index', 'mcp_audit_event_actorUserId_createdAt_idx', '"actorUserId", "createdAt"'],
+    ['20261106130100_mcp_audit_oauth_grant_index', 'mcp_audit_event_oauthGrantId_createdAt_idx', '"oauthGrantId", "createdAt"'],
+  ])('%s builds its audit index concurrently, alone', (directory, index, columns) => {
+    const sql = readFileSync(new URL(`${directory}/migration.sql`, migrationsRoot), 'utf8');
+    const statements = sql
+      .split('\n')
+      .filter((line) => !line.startsWith('--') && line.trim() !== '')
+      .join('\n')
+      .split(';')
+      .filter((statement) => statement.trim() !== '');
+    // CONCURRENTLY cannot run in a transaction, so the file must hold exactly this one statement.
+    expect(statements).toHaveLength(1);
+    expect(statements[0]?.trim()).toBe(`CREATE INDEX CONCURRENTLY IF NOT EXISTS "${index}" ON "mcp_audit_event"(${columns})`);
+    expect(readFileSync(new URL(`${directory}/rollback.sql`, migrationsRoot), 'utf8')).toContain(`DROP INDEX CONCURRENTLY IF EXISTS "${index}"`);
   });
 });
 

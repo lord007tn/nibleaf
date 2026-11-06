@@ -11,7 +11,8 @@ ALTER TABLE "mcp_audit_event"
   ADD COLUMN "targetId" TEXT,
   ADD COLUMN "clientRequestId" TEXT;
 
-CREATE INDEX "mcp_audit_event_actorUserId_createdAt_idx" ON "mcp_audit_event"("actorUserId", "createdAt");
+-- The actor index on this existing, possibly large table is built CONCURRENTLY
+-- in 20261106130000_mcp_audit_actor_index, so audit inserts keep flowing.
 
 -- One row per (key, operation, clientRequestId). `argsHash` is the SHA-256 of
 -- the canonical tool arguments; `result` is a compact summary (ids, revision,

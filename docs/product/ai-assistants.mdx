@@ -15,8 +15,10 @@ find?", read the pages involved, draft a fix, and prepare it for publishing,
 all inside one project. It uses the Model Context Protocol (MCP); you connect
 it by signing in to Nibleaf from the assistant, or with a personal key that you
 create yourself. The assistant can never do more than you can do in
-the dashboard, and nothing it writes reaches readers until a person reviews the
-changes and confirms the publish.
+the dashboard, and nothing it writes reaches readers until the publish is
+confirmed against a fresh preview. Nibleaf checks the preview, not the person:
+the review step depends on an assistant that asks you first, so give unattended
+automations a **Read only** key.
 
 ## Before you start
 
@@ -357,9 +359,17 @@ content.
   publish succeeds.
 - **Preview, review, confirm.** Publishing needs a preview, a human decision, and
   an explicit confirmation carrying the preview token. The token is bound to
-  your key, the project, and exactly what the publish would ship. It expires
+  you, the project, and exactly what the publish would ship. It expires
   after 10 minutes and is effectively single-use: any edit, publish, or rollback
   after the preview, including the publish it approved, makes it stale.
+- **Your review is the gate.** Nibleaf can check that a confirmation matches a
+  fresh preview, but not that a person read it. An assistant that runs without
+  asking you could confirm on its own, so keep **Support writer** for assistants
+  you work with and **Read only** for anything unattended.
+- **The whole change list.** The preview names up to 50 changed pages and any
+  site settings that would change, such as the theme or navigation. When more
+  pages are pending, the assistant tells you; review the full list in the
+  dashboard's publish dialog before approving.
 - **Project-wide publish.** A publish includes everyone's unpublished changes in
   the project, not only the assistant's.
 - **No silent overwrites.** Every edit names the revision it is based on.
