@@ -527,6 +527,17 @@ describe('follow-up suggestions', () => {
       'Is it free?',
     ]);
     expect(parseFollowUpQuestions('["Can I export?"]\n[]', 'How?').questions).toEqual(['Can I export?']);
+    // A list held in an object is not the list, however many questions it holds.
+    expect(parseFollowUpQuestions('{"questions":["Nested question?"]}', 'How?')).toEqual({ questions: [], unreadable: true });
+    expect(parseFollowUpQuestions('{"note":["Should I delete my data?","Should I disable sync?"]}\n["Can I export?"]', 'How?').questions).toEqual([
+      'Can I export?',
+    ]);
+    expect(parseFollowUpQuestions('{"note": "a ] and [ in a string"} ["Can I export?"]', 'How?').questions).toEqual(['Can I export?']);
+    // Without question marks, the list with more items wins, then the later one.
+    expect(parseFollowUpQuestions('See ["Export"] below: ["Can I export one notebook", "Is it free"]', 'How?').questions).toEqual([
+      'Can I export one notebook',
+      'Is it free',
+    ]);
     // Lists only nested inside the list (or an object) are output the call does not accept.
     for (const nested of ['[["Nested question?"]]', '[{"questions":["Nested question?"]}]', '[123, ["Nested question?"]]'])
       expect(parseFollowUpQuestions(nested, 'How?')).toEqual({ questions: [], unreadable: true });

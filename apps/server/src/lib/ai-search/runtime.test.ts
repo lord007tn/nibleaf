@@ -1,7 +1,7 @@
 import type { QdrantScoredPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchScope } from '@nibleaf/search';
 import { describe, expect, it } from 'vitest';
-import { chunkFromPoint, filterForSearchScope, pageToWiden } from './runtime';
+import { chunkFromPoint, filterForSearchScope, pagesToWiden, retrieveChatContext } from './runtime';
 
 const scope = (projectId = 'tenant-a', pages: string[] | null = ['page-a']): SearchScope => ({
   projectId,
@@ -36,14 +36,57 @@ const point = (overrides: Record<string, unknown> = {}): QdrantScoredPoint => ({
   },
 });
 
-describe('reading the rest of a page a thin result came from', () => {
-  const hit = (id: string, pageId: string, title = 'تصدير ملاحظاتك') => ({ chunk: { id, pageId, title } as never, score: 0.5 });
-  it('widens only a result of one or two chunks from a single page', () => {
-    expect(pageToWiden([hit('c1', 'export')])).toEqual({ id: 'export', title: 'تصدير ملاحظاتك' });
-    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c1', 'export')])).toEqual({ id: 'export', title: 'تصدير ملاحظاتك' });
-    expect(pageToWiden([])).toBeUndefined();
-    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'sync')])).toBeUndefined();
-    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c3', 'export')])).toBeUndefined();
+describe('reading the rest of pages that appear only thinly', () => {
+  const hit = (id: string, pageId: string, score = 0.5) => ({ chunk: { id, pageId, title: `Page ${pageId}`, content: id } as never, score });
+  it('widens the best-ranked pages, at most two, that have one or two sections among the results', () => {
+    expect(pagesToWiden([hit('c1', 'export')])).toEqual([{ id: 'export', title: 'Page export' }]);
+    // A sync section ranked first among other pages' sections (several pages, one of them thin).
+    expect(
+      pagesToWiden([hit('s1', 'sync'), hit('e1', 'export'), hit('e2', 'export'), hit('e3', 'export'), hit('i1', 'install')]).map((page) => page.id),
+    ).toEqual(['sync']);
+    expect(pagesToWiden([hit('s1', 'sync'), hit('i1', 'install'), hit('e1', 'export')]).map((page) => page.id)).toEqual(['sync', 'install']);
+    expect(pagesToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c1', 'export')]).map((page) => page.id)).toEqual(['export']);
+    expect(pagesToWiden([])).toEqual([]);
+  });
+
+  type Search = NonNullable<Parameters<typeof retrieveChatContext>[4]>;
+  const runtime = {} as never;
+  const searchScope = { ...scope('tenant-a', null), visibility: 'public' as const };
+  /** A stub search: the main lane finds `main`; a page lane finds that page's `sections`. */
+  const stub = (main: ReturnType<typeof hit>[], sections: Record<string, ReturnType<typeof hit>[]>) => {
+    const calls: { pages: string[] | null; query: string; limit: number }[] = [];
+    const search: Search = async (target, query, limit) => {
+      const pages = target.allowedPageIds ? [...target.allowedPageIds] : null;
+      calls.push({ pages, query, limit });
+      const chunks = pages ? (sections[pages[0] ?? ''] ?? []) : main;
+      return { cacheHit: false, chunks, confidence: pages ? 0.9 : 0.3 };
+    };
+    return { search, calls };
+  };
+
+  it('searches only the thin page for its other sections, keeping the main confidence', async () => {
+    const { search, calls } = stub([hit('s-conflict', 'sync', 0.54), hit('e1', 'export'), hit('e2', 'export'), hit('e3', 'export')], {
+      sync: [hit('s-token', 'sync', 0.4), hit('s-doctor', 'sync', 0.3)],
+    });
+    const result = await retrieveChatContext(searchScope, 'notes missing on my phone', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['sync']]);
+    expect(calls[1]).toMatchObject({ query: 'Page sync notes missing on my phone', limit: 6 });
+    expect(result.chunks.map((chunk) => chunk.id)).toEqual(expect.arrayContaining(['s-conflict', 's-token', 's-doctor']));
+    // A widened page is not a page the reader chose: its confidence is not raised.
+    expect(result.confidence).toBe(0.3);
+  });
+
+  it('reads the page the reader asked from instead, and only it', async () => {
+    const { search, calls } = stub([hit('s-conflict', 'sync')], { export: [hit('e-steps', 'export')] });
+    const result = await retrieveChatContext(searchScope, 'how?', runtime, { page: { id: 'export', title: 'Export' } }, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['export']]);
+    expect(result.confidence).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it('never reads a page outside the reader’s grants', async () => {
+    const { search, calls } = stub([hit('a1', 'page-a')], {});
+    await retrieveChatContext(scope('tenant-a', ['page-a']), 'how?', runtime, { page: { id: 'page-b', title: 'B' } }, search);
+    expect(calls.every((call) => call.pages === null || call.pages.every((page) => page === 'page-a'))).toBe(true);
   });
 });
 

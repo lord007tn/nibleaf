@@ -233,5 +233,39 @@
     "requiredClaims": [],
     "forbiddenClaims": ["you can share"],
     "expectedNoAnswer": false
+  },
+  {
+    "id": "en-notes-missing-phone",
+    "language": "en",
+    "question": "My notes don't show up on my phone. What should I do?",
+    "sources": [
+      {
+        "title": "Fix sync problems",
+        "path": "fix-sync",
+        "heading": "Fix sync problems",
+        "content": "Most sync problems come from an expired token or an offline device."
+      },
+      {
+        "title": "Fix sync problems",
+        "path": "fix-sync",
+        "heading": "Token expired",
+        "content": "If the app shows **Sync paused: sign in again**, sign out and sign back in. Workspace tokens expire after 90 days."
+      },
+      {
+        "title": "Fix sync problems",
+        "path": "fix-sync",
+        "heading": "Conflicting edits",
+        "content": "When two devices edit the same note offline, Acme Notes keeps both versions and adds (conflict) to the newer title. Merge them by hand, then delete the copy."
+      },
+      {
+        "title": "Fix sync problems",
+        "path": "fix-sync",
+        "heading": "Still stuck",
+        "content": "Run `acme doctor` to check connectivity, then contact support with the report it prints."
+      }
+    ],
+    "requiredClaims": ["sign out", "acme doctor"],
+    "forbiddenClaims": ["does not describe"],
+    "expectedNoAnswer": false
   }
 ]

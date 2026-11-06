@@ -444,29 +444,44 @@ const readJsonList = (text: string, start: number) => {
   return { strings, filled, closedAt: -1 };
 };
 const questionLike = (value: string) => /[?؟]\s*$/u.test(value);
-/** The model's suggestions: the string items of one of its top-level JSON lists,
- * also of a list cut off at the output cap. Every top-level list is read once,
- * in one pass; the one with the most question-like items wins (the first on a
- * tie), so a list in prose before or after the real one is passed over.
- * `unreadable` when there is no list, or no list has string items but one has
- * others (numbers, objects, nested lists): output the call does not accept. */
+/** The model's suggestions: the string items of one of its top-level JSON lists
+ * (outside any object or list), also of a list cut off at the output cap. The
+ * reply is read once, in one pass; the list with the most question-like items
+ * wins, then the one with more items, then the later one, so a list quoted in
+ * prose or held in an object is passed over. `unreadable` unless some top-level
+ * list has string items or is empty: output the call does not accept. */
 export const parseFollowUpQuestions = (text: string, question: string, asked: string[] = []): { questions: string[]; unreadable: boolean } => {
   let best: string[] | undefined;
-  let bestScore = -1;
-  let filled = false;
-  for (let start = text.indexOf('['); start >= 0; ) {
-    const list = readJsonList(text, start);
-    if (list.strings.length) {
-      const score = list.strings.filter(questionLike).length;
-      if (score > bestScore) {
-        best = list.strings;
-        bestScore = score;
-      }
-    } else if (list.filled) filled = true;
-    if (list.closedAt < 0) break;
-    start = text.indexOf('[', list.closedAt + 1);
+  let bestRank = [-1, -1];
+  let empty = false;
+  let depth = 0;
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    // Inside an object (or a list in one), brackets in strings are not structure;
+    // quotes in prose around the reply are left alone.
+    if (quoted) {
+      if (char === '\\') index += 1;
+      else if (char === '"') quoted = false;
+    } else if (depth > 0 && char === '"') quoted = true;
+    else if (char === '{' || (char === '[' && depth > 0)) depth += 1;
+    else if (char === '}' || char === ']') depth = Math.max(0, depth - 1);
+    else if (char === '[') {
+      const list = readJsonList(text, index);
+      if (list.strings.length) {
+        const rank = [list.strings.filter(questionLike).length, list.strings.length];
+        const [score = 0, items = 0] = rank;
+        const [bestScore = -1, bestItems = -1] = bestRank;
+        if (score > bestScore || (score === bestScore && items >= bestItems)) {
+          best = list.strings;
+          bestRank = rank;
+        }
+      } else if (!list.filled) empty = true;
+      if (list.closedAt < 0) break;
+      index = list.closedAt;
+    }
   }
-  if (!best) return { questions: [], unreadable: filled || !text.includes('[') };
+  if (!best) return { questions: [], unreadable: !empty };
   const strings = best;
   const seen = new Set([question, ...asked].map(questionKey));
   const questions = strings
