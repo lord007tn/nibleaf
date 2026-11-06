@@ -41,6 +41,9 @@ const isRetainedScope = (scope: string): scope is Exclude<IssuableMcpScope, 'mcp
 export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
   const { number } = useFormatters();
+  // The new key's id and the server time after which use counts as "your AI
+  // app connected": 0 for a fresh key (never used), then the end of the
+  // dashboard's own test so the test itself doesn't count.
   const [waiting, setWaiting] = useState<{ id: string; since: number } | null>(null);
   const { data: response, isError, isPending } = useApiKeys(projectId, waiting);
   const create = useCreateApiKey(projectId);
@@ -80,7 +83,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
         onSuccess: (created) => {
           setName(t('settings.apiKeys.defaultName'));
           setConnection('');
-          setWaiting({ id: created.id, since: Date.now() });
+          setWaiting({ id: created.id, since: 0 });
           setSecret(created.secret);
           toast.success(t('settings.apiKeys.created.toast'));
         },
@@ -96,7 +99,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
         onSuccess: (created) => {
           setSecret(created.secret);
           setConnection('');
-          setWaiting({ id: created.id, since: Date.now() });
+          setWaiting({ id: created.id, since: 0 });
           toast.success(t('settings.apiKeys.rotatedToast'));
         },
       },
@@ -132,16 +135,19 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const testConnection = async () => {
     if (!secret) return;
     setTesting(true);
+    let usedUntil: number | undefined;
     try {
-      const count = await testAssistantConnection(secret);
-      setConnection(`\u2713 ${t('settings.apiKeys.testSuccess', { count: number(count) })}`);
+      const result = await testAssistantConnection(secret);
+      usedUntil = result.usedUntil;
+      setConnection(`\u2713 ${t('settings.apiKeys.testSuccess', { count: number(result.tools) })}`);
     } catch (error) {
+      if (error instanceof ConnectionError) usedUntil = error.usedUntil;
       const reason = error instanceof ConnectionError ? error.message : 'networkError';
       setConnection(
         `\u2717 ${reason === 'invalidKey' ? t('settings.apiKeys.invalidKey') : reason === 'disabled' ? t('settings.apiKeys.disabled') : reason === 'networkError' ? t('settings.apiKeys.networkError') : t('settings.apiKeys.connectionError')}`,
       );
     } finally {
-      setWaiting(waiting ? { ...waiting, since: Date.now() } : null);
+      setWaiting((current) => (current && usedUntil !== undefined ? { ...current, since: Math.max(current.since, usedUntil) } : current));
       setTesting(false);
     }
   };
@@ -194,15 +200,15 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   <li>{t('settings.apiKeys.oauthClaudeCode')}</li>
                   <li>{t('settings.apiKeys.oauthEditors')}</li>
                 </ul>
-                <pre dir="ltr" className="mt-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                <pre dir="ltr" className="mt-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs [contain:inline-size]">
                   <code>{oauthSetup.claudeCode}</code>
                 </pre>
                 <details className="mt-2">
                   <summary className="cursor-pointer">{t('settings.apiKeys.oauthEditorConfig')}</summary>
-                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs [contain:inline-size]">
                     <code>{oauthSetup.editors}</code>
                   </pre>
-                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs [contain:inline-size]">
                     <code>{oauthSetup.vscode}</code>
                   </pre>
                 </details>
@@ -329,7 +335,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   ) : null}
                   {client === 'cursor' ? <p>{t('settings.apiKeys.cursorEnv')}</p> : null}
                   {client === 'vscode' ? <p>{t('settings.apiKeys.vscodePrompt')}</p> : null}
-                  <pre dir="ltr" className="max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                  <pre dir="ltr" className="max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs [contain:inline-size]">
                     <code>{snippets[client]}</code>
                   </pre>
                   <Button type="button" variant="outline" onClick={() => void copy(snippets[client] ?? '')}>

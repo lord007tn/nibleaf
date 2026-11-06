@@ -40,15 +40,36 @@ export function oauthAssistantSetup(endpoint: string) {
   };
 }
 
-export class ConnectionError extends Error {}
+export class ConnectionError extends Error {
+  constructor(
+    message: string,
+    /** See {@link AssistantTestResult.usedUntil}; absent when no response came back. */
+    readonly usedUntil?: number,
+  ) {
+    super(message);
+  }
+}
+
+export type AssistantTestResult = {
+  tools: number;
+  /**
+   * Server time (ms) by which this test's own requests were stamped as key
+   * usage. "Waiting for your AI app" counts only later use, and compares
+   * server time with server time so a wrong computer clock can't flip it.
+   * `Date` has one-second precision, hence the extra second.
+   */
+  usedUntil: number;
+};
 
 /** Streamable HTTP may return either JSON or SSE. Never expose response bodies in errors. */
-export async function testAssistantConnection(secret: string): Promise<number> {
+export async function testAssistantConnection(secret: string): Promise<AssistantTestResult> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${secret}`,
     'Content-Type': 'application/json',
     Accept: 'application/json, text/event-stream',
   };
+  let serverTime: number | undefined;
+  const usedUntil = () => (serverTime === undefined ? undefined : serverTime + 1000);
   const call = async (method: string, params?: object, id?: number) => {
     const response = await fetch('/api/mcp', {
       method: 'POST',
@@ -58,9 +79,12 @@ export async function testAssistantConnection(secret: string): Promise<number> {
       cache: 'no-store',
       credentials: 'omit',
     });
+    const date = Date.parse(response.headers.get('date') ?? '');
+    if (Number.isFinite(date)) serverTime = date;
     if (!response.ok)
       throw new ConnectionError(
         response.status === 401 ? 'invalidKey' : response.status === 404 || response.status === 503 ? 'disabled' : 'connectionError',
+        usedUntil(),
       );
     const session = response.headers.get('mcp-session-id');
     if (session) headers['Mcp-Session-Id'] = session;
@@ -78,7 +102,7 @@ export async function testAssistantConnection(secret: string): Promise<number> {
             .join('\n'),
         )
       : JSON.parse(text);
-    if (payload.error || payload.result?.isError) throw new ConnectionError('connectionError');
+    if (payload.error || payload.result?.isError) throw new ConnectionError('connectionError', usedUntil());
     return payload.result;
   };
   const initialized = await call(
@@ -90,6 +114,6 @@ export async function testAssistantConnection(secret: string): Promise<number> {
   await call('notifications/initialized');
   const result = await call('tools/call', { name: 'get_capabilities', arguments: {} }, 2);
   const data = result.structuredContent?.data ?? JSON.parse(result.content.find((item: { type: string }) => item.type === 'text').text).data;
-  if (!Array.isArray(data?.tools)) throw new ConnectionError('connectionError');
-  return (data.tools as Array<{ scope: McpScope }>).length;
+  if (!Array.isArray(data?.tools)) throw new ConnectionError('connectionError', usedUntil());
+  return { tools: (data.tools as Array<{ scope: McpScope }>).length, usedUntil: usedUntil() ?? Date.now() };
 }
