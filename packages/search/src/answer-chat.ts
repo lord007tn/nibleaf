@@ -1,5 +1,5 @@
 import { type AnyTextAdapter, chat, type TokenUsage } from '@tanstack/ai';
-import { answerUserPrompt, type GroundedCitation, noAnswer } from './answer';
+import { answerUserPrompt, type GroundedCitation, noAnswer, SOURCE_FIELD_CHARS } from './answer';
 import { type CitationPolicy, validateCitedAnswer } from './answer-validation';
 import { type SearchChunk, searchChunkSnippet } from './hybrid';
 import type { ChatUsage } from './providers';
@@ -141,14 +141,15 @@ export const CHAT_MIN_SOURCES_TOKENS = 3000;
 const MESSAGE_FRAMING_TOKENS = 8;
 
 const sourceTokens = (chunk: SearchChunk) => tokenBound(answerUserPrompt('', [chunk]));
-/** The longest beginning of a source whose `cost` fits the budget, or nothing when
+/** The longest beginning of a source whose cost fits the budget, or nothing when
  * even its metadata does not. Searched rather than computed, since source
- * escaping makes the prompt longer than the raw text. */
+ * escaping makes the prompt longer than the raw text. Only the characters a
+ * prompt can keep are searched, so each step is bounded whatever the source's size. */
 const cutToFit = (chunk: SearchChunk, fits: (cut: SearchChunk) => boolean): SearchChunk | undefined => {
   const at = (length: number) => ({ ...chunk, content: chunk.content.slice(0, length) });
   if (!fits(at(0))) return;
   let low = 0;
-  let high = chunk.content.length;
+  let high = Math.min(chunk.content.length, SOURCE_FIELD_CHARS);
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);
     if (fits(at(middle))) low = middle;
@@ -225,19 +226,28 @@ export const chatTurnReservation = (shape: ChatTurnShape): number => {
   return input.condense + input.generation + input.followUps + outputs + CHAT_MIN_SOURCES_TOKENS;
 };
 
-/** What reading these sources adds to the answer and suggestion prompts, at its bound. */
+/** What reading these sources adds to the answer and suggestion prompts, at its
+ * bound. Only those two prompts change, so only they are measured (the bound is
+ * exact per byte, so the difference is exact), whatever the history's size. */
 export const chatSourcesTokens = (shape: ChatTurnShape, sources: SearchChunk[]): number => {
-  const without = chatCallInputBounds(shape);
-  const reading = chatCallInputBounds(shape, sources);
-  return reading.generation - without.generation + reading.followUps - without.followUps;
+  if (!sources.length) return 0;
+  const answer = (list: SearchChunk[]) => tokenBound(chatUserPrompt(shape.question, list, shape.pageContext, shape.language));
+  const topics = (list: SearchChunk[]) => tokenBound(followUpUserPrompt(shape.question, undefined, followUpTopics(list)));
+  return answer(sources) - answer([]) + topics(sources) - topics([]);
 };
 
 /** The best sources, in rank order, whose reading fits `budget` tokens at its
  * bound; a best match too large on its own keeps the beginning that fits. Used
- * when a budget has less room left than the full context. */
+ * when a budget has less room left than the full context. A longer prefix never
+ * costs less, so the count is searched, not scanned. */
 export const fitChatSources = (shape: ChatTurnShape, sources: SearchChunk[], budget: number): SearchChunk[] => {
   let count = 0;
-  while (count < sources.length && chatSourcesTokens(shape, sources.slice(0, count + 1)) <= budget) count += 1;
+  let over = sources.length;
+  while (count < over) {
+    const middle = Math.ceil((count + over) / 2);
+    if (chatSourcesTokens(shape, sources.slice(0, middle)) <= budget) count = middle;
+    else over = middle - 1;
+  }
   if (count) return sources.slice(0, count);
   const [best] = sources;
   const cut = best && cutToFit(best, (candidate) => chatSourcesTokens(shape, [candidate]) <= budget);

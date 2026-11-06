@@ -244,17 +244,20 @@ describe('a bounded context and strict reservations', () => {
   const realTokens = (text: string) => Math.max(...encoders.map((encoder) => encoder.encode(text).length));
 
   it('bounds any text at one token per byte, digits and rare characters included', () => {
-    for (const text of [
+    // Long texts break into short pieces; unbroken runs stay short, since the
+    // reference tokenizer's own merging is quadratic in a piece's length.
+    const samples = [
       '1 '.repeat(3000),
       '0.1,'.repeat(1500),
-      '😀'.repeat(500),
-      '𠀀'.repeat(500),
-      'م'.repeat(2000),
+      'مرحبا بالقراء '.repeat(300),
+      '😀 𠀀 '.repeat(400),
+      '😀'.repeat(40),
+      '𠀀'.repeat(40),
+      'م'.repeat(120),
       '\u0001'.repeat(300),
       'Run acme export.',
-    ]) {
-      expect(realTokens(text)).toBeLessThanOrEqual(tokenBound(text));
-    }
+    ];
+    for (const text of samples) expect(realTokens(text)).toBeLessThanOrEqual(tokenBound(text));
     // The estimate is not a bound: digit runs take far more tokens than bytes / 3.
     expect(realTokens('1 '.repeat(3000))).toBeGreaterThan(2 * estimateTokens('1 '.repeat(3000)));
   });
@@ -346,6 +349,35 @@ describe('a bounded context and strict reservations', () => {
     const reserved = chatTurnReservation(shape) + Math.max(0, chatSourcesTokens(shape, read) - CHAT_MIN_SOURCES_TOKENS);
     const spent = real.reduce((sum, tokens) => sum + tokens, 0) + calls.reduce((sum, call) => sum + call.maxTokens, 0);
     expect(reserved).toBeGreaterThanOrEqual(spent);
+  });
+
+  it('sizes and fits 1 MB of digits and rare characters in linear time', () => {
+    const mixed = Array.from({ length: 150_000 }, (_, index) => (index % 2 ? '12 34 ' : '𠀀😀')).join('');
+    expect(tokenBound(mixed)).toBeGreaterThan(1_000_000);
+    const huge = sized(0, mixed);
+    const twelve = Array.from({ length: 12 }, (_, index) => ({ ...huge, id: `c${index}` }));
+    const shape: ChatTurnShape = {
+      question: mixed,
+      history: Array.from({ length: 12 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: mixed })),
+      language: 'en',
+      pageContext: { title: mixed, path: mixed },
+    };
+    const started = performance.now();
+    estimateTokens(mixed);
+    boundChatHistory(shape.history, { maxMessages: 12, maxTokens: 16_000 });
+    // A prompt keeps 6,000 characters of each source, so a few of them fit.
+    expect(sourcesTokens(fitChatContext(twelve))).toBeLessThanOrEqual(24_000);
+    chatTurnReservation(shape);
+    chatCallInputBounds(shape, [huge]);
+    chatCallInputTokens(shape, [huge]);
+    chatSourcesTokens(shape, twelve);
+    fitChatSources(
+      shape,
+      Array.from({ length: 300 }, (_, index) => sized(index, mixed.slice(0, 80))),
+      5000,
+    );
+    expect(fitChatSources(shape, [huge], 2000)).toHaveLength(1);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 
   it('reads fewer sources when a budget has less room, never more than it reserved', () => {
